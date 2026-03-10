@@ -168,6 +168,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_debtor'])) {
     }
 }
 
+// Handle debtor profile update
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_debtor'])) {
+    $debtor_id = $_POST['debtor_id'] ?? 0;
+    $name = $_POST['name'] ?? '';
+    $email = $_POST['email'] ?? '';
+    $phone = $_POST['phone'] ?? '';
+    $address = $_POST['address'] ?? '';
+    $agreement_terms = $_POST['agreement_terms'] ?? '';
+    
+    try {
+        $pdo->beginTransaction();
+        
+        // Get old debtor info for comparison
+        $stmt = $pdo->prepare("SELECT * FROM debtors WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->execute([$debtor_id, $tenant_id, $branch_id]);
+        $old_debtor = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$old_debtor) {
+            throw new Exception("Debtor not found");
+        }
+        
+        // Only update editable fields (NOT balance, currency, or main_account_id)
+        $stmt = $pdo->prepare("UPDATE debtors SET name = ?, email = ?, phone = ?, address = ?, agreement_terms = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->execute([$name, $email, $phone, $address, $agreement_terms, $debtor_id, $tenant_id, $branch_id]);
+        
+        $pdo->commit();
+        
+        // Log activity
+        $user_id = $_SESSION['user_id'] ?? 0;
+        $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
+        $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        
+        $old_values = json_encode([
+            'name' => $old_debtor['name'],
+            'email' => $old_debtor['email'],
+            'phone' => $old_debtor['phone'],
+            'address' => $old_debtor['address'],
+            'agreement_terms' => $old_debtor['agreement_terms']
+        ]);
+        
+        $new_values = json_encode([
+            'name' => $name,
+            'email' => $email,
+            'phone' => $phone,
+            'address' => $address,
+            'agreement_terms' => $agreement_terms
+        ]);
+        
+        $activity_stmt = $pdo->prepare("INSERT INTO activity_log (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $activity_stmt->execute([$user_id, 'update', 'debtors', $debtor_id, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id]);
+        
+        $_SESSION['success_message'] = "Debtor updated successfully!";
+        header('Location: ' . $redirect_url);
+        exit();
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        $_SESSION['error_message'] = "Error updating debtor: " . $e->getMessage();
+        header('Location: ' . $redirect_url);
+        exit();
+    }
+}
+
 // Handle debtor deactivation
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deactivate_debtor'])) {
     $debtor_id = $_POST['debtor_id'];

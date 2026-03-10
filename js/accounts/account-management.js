@@ -162,6 +162,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // NOTE: Payment modal handler now in client_payment_modal.php (openPaymentModal)
+    // This old code is deprecated and replaced by the new modal's built-in submission
+    /*
     // Handle client payment processing
     const processPaymentBtn = document.getElementById('processPaymentBtn');
     if (processPaymentBtn) {
@@ -176,41 +179,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const usdAmount = parseFloat(formData.get('usd_amount')) || 0;
             const afsAmount = parseFloat(formData.get('afs_amount')) || 0;
             
-            if (!selectedCurrency) {
-                showWarningToast('Please select a payment currency');
-                return;
-            }
-            
-            if (totalAmount <= 0) {
-                showWarningToast('Please enter a valid total amount');
-                return;
-            }
-            
-            if (exchangeRate <= 0) {
-                showWarningToast('Please enter a valid exchange rate');
-                return;
-            }
-            
-            if (usdAmount === 0 && afsAmount === 0) {
-                showWarningToast('Please enter at least one payment amount');
-                return;
-            }
-            
-            // Calculate total payment in selected currency
-            let totalPaymentInSelectedCurrency = 0;
-            if (selectedCurrency === 'USD') {
-                const afsInUsd = afsAmount / exchangeRate;
-                totalPaymentInSelectedCurrency = usdAmount + afsInUsd;
-            } else {
-                const usdInAfs = usdAmount * exchangeRate;
-                totalPaymentInSelectedCurrency = usdInAfs + afsAmount;
-            }
-            
-            // Validate total payment matches the amount to pay
-            if (Math.abs(totalAmount - totalPaymentInSelectedCurrency) > 0.01) {
-                showWarningToast('The sum of USD and AFS payments must equal the total amount to pay');
-                return;
-            }
+            // New modal (openPaymentModal) handles validation client-side
+            // Proceed with submission - backend will validate
             
             // Instead of using toast, show a confirmation modal
             // Create a confirmation modal dynamically
@@ -288,6 +258,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
     }
+    */
 });
 
 // Client payment calculation
@@ -306,27 +277,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const usdBalance = parseFloat(this.dataset.usdBalance);
             const afsBalance = parseFloat(this.dataset.afsBalance);
             
-            // Set form values
-            document.getElementById('clientId').value = clientId;
-            document.getElementById('clientName').value = clientName;
-            
-            // Set current balances display
-            document.getElementById('currentUsdBalance').textContent = '$' + usdBalance.toFixed(2);
-            document.getElementById('currentAfsBalance').textContent = '؋' + afsBalance.toFixed(2);
-            
-            // Reset form fields
-            if (paymentCurrency) paymentCurrency.value = '';
-            if (totalAmount) totalAmount.value = '';
-            if (exchangeRate) exchangeRate.value = '';
-            if (usdAmount) usdAmount.value = '';
-            if (afsAmount) afsAmount.value = '';
-            
-            // Show the modal using jQuery
-            try {
-                $('#partialPaymentModal').modal('show');
-            } catch (error) {
-
-            }
+            // Use the new modal's API
+            window.openPaymentModal(clientId, clientName, usdBalance, afsBalance);
         });
     });
     
@@ -660,7 +612,8 @@ $(document).ready(function() {
             amount: $('#bonusAmount').val(),
             receipt_number: $('#bonusReceipt').val(),
             remarks: $('#bonusRemarks').val(),
-            supplier_currency: $('#bonusSupplierCurrency').val()
+            supplier_currency: $('#bonusSupplierCurrency').val(),
+            csrf_token: $('input[name="csrf_token"]').val()
         };
 
         const $submitButton = $(this).find('button[type="submit"]');

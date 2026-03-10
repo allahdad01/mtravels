@@ -5,6 +5,9 @@ require_once '../../admin/includes/db_security.php';
 // Include security module
 require_once '../../admin/security.php';
 
+// Include language helper
+require_once '../../includes/language_helpers.php';
+
 // Enforce authentication
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
@@ -310,13 +313,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Commit transaction
         $pdo->commit();
         
-        echo json_encode(['success' => true, 'message' => 'Transaction updated successfully']);
+        // Set success message and redirect
+        $_SESSION['success_message'] = 'Transaction updated successfully!';
+        $redirect_url = $_SERVER['HTTP_REFERER'] ?? 'debtors.php';
+        header('Location: ' . $redirect_url);
+        exit();
     } catch (Exception $e) {
         // Rollback transaction on error
         $pdo->rollback();
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        $_SESSION['error_message'] = 'Error updating transaction: ' . $e->getMessage();
+        $redirect_url = $_SERVER['HTTP_REFERER'] ?? 'debtors.php';
+        header('Location: ' . $redirect_url);
+        exit();
     }
 } else {
-    echo json_encode(['success' => false, 'message' => 'Invalid request method']);
+    $_SESSION['error_message'] = 'Invalid request method';
+    $redirect_url = $_SERVER['HTTP_REFERER'] ?? 'debtors.php';
+    header('Location: ' . $redirect_url);
+    exit();
 }
 ?> 

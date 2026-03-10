@@ -175,6 +175,10 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             
             const formData = new FormData(e.target);
+            // Add CSRF token to formData
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            formData.append('csrf_token', csrfToken);
+            
             fetch('../api/accounts/fund_supplier.php', {
                 method: 'POST',
                 body: formData
@@ -226,6 +230,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
 
+                // Get CSRF token from meta tag
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
                 // Send the data to the backend
                 fetch("../api/accounts/fund_main_account.php", {
                     method: "POST",
@@ -238,6 +245,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         amount: amount,
                         userRemarks: userRemarks, // Pass the custom remarks
                         receipt: receiptNumber,
+                        csrf_token: csrfToken,
                     }),
                 })
                 .then(response => response.json())
@@ -281,13 +289,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
+            // Get CSRF token from meta tag
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
             // Send transfer request
             fetch('../api/accounts/transfer_balance.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(data)
+                body: JSON.stringify({...data, csrf_token: csrfToken})
             })
             .then(response => response.json())
             .then(data => {
@@ -398,24 +409,28 @@ function showRemarksModal(clientId, mainAccountId, amount, currency, hasAfsPorti
             return;
         }
 
+        // Get CSRF token from meta tag
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
         // Send the funding request to the server via the API
-        fetch("../api/accounts/fundClient.php", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                clientId: clientId,
-                currency: currency,
-                amount: amount,
-                userRemarks: userRemarks,
-                receipt: receiptNumber,
-                mainAccountId: mainAccountId,
-                hasAfsPortion: hasAfsPortion,
-                afsAmount: afsAmount,
-                afsEquivalentUsd: afsEquivalentUsd
-            }),
-        })
+         fetch("../api/accounts/fundClient.php", {
+             method: "POST",
+             headers: {
+                 "Content-Type": "application/json",
+             },
+             body: JSON.stringify({
+                 clientId: clientId,
+                 currency: currency,
+                 amount: amount,
+                 userRemarks: userRemarks,
+                 receipt: receiptNumber,
+                 mainAccountId: mainAccountId,
+                 hasAfsPortion: hasAfsPortion,
+                 afsAmount: afsAmount,
+                 afsEquivalentUsd: afsEquivalentUsd,
+                 csrf_token: csrfToken
+             }),
+         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {

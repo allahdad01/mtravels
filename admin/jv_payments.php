@@ -633,19 +633,13 @@ $search_param_str = !empty($search_query) ? '&search=' . urlencode($search_query
                         <td>
                           <div class="jvp-row-actions">
                             <!-- View -->
-                            <button class="jvp-btn-icon view-cs-btn"
-                                    data-id="<?php echo $payment['id']; ?>"
-                                    title="<?php echo __('view'); ?>">
-                              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><ellipse cx="8" cy="8" rx="6" ry="4" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="1.5" fill="currentColor"/></svg>
-                            </button>
-                            <!-- Edit -->
-                            <button class="jvp-btn-icon edit-cs-btn"
-                                    data-id="<?php echo $payment['id']; ?>"
-                                    title="<?php echo __('edit'); ?>">
-                              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M11 2.5l2.5 2.5L5 13.5H2.5V11L11 2.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
-                            </button>
-                            <!-- Delete -->
-                            <button class="jvp-btn-icon danger delete-cs-btn"
+                             <button class="jvp-btn-icon view-cs-btn"
+                                     data-id="<?php echo $payment['id']; ?>"
+                                     title="<?php echo __('view'); ?>">
+                               <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><ellipse cx="8" cy="8" rx="6" ry="4" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="1.5" fill="currentColor"/></svg>
+                             </button>
+                             <!-- Delete -->
+                             <button class="jvp-btn-icon danger delete-cs-btn"
                                     data-id="<?php echo $payment['id']; ?>"
                                     title="<?php echo __('delete'); ?>">
                               <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 5h10M6 5V3.5h4V5M6 8v4M10 8v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><rect x="3" y="5" width="10" height="8" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg>
@@ -853,104 +847,7 @@ $search_param_str = !empty($search_query) ? '&search=' . urlencode($search_query
 </div>
 
 
-<!-- ═══════════════════════════════════════════════════════
-     EDIT MODAL
-════════════════════════════════════════════════════════ -->
-<div class="jvp-backdrop" id="editModal" style="display:none" onclick="jvpBackdropClick(event,'editModal')">
-  <div class="jvp-modal">
-    <div class="jvp-modal-head">
-      <div>
-        <h2><?php echo __('edit_client_supplier_payment'); ?></h2>
-        <p id="editModalSubtitle" style="font-family:var(--font-mono);font-size:11px"></p>
-      </div>
-      <button class="jvp-btn-icon" onclick="jvpCloseModal('editModal')">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M11 3L3 11M3 3l8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-      </button>
-    </div>
-    <form method="POST" action="process_client_supplier_jv_update.php" id="editClientSupplierForm">
-      <div class="jvp-modal-body">
-        <input type="hidden" name="action" value="edit">
-        <input type="hidden" name="id" id="edit_id">
-        <input type="hidden" name="description" value="Client-Supplier Payment">
 
-        <div class="jvp-form-grid" style="grid-template-columns:1fr">
-          <div class="jvp-field">
-            <label><?php echo __('jv_name'); ?></label>
-            <input type="text" name="jv_name" id="edit_jv_name" required>
-          </div>
-        </div>
-
-        <div class="jvp-section-title"><?php echo __('transaction_parties'); ?></div>
-        <div class="jvp-form-grid">
-          <div class="jvp-field">
-            <label><?php echo __('client'); ?></label>
-            <select name="client_id" id="edit_client_id" required>
-              <option value=""><?php echo __('select_client'); ?></option>
-              <?php foreach ($clients as $client): ?>
-              <option value="<?php echo $client['id']; ?>"
-                      data-usd-balance="<?php echo $client['usd_balance']; ?>"
-                      data-afs-balance="<?php echo $client['afs_balance']; ?>">
-                <?php echo htmlspecialchars($client['name']); ?>
-              </option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-          <div class="jvp-field">
-            <label><?php echo __('supplier'); ?></label>
-            <select name="supplier_id" id="edit_supplier_id" required>
-              <option value=""><?php echo __('select_supplier'); ?></option>
-              <?php foreach ($suppliers as $supplier): ?>
-              <option value="<?php echo $supplier['id']; ?>"
-                      data-currency="<?php echo $supplier['currency']; ?>">
-                <?php echo htmlspecialchars($supplier['name']); ?>
-              </option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-        </div>
-
-        <div class="jvp-section-title"><?php echo __('amount_currency'); ?></div>
-        <div class="jvp-form-grid" style="grid-template-columns:1fr 1fr 1fr">
-          <div class="jvp-field">
-            <label><?php echo __('currency'); ?></label>
-            <select name="currency" id="edit_currency">
-              <option value="USD">USD</option>
-              <option value="AFS">AFS</option>
-            </select>
-          </div>
-          <div class="jvp-field">
-            <label><?php echo __('amount'); ?></label>
-            <input type="number" step="0.01" name="total_amount" id="edit_total_amount" required>
-          </div>
-          <div class="jvp-field">
-            <label><?php echo __('exchange_rate'); ?></label>
-            <input type="number" step="0.00001" name="exchange_rate" id="edit_exchange_rate">
-            <p class="jvp-field-hint"><?php echo __('required_if_currencies_differ'); ?></p>
-          </div>
-        </div>
-
-        <div class="jvp-section-title"><?php echo __('additional_details'); ?></div>
-        <div class="jvp-form-grid">
-          <div class="jvp-field">
-            <label><?php echo __('receipt_number'); ?></label>
-            <input type="text" name="receipt" id="edit_receipt" required>
-          </div>
-          <div class="jvp-field">
-            <label><?php echo __('remarks'); ?></label>
-            <textarea name="remarks" id="edit_remarks"></textarea>
-          </div>
-        </div>
-      </div>
-      <div class="jvp-modal-foot">
-        <button type="button" class="jvp-btn jvp-btn-ghost" onclick="jvpCloseModal('editModal')"><?php echo __('cancel'); ?></button>
-        <button type="submit" class="jvp-btn jvp-btn-primary" id="editSubmitBtn">
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M13 4L6.5 11 3 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <?php echo __('update_payment'); ?>
-        </button>
-      </div>
-    </form>
-  </div>
-</div>
 
 
 <!-- ═══════════════════════════════════════════════════════
@@ -1020,13 +917,13 @@ function jvpBackdropClick(e, id) {
   if (e.target === document.getElementById(id)) jvpCloseModal(id);
 }
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') {
-    ['addModal','viewModal','editModal','deleteModal'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el && el.style.display !== 'none') jvpCloseModal(id);
-    });
-  }
-});
+   if (e.key === 'Escape') {
+     ['addModal','viewModal','deleteModal'].forEach(id => {
+       const el = document.getElementById(id);
+       if (el && el.style.display !== 'none') jvpCloseModal(id);
+     });
+   }
+ });
 
 /* ─── Toast ──────────────────────────────────────────────── */
 function jvpToast(msg, type = 'success') {
@@ -1113,72 +1010,14 @@ document.querySelectorAll('.view-cs-btn').forEach(btn => {
             <div class="jvp-detail-cell"><div class="dc-label"><?php echo __('remarks'); ?></div><div class="dc-value" style="color:var(--text-muted);font-style:italic">${p.remarks ? $('<div>').text(p.remarks).html() : '—'}</div></div>
           </div>`;
 
-        // Wire up Edit button in footer
-        const editBtn = document.getElementById('viewEditBtn');
-        editBtn.style.display = 'inline-flex';
-        editBtn.onclick = function () {
-          jvpCloseModal('viewModal');
-          document.querySelector(`.edit-cs-btn[data-id="${p.id}"]`)?.click();
-        };
+        // Hide Edit button (editing disabled)
+         const editBtn = document.getElementById('viewEditBtn');
+         editBtn.style.display = 'none';
       },
       error: function () {
         document.getElementById('viewModalBody').innerHTML =
           `<div class="jvp-alert error" style="margin:0"><?php echo __('failed_to_load_details'); ?></div>`;
       }
-    });
-  });
-});
-
-/* ─── Edit payment ───────────────────────────────────────── */
-document.querySelectorAll('.edit-cs-btn').forEach(btn => {
-  btn.addEventListener('click', function () {
-    const id = this.dataset.id;
-    $.ajax({
-      url: 'get_jv_payment.php',
-      type: 'GET',
-      data: { id: id, type: 'client_supplier' },
-      dataType: 'json',
-      success: function (res) {
-        if (!res.success) { jvpToast(res.message, 'error'); return; }
-        const p = res.payment;
-
-        if (!p.client_id || !p.supplier_id) {
-          jvpToast('<?php echo __('this_record_is_missing_client_or_supplier_information_and_cannot_be_edited_as_a_client_supplier_payment'); ?>', 'error');
-          return;
-        }
-
-        document.getElementById('editModalSubtitle').textContent = p.jv_name;
-        document.getElementById('edit_id').value           = p.id;
-        document.getElementById('edit_jv_name').value      = p.jv_name;
-        document.getElementById('edit_total_amount').value = p.total_amount;
-        document.getElementById('edit_exchange_rate').value = p.exchange_rate || '';
-        document.getElementById('edit_receipt').value      = p.receipt || '';
-        document.getElementById('edit_remarks').value      = p.remarks || '';
-
-        // Set client dropdown
-        const cSel = document.getElementById('edit_client_id');
-        if (!cSel.querySelector(`option[value="${p.client_id}"]`)) {
-          const o = document.createElement('option');
-          o.value = p.client_id; o.textContent = p.client_name || 'Client #' + p.client_id;
-          cSel.appendChild(o);
-        }
-        cSel.value = p.client_id;
-
-        // Set supplier dropdown
-        const sSel = document.getElementById('edit_supplier_id');
-        if (!sSel.querySelector(`option[value="${p.supplier_id}"]`)) {
-          const o = document.createElement('option');
-          o.value = p.supplier_id; o.textContent = p.supplier_name || 'Supplier #' + p.supplier_id;
-          o.dataset.currency = p.currency;
-          sSel.appendChild(o);
-        }
-        sSel.value = p.supplier_id;
-
-        document.getElementById('edit_currency').value = p.currency;
-
-        jvpOpenModal('editModal');
-      },
-      error: function () { jvpToast('<?php echo __('error'); ?>: <?php echo __('failed_to_load_payment_details_for_editing'); ?>', 'error'); }
     });
   });
 });
@@ -1229,33 +1068,6 @@ document.getElementById('clientSupplierForm').addEventListener('submit', functio
     return;
   }
   jvpProtectBtn(document.getElementById('addSubmitBtn'), 'Processing…');
-});
-
-document.getElementById('editClientSupplierForm').addEventListener('submit', function (e) {
-  const clientId     = document.getElementById('edit_client_id').value;
-  const supplierId   = document.getElementById('edit_supplier_id').value;
-  const amount       = parseFloat(document.getElementById('edit_total_amount').value);
-  const currency     = document.getElementById('edit_currency').value;
-  const exchangeRate = parseFloat(document.getElementById('edit_exchange_rate').value);
-  const supplierOpt  = document.getElementById('edit_supplier_id').selectedOptions[0];
-  const supplierCurr = supplierOpt?.dataset?.currency;
-
-  if (!clientId || !supplierId) {
-    e.preventDefault();
-    jvpToast('<?php echo __('please_select_both_client_and_supplier'); ?>', 'error');
-    return;
-  }
-  if (isNaN(amount) || amount <= 0) {
-    e.preventDefault();
-    jvpToast('<?php echo __('please_enter_a_valid_amount_greater_than_zero'); ?>', 'error');
-    return;
-  }
-  if (supplierCurr && supplierCurr !== currency && (isNaN(exchangeRate) || exchangeRate <= 0)) {
-    e.preventDefault();
-    jvpToast('<?php echo __('please_enter_a_valid_exchange_rate_for_currency_conversion'); ?>', 'error');
-    return;
-  }
-  jvpProtectBtn(document.getElementById('editSubmitBtn'), 'Updating…');
 });
 
 document.getElementById('deleteForm').addEventListener('submit', function () {

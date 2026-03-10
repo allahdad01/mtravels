@@ -97,26 +97,37 @@
                                                 </div>
                                             </div>
                                             <div class="col-md-6">
-                                                <div class="form-group" id="familyReceiptNumberField" style="display: none;">
-                                                    <label for="familyReceiptNumber">
-                                                        <i class="feather icon-file-text mr-1"></i><?= __('receipt_number') ?>
-                                                    </label>
-                                                    <input type="text" class="form-control" id="familyReceiptNumber"
-                                                           name="receipt_number" placeholder="Enter receipt number">
-                                                </div>
+                                                 <div class="form-group" id="familyReceiptNumberField" style="display: none;">
+                                                     <label for="familyReceiptNumber">
+                                                         <i class="feather icon-file-text mr-1"></i><?= __('receipt_number') ?>
+                                                     </label>
+                                                     <input type="text" class="form-control" id="familyReceiptNumber"
+                                                            name="receipt_number" placeholder="Enter receipt number">
+                                                 </div>
+                                             </div>
                                             </div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <div class="form-group" id="familyExchangeRateField" style="display: none;">
-                                                    <label for="familyExchangeRate">
-                                                        <i class="feather icon-refresh-cw mr-1"></i><?= __('exchange_rate') ?>
-                                                    </label>
-                                                    <input type="number" class="form-control" id="familyExchangeRate"
-                                                           name="exchange_rate" step="0.01" min="0.01" placeholder="Enter exchange rate">
-                                                </div>
+                                            <div class="row">
+                                             <div class="col-md-6">
+                                                 <div class="form-group" id="familyMainAccountField" style="display: none;">
+                                                     <label for="familyMainAccount">
+                                                         <i class="feather icon-briefcase mr-1"></i><?= __('main_account') ?>
+                                                     </label>
+                                                     <select class="form-control" id="familyMainAccount" name="main_account_id">
+                                                         <option value=""><?= __('select_main_account') ?></option>
+                                                         <!-- Options will be loaded dynamically -->
+                                                     </select>
+                                                 </div>
+                                             </div>
+                                             <div class="col-md-6">
+                                                 <div class="form-group" id="familyExchangeRateField" style="display: none;">
+                                                     <label for="familyExchangeRate">
+                                                         <i class="feather icon-refresh-cw mr-1"></i><?= __('exchange_rate') ?>
+                                                     </label>
+                                                     <input type="number" class="form-control" id="familyExchangeRate"
+                                                            name="exchange_rate" step="0.01" min="0.01" placeholder="Enter exchange rate">
+                                                 </div>
+                                             </div>
                                             </div>
-                                        </div>
 
                                         <div class="form-group">
                                             <label for="familyPaymentDescription">
@@ -186,14 +197,67 @@
 </div>
 
 <script>
-// Show/Hide Receipt Number field based on Transaction To selection
+// Show/Hide Receipt Number and Main Account fields based on Transaction To selection
 $(document).ready(function() {
     $('#familyTransactionTo').change(function() {
         if ($(this).val() === 'Bank') {
             $('#familyReceiptNumberField').slideDown();
+            // Check if supplier is internal, then load main accounts
+            checkAndLoadFamilyMainAccounts();
         } else {
             $('#familyReceiptNumberField').slideUp();
+            $('#familyMainAccountField').slideUp();
         }
     });
 });
+
+// Function to check supplier type and load main accounts if internal
+function checkAndLoadFamilyMainAccounts() {
+    const familyId = $('#familyTransactionFamilyId').val();
+    if (!familyId) return;
+    
+    $.ajax({
+        url: '../api/umrah/get_family_supplier_type.php',
+        type: 'GET',
+        data: { family_id: familyId },
+        dataType: 'json',
+        success: function(response) {
+            if (response.success) {
+                const supplierType = response.supplier_type;
+                if (supplierType === 'Internal') {
+                    // Load main accounts
+                    loadFamilyMainAccounts();
+                    $('#familyMainAccountField').slideDown();
+                } else {
+                    $('#familyMainAccountField').slideUp();
+                }
+            }
+        },
+        error: function() {
+            $('#familyMainAccountField').slideUp();
+        }
+    });
+}
+
+// Function to load main accounts
+function loadFamilyMainAccounts() {
+    $.ajax({
+        url: '../api/accounts/get_main_accounts.php',
+        type: 'GET',
+        dataType: 'json',
+        success: function(response) {
+            if (response.success) {
+                const accountSelect = $('#familyMainAccount');
+                accountSelect.html('<option value=""><?= __('select_main_account') ?></option>');
+                
+                response.accounts.forEach(function(account) {
+                    accountSelect.append(`<option value="${account.id}">${account.name}</option>`);
+                });
+            }
+        },
+        error: function() {
+            console.error('Failed to load main accounts');
+        }
+    });
+}
 </script>

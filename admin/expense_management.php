@@ -10,6 +10,11 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Generate CSRF token if not already set
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 // Check if user is logged in with proper role
 $allowed_roles = ['admin', 'finance'];
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
@@ -53,6 +58,7 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_ASSOC);
 
 ?>
 
+<meta name="csrf-token" content="<?= $_SESSION['csrf_token'] ?? '' ?>">
 <link href="../css/expenses/style.css" rel="stylesheet">
 <?php include '../includes/header.php'; ?>
 

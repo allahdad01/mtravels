@@ -448,20 +448,20 @@ if ($weightsResult && count($weightsResult) > 0) {
                                                                 <div class="weight-card-left">
                                                                     <div>
                                                                         <div class="weight-card-title">WEIGHT</div>
-                                                                        <div class="weight-card-id"><?= htmlspecialchars($weight['pnr']) ?></div>
+                                                                        <div class="weight-card-id"><?= htmlspecialchars($weight['pnr'] ?? '') ?></div>
                                                                     </div>
                                                                     <div class="weight-card-details">
                                                                         <div class="weight-card-detail-item">
                                                                             <span class="weight-card-detail-label">Passenger:</span>
-                                                                            <span><?= htmlspecialchars($weight['passenger_name']) ?></span>
+                                                                            <span><?= htmlspecialchars($weight['passenger_name'] ?? '') ?></span>
                                                                         </div>
                                                                         <div class="weight-card-detail-item">
                                                                             <span class="weight-card-detail-label">Sold To:</span>
-                                                                            <span><?= htmlspecialchars($weight['sold_to_name']) ?></span>
+                                                                            <span><?= htmlspecialchars($weight['sold_to_name'] ?? '') ?></span>
                                                                         </div>
                                                                         <div class="weight-card-detail-item">
                                                                             <span class="weight-card-detail-label">Route:</span>
-                                                                            <span><?= htmlspecialchars($weight['origin']) ?> → <?= htmlspecialchars($weight['destination']) ?></span>
+                                                                            <span><?= htmlspecialchars($weight['origin'] ?? '') ?> → <?= htmlspecialchars($weight['destination'] ?? '') ?></span>
                                                                         </div>
                                                                         <div class="weight-card-detail-item">
                                                                             <span class="weight-card-detail-label">Weight:</span>
@@ -469,11 +469,11 @@ if ($weightsResult && count($weightsResult) > 0) {
                                                                         </div>
                                                                         <div class="weight-card-detail-item">
                                                                             <span class="weight-card-detail-label">Base Price:</span>
-                                                                            <span><?= htmlspecialchars($weight['currency']) ?> <?= number_format($weight['base_price'], 2) ?></span>
+                                                                            <span><?= htmlspecialchars($weight['currency'] ?? '') ?> <?= number_format($weight['base_price'], 2) ?></span>
                                                                         </div>
                                                                         <div class="weight-card-detail-item">
                                                                             <span class="weight-card-detail-label">Profit:</span>
-                                                                            <span><?= htmlspecialchars($weight['currency']) ?> <?= number_format($weight['profit'], 2) ?></span>
+                                                                            <span><?= htmlspecialchars($weight['currency'] ?? '') ?> <?= number_format($weight['profit'], 2) ?></span>
                                                                         </div>
                                                                         <?php if (!empty($weight['remarks'])): ?>
                                                                         <div class="weight-card-detail-item">
@@ -493,7 +493,7 @@ if ($weightsResult && count($weightsResult) > 0) {
                                                                         <div class="weight-card-meta-dot"></div>
                                                                         <div class="weight-card-meta-dot"></div>
                                                                         <div class="weight-card-meta-dot"></div>
-                                                                        <span><?= htmlspecialchars($baseCurrency) ?></span>
+                                                                        <span><?= htmlspecialchars($baseCurrency ?? '') ?></span>
                                                                     </div>
                                                                 </div>
                                                             </div>

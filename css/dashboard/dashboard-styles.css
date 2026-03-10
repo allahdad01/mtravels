@@ -640,3 +640,104 @@ h1, h2, h3, h4, h5, h6 {
     padding-top: 0.25rem;
     padding-bottom: 0.25rem;
 }
+
+/* Custom Profit Source Badges */
+.badge-ticket {
+    background: #e8f1ff;
+    color: #4099ff;
+    padding: 0.35em 0.65em;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.badge-ticket-res {
+    background: #f0ebff;
+    color: #7c5cfc;
+    padding: 0.35em 0.65em;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.badge-visa {
+    background: #fff3ec;
+    color: #f97316;
+    padding: 0.35em 0.65em;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.badge-umrah {
+    background: #fffbeb;
+    color: #d97706;
+    padding: 0.35em 0.65em;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.badge-hotel {
+    background: #eafaf6;
+    color: #059669;
+    padding: 0.35em 0.65em;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.badge-payment {
+    background: #ecfeff;
+    color: #0891b2;
+    padding: 0.35em 0.65em;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.badge-refund {
+    background: #fee2e2;
+    color: #dc2626;
+    padding: 0.35em 0.65em;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.badge-datechange {
+    background: #fef3c7;
+    color: #b45309;
+    padding: 0.35em 0.65em;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.badge-weight {
+    background: #fce7f3;
+    color: #be185d;
+    padding: 0.35em 0.65em;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.badge-default {
+    background: #f3f4f6;
+    color: #374151;
+    padding: 0.35em 0.65em;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-weight: 500;
+    display: inline-block;
+}

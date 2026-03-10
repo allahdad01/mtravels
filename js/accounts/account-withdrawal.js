@@ -100,6 +100,10 @@
             withdrawalData.exchange_rate = exchangeRate;
         }
         
+        // Add CSRF token
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        withdrawalData.csrf_token = csrfToken;
+        
         // Send withdrawal request
         fetch('../api/accounts/withdraw_fund.php', {
             method: 'POST',

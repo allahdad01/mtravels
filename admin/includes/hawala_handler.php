@@ -1,33 +1,49 @@
 <?php
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
-// Function to process a new Hawala transfer
-function processHawalaTransfer($conn, $data) {
-    try {
-        $conn->begin_transaction();
-        $tenant_id = $_SESSION['tenant_id'];
 
+// Function to process a new Hawala transfer
+// Note: This function assumes a transaction is already active
+function processHawalaTransfer($pdo, $data) {
+    try {
+        $tenant_id = $_SESSION['tenant_id'];
+        $branch_id = $_SESSION['branch_id'];
+        
         // Insert sender transaction
-        $stmt = $conn->prepare("INSERT INTO sarafi_transactions (customer_id, amount, currency, type, notes, reference_number, tenant_id, branch_id) VALUES (?, ?, ?, 'hawala_send', ?, ?, ?, ?)");
-        $stmt->bind_param("idsssii", $data['sender_id'], $data['send_amount'], $data['send_currency'], $data['notes'], $data['reference'], $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("INSERT INTO sarafi_transactions (customer_id, amount, currency, type, notes, reference_number, tenant_id, branch_id) VALUES (?, ?, ?, 'hawala_send', ?, ?, ?, ?)");
+        $stmt->bindParam(1, $data['sender_id'], PDO::PARAM_INT);
+        $stmt->bindParam(2, $data['send_amount'], PDO::PARAM_STR);
+        $stmt->bindParam(3, $data['send_currency'], PDO::PARAM_STR);
+        $stmt->bindParam(4, $data['notes'], PDO::PARAM_STR);
+        $stmt->bindParam(5, $data['reference'], PDO::PARAM_STR);
+        $stmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(7, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $sender_transaction_id = $conn->insert_id;
+        $sender_transaction_id = $pdo->lastInsertId();
         
         // Update sender's wallet
-        $stmt = $conn->prepare("UPDATE customer_wallets SET balance = balance - ? WHERE customer_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bind_param("disii", $data['send_amount'], $data['sender_id'], $data['send_currency'], $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("UPDATE customer_wallets SET balance = balance - ? WHERE customer_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $data['send_amount'], PDO::PARAM_STR);
+        $stmt->bindParam(2, $data['sender_id'], PDO::PARAM_INT);
+        $stmt->bindParam(3, $data['send_currency'], PDO::PARAM_STR);
+        $stmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(5, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
         
         // Create Hawala record
-        $stmt = $conn->prepare("INSERT INTO hawala_transfers (sender_transaction_id, secret_code, commission_amount, commission_currency, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("isdsii", $sender_transaction_id, $data['secret_code'], $data['commission_amount'], $data['commission_currency'], $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("INSERT INTO hawala_transfers (sender_transaction_id, secret_code, commission_amount, commission_currency, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->bindParam(1, $sender_transaction_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $data['secret_code'], PDO::PARAM_STR);
+        $stmt->bindParam(3, $data['commission_amount'], PDO::PARAM_STR);
+        $stmt->bindParam(4, $data['commission_currency'], PDO::PARAM_STR);
+        $stmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(6, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $hawala_id = $conn->insert_id;
+        $hawala_id = $pdo->lastInsertId();
         
         // Record commission as income
-        recordCommissionIncome($conn, $data['commission_amount'], $data['commission_currency'], $hawala_id, $tenant_id);
+        recordCommissionIncome($pdo, $data['commission_amount'], $data['commission_currency'], $hawala_id, $tenant_id, $branch_id);
         
-        $conn->commit();
         return [
             'success' => true,
             'message' => 'Hawala transfer initiated successfully',
@@ -35,7 +51,6 @@ function processHawalaTransfer($conn, $data) {
             'sender_transaction_id' => $sender_transaction_id
         ];
     } catch (Exception $e) {
-        $conn->rollback();
         return [
             'success' => false,
             'message' => 'Error processing Hawala transfer: ' . $e->getMessage()
@@ -44,47 +59,62 @@ function processHawalaTransfer($conn, $data) {
 }
 
 // Function to process Hawala payout
-function processHawalaPayout($conn, $data) {
+// Note: This function assumes a transaction is already active
+function processHawalaPayout($pdo, $data) {
     $tenant_id = $_SESSION['tenant_id'];
+    $branch_id = $_SESSION['branch_id'];
     try {
-        $conn->begin_transaction();
         
         // Verify Hawala exists and is pending
-        $stmt = $conn->prepare("SELECT * FROM hawala_transfers WHERE id = ? AND status = 'pending' AND secret_code = ? AND tenant_id = ? And branch_id = ?");
-        $stmt->bind_param("isii", $data['hawala_id'], $data['secret_code'], $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("SELECT * FROM hawala_transfers WHERE id = ? AND status = 'pending' AND secret_code = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $data['hawala_id'], PDO::PARAM_INT);
+        $stmt->bindParam(2, $data['secret_code'], PDO::PARAM_STR);
+        $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $result = $stmt->get_result();
-        $hawala = $result->fetch_assoc();
+        $hawala = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$hawala) {
             throw new Exception('Invalid Hawala transfer or secret code');
         }
         
         // Insert receiver transaction
-        $stmt = $conn->prepare("INSERT INTO sarafi_transactions (customer_id, amount, currency, type, notes, reference_number, tenant_id, branch_id) VALUES (?, ?, ?, 'hawala_receive', ?, ?, ?, ?)");
-        $stmt->bind_param("idsssii", $data['receiver_id'], $data['receive_amount'], $data['receive_currency'], $data['notes'], $data['reference'], $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("INSERT INTO sarafi_transactions (customer_id, amount, currency, type, notes, reference_number, tenant_id, branch_id) VALUES (?, ?, ?, 'hawala_receive', ?, ?, ?, ?)");
+        $stmt->bindParam(1, $data['receiver_id'], PDO::PARAM_INT);
+        $stmt->bindParam(2, $data['receive_amount'], PDO::PARAM_STR);
+        $stmt->bindParam(3, $data['receive_currency'], PDO::PARAM_STR);
+        $stmt->bindParam(4, $data['notes'], PDO::PARAM_STR);
+        $stmt->bindParam(5, $data['reference'], PDO::PARAM_STR);
+        $stmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(7, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $receiver_transaction_id = $conn->insert_id;
+        $receiver_transaction_id = $pdo->lastInsertId();
         
         // Update Hawala status
-        $stmt = $conn->prepare("UPDATE hawala_transfers SET receiver_transaction_id = ?, status = 'completed' WHERE id = ? AND tenant_id = ? And branch_id = ?");
-        $stmt->bind_param("ii", $receiver_transaction_id, $data['hawala_id'], $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("UPDATE hawala_transfers SET receiver_transaction_id = ?, status = 'completed' WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $receiver_transaction_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $data['hawala_id'], PDO::PARAM_INT);
+        $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
         
         // Update receiver's wallet
-        $stmt = $conn->prepare("INSERT INTO customer_wallets (customer_id, currency, balance, tenant_id, branch_id) 
+        $stmt = $pdo->prepare("INSERT INTO customer_wallets (customer_id, currency, balance, tenant_id, branch_id) 
                                VALUES (?, ?, ?, ?, ?) 
-                               ON DUPLICATE KEY UPDATE balance = balance + ? Where tenant_id = ? And branch_id = ?");
-        $stmt->bind_param("isddii", $data['receiver_id'], $data['receive_currency'], $data['receive_amount'], $data['receive_amount'], $tenant_id, $branch_id);
+                               ON DUPLICATE KEY UPDATE balance = balance + ?");
+        $stmt->bindParam(1, $data['receiver_id'], PDO::PARAM_INT);
+        $stmt->bindParam(2, $data['receive_currency'], PDO::PARAM_STR);
+        $stmt->bindParam(3, $data['receive_amount'], PDO::PARAM_STR);
+        $stmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(5, $branch_id, PDO::PARAM_INT);
+        $stmt->bindParam(6, $data['receive_amount'], PDO::PARAM_STR);
         $stmt->execute();
         
-        $conn->commit();
         return [
             'success' => true,
             'message' => 'Hawala payout processed successfully'
         ];
     } catch (Exception $e) {
-        $conn->rollback();
         return [
             'success' => false,
             'message' => 'Error processing Hawala payout: ' . $e->getMessage()
@@ -93,84 +123,100 @@ function processHawalaPayout($conn, $data) {
 }
 
 // Function to record commission income
-function recordCommissionIncome($conn, $amount, $currency, $hawala_id, $tenant_id) {
+function recordCommissionIncome($pdo, $amount, $currency, $hawala_id, $tenant_id, $branch_id) {
     // Insert into general ledger
-    $stmt = $conn->prepare("INSERT INTO general_ledger (account_type, entry_type, amount, currency, balance, tenant_id) 
-                           SELECT 'income', 'credit', ?, ?, COALESCE(MAX(balance), 0) + ?, ? 
+    $stmt = $pdo->prepare("INSERT INTO general_ledger (account_type, entry_type, amount, currency, balance, tenant_id, branch_id) 
+                           SELECT 'income', 'credit', ?, ?, COALESCE(MAX(balance), 0) + ?, ?, ? 
                            FROM general_ledger 
-                           WHERE account_type = 'income' AND currency = ? AND tenant_id = ? And branch_id = ?");
-    $stmt->bind_param(
-    "dsdsiii", 
-    $amount,              // ?
-    $currency,            // ?
-    $amount,              // ?
-    $tenant_id,           // ?
-    $currency,            // ?
-    $tenant_id,
-    $branch_id);
+                           WHERE account_type = 'income' AND currency = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->bindParam(1, $amount, PDO::PARAM_STR);
+    $stmt->bindParam(2, $currency, PDO::PARAM_STR);
+    $stmt->bindParam(3, $amount, PDO::PARAM_STR);
+    $stmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(5, $branch_id, PDO::PARAM_INT);
+    $stmt->bindParam(6, $currency, PDO::PARAM_STR);
+    $stmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(8, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
     
     // Update Hawala record with commission details
-    $stmt = $conn->prepare("UPDATE hawala_transfers SET commission_amount = ?, commission_currency = ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
-    $stmt->bind_param("dsiii", $amount, $currency, $hawala_id, $tenant_id, $branch_id);
+    $stmt = $pdo->prepare("UPDATE hawala_transfers SET commission_amount = ?, commission_currency = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->bindParam(1, $amount, PDO::PARAM_STR);
+    $stmt->bindParam(2, $currency, PDO::PARAM_STR);
+    $stmt->bindParam(3, $hawala_id, PDO::PARAM_INT);
+    $stmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(5, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
 }
 
 // Function to cancel Hawala transfer
-function cancelHawalaTransfer($conn, $hawala_id, $tenant_id, $branch_id) {
-
+function cancelHawalaTransfer($pdo, $hawala_id, $tenant_id, $branch_id) {
     try {
-        $conn->begin_transaction();
+        $pdo->beginTransaction();
         
         // Get Hawala details
-        $stmt = $conn->prepare("SELECT * FROM hawala_transfers WHERE id = ? AND status = 'pending' AND tenant_id = ? And branch_id = ?");
-        $stmt->bind_param("iii", $hawala_id, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("SELECT * FROM hawala_transfers WHERE id = ? AND status = 'pending' AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $hawala_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $result = $stmt->get_result();
-        $hawala = $result->fetch_assoc();
+        $hawala = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$hawala) {
             throw new Exception('Invalid Hawala transfer or already completed');
         }
         
         // Get sender transaction details
-        $stmt = $conn->prepare("SELECT * FROM sarafi_transactions WHERE id = ? AND tenant_id = ? And branch_id = ?");
-        $stmt->bind_param("iii", $hawala['sender_transaction_id'], $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("SELECT * FROM sarafi_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $hawala['sender_transaction_id'], PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $result = $stmt->get_result();
-        $sender_transaction = $result->fetch_assoc();
+        $sender_transaction = $stmt->fetch(PDO::FETCH_ASSOC);
         
         // Refund sender's wallet
-        $stmt = $conn->prepare("UPDATE customer_wallets SET balance = balance + ? 
-                               WHERE customer_id = ? AND currency = ? AND tenant_id = ? And branch_id = ?");
-        $stmt->bind_param("disii", $sender_transaction['amount'], $sender_transaction['customer_id'], $sender_transaction['currency'], $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("UPDATE customer_wallets SET balance = balance + ? 
+                               WHERE customer_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $sender_transaction['amount'], PDO::PARAM_STR);
+        $stmt->bindParam(2, $sender_transaction['customer_id'], PDO::PARAM_INT);
+        $stmt->bindParam(3, $sender_transaction['currency'], PDO::PARAM_STR);
+        $stmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(5, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
         
         // Update Hawala status
-        $stmt = $conn->prepare("UPDATE hawala_transfers SET status = 'cancelled' WHERE id = ? AND tenant_id = ? And branch_id = ?");
-        $stmt->bind_param("iii", $hawala_id, $tenant_id, $branch_id);
+        $stmt = $pdo->prepare("UPDATE hawala_transfers SET status = 'cancelled' WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $hawala_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
         
         // Reverse commission entry in general ledger
-        $stmt = $conn->prepare("INSERT INTO general_ledger (account_type, entry_type, amount, currency, balance, tenant_id) 
-                               SELECT 'income', 'debit', ?, ?, COALESCE(MAX(balance), 0) - ?, ? 
+        $stmt = $pdo->prepare("INSERT INTO general_ledger (account_type, entry_type, amount, currency, balance, tenant_id, branch_id) 
+                               SELECT 'income', 'debit', ?, ?, COALESCE(MAX(balance), 0) - ?, ?, ? 
                                FROM general_ledger 
-                               WHERE account_type = 'income' AND currency = ? AND tenant_id = ? And branch_id = ?");
-        $stmt->bind_param("dsdsiii", $hawala['commission_amount'], $hawala['commission_currency'], 
-                         $hawala['commission_amount'], $hawala['commission_currency'], $tenant_id, $branch_id);
+                               WHERE account_type = 'income' AND currency = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $hawala['commission_amount'], PDO::PARAM_STR);
+        $stmt->bindParam(2, $hawala['commission_currency'], PDO::PARAM_STR);
+        $stmt->bindParam(3, $hawala['commission_amount'], PDO::PARAM_STR);
+        $stmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(5, $branch_id, PDO::PARAM_INT);
+        $stmt->bindParam(6, $hawala['commission_currency'], PDO::PARAM_STR);
+        $stmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(8, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
         
-        $conn->commit();
+        $pdo->commit();
         return [
             'success' => true,
             'message' => 'Hawala transfer cancelled successfully'
         ];
     } catch (Exception $e) {
-        $conn->rollback();
+        $pdo->rollBack();
         return [
             'success' => false,
             'message' => 'Error cancelling Hawala transfer: ' . $e->getMessage()
         ];
     }
 }
-?> 
+?>

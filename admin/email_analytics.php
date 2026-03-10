@@ -25,6 +25,10 @@ if (!isset($_SESSION['csrf_token'])) { $_SESSION['csrf_token'] = bin2hex(random_
 require_once '../includes/InputValidator.php';
 require_once '../includes/db.php';
 
+// Get tenant and branch from session
+$tenant_id = $_SESSION['tenant_id'] ?? null;
+$branch_id = $_SESSION['branch_id'] ?? null;
+
 // Get date range from URL parameters or set defaults
 $startDate = isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-d', strtotime('-30 days'));
 $endDate = isset($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-d');

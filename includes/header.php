@@ -34,6 +34,9 @@ require_once(__DIR__ . '/auth_check.php');
 
     <!-- Header / sidebar / RTL styles (external file – browser-cached) -->
     <link rel="stylesheet" href="../assets/css/header-styles.css">
+
+    <!-- Dashboard styles (badges, cards, layout) -->
+    <link rel="stylesheet" href="../css/dashboard/dashboard-styles.css">
 </head>
 
 <!-- [ Pre-loader ] start -->

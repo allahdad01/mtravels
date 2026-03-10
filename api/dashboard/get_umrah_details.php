@@ -23,9 +23,6 @@ if (!isset($_POST['period']) || empty($_POST['period'])) {
 $period = $_POST['period'];
 $filteredDate = $_POST['filtered_date'] ?? null;
 
-// Log input
-error_log("get_umrah_details.php - Input parameters: period=$period, filteredDate=$filteredDate");
-
 // Prepare parameters array with tenant_id
 $params = [
     ':tenant_id_f' => $tenant_id,
@@ -78,13 +75,9 @@ try {
     WHERE $dateCondition AND ub.tenant_id = :tenant_id AND ub.branch_id = :branch_id
     ORDER BY ub.created_at DESC";
 
-    error_log("Executing query: $query with params: " . json_encode($params));
-
     $stmt = $pdo->prepare($query);
     $stmt->execute($params); // use named parameters only
     $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    error_log("Retrieved " . count($bookings) . " umrah bookings");
 
     echo json_encode([
         'status' => 'success',

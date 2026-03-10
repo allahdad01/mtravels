@@ -747,11 +747,6 @@ function getRefundStatusDotColor($status) {
                                         </button>
                                         <?php endif; ?>
 
-                                        <!-- View Details -->
-                                        <button class="vc-btn" onclick="viewRefundDetails(<?= $refund['id'] ?>)">
-                                            <i class="feather icon-eye"></i> <?= __('view') ?>
-                                        </button>
-
                                         <!-- Print Agreement -->
                                         <button class="vc-btn" onclick="printRefundAgreement(<?= $refund['id'] ?>)">
                                             <i class="feather icon-print"></i> <?= __('print') ?>

@@ -1,20 +1,18 @@
 <?php
 // Update maktob status (send/archive)
+session_start();
+require_once('../../admin/security.php');
 require_once('../../includes/db.php');
 require_once('../../includes/language_helpers.php');
+
+// Enforce authentication
+enforce_auth();
 
 header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(['success' => false, 'message' => 'Method not allowed']);
-    exit();
-}
-
-session_start();
-if (!isset($_SESSION['user_id'])) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit();
 }
 
@@ -84,7 +82,7 @@ try {
 
         if ($admin && $admin['email']) {
             // Send email notification
-            require_once '../../includes/functions.php';
+            require_once('../../includes/functions.php');
             $subject = "Maktob Sent: " . $maktob['maktob_number'];
             $body = "
             <h3>Maktob Sent Notification</h3>
@@ -102,9 +100,9 @@ try {
         }
 
         // Send WhatsApp notification if phone available
-        if ($admin && $admin['phone']) {
-            try {
-                require_once '../../api/whatsapp/WhatsAppManager.php';
+         if ($admin && $admin['phone']) {
+             try {
+                 require_once('../whatsapp/WhatsAppManager.php');
                 $whatsappManager = new WhatsAppManager($_SESSION['tenant_id']);
                 $whatsappManager->sendBookingNotification('maktob', $maktob_id);
             } catch (Exception $e) {

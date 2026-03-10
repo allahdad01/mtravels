@@ -143,9 +143,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_deposit'])) {
         $stmt->bindParam(5, $branch_id,           PDO::PARAM_INT);
         $stmt->execute();
 
-        if (isset($_FILES['receipt'])) {
+        if (isset($_FILES['receipt']) && $_FILES['receipt']['error'] === UPLOAD_ERR_OK) {
+            error_log("Receipt file detected for deposit: " . print_r($_FILES['receipt'], true));
             $uploader = new SecureFileUpload(10 * 1024 * 1024, '../uploads/');
             $result   = $uploader->upload('receipt', 'receipts');
+            error_log("Upload result: " . print_r($result, true));
             if ($result['success']) {
                 $stmt = $pdo->prepare("UPDATE sarafi_transactions SET receipt_path = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                 $stmt->bindParam(1, $result['data']['filename'], PDO::PARAM_STR);
@@ -153,7 +155,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_deposit'])) {
                 $stmt->bindParam(3, $tenant_id,                  PDO::PARAM_INT);
                 $stmt->bindParam(4, $branch_id,                  PDO::PARAM_INT);
                 $stmt->execute();
+                error_log("Receipt saved: " . $result['data']['filename']);
+            } else {
+                error_log("Receipt upload failed: " . $result['error']);
             }
+        } else {
+            error_log("No receipt file or upload error: " . ($_FILES['receipt']['error'] ?? 'not set'));
         }
 
         $pdo->commit();
@@ -261,9 +268,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_withdrawal'])) {
         $stmt->bindParam(5, $branch_id,           PDO::PARAM_INT);
         $stmt->execute();
 
-        if (isset($_FILES['receipt'])) {
+        if (isset($_FILES['receipt']) && $_FILES['receipt']['error'] === UPLOAD_ERR_OK) {
+            error_log("Receipt file detected for withdrawal: " . print_r($_FILES['receipt'], true));
             $uploader = new SecureFileUpload(10 * 1024 * 1024, '../uploads/');
             $result   = $uploader->upload('receipt', 'receipts');
+            error_log("Upload result: " . print_r($result, true));
             if ($result['success']) {
                 $stmt = $pdo->prepare("UPDATE sarafi_transactions SET receipt_path = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                 $stmt->bindParam(1, $result['data']['filename'], PDO::PARAM_STR);
@@ -271,7 +280,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_withdrawal'])) {
                 $stmt->bindParam(3, $tenant_id,                  PDO::PARAM_INT);
                 $stmt->bindParam(4, $branch_id,                  PDO::PARAM_INT);
                 $stmt->execute();
+                error_log("Receipt saved: " . $result['data']['filename']);
+            } else {
+                error_log("Receipt upload failed: " . $result['error']);
             }
+        } else {
+            error_log("No receipt file or upload error: " . ($_FILES['receipt']['error'] ?? 'not set'));
         }
 
         $pdo->commit();
@@ -370,7 +384,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_hawala'])) {
             throw new Exception($result['message']);
         }
     } catch (Exception $e) {
-        $pdo->rollback();
+        try {
+            $pdo->rollBack();
+        } catch (Exception $rollbackError) {
+            // Transaction may not have been started
+        }
         $_SESSION['error_message'] = $e->getMessage();
     }
     header('Location: ' . $redirect_url);
@@ -1202,10 +1220,10 @@ body,
                             </a>
                             <?php endif; ?>
 
-                            <a href="#" class="icon-btn view-transaction"
-                               data-id="<?= $tx['id'] ?>" title="<?= __('view_details') ?>">
+                            <button class="icon-btn view-transaction"
+                                    data-id="<?= $tx['id'] ?>" type="button" title="<?= __('view_details') ?>">
                               <i class="feather icon-eye" style="font-size:12px;"></i>
-                            </a>
+                            </button>
 
                             <?php if ($tx['type'] === 'deposit'): ?>
                             <button class="icon-btn danger"
@@ -1356,14 +1374,14 @@ body,
     </div>
   </div>
 </div>
-
-<!-- Include existing modals (deposit, withdrawal, hawala, exchange, customer) -->
-<?php include 'includes/sarafi_modals.php'; ?>
-
 <!-- Required JS -->
 <script src="../assets/js/vendor-all.min.js"></script>
 <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
 <script src="../assets/js/pcoded.min.js"></script>
+<!-- Include existing modals (deposit, withdrawal, hawala, exchange, customer) -->
+<?php include 'includes/sarafi_modals.php'; ?>
+
+
 
 <script>
 // ── Toast system ────────────────────────────────────────────────────────────
@@ -1415,7 +1433,10 @@ $(document).ready(function() {
   // View transaction
   $(document).on('click', '.view-transaction', function(e) {
     e.preventDefault();
-    viewTransaction($(this).data('id'));
+    e.stopPropagation();
+    const transactionId = $(this).data('id');
+    console.log('View transaction clicked, ID:', transactionId);
+    viewTransaction(transactionId);
   });
 
   // Delete exchange
@@ -1545,7 +1566,8 @@ function viewTransaction(transactionId) {
       if (d.transaction.receipt_path) {
         html += `<hr style="border-color:var(--border);margin:16px 0;">
           <div style="font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--slate-400);margin-bottom:8px;"><?= __("receipt") ?></div>
-          <img src="../uploads/receipts/${d.transaction.receipt_path}" style="max-width:100%;border-radius:8px;cursor:zoom-in;" onclick="window.open(this.src)">`;
+          <img src="../uploads/receipts/${d.transaction.receipt_path}" style="max-width:100%;border-radius:8px;cursor:zoom-in;" onclick="window.open(this.src)">
+          `;
       }
       $('#transactionDetailsContent').html(html);
       $('.print-transaction').show();

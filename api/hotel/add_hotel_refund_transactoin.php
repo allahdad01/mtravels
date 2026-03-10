@@ -42,15 +42,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $currency = $_POST['payment_currency'];
 
         // Get refund details including visa application info
-        $stmt = $pdo->prepare("
-            SELECT r.*, h.first_name, h.last_name, h.order_id,
-                   LOWER(c.client_type) as client_type, h.sold_to
-            FROM hotel_refunds r
-            JOIN hotel_bookings h ON r.booking_id = h.id
-            LEFT JOIN clients c ON h.sold_to = c.id
-            WHERE r.id = ? And tenant_id = ? And branch_id = ?
-        ");
-        $stmt->execute([$refund_id, $tenant_id, $branch_id]);
+         $stmt = $pdo->prepare("
+             SELECT r.*, h.first_name, h.last_name, h.order_id,
+                    LOWER(c.client_type) as client_type, h.sold_to
+             FROM hotel_refunds r
+             JOIN hotel_bookings h ON r.booking_id = h.id
+             LEFT JOIN clients c ON h.sold_to = c.id
+             WHERE r.id = ? AND r.tenant_id = ? AND r.branch_id = ?
+         ");
+         $stmt->execute([$refund_id, $tenant_id, $branch_id]);
         $refund = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$refund) {

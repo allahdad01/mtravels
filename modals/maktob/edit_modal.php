@@ -11,7 +11,7 @@
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <form id="editMaktobForm" method="POST" action="../../api/maktob/update_maktob.php">
+            <form id="editMaktobForm" method="POST" action="../api/maktob/update_maktob.php">
                     <!-- CSRF Protection -->
                     <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                 <div class="modal-body">

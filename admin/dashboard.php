@@ -34,6 +34,61 @@ if ($_SESSION['role'] === 'staff') {
 require_once '../api/dashboard/dashboard_handler.php';
 require_once '../api/dashboard/supplier_notification.php';
 require_once '../api/dashboard/client_notification.php';
+
+// Get today's attendance for logged-in user
+$att_stmt = $pdo->prepare("
+    SELECT * FROM attendance
+    WHERE tenant_id = ? AND user_id = ? AND date = CURDATE()
+");
+$att_stmt->execute([$tenant_id, $_SESSION['user_id']]);
+$today_attendance = $att_stmt->fetch(PDO::FETCH_ASSOC);
+
+// Get attendance settings
+$att_settings_stmt = $pdo->prepare("
+    SELECT * FROM attendance_settings
+    WHERE tenant_id = ? AND branch_id = ?
+");
+$att_settings_stmt->execute([$tenant_id, $_SESSION['branch_id'] ?? 0]);
+$attendance_settings = $att_settings_stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$attendance_settings) {
+    $attendance_settings = [
+        'office_start_time' => '09:00:00',
+        'office_end_time' => '17:00:00'
+    ];
+}
+
+// Calculate attendance state and progress
+$att_state = 'not_checked_in';
+$att_progress = 0;
+$att_working_minutes = 0;
+$show_att_widget = true; // Flag to show/hide widget
+
+if ($today_attendance && $today_attendance['check_in_time']) {
+    if ($today_attendance['check_out_time']) {
+        $att_state = 'completed';
+        $att_working_minutes = $today_attendance['working_minutes'] ?? 0;
+        $show_att_widget = false; // Hide when completed
+    } else {
+        $att_state = 'checked_in';
+        $checkin = new DateTime($today_attendance['check_in_time']);
+        $now = new DateTime();
+        $att_working_minutes = ($now->getTimestamp() - $checkin->getTimestamp()) / 60;
+        
+        $office_start = new DateTime($attendance_settings['office_start_time']);
+        $office_end = new DateTime($attendance_settings['office_end_time']);
+        $total_office_minutes = ($office_end->getTimestamp() - $office_start->getTimestamp()) / 60;
+        $att_progress = min(100, ($att_working_minutes / $total_office_minutes) * 100);
+        
+        // Calculate minutes until checkout (office end time)
+        $today = new DateTime('now');
+        $checkout_time = new DateTime($today->format('Y-m-d') . ' ' . $attendance_settings['office_end_time']);
+        $minutes_until_checkout = ($checkout_time->getTimestamp() - $now->getTimestamp()) / 60;
+        
+        // Show widget only 30 minutes before checkout
+        $show_att_widget = ($minutes_until_checkout <= 30);
+    }
+}
 ?>
 <?php include '../includes/header.php'; ?>
 <?php
@@ -46,6 +101,7 @@ if (!file_exists($imagePath)) { $imagePath = "../assets/images/user/avatar-1.jpg
 $selected_date = InputValidator::getDate($_GET['departure_date'] ?? '', 'Y-m-d', date('Y-m-d'));
 ?>
 
+<meta name="csrf-token" content="<?= $_SESSION['csrf_token'] ?? '' ?>">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../css/general/modal-styles.css">
 <style>
@@ -59,6 +115,58 @@ $selected_date = InputValidator::getDate($_GET['departure_date'] ?? '', 'Y-m-d',
   --border:rgba(0,0,0,0.08);
   --text:#1e293b;--text-muted:#64748b;
   --grad-start:#4099ff;--grad-end:#2ed8b6;--grad:linear-gradient(135deg,var(--grad-start) 0%,var(--grad-end) 100%);
+}
+
+/* ─── ATTENDANCE STATUS WIDGET ─── */
+.att-status-widget {
+  background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+  border-radius:18px;
+  padding:24px;
+  margin-bottom:28px;
+  display:flex;align-items:center;justify-content:space-between;gap:24px;
+  color:#fff;box-shadow:0 10px 40px rgba(102,126,234,.25);
+  position:relative;overflow:hidden;flex-wrap:wrap;
+}
+.att-status-widget::before {
+  content:'';position:absolute;inset:0;background:radial-gradient(circle at 80% 20%,rgba(255,255,255,.15),transparent 50%);pointer-events:none;
+}
+.att-widget-left {
+  display:flex;align-items:center;gap:18px;z-index:1;flex:1;min-width:200px;
+}
+.att-widget-indicator {
+  width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;
+  position:relative;background:rgba(255,255,255,.2);border:2px solid rgba(255,255,255,.3);
+}
+.att-widget-indicator.online {background:rgba(16,185,129,.3);border-color:rgba(16,185,129,.5);}
+.att-widget-indicator.offline{background:rgba(244,63,94,.3);border-color:rgba(244,63,94,.5);}
+.att-widget-indicator.completed{background:rgba(34,197,94,.3);border-color:rgba(34,197,94,.5);}
+.att-widget-indicator.pulse::after {
+  content:'';position:absolute;width:100%;height:100%;border-radius:50%;border:2px solid rgba(16,185,129,.6);
+  animation:att-pulse 2s ease-in-out infinite;
+}
+@keyframes att-pulse {0%,100%{transform:scale(1);opacity:1;}50%{transform:scale(1.3);opacity:0;}}
+.att-widget-info h3 {font-size:16px;font-weight:700;margin:0 0 6px 0;}
+.att-widget-info p {font-size:13px;opacity:.85;margin:0;}
+.att-widget-right {
+  display:flex;align-items:center;gap:16px;z-index:1;flex-wrap:wrap;
+}
+.att-widget-time {text-align:right;}
+.att-widget-time-label {font-size:11px;opacity:.75;text-transform:uppercase;letter-spacing:.5px;}
+.att-widget-time-value {font-size:22px;font-weight:700;font-family:'JetBrains Mono',monospace;margin:4px 0 0 0;}
+.att-widget-action-btn {
+  background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);color:#fff;
+  padding:10px 20px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;
+  transition:all .3s ease;font-family:inherit;
+}
+.att-widget-action-btn:hover {
+  background:rgba(255,255,255,.3);border-color:rgba(255,255,255,.5);transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.15);
+}
+.att-widget-action-btn.loading {pointer-events:none;opacity:.6;}
+
+@media (max-width:768px) {
+  .att-status-widget {flex-direction:column;align-items:flex-start;}
+  .att-widget-left {width:100%;}
+  .att-widget-right {width:100%;justify-content:space-between;}
 }
 .pcoded-main-container{background:var(--bg)!important;}
 .pcoded-content,.pcoded-inner-content{background:transparent!important;}
@@ -76,6 +184,20 @@ $selected_date = InputValidator::getDate($_GET['departure_date'] ?? '', 'Y-m-d',
 .ci-emerald{background:rgba(16,185,129,.2);color:var(--emerald);}
 .ci-amber{background:rgba(245,158,11,.2);color:var(--amber);}
 .ci-rose{background:rgba(244,63,94,.2);color:var(--rose);}
+
+/* Toast Notifications */
+.toast-notification{
+  position:fixed;top:20px;right:20px;padding:16px 20px;border-radius:10px;
+  display:flex;align-items:center;gap:10px;color:#fff;font-size:14px;font-weight:500;
+  z-index:9999;box-shadow:0 10px 25px rgba(0,0,0,0.2);
+  opacity:0;transform:translateX(400px);transition:all 0.3s ease;
+}
+.toast-notification.show{opacity:1;transform:translateX(0);}
+.toast-notification.bg-success{background:#10b981;}
+.toast-notification.bg-danger{background:#ef4444;}
+.toast-notification.bg-warning{background:#f59e0b;}
+.toast-notification .close{background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:0;opacity:0.8;}
+.toast-notification .close:hover{opacity:1;}
 
 /* Header */
 .dash-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:26px;flex-wrap:wrap;gap:16px;}
@@ -320,7 +442,7 @@ $selected_date = InputValidator::getDate($_GET['departure_date'] ?? '', 'Y-m-d',
 .dropdown-item:hover{background:var(--surface3)!important;}
 
 /* Notifications Collapse */
-#notificationsContent{max-height:1000px;overflow:hidden;transition:max-height 0.3s ease,opacity 0.3s ease;opacity:1;}
+#notificationsContent{max-height:500px;overflow-y:auto;overflow-x:hidden;transition:max-height 0.3s ease,opacity 0.3s ease;opacity:1;}
 #notificationsContent.collapsed{max-height:0;opacity:0;overflow:hidden;}
 .notif-collapse-btn i{transition:transform 0.3s ease;}
 .notif-collapse-btn.collapsed i{transform:rotate(180deg);}
@@ -355,8 +477,61 @@ $selected_date = InputValidator::getDate($_GET['departure_date'] ?? '', 'Y-m-d',
       <div class="dash-wrap">
        <div class="dash-inner">
 
-        <!-- HEADER -->
-        <div class="dash-header">
+         <!-- ATTENDANCE STATUS WIDGET -->
+         <?php if ($show_att_widget): ?>
+         <div class="att-status-widget" id="attStatusWidget">
+           <div class="att-widget-left">
+             <div class="att-widget-indicator <?= $att_state === 'checked_in' ? 'online pulse' : ($att_state === 'completed' ? 'completed' : 'offline') ?>">
+               <?php if ($att_state === 'checked_in'): ?>
+                 <i class="fas fa-check" style="color:#10b981;"></i>
+               <?php elseif ($att_state === 'completed'): ?>
+                 <i class="fas fa-check-double" style="color:#22c55e;"></i>
+               <?php else: ?>
+                 <i class="fas fa-sign-in-alt" style="color:#f43f5e;"></i>
+               <?php endif; ?>
+             </div>
+             <div class="att-widget-info">
+               <h3>
+                 <?php if ($att_state === 'checked_in'): ?>
+                   <?= __('currently_working') ?>
+                 <?php elseif ($att_state === 'completed'): ?>
+                   <?= __('shift_completed') ?>
+                 <?php else: ?>
+                   <?= __('not_checked_in') ?>
+                 <?php endif; ?>
+               </h3>
+               <p>
+                 <?php if ($att_state === 'checked_in'): ?>
+                   <?= __('checked_in_at') ?>: <strong><?= date('h:i A', strtotime($today_attendance['check_in_time'])) ?></strong>
+                 <?php elseif ($att_state === 'completed'): ?>
+                   <?= __('checked_out_at') ?>: <strong><?= date('h:i A', strtotime($today_attendance['check_out_time'])) ?></strong>
+                 <?php else: ?>
+                   Office: <?= date('h:i A', strtotime($attendance_settings['office_start_time'])) ?> - <?= date('h:i A', strtotime($attendance_settings['office_end_time'])) ?>
+                 <?php endif; ?>
+               </p>
+             </div>
+           </div>
+           <div class="att-widget-right">
+             <?php if ($att_state === 'checked_in'): ?>
+               <div class="att-widget-time">
+                 <div class="att-widget-time-label"><?= __('working_time') ?></div>
+                 <div class="att-widget-time-value" id="workingTime"><?= intval(floor($att_working_minutes / 60)) ?>h <?= intval(round($att_working_minutes % 60)) ?>m</div>
+               </div>
+             <?php elseif ($att_state === 'completed'): ?>
+               <div class="att-widget-time">
+                 <div class="att-widget-time-label"><?= __('total_hours') ?></div>
+                 <div class="att-widget-time-value"><?= intval(floor($att_working_minutes / 60)) ?>h <?= intval(round($att_working_minutes % 60)) ?>m</div>
+               </div>
+             <?php endif; ?>
+             <button class="att-widget-action-btn" onclick="goToAttendance()">
+               <i class="fas fa-clock"></i> <?= __('attendance') ?>
+             </button>
+           </div>
+           </div>
+           <?php endif; ?>
+
+           <!-- HEADER -->
+         <div class="dash-header">
           <div>
             <h1><?= __('welcome_back') ?>, <?= htmlspecialchars($user['name'] ?? 'Admin') ?> 👋</h1>
             <p><?= __('dashboard_subtitle') ?></p>
@@ -870,7 +1045,9 @@ function displayModernNotifications($stmt, $status) {
                  case 'hotel':   $dotClass='tld-hotel';   $icon='fa-hotel';$iconPrefix='fas';break;
                  case 'deposit_sarafi':case 'hawala_sarafi':case 'withdrawal_sarafi':$dotClass='tld-sarafi';$icon='fa-exchange-alt';$iconPrefix='fas';break;
              }
-             $readOnly=in_array($type,['deposit_sarafi','hawala_sarafi','withdrawal_sarafi','supplier_fund','client_fund','expense','expense_update','expense_delete']);
+             // Check if notification contains "deleted" in the message
+             $isDeleted = stripos($msg, 'deleted') !== false;
+             $readOnly=in_array($type,['deposit_sarafi','hawala_sarafi','withdrawal_sarafi','supplier_fund','client_fund','expense','expense_update','expense_delete','refund','ticket_refund']) || $isDeleted;
              echo '<div class="tl-item notification-'.htmlspecialchars($status).'" data-id="'.$id.'">';
              echo '<div class="tl-dot '.$dotClass.($status==='unread'?' unread':'').'"><i class="'.$iconPrefix.' '.$icon.'"></i></div>';
             echo '<div class="tl-body">';
@@ -1079,6 +1256,32 @@ $('#dashboardTutorialsModal').on('show.bs.modal',function(){
     }
   }
   });
+
+  // Navigation to attendance page
+  function goToAttendance() {
+    window.location.href = 'attendance.php';
+  }
+
+  // Update working time every minute if checked in
+  <?php if ($att_state === 'checked_in'): ?>
+  (function updateWorkingTime() {
+    const workingTimeEl = document.getElementById('workingTime');
+    if (!workingTimeEl) return;
+    
+    const checkinTime = new Date('<?php echo date('Y-m-d') . 'T' . $today_attendance['check_in_time']; ?>');
+    
+    function update() {
+      const now = new Date();
+      const elapsed = Math.floor((now - checkinTime) / 60000); // minutes
+      const hours = Math.floor(elapsed / 60);
+      const mins = elapsed % 60;
+      workingTimeEl.textContent = hours + 'h ' + mins + 'm';
+    }
+    
+    update();
+    setInterval(update, 60000); // Update every minute
+  })();
+  <?php endif; ?>
   </script>
 </body>
 </html>

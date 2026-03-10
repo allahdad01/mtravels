@@ -168,6 +168,8 @@
                                             </select>
                                         </div>
                                     </div>
+                                </div>
+                                <div class="row">
                                     <div class="col-md-6">
                                         <div class="form-group" id="receiptNumberField" style="display: none;">
                                             <label for="receiptNumber">
@@ -175,6 +177,17 @@
                                             </label>
                                             <input type="text" class="form-control" id="receiptNumber" 
                                                    name="receipt_number" placeholder="Enter receipt number">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group" id="mainAccountField" style="display: none;">
+                                            <label for="mainAccount">
+                                                <i class="feather icon-briefcase mr-1"></i><?= __('main_account') ?>
+                                            </label>
+                                            <select class="form-control" id="mainAccount" name="main_account_id">
+                                                <option value=""><?= __('select_main_account') ?></option>
+                                                <!-- Options will be loaded dynamically -->
+                                            </select>
                                         </div>
                                     </div>
                                 </div>
@@ -220,14 +233,67 @@
 </div>
 
 <script>
-// Show/Hide Receipt Number field based on Transaction To selection
+// Show/Hide Receipt Number and Main Account fields based on Transaction To selection
 $(document).ready(function() {
     $('#transaction_to').change(function() {
         if ($(this).val() === 'Bank') {
             $('#receiptNumberField').slideDown();
+            // Check if supplier is internal, then load main accounts
+            checkAndLoadMainAccounts();
         } else {
             $('#receiptNumberField').slideUp();
+            $('#mainAccountField').slideUp();
         }
     });
 });
+
+// Function to check supplier type and load main accounts if internal
+function checkAndLoadMainAccounts() {
+    const umrahId = $('#transactionUmrahIdInput').val();
+    if (!umrahId) return;
+    
+    $.ajax({
+        url: '../api/umrah/get_supplier_type.php',
+        type: 'GET',
+        data: { umrah_id: umrahId },
+        dataType: 'json',
+        success: function(response) {
+            if (response.success) {
+                const supplierType = response.supplier_type;
+                if (supplierType === 'Internal') {
+                    // Load main accounts
+                    loadMainAccounts();
+                    $('#mainAccountField').slideDown();
+                } else {
+                    $('#mainAccountField').slideUp();
+                }
+            }
+        },
+        error: function() {
+            $('#mainAccountField').slideUp();
+        }
+    });
+}
+
+// Function to load main accounts
+function loadMainAccounts() {
+    $.ajax({
+        url: '../api/accounts/get_main_accounts.php',
+        type: 'GET',
+        dataType: 'json',
+        success: function(response) {
+            if (response.success) {
+                const accountSelect = $('#mainAccount');
+                accountSelect.html('<option value=""><?= __('select_main_account') ?></option>');
+                
+                response.accounts.forEach(function(account) {
+                    accountSelect.append(`<option value="${account.id}">${account.name}</option>`);
+                });
+            }
+        },
+        error: function() {
+            console.error('Failed to load main accounts');
+        }
+    });
+}
 </script>

@@ -66,7 +66,7 @@ try {
      $total_pages = ceil($total_count / $items_per_page);
      
      // Fetch debtors with pagination
-     $stmt = $pdo->prepare("SELECT * FROM debtors WHERE status = ? AND tenant_id = ? AND branch_id = ? ORDER BY name ASC LIMIT ? OFFSET ?");
+     $stmt = $pdo->prepare("SELECT * FROM debtors WHERE status = ? AND tenant_id = ? AND branch_id = ? ORDER BY id DESC LIMIT ? OFFSET ?");
      $stmt->execute([$status_filter, $tenant_id, $branch_id, $items_per_page, $offset]);
      $debtors = $stmt->fetchAll(PDO::FETCH_ASSOC);
      
@@ -385,24 +385,27 @@ try {
                                                                         <span><?= __('transactions') ?></span>
                                                                     </button>
                                                                     <a href="../api/debtor/print_debtor_statement.php?id=<?php echo h($debtor['id']); ?>" class="dc-btn dc-btn-warning" target="_blank" title="<?= __('print_statement') ?>" data-bs-toggle="tooltip" data-placement="top">
-                                                                        <i class="fas fa-print"></i>
-                                                                        <span><?= __('print') ?></span>
-                                                                    </a>
-                                                                    <button class="dc-btn dc-btn-info" data-toggle="modal" data-target="#editDebtorModal<?php echo h($debtor['id']); ?>" title="<?= __('edit_debtor') ?>" data-bs-toggle="tooltip" data-placement="top">
+                                                                         <i class="fas fa-print"></i>
+                                                                         <span><?= __('print') ?></span>
+                                                                     </a>
+                                                                     <a href="../api/debtor/print_agreement.php?id=<?php echo h($debtor['id']); ?>" class="dc-btn dc-btn-warning" target="_blank" title="<?= __('print_agreement') ?>" data-bs-toggle="tooltip" data-placement="top">
+                                                                         <i class="fas fa-file-contract"></i>
+                                                                         <span><?= __('agreement') ?></span>
+                                                                     </a>
+                                                                     <button class="dc-btn dc-btn-info" data-toggle="modal" data-target="#editDebtorModal<?php echo h($debtor['id']); ?>" title="<?= __('edit_debtor') ?>" data-bs-toggle="tooltip" data-placement="top">
                                                                         <i class="fas fa-edit"></i>
                                                                         <span><?= __('edit') ?></span>
                                                                     </button>
                                                                     <?php if ($isAdmin): ?>
                                                                     <button class="dc-btn dc-btn-danger" onclick="if(confirm('<?= __('are_you_sure') ?>')){ document.querySelector('form.delete-form-<?php echo h($debtor['id']); ?>').submit(); }" title="<?= __('delete_debtor') ?>" data-bs-toggle="tooltip" data-placement="top">
-                                                                        <i class="fas fa-trash"></i>
-                                                                        <span><?= __('delete') ?></span>
-                                                                    </button>
-                                                                    <form method="POST" class="d-none delete-form-<?php echo h($debtor['id']); ?>">
-                                                                        <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
-                                                                        <input type="hidden" name="delete_debtor" value="1">
-                                                                        <input type="hidden" name="debtor_id" value="<?php echo h($debtor['id']); ?>">
-                                                                    </form>
-                                                                    <?php endif; ?>
+                                                                         <i class="fas fa-trash"></i>
+                                                                         <span><?= __('delete') ?></span>
+                                                                     </button>
+                                                                     <form method="POST" action="../api/debtor/delete_debtor.php" class="d-none delete-form-<?php echo h($debtor['id']); ?>">
+                                                                         <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
+                                                                         <input type="hidden" name="debtor_id" value="<?php echo h($debtor['id']); ?>">
+                                                                     </form>
+                                                                     <?php endif; ?>
                                                                 </div>
                                                             </div>
                                                         <?php endforeach; ?>
@@ -760,7 +763,7 @@ try {
                                                                         echo '<tr>';
                                                                         echo '<td>' . date('M d, Y H:i:s', strtotime($transaction['created_at'])) . '</td>';
                                                                         echo '<td>' . number_format($transaction['amount'], 2) . ' ' . $transaction['currency'] . '</td>';
-                                                                        echo '<td>' . ($transaction['transaction_type'] == 'credit' ? '<span class="badge-success">Payment</span>' : '<span class="badge-danger">Debt</span>') . '</td>';
+                                                                        echo '<td>' . ($transaction['transaction_type'] == 'credit' ? '<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;background:rgba(16,185,129,.15);color:#10b981;">Payment</span>' : '<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;background:rgba(244,63,94,.15);color:#f43f5e;">Debt</span>') . '</td>';
                                                                         echo '<td>' . htmlspecialchars($transaction['description']) . '</td>';
                                                                         echo '<td>' . htmlspecialchars($transaction['reference_number']) . '</td>';
                                                                         echo '<td>';
@@ -848,30 +851,30 @@ try {
                                                         </div>
                                                         
                                                         <div class="form-group">
-                                                            <label class="form-label"><?= __('balance') ?> *</label>
-                                                                <input type="number" class="form-control" name="balance" step="0.01" value="<?php echo h($debtor['balance']); ?>" required>
+                                                            <label class="form-label"><?= __('balance') ?></label>
+                                                            <input type="text" class="form-control" value="<?php echo h($debtor['balance']); ?>" disabled>
+                                                            <small class="text-muted">Balance is managed through transactions only</small>
                                                         </div>
                                                         
                                                         <div class="form-group">
-                                                            <label class="form-label"><?= __('currency') ?> *</label>
-                                                            <select class="form-control" name="currency" required>
-                                                                <option value="USD" <?php echo h($debtor['currency']) == 'USD' ? 'selected' : ''; ?>><?= __('usd') ?></option>
-                                                                <option value="AFS" <?php echo h($debtor['currency']) == 'AFS' ? 'selected' : ''; ?>><?= __('afs') ?></option>
-                                                                <option value="EUR" <?php echo h($debtor['currency']) == 'EUR' ? 'selected' : ''; ?>><?= __('eur') ?></option>
-                                                                <option value="DARHAM" <?php echo h($debtor['currency']) == 'DARHAM' ? 'selected' : ''; ?>><?= __('darham') ?></option>
-                                                            </select>
+                                                            <label class="form-label"><?= __('currency') ?></label>
+                                                            <input type="text" class="form-control" value="<?php echo h($debtor['currency']); ?>" disabled>
+                                                            <small class="text-muted">Currency cannot be changed after creation</small>
                                                         </div>
                                                         
                                                         <div class="form-group">
-                                                            <label class="form-label"><?= __('main_account') ?> *</label>
-                                                            <select class="form-control" name="main_account_id" required>
-                                                                <option value=""><?= __('select_main_account') ?></option>
-                                                                <?php foreach ($main_accounts as $account): ?>
-                                                                    <option value="<?php echo h($account['id']); ?>" <?php echo isset($debtor['main_account_id']) && $debtor['main_account_id'] == $account['id'] ? 'selected' : ''; ?>>
-                                                                        <?php echo h($account['name']); ?>
-                                                                    </option>
-                                                                <?php endforeach; ?>
-                                                            </select>
+                                                            <label class="form-label"><?= __('main_account') ?></label>
+                                                            <input type="text" class="form-control" value="<?php 
+                                                                $account_name = '';
+                                                                foreach ($main_accounts as $account) {
+                                                                    if ($account['id'] == $debtor['main_account_id']) {
+                                                                        $account_name = $account['name'];
+                                                                        break;
+                                                                    }
+                                                                }
+                                                                echo h($account_name);
+                                                            ?>" disabled>
+                                                            <small class="text-muted">Main account is set during creation and cannot be changed</small>
                                                         </div>
                                                         
                                                         <div class="form-group">

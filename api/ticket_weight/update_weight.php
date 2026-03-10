@@ -306,7 +306,7 @@ try {
     $stmt = $pdo->prepare("
         INSERT INTO activity_log
         (user_id, tenant_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, branch_id)
-        VALUES (?, ?, 'update', 'ticket_weights', ?, ?, ?, ?, ?, NOW(), ?, ?)
+        VALUES (?, ?, 'update', 'ticket_weights', ?, ?, ?, ?, ?, NOW(), ?)
     ");
 
     $stmt->bindParam(1, $user_id, PDO::PARAM_INT);

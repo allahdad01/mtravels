@@ -129,11 +129,18 @@ $(document).ready(function() {
         window.open('../api/expense/generate_category_pdf.php?category_id=' + categoryId, '_blank');
     });
 
+    // Helper function to get CSRF token
+    function getCsrfToken() {
+        const input = document.querySelector('input[name="csrf_token"]');
+        return input ? input.value : '';
+    }
+
     // Category form submission
     $('#categoryForm').on('submit', function(e) {
         e.preventDefault();
         const categoryId = $('#categoryId').val();
         const categoryName = $('#categoryName').val();
+        const csrfToken = $('input[name="csrf_token"]').val();
         
         $.ajax({
             url: '../api/expense/expense_actions.php',
@@ -141,7 +148,8 @@ $(document).ready(function() {
             data: {
                 action: 'save_category',
                 categoryId: categoryId,
-                categoryName: categoryName
+                categoryName: categoryName,
+                csrf_token: csrfToken
             },
             dataType: 'json',
             success: function(response) {
@@ -167,7 +175,8 @@ $(document).ready(function() {
         // Create FormData object to handle file uploads
         const formData = new FormData(this);
         
-        // Add all form fields to FormData
+        // FormData will already include csrf_token from hidden input
+        // Add action field
         formData.append('action', 'save_expense');
         
         // Get allocation info if present
@@ -239,7 +248,8 @@ $(document).ready(function() {
                 type: 'POST',
                 data: {
                     action: 'delete_category',
-                    categoryId: categoryId
+                    categoryId: categoryId,
+                    csrf_token: getCsrfToken()
                 },
                 dataType: 'json',
                 success: function(response) {
@@ -575,7 +585,8 @@ $(document).ready(function() {
             type: 'POST',
             data: {
                 action: 'get_expense',
-                expenseId: editExpenseId
+                expenseId: editExpenseId,
+                csrf_token: getCsrfToken()
             },
             dataType: 'json',
             success: function(response) {

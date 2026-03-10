@@ -3,14 +3,15 @@ $(document).ready(function() {
     $(document).on('click', '.read-button', function() {
         var notificationId = $(this).data('id');
         var button = $(this);
-        var notificationCard = button.closest('.notification-card');
+        var notificationItem = button.closest('.tl-item');
         
         $.ajax({
             url: '../api/dashboard/update_notification_status.php',
             type: 'POST',
             data: {
                 notification_id: notificationId,
-                status: 'read'
+                status: 'read',
+                csrf_token: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
             },
             dataType: 'json',
             success: function(response) {
@@ -20,25 +21,19 @@ $(document).ready(function() {
                     }
                     
                     if (response.success) {
-                        // Fade out the notification with animation
-                        notificationCard.fadeOut(400, function() {
-                            $(this).remove();
-                            
-                            // Check if unread tab is empty
-                            if ($('#unread .notification-card').length === 0) {
-                                $('#unread .px-3').html('<div class="empty-state text-center py-4">' +
-                                    '<i class="feather icon-bell-off text-muted" style="font-size: 48px;"></i>' +
-                                    '<p class="text-muted mt-2">No unread notifications available</p>' +
-                                    '</div>');
-                            }
-                            
-                            // Update the notification count badge
-                            var currentCount = parseInt($('.notification-count').text());
-                            $('.notification-count').text(currentCount > 0 ? currentCount - 1 : 0);
-                        });
-                        
-                        // Show success message with toast notification
-                        showToast('success', response.message || 'Notification marked as read');
+                         // Fade out the notification with animation
+                         if (notificationItem.length) {
+                             notificationItem.fadeOut(400, function() {
+                                 $(this).remove();
+                                 
+                                 // Update the notification count badge
+                                 var currentCount = parseInt($('#unreadNotifCount').text()) || 0;
+                                 $('#unreadNotifCount').text(currentCount > 0 ? currentCount - 1 : 0);
+                             });
+                         }
+                         
+                         // Show success message with toast notification
+                         showToast('success', response.message || 'Notification marked as read');
                     } else {
                         showToast('error', response.message || 'Failed to update notification status');
                     }

@@ -783,7 +783,7 @@ table.ap-table { width:100%;border-collapse:collapse; }
               <div class="ap-row-actions">
                 <!-- View -->
                 <button type="button" class="ap-row-btn view" title="<?= __('view_details') ?>"
-                  onclick="apOpenView(<?= json_encode($a) ?>)">
+                  onclick="apOpenView(<?= htmlspecialchars(json_encode($a), ENT_QUOTES, 'UTF-8') ?>)">
                   <i class="fa-solid fa-eye"></i>
                 </button>
                 <!-- Edit -->
@@ -1207,14 +1207,14 @@ function apOpenView(a) {
   const depr = a.purchase_value > 0 ? Math.max(0, 100 - (a.current_value / a.purchase_value * 100)).toFixed(1) : 0;
   const deprColor = depr < 25 ? 'var(--green)' : depr < 50 ? 'var(--yellow)' : depr < 75 ? 'var(--orange)' : 'var(--red)';
   const formatNum = n => Number(n).toLocaleString();
-  const fmtDate   = d => d ? new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+  const fmtDate   = d => d ? new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '-';
   function vf(label, val) {
-    return `<div class="ap-view-field"><div class="ap-vf-label">${label}</div><div class="ap-vf-val">${val||'—'}</div></div>`;
+    return `<div class="ap-view-field"><div class="ap-vf-label">${label}</div><div class="ap-vf-val">${val||'-'}</div></div>`;
   }
   document.getElementById('apViewBody').innerHTML = `
     <div class="ap-view-grid">
       ${vf('Name', a.name)}
-      ${vf('Category', `<span class="ap-chip">${a.category}</span>`)}
+      ${vf('Category', '<span class="ap-chip">' + a.category + '</span>')}
       ${vf('Purchase Date', fmtDate(a.purchase_date))}
       ${vf('Warranty Expiry', fmtDate(a.warranty_expiry))}
       ${vf('Purchase Value', formatNum(a.purchase_value)+' '+a.currency)}
@@ -1223,11 +1223,11 @@ function apOpenView(a) {
       ${vf('Serial Number', a.serial_number)}
       ${vf('Assigned To', a.assigned_to)}
       ${vf('Condition', a.condition_state)}
-      ${vf('Status', `<span class="ap-badge ${a.status}"><span class="dot"></span>${a.status.charAt(0).toUpperCase()+a.status.slice(1)}</span>`)}
+      ${vf('Status', '<span class="ap-badge ' + a.status + '"><span class="dot"></span>' + (a.status.charAt(0).toUpperCase()+a.status.slice(1)) + '</span>')}
       ${vf('Added On', fmtDate(a.created_at))}
     </div>
-    ${a.description ? `<div style="margin-bottom:16px;">${vf('Description', a.description)}</div>` : ''}
-    ${a.document ? `<div style="margin-bottom:16px;"><div class="ap-vf-label" style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px;">Document</div><a href="../uploads/assets/${a.document}" target="_blank" class="ap-doc-link"><i class="fa-solid fa-file"></i> View Document</a></div>` : ''}
+    ${a.description ? '<div style="margin-bottom:16px;">' + vf('Description', a.description) + '</div>' : ''}
+    ${a.document ? '<div style="margin-bottom:16px;"><div class="ap-vf-label" style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px;">Document</div><a href="../uploads/assets/' + a.document + '" target="_blank" class="ap-doc-link"><i class="fa-solid fa-file"></i> View Document</a></div>' : ''}
     <div class="ap-depr-block">
       <div class="ap-depr-block-label">Depreciation</div>
       <div class="ap-depr-block-row">

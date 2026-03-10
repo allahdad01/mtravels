@@ -91,6 +91,8 @@ $query = "SELECT st.*,
                             WHEN st.transaction_of = 'hotel' THEN CONCAT(hb.title,hb.first_name, hb.last_name)
                             WHEN st.transaction_of = 'hotel_refund' THEN CONCAT(hbr.title,hbr.first_name, hbr.last_name)
                             WHEN st.transaction_of = 'fund' THEN CONCAT(usr.name)
+                            WHEN st.transaction_of = 'supplier_bonus' THEN CONCAT(usr_bonus.name)
+                            WHEN st.transaction_of = 'fund_withdrawal' THEN CONCAT(usr_withdrawal.name)
                             WHEN st.transaction_of = 'jv_payment' THEN CONCAT(jv.jv_name)
                             WHEN st.transaction_of = 'additional_payment' THEN CONCAT(ap.payment_type)
                 ELSE st.reference_id
@@ -114,6 +116,8 @@ $query = "SELECT st.*,
           LEFT JOIN hotel_refunds hr ON st.reference_id = hr.id AND st.transaction_of = 'hotel_refund'
           LEFT JOIN hotel_bookings hbr ON hbr.id = hr.booking_id
           LEFT JOIN users usr ON usr.id = st.reference_id AND st.transaction_of = 'fund'
+          LEFT JOIN users usr_bonus ON usr_bonus.id = st.reference_id AND st.transaction_of = 'supplier_bonus'
+          LEFT JOIN users usr_withdrawal ON usr_withdrawal.id = st.reference_id AND st.transaction_of = 'fund_withdrawal'
           LEFT JOIN jv_payments jv ON jv.id = st.reference_id AND st.transaction_of = 'jv_payment'
           LEFT JOIN additional_payments ap ON ap.id = st.reference_id AND st.transaction_of = 'additional_payment'
           WHERE " . $whereClause . "

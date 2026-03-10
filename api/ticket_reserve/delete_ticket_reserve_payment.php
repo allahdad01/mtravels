@@ -18,11 +18,9 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
 // Check if required parameters are present
-if (!isset($_POST['transaction_id']) || !isset($_POST['ticket_id']) || !isset($_POST['amount'])) {
+if (!isset($_POST['transaction_id']) || !isset($_POST['ticket_id'])) {
     echo json_encode(['success' => false, 'message' => 'Missing required parameters']);
 
-// Validate amount
-$amount = isset($_POST['amount']) ? DbSecurity::validateInput($_POST['amount'], 'float', ['min' => 0]) : null;
 
 // Validate ticket_id
 $ticket_id = isset($_POST['ticket_id']) ? DbSecurity::validateInput($_POST['ticket_id'], 'int', ['min' => 0]) : null;
@@ -34,7 +32,6 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
 
 $transaction_id = intval($_POST['transaction_id']);
 $ticket_id = intval($_POST['ticket_id']);
-$amount = floatval($_POST['amount']);
 
 try {
     // Start transaction
@@ -49,10 +46,10 @@ try {
     ");
     $getTransactionStmt->execute([$transaction_id, $ticket_id, 'ticket_reserve', $tenant_id, $branch_id]);
     $transaction = $getTransactionStmt->fetch(PDO::FETCH_ASSOC);
-
     if (!$transaction) {
         throw new Exception('Transaction not found');
     }
+    $amount = $transaction['amount'];
 
     // Determine which balance to update based on currency
     $balanceColumn = '';

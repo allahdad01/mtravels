@@ -16,10 +16,11 @@ $(document).ready(function() {
         var receiptNumber = $("#receiptNumber").val();
         var remarks = $("#remarks").val();
         var notificationId = $("#hiddenNotificationId").val();
+        var csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
         // Validate input
-        if (!receiptNumber && !remarks) {
-            alert("Please enter a receipt number and remarks.");
+        if (!receiptNumber || !remarks) {
+            showToast('warning', 'Please enter both receipt number and remarks.');
             return;
         }
 
@@ -28,28 +29,80 @@ $(document).ready(function() {
             url: "../api/dashboard/approve_notification.php", 
             type: "POST",
             data: {
-                notification_id: notificationId,  // Send notification ID
-                receipt_number: receiptNumber,    // Send receipt number
-                remarks: remarks
+                notification_id: notificationId,
+                receipt_number: receiptNumber,
+                remarks: remarks,
+                csrf_token: csrfToken
             },
+            dataType: 'json',
             success: function(response) {
-                // Parse the server response
-                var data = JSON.parse(response);
-
-                if (data.status === "success") {
-                    alert(data.message);
-                    location.reload(); // Refresh the page to show updated status
+                if (response.status === "success") {
+                    showToast('success', response.message || 'Notification approved successfully');
+                    
+                    // Close the modal
+                    $("#receiptModal").modal("hide");
+                    
+                    // Remove the notification item from the UI
+                    var notifItem = $('[data-id="' + notificationId + '"]').closest('.tl-item');
+                    if (notifItem.length) {
+                        notifItem.fadeOut(400, function() {
+                            $(this).remove();
+                            // Update the unread count
+                            var currentCount = parseInt($('#unreadNotifCount').text()) || 0;
+                            $('#unreadNotifCount').text(currentCount > 0 ? currentCount - 1 : 0);
+                        });
+                    }
+                    
+                    // Clear form fields
+                    $("#receiptNumber").val('');
+                    $("#remarks").val('');
                 } else {
-                    alert(data.message || 'Failed to update notification status');
+                    showToast('error', response.message || 'Failed to approve notification');
                 }
             },
             error: function(xhr, status, error) {
-
-                alert("An error occurred while processing your request.");
+                showToast('error', 'An error occurred while processing your request.');
             }
         });
-
-        // Close the modal after submission
-        $("#receiptModal").modal("hide");
     });
+    
+    // Simple toast notification function
+    function showToast(type, message) {
+        // Remove any existing toasts
+        $('.toast-notification').remove();
+        
+        // Create toast element
+        var toastClass = 'bg-' + (type === 'success' ? 'success' : (type === 'error' ? 'danger' : 'warning'));
+        var toastIcon = type === 'success' ? 'check-circle' : (type === 'error' ? 'alert-circle' : 'alert-triangle');
+        
+        var toast = $('<div class="toast-notification ' + toastClass + '">' +
+            '<i class="feather icon-' + toastIcon + ' mr-2"></i>' +
+            '<span>' + message + '</span>' +
+            '<button type="button" class="close ml-2 text-white">&times;</button>' +
+            '</div>');
+        
+        // Add to body
+        $('body').append(toast);
+        
+        // Show with animation
+        setTimeout(function() {
+            toast.addClass('show');
+        }, 100);
+        
+        // Hide after 3 seconds
+        setTimeout(function() {
+            toast.removeClass('show');
+            setTimeout(function() {
+                toast.remove();
+            }, 300);
+        }, 3000);
+        
+        // Close on click
+        toast.find('.close').on('click', function() {
+            toast.removeClass('show');
+            setTimeout(function() {
+                toast.remove();
+            }, 300);
+        });
+    }
 }); 

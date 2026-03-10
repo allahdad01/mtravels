@@ -938,18 +938,20 @@ try {
                             <textarea class="form-control" name="address" rows="3"><?php echo htmlspecialchars($creditor['address']); ?></textarea>
                         </div>
                         <div class="form-group">
-                            <label><?= __("balance") ?> *</label>
-                            <input type="number" class="form-control" name="balance" step="0.01" value="<?php echo h($creditor['balance']); ?>" required>
-                        </div>
-                        <div class="form-group">
-                            <label><?= __("currency") ?> *</label>
-                            <select class="form-control" name="currency" required>
-                                <option value="USD" <?php echo h($creditor['currency']) == 'USD' ? 'selected' : ''; ?>>USD</option>
-                                <option value="AFS" <?php echo h($creditor['currency']) == 'AFS' ? 'selected' : ''; ?>>AFS</option>
-                                <option value="EUR" <?php echo h($creditor['currency']) == 'EUR' ? 'selected' : ''; ?>>EUR</option>
-                                <option value="DARHAM" <?php echo h($creditor['currency']) == 'DARHAM' ? 'selected' : ''; ?>>DARHAM</option>
-                            </select>
-                        </div>
+                             <label><?= __("balance") ?> *</label>
+                             <input type="number" class="form-control" name="balance" step="0.01" value="<?php echo h($creditor['balance']); ?>" required disabled>
+                             <small class="form-text text-muted"><?= __("balance_cannot_be_edited_directly") ?></small>
+                         </div>
+                         <div class="form-group">
+                             <label><?= __("currency") ?> *</label>
+                             <select class="form-control" name="currency" required disabled>
+                                 <option value="USD" <?php echo h($creditor['currency']) == 'USD' ? 'selected' : ''; ?>>USD</option>
+                                 <option value="AFS" <?php echo h($creditor['currency']) == 'AFS' ? 'selected' : ''; ?>>AFS</option>
+                                 <option value="EUR" <?php echo h($creditor['currency']) == 'EUR' ? 'selected' : ''; ?>>EUR</option>
+                                 <option value="DARHAM" <?php echo h($creditor['currency']) == 'DARHAM' ? 'selected' : ''; ?>>DARHAM</option>
+                             </select>
+                             <small class="form-text text-muted"><?= __("currency_cannot_be_changed") ?></small>
+                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __("cancel") ?></button>

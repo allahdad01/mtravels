@@ -177,7 +177,7 @@ $(document).ready(function() {
 
         
         // Use the current page URL
-        var ajaxUrl = '../api/additional_payment/additional_payments.php';
+        var ajaxUrl = '../api/additional_payment/update_additional_payment_base.php';
 
         
         // Submit via AJAX

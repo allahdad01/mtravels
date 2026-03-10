@@ -66,135 +66,64 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Direct event handler for the save button
-    const saveButton = document.getElementById('saveTransactionBtn');
-    if (saveButton) {
+     const saveButton = document.getElementById('saveTransactionBtn');
+     if (saveButton) {
 
-        saveButton.addEventListener('click', function(e) {
+         saveButton.addEventListener('click', function(e) {
+             e.preventDefault();
 
+             const form = document.getElementById('editTransactionForm');
 
-            const form = document.getElementById('editTransactionForm');
+             // Enhanced validation
+             const amount = document.getElementById('edit_amount').value;
+             const description = document.getElementById('edit_description').value;
+             const paymentDate = document.getElementById('edit_payment_date').value;
 
-            // Enhanced validation
-            const amount = document.getElementById('edit_amount').value;
-            const description = document.getElementById('edit_description').value;
-            const paymentDate = document.getElementById('edit_payment_date').value;
+             // Validate required fields with visual feedback
+             let isValid = true;
 
-            // Validate required fields with visual feedback
-            let isValid = true;
+             if (!amount || amount <= 0) {
 
-            if (!amount || amount <= 0) {
+                 const field = document.getElementById('edit_amount');
+                 field.classList.add('is-invalid');
+                 isValid = false;
+             }
 
-                const field = document.getElementById('edit_amount');
-                field.classList.add('is-invalid');
-                isValid = false;
-            }
+             if (!description.trim()) {
 
-            if (!description.trim()) {
+                 const field = document.getElementById('edit_description');
+                 field.classList.add('is-invalid');
+                 isValid = false;
+             }
 
-                const field = document.getElementById('edit_description');
-                field.classList.add('is-invalid');
-                isValid = false;
-            }
+             if (!paymentDate) {
 
-            if (!paymentDate) {
+                 const field = document.getElementById('edit_payment_date');
+                 field.classList.add('is-invalid');
+                 isValid = false;
+             }
 
-                const field = document.getElementById('edit_payment_date');
-                field.classList.add('is-invalid');
-                isValid = false;
-            }
+             if (!isValid) {
 
-            if (!isValid) {
+                 Swal.fire({
+                     icon: 'warning',
+                     title: 'Please complete all required fields',
+                     toast: true,
+                     position: 'top-end',
+                     showConfirmButton: false,
+                     timer: 3000
+                 });
+                 return;
+             }
 
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Please complete all required fields',
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 3000
-                });
-                return;
-            }
+             // Submit form as standard POST
+             form.method = 'POST';
+             form.action = '../api/debtor/update_debtor_transaction.php';
+             form.submit();
+         });
+     } else {
 
-            // Collect form data
-            const formData = new FormData();
-            formData.append('transaction_id', document.getElementById('edit_transaction_id').value);
-            formData.append('debtor_id', document.getElementById('edit_debtor_id').value);
-            formData.append('original_amount', document.getElementById('edit_original_amount').value);
-            formData.append('amount', document.getElementById('edit_amount').value);
-            formData.append('currency', document.getElementById('edit_currency').value);
-            formData.append('description', document.getElementById('edit_description').value);
-            formData.append('payment_date', document.getElementById('edit_payment_date').value);
-            formData.append('created_at_time', document.getElementById('edit_created_at_time').value);
-            formData.append('created_at_date', document.getElementById('edit_created_at_date').value);
-
-            // Show loading indicator
-            Swal.fire({
-                title: 'Updating transaction...',
-                allowOutsideClick: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                }
-            });
-
-            // Submit form data via fetch API
-            fetch('../api/debtor/update_debtor_transaction.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-
-                return response.json();
-            })
-            .then(data => {
-
-                Swal.close();
-                if (data.success) {
-                    // Close modal
-                    $('#editTransactionModal').modal('hide');
-
-                    // Show success message
-                    Swal.fire({
-                        icon: 'success',
-                        title: data.message || 'Transaction updated successfully',
-                        toast: true,
-                        position: 'top-end',
-                        showConfirmButton: false,
-                        timer: 3000
-                    });
-
-                    // Reload the page to refresh the transaction list
-                    setTimeout(() => {
-                        location.reload();
-                    }, 1000);
-                } else {
-                    // Show error message
-                    Swal.fire({
-                        icon: 'error',
-                        title: data.message || 'Failed to update transaction',
-                        toast: true,
-                        position: 'top-end',
-                        showConfirmButton: false,
-                        timer: 3000
-                    });
-                }
-            })
-            .catch(error => {
-
-                Swal.close();
-                Swal.fire({
-                    icon: 'error',
-                    title: 'An error occurred while updating the transaction',
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 3000
-                });
-            });
-        });
-    } else {
-
-    }
+     }
 
     // Direct event handler for delete transaction buttons
     const deleteButtons = document.querySelectorAll('.delete-transaction-btn');
@@ -219,77 +148,38 @@ document.addEventListener('DOMContentLoaded', function() {
                 currency
             });
 
-            // Show toast notification instead of confirmation dialog
-            Swal.fire({
-                icon: 'info',
-                title: 'Deleting transaction...',
-                text: 'Transaction will be deleted and payment will be reversed.',
-                toast: true,
-                position: 'top-end',
-                showConfirmButton: false,
-                timer: 2000,
-                timerProgressBar: true
-            });
-
-            // Create form data for the delete request
-            const formData = new FormData();
-            formData.append('transaction_id', transactionId);
-            formData.append('debtor_id', debtorId);
-            formData.append('amount', amount);
-            formData.append('currency', currency);
-            formData.append('delete_transaction', 'true');
-
-            // Submit form data via fetch API after a short delay
-            setTimeout(() => {
-                fetch('../api/debtor/delete_debtor_transaction.php', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => {
-
-                    return response.json();
-                })
-                .then(data => {
-
-                    if (data.success) {
-                        // Show success message
-                        Swal.fire({
-                            icon: 'success',
-                            title: data.message || 'Transaction deleted successfully',
-                            toast: true,
-                            position: 'top-end',
-                            showConfirmButton: false,
-                            timer: 3000
-                        });
-
-                        // Reload the page to refresh the transaction list
-                        setTimeout(() => {
-                            location.reload();
-                        }, 1000);
-                    } else {
-                        // Show error message
-                        Swal.fire({
-                            icon: 'error',
-                            title: data.message || 'Failed to delete transaction',
-                            toast: true,
-                            position: 'top-end',
-                            showConfirmButton: false,
-                            timer: 3000
-                        });
-                    }
-                })
-                .catch(error => {
-
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'An error occurred while deleting the transaction',
-                        toast: true,
-                        position: 'top-end',
-                        showConfirmButton: false,
-                        timer: 3000
-                    });
-                });
-            }, 2000);
+            // Show confirmation using native JavaScript alert
+            const confirmMessage = `Delete Transaction?\n\nAmount: ${amount} ${currency}\n\nThis transaction will be deleted and the payment will be reversed.`;
+            
+            if (confirm(confirmMessage)) {
+                // Close the edit transaction modal first
+                $('#editTransactionModal').modal('hide');
+                
+                // Create a hidden form and submit it
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '../api/debtor/delete_debtor_transaction.php';
+                
+                // Add form fields
+                const fields = {
+                    'transaction_id': transactionId,
+                    'debtor_id': debtorId,
+                    'amount': amount,
+                    'currency': currency,
+                    'delete_transaction': 'true'
+                };
+                
+                for (const [key, value] of Object.entries(fields)) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = key;
+                    input.value = value;
+                    form.appendChild(input);
+                }
+                
+                document.body.appendChild(form);
+                form.submit();
+            }
         });
     });
 

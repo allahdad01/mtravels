@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $half_day_minutes = InputValidator::getInt($_POST['half_day_minutes'] ?? '', 240, 1, 480);
     $working_days = InputValidator::getString($_POST['working_days'] ?? '', 50);
 
-    $stmt = $pdo->prepare("SELECT id FROM attendance_settings WHERE tenant_id = ? AND branch_id = ?");
+    $stmt = $pdo->prepare("SELECT tenant_id, branch_id FROM attendance_settings WHERE tenant_id = ? AND branch_id = ?");
     $stmt->execute([$tenant_id, $branch_id]);
     $existing = $stmt->fetch(PDO::FETCH_ASSOC);
 

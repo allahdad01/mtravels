@@ -549,7 +549,19 @@ textarea.field-control{height:auto;padding:10px 12px;resize:vertical}
                                 <span style="font-family:'Syne',sans-serif;font-weight:600;font-size:14px"><?= number_format($row['amount'], 2) ?></span>
                                 <span style="font-size:11px;color:var(--text-sub);margin-left:3px"><?= $row['currency'] ?></span>
                             </td>
-                            <td><span class="badge <?= $badgeClass ?>"><?= ucfirst($row['payment_type']) ?></span></td>
+                            <td>
+                                <span style="<?php
+                                    $styleMap = [
+                                        'regular' => 'background:rgba(61,108,255,.1);color:#3d6cff',
+                                        'bonus' => 'background:rgba(0,217,166,.13);color:#00a880',
+                                        'advance' => 'background:rgba(255,159,67,.13);color:#cc7a00',
+                                        'other' => 'background:#f0f0f0;color:#555'
+                                    ];
+                                    echo $styleMap[$row['payment_type']] ?? $styleMap['other'];
+                                ?>; display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:50px;font-size:11.5px;font-weight:600;white-space:nowrap">
+                                    <?= ucfirst($row['payment_type']) ?>
+                                </span>
+                            </td>
                             <td style="font-size:12.5px;color:var(--text-sub)"><?= htmlspecialchars($row['account_name']) ?></td>
                             <td style="font-size:13px;color:var(--text-sub)"><?= date('M Y', strtotime($row['payment_for_month'])) ?></td>
                             <td style="font-size:13px;color:var(--text-sub)"><?= date('M d, Y', strtotime($row['payment_date'])) ?></td>

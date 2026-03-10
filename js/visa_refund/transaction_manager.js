@@ -418,7 +418,7 @@
     };  
     // Print receipt function
     function printReceipt(transactionId) {
-        window.open(`print_visa_refund_receipt.php?id=${transactionId}`, '_blank');
+        window.open(`../api/visa/print_visa_refund_receipt.php?id=${transactionId}`, '_blank');
     }
      // Function to process refund transaction
      function processRefundTransaction(refundId) {

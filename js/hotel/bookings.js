@@ -205,36 +205,127 @@ window.viewBooking = function(id) {
             if (response.success && response.bookings && response.bookings.length > 0) {
                 const booking = response.bookings[0];
 
+                const guestName = `${booking.title || ''} ${booking.first_name || ''} ${booking.last_name || ''}`.trim() || 'N/A';
+                const orderId   = booking.order_id || 'N/A';
+                const contact   = booking.contact_no || 'N/A';
+                const checkIn   = formatDate(booking.check_in_date);
+                const checkOut  = formatDate(booking.check_out_date);
+                const issueDate = formatDate(booking.issue_date);
+
+                const supplier  = booking.supplier_name || 'N/A';
+                const client    = booking.client_name || 'N/A';
+                const paidTo    = booking.paid_to_name || 'N/A';
+                const currency  = booking.currency || '';
+
+                const baseAmount  = booking.base_amount  !== null && booking.base_amount  !== undefined && booking.base_amount  !== '' ? parseFloat(booking.base_amount).toFixed(2)  : '0.00';
+                const soldAmount  = booking.sold_amount  !== null && booking.sold_amount  !== undefined && booking.sold_amount  !== '' ? parseFloat(booking.sold_amount).toFixed(2)  : '0.00';
+                const profit      = booking.profit       !== null && booking.profit       !== undefined && booking.profit       !== '' ? parseFloat(booking.profit).toFixed(2)      : '0.00';
+                const exchange    = booking.exchange_rate || 'N/A';
+
+                const accommodation = booking.accommodation_details || 'N/A';
+                const remarks       = booking.remarks || 'No remarks';
+
                 $('#bookingDetails').html(`
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p><strong>Guest Name:</strong> ${booking.title} ${booking.first_name} ${booking.last_name}</p>
-                            <p><strong>Order ID:</strong> ${booking.order_id || 'N/A'}</p>
-                            <p><strong>Contact:</strong> ${booking.contact_no || 'N/A'}</p>
-                            <p><strong>Check-in Date:</strong> ${booking.check_in_date}</p>
-                            <p><strong>Check-out Date:</strong> ${booking.check_out_date}</p>
-                            <p><strong>Issue Date:</strong> ${booking.issue_date}</p>
+                    <div class="hotel-details-modal">
+                        <div class="hdm-header">
+                            <div class="hdm-header-main">
+                                <div class="hdm-guest-name">${guestName}</div>
+                                <div class="hdm-order-pill">#${orderId}</div>
+                            </div>
+                            <div class="hdm-header-meta">
+                                <div class="hdm-meta-item">
+                                    <span class="hdm-meta-label">Check-in</span>
+                                    <span class="hdm-meta-value">${checkIn}</span>
+                                </div>
+                                <div class="hdm-meta-item">
+                                    <span class="hdm-meta-label">Check-out</span>
+                                    <span class="hdm-meta-value">${checkOut}</span>
+                                </div>
+                                <div class="hdm-meta-item">
+                                    <span class="hdm-meta-label">Issue Date</span>
+                                    <span class="hdm-meta-value">${issueDate}</span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <p><strong>Supplier:</strong> ${booking.supplier_name || 'N/A'}</p>
-                            <p><strong>Client:</strong> ${booking.client_name || 'N/A'}</p>
-                            <p><strong>Paid To:</strong> ${booking.paid_to_name || 'N/A'}</p>
-                            <p><strong>Base Amount:</strong> ${booking.currency} ${parseFloat(booking.base_amount).toFixed(2)}</p>
-                            <p><strong>Sold Amount:</strong> ${booking.currency} ${parseFloat(booking.sold_amount).toFixed(2)}</p>
-                            <p><strong>Exchange Rate:</strong> ${booking.exchange_rate}</p>
-                            <p><strong>Profit:</strong> ${booking.currency} ${parseFloat(booking.profit).toFixed(2)}</p>
-                        </div>
-                    </div>
-                    <div class="row mt-3">
-                        <div class="col-12">
-                            <p><strong>Accommodation Details:</strong></p>
-                            <p>${booking.accommodation_details || 'N/A'}</p>
-                        </div>
-                    </div>
-                    <div class="row mt-3">
-                        <div class="col-12">
-                            <p><strong>Remarks:</strong></p>
-                            <p>${booking.remarks || 'No remarks'}</p>
+
+                        <div class="hdm-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="hdm-section">
+                                        <h6 class="hdm-section-title">Guest & Booking</h6>
+                                        <dl class="hdm-definition-list">
+                                            <div class="hdm-definition-row">
+                                                <dt>Guest Name</dt>
+                                                <dd>${guestName}</dd>
+                                            </div>
+                                            <div class="hdm-definition-row">
+                                                <dt>Order ID</dt>
+                                                <dd>${orderId}</dd>
+                                            </div>
+                                            <div class="hdm-definition-row">
+                                                <dt>Contact</dt>
+                                                <dd>${contact}</dd>
+                                            </div>
+                                        </dl>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="hdm-section">
+                                        <h6 class="hdm-section-title">Parties</h6>
+                                        <dl class="hdm-definition-list">
+                                            <div class="hdm-definition-row">
+                                                <dt>Supplier</dt>
+                                                <dd>${supplier}</dd>
+                                            </div>
+                                            <div class="hdm-definition-row">
+                                                <dt>Client</dt>
+                                                <dd>${client}</dd>
+                                            </div>
+                                            <div class="hdm-definition-row">
+                                                <dt>Paid To</dt>
+                                                <dd>${paidTo}</dd>
+                                            </div>
+                                        </dl>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row hdm-row-spacing">
+                                <div class="col-md-6">
+                                    <div class="hdm-section">
+                                        <h6 class="hdm-section-title">Financial Summary</h6>
+                                        <div class="hdm-financial-grid">
+                                            <div class="hdm-financial-item">
+                                                <span class="hdm-financial-label">Base Amount</span>
+                                                <span class="hdm-financial-value">${currency} ${baseAmount}</span>
+                                            </div>
+                                            <div class="hdm-financial-item">
+                                                <span class="hdm-financial-label">Sold Amount</span>
+                                                <span class="hdm-financial-value">${currency} ${soldAmount}</span>
+                                            </div>
+                                            <div class="hdm-financial-item">
+                                                <span class="hdm-financial-label">Profit</span>
+                                                <span class="hdm-financial-value hdm-profit">${currency} ${profit}</span>
+                                            </div>
+                                            <div class="hdm-financial-item">
+                                                <span class="hdm-financial-label">Exchange Rate</span>
+                                                <span class="hdm-financial-value">${exchange}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="hdm-section">
+                                        <h6 class="hdm-section-title">Stay Details</h6>
+                                        <p class="hdm-text-block">${accommodation}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="hdm-section hdm-section-full">
+                                <h6 class="hdm-section-title">Remarks</h6>
+                                <p class="hdm-text-block">${remarks}</p>
+                            </div>
                         </div>
                     </div>
                 `);
@@ -265,7 +356,7 @@ window.editBooking = function(id) {
 
                 // Load dropdowns and then populate form
                 $.ajax({
-                    url: 'fetch_suppliers.php',
+                    url: '../api/hotel/fetch_suppliers.php',
                     type: 'GET',
                     dataType: 'json',
                     success: function(suppliersResponse) {

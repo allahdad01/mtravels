@@ -64,6 +64,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const message = `Are you sure you want to ${currentStatus === 'active' ? 'deactivate' : 'activate'} the account "${accountName}"?`;
             
             showConfirmationModal(title, message, function() {
+                // Get CSRF token
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                
                 // Send request to toggle status
                 fetch('../api/accounts/toggle_account_status.php', {
                     method: 'POST',
@@ -72,7 +75,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     },
                     body: JSON.stringify({
                         account_id: accountId,
-                        new_status: newStatus
+                        new_status: newStatus,
+                        csrf_token: csrfToken
                     })
                 })
                 .then(response => response.json())
@@ -106,6 +110,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const message = `Are you sure you want to ${currentStatus === 'active' ? 'deactivate' : 'activate'} the client "${clientName}"?`;
             
             showConfirmationModal(title, message, function() {
+                // Get CSRF token
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                
                 // Send request to toggle status
                 fetch('../api/accounts/toggle_client_status.php', {
                     method: 'POST',
@@ -114,7 +121,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     },
                     body: JSON.stringify({
                         client_id: clientId,
-                        new_status: newStatus
+                        new_status: newStatus,
+                        csrf_token: csrfToken
                     })
                 })
                 .then(response => response.json())
@@ -149,6 +157,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const message = `Are you sure you want to ${currentStatus === 'active' ? 'deactivate' : 'activate'} the supplier "${supplierName}"?`;
             
             showConfirmationModal(title, message, function() {
+                // Get CSRF token
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                
                 // Send request to toggle status
                 fetch('../api/accounts/toggle_supplier_status.php', {
                     method: 'POST',
@@ -157,7 +168,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     },
                     body: JSON.stringify({
                         supplier_id: supplierId,
-                        new_status: newStatus
+                        new_status: newStatus,
+                        csrf_token: csrfToken
                     })
                 })
                 .then(response => response.json())  

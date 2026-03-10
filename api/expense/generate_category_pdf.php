@@ -39,6 +39,8 @@ try {
     $expenses = $expenseStmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Create new mPDF instance with font configuration
+    // Using XW Zar font for Arabic/Dari text support
+    $fontDir = __DIR__ . '/../../assets/fonts/';
     $mpdf = new \Mpdf\Mpdf([
         'mode' => 'utf-8',
         'format' => 'A4',
@@ -48,7 +50,7 @@ try {
         'margin_bottom' => 15,
         'margin_footer' => 5,
         'default_font' => 'xwzar',
-        'fontDir' => ['../assets/fonts/'],
+        'fontDir' => [$fontDir],
         'fontdata' => [
             'xwzar' => [
                 'R' => 'XW Zar Bd_0.ttf',

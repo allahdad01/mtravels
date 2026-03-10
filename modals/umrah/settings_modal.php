@@ -47,12 +47,12 @@
                                                             </div>
                                                             <div class="form-group floating-label">
                                                                 <input type="tel" class="form-control" id="updatePhone" name="phone" 
-                                                                       value="<?= htmlspecialchars($user['phone']) ?>">
+                                                                       value="<?= htmlspecialchars($user['phone'] ?? '') ?>">
                                                                 <label for="updatePhone"><?= __('phone_number') ?></label>
                                                             </div>
                                                             <div class="form-group floating-label">
                                                                 <textarea class="form-control" id="updateAddress" name="address" 
-                                                                          rows="3"><?= htmlspecialchars($user['address']) ?></textarea>
+                                                                          rows="3"><?= htmlspecialchars($user['address'] ?? '') ?></textarea>
                                                                 <label for="updateAddress"><?= __('address') ?></label>
                                                             </div>
                                                         </div>

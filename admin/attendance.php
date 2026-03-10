@@ -199,7 +199,7 @@ include '../includes/header.php';
                                                         style="--progress: <?php echo $today_progress; ?>"/>
                                                 </svg>
                                                 <div class="att-progress-text">
-                                                    <span class="att-progress-number"><?php echo floor($today_minutes / 60); ?>h <?php echo round($today_minutes % 60); ?>m</span>
+                                                    <span class="att-progress-number"><?php echo (int)floor($today_minutes / 60); ?>h <?php echo (int)round(fmod($today_minutes, 60)); ?>m</span>
                                                     <span class="att-progress-label"><?php echo __('working'); ?></span>
                                                 </div>
                                             </div>
@@ -345,7 +345,7 @@ include '../includes/header.php';
                                         <div class="att-avg-hours">
                                             <div class="att-avg-header">
                                                 <span><?php echo __('avg_daily_hours'); ?></span>
-                                                <strong><?php echo floor(($monthly_stats['avg_working_minutes'] ?? 0) / 60); ?>h <?php echo round(($monthly_stats['avg_working_minutes'] ?? 0) % 60); ?>m</strong>
+                                                <strong><?php echo (int)floor(($monthly_stats['avg_working_minutes'] ?? 0) / 60); ?>h <?php echo (int)round(fmod(($monthly_stats['avg_working_minutes'] ?? 0), 60)); ?>m</strong>
                                             </div>
                                             <?php
                                                 $office_start = new DateTime($attendance_settings['office_start_time']);

@@ -1,12 +1,15 @@
 <?php
 // Include database connection
-require_once '../includes/db.php';
+require_once '../../includes/db.php';
 
 // Include database security module for input validation
-require_once 'includes/db_security.php';
+require_once '../../admin/includes/db_security.php';
 
 // Include security module
-require_once 'security.php';
+require_once '../../admin/security.php';
+
+// Include language helper
+require_once '../../includes/language_helpers.php';
 
 // Enforce authentication
 enforce_auth();
@@ -182,16 +185,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_transaction'])
     }
 }
 
-// Return JSON response
+// Set session messages and redirect instead of JSON
+if (!empty($response)) {
+    if ($response['success']) {
+        $_SESSION['success_message'] = $response['message'];
+    } else {
+        $_SESSION['error_message'] = $response['message'];
+    }
+    
+    // Redirect back to debtors page
+    $redirect_url = $_SERVER['HTTP_REFERER'] ?? 'debtors.php';
+    header('Location: ' . $redirect_url);
+    exit();
+}
+
+// Return JSON response if no form data
 header('Content-Type: application/json');
 echo json_encode($response);
 exit();
-
-// Helper function to sanitize input
-function sanitize_input($data) {
-    $data = trim($data);
-    $data = stripslashes($data);
-    $data = htmlspecialchars($data);
-    return $data;
-}
 ?> 

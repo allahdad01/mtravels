@@ -5,6 +5,43 @@
     window.open('../api/expense/generate_category_pdf.php?category_id=' + categoryId, '_blank');
 });
 
+// Helper function to get CSRF token
+function getCsrfToken() {
+    // First try to get from categoryForm
+    let csrfInput = document.querySelector('#categoryForm input[name="csrf_token"]');
+    if (csrfInput && csrfInput.value) {
+        console.log('CSRF from categoryForm:', csrfInput.value);
+        return csrfInput.value;
+    }
+    
+    // Then try expenseForm
+    csrfInput = document.querySelector('#expenseForm input[name="csrf_token"]');
+    if (csrfInput && csrfInput.value) {
+        console.log('CSRF from expenseForm:', csrfInput.value);
+        return csrfInput.value;
+    }
+    
+    // Then try any form
+    csrfInput = document.querySelector('input[name="csrf_token"]');
+    if (csrfInput && csrfInput.value) {
+        console.log('CSRF from any form:', csrfInput.value);
+        return csrfInput.value;
+    }
+    
+    // Try meta tag
+    const metaTag = document.querySelector('meta[name="csrf-token"]');
+    if (metaTag) {
+        const token = metaTag.getAttribute('content');
+        if (token) {
+            console.log('CSRF from meta tag:', token);
+            return token;
+        }
+    }
+    
+    console.log('WARNING: No CSRF token found!');
+    return '';
+}
+
 // Category form submission
 $('#categoryForm').on('submit', function(e) {
     e.preventDefault();
@@ -17,7 +54,8 @@ $('#categoryForm').on('submit', function(e) {
         data: {
             action: 'save_category',
             categoryId: categoryId,
-            categoryName: categoryName
+            categoryName: categoryName,
+            csrf_token: getCsrfToken()
         },
         dataType: 'json',
         success: function(response) {
@@ -43,7 +81,8 @@ $('#expenseForm').on('submit', function(e) {
     // Create FormData object to handle file uploads
     const formData = new FormData(this);
     
-    // Add all form fields to FormData
+    // FormData from form will already include csrf_token from hidden input
+    // But explicitly add 'action' field
     formData.append('action', 'save_expense');
     
     // Get allocation info if present
@@ -115,7 +154,8 @@ $('.delete-category').on('click', function() {
             type: 'POST',
             data: {
                 action: 'delete_category',
-                categoryId: categoryId
+                categoryId: categoryId,
+                csrf_token: getCsrfToken()
             },
             dataType: 'json',
             success: function(response) {
@@ -162,7 +202,8 @@ $('.edit-expense').on('click', function() {
         type: 'POST',
         data: {
             action: 'get_expense_details',
-            expenseId: expenseId
+            expenseId: expenseId,
+            csrf_token: getCsrfToken()
         },
         dataType: 'json',
         success: function(response) {
@@ -206,10 +247,6 @@ $('.edit-expense').on('click', function() {
 $('.delete-expense').on('click', function() {
     if (confirm('are_you_sure_you_want_to_delete_this_expense')) {
         const expenseId = $(this).data('id');
-
-        // Get CSRF token from meta tag or hidden input
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
-                         document.querySelector('input[name="csrf_token"]')?.value;
         
         $.ajax({
             url: '../api/expense/expense_actions.php',
@@ -217,7 +254,7 @@ $('.delete-expense').on('click', function() {
             data: {
                 action: 'delete_expense',
                 expenseId: expenseId,
-                csrf_token: csrfToken
+                csrf_token: getCsrfToken()
             },
             dataType: 'json',
             success: function(response) {
@@ -349,7 +386,8 @@ if (editExpenseId) {
         type: 'POST',
         data: {
             action: 'get_expense',
-            expenseId: editExpenseId
+            expenseId: editExpenseId,
+            csrf_token: getCsrfToken()
         },
         dataType: 'json',
         success: function(response) {

@@ -380,15 +380,15 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                                                                  </div>
                                                                  <div class="date-change-card-detail-item">
                                                                      <span class="date-change-card-detail-label">Phone:</span>
-                                                                     <span><?= htmlspecialchars($ticket['phone']) ?></span>
+                                                                     <span><?= htmlspecialchars($ticket['phone'] ?? '') ?></span>
                                                                  </div>
                                                                  <div class="date-change-card-detail-item">
                                                                      <span class="date-change-card-detail-label">Old Departure:</span>
-                                                                     <span><?= htmlspecialchars($ticket['old_departure_date']) ?></span>
+                                                                     <span><?= htmlspecialchars($ticket['old_departure_date'] ?? '') ?></span>
                                                                  </div>
                                                                  <div class="date-change-card-detail-item">
                                                                      <span class="date-change-card-detail-label">New Departure:</span>
-                                                                     <span><?= htmlspecialchars($ticket['departure_date']) ?></span>
+                                                                     <span><?= htmlspecialchars($ticket['departure_date'] ?? '') ?></span>
                                                                  </div>
                                                                  <?php if (!empty($ticket['old_return_date'])): ?>
                                                                  <div class="date-change-card-detail-item">

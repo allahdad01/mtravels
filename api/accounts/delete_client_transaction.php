@@ -38,7 +38,7 @@ if (!isset($data['transaction_id']) || !is_numeric($data['transaction_id'])) {
 $transactionId = intval($data['transaction_id']);
 
 // Database connection
-require_once('../includes/db.php');
+require_once('../../includes/db.php');
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 

@@ -5,7 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Include security module
-require_once 'security.php';
+require_once('../../admin/security.php');
 
 // Enforce authentication
 enforce_auth();
@@ -13,8 +13,8 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
 // Include database connection
-require_once('../includes/db.php');
-require_once('../includes/SecureFileUpload.php');
+require_once('../../includes/db.php');
+require_once('../../includes/SecureFileUpload.php');
 
 // CSRF Protection
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verify_csrf_token()) {
@@ -181,5 +181,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Redirect back to manage maktobs page
-header('Location: manage_maktobs.php');
+header('Location: ../../admin/manage_maktobs.php');
 exit(); 

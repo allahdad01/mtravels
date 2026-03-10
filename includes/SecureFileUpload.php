@@ -113,7 +113,10 @@ class SecureFileUpload {
         $target_path = $target_dir . $unique_name;
         
         // Prevent directory traversal
-        if (strpos(realpath($target_path), realpath($target_dir)) !== 0) {
+        // Use dirname to get the directory part since the file doesn't exist yet
+        $real_target_dir = realpath(dirname($target_path));
+        $real_upload_base = realpath($target_dir);
+        if ($real_target_dir === false || $real_upload_base === false || strpos($real_target_dir, $real_upload_base) !== 0) {
             return $this->error('Invalid file path detected');
         }
         

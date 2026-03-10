@@ -299,10 +299,10 @@ include '../includes/header.php';
                                         </div>
                                     </div>
                                     <div class="ma-stat-info">
-                                        <span class="ma-stat-number"><?php echo floor(($summary['avg_minutes'] ?? 0) / 60); ?>h <?php echo round(($summary['avg_minutes'] ?? 0) % 60); ?>m</span>
+                                        <span class="ma-stat-number"><?php echo (int)floor(($summary['avg_minutes'] ?? 0) / 60); ?>h <?php echo (int)round(fmod(($summary['avg_minutes'] ?? 0), 60)); ?>m</span>
                                         <span class="ma-stat-label"><?php echo __('avg_hours'); ?></span>
                                     </div>
-                                    <span class="ma-stat-meta"><?php echo floor(($summary['total_minutes'] ?? 0) / 60); ?>h <?php echo __('total'); ?></span>
+                                    <span class="ma-stat-meta"><?php echo (int)floor(($summary['total_minutes'] ?? 0) / 60); ?>h <?php echo __('total'); ?></span>
                                 </div>
                             </div>
 

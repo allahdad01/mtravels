@@ -5,14 +5,11 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 require_once '../includes/db.php';
 require_once 'excel_import_handler.php';
-// Include security module
 require_once 'security.php';
-// Enforce authentication
 enforce_auth();
 
 $isAjax = isset($_GET['is_ajax']) && $_GET['is_ajax'] === '1';
 
-// Get tenant ID from session
 $tenant_id = $_SESSION['tenant_id'] ?? null;
 if (!$tenant_id) {
     if ($isAjax) {
@@ -22,43 +19,28 @@ if (!$tenant_id) {
     }
     $message = "Error: Tenant ID not found in session. Please log in again.";
     $messageType = 'error';
-    // Don't process further
     return;
 }
 
 if (!$isAjax) {
     include '../includes/header.php';
 }
-// Handle file upload and processing
+
 $message = '';
 $messageType = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['excel_file'])) {
     try {
         $file = $_FILES['excel_file'];
-
-        // Validate file
-        if ($file['error'] !== UPLOAD_ERR_OK) {
-            throw new Exception('File upload failed');
-        }
-
-        // Check file type
+        if ($file['error'] !== UPLOAD_ERR_OK) throw new Exception('File upload failed');
         $allowedTypes = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'];
-        if (!in_array($file['type'], $allowedTypes)) {
-            throw new Exception('Please upload a valid Excel file (.xlsx or .xls)');
-        }
+        if (!in_array($file['type'], $allowedTypes)) throw new Exception('Please upload a valid Excel file (.xlsx or .xls)');
+        if ($file['size'] > 52428800) throw new Exception('File size must be less than 50MB');
 
-        // Check file size (50MB limit)
-        if ($file['size'] > 52428800) {
-            throw new Exception('File size must be less than 50MB');
-        }
-
-        // Process the import
         $importHandler = new ExcelImportHandler($tenant_id);
         $result = $importHandler->importFromExcel($file['tmp_name']);
 
         if ($isAjax) {
-            // Return JSON for AJAX requests
             header('Content-Type: application/json');
             echo json_encode($result);
             exit;
@@ -66,24 +48,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['excel_file'])) {
 
         if ($result['success']) {
             $message = "Import completed successfully! Processed {$result['success_count']} records.";
-            if (!empty($result['processed_sheets'])) {
-                $message .= "<br>Processed sheets: " . implode(', ', $result['processed_sheets']);
-            }
+            if (!empty($result['processed_sheets'])) $message .= "<br>Sheets: " . implode(', ', $result['processed_sheets']);
             $messageType = 'success';
         } else {
             $message = "Import completed with errors. Processed {$result['success_count']} records.";
             if (!empty($result['errors'])) {
-                $message .= "<br><br>Errors:<br>" . implode('<br>', array_slice($result['errors'], 0, 10));
-                if (count($result['errors']) > 10) {
-                    $message .= "<br>... and " . (count($result['errors']) - 10) . " more errors";
-                }
-            }
-            if (!empty($result['processed_sheets'])) {
-                $message .= "<br>Processed sheets: " . implode(', ', $result['processed_sheets']);
+                $message .= "<br>" . implode('<br>', array_slice($result['errors'], 0, 10));
+                if (count($result['errors']) > 10) $message .= "<br>... and " . (count($result['errors']) - 10) . " more errors";
             }
             $messageType = 'warning';
         }
-
     } catch (Exception $e) {
         if ($isAjax) {
             header('Content-Type: application/json');
@@ -101,588 +75,582 @@ if ($isAjax) {
     exit;
 }
 ?>
-    <?php ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Excel Data Import - Travel Agency System</title>
-
+    <title>Excel Data Import — Travel Agency</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
     <link href="../assets/plugins/sweetalert2/sweetalert2.min.css" rel="stylesheet">
     <style>
-        /* Apply gradient background to card headers matching the sidebar */
-        .card-header {
-            background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-            color: #ffffff !important;
-            border-bottom: none !important;
+        :root {
+            --ink:       #0f1117;
+            --ink-soft:  #4a5568;
+            --ink-mute:  #a0aec0;
+            --surface:   #f7f8fc;
+            --white:     #ffffff;
+            --border:    #e2e8f0;
+            --accent:    #2563eb;
+            --accent-lt: #eff6ff;
+            --accent-dk: #1d4ed8;
+            --green:     #059669;
+            --green-lt:  #ecfdf5;
+            --amber:     #d97706;
+            --amber-lt:  #fffbeb;
+            --red:       #dc2626;
+            --red-lt:    #fef2f2;
+            --radius:    12px;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+            --shadow:    0 4px 16px rgba(0,0,0,.07);
+            --shadow-lg: 0 12px 40px rgba(0,0,0,.1);
         }
 
-        .card-header h5 {
-            color: #ffffff !important;
-            margin-bottom: 0 !important;
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--surface);
+            color: var(--ink);
+            -webkit-font-smoothing: antialiased;
         }
 
-        .card-header .card-header-right {
-            color: #ffffff !important;
+        /* ── Page Shell ── */
+        .page-shell {
+
+            max-width: 1400px; margin: 0 auto; padding: 32px 28px 60px; 
         }
 
-        .card-header .card-header-right .btn {
-            color: #ffffff !important;
-            border-color: rgba(255, 255, 255, 0.3) !important;
+        /* ── Breadcrumb ── */
+        .breadcrumb-bar {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            font-size: .8rem;
+            color: var(--ink-mute);
+            margin-bottom: 2rem;
         }
+        .breadcrumb-bar a { color: var(--ink-soft); text-decoration: none; }
+        .breadcrumb-bar a:hover { color: var(--accent); }
+        .breadcrumb-bar .sep { color: var(--border); }
+        .breadcrumb-bar .current { color: var(--ink); font-weight: 500; }
 
-        .card-header .card-header-right .btn:hover {
-            background: rgba(255, 255, 255, 0.1) !important;
-            border-color: rgba(255, 255, 255, 0.5) !important;
+        /* ── Page Header ── */
+        .page-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 1.5rem;
+            margin-bottom: 2.5rem;
+            flex-wrap: wrap;
         }
+        .page-head__left h1 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.75rem;
+            font-weight: 800;
+            letter-spacing: -.5px;
+            color: var(--ink);
+            line-height: 1.2;
+        }
+        .page-head__left p {
+            margin-top: .35rem;
+            font-size: .9rem;
+            color: var(--ink-soft);
+        }
+        .btn-template {
+            display: inline-flex;
+            align-items: center;
+            gap: .5rem;
+            padding: .625rem 1.125rem;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--white);
+            color: var(--ink);
+            font-family: 'DM Sans', sans-serif;
+            font-size: .85rem;
+            font-weight: 500;
+            text-decoration: none;
+            box-shadow: var(--shadow-sm);
+            transition: border-color .2s, box-shadow .2s, transform .15s;
+            white-space: nowrap;
+        }
+        .btn-template:hover {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(37,99,235,.08);
+            transform: translateY(-1px);
+            color: var(--accent);
+        }
+        .btn-template svg { flex-shrink: 0; }
 
-        .upload-area {
-            border: 2px dashed #007bff;
-            border-radius: 10px;
-            padding: 40px;
-            text-align: center;
-            transition: all 0.3s ease;
-            background: #f8f9fa;
-        }
-        .upload-area:hover {
-            border-color: #0056b3;
-            background: #e3f2fd;
-        }
-        .upload-area.dragover {
-            border-color: #28a745;
-            background: #d4edda;
-        }
-        .template-download {
-            background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-            color: white;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-        .feature-list {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-        .feature-list h5 {
-            color: #495057;
-            margin-bottom: 15px;
-        }
-        .feature-list ul {
-            list-style: none;
-            padding: 0;
-        }
-        .feature-list li {
-            padding: 5px 0;
-            border-bottom: 1px solid #dee2e6;
-        }
-        .feature-list li:before {
-            content: "✓";
-            color: #28a745;
-            font-weight: bold;
-            margin-right: 10px;
-        }
-
-        /* Modern Card Styling */
-        .custom-card {
-            border: none;
-            border-radius: 15px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
-            transition: transform 0.3s ease;
-        }
-
-        .custom-card:hover {
-            transform: translateY(-5px);
-        }
-
-        .card-header.bg-gradient {
-            background: linear-gradient(45deg, #4776E6, #8E54E9);
-            border-radius: 15px 15px 0 0;
-            padding: 1.5rem 1.5rem !important;
-            position: relative;
+        /* ── Card ── */
+        .card {
+            background: var(--white);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
             overflow: hidden;
         }
 
-        .card-header.bg-gradient::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.1)"/><circle cx="90" cy="40" r="0.5" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
-            opacity: 0.3;
+        /* ── Upload Zone ── */
+        .upload-zone {
+            position: relative;
+            border: 2px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color .2s, background .2s;
+            background: var(--surface);
+        }
+        .upload-zone:hover, .upload-zone.drag-active {
+            border-color: var(--accent);
+            background: var(--accent-lt);
+        }
+        .upload-zone input[type="file"] {
+            position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+        }
+        .upload-zone__icon {
+            width: 56px; height: 56px;
+            background: var(--accent-lt);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 1.25rem;
+            transition: transform .2s;
+        }
+        .upload-zone:hover .upload-zone__icon { transform: scale(1.08); }
+        .upload-zone h3 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: .35rem;
+        }
+        .upload-zone p { font-size: .85rem; color: var(--ink-soft); }
+        .upload-zone .hint {
+            display: inline-block;
+            margin-top: 1rem;
+            font-size: .75rem;
+            color: var(--ink-mute);
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: .25rem .75rem;
         }
 
-        .icon-wrapper {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
-            padding: 12px;
+        /* File selected state */
+        .upload-zone.has-file {
+            border-style: solid;
+            border-color: var(--green);
+            background: var(--green-lt);
+        }
+        .upload-zone.has-file .upload-zone__icon {
+            background: var(--green-lt);
+        }
+
+        /* ── Section divider ── */
+        .section-label {
+            font-family: 'Syne', sans-serif;
+            font-size: .7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--ink-mute);
+            margin-bottom: 1rem;
+        }
+
+        /* ── Data Types Grid ── */
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: .6rem;
+        }
+        .data-chip {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            padding: .6rem .9rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: .82rem;
+            color: var(--ink-soft);
+            font-weight: 500;
+        }
+        .data-chip__dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: var(--accent);
+            flex-shrink: 0;
+        }
+
+        /* ── Steps ── */
+        .steps { display: flex; flex-direction: column; gap: 0; }
+        .step {
+            display: flex;
+            gap: 1rem;
+            padding: .75rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .step:last-child { border-bottom: none; }
+        .step__num {
+            width: 26px; height: 26px; min-width: 26px;
+            background: var(--ink);
+            color: var(--white);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: .72rem;
+            font-weight: 700;
+            font-family: 'Syne', sans-serif;
+            margin-top: 1px;
+        }
+        .step__text { font-size: .87rem; color: var(--ink-soft); line-height: 1.5; }
+        .step__text strong { color: var(--ink); }
+
+        /* ── Info callout ── */
+        .callout {
+            display: flex;
+            gap: .75rem;
+            padding: 1rem 1.125rem;
+            border-radius: var(--radius);
+            font-size: .85rem;
+            line-height: 1.55;
+        }
+        .callout--info  { background: var(--accent-lt); color: #1e3a8a; }
+        .callout--info svg { color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+
+        /* ── Submit Button ── */
+        .btn-import {
+            width: 100%;
+            padding: .9rem;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius);
+            font-family: 'Syne', sans-serif;
+            font-size: .95rem;
+            font-weight: 700;
+            letter-spacing: .3px;
+            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            backdrop-filter: blur(10px);
+            gap: .5rem;
+            transition: background .2s, transform .15s, box-shadow .2s;
+            box-shadow: 0 4px 12px rgba(37,99,235,.3);
+        }
+        .btn-import:hover:not(:disabled) {
+            background: var(--accent-dk);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(37,99,235,.35);
+        }
+        .btn-import:disabled {
+            background: var(--border);
+            color: var(--ink-mute);
+            cursor: not-allowed;
+            box-shadow: none;
         }
 
-        .icon-wrapper i {
-            font-size: 1.5rem;
+        /* ── Progress ── */
+        .progress-wrap {
+            display: none;
+            margin-top: 1rem;
+        }
+        .progress-track {
+            height: 5px;
+            background: var(--border);
+            border-radius: 99px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--accent), #60a5fa);
+            border-radius: 99px;
+            transition: width .4s ease;
+            animation: shimmer 1.5s infinite;
+        }
+        @keyframes shimmer {
+            0%   { filter: brightness(1); }
+            50%  { filter: brightness(1.2); }
+            100% { filter: brightness(1); }
+        }
+        .progress-label {
+            margin-top: .5rem;
+            font-size: .78rem;
+            color: var(--ink-mute);
+            text-align: center;
         }
 
-        .header-decoration {
-            opacity: 0.6;
-            transform: rotate(15deg);
-        }
-
-        .header-decoration i {
-            font-size: 3rem;
-        }
-
-        /* Form Sections */
-        .form-section {
-            background: #f8f9fa;
-            border-radius: 12px;
-            padding: 1.5rem;
+        /* ── Alert ── */
+        .alert-box {
+            display: flex;
+            gap: .75rem;
+            padding: 1rem 1.125rem;
+            border-radius: var(--radius);
+            font-size: .87rem;
             margin-bottom: 1.5rem;
-            border: 1px solid #e9ecef;
-            transition: all 0.3s ease;
+            animation: fadeSlide .3s ease;
         }
-
-        .form-section:hover {
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            transform: translateY(-1px);
+        @keyframes fadeSlide {
+            from { opacity: 0; transform: translateY(-6px); }
+            to   { opacity: 1; transform: translateY(0); }
         }
-
-        .section-header {
-            border-bottom: 2px solid #e9ecef;
-            padding-bottom: 0.75rem;
+        .alert-box--success { background: var(--green-lt); color: #065f46; }
+        .alert-box--warning { background: var(--amber-lt); color: #92400e; }
+        .alert-box--error   { background: var(--red-lt);   color: #991b1b; }
+        .alert-box svg { flex-shrink: 0; margin-top: 1px; }
+        .alert-box .close-btn {
+            margin-left: auto; background: none; border: none; cursor: pointer;
+            color: inherit; opacity: .6; padding: 0;
         }
+        .alert-box .close-btn:hover { opacity: 1; }
 
-        .section-header h6 {
-            font-size: 1.1rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
+        /* ── Layout panels ── */
+        .panel { padding: 1.75rem 2rem; }
+        .panel + .panel { border-top: 1px solid var(--border); }
 
-        /* Enhanced Form Controls */
-        .form-select-lg, .form-control-lg {
-            border-radius: 10px !important;
-            border: 2px solid #e0e6ed !important;
-            font-size: 1rem !important;
-            padding: 0.875rem 1.25rem !important;
-            transition: all 0.3s ease !important;
-            background-color: #fff !important;
-        }
-
-        .form-select-lg:focus, .form-control-lg:focus {
-            border-color: #667eea !important;
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15) !important;
-            transform: translateY(-1px);
-        }
-
-        /* Enhanced Button */
-        .custom-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-            border: none !important;
-            border-radius: 12px !important;
-            font-weight: 600 !important;
-            text-transform: uppercase !important;
-            letter-spacing: 0.5px !important;
-            position: relative !important;
-            overflow: hidden !important;
-            transition: all 0.3s ease !important;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3) !important;
-        }
-
-        .custom-btn:hover {
-            transform: translateY(-2px) !important;
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4) !important;
-        }
-
-        .btn-hover-effect {
-            position: absolute !important;
-            top: 0 !important;
-            left: -100% !important;
-            width: 100% !important;
-            height: 100% !important;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent) !important;
-            transition: left 0.5s ease !important;
-        }
-
-        .custom-btn:hover .btn-hover-effect {
-            left: 100% !important;
-        }
-
-        /* Enhanced Alerts */
-        .alert {
-            border-radius: 10px !important;
-            border: none !important;
-            font-size: 0.95rem !important;
-        }
-
-        .alert i {
-            font-size: 1rem;
+        @media (max-width: 600px) {
+            .panel { padding: 1.25rem; }
+            .page-head { gap: 1rem; }
+            .data-grid { grid-template-columns: 1fr 1fr; }
         }
     </style>
 </head>
 <body>
 
+<div class="pcoded-main-container">
+    <div class="pcoded-wrapper">
 
-    <!-- [ Main Content ] start -->
-    <div class="pcoded-main-container">
-        <div class="pcoded-wrapper">
-            <div class="pcoded-content">
-                <div class="pcoded-inner-content">
-                    <!-- [ breadcrumb ] start -->
-                    <div class="page-header">
-                        <div class="page-block">
-                            <div class="row align-items-center">
-                                <div class="col-md-12">
-                                    <div class="page-header-title">
-                                        <h5 class="m-b-10">Excel Data Import</h5>
+                <div class="page-shell">
+
+                    <!-- Breadcrumb -->
+                    <nav class="breadcrumb-bar">
+                        <a href="dashboard.php">Home</a>
+                        <span class="sep">/</span>
+                        <span class="current">Excel Import</span>
+                    </nav>
+
+                    <!-- Page Header -->
+                    <div class="page-head">
+                        <div class="page-head__left">
+                            <h1>Excel Data Import</h1>
+                            <p>Bulk-import tenant records from a formatted spreadsheet</p>
+                        </div>
+                        <a href="generate_excel_template.php" class="btn-template">
+                            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 15V3m0 12-4-4m4 4 4-4M2 17v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2"/></svg>
+                            Download Template
+                        </a>
+                    </div>
+
+                    <!-- Alert (PHP-rendered) -->
+                    <?php if (!empty($message)): ?>
+                    <div class="alert-box alert-box--<?php echo $messageType; ?>">
+                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
+                            <?php if ($messageType === 'success'): ?>
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm3.707-9.293a1 1 0 0 0-1.414-1.414L9 10.586 7.707 9.293a1 1 0 0 0-1.414 1.414l2 2a1 1 0 0 0 1.414 0l4-4z"/>
+                            <?php else: ?>
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0zm-7 4a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1-9a1 1 0 0 0-1 1v4a1 1 0 1 0 2 0V6a1 1 0 0 0-1-1z"/>
+                            <?php endif; ?>
+                        </svg>
+                        <div><?php echo $message; ?></div>
+                        <button class="close-btn" onclick="this.closest('.alert-box').remove()">
+                            <svg width="14" height="14" fill="currentColor" viewBox="0 0 20 20"><path d="M4.293 4.293a1 1 0 0 1 1.414 0L10 8.586l4.293-4.293a1 1 0 1 1 1.414 1.414L11.414 10l4.293 4.293a1 1 0 0 1-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 0 1-1.414-1.414L8.586 10 4.293 5.707a1 1 0 0 1 0-1.414z"/></svg>
+                        </button>
+                    </div>
+                    <?php endif; ?>
+
+                    <!-- Main Card -->
+                    <div class="card">
+
+                        <!-- Upload Panel -->
+                        <div class="panel">
+                            <form id="importForm" method="POST" enctype="multipart/form-data">
+                                <div class="upload-zone" id="uploadZone">
+                                    <input type="file" id="excelFile" name="excel_file" accept=".xlsx,.xls" required>
+                                    <div class="upload-zone__icon" id="zoneIcon">
+                                        <svg width="24" height="24" fill="none" stroke="#2563eb" stroke-width="1.75" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                                     </div>
-                                    <ul class="breadcrumb">
-                                        <li class="breadcrumb-item"><a href="dashboard.php"><i class="feather icon-home"></i></a></li>
-                                        <li class="breadcrumb-item">Excel Import</li>
-                                    </ul>
+                                    <h3 id="zoneTitle">Drop your file here</h3>
+                                    <p id="zoneSubtitle">or click anywhere to browse your computer</p>
+                                    <span class="hint">.xlsx or .xls &nbsp;·&nbsp; max 50 MB</span>
+                                </div>
+
+                                <!-- Progress -->
+                                <div class="progress-wrap" id="progressWrap">
+                                    <div class="progress-track"><div class="progress-bar" id="progressBar"></div></div>
+                                    <div class="progress-label" id="progressLabel">Uploading & processing…</div>
+                                </div>
+
+                                <div style="margin-top: 1.25rem;">
+                                    <button type="submit" class="btn-import" id="importBtn" disabled>
+                                        <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+                                        Start Import
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Supported Types -->
+                        <div class="panel">
+                            <p class="section-label">Supported data types</p>
+                            <div class="data-grid">
+                                <?php
+                                $types = ['Ticket Bookings','Ticket Refunds','Date Changes','Ticket Weights','Reservations','Visa Applications','Hotel Bookings','Families','Umrah Bookings'];
+                                foreach ($types as $t): ?>
+                                <div class="data-chip">
+                                    <span class="data-chip__dot"></span>
+                                    <?php echo $t; ?>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+
+                        <!-- Instructions -->
+                        <div class="panel">
+                            <p class="section-label">How it works</p>
+                            <div class="steps">
+                                <div class="step">
+                                    <div class="step__num">1</div>
+                                    <div class="step__text">Download the Excel template above — it includes all required sheets and column headers.</div>
+                                </div>
+                                <div class="step">
+                                    <div class="step__num">2</div>
+                                    <div class="step__text">Fill in your data. Use <strong>actual names</strong> for Supplier, Client, Account, and Family fields — the system resolves IDs automatically.</div>
+                                </div>
+                                <div class="step">
+                                    <div class="step__num">3</div>
+                                    <div class="step__text">Ensure dates are in <strong>YYYY-MM-DD</strong> format or standard Excel date format.</div>
+                                </div>
+                                <div class="step">
+                                    <div class="step__num">4</div>
+                                    <div class="step__text">Upload the file and review the import results. Any errors will be listed clearly.</div>
+                                </div>
+                            </div>
+
+                            <div class="callout callout--info" style="margin-top:1.25rem;">
+                                <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20" style="margin-top:2px"><path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM9 9a1 1 0 0 0 0 2v3a1 1 0 0 0 1 1h1a1 1 0 1 0 0-2v-3a1 1 0 0 0-1-1H9z"/></svg>
+                                <div>
+                                    <strong>Name vs. ID:</strong> The database stores numeric IDs internally, but you should enter human-readable names in the template. If an entity doesn't exist yet, the system will create it automatically.
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <!-- [ breadcrumb ] end -->
 
-                    <div class="main-body">
-                        <div class="page-wrapper">
-                            <!-- [ Main Content ] start -->
-                            <div class="row">
-                                <div class="col-sm-12">
+                    </div><!-- /.card -->
 
-                                    <div class="card custom-card shadow-lg">
-                                        <div class="card-header overflow-hidden">
-                                            <div class="d-flex align-items-center justify-content-between">
-                                                <div class="d-flex align-items-center">
-                                                    <div class="icon-wrapper me-3">
-                                                        <i class="feather icon-upload-cloud text-white"></i>
-                                                    </div>
-                                                    <div>
-                                                        <h5 class="mb-0 text-white fw-bold">
-                                                            Excel Data Import
-                                                        </h5>
-                                                        <small class="text-white-50 mb-0">
-                                                            Import tenant data from Excel spreadsheets
-                                                        </small>
-                                                    </div>
-                                                </div>
-                                                <div class="header-decoration">
-                                                    <i class="feather icon-file-text text-white opacity-25"></i>
-                                                </div>
-                                            </div>
-                                            <div class="header-pattern"></div>
-                                        </div>
-                                        <div class="card-body p-4 p-lg-5">
-                                            <!-- Template Download Section -->
-                                            <div class="template-download">
-                                                <div class="row align-items-center">
-                                                    <div class="col-md-8">
-                                                        <h5 class="mb-1">Download Excel Template</h5>
-                                                        <p class="mb-0">Get the properly formatted Excel template with all required sheets and columns</p>
-                                                    </div>
-                                                    <div class="col-md-4 text-right">
-                                                        <a href="generate_excel_template.php" class="btn btn-light btn-lg">
-                                                            <i class="fas fa-download"></i> Download Template
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            </div>
+                </div><!-- /.page-shell -->
 
-                                            <!-- Features Section -->
-                                            <div class="feature-list">
-                                                <h5>Supported Data Types</h5>
-                                                <div class="row">
-                                                    <div class="col-md-6">
-                                                        <ul>
-                                                            <li>Ticket Bookings</li>
-                                                            <li>Ticket Refunds</li>
-                                                            <li>Ticket Date Changes</li>
-                                                            <li>Ticket Weights</li>
-                                                            <li>Ticket Reservations</li>
-                                                        </ul>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <ul>
-                                                            <li>Visa Applications</li>
-                                                            <li>Hotel Bookings</li>
-                                                            <li>Families</li>
-                                                            <li>Umrah Bookings</li>
-                                                        </ul>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Message Display -->
-                                            <?php if (!empty($message)): ?>
-                                                <div id="importMessage" class="alert alert-<?php echo $messageType === 'success' ? 'success' : ($messageType === 'warning' ? 'warning' : 'danger'); ?> alert-dismissible fade show" role="alert">
-                                                    <i class="fas fa-<?php echo $messageType === 'success' ? 'check-circle' : ($messageType === 'warning' ? 'exclamation-triangle' : 'times-circle'); ?>"></i>
-                                                    <?php echo $message; ?>
-                                                    <button type="button" class="close" data-dismiss="alert">
-                                                        <span>&times;</span>
-                                                    </button>
-                                                </div>
-                                            <?php endif; ?>
-
-                                            <!-- Upload Form -->
-                                            <form id="importForm" method="POST" enctype="multipart/form-data">
-                                                <div class="upload-area" id="uploadArea">
-                                                    <div class="mb-3">
-                                                        <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
-                                                        <h5>Drop Excel File Here</h5>
-                                                        <p class="text-muted">or click to browse</p>
-                                                    </div>
-                                                    <input type="file" id="excelFile" name="excel_file" accept=".xlsx,.xls" style="display: none;" required>
-                                                    <button type="button" class="btn btn-primary btn-lg" onclick="document.getElementById('excelFile').click()">
-                                                        <i class="fas fa-folder-open"></i> Choose File
-                                                    </button>
-                                                    <div class="mt-3">
-                                                        <small class="text-muted">Supported formats: .xlsx, .xls (Max: 50MB)</small>
-                                                    </div>
-                                                </div>
-
-                                                <div class="text-center mt-4">
-                                                    <button type="submit" class="btn btn-success btn-lg" id="importBtn" disabled>
-                                                        <i class="fas fa-upload"></i> Start Import
-                                                    </button>
-                                                </div>
-                                            </form>
-
-                                            <!-- Progress Bar (hidden initially) -->
-                                            <div class="progress mt-4" id="progressContainer" style="display: none;">
-                                                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
-                                            </div>
-
-                                            <!-- Import Instructions -->
-                                            <div class="mt-4">
-                                                <h5>Import Instructions</h5>
-                                                <ol class="text-muted">
-                                                    <li>Download the Excel template using the button above</li>
-                                                    <li>Fill in your data following the column structure in each sheet</li>
-                                                    <li><strong>Important:</strong> For Supplier Name, Client Name, Account Name, Family Name - enter the actual NAMES, not IDs. The system will handle ID conversion automatically.</li>
-                                                    <li>Ensure dates are in YYYY-MM-DD format or Excel date format</li>
-                                                    <li>Upload the completed Excel file</li>
-                                                    <li>Review the import results and any error messages</li>
-                                                </ol>
-                                                <div class="alert alert-info mt-3">
-                                                    <i class="fas fa-info-circle"></i>
-                                                    <strong>Name vs ID Handling:</strong> The database stores IDs internally, but you should enter human-readable names in the Excel template. The system will automatically find existing entities by name or create new ones if they don't exist.
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                </div>
-                            </div>
-                            <!-- [ Main Content ] end -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
+</div>
 
+<script src="../assets/js/vendor-all.min.js"></script>
+<script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+<script src="../assets/js/pcoded.min.js"></script>
+<script src="../assets/plugins/sweetalert2/sweetalert2.min.js"></script>
 
-                             <!-- Required Js -->
-                             
-    <script src="../assets/js/vendor-all.min.js"></script>
-   <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-   <script src="../assets/js/pcoded.min.js"></script>
-   <script src="../assets/plugins/sweetalert2/sweetalert2.min.js"></script>
+<script>
+(function () {
+    const zone       = document.getElementById('uploadZone');
+    const fileInput  = document.getElementById('excelFile');
+    const importBtn  = document.getElementById('importBtn');
+    const form       = document.getElementById('importForm');
+    const progressWrap = document.getElementById('progressWrap');
+    const progressBar  = document.getElementById('progressBar');
+    const zoneTitle    = document.getElementById('zoneTitle');
+    const zoneSub      = document.getElementById('zoneSubtitle');
+    const zoneIcon     = document.getElementById('zoneIcon');
 
-   <script>
-        // File upload handling
-        const uploadArea = document.getElementById('uploadArea');
-        const fileInput = document.getElementById('excelFile');
-        const importBtn = document.getElementById('importBtn');
-        const importForm = document.getElementById('importForm');
-        const progressContainer = document.getElementById('progressContainer');
-        const progressBar = progressContainer.querySelector('.progress-bar');
+    // Drag-and-drop
+    ['dragenter','dragover','dragleave','drop'].forEach(ev => {
+        zone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); });
+    });
+    ['dragenter','dragover'].forEach(ev => zone.addEventListener(ev, () => zone.classList.add('drag-active')));
+    ['dragleave','drop'].forEach(ev => zone.addEventListener(ev, () => zone.classList.remove('drag-active')));
+    zone.addEventListener('drop', e => {
+        const files = e.dataTransfer.files;
+        if (files.length) { fileInput.files = files; onFileSelected(files[0]); }
+    });
 
-        // Drag and drop functionality
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            uploadArea.addEventListener(eventName, preventDefaults, false);
-        });
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files.length) onFileSelected(fileInput.files[0]);
+    });
 
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
+    function onFileSelected(file) {
+        const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+        zone.classList.add('has-file');
+        zoneIcon.innerHTML = `<svg width="24" height="24" fill="none" stroke="#059669" stroke-width="1.75" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`;
+        zoneTitle.textContent  = file.name;
+        zoneSub.innerHTML      = `<span style="color:#059669;font-weight:500">${sizeMB} MB</span> &nbsp;·&nbsp; <a href="#" onclick="clearFile(event)" style="color:#2563eb;">Remove</a>`;
+        importBtn.disabled = false;
+    }
 
-        ['dragenter', 'dragover'].forEach(eventName => {
-            uploadArea.addEventListener(eventName, highlight, false);
-        });
+    window.clearFile = function(e) {
+        if (e) e.preventDefault();
+        fileInput.value = '';
+        zone.classList.remove('has-file');
+        zoneIcon.innerHTML = `<svg width="24" height="24" fill="none" stroke="#2563eb" stroke-width="1.75" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`;
+        zoneTitle.textContent = 'Drop your file here';
+        zoneSub.textContent   = 'or click anywhere to browse your computer';
+        importBtn.disabled = true;
+    };
 
-        ['dragleave', 'drop'].forEach(eventName => {
-            uploadArea.addEventListener(eventName, unhighlight, false);
-        });
+    form.addEventListener('submit', e => {
+        e.preventDefault();
 
-        function highlight(e) {
-            uploadArea.classList.add('dragover');
-        }
+        Swal.fire({
+            title: 'Start import?',
+            html: 'This will import data from your Excel file.<br>Make sure you have a recent backup.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#2563eb',
+            cancelButtonColor: '#94a3b8',
+            confirmButtonText: 'Yes, import',
+            cancelButtonText: 'Cancel',
+            borderRadius: '12px',
+        }).then(res => {
+            if (!res.isConfirmed) return;
 
-        function unhighlight(e) {
-            uploadArea.classList.remove('dragover');
-        }
-
-        uploadArea.addEventListener('drop', handleDrop, false);
-
-        function handleDrop(e) {
-            const dt = e.dataTransfer;
-            const files = dt.files;
-
-            if (files.length > 0) {
-                fileInput.files = files;
-                updateFileDisplay(files[0]);
-            }
-        }
-
-        // File selection handling
-        fileInput.addEventListener('change', function(e) {
-            if (this.files.length > 0) {
-                updateFileDisplay(this.files[0]);
-            }
-        });
-
-        function updateFileDisplay(file) {
-            const fileName = file.name;
-            const fileSize = (file.size / 1024 / 1024).toFixed(2) + ' MB';
-
-            uploadArea.innerHTML = `
-                <div class="mb-3">
-                    <i class="fas fa-file-excel fa-3x text-success mb-3"></i>
-                    <h5>File Selected</h5>
-                    <p class="mb-1"><strong>${fileName}</strong></p>
-                    <p class="text-muted">Size: ${fileSize}</p>
-                </div>
-                <button type="button" class="btn btn-outline-secondary" onclick="clearFile()">
-                    <i class="fas fa-times"></i> Remove
-                </button>
-            `;
-
-            importBtn.disabled = false;
-        }
-
-        function clearFile() {
-            fileInput.value = '';
-            uploadArea.innerHTML = `
-                <div class="mb-3">
-                    <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
-                    <h5>Drop Excel File Here</h5>
-                    <p class="text-muted">or click to browse</p>
-                </div>
-                <button type="button" class="btn btn-primary btn-lg" onclick="document.getElementById('excelFile').click()">
-                    <i class="fas fa-folder-open"></i> Choose File
-                </button>
-                <div class="mt-3">
-                    <small class="text-muted">Supported formats: .xlsx, .xls (Max: 50MB)</small>
-                </div>
-            `;
+            progressWrap.style.display = 'block';
+            progressBar.style.width = '30%';
             importBtn.disabled = true;
-        }
+            importBtn.innerHTML = `<svg width="17" height="17" style="animation:spin .8s linear infinite" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-4.22-7.64"/></svg> Importing…`;
 
-        // Form submission handling
-        importForm.addEventListener('submit', function(e) {
-            e.preventDefault();
+            const fd = new FormData();
+            if (fileInput.files.length) fd.append('excel_file', fileInput.files[0]);
 
-            // Show confirmation dialog
-            Swal.fire({
-                title: 'Start Import?',
-                text: 'This will import data from the Excel file into your system. Make sure you have a backup.',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#28a745',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: 'Yes, Start Import',
-                cancelButtonText: 'Cancel'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    // Show progress
-                    progressContainer.style.display = 'block';
-                    progressBar.style.width = '0%';
-                    importBtn.disabled = true;
-                    importBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importing...';
-
-                    // Create FormData and manually append the file
-                    const formData = new FormData();
-                    if (fileInput.files.length > 0) {
-                        formData.append('excel_file', fileInput.files[0]);
-                    }
-
-                    // Send AJAX request
-                    fetch('?is_ajax=1', {
-                        method: 'POST',
-                        body: formData
-                    })
-                    .then(response => response.json())
-                    .then(result => {
-                        // Update progress to 100%
-                        progressBar.style.width = '100%';
-
+            fetch('?is_ajax=1', { method: 'POST', body: fd })
+                .then(r => r.json())
+                .then(result => {
+                    progressBar.style.width = '100%';
+                    setTimeout(() => {
+                        progressWrap.style.display = 'none';
                         if (result.success) {
-                            let message = `Import completed successfully! Processed ${result.success_count} records.`;
-                            if (result.processed_sheets && result.processed_sheets.length > 0) {
-                                message += `<br>Processed sheets: ${result.processed_sheets.join(', ')}`;
-                            }
-
-                            Swal.fire({
-                                title: 'Import Completed',
-                                html: message,
-                                icon: 'success',
-                                confirmButtonText: 'OK'
-                            }).then(() => {
-                                location.reload();
-                            });
+                            let msg = `Processed <strong>${result.success_count}</strong> records successfully.`;
+                            if (result.processed_sheets?.length) msg += `<br><small style="color:#6b7280">Sheets: ${result.processed_sheets.join(', ')}</small>`;
+                            Swal.fire({ title: 'Import complete', html: msg, icon: 'success', confirmButtonColor: '#2563eb' }).then(() => location.reload());
                         } else {
-                            let message = `Import completed with errors. Processed ${result.success_count} records.`;
-                            if (result.errors && result.errors.length > 0) {
-                                message += '<br><br>Errors:<br>' + result.errors.slice(0, 10).join('<br>');
-                                if (result.errors.length > 10) {
-                                    message += '<br>... and ' + (result.errors.length - 10) + ' more errors';
-                                }
+                            let msg = `Processed <strong>${result.success_count}</strong> records.`;
+                            if (result.errors?.length) {
+                                msg += `<br><br><div style="text-align:left;font-size:.85rem;max-height:160px;overflow-y:auto;background:#f8f9fa;padding:.75rem;border-radius:8px">${result.errors.slice(0,10).join('<br>')}${result.errors.length>10?`<br>…and ${result.errors.length-10} more`:''}</div>`;
                             }
-                            if (result.processed_sheets && result.processed_sheets.length > 0) {
-                                message += '<br>Processed sheets: ' + result.processed_sheets.join(', ');
-                            }
-
-                            Swal.fire({
-                                title: 'Import Result',
-                                html: message,
-                                icon: result.success_count > 0 ? 'warning' : 'error',
-                                confirmButtonText: 'OK'
-                            }).then(() => {
-                                location.reload();
-                            });
+                            Swal.fire({ title: 'Import result', html: msg, icon: result.success_count > 0 ? 'warning' : 'error', confirmButtonColor: '#2563eb' }).then(() => location.reload());
                         }
-                    })
-                    .catch(error => {
-                        console.error('Import error:', error);
-                        progressBar.style.width = '0%';
-                        progressContainer.style.display = 'none';
-                        importBtn.disabled = false;
-                        importBtn.innerHTML = '<i class="fas fa-upload"></i> Start Import';
-
-                        Swal.fire({
-                            title: 'Import Failed',
-                            text: 'An error occurred during import. Please try again.',
-                            icon: 'error',
-                            confirmButtonText: 'OK'
-                        });
-                    });
-                }
-            });
+                    }, 400);
+                })
+                .catch(() => {
+                    progressWrap.style.display = 'none';
+                    importBtn.disabled = false;
+                    importBtn.innerHTML = `<svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg> Start Import`;
+                    Swal.fire({ title: 'Import failed', text: 'An unexpected error occurred. Please try again.', icon: 'error', confirmButtonColor: '#2563eb' });
+                });
         });
-    </script>
+    });
 
-<!-- Include Admin Footer -->
+    // CSS spin keyframe
+    const style = document.createElement('style');
+    style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+    document.head.appendChild(style);
+})();
+</script>
+
 <?php include '../includes/admin_footer.php'; ?>
-
 </body>
 </html>

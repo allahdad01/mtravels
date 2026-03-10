@@ -2,6 +2,7 @@
 // Include security and database connections
 session_start();
 require_once '../../includes/db.php';
+require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
@@ -72,7 +73,7 @@ try {
                         <div class="row">
                             <div class="col-md-6">
                                 <p><strong>Request ID:</strong> #' . $request['id'] . '</p>
-                                <p><strong>Status:</strong> <span class="badge badge-' . getStatusBadgeClass($request['status']) . '">' . $request['status'] . '</span></p>
+                                <p><strong>Status:</strong> <span class="badge-' . getStatusBadgeClass($request['status']) . '">' . $request['status'] . '</span></p>
                                 <p><strong>Requested On:</strong> ' . date('M d, Y H:i', strtotime($request['created_at'])) . '</p>
                                 <p><strong>Requested By:</strong> ' . htmlspecialchars($request['created_by_name']) . '</p>
                             </div>

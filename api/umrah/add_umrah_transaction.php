@@ -42,6 +42,7 @@ $payment_date = isset($_POST['payment_date']) ? DbSecurity::validateInput($_POST
 // Validate umrah_id
 $umrah_id = isset($_POST['umrah_id']) ? DbSecurity::validateInput($_POST['umrah_id'], 'int', ['min' => 0]) : null;
 $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_POST['exchange_rate'], 'float', ['min' => 0]) : null;
+$main_account_id = isset($_POST['main_account_id']) ? DbSecurity::validateInput($_POST['main_account_id'], 'int', ['min' => 0]) : null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $umrah_id = intval($_POST['umrah_id']);
@@ -51,6 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $payment_amount = floatval($_POST['payment_amount']);
     $receipt_number = isset($_POST['receipt_number']) ? DbSecurity::validateInput($_POST['receipt_number'], 'string', ['maxlength' => 255]) : null;
     $currency = $_POST['payment_currency'];
+    $main_account_id = isset($_POST['main_account_id']) ? intval($_POST['main_account_id']) : null;
 
     // Start a transaction
     $pdo->beginTransaction();
@@ -69,6 +71,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $paid_to = $umrah_details['paid_to'];
+        // If main_account_id is provided, use it instead of the default paid_to
+        if ($main_account_id > 0) {
+            $paid_to = $main_account_id;
+        }
         $received_bank_payment = $umrah_details['received_bank_payment'];
         $booking_currency = $umrah_details['booking_currency'];
 

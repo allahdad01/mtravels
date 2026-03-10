@@ -97,6 +97,10 @@ $paymentId = $_POST['id'];
                         }
                         
                         // Process client balance change
+                        // Initialize balance variables to prevent undefined variable errors
+                        $clientFinalBalance = null;
+                        $supplierFinalBalance = null;
+                        
                         // Get client information based on currency
                         if ($currency === 'USD') {
                             $clientBalanceField = 'usd_balance';
@@ -172,10 +176,10 @@ $paymentId = $_POST['id'];
                         $clientTrans = $clientTransStmt->fetch(PDO::FETCH_ASSOC);
                         
                         if ($clientTrans) {
-                            $clientTransId = $clientTrans['id'];
-                            $clientTransDate = $clientTrans['created_at'];
-                            
-                            // First, update the transaction amount
+                             $clientTransId = $clientTrans['id'];
+                             $clientTransDate = $clientTrans['created_at'];
+                             
+                             // First, update the transaction amount
                             $updateClientTransQuery = "UPDATE client_transactions SET amount = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                             $updateClientTransStmt = $pdo->prepare($updateClientTransQuery);
                             $updateClientTransStmt->execute([$totalAmount, $clientTransId, $tenant_id, $branch_id]);
@@ -191,7 +195,7 @@ $paymentId = $_POST['id'];
                                 $updateClientTransBalanceStmt->execute([$newBalance, $clientTransId, $tenant_id, $branch_id]);
                                 
                                 // Store the calculated balance to reuse it later if needed
-                                $clientFinalBalance = $newBalance;
+                                $clientFinalBalance = $newBalance; // Initialize with calculated balance
                                 
                                 // Get all subsequent transactions (same currency) to update their balances
                                 $laterClientTransQuery = "SELECT id, balance FROM client_transactions
@@ -221,7 +225,7 @@ $paymentId = $_POST['id'];
                                 // 1. First, revert the impact on original currency transactions
                                 if ($originalPayment['currency'] === 'USD') {
                                     // Update this transaction if it's in USD
-                                    if ($clientTrans['currency'] === 'USD') {
+                                    if ($clientTrans && $clientTrans['currency'] === 'USD') {
                                         // First update amount
                                         $updateUsdAmountQuery = "UPDATE client_transactions SET amount = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                                         $updateUsdAmountStmt = $pdo->prepare($updateUsdAmountQuery);
@@ -233,13 +237,11 @@ $paymentId = $_POST['id'];
                                         $updateUsdTransStmt = $pdo->prepare($updateUsdTransQuery);
                                         $updateUsdTransStmt->execute([$newUsdBalance, $clientTransId, $tenant_id, $branch_id]);
                                         
-                                        // Store for later use
-                                        if ($currency === 'USD') {
-                                            $clientFinalBalance = $newUsdBalance;
+                                        // Store for later use - use current transaction balance
+                                        $clientFinalBalance = $newUsdBalance;
                                         }
-                                    }
-                                    
-                                    // Update all subsequent USD transactions
+                                        
+                                        // Update all subsequent USD transactions
                                     $laterUsdTransQuery = "SELECT id, balance FROM client_transactions
                                         WHERE client_id = ? AND currency = 'USD'
                                               AND id > ?
@@ -288,11 +290,11 @@ $paymentId = $_POST['id'];
                                         }
                                     }
                                 } else {
-                                    // Original currency was AFS, new is USD
-                                    // Same pattern but reversed
-                                    
-                                    // Update this transaction if it's in AFS
-                                    if ($clientTrans['currency'] === 'AFS') {
+                                     // Original currency was AFS, new is USD
+                                     // Same pattern but reversed
+                                     
+                                     // Update this transaction if it's in AFS
+                                     if ($clientTrans && $clientTrans['currency'] === 'AFS') {
                                         // First update amount
                                         $updateAfsAmountQuery = "UPDATE client_transactions SET amount = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                                         $updateAfsAmountStmt = $pdo->prepare($updateAfsAmountQuery);
@@ -304,14 +306,12 @@ $paymentId = $_POST['id'];
                                         $updateAfsTransStmt = $pdo->prepare($updateAfsTransQuery);
                                         $updateAfsTransStmt->execute([$newAfsBalance, $clientTransId, $tenant_id, $branch_id]);
                                         
-                                        // Store for later use
-                                        if ($currency === 'AFS') {
-                                            $clientFinalBalance = $newAfsBalance;
+                                        // Store for later use - use current transaction balance
+                                        $clientFinalBalance = $newAfsBalance;
                                         }
-                                    }
-                                    
-                                    // Update all subsequent AFS transactions
-                                    $laterAfsTransQuery = "SELECT id, balance FROM client_transactions
+                                        
+                                        // Update all subsequent AFS transactions
+                                        $laterAfsTransQuery = "SELECT id, balance FROM client_transactions
                                         WHERE client_id = ? AND currency = 'AFS'
                                               AND id > ?
                                               AND tenant_id = ? AND branch_id = ?
@@ -356,11 +356,16 @@ $paymentId = $_POST['id'];
                                             $updateLaterUsdStmt->execute([$newUsdBalance, $laterUsdTrans['id'], $tenant_id, $branch_id]);
                                         }
                                     }
-                                }
+                                    }
+                                    }
+                                    }
+                                    
+                                    // Ensure clientFinalBalance is set (in case it wasn't set in any of the conditional branches)
+                            if ($clientFinalBalance === null) {
+                            $clientFinalBalance = $totalAmount;
                             }
-                        }
-                        
-                        // 2. UPDATE SUPPLIER TRANSACTIONS
+                            
+                            // 2. UPDATE SUPPLIER TRANSACTIONS
                         // Find the specific supplier transaction record for this JV payment
                         $supplierTransQuery = "SELECT id, transaction_date, balance FROM supplier_transactions
                             WHERE supplier_id = ? AND transaction_of = 'jv_payment' AND tenant_id = ? AND branch_id = ?
@@ -415,9 +420,14 @@ $paymentId = $_POST['id'];
                                 $updateLaterTransStmt = $pdo->prepare($updateLaterTransQuery);
                                 $updateLaterTransStmt->execute([$newBalance, $laterTrans['id'], $tenant_id, $branch_id]);
                             }
-                        }
-                        
-                        // Update the JV payment record
+                            }
+                            
+                            // Ensure supplierFinalBalance is set (fallback if no existing transaction was found)
+                            if ($supplierFinalBalance === null) {
+                            $supplierFinalBalance = $newSupplierAmount;
+                            }
+                            
+                            // Update the JV payment record
                         // Set USD/AFS amounts based on currency
                         $usdAmount = ($currency === 'USD') ? $totalAmount : 0;
                         $afsAmount = ($currency === 'AFS') ? $totalAmount : 0;
@@ -454,10 +464,10 @@ $paymentId = $_POST['id'];
                                 WHERE id = ? AND tenant_id = ? AND branch_id = ?";
 
                             $updateJvTransStmt = $pdo->prepare($updateJvTransQuery);
-                            $updateJvTransStmt->execute([
-                                $totalAmount, $totalAmount, $currency,
-                                $description, $receipt, $jvTrans['id'], $tenant_id, $branch_id
-                            ]);
+                             $updateJvTransStmt->execute([
+                                 $totalAmount, $totalAmount, $currency,
+                                 $remarks, $receipt, $jvTrans['id'], $tenant_id, $branch_id
+                             ]);
                             
                             $jvTransactionId = $jvTrans['id'];
                         } else {

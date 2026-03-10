@@ -9,7 +9,6 @@ $branch_id = $_SESSION['branch_id'];
 
 // Database connection
 require_once('../../includes/db.php');
-include '../../includes/conn.php';
 
 // Get transaction ID from URL
 $transaction_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -41,16 +40,18 @@ $query = "
     WHERE mat.id = ? AND mat.transaction_of = 'hotel' AND mat.tenant_id = ? AND mat.branch_id = ?
 ";
 
-$stmt = $conn->prepare($query);
-$stmt->bind_param("iii", $transaction_id, $tenant_id, $branch_id);
+$stmt = $pdo->prepare($query);
+$stmt->bindParam(1, $transaction_id, PDO::PARAM_INT);
+$stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
 $stmt->execute();
-$result = $stmt->get_result();
+$result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-if ($result->num_rows === 0) {
+if (empty($result)) {
     die(__('transaction_not_found'));
 }
 
-$transaction = $result->fetch_assoc();
+$transaction = $result[0];
 
 // Fetch settings data (using PDO connection)
 try {

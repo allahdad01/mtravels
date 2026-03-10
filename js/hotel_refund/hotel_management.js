@@ -1,15 +1,4 @@
-// Function to show toast
-function showToast(message, type = 'success') {
-    Swal.fire({
-        toast: true,
-        position: 'top-end',
-        icon: type,
-        title: message,
-        showConfirmButton: false,
-        timer: 3000,
-        timerProgressBar: true
-    });
-}
+// showToast is defined in transaction_manager.js and uses standard alert as fallback
 // Delete refund function
 function deleteRefund(refundId) {
     if (!confirm('are_you_sure_you_want_to_delete_this_refund')) {

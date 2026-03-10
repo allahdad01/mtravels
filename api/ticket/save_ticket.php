@@ -114,10 +114,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $origin = htmlspecialchars($_POST['origin'], ENT_QUOTES, 'UTF-8');
     $destination = htmlspecialchars($_POST['destination'], ENT_QUOTES, 'UTF-8');
     $airline = htmlspecialchars($_POST['airline'], ENT_QUOTES, 'UTF-8');
-    $departureDate = $_POST['departureDate'];
-    $departureTime = $_POST['departureTime'];
-    $returnDepartureTime = $_POST['returnDepartureTime'];
-    $issueDate = $_POST['issueDate'];
+    $departureDate = !empty($_POST['departureDate']) ? $_POST['departureDate'] : null;
+    $departureTime = !empty($_POST['departureTime']) ? $_POST['departureTime'] : null;
+    $issueDate = !empty($_POST['issueDate']) ? $_POST['issueDate'] : null;
     $currency = htmlspecialchars($_POST['curr'], ENT_QUOTES, 'UTF-8');
     $description = htmlspecialchars($_POST['description'], ENT_QUOTES, 'UTF-8');
     $tripType = $_POST['tripType'];

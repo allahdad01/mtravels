@@ -31,10 +31,6 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
 <?php 
 include '../includes/header.php';
 ?>
-<link rel="stylesheet" href="../css/ticket/ticket_styles.css">
-<link rel="stylesheet" href="../css/ticket/ticket-components.css">
-<link rel="stylesheet" href="../css/general/modal-styles.css">
-<link rel="stylesheet" href="../css/ticket/ticket-form.css">
 <!-- Add Bootstrap-select CSS -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/css/bootstrap-select.min.css">
    
@@ -661,7 +657,7 @@ background: rgba(255,255,255,0.7);
     </div>
         <!-- Add a floating action button for launching the multi-ticket invoice modal -->
         <div id="floatingActionButton" class="position-fixed" style="bottom: 80px; <?php echo is_rtl() ? 'left' : 'right'; ?>: 20px; z-index: 1050;">
-    <button type="button" class="btn btn-primary btn-lg shadow" id="launchMultiTicketInvoice" title="<?= __('generate_multi_ticket_invoice') ?>">
+    <button type="button" class="btn btn-primary btn-lg shadow" id="launchMultiTicketInvoice" title="<?= __('generate_multi_ticket_invoice') ?>" style="width: 60px; height: 60px; padding: 0; border-radius: 50%;">
         <i class="feather icon-file-text"></i>
     </button>
 </div>

@@ -60,416 +60,601 @@ $pageTitle = __('support_tickets');
 require_once '../includes/header.php';
 ?>
 
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
 <style>
-/* Enhanced custom styles for better layout and design */
-.page-header.card {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-    color: #ffffff;
-    border: none;
-    margin-bottom: 20px;
-    padding: 20px !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    border-radius: 10px;
-}
+    :root {
+        --ink:       #0d0f12;
+        --surface:   #f4f3ef;
+        --card-bg:   #ffffff;
+        --border:    #e3e1db;
+        --muted:     #8a8880;
+        --accent:    #e8533a;
+        --accent-2:  #f5a623;
+        --accent-3:  #2db899;
+        --accent-4:  #4a7cf7;
+        --critical:  #e8533a;
+        --high:      #f5a623;
+        --medium:    #4a7cf7;
+        --low:       #b0b0b0;
 
-.page-header.card .row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
+        --radius-sm: 6px;
+        --radius-md: 12px;
+        --radius-lg: 20px;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,.07);
+        --shadow-md: 0 4px 16px rgba(0,0,0,.09);
+    }
 
-.page-header.card h5 {
-    color: #ffffff;
-    margin: 0;
-    font-weight: 600;
-}
+    body, .pcoded-main-container {
+        background: var(--surface) !important;
+        font-family: 'DM Sans', sans-serif;
+        color: var(--ink);
+    }
 
-.page-header.card .text-end {
-    text-align: right;
-}
+    /* ── PAGE SHELL ── */
+    .st-shell {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 32px 28px 60px;
+    }
 
-.page-header.card .btn {
-    background: rgba(255,255,255,0.2);
-    color: #ffffff;
-    border: 1px solid rgba(255,255,255,0.3);
-    border-radius: 25px;
-    transition: all 0.3s ease;
-}
+    /* ── TOP BAR ── */
+    .st-topbar {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        margin-bottom: 36px;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+    .st-topbar-left {}
+    .st-eyebrow {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: .12em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 4px;
+    }
+    .st-title {
+        font-family: 'Syne', sans-serif;
+        font-size: 34px;
+        font-weight: 800;
+        line-height: 1;
+        color: var(--ink);
+        margin: 0;
+    }
+    .st-topbar-right {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+    .st-btn-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 9px 18px;
+        border-radius: var(--radius-sm);
+        border: 1.5px solid var(--border);
+        background: var(--card-bg);
+        color: var(--muted);
+        font-family: 'DM Sans', sans-serif;
+        font-size: 13px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: border-color .18s, color .18s, box-shadow .18s;
+    }
+    .st-btn-back:hover {
+        border-color: var(--ink);
+        color: var(--ink);
+        box-shadow: var(--shadow-sm);
+    }
+    .st-btn-create {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 9px 22px;
+        border-radius: var(--radius-sm);
+        background: var(--ink);
+        color: #fff;
+        font-family: 'Syne', sans-serif;
+        font-size: 13px;
+        font-weight: 700;
+        text-decoration: none;
+        letter-spacing: .03em;
+        transition: background .18s, transform .15s, box-shadow .15s;
+        border: none;
+    }
+    .st-btn-create:hover {
+        background: #1f2329;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 18px rgba(0,0,0,.18);
+        color: #fff;
+    }
 
-.page-header.card .btn:hover {
-    background: rgba(255,255,255,0.3);
-    border-color: rgba(255,255,255,0.5);
-    transform: translateY(-1px);
-}
+    /* ── STATS STRIP ── */
+    .st-stats {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 12px;
+        margin-bottom: 28px;
+    }
+    @media (max-width: 1100px) { .st-stats { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 600px)  { .st-stats { grid-template-columns: repeat(2, 1fr); } }
 
-.card {
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    border: none;
-}
+    .st-stat {
+        background: var(--card-bg);
+        border: 1.5px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 20px 18px 16px;
+        position: relative;
+        overflow: hidden;
+        transition: transform .18s, box-shadow .18s;
+    }
+    .st-stat:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-md);
+    }
+    .st-stat-bar {
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        border-radius: 3px 3px 0 0;
+    }
+    .st-stat-num {
+        font-family: 'Syne', sans-serif;
+        font-size: 32px;
+        font-weight: 800;
+        line-height: 1;
+        margin-bottom: 4px;
+    }
+    .st-stat-label {
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        color: var(--muted);
+    }
+    .st-stat-icon {
+        position: absolute;
+        right: 14px; top: 18px;
+        font-size: 20px;
+        opacity: .12;
+    }
 
-.card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-}
+    .stat-total    .st-stat-bar { background: var(--ink); }
+    .stat-total    .st-stat-num { color: var(--ink); }
+    .stat-open     .st-stat-bar { background: var(--accent-4); }
+    .stat-open     .st-stat-num { color: var(--accent-4); }
+    .stat-progress .st-stat-bar { background: var(--accent-2); }
+    .stat-progress .st-stat-num { color: var(--accent-2); }
+    .stat-resolved .st-stat-bar { background: var(--accent-3); }
+    .stat-resolved .st-stat-num { color: var(--accent-3); }
+    .stat-breached .st-stat-bar { background: var(--critical); }
+    .stat-breached .st-stat-num { color: var(--critical); }
+    .stat-risk     .st-stat-bar { background: var(--high); }
+    .stat-risk     .st-stat-num { color: var(--high); }
 
-.card-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-radius: 10px 10px 0 0;
-    padding: 1rem 1.5rem;
-    border: none;
-}
+    /* ── FILTER ROW ── */
+    .st-filters {
+        background: var(--card-bg);
+        border: 1.5px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 18px 22px;
+        margin-bottom: 16px;
+        display: flex;
+        gap: 12px;
+        align-items: flex-end;
+        flex-wrap: wrap;
+    }
+    .st-filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        flex: 1;
+        min-width: 140px;
+    }
+    .st-filter-group label {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin: 0;
+    }
+    .st-select {
+        border: 1.5px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 9px 32px 9px 12px;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 13.5px;
+        font-weight: 500;
+        color: var(--ink);
+        background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238a8880' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 12px center;
+        appearance: none;
+        -webkit-appearance: none;
+        cursor: pointer;
+        transition: border-color .15s, box-shadow .15s;
+        width: 100%;
+    }
+    .st-select:focus {
+        outline: none;
+        border-color: var(--ink);
+        box-shadow: 0 0 0 3px rgba(13,15,18,.08);
+    }
+    .st-btn-reset {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 9px 18px;
+        border-radius: var(--radius-sm);
+        border: 1.5px solid var(--border);
+        background: var(--surface);
+        color: var(--muted);
+        font-family: 'DM Sans', sans-serif;
+        font-size: 13px;
+        font-weight: 500;
+        text-decoration: none;
+        white-space: nowrap;
+        transition: all .15s;
+        align-self: flex-end;
+    }
+    .st-btn-reset:hover {
+        border-color: var(--ink);
+        color: var(--ink);
+        background: #fff;
+    }
 
-.card-header h5 {
-    margin: 0;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-}
+    /* ── TABLE CARD ── */
+    .st-table-card {
+        background: var(--card-bg);
+        border: 1.5px solid var(--border);
+        border-radius: var(--radius-md);
+        overflow: hidden;
+    }
+    .st-table-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 18px 24px;
+        border-bottom: 1.5px solid var(--border);
+    }
+    .st-table-head-title {
+        font-family: 'Syne', sans-serif;
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--ink);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0;
+    }
+    .st-count-badge {
+        background: var(--ink);
+        color: #fff;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 9px;
+        border-radius: 20px;
+        letter-spacing: .03em;
+    }
 
-.table-responsive {
-    border-radius: 10px;
+    .st-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .st-table thead tr {
+        background: var(--surface);
+        border-bottom: 1.5px solid var(--border);
+    }
+    .st-table thead th {
+        padding: 11px 16px;
+        font-size: 10.5px;
+        font-weight: 700;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        white-space: nowrap;
+        border: none;
+    }
+    .st-table tbody tr {
+        border-bottom: 1px solid var(--border);
+        transition: background .12s;
+    }
+    .st-table tbody tr:last-child { border-bottom: none; }
+    .st-table tbody tr:hover { background: #faf9f6; }
+    .st-table tbody td {
+        padding: 14px 16px;
+        font-size: 13.5px;
+        vertical-align: middle;
+        border: none;
+    }
 
-}
+    .st-ticket-num {
+        font-family: 'Syne', sans-serif;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--ink);
+        letter-spacing: .02em;
+    }
+    .st-ticket-title {
+        color: var(--ink);
+        font-weight: 400;
+        max-width: 260px;
+    }
 
-.table {
-    margin-bottom: 0;
-}
+    /* ── CHIPS / BADGES ── */
+    .chip {
+        display: inline-block;
+        padding: 4px 11px;
+        border-radius: 4px;
+        font-size: 11.5px;
+        font-weight: 600;
+        letter-spacing: .02em;
+        white-space: nowrap;
+    }
 
-.table thead th {
-    background-color: #f8f9fa;
-    border-bottom: 2px solid #dee2e6;
-    font-weight: 600;
-    color: #495057;
-    padding: 1rem;
-}
+    /* Category chip */
+    .chip-cat {
+        background: #f0edff;
+        color: #5b45d4;
+    }
 
-.table tbody tr:hover {
-    background-color: #f1f3f4;
-}
+    /* Priority chips */
+    .chip-critical { background: #fde8e4; color: #c0392b; }
+    .chip-high     { background: #fef3cd; color: #9a6b00; }
+    .chip-medium   { background: #ddeeff; color: #1a5fb4; }
+    .chip-low      { background: #ebebeb; color: #666; }
 
-.table tbody td {
-    padding: 1rem;
-    vertical-align: middle;
-}
+    /* Status chips */
+    .chip-open        { background: #ddeeff; color: #1a5fb4; }
+    .chip-in_progress { background: #fef3cd; color: #9a6b00; }
+    .chip-resolved    { background: #d6f5ec; color: #1a7a5b; }
+    .chip-closed      { background: #ebebeb; color: #555; }
 
-.form-control {
-    border-radius: 8px;
-    border: 1px solid #ced4da;
-    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-    padding: 0.75rem;
-}
+    /* SLA chips */
+    .chip-success  { background: #d6f5ec; color: #1a7a5b; }
+    .chip-warning  { background: #fef3cd; color: #9a6b00; }
+    .chip-danger   { background: #fde8e4; color: #c0392b; }
+    .chip-secondary{ background: #ebebeb; color: #666; }
+    .chip-info     { background: #ddeeff; color: #1a5fb4; }
 
-.form-control:focus {
-    border-color: #4099ff;
-    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
-}
+    .st-date { color: var(--muted); font-size: 12.5px; }
 
-.btn-primary {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-    border: none;
-    border-radius: 25px;
-    padding: 0.75rem 2rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
+    /* View button */
+    .st-btn-view {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 6px 14px;
+        border-radius: var(--radius-sm);
+        border: 1.5px solid var(--border);
+        background: transparent;
+        color: var(--ink);
+        font-size: 12.5px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all .15s;
+        white-space: nowrap;
+    }
+    .st-btn-view:hover {
+        background: var(--ink);
+        border-color: var(--ink);
+        color: #fff;
+    }
 
-.btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
-}
+    /* Empty state */
+    .st-empty {
+        padding: 60px 24px;
+        text-align: center;
+        color: var(--muted);
+    }
+    .st-empty-icon {
+        font-size: 40px;
+        display: block;
+        margin-bottom: 12px;
+        opacity: .4;
+    }
+    .st-empty-text {
+        font-size: 14px;
+        font-weight: 500;
+    }
 
-.btn-secondary {
-    border-radius: 25px;
-    padding: 0.75rem 2rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.badge {
-    font-size: 0.85em;
-    padding: 0.5em 0.75em;
-    border-radius: 20px;
-    font-weight: 500;
-}
-
-.badge-primary {
-    background-color: #007bff;
-}
-
-.badge-info {
-    background-color: #17a2b8;
-}
-
-.badge-warning {
-    background-color: #ffc107;
-    color: #212529;
-}
-
-.badge-success {
-    background-color: #28a745;
-}
-
-.badge-danger {
-    background-color: #dc3545;
-}
-
-.badge-secondary {
-    background-color: #6c757d;
-}
-
-.h2 {
-    font-size: 2.5rem;
-}
-
-.h4 {
-    font-size: 1.5rem;
-}
-
-.h5 {
-    font-size: 1.25rem;
-}
-
-.h6 {
-    font-size: 1rem;
-}
+    /* Responsive table */
+    .st-table-wrap { overflow-x: auto; }
 </style>
 
-    <!-- [ Main Content ] start -->
-    <div class="pcoded-main-container">
-        <div class="pcoded-wrapper">
-            <div class="pcoded-content">
-                <div class="pcoded-inner-content">
-                    <div class="main-body">
-                        <div class="page-wrapper">
-                            <!-- [ Main Content ] start -->
-                            <div class="main-content">
-                                <div class="page-header card">
-                                    <div class="row align-items-center">
-                                        <div class="col-md-6">
-                                            <h5 class="mb-0"><i class="feather icon-life-buoy mr-2"></i><?php echo __('support_tickets'); ?></h5>
-                                            <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;"><?php echo __('manage_and_track_support_tickets'); ?></p>
-                                        </div>
-                                        <div class="col-md-6 text-end">
-                                            <a href="dashboard.php" class="btn btn-outline-secondary btn-sm">
-                                                <i class="feather icon-arrow-left mr-1"></i><?php echo __('back_to_dashboard'); ?>
-                                            </a>
-                                        </div>
-                                    </div>
+<div class="pcoded-main-container">
+    <div class="pcoded-wrapper">
+        <div class="pcoded-content">
+            <div class="pcoded-inner-content">
+                <div class="main-body">
+                    <div class="page-wrapper">
+                        <div class="st-shell">
+
+                            <!-- Top Bar -->
+                            <div class="st-topbar">
+                                <div class="st-topbar-left">
+                                    <p class="st-eyebrow">Admin &rsaquo; Help Desk</p>
+                                    <h1 class="st-title"><?php echo __('support_tickets'); ?></h1>
                                 </div>
-
-                                <div class="row">
-                                    <!-- Statistics Cards -->
-                                    <div class="col-md-12">
-                                        <div class="row mb-4">
-                                            <div class="col-md-2">
-                                                <div class="card text-center">
-                                                    <div class="card-body">
-                                                        <div class="h2 font-weight-bold text-primary">
-                                                            <i class="feather icon-bar-chart-2 mr-2"></i><?php echo $stats['total'] ?? 0; ?>
-                                                        </div>
-                                                        <p class="text-muted mb-0"><?php echo __('total'); ?></p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-2">
-                                                <div class="card text-center">
-                                                    <div class="card-body">
-                                                        <div class="h2 font-weight-bold text-info">
-                                                            <i class="feather icon-circle mr-2"></i><?php echo $stats['open'] ?? 0; ?>
-                                                        </div>
-                                                        <p class="text-muted mb-0"><?php echo __('open'); ?></p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-2">
-                                                <div class="card text-center">
-                                                    <div class="card-body">
-                                                        <div class="h2 font-weight-bold text-warning">
-                                                            <i class="feather icon-clock mr-2"></i><?php echo $stats['in_progress'] ?? 0; ?>
-                                                        </div>
-                                                        <p class="text-muted mb-0"><?php echo __('in_progress'); ?></p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-2">
-                                                <div class="card text-center">
-                                                    <div class="card-body">
-                                                        <div class="h2 font-weight-bold text-success">
-                                                            <i class="feather icon-check-circle mr-2"></i><?php echo $stats['resolved'] ?? 0; ?>
-                                                        </div>
-                                                        <p class="text-muted mb-0"><?php echo __('resolved'); ?></p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-2">
-                                                <div class="card text-center">
-                                                    <div class="card-body">
-                                                        <div class="h2 font-weight-bold text-danger">
-                                                            <i class="feather icon-alert-triangle mr-2"></i><?php echo $stats['breached'] ?? 0; ?>
-                                                        </div>
-                                                        <p class="text-muted mb-0"><?php echo __('sla_breached'); ?></p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-2">
-                                                <div class="card text-center">
-                                                    <div class="card-body">
-                                                        <div class="h2 font-weight-bold text-warning">
-                                                            <i class="feather icon-alert-circle mr-2"></i><?php echo $stats['at_risk'] ?? 0; ?>
-                                                        </div>
-                                                        <p class="text-muted mb-0"><?php echo __('at_risk'); ?></p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Filters and Table -->
-                                    <div class="col-md-12">
-                                        <!-- Filters -->
-                                        <div class="card mb-3">
-                                            <div class="card-header">
-                                                <h5><i class="feather icon-filter mr-2"></i><?php echo __('filters'); ?></h5>
-                                            </div>
-                                            <div class="card-body">
-                                                <form method="GET" class="row g-3">
-                                                    <div class="col-md-3">
-                                                        <label for="status"><i class="feather icon-tag mr-2"></i><?php echo __('status'); ?></label>
-                                                        <select name="status" class="form-control form-control-lg" id="status" onchange="this.form.submit()">
-                                                            <option value=""><?php echo __('all_status'); ?></option>
-                                                            <option value="open" <?php echo $status_filter === 'open' ? 'selected' : ''; ?>><?php echo __('open'); ?></option>
-                                                            <option value="in_progress" <?php echo $status_filter === 'in_progress' ? 'selected' : ''; ?>><?php echo __('in_progress'); ?></option>
-                                                            <option value="resolved" <?php echo $status_filter === 'resolved' ? 'selected' : ''; ?>><?php echo __('resolved'); ?></option>
-                                                            <option value="closed" <?php echo $status_filter === 'closed' ? 'selected' : ''; ?>><?php echo __('closed'); ?></option>
-                                                        </select>
-                                                    </div>
-                                                    <div class="col-md-3">
-                                                        <label for="category"><i class="feather icon-folder mr-2"></i><?php echo __('category'); ?></label>
-                                                        <select name="category" class="form-control form-control-lg" id="category" onchange="this.form.submit()">
-                                                            <option value=""><?php echo __('all_categories'); ?></option>
-                                                            <?php foreach ($categories as $cat): ?>
-                                                                <option value="<?php echo $cat['id']; ?>" <?php echo $category_filter == $cat['id'] ? 'selected' : ''; ?>>
-                                                                    <?php echo htmlspecialchars($cat['name']); ?>
-                                                                </option>
-                                                            <?php endforeach; ?>
-                                                        </select>
-                                                    </div>
-                                                    <div class="col-md-3">
-                                                        <label for="priority"><i class="feather icon-alert-circle mr-2"></i><?php echo __('priority'); ?></label>
-                                                        <select name="priority" class="form-control form-control-lg" id="priority" onchange="this.form.submit()">
-                                                            <option value=""><?php echo __('all_priorities'); ?></option>
-                                                            <option value="critical" <?php echo $priority_filter === 'critical' ? 'selected' : ''; ?>><?php echo __('critical'); ?></option>
-                                                            <option value="high" <?php echo $priority_filter === 'high' ? 'selected' : ''; ?>><?php echo __('high'); ?></option>
-                                                            <option value="medium" <?php echo $priority_filter === 'medium' ? 'selected' : ''; ?>><?php echo __('medium'); ?></option>
-                                                            <option value="low" <?php echo $priority_filter === 'low' ? 'selected' : ''; ?>><?php echo __('low'); ?></option>
-                                                        </select>
-                                                    </div>
-                                                    <div class="col-md-3">
-                                                        <label>&nbsp;</label>
-                                                        <a href="support_tickets.php" class="btn btn-secondary btn-lg btn-block">
-                                                            <i class="feather icon-refresh-cw mr-2"></i><?php echo __('reset_filters'); ?>
-                                                        </a>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
-
-                                        <!-- Tickets Table -->
-                                        <div class="card">
-                                            <div class="card-header">
-                                                <h5><i class="feather icon-list mr-2"></i><?php echo __('support_tickets'); ?>
-                                                    <span class="badge-primary badge-pill ml-2"><?php echo count($tickets); ?></span>
-                                                </h5>
-                                            </div>
-                                            <div class="card-body table-responsive">
-                                                <table class="table table-hover">
-                                                    <thead>
-                                                        <tr>
-                                                            <th><i class="feather icon-hash mr-1"></i><?php echo __('ticket_number'); ?></th>
-                                                            <th><i class="feather icon-file-text mr-1"></i><?php echo __('title'); ?></th>
-                                                            <th><i class="feather icon-folder mr-1"></i><?php echo __('category'); ?></th>
-                                                            <th><i class="feather icon-alert-circle mr-1"></i><?php echo __('priority'); ?></th>
-                                                            <th><i class="feather icon-tag mr-1"></i><?php echo __('status'); ?></th>
-                                                            <th><i class="feather icon-clock mr-1"></i><?php echo __('sla_status'); ?></th>
-                                                            <th><i class="feather icon-calendar mr-1"></i><?php echo __('created'); ?></th>
-                                                            <th><i class="feather icon-eye mr-1"></i><?php echo __('action'); ?></th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <?php if (empty($tickets)): ?>
-                                                            <tr>
-                                                                <td colspan="8" class="text-center text-muted py-4">
-                                                                    <i class="feather icon-inbox mr-2"></i><?php echo __('no_tickets_found'); ?>
-                                                                </td>
-                                                            </tr>
-                                                        <?php else: ?>
-                                                            <?php foreach ($tickets as $ticket): ?>
-                                                                <tr>
-                                                                    <td>
-                                                                        <strong><?php echo htmlspecialchars($ticket['ticket_number']); ?></strong>
-                                                                    </td>
-                                                                    <td>
-                                                                        <?php echo htmlspecialchars(substr($ticket['title'], 0, 40)); ?>
-                                                                    </td>
-                                                                    <td>
-                                                                        <span class="badge-info badge-pill px-3 py-2">
-                                                                            <?php echo htmlspecialchars($ticket['category_name']); ?>
-                                                                        </span>
-                                                                    </td>
-                                                                    <td>
-                                                                        <span class="badge-<?php echo $ticket['priority'] === 'critical' ? 'danger' : ($ticket['priority'] === 'high' ? 'warning' : 'info'); ?> badge-pill px-3 py-2">
-                                                                            <?php echo ucfirst($ticket['priority']); ?>
-                                                                        </span>
-                                                                    </td>
-                                                                    <td>
-                                                                        <span class="badge-<?php
-                                                                            echo $ticket['status'] === 'open' ? 'primary' :
-                                                                                ($ticket['status'] === 'in_progress' ? 'warning' :
-                                                                                ($ticket['status'] === 'resolved' ? 'success' : 'secondary'));
-                                                                        ?> badge-pill px-3 py-2">
-                                                                            <?php echo ucwords(str_replace('_', ' ', $ticket['status'])); ?>
-                                                                        </span>
-                                                                    </td>
-                                                                    <td>
-                                                                        <span class="badge-<?php echo $ticket['sla_display']['color']; ?> badge-pill px-3 py-2">
-                                                                            <?php echo $ticket['sla_display']['status']; ?>
-                                                                        </span>
-                                                                    </td>
-                                                                    <td class="text-muted"><?php echo date('M d, Y', strtotime($ticket['created_at'])); ?></td>
-                                                                    <td>
-                                                                        <a href="support_ticket_detail.php?id=<?php echo $ticket['id']; ?>" class="btn btn-sm btn-outline-primary">
-                                                                            <i class="feather icon-eye mr-1"></i><?php echo __('view'); ?>
-                                                                        </a>
-                                                                    </td>
-                                                                </tr>
-                                                            <?php endforeach; ?>
-                                                        <?php endif; ?>
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-
-                                        <!-- New Ticket Button -->
-                                        <div class="text-center mt-4">
-                                            <a href="support_ticket_create.php" class="btn btn-primary btn-lg">
-                                                <i class="feather icon-plus mr-2"></i><?php echo __('create_new_ticket'); ?>
-                                            </a>
-                                        </div>
-                                    </div>
+                                <div class="st-topbar-right">
+                                    <a href="dashboard.php" class="st-btn-back">
+                                        <i class="feather icon-arrow-left"></i> <?php echo __('back_to_dashboard'); ?>
+                                    </a>
+                                    <a href="support_ticket_create.php" class="st-btn-create">
+                                        <i class="feather icon-plus"></i> <?php echo __('create_new_ticket'); ?>
+                                    </a>
                                 </div>
                             </div>
-                        </div>
+
+                            <!-- Stats Strip -->
+                            <div class="st-stats">
+                                <div class="st-stat stat-total">
+                                    <div class="st-stat-bar"></div>
+                                    <div class="st-stat-num"><?php echo $stats['total'] ?? 0; ?></div>
+                                    <div class="st-stat-label"><?php echo __('total'); ?></div>
+                                    <span class="st-stat-icon feather icon-bar-chart-2"></span>
+                                </div>
+                                <div class="st-stat stat-open">
+                                    <div class="st-stat-bar"></div>
+                                    <div class="st-stat-num"><?php echo $stats['open'] ?? 0; ?></div>
+                                    <div class="st-stat-label"><?php echo __('open'); ?></div>
+                                    <span class="st-stat-icon feather icon-circle"></span>
+                                </div>
+                                <div class="st-stat stat-progress">
+                                    <div class="st-stat-bar"></div>
+                                    <div class="st-stat-num"><?php echo $stats['in_progress'] ?? 0; ?></div>
+                                    <div class="st-stat-label"><?php echo __('in_progress'); ?></div>
+                                    <span class="st-stat-icon feather icon-clock"></span>
+                                </div>
+                                <div class="st-stat stat-resolved">
+                                    <div class="st-stat-bar"></div>
+                                    <div class="st-stat-num"><?php echo $stats['resolved'] ?? 0; ?></div>
+                                    <div class="st-stat-label"><?php echo __('resolved'); ?></div>
+                                    <span class="st-stat-icon feather icon-check-circle"></span>
+                                </div>
+                                <div class="st-stat stat-breached">
+                                    <div class="st-stat-bar"></div>
+                                    <div class="st-stat-num"><?php echo $stats['breached'] ?? 0; ?></div>
+                                    <div class="st-stat-label"><?php echo __('sla_breached'); ?></div>
+                                    <span class="st-stat-icon feather icon-alert-triangle"></span>
+                                </div>
+                                <div class="st-stat stat-risk">
+                                    <div class="st-stat-bar"></div>
+                                    <div class="st-stat-num"><?php echo $stats['at_risk'] ?? 0; ?></div>
+                                    <div class="st-stat-label"><?php echo __('at_risk'); ?></div>
+                                    <span class="st-stat-icon feather icon-alert-circle"></span>
+                                </div>
+                            </div>
+
+                            <!-- Filters -->
+                            <form method="GET">
+                                <div class="st-filters">
+                                    <div class="st-filter-group">
+                                        <label><?php echo __('status'); ?></label>
+                                        <select name="status" class="st-select" onchange="this.form.submit()">
+                                            <option value=""><?php echo __('all_status'); ?></option>
+                                            <option value="open"        <?php echo $status_filter === 'open'        ? 'selected' : ''; ?>><?php echo __('open'); ?></option>
+                                            <option value="in_progress" <?php echo $status_filter === 'in_progress' ? 'selected' : ''; ?>><?php echo __('in_progress'); ?></option>
+                                            <option value="resolved"    <?php echo $status_filter === 'resolved'    ? 'selected' : ''; ?>><?php echo __('resolved'); ?></option>
+                                            <option value="closed"      <?php echo $status_filter === 'closed'      ? 'selected' : ''; ?>><?php echo __('closed'); ?></option>
+                                        </select>
+                                    </div>
+                                    <div class="st-filter-group">
+                                        <label><?php echo __('category'); ?></label>
+                                        <select name="category" class="st-select" onchange="this.form.submit()">
+                                            <option value=""><?php echo __('all_categories'); ?></option>
+                                            <?php foreach ($categories as $cat): ?>
+                                                <option value="<?php echo $cat['id']; ?>" <?php echo $category_filter == $cat['id'] ? 'selected' : ''; ?>>
+                                                    <?php echo htmlspecialchars($cat['name']); ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div class="st-filter-group">
+                                        <label><?php echo __('priority'); ?></label>
+                                        <select name="priority" class="st-select" onchange="this.form.submit()">
+                                            <option value=""><?php echo __('all_priorities'); ?></option>
+                                            <option value="critical" <?php echo $priority_filter === 'critical' ? 'selected' : ''; ?>><?php echo __('critical'); ?></option>
+                                            <option value="high"     <?php echo $priority_filter === 'high'     ? 'selected' : ''; ?>><?php echo __('high'); ?></option>
+                                            <option value="medium"   <?php echo $priority_filter === 'medium'   ? 'selected' : ''; ?>><?php echo __('medium'); ?></option>
+                                            <option value="low"      <?php echo $priority_filter === 'low'      ? 'selected' : ''; ?>><?php echo __('low'); ?></option>
+                                        </select>
+                                    </div>
+                                    <a href="support_tickets.php" class="st-btn-reset">
+                                        <i class="feather icon-refresh-cw"></i> <?php echo __('reset_filters'); ?>
+                                    </a>
+                                </div>
+                            </form>
+
+                            <!-- Table Card -->
+                            <div class="st-table-card">
+                                <div class="st-table-head">
+                                    <h5 class="st-table-head-title">
+                                        <i class="feather icon-list" style="opacity:.5"></i>
+                                        <?php echo __('support_tickets'); ?>
+                                        <span class="st-count-badge"><?php echo count($tickets); ?></span>
+                                    </h5>
+                                </div>
+                                <div class="st-table-wrap">
+                                    <table class="st-table">
+                                        <thead>
+                                            <tr>
+                                                <th><?php echo __('ticket_number'); ?></th>
+                                                <th><?php echo __('title'); ?></th>
+                                                <th><?php echo __('category'); ?></th>
+                                                <th><?php echo __('priority'); ?></th>
+                                                <th><?php echo __('status'); ?></th>
+                                                <th><?php echo __('sla_status'); ?></th>
+                                                <th><?php echo __('created'); ?></th>
+                                                <th><?php echo __('action'); ?></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php if (empty($tickets)): ?>
+                                                <tr>
+                                                    <td colspan="8">
+                                                        <div class="st-empty">
+                                                            <i class="feather icon-inbox st-empty-icon"></i>
+                                                            <p class="st-empty-text"><?php echo __('no_tickets_found'); ?></p>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            <?php else: ?>
+                                                <?php foreach ($tickets as $ticket): ?>
+                                                    <tr>
+                                                        <td>
+                                                            <span class="st-ticket-num"><?php echo htmlspecialchars($ticket['ticket_number']); ?></span>
+                                                        </td>
+                                                        <td>
+                                                            <span class="st-ticket-title"><?php echo htmlspecialchars(substr($ticket['title'], 0, 48)); ?><?php echo strlen($ticket['title']) > 48 ? '…' : ''; ?></span>
+                                                        </td>
+                                                        <td>
+                                                            <span class="chip chip-cat"><?php echo htmlspecialchars($ticket['category_name']); ?></span>
+                                                        </td>
+                                                        <td>
+                                                            <span class="chip chip-<?php echo $ticket['priority']; ?>">
+                                                                <?php echo ucfirst($ticket['priority']); ?>
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <span class="chip chip-<?php echo $ticket['status']; ?>">
+                                                                <?php echo ucwords(str_replace('_', ' ', $ticket['status'])); ?>
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <span class="chip chip-<?php echo $ticket['sla_display']['color']; ?>">
+                                                                <?php echo $ticket['sla_display']['status']; ?>
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <span class="st-date"><?php echo date('M d, Y', strtotime($ticket['created_at'])); ?></span>
+                                                        </td>
+                                                        <td>
+                                                            <a href="support_ticket_detail.php?id=<?php echo $ticket['id']; ?>" class="st-btn-view">
+                                                                <i class="feather icon-eye"></i> <?php echo __('view'); ?>
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                            <?php endif; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                        </div><!-- /st-shell -->
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <!-- Required Js -->
-    
-    <script src="../assets/js/vendor-all.min.js"></script>
-    <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-    <script src="../assets/js/pcoded.min.js"></script>
+</div>
+
+<script src="../assets/js/vendor-all.min.js"></script>
+<script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+<script src="../assets/js/pcoded.min.js"></script>
 <?php include '../includes/admin_footer.php'; ?>

@@ -97,6 +97,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Prepare form data
         const formData = new FormData();
+        formData.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
         formData.append('visa_id', visaId);
         formData.append('refund_type', refundType);
         formData.append('refund_amount', refundAmount);

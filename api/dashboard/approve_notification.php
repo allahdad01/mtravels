@@ -8,6 +8,19 @@ $branch_id = $_SESSION['branch_id'];
 // DB Connection
 require_once '../../includes/db.php';
 
+// CSRF Protection
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+// Verify CSRF token
+$csrf_token = isset($_POST['csrf_token']) ? $_POST['csrf_token'] : '';
+if (empty($csrf_token) || $csrf_token !== $_SESSION['csrf_token']) {
+    http_response_code(403);
+    echo json_encode(['status' => 'error', 'message' => 'Security validation failed. Please try again.']);
+    exit;
+}
+
 // Validate remarks
 $remarks = isset($_POST['remarks']) ? DbSecurity::validateInput($_POST['remarks'], 'string', ['maxlength' => 255]) : null;
 

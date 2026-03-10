@@ -533,6 +533,23 @@ $version = '?v=' . time();
         </div>
     </div>
 </div>
+
+<?php
+// Fetch clients for the multi-ticket invoice modal
+$clients = [];
+try {
+    $stmt = $pdo->prepare(
+        "SELECT id, name FROM clients 
+         WHERE tenant_id = ? AND branch_id = ? 
+         ORDER BY name ASC"
+    );
+    $stmt->execute([$tenant_id, $branch_id]);
+    $clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    error_log("Error fetching clients: " . $e->getMessage());
+}
+?>
+
 <?php include '../modals/ticket_refund/refund_ticket_modal.php'; ?>
 <?php include '../modals/ticket_refund/transaction_modal.php'; ?>
 <?php include '../modals/ticket_refund/edit_transaction_modal.php'; ?>

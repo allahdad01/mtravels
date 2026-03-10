@@ -17,9 +17,6 @@ ini_set('display_errors', 0); // Don't display errors, log them instead
 
 error_log("API: Starting maktob management endpoint");
 
-// Include database security module for input validation
-require_once '../../admin/includes/db_security.php';
-
 // Include security module
 require_once '../../admin/security.php';
 

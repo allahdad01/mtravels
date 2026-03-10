@@ -585,23 +585,25 @@ $(document).ready(function() {
     function getBadgeClass(source) {
         switch(source) {
             case 'Ticket Bookings':
-                return 'primary';
+                return 'ticket';
+            case 'Ticket Reservations':
+                return 'ticket-res';
             case 'Visa Applications':
-                return 'success';
+                return 'visa';
             case 'Umrah Bookings':
-                return 'info';
+                return 'umrah';
             case 'Hotel Bookings':
-                return 'warning';
+                return 'hotel';
             case 'Refunded Tickets':
-                return 'danger';
+                return 'refund';
             case 'Date Changed Tickets':
-                return 'secondary';
+                return 'datechange';
             case 'Ticket Weights':
-                return 'danger';
+                return 'weight';
             case 'Additional Payments':
-                return 'dark';
+                return 'payment';
             default:
-                return 'light';
+                return 'default';
         }
     }
 }); 

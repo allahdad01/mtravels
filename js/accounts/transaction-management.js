@@ -627,11 +627,15 @@ document.getElementById('saveEditTransactionBtn').addEventListener('click', func
     this.disabled = true;
     this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> saving...';
 
+    // Get CSRF token and add to formData
+     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+     formData.append('csrf_token', csrfToken);
+
     // Send AJAX request to update the transaction
-    fetch('../api/accounts/update_transaction.php', {
-        method: 'POST',
-        body: formData
-    })
+     fetch('../api/accounts/update_transaction.php', {
+         method: 'POST',
+         body: formData
+     })
     .then(response => response.json())
     .then(data => {
         // Reset button state
@@ -686,6 +690,9 @@ document.getElementById('saveEditReceiptBtn').addEventListener('click', function
     this.disabled = true;
     this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> saving...';
 
+    // Get CSRF token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
     // Send AJAX request to update the receipt
     fetch('../api/accounts/update_receipt.php', {
         method: 'POST',
@@ -695,7 +702,8 @@ document.getElementById('saveEditReceiptBtn').addEventListener('click', function
         body: JSON.stringify({
             transaction_id: transactionId,
             transaction_type: transactionType,
-            receipt: receipt
+            receipt: receipt,
+            csrf_token: csrfToken
         })
     })
     .then(response => response.json())
@@ -759,7 +767,8 @@ function deleteTransaction(transactionId, transactionType) {
         },
         body: JSON.stringify({
             transaction_id: transactionId,
-            transaction_type: transactionType
+            transaction_type: transactionType,
+            csrf_token: document.querySelector('meta[name="csrf-token"]')?.content || window.csrfToken
         })
     })
     .then(response => response.json())

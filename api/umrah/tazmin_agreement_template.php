@@ -1,5 +1,7 @@
 <?php
 require_once '../../includes/db.php';
+require_once '../../includes/TemplateManager.php';
+require_once 'tazmin_default_templates.php';
 session_start();
 
 if (!isset($_GET['pilgrim_ids']) || empty($_GET['pilgrim_ids'])) {
@@ -8,15 +10,15 @@ if (!isset($_GET['pilgrim_ids']) || empty($_GET['pilgrim_ids'])) {
 }
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
-// Fetch settings data (using PDO connection)
+$language = isset($_GET['language']) && in_array($_GET['language'], ['ps', 'dari']) ? $_GET['language'] : 'ps';
+
+// Fetch settings data
 try {
     $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
     $settingStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
     $settingStmt->execute();
     $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
-
     if (!$settings) {
-        // Fallback defaults if no settings row found
         $settings = ['agency_name' => 'Travel Agency'];
     }
 } catch (Exception $e) {
@@ -24,7 +26,10 @@ try {
     $settings = ['agency_name' => 'Travel Agency'];
 }
 
-// Fetch branch data (from branches table)
+// Initialize TemplateManager
+$templateManager = new TemplateManager($pdo, $tenant_id);
+
+// Fetch branch data
 try {
     $branchStmt = $pdo->prepare("SELECT name, code, phone, address, email FROM branches WHERE id = ? AND tenant_id = ?");
     $branchStmt->bindParam(1, $branch_id, PDO::PARAM_INT);
@@ -55,186 +60,395 @@ $guarantor_name = isset($_GET['guarantor_name']) ? $_GET['guarantor_name'] : '__
 $date = date('Y/m/d');
 $duration = '15';
 if (!empty($pilgrims_info) && isset($pilgrims_info[0]['duration'])) {
-    // Extract numeric value from duration string (e.g., "15 Days" -> "15")
     $duration = intval(preg_replace('/[^0-9]/', '', $pilgrims_info[0]['duration']));
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="ps" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>د ضمانت لیک - <?php echo htmlspecialchars($settings['agency_name']); ?> - <?php echo htmlspecialchars($branch['name']); ?> شرکت</title>
+    <title>د ضمانت لیک - <?php echo htmlspecialchars($settings['agency_name']); ?> - <?php echo htmlspecialchars($branch['name'] ?? ''); ?> شرکت</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        /* ── CSS Variables ─────────────────────────────────────────── */
+        :root {
+            --gold:        #b8960c;
+            --gold-light:  #d4af37;
+            --gold-pale:   #f5edd6;
+            --dark:        #1a1a2e;
+            --ink:         #1c1c1c;
+            --muted:       #555;
+            --border:      #c8a951;
+            --bg:          #ffffff;
+            --section-bg:  #fdfbf5;
+        }
+
+        /* ── Page / Print Setup ────────────────────────────────────── */
         @page {
             size: A4;
-            margin: 1cm;
+            margin: 0.8cm 1cm;
         }
+
+        * { box-sizing: border-box; }
+
         body {
-            font-family: 'Noto Naskh Arabic', Arial, sans-serif;
-            line-height: 1.3;
-            padding: 0;
-            max-width: 21cm;
-            margin: 0 auto;
-            background: #fff;
-            color: #000;
+            font-family: 'Noto Naskh Arabic', 'Arial', sans-serif;
             font-size: 11px;
-            min-height: 29.7cm;
-            position: relative;
+            line-height: 1.65;
+            color: var(--ink);
+            background: var(--bg);
+            max-width: 21cm;
+            /* Strict A4 height so browser preview also shows one page */
+            height: 29.7cm;
+            overflow: hidden;
+            margin: 0 auto;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
+
+        /* ── Decorative top stripe ─────────────────────────────────── */
+        .top-stripe {
+            height: 5px;
+            flex-shrink: 0;
+            background: linear-gradient(to left, var(--gold), var(--gold-light), var(--gold));
+        }
+
+        /* ── Header ────────────────────────────────────────────────── */
         .header {
+            display: grid;
+            grid-template-columns: 75px 1fr 105px;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px 6px;
+            border-bottom: 1.5px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .header-logo {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+        }
+
+        .header-logo img {
+            width: 68px;
+            height: 68px;
+            object-fit: contain;
+        }
+
+        .header-center {
             text-align: center;
-            margin-bottom: 10px;
-            border-bottom: 2px double #000;
-            padding-bottom: 5px;
         }
-        .header img {
-            width: 80px;
-            height: auto;
-            margin-bottom: 5px;
+
+        .header-center h1 {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--dark);
+            margin: 0 0 2px;
         }
-        .header h2 {
-            font-size: 16px;
-            margin: 0 0 5px 0;
-            color: #000;
+
+        .header-center .subtitle {
+            font-size: 11px;
+            color: var(--gold);
+            font-weight: 600;
+            margin: 0 0 2px;
         }
-        .header p {
-            margin: 2px 0;
-            font-size: 12px;
+
+        .header-contact {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            font-size: 9.5px;
+            color: var(--muted);
+            text-align: left;
         }
-        .content {
-            text-align: justify;
-            padding: 0 5px;
+
+        .header-contact span {
+            display: flex;
+            align-items: center;
+            gap: 3px;
         }
-        .content ol {
-            margin: 5px 20px;
-            padding-right: 20px;
-        }
-        .content ol li {
-            margin-bottom: 2px;
-            line-height: 1.3;
-            text-align: justify;
-            position: relative;
-            padding-right: 5px;
-        }
-        .guarantor-section {
-            margin: 10px 0;
-            padding: 8px 12px;
-            border: 1px solid #000;
-            border-radius: 5px;
-            background-color: #f9f9f9;
-        }
-        .guarantor-section p:first-child {
-            margin-top: 0;
-            margin-bottom: 8px;
-        }
-        .footer {
-            position: relative;
-            margin-top: 10px;
-            left: 0;
-            right: 0;
+
+        /* ── Document meta bar ─────────────────────────────────────── */
+        .meta-bar {
             display: flex;
             justify-content: space-between;
-            padding: 0 50px;
-            page-break-inside: avoid;
+            align-items: center;
+            background: var(--gold-pale);
+            border-bottom: 1px solid var(--border);
+            padding: 3px 12px;
+            font-size: 10px;
+            color: var(--ink);
+            flex-shrink: 0;
         }
-        .signature-line {
-            border-top: 1px solid black;
-            width: 200px;
+
+        .meta-bar .doc-title {
+            font-size: 11.5px;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        .meta-bar .doc-date {
+            direction: ltr;
+            font-size: 10px;
+            color: var(--muted);
+        }
+
+        /* ── Main content ──────────────────────────────────────────── */
+        .content {
+            padding: 5px 12px 0;
+            text-align: justify;
+            flex-shrink: 1;
+            overflow: hidden;
+        }
+
+        .content ol {
+            margin: 3px 0;
+            padding-right: 20px;
+        }
+
+        .content ol li {
+            margin-bottom: 1px;
+            line-height: 1.65;
+            text-align: justify;
+            padding-right: 3px;
+        }
+
+        /* ── Guarantor section ─────────────────────────────────────── */
+        .guarantor-section {
+            margin: 6px 12px 0;
+            padding: 7px 12px;
+            border: 1px solid var(--border);
+            border-right: 4px solid var(--gold);
+            border-radius: 4px;
+            background: var(--section-bg);
+            flex-shrink: 0;
+        }
+
+        .guarantor-title {
+            font-size: 12px;
+            font-weight: 700;
             text-align: center;
-            padding-top: 3px;
-            font-weight: bold;
+            color: var(--dark);
+            margin: 0 0 5px;
+            padding-bottom: 4px;
+            border-bottom: 1px dashed var(--border);
+        }
+
+        .guarantor-text {
+            text-align: justify;
+            line-height: 1.75;
             font-size: 11px;
-            margin-top: 15px;
+            margin: 0;
         }
-        .signature-box {
+
+        /* ── Signature footer ──────────────────────────────────────── */
+        .footer {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            margin: 6px 12px 0;
+            padding-top: 6px;
+            border-top: 1px solid #ddd;
+            flex-shrink: 0;
+        }
+
+        .sig-block {
             text-align: center;
-            min-height: 20px;
-            margin-bottom: 5px;
         }
+
+        .sig-space {
+            height: 44px;
+            border-bottom: 1.5px solid var(--ink);
+            margin-bottom: 4px;
+            position: relative;
+        }
+
+        .sig-space::after {
+            content: '✦';
+            position: absolute;
+            bottom: 3px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ccc;
+            font-size: 9px;
+        }
+
+        .sig-label {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--dark);
+            margin-top: 2px;
+        }
+
+        .sig-sublabel {
+            font-size: 9px;
+            color: var(--muted);
+            margin-top: 1px;
+        }
+
+        /* ── Bottom stripe ─────────────────────────────────────────── */
+        .bottom-stripe {
+            height: 5px;
+            flex-shrink: 0;
+            background: linear-gradient(to left, var(--gold), var(--gold-light), var(--gold));
+            margin-top: auto;
+        }
+
+        /* ── Print overrides ───────────────────────────────────────── */
         @media print {
             body {
-                height: 29.7cm;
+                height: auto;
+                overflow: visible;
             }
+
             .guarantor-section {
-                background-color: #fff;
+                background-color: var(--section-bg) !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
                 break-inside: avoid;
             }
-            .footer {
-                position: relative;
-                margin-top: 10px;
-                bottom: auto;
-                width: calc(100% - 100px);
-                break-inside: avoid;
+
+            .meta-bar {
+                background-color: var(--gold-pale) !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
-            .content {
-                break-inside: auto;
+
+            .footer { break-inside: avoid; }
+
+            .top-stripe,
+            .bottom-stripe {
+                background: linear-gradient(to left, var(--gold), var(--gold-light), var(--gold)) !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
         }
     </style>
 </head>
 <body>
+
+    <!-- Top gold stripe -->
+    <div class="top-stripe"></div>
+
+    <!-- ── HEADER ───────────────────────────────────────────────────── -->
     <div class="header">
-        <img src="../../uploads/logo/<?= htmlspecialchars($settings['logo']) ?>" alt="Al-Moqadas Logo" style="width: 100px; height: auto;">
-        <h2>د <?php echo htmlspecialchars($settings['agency_name']); ?> - <?php echo htmlspecialchars($branch['name']); ?> سیاحتی او توریستی شرکت سره د محترم <?php echo htmlspecialchars($guarantor_name); ?> ضمانت لیک</h2>
-        <p>د معتمرینو د لیږد په اړه لاندی مسؤلیتونو ته پاملرنه</p>
-        <p>تاریخ: <?php echo $date; ?></p>
+
+        <!-- Logo (RTL: appears on the right) -->
+        <div class="header-logo">
+            <img src="../../uploads/logo/<?= htmlspecialchars($settings['logo'] ?? '') ?>" alt="Agency Logo">
+        </div>
+
+        <!-- Center: agency name + document subtitle -->
+        <div class="header-center">
+            <h1><?php echo htmlspecialchars($settings['agency_name']); ?></h1>
+            <div class="subtitle"><?php echo htmlspecialchars($branch['name'] ?? ''); ?></div>
+            <?php
+                $subtitleTemplate = $templateManager->getTemplate('tazmin_agreement_subtitle', $language, $DEFAULT_TEMPLATES['tazmin_agreement_subtitle'][$language] ?? '');
+                echo '<div style="font-size:11px;color:var(--muted);">' . $subtitleTemplate . '</div>';
+            ?>
+        </div>
+
+        <!-- Contact info (left column in RTL layout) -->
+        <div class="header-contact">
+            <?php if (!empty($branch['phone'])): ?>
+            <span>📞 <?= htmlspecialchars($branch['phone']) ?></span>
+            <?php endif; ?>
+            <?php if (!empty($branch['email'])): ?>
+            <span>✉ <?= htmlspecialchars($branch['email']) ?></span>
+            <?php endif; ?>
+            <?php if (!empty($branch['address'])): ?>
+            <span>📍 <?= htmlspecialchars($branch['address']) ?></span>
+            <?php endif; ?>
+        </div>
+
     </div>
 
+    <!-- ── META BAR ─────────────────────────────────────────────────── -->
+    <div class="meta-bar">
+        <span class="doc-title">
+            <?php
+                $headerTemplate = $templateManager->getTemplate('tazmin_agreement_header', $language, $DEFAULT_TEMPLATES['tazmin_agreement_header'][$language] ?? '');
+                $headerTemplate = str_replace(
+                    ['{{agency_name}}', '{{branch_name}}', '{{guarantor_name}}'],
+                    [htmlspecialchars($settings['agency_name']), htmlspecialchars($branch['name'] ?? ''), htmlspecialchars($guarantor_name)],
+                    $headerTemplate
+                );
+                echo $headerTemplate;
+            ?>
+        </span>
+        <span class="doc-date">📅 تاریخ: <?php echo $date; ?></span>
+    </div>
+
+    <!-- ── MAIN CONTENT ─────────────────────────────────────────────── -->
     <div class="content">
-        <ol>
-            <li>د <?php echo htmlspecialchars($settings['agency_name']); ?> شرکت مکلفیت لری ترڅو د عمری ویزه په سعودی عربستان کی د استوګنی انتظام او د معتمرینو لپاره د ترانسپورت اسانتیاوی برابری کړی.</li>
-            <li>د عمری د ویزی ارزښت په ټاکلی نرخ چی د حج او اوقافو وزارت له اړخه تعین شوی ده.</li>
-            <li>د معتمربیرته راتګ په ټاکلی مهال د یوه ډاډمن تضمین له مخی لکه صراف او یاهم معتبرتضمین، پدی معنا چی خپل معتمر د وخت له پوره کیدو سره سم کابل ته راستون کړی.</li>
-            <li>که معتمر له (<?php echo $duration; ?>) ورځو زیات په سعودی عربستان کی پاتی شی نو متخلف بلل کیږی هرډول جریمه چی د سعودی عربستان د شرکت لخوا د <?php echo htmlspecialchars($settings['agency_name']); ?> پر شرکت وضع کیږی ضامن مکلفیت لری چی د <?php echo htmlspecialchars($settings['agency_name']); ?> شرکت ته یی تحویل کړی.</li>
-            <li>که معتمر چیرته تخلف وکړی نو ضامن اړ دی چی حداقل (۱۰۰۰۰۰) سل زره سعودی ریال د یو معتمر په سر تحویل کړی، او هرډول خساره چی له ټاکلی اندازی زیاته وی نو ضامن مسؤل دی چی داخساره هم ادا کړی.</li>
-            <li>که په ویزه کی کوم ډول جعل او تذویر پیداکیږی او یاهم د معتمر لخوا تری غیر قانونی استفاده کیږی نو پدی حالت کی معتمر متخلف بلل کیږی کومه جریمه چی په <?php echo htmlspecialchars($settings['agency_name']); ?> شرکت راځی نو ضامن د ادا کولو مسؤلیت لری.</li>
-            <li>د پرواز د نیټی تغیرولو په صورت کی ضامن اړ دی چی د <?php echo htmlspecialchars($settings['agency_name']); ?> شرکت ته خبر ورکړی او که نه معتمر متخلف مسؤلیت یی د ضامن پر غاړه دی.</li>
-            <li>که د معتمر په پاسپورت کی دخولی او خروجی لګیدلی وی، او په سیستم کی څرکند نه شو پدی حالت کی ضامن مسؤل دی چی پاسپورت د <?php echo htmlspecialchars($settings['agency_name']); ?> شرکت ته وسپاری او که نه متخلف دی مسؤلیت یی د ضامن پر غاړه دی.</li>
-            <li>که کوم شخص په سعودی عربستان کی له شخصی ترانسپورت څخه استفاده کوی، خدای ج مه کړه کومه ستونزه، حادثه ورته پیښه شی نو مسؤلیت یی د معتمر پرغاړه دی.</li>
-            <li>هرڅوک چی عمری ته د تګ نیت لری باید د سالم عقل کامل هوش څښتن وی. خو د معتمر راستنیدل په ټاکلی وخت کی لازمی امر دی که له ټاکلی مهال یی زیات وخت تیر کړ نو ضامن د هرډول نقصان مسؤلیت لری که معتمر له ټاکلی مهال زیات وخت تیر کړ ضامن د جبران خساری مسؤلیت لری او که معتمر ورک شو نو ضامن باید ډیر ژرد <?php echo htmlspecialchars($settings['agency_name']); ?> شرکت ته خبر ورکړی ترڅو د خپل مسؤلیت له مخی د ورک شوو، مړو او زندانونو له ریاستونو معلومات حاصل کړی که معتمر به نوموړو ځایو کی وجود نه درلود نو ضامن د راتلونکو مسؤلیتونو ځواب ویونکی دی.</li>
-            <li>معتمر باید د خپلی عمری د ویزی قیمت (۵۰٪) پنځوس فیصده مبلغ له پاسپورت سره سم دفتر ته ورکړی او نور مبلغ (۲۴) څلورویشت ساعته د پرواز څخه دمخه د <?php echo htmlspecialchars($settings['agency_name']); ?> دفتر ته وسپاری، او که نه د ټکټ د باطلیدو مسؤلیت به د معتمر پر غاړه وی.</li>
-            <li>په سعودی عربستان کی د <?php echo htmlspecialchars($settings['agency_name']); ?> شرکت نمایندګان له معتمر سره تر راستنیدو پوری به لازمه همکاری کوی.</li>
-            <li>د معتمرینو د بیرته راتګ څخه وروسته هر معتمر مکلف دی چی خپل پاسپورت د (۱۰) ورځوو په موده کی د <?php echo htmlspecialchars($settings['agency_name']); ?> شرکت ته ددوخول او خروج لپاره <?php echo htmlspecialchars($settings['agency_name']); ?> شرکت ته راوړی او خپل اصلی اسناد د <?php echo htmlspecialchars($settings['agency_name']); ?> شرکت څخه تسلیم شی.</li>
-            <li>که کوم معتمر د پاسپورت د تسلیمیدو سره سم د کوم شخصی یا قدرتی افت یا ستونزی سره مخامخ او د پرواز څخه پاتی شی باید پاسپورت بیرته شرکت ته تسلیم کړی او که چیرته یی تسلیم نه کړی او دکومی ستونزی سره مخامخ شی مسؤلیت یی پر خپله غاړه دی.</li>
-            <li>ټول معتمرین مکلف دی چی هیڅ غیر قانونی مواد لکه هیروین، چرس، پوډر او داسی نور... عربستان سعودی ته انتقال نکړی، او دعمری د سپیڅلی نوم څخه ناوړه ګټه وانخلی.</li>
-            <li>ټول معتمرین مکلف دی چی د افغانستان او سعودی عربستان دولتونو وضع شوی قوانین مراعت کړی او د تخلف په صورت کی معتمر مجرم او ټول مسؤلیت یی ضمانت کونکی ته راجع کیږی.</li>
-            <li>هر معتمر مکلف دی چی د ضمانت ترڅنګ د نږدی خپلوانو څخه یو کس لکه ورور، پلار، تره او داسی نور داصلی تذکره سره هم د معتمرد ضمانت په خاطر شرکت ته حاضر کړی.</li>
-            <li>د پرواز د نیټی تغیرولو په صورت کی معتمرین اړدی چی د <?php echo htmlspecialchars($settings['agency_name']); ?> شرکت ته خبر ورکړی او که نه ټول مسؤلیت یی د معتمر پر غاړه دی.</li>
+        <?php
+            $defaultTemplate = $DEFAULT_TEMPLATES['tazmin_agreement'][$language] ?? '';
+            $templateContent = $templateManager->getTemplate('tazmin_agreement', $language, $defaultTemplate);
+            $templateContent = str_replace(
+                ['{{agency_name}}', '{{duration}}'],
+                [htmlspecialchars($settings['agency_name']), $duration],
+                $templateContent
+            );
+            echo $templateContent;
+        ?>
+    </div>
 
-        </ol>
-
-        <div class="guarantor-section">
-            <p style="font-size: 16px; text-align: center; margin-bottom: 20px;">
-                <strong>د ضمانت کوونکی ژمنه</strong>
-            </p>
-            <p style="text-align: justify; line-height: 2;">
-                زه ښاغلی <strong><?php echo htmlspecialchars($guarantor_name); ?></strong> د
-                <?php
+    <!-- ── GUARANTOR SECTION ─────────────────────────────────────────── -->
+    <div class="guarantor-section">
+        <p class="guarantor-title">
+            <?php
+                $guarantorTitleTemplate = $templateManager->getTemplate('tazmin_agreement_guarantor_title', $language, $DEFAULT_TEMPLATES['tazmin_agreement_guarantor_title'][$language] ?? '');
+                echo $guarantorTitleTemplate;
+            ?>
+        </p>
+        <p class="guarantor-text">
+            <?php
                 $pilgrim_details = [];
                 foreach ($pilgrims_info as $pilgrim) {
                     $pilgrim_details[] = '<strong>' . htmlspecialchars($pilgrim['name']) . '</strong> پاسپورت نمبر (<strong>' . htmlspecialchars($pilgrim['passport_number']) . '</strong>)';
                 }
-                echo implode(' او ', $pilgrim_details);
-                ?>
-                د سعودی عربستان څخه افغانستان ته د بیرته راتګ ضامن یم او د تخلف په صورت کی هرډول جریمه او زیان مسؤل یم.
-            </p>
+                $pilgrim_names = implode(' او ', $pilgrim_details);
+
+                $guarantorTextTemplate = $templateManager->getTemplate('tazmin_agreement_guarantor_text', $language, $DEFAULT_TEMPLATES['tazmin_agreement_guarantor_text'][$language] ?? '');
+                $guarantorTextTemplate = str_replace(
+                    ['{{guarantor_name}}', '{{pilgrim_names}}'],
+                    [htmlspecialchars($guarantor_name), $pilgrim_names],
+                    $guarantorTextTemplate
+                );
+                echo $guarantorTextTemplate;
+            ?>
+        </p>
+    </div>
+
+    <!-- ── SIGNATURE FOOTER ─────────────────────────────────────────── -->
+    <div class="footer">
+
+        <div class="sig-block">
+            <div class="sig-space"></div>
+            <div class="sig-label">د ضامن لاسلیک</div>
+            <div class="sig-sublabel">ګوته / مهر</div>
         </div>
 
-        <div class="footer">
-            <div>
-                <div class="signature-box">
-                    <!-- Space for actual signature -->
-                </div>
-                <div class="signature-line">د ضامن لاسلیک او ګوته</div>
-            </div>
-            <div>
-                <div class="signature-box">
-                    <!-- Space for actual signature -->
-                </div>
-                <div class="signature-line">د شاهد لاسلیک او ګوته</div>
-            </div>
+        <div class="sig-block">
+            <div class="sig-space"></div>
+            <div class="sig-label">د شرکت مهر او لاسلیک</div>
+            <div class="sig-sublabel">Official Stamp</div>
         </div>
+
+        <div class="sig-block">
+            <div class="sig-space"></div>
+            <div class="sig-label">د شاهد لاسلیک</div>
+            <div class="sig-sublabel">ګوته / مهر</div>
+        </div>
+
     </div>
+
+    <!-- Bottom gold stripe -->
+    <div class="bottom-stripe"></div>
+
 </body>
 </html>

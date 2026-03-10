@@ -100,9 +100,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $return_origin = isset($_POST['returnOrigin']) ? htmlspecialchars($_POST['returnOrigin']) : '';
     $return_destination = isset($_POST['returnDestination']) ? htmlspecialchars($_POST['returnDestination']) : '';
     $airline = isset($_POST['airline']) ? htmlspecialchars($_POST['airline']) : '';
-    $issue_date = isset($_POST['issueDate']) ? $_POST['issueDate'] : null;
-    $departure_date = isset($_POST['departureDate']) ? $_POST['departureDate'] : null;
-    $return_date = isset($_POST['returnDate']) ? $_POST['returnDate'] : null;
+    $issue_date = isset($_POST['issueDate']) && !empty($_POST['issueDate']) ? $_POST['issueDate'] : null;
+    $departure_date = isset($_POST['departureDate']) && !empty($_POST['departureDate']) ? $_POST['departureDate'] : null;
+    $return_date = isset($_POST['returnDate']) && !empty($_POST['returnDate']) ? $_POST['returnDate'] : null;
     $base = isset($_POST['base']) ? floatval($_POST['base']) : 0.0;
     $sold = isset($_POST['sold']) ? floatval($_POST['sold']) : 0.0;
     $profit = isset($_POST['pro']) ? floatval($_POST['pro']) : 0.0;

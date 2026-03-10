@@ -1928,12 +1928,13 @@ function addReview(userId, employeeName) {
 }
 
 function editReview(reviewId) {
-    $.ajax({
-        url: 'ajax/get_performance_review.php',
-        type: 'GET',
-        data: { review_id: reviewId, edit: 1 },
-        success: function(response) {
-            var data = JSON.parse(response);
+     $.ajax({
+         url: 'ajax/get_performance_review.php',
+         type: 'GET',
+         data: { review_id: reviewId, edit: 1 },
+         dataType: 'json',
+         success: function(response) {
+             var data = response;
             $('#userId').val(data.user_id);
             $('#employeeName').val(data.employee_name);
             $('#reviewId').val(data.id);
@@ -1974,13 +1975,14 @@ $('#performanceReviewForm').on('submit', function(e) {
     btn.html('<div class="pr-spinner" style="width:16px;height:16px;border-width:2px;margin:0 auto;"></div>').prop('disabled', true);
 
     $.ajax({
-        url: 'ajax/save_performance_review.php',
-        type: 'POST',
-        data: new FormData(this),
-        processData: false,
-        contentType: false,
-        success: function(response) {
-            var result = JSON.parse(response);
+         url: 'ajax/save_performance_review.php',
+         type: 'POST',
+         data: new FormData(this),
+         processData: false,
+         contentType: false,
+         dataType: 'json',
+         success: function(response) {
+             var result = response;
             if (result.success) {
                 $('#addReviewModal').modal('hide');
                 location.reload();

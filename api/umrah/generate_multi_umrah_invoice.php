@@ -11,6 +11,13 @@ enforce_auth();
 
 require_once '../../includes/db.php';
 
+// Define helper function for HTML escaping
+if (!function_exists('h')) {
+    function h(string $string): string {
+        return htmlspecialchars($string, ENT_QUOTES, 'UTF-8');
+    }
+}
+
 // Validate invoiceData
 $invoiceData = isset($_POST['invoiceData']) ? DbSecurity::validateInput($_POST['invoiceData'], 'string', ['maxlength' => 255]) : null;
 
@@ -65,26 +72,17 @@ try {
 }
 
 // Get tickets information
+$ticketIds = array_map('intval', $invoiceData['tickets'] ?? []);
 $placeholders = implode(',', array_fill(0, count($ticketIds), '?'));
 $ticketsQuery = "SELECT um.booking_id, um.name, um.passport_number, f.package_type,
-                um.flight_date, um.sold_price,
+                um.flight_date, um.sold_price
                 FROM umrah_bookings um
-                left join families f on um.family_id = f.family_id AND f.tenant_id = ? AND f.branch_id = ?
+                LEFT JOIN families f ON um.family_id = f.family_id AND f.tenant_id = ? AND f.branch_id = ?
                 WHERE um.booking_id IN ($placeholders) AND um.tenant_id = ? AND um.branch_id = ?
                 ORDER BY um.booking_id";
 
     $stmt = $pdo->prepare($ticketsQuery);
-
-    // Bind tenant_id, branch_id, ticket IDs, tenant_id, branch_id
-    $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
-    $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
-    for ($i = 0; $i < count($ticketIds); $i++) {
-        $stmt->bindParam($i + 3, $ticketIds[$i], PDO::PARAM_INT);
-    }
-    $stmt->bindParam(count($ticketIds) + 3, $tenant_id, PDO::PARAM_INT);
-    $stmt->bindParam(count($ticketIds) + 4, $branch_id, PDO::PARAM_INT);
-
-    $stmt->execute();
+    $stmt->execute([...$ticketIds, $tenant_id, $branch_id, $tenant_id, $branch_id]);
 
     $tickets = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -269,13 +267,13 @@ try {
         
         <div class="invoice-header">
             <div class="title-container">
-                <div class="logo-text"><?php echo htmlspecialchars($agencyInfo['title'] ?? 'Travel Agency'); ?></div>
+                <div class="logo-text"><?php echo htmlspecialchars($settings['title'] ?? 'Travel Agency'); ?></div>
                 <div>Professional Travel Services</div>
             </div>
             
             <div class="logo-container">
-                <?php if (!empty($agencyInfo['logo'])): ?>
-                <img src="<?php echo htmlspecialchars('../../uploads/logo/' . $agencyInfo['logo']); ?>" alt="Company Logo" class="logo-image">
+                <?php if (!empty($settings['logo'])): ?>
+                <img src="<?php echo htmlspecialchars('../../uploads/logo/' . $settings['logo']); ?>" alt="Company Logo" class="logo-image">
                 <?php endif; ?>
             </div>
             
@@ -288,17 +286,16 @@ try {
         <div class="invoice-info">
             <div class="company-info">
                 <div class="info-title">From:</div>
-                <div><?php echo htmlspecialchars($agencyInfo['title'] ?? 'Travel Agency'); ?></div>
+                <div><?php echo htmlspecialchars($settings['title'] ?? 'Travel Agency'); ?></div>
                 <?php 
                 // Split address into multiple lines if it contains commas
-                $address = $agencyInfo['address'] ?? '';
-                $addressLines = explode(',', $address);
+                $addressLines = explode(',', $branch['address'] ?? '');
                 foreach ($addressLines as $line) {
                     echo '<div>' . htmlspecialchars(trim($line)) . '</div>';
                 }
                 ?>
-                <div>Phone: <?php echo htmlspecialchars($agencyInfo['phone'] ?? ''); ?></div>
-                <div>Email: <?php echo htmlspecialchars($agencyInfo['email'] ?? ''); ?></div>
+                <div>Phone: <?php echo htmlspecialchars($branch['phone'] ?? ''); ?></div>
+                <div>Email: <?php echo htmlspecialchars($branch['email'] ?? ''); ?></div>
             </div>
             
             <div class="client-info">

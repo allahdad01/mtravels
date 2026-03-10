@@ -1,5 +1,10 @@
-            // Function to show toast
+            // Function to show toast with fallback to alert
             function showToast(message, type = 'success') {
+                // Fallback to standard alert if Swal is not available
+                if (typeof Swal === 'undefined') {
+                    alert(message);
+                    return;
+                }
                 Swal.fire({
                     toast: true,
                     position: 'top-end',

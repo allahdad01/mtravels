@@ -219,6 +219,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt_delete_supplier_transaction->bindParam(3, $branch_id, PDO::PARAM_INT);
                 $stmt_delete_supplier_transaction->execute();
             } else {
+                // For Internal suppliers with Bank transaction, check if a custom main_account was used
+                // Try to find the main_account_transactions record to get the actual account used
+                $stmt_get_main_account_tx = $pdo->prepare("
+                    SELECT main_account_id FROM main_account_transactions 
+                    WHERE reference_id = ? AND transaction_of = 'umrah_transaction' AND tenant_id = ? AND branch_id = ?
+                    LIMIT 1
+                ");
+                $stmt_get_main_account_tx->bindParam(1, $transaction_id, PDO::PARAM_INT);
+                $stmt_get_main_account_tx->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                $stmt_get_main_account_tx->bindParam(3, $branch_id, PDO::PARAM_INT);
+                $stmt_get_main_account_tx->execute();
+                $main_account_tx_result = $stmt_get_main_account_tx->fetch(PDO::FETCH_ASSOC);
+                
+                // If a main_account record exists, use that account ID, otherwise use the default paid_to
+                $actual_account_id = ($main_account_tx_result && $main_account_tx_result['main_account_id']) 
+                    ? intval($main_account_tx_result['main_account_id']) 
+                    : $paid_to;
+                
                 // Determine balance field based on transaction currency
                 if ($currency === 'USD') {
                     $balance_field = 'usd_balance';
@@ -233,7 +251,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 $stmt_get_balance = $pdo->prepare("SELECT $balance_field FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                $stmt_get_balance->bindParam(1, $paid_to, PDO::PARAM_INT);
+                $stmt_get_balance->bindParam(1, $actual_account_id, PDO::PARAM_INT);
                 $stmt_get_balance->bindParam(2, $tenant_id, PDO::PARAM_INT);
                 $stmt_get_balance->bindParam(3, $branch_id, PDO::PARAM_INT);
                 $stmt_get_balance->execute();
@@ -246,21 +264,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Update main account balance
                 $stmt_update_balance = $pdo->prepare("UPDATE main_account SET $balance_field = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                 $stmt_update_balance->bindParam(1, $new_balance, PDO::PARAM_STR);
-                $stmt_update_balance->bindParam(2, $paid_to, PDO::PARAM_INT);
+                $stmt_update_balance->bindParam(2, $actual_account_id, PDO::PARAM_INT);
                 $stmt_update_balance->bindParam(3, $tenant_id, PDO::PARAM_INT);
                 $stmt_update_balance->bindParam(4, $branch_id, PDO::PARAM_INT);
 
                 if (!$stmt_update_balance->execute()) {
-                    throw new PDOException("Failed to update main account balance");
-                }
+                     throw new PDOException("Failed to update main account balance");
+                 }
 
-                // Delete related main_account_transactions record
-                $stmt_delete_main_transaction = $pdo->prepare("DELETE FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'umrah_transaction' AND tenant_id = ? AND branch_id = ?");
-                $stmt_delete_main_transaction->bindParam(1, $transaction_id, PDO::PARAM_INT);
-                $stmt_delete_main_transaction->bindParam(2, $tenant_id, PDO::PARAM_INT);
-                $stmt_delete_main_transaction->bindParam(3, $branch_id, PDO::PARAM_INT);
-                $stmt_delete_main_transaction->execute();
-            }
+                 // Update balances of all subsequent transactions for the same account
+                 $stmt_update_subsequent = $pdo->prepare("
+                     UPDATE main_account_transactions
+                     SET balance = balance - ?
+                     WHERE main_account_id = ? AND currency = ?
+                     AND id > ?
+                     AND transaction_of = 'umrah_transaction'
+                     AND tenant_id = ? AND branch_id = ?
+                 ");
+                 $stmt_update_subsequent->bindParam(1, $payment_amount, PDO::PARAM_STR);
+                 $stmt_update_subsequent->bindParam(2, $actual_account_id, PDO::PARAM_INT);
+                 $stmt_update_subsequent->bindParam(3, $currency, PDO::PARAM_STR);
+                 $stmt_update_subsequent->bindParam(4, $transaction_id, PDO::PARAM_INT);
+                 $stmt_update_subsequent->bindParam(5, $tenant_id, PDO::PARAM_INT);
+                 $stmt_update_subsequent->bindParam(6, $branch_id, PDO::PARAM_INT);
+
+                 if (!$stmt_update_subsequent->execute()) {
+                     throw new PDOException("Failed to update subsequent transaction balances");
+                 }
+
+                 // Delete related main_account_transactions record
+                 $stmt_delete_main_transaction = $pdo->prepare("DELETE FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'umrah_transaction' AND tenant_id = ? AND branch_id = ?");
+                 $stmt_delete_main_transaction->bindParam(1, $transaction_id, PDO::PARAM_INT);
+                 $stmt_delete_main_transaction->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                 $stmt_delete_main_transaction->bindParam(3, $branch_id, PDO::PARAM_INT);
+                 $stmt_delete_main_transaction->execute();
+                }
         } elseif ($transaction_to_lower === 'internal account') {
             // Determine balance field based on transaction currency
             if ($currency === 'USD') {

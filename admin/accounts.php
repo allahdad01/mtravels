@@ -50,7 +50,7 @@ $clientAccounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch supplier accounts with their balances
 $supplierQuery = "
-    SELECT sa.id, sa.name AS supplier_name, sa.currency, sa.balance, sa.updated_at, sa.status
+    SELECT sa.id, sa.name AS supplier_name, sa.currency, sa.balance, sa.updated_at, sa.status, sa.supplier_type
     FROM suppliers sa where status = 'active' AND tenant_id = ? And branch_id = ?";
 $supplierStmt = $pdo->prepare($supplierQuery);
 $supplierStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
@@ -60,7 +60,7 @@ $supplier = $supplierStmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch client accounts with their balances
 $clientQuery = "
-SELECT cl.id, cl.name, cl.usd_balance, cl.afs_balance, cl.updated_at, cl.status
+SELECT cl.id, cl.name, cl.usd_balance, cl.afs_balance, cl.updated_at, cl.status, cl.client_type
 FROM clients cl where status = 'active' AND tenant_id = ? And branch_id = ?";
 $clientStmt = $pdo->prepare($clientQuery);
 $clientStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
@@ -74,6 +74,7 @@ require_once '../api/dashboard/client_notification.php';
 ?>
 
 <?php include '../includes/header.php'; ?>
+<meta name="csrf-token" content="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
 <link href="../css/account/styles.css" rel="stylesheet">
 <link rel="stylesheet" type="text/css" href="../assets/plugins/daterangepicker/daterangepicker.css" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -136,8 +137,8 @@ require_once '../api/dashboard/client_notification.php';
   margin: 2px 0;
 }
 .ac-hstat:last-child { border-right: none; }
-.ac-hstat-label { font-size: 9px; color: rgba(255,255,255,.85); text-transform: uppercase; letter-spacing: .4px; font-weight: 600; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,.1); }
-.ac-hstat-value { font-family: 'DM Mono', monospace; font-size: 12px; color: #fff; font-weight: 600; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,.15); }
+.ac-hstat-label { font-size: 9px; color: rgba(255,255,255,.4); text-transform: uppercase; letter-spacing: .4px; font-weight: 500; white-space: nowrap; }
+.ac-hstat-value { font-family: 'DM Mono', monospace; font-size: 12px; color: #fff; font-weight: 500; white-space: nowrap; }
 .ac-hstat-value.pos { color: #4ade80; }
 .ac-hstat-value.neg { color: #f87171; }
 .ac-stats-bar-spacer { flex: 1; }
@@ -813,6 +814,8 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                             </div>
                                             <div class="ac-lc-date"><?= date('M d, Y', strtotime($row['updated_at'])) ?></div>
                                             <div class="ac-lc-actions ac-lc-actions-expanded">
+                                                <?php $isInternalSupplier = isset($row['supplier_type']) && $row['supplier_type'] === 'Internal'; ?>
+                                                <?php if (!$isInternalSupplier): ?>
                                                 <button class="btn btn-sm btn-primary" onclick="setupFundingModal(<?= $row['id'] ?>, '<?= htmlspecialchars($row['supplier_name']) ?>', '<?= htmlspecialchars($row['currency']) ?>')" title="<?= __('fund') ?>" data-toggle="tooltip" data-placement="top">
                                                     <i class="feather icon-credit-card"></i>
                                                 </button>
@@ -822,6 +825,7 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                                 <button class="btn btn-sm btn-outline-primary" onclick="setupWithdrawModal(<?= $row['id'] ?>, '<?= htmlspecialchars($row['supplier_name']) ?>', '<?= htmlspecialchars($row['currency']) ?>')" title="<?= __('withdraw') ?>" data-toggle="tooltip" data-placement="top">
                                                     <i class="feather icon-arrow-down"></i>
                                                 </button>
+                                                <?php endif; ?>
                                                 <button class="btn btn-sm btn-outline-secondary view-supplier-transactions-btn" data-supplier-id="<?= $row['id'] ?>" data-supplier-name="<?= htmlspecialchars($row['supplier_name']) ?>" title="<?= __('transactions') ?>" data-toggle="tooltip" data-placement="top">
                                                     <i class="feather icon-list"></i>
                                                 </button>
@@ -907,30 +911,33 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                                 </div>
                                             </div>
                                             <div class="ac-lc-date"><?= date('M d, Y', strtotime($client['updated_at'])) ?></div>
-                                            <div class="ac-lc-actions ac-lc-actions-expanded">
-                                                <button class="btn btn-primary btn-sm make-payment-btn"
-                                                        data-client-id="<?= $client['id'] ?>"
-                                                        data-client-name="<?= htmlspecialchars($client['name']) ?>"
-                                                        data-usd-balance="<?= $client['usd_balance'] ?>"
-                                                        data-afs-balance="<?= $client['afs_balance'] ?>"
-                                                        title="<?= __('make_payment') ?>" data-toggle="tooltip" data-placement="top">
-                                                    <i class="feather icon-credit-card"></i>
-                                                </button>
-                                                <button class="btn btn-outline-secondary view-client-transactions-btn btn-sm"
-                                                        data-client-id="<?= $client['id'] ?>"
-                                                        data-client-name="<?= htmlspecialchars($client['name']) ?>"
-                                                        title="<?= __('view_transactions') ?>" data-toggle="tooltip" data-placement="top">
-                                                    <i class="feather icon-list"></i>
-                                                </button>
-                                                <?php if ($isAdmin): ?>
-                                                <button class="btn btn-outline-<?= !$isInactive ? 'danger' : 'success' ?> toggle-client-status-btn btn-sm"
-                                                        data-client-id="<?= $client['id'] ?>"
-                                                        data-current-status="<?= isset($client['status']) ? $client['status'] : 'active' ?>"
-                                                        title="<?= !$isInactive ? __('deactivate') : __('activate') ?>" data-toggle="tooltip" data-placement="top">
-                                                    <i class="feather icon-<?= !$isInactive ? 'power' : 'check-circle' ?>"></i>
-                                                </button>
-                                                <?php endif; ?>
-                                            </div>
+                                             <div class="ac-lc-actions ac-lc-actions-expanded">
+                                                 <?php $isAgencyClient = isset($client['client_type']) && $client['client_type'] === 'agency'; ?>
+                                                 <?php if (!$isAgencyClient): ?>
+                                                 <button class="btn btn-primary btn-sm make-payment-btn"
+                                                         data-client-id="<?= $client['id'] ?>"
+                                                         data-client-name="<?= htmlspecialchars($client['name']) ?>"
+                                                         data-usd-balance="<?= $client['usd_balance'] ?>"
+                                                         data-afs-balance="<?= $client['afs_balance'] ?>"
+                                                         title="<?= __('make_payment') ?>" data-toggle="tooltip" data-placement="top">
+                                                     <i class="feather icon-credit-card"></i>
+                                                 </button>
+                                                 <?php endif; ?>
+                                                 <button class="btn btn-outline-secondary view-client-transactions-btn btn-sm"
+                                                         data-client-id="<?= $client['id'] ?>"
+                                                         data-client-name="<?= htmlspecialchars($client['name']) ?>"
+                                                         title="<?= __('view_transactions') ?>" data-toggle="tooltip" data-placement="top">
+                                                     <i class="feather icon-list"></i>
+                                                 </button>
+                                                 <?php if ($isAdmin): ?>
+                                                 <button class="btn btn-outline-<?= !$isInactive ? 'danger' : 'success' ?> toggle-client-status-btn btn-sm"
+                                                         data-client-id="<?= $client['id'] ?>"
+                                                         data-current-status="<?= isset($client['status']) ? $client['status'] : 'active' ?>"
+                                                         title="<?= !$isInactive ? __('deactivate') : __('activate') ?>" data-toggle="tooltip" data-placement="top">
+                                                     <i class="feather icon-<?= !$isInactive ? 'power' : 'check-circle' ?>"></i>
+                                                 </button>
+                                                 <?php endif; ?>
+                                             </div>
                                         </div>
                                     </div>
                                     <?php endforeach; ?>

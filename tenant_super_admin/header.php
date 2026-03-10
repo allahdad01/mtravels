@@ -1714,6 +1714,12 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                         <span class="pcoded-mtext">Agency Settings</span>
                     </a>
                 </li>
+                <li data-username="manage_templates" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_templates.php' ? 'active' : ''; ?>">
+                    <a href="manage_templates.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-edit"></i></span>
+                        <span class="pcoded-mtext">Umrah Tazmin Template</span>
+                    </a>
+                </li>
 
                 <!-- ── 2FA ────────────────────────────────────────────────────────────── -->
                 <li class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'totp_setup.php' ? 'active' : ''; ?>">

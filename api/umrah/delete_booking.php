@@ -331,7 +331,7 @@ if ($booking_id !== null) {
         if ($mainAccountId && $mainAccountId > 0) {
             // Fetch main account transactions for this booking
             $stmt_fetch_main_transactions = $pdo->prepare("
-                SELECT mat.id, mat.amount, mat.type, mat.currency, mat.created_at
+                SELECT mat.id, mat.amount, mat.type, mat.currency, mat.main_account_id, mat.created_at
                 FROM main_account_transactions mat
                 JOIN umrah_transactions ut ON mat.reference_id = ut.id
                 WHERE ut.umrah_booking_id = ? AND mat.transaction_of = 'umrah_transaction'
@@ -349,6 +349,10 @@ if ($booking_id !== null) {
                 $main_type = strtolower($main_transaction['type']);
                 $main_currency = $main_transaction['currency'];
                 $transaction_id = $main_transaction['id'];
+                // Use actual account ID from transaction (might be custom) or fall back to default
+                $actual_main_account_id = ($main_transaction['main_account_id'] && $main_transaction['main_account_id'] > 0) 
+                    ? intval($main_transaction['main_account_id']) 
+                    : $mainAccountId;
 
                 // Determine balance field
                 $balance_field = match($main_currency) {
@@ -367,6 +371,7 @@ if ($booking_id !== null) {
                         WHERE main_account_id = ?
                         AND id > ?
                         AND currency = ?
+                        AND transaction_of = 'umrah_transaction'
                         AND tenant_id = ? AND branch_id = ?
                     ");
                 } else {
@@ -376,12 +381,13 @@ if ($booking_id !== null) {
                         WHERE main_account_id = ?
                         AND id > ?
                         AND currency = ?
+                        AND transaction_of = 'umrah_transaction'
                         AND tenant_id = ? AND branch_id = ?
                     ");
                 }
 
                 $update_subsequent_main->bindParam(1, $main_amount, PDO::PARAM_STR);
-                $update_subsequent_main->bindParam(2, $mainAccountId, PDO::PARAM_INT);
+                $update_subsequent_main->bindParam(2, $actual_main_account_id, PDO::PARAM_INT);
                 $update_subsequent_main->bindParam(3, $transaction_id, PDO::PARAM_INT);
                 $update_subsequent_main->bindParam(4, $main_currency, PDO::PARAM_STR);
                 $update_subsequent_main->bindParam(5, $tenant_id, PDO::PARAM_INT);
@@ -396,7 +402,7 @@ if ($booking_id !== null) {
                 }
 
                 $stmt_update_main->bindParam(1, $main_amount, PDO::PARAM_STR);
-                $stmt_update_main->bindParam(2, $mainAccountId, PDO::PARAM_INT);
+                $stmt_update_main->bindParam(2, $actual_main_account_id, PDO::PARAM_INT);
                 $stmt_update_main->bindParam(3, $tenant_id, PDO::PARAM_INT);
                 $stmt_update_main->bindParam(4, $branch_id, PDO::PARAM_INT);
                 $stmt_update_main->execute();

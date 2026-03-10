@@ -1,7 +1,4 @@
 <?php
-// Include database security module for input validation
-require_once 'includes/db_security.php';
-
 // Include security module
 require_once 'security.php';
 
@@ -19,6 +16,7 @@ if (!isset($_SESSION['user_id'])) {
 require_once('../includes/db.php');
 require_once('../includes/SecureFileUpload.php');
 require_once('../includes/PasswordValidator.php');
+require_once('../includes/InputValidator.php');
 
 try {
     $user_id = $_SESSION['user_id'];
@@ -34,9 +32,14 @@ try {
     // Update text fields
     $fields = ['name', 'email', 'phone', 'address'];
     foreach ($fields as $field) {
-        if (!empty($_POST[$field])) {
-            $updates[] = "$field = ?";
-            $params[] = DbSecurity::validateInput($_POST[$field], 'string', ['maxlength' => 255]);
+        if (isset($_POST[$field])) {
+            $validated = InputValidator::getString($_POST[$field], 255);
+            // Only include field if it has a value (even if whitespace-only, trim it first)
+            $trimmed = trim($validated);
+            if ($trimmed !== '') {
+                $updates[] = "$field = ?";
+                $params[] = $trimmed;
+            }
         }
     }
 
@@ -69,7 +72,7 @@ try {
     }
 
     // Handle image upload - SECURE VERSION
-     if (isset($_FILES['profile_image'])) {
+     if (isset($_FILES['profile_image']) && $_FILES['profile_image']['error'] !== UPLOAD_ERR_NO_FILE) {
          $uploader = new SecureFileUpload(
              5 * 1024 * 1024, // 5MB max size
              '../assets/images/'
@@ -83,11 +86,11 @@ try {
              $stmt->execute([$user_id, $tenant_id, $branch_id]);
              $oldImage = $stmt->fetchColumn();
              if ($oldImage && $oldImage !== 'default-avatar.jpg') {
-                 $oldImagePath = '../assets/images/user/' . $oldImage;
-                 // Verify old file path is safe before deleting
-                 if (file_exists($oldImagePath) && strpos(realpath($oldImagePath), realpath('../assets/images/user/')) === 0) {
-                     @unlink($oldImagePath);
-                 }
+                  $oldImagePath = '../assets/images/user/' . $oldImage;
+                  // Verify old file path is safe before deleting
+                  if (file_exists($oldImagePath) && strpos(realpath($oldImagePath), realpath('../assets/images/user/')) === 0) {
+                      @unlink($oldImagePath);
+                  }
              }
 
              $updates[] = "profile_pic = ?";
@@ -100,13 +103,13 @@ try {
      }
 
     if (!empty($updates)) {
-        // Add WHERE clause params
-        $params[] = $user_id;
-        $params[] = $tenant_id;
-        $params[] = $branch_id;
+         // Add WHERE clause params
+         $params[] = $user_id;
+         $params[] = $tenant_id;
+         $params[] = $branch_id;
 
-        $sql = "UPDATE users SET " . implode(', ', $updates) . " WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-        $stmt = $pdo->prepare($sql);
+         $sql = "UPDATE users SET " . implode(', ', $updates) . " WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+         $stmt = $pdo->prepare($sql);
 
         if ($stmt->execute($params)) {
             // Fetch updated user

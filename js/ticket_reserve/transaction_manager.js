@@ -157,7 +157,7 @@ loadTransactionModal: function(ticketId) {
                                         onclick="printReceipt(${tx.id})">
                                     <i class="feather icon-printer"></i>
                                 </button>
-                                    <button class="btn btn-danger btn-sm" onclick="transactionManager.deleteTransaction(${tx.id}, ${amount})">
+                                    <button class="btn btn-danger btn-sm" onclick="transactionManager.deleteTransaction(${tx.id}, ${ticketId}, ${amount})">
                                         <i class="feather icon-trash-2"></i>
                                     </button>
                                 </td>

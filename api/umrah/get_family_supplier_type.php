@@ -1,0 +1,98 @@
+<?php
+// Include security module
+require_once '../../admin/security.php';
+
+// Enforce authentication
+enforce_auth();
+
+require_once('../../includes/db.php');
+$tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
+header('Content-Type: application/json');
+
+try {
+    if (!isset($_GET['family_id'])) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Family ID is required'
+        ]);
+        exit;
+    }
+    
+    $family_id = intval($_GET['family_id']);
+    
+    // Get the first booking's supplier from the family
+    $stmt_get_first_booking = $pdo->prepare("
+        SELECT booking_id FROM umrah_bookings 
+        WHERE family_id = ? AND tenant_id = ? AND branch_id = ? 
+        LIMIT 1
+    ");
+    $stmt_get_first_booking->bindParam(1, $family_id, PDO::PARAM_INT);
+    $stmt_get_first_booking->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmt_get_first_booking->bindParam(3, $branch_id, PDO::PARAM_INT);
+    $stmt_get_first_booking->execute();
+    $booking_result = $stmt_get_first_booking->fetch(PDO::FETCH_ASSOC);
+
+    if (!$booking_result) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'No bookings found for this family'
+        ]);
+        exit;
+    }
+
+    $booking_id = $booking_result['booking_id'];
+    
+    // Get supplier_id from umrah_booking_services where service_type is 'all' or 'visa'
+    $stmt_fetch_supplier_id = $pdo->prepare("
+        SELECT supplier_id FROM umrah_booking_services 
+        WHERE booking_id = ? AND tenant_id = ? AND branch_id = ? 
+        AND service_type IN ('all', 'visa') LIMIT 1
+    ");
+    $stmt_fetch_supplier_id->bindParam(1, $booking_id, PDO::PARAM_INT);
+    $stmt_fetch_supplier_id->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmt_fetch_supplier_id->bindParam(3, $branch_id, PDO::PARAM_INT);
+    $stmt_fetch_supplier_id->execute();
+    $supplier_result = $stmt_fetch_supplier_id->fetch(PDO::FETCH_ASSOC);
+
+    if (!$supplier_result) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Supplier not found for this booking'
+        ]);
+        exit;
+    }
+
+    $supplier_id = $supplier_result['supplier_id'];
+    
+    // Fetch Supplier Type
+    $stmt_fetch_supplier = $pdo->prepare("
+        SELECT supplier_type FROM suppliers 
+        WHERE id = ? AND tenant_id = ? AND branch_id = ?
+    ");
+    $stmt_fetch_supplier->bindParam(1, $supplier_id, PDO::PARAM_INT);
+    $stmt_fetch_supplier->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmt_fetch_supplier->bindParam(3, $branch_id, PDO::PARAM_INT);
+    $stmt_fetch_supplier->execute();
+    $supplier_data = $stmt_fetch_supplier->fetch(PDO::FETCH_ASSOC);
+
+    if (!$supplier_data) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Supplier details not found'
+        ]);
+        exit;
+    }
+
+    echo json_encode([
+        'success' => true,
+        'supplier_id' => $supplier_id,
+        'supplier_type' => $supplier_data['supplier_type']
+    ]);
+} catch (PDOException $e) {
+    error_log("Error in get_family_supplier_type.php: " . $e->getMessage());
+    echo json_encode([
+        'success' => false,
+        'message' => 'Failed to fetch supplier type'
+    ]);
+}

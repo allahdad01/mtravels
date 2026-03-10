@@ -83,21 +83,11 @@
     }
 
     protectAddTransactionButton() {
-        const button = document.querySelector('#hotelTransactionForm button[type="submit"]');
-        if (button) {
-            button.addEventListener('click', () => {
-                this.protectButton(button, 'Adding Transaction...', 3000);
-            });
-        }
+        // Removed button protection - form handles its own submission state
     }
 
     protectSaveChangesButton() {
-        const button = document.querySelector('#editTransactionForm button[type="submit"]');
-        if (button) {
-            button.addEventListener('click', () => {
-                this.protectButton(button, 'Saving Changes...', 3000);
-            });
-        }
+        // Removed button protection - form handles its own submission state
     }
 }
 
