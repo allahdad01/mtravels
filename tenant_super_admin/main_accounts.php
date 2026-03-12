@@ -1,918 +1,459 @@
 <?php
 include 'header.php';
 
-// Get tenant and user info
-$tenant_id = $_SESSION['tenant_id'];
-$user_id = $_SESSION['user_id'];
-$user_role = $_SESSION['role'];
+$tenant_id      = $_SESSION['tenant_id'];
+$user_id        = $_SESSION['user_id'];
+$user_role      = $_SESSION['role'];
 $user_branch_id = $_SESSION['branch_id'] ?? null;
 
-// Get search and branch parameters
-$search = isset($_GET['search']) ? trim($_GET['search']) : '';
-$selected_branch = isset($_GET['branch']) ? $_GET['branch'] : ($user_branch_id ? $user_branch_id : 'all');
-
-// Pagination
-$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$search          = isset($_GET['search']) ? trim($_GET['search']) : '';
+$selected_branch = isset($_GET['branch']) ? $_GET['branch'] : ($user_branch_id ?: 'all');
+$page            = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $results_per_page = 25;
-$offset = ($page - 1) * $results_per_page;
+$offset          = ($page - 1) * $results_per_page;
 
-// Build query for main accounts
-$query = "SELECT
-    ma.*,
-    b.name as branch_name,
+$query = "SELECT ma.*, b.name as branch_name,
     COUNT(mat.id) as transaction_count,
-    COALESCE(SUM(CASE WHEN mat.type = 'credit' THEN mat.amount ELSE 0 END), 0) as total_credits,
-    COALESCE(SUM(CASE WHEN mat.type = 'debit' THEN mat.amount ELSE 0 END), 0) as total_debits
+    COALESCE(SUM(CASE WHEN mat.type='credit' THEN mat.amount ELSE 0 END),0) as total_credits,
+    COALESCE(SUM(CASE WHEN mat.type='debit'  THEN mat.amount ELSE 0 END),0) as total_debits
 FROM main_account ma
 LEFT JOIN branches b ON ma.branch_id = b.id
 LEFT JOIN main_account_transactions mat ON ma.id = mat.main_account_id AND mat.tenant_id = ma.tenant_id
 WHERE ma.tenant_id = ?";
 
-// Add branch filtering
-if ($selected_branch !== 'all') {
-    $query .= " AND ma.branch_id = ?";
-}
-
-// Add search filter
+$params = [$tenant_id];
+if ($selected_branch !== 'all') { $query .= " AND ma.branch_id = ?"; $params[] = $selected_branch; }
 if (!empty($search)) {
     $query .= " AND (ma.name LIKE ? OR ma.bank_account_number LIKE ? OR ma.bank_name LIKE ?)";
+    $sp = "%$search%"; $params = array_merge($params, [$sp,$sp,$sp]);
 }
-
-// Group by main account and add ordering and pagination
 $query .= " GROUP BY ma.id LIMIT ? OFFSET ?";
+$params[] = $results_per_page; $params[] = $offset;
 
-// Prepare parameters
-$params = [$tenant_id];
-
-if ($selected_branch !== 'all') {
-    $params[] = $selected_branch;
-}
-
-if (!empty($search)) {
-    $search_param = "%$search%";
-    $params[] = $search_param;
-    $params[] = $search_param;
-    $params[] = $search_param;
-}
-
-$params[] = $results_per_page;
-$params[] = $offset;
-
-// Execute query
-$stmt = $pdo->prepare($query);
-$stmt->execute($params);
+$stmt = $pdo->prepare($query); $stmt->execute($params);
 $accounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Get total count for pagination
-$count_query = "SELECT COUNT(*) as total FROM main_account ma WHERE ma.tenant_id = ?";
-$count_params = [$tenant_id];
-
-if ($selected_branch !== 'all') {
-    $count_query .= " AND ma.branch_id = ?";
-    $count_params[] = $selected_branch;
-}
-
+$cq = "SELECT COUNT(*) as total FROM main_account ma WHERE ma.tenant_id = ?";
+$cp = [$tenant_id];
+if ($selected_branch !== 'all') { $cq .= " AND ma.branch_id = ?"; $cp[] = $selected_branch; }
 if (!empty($search)) {
-    $count_query .= " AND (ma.name LIKE ? OR ma.bank_account_number LIKE ? OR ma.bank_name LIKE ?)";
-    $search_param = "%$search%";
-    $count_params[] = $search_param;
-    $count_params[] = $search_param;
-    $count_params[] = $search_param;
+    $cq .= " AND (ma.name LIKE ? OR ma.bank_account_number LIKE ? OR ma.bank_name LIKE ?)";
+    $sp = "%$search%"; $cp = array_merge($cp, [$sp,$sp,$sp]);
 }
+$cs = $pdo->prepare($cq); $cs->execute($cp);
+$total_accounts = $cs->fetch(PDO::FETCH_ASSOC)['total'];
+$total_pages    = max(1, ceil($total_accounts / $results_per_page));
 
-$count_stmt = $pdo->prepare($count_query);
-$count_stmt->execute($count_params);
-$total_accounts = $count_stmt->fetch(PDO::FETCH_ASSOC)['total'];
-$total_pages = ceil($total_accounts / $results_per_page);
+$sq = "SELECT SUM(usd_balance) as total_usd, SUM(afs_balance) as total_afs,
+              SUM(euro_balance) as total_euro, SUM(darham_balance) as total_darham
+       FROM main_account WHERE tenant_id = ? AND status = 'active'";
+$sp2 = [$tenant_id];
+if ($selected_branch !== 'all') { $sq .= " AND branch_id = ?"; $sp2[] = $selected_branch; }
+$ss = $pdo->prepare($sq); $ss->execute($sp2);
+$summary = $ss->fetch(PDO::FETCH_ASSOC);
 
-// Get total balances for summary
-$summary_query = "SELECT
-    SUM(usd_balance) as total_usd,
-    SUM(afs_balance) as total_afs,
-    SUM(euro_balance) as total_euro,
-    SUM(darham_balance) as total_darham
-FROM main_account
-WHERE tenant_id = ? AND status = 'active'";
+$bs = $pdo->prepare("SELECT id, name FROM branches WHERE tenant_id = ? AND status='active' ORDER BY name");
+$bs->execute([$tenant_id]);
+$branches = $bs->fetchAll(PDO::FETCH_ASSOC);
 
-$summary_params = [$tenant_id];
-
-if ($selected_branch !== 'all') {
-    $summary_query .= " AND branch_id = ?";
-    $summary_params[] = $selected_branch;
-}
-
-$summary_stmt = $pdo->prepare($summary_query);
-$summary_stmt->execute($summary_params);
-$summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
+$from = min(($page - 1) * $results_per_page + 1, $total_accounts);
+$to   = min($page * $results_per_page, $total_accounts);
 ?>
 
 <style>
-/* Apply gradient background to card headers matching the sidebar */
-.page-header.card {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-    color: #ffffff;
-    border: none;
-    margin-bottom: 20px;
-    padding: 20px !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    border-radius: 10px;
-}
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
 
-.page-header.card .row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+:root {
+    --teal:#2ed8b6; --blue:#4099ff;
+    --surface:#f4f7fe; --card-bg:#ffffff; --border:#e8edf5;
+    --text-main:#1a2340; --text-sub:#6b7a99;
+    --green:#22c55e; --amber:#f59e0b; --red:#ef4444; --purple:#8b5cf6;
+    --radius:14px; --shadow:0 2px 12px rgba(64,153,255,0.08);
 }
+*,*::before,*::after{box-sizing:border-box}
+body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important;background:var(--surface)!important;color:var(--text-main)!important}
 
-.page-header.card h5 {
-    color: #ffffff;
-    margin: 0;
-    font-weight: 600;
-}
+.dash-header{background:linear-gradient(135deg,#1d4ed8 0%,#0f766e 100%);border-radius:var(--radius);padding:24px 28px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 8px 32px rgba(29,78,216,0.22);position:relative;overflow:hidden}
+.dash-header::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat}
+.dash-header h4{font-size:22px;font-weight:800;color:#fff;margin:0 0 4px;letter-spacing:-0.4px;position:relative}
+.dash-header p{color:rgba(255,255,255,0.8);margin:0;font-size:13px;position:relative}
 
-.page-header.card .text-end {
-    text-align: right;
-}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+@media(max-width:900px){.stat-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:500px){.stat-grid{grid-template-columns:1fr}}
+.stat-card{border-radius:var(--radius);padding:20px 22px;color:#fff;position:relative;overflow:hidden}
+.stat-card::after{content:'';position:absolute;right:-10px;bottom:-10px;width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,0.1)}
+.stat-card.usd   {background:linear-gradient(135deg,#1d4ed8,#2563eb);box-shadow:0 6px 20px rgba(29,78,216,0.3)}
+.stat-card.afs   {background:linear-gradient(135deg,#0f766e,#0d9488);box-shadow:0 6px 20px rgba(15,118,110,0.3)}
+.stat-card.euro  {background:linear-gradient(135deg,#b45309,#d97706);box-shadow:0 6px 20px rgba(180,83,9,0.3)}
+.stat-card.darham{background:linear-gradient(135deg,#7c3aed,#9333ea);box-shadow:0 6px 20px rgba(124,58,237,0.3)}
+.stat-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;opacity:.8;margin-bottom:8px}
+.stat-value{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:800;line-height:1}
+.stat-icon{position:absolute;right:18px;top:50%;transform:translateY(-50%);font-size:32px;opacity:.25}
 
-.page-header.card .btn {
-    background: rgba(255,255,255,0.2);
-    color: #ffffff;
-    border: 1px solid rgba(255,255,255,0.3);
-    border-radius: 25px;
-    transition: all 0.3s ease;
-}
+.dash-card{background:var(--card-bg);border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow);overflow:hidden;margin-bottom:20px}
+.dash-card:last-child{margin-bottom:0}
+.dash-card-head{padding:15px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dash-card-head h6{font-size:14px;font-weight:700;margin:0;display:flex;align-items:center;gap:8px}
+.dash-card-head h6 .ico{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#1d4ed8,#0f766e);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;flex-shrink:0}
+.dash-card-body{padding:20px}
+.count-badge{background:rgba(29,78,216,.1);color:#1d4ed8;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;margin-left:auto}
 
-.page-header.card .btn:hover {
-    background: rgba(255,255,255,0.3);
-    border-color: rgba(255,255,255,0.5);
-    transform: translateY(-1px);
-}
+.search-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:end}
+@media(max-width:700px){.search-row{grid-template-columns:1fr}}
+.form-label-custom{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sub);display:block;margin-bottom:6px}
+.search-group{display:flex;gap:8px}
+.form-input{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:9px 13px;font-family:inherit;font-size:13px;color:var(--text-main);background:var(--surface);outline:none;transition:border-color .2s}
+.form-input:focus{border-color:#1d4ed8;background:#fff;box-shadow:0 0 0 3px rgba(29,78,216,.1)}
+.search-btn{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#1d4ed8,#0f766e);color:#fff;border:none;border-radius:10px;padding:9px 18px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap;flex-shrink:0}
+.search-btn:hover{opacity:.9}
+.clear-btn{display:inline-flex;align-items:center;gap:6px;background:var(--surface);color:var(--text-sub);border:1.5px solid var(--border);border-radius:10px;padding:9px 14px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap;flex-shrink:0;transition:all .2s}
+.clear-btn:hover{border-color:var(--text-sub);color:var(--text-main);text-decoration:none}
 
-.card {
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    border: none;
-}
+.data-table{width:100%;border-collapse:collapse}
+.data-table thead th{background:var(--surface);padding:11px 16px;font-size:11px;font-weight:700;color:var(--text-sub);text-transform:uppercase;letter-spacing:.6px;border-bottom:1.5px solid var(--border);white-space:nowrap}
+.data-table tbody tr{transition:background .15s}
+.data-table tbody tr:hover{background:var(--surface)}
+.data-table tbody td{padding:13px 16px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+.data-table tbody tr:last-child td{border-bottom:none}
+.td-ctr{text-align:center;font-size:12px;color:var(--text-sub);font-family:'JetBrains Mono',monospace}
 
-.card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-}
+.acc-name{font-weight:700;color:var(--text-main);margin-bottom:4px}
+.acc-type-pill{display:inline-flex;align-items:center;gap:4px;border-radius:20px;padding:3px 9px;font-size:10px;font-weight:700}
+.acc-bank{background:rgba(29,78,216,.1);color:#1d4ed8}
+.acc-cash{background:rgba(107,122,153,.1);color:var(--text-sub)}
 
-.card-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-radius: 10px 10px 0 0;
-    padding: 1rem 1.5rem;
-    border: none;
-}
+.bank-name{font-weight:700;font-size:13px;color:var(--text-main);margin-bottom:2px}
+.bank-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-sub)}
+.internal-tag{font-size:12px;color:var(--text-sub);font-style:italic}
 
-.card-header h5 {
-    margin: 0;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-}
+.bal-row{display:flex;align-items:center;gap:5px;margin-bottom:3px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600}
+.bal-row:last-child{margin-bottom:0}
+.bal-usd{color:#1d4ed8} .bal-afs{color:#0f766e} .bal-euro{color:#b45309} .bal-darham{color:#7c3aed}
+.bal-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.bd-usd{background:#1d4ed8} .bd-afs{background:#0f766e} .bd-euro{background:#b45309} .bd-darham{background:#7c3aed}
 
-.progress {
-    border-radius: 15px;
-    
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
-}
+.txn-count{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--text-main);margin-bottom:3px}
+.txn-flows{display:flex;gap:10px;font-size:11px;font-family:'JetBrains Mono',monospace}
+.txn-cr{color:var(--green);font-weight:700}
+.txn-dr{color:var(--red);font-weight:700}
 
-.progress-bar {
-    transition: width 0.6s ease;
-}
+.status-pill{display:inline-flex;align-items:center;gap:4px;border-radius:20px;padding:4px 11px;font-size:11px;font-weight:700}
+.sp-active{background:rgba(34,197,94,.12);color:#166534}
+.sp-inactive{background:rgba(107,122,153,.1);color:var(--text-sub)}
 
-.badge {
-    font-size: 0.85em;
-    padding: 0.5em 0.75em;
-    border-radius: 20px;
-    font-weight: 500;
-}
+.act-btn{width:30px;height:30px;border-radius:8px;border:1.5px solid var(--border);background:var(--card-bg);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;color:var(--text-sub);transition:all .15s}
+.act-btn:hover{background:rgba(29,78,216,.08);border-color:#1d4ed8;color:#1d4ed8}
+.dropdown-menu{border-radius:12px;border:1px solid var(--border);box-shadow:0 8px 24px rgba(0,0,0,.1);padding:6px;min-width:180px}
+.dropdown-item{border-radius:8px;padding:8px 12px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;transition:background .15s}
+.dropdown-item:hover{background:var(--surface)}
 
-.badge-success {
-    background-color: #28a745;
-}
+.empty-state{text-align:center;padding:60px 20px}
+.empty-state i{font-size:44px;opacity:.2;display:block;margin-bottom:14px}
+.empty-state p{color:var(--text-sub);font-size:14px;margin:0}
 
-.badge-warning {
-    background-color: #ffc107;
-    color: #212529;
-}
+.pag-wrap{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:16px 20px;border-top:1px solid var(--border)}
+.pag-info{font-size:12px;color:var(--text-sub)}
+.pag-links{display:flex;gap:4px}
+.pag-btn{min-width:32px;height:32px;border-radius:8px;border:1.5px solid var(--border);background:var(--card-bg);color:var(--text-main);font-size:12px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;padding:0 8px;transition:all .15s}
+.pag-btn:hover{border-color:#1d4ed8;color:#1d4ed8;text-decoration:none}
+.pag-btn.active{background:linear-gradient(135deg,#1d4ed8,#0f766e);border-color:transparent;color:#fff}
+.pag-btn.disabled{opacity:.4;pointer-events:none}
+.pag-dots{display:flex;align-items:center;padding:0 4px;color:var(--text-sub);font-size:13px}
 
-.badge-info {
-    background-color: #17a2b8;
-}
+.modal-content{border:none;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.18);font-family:inherit}
+.modal-header{background:linear-gradient(135deg,#1d4ed8,#0f766e);color:#fff;border-radius:16px 16px 0 0;border:none;padding:18px 24px}
+.modal-header.txn-header{background:linear-gradient(135deg,#0f766e,#0d9488)}
+.modal-header .modal-title{font-weight:700;font-size:15px}
+.modal-header .close{color:#fff;opacity:.8;font-size:22px}
+.modal-header .close:hover{opacity:1}
 
-.badge-primary {
-    background-color: #4099ff;
-}
+.modal-summary{display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border-bottom:1px solid var(--border)}
+@media(max-width:600px){.modal-summary{grid-template-columns:repeat(2,1fr)}}
+.ms-cell{padding:16px;text-align:center;border-right:1px solid var(--border)}
+.ms-cell:last-child{border-right:none}
+.ms-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sub);margin-bottom:4px}
+.ms-val{font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;line-height:1}
+.ms-val.usd-c{color:#1d4ed8} .ms-val.afs-c{color:#0f766e} .ms-val.euro-c{color:#b45309} .ms-val.darham-c{color:#7c3aed}
 
-.badge-secondary {
-    background-color: #6c757d;
-}
+.modal-body{padding:0}
+.modal-tabs{display:flex;gap:6px;padding:16px 24px 0;border-bottom:1px solid var(--border)}
+.modal-tab{background:none;border:none;border-bottom:3px solid transparent;padding:8px 16px 12px;font-family:inherit;font-size:13px;font-weight:700;color:var(--text-sub);cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:6px;margin-bottom:-1px}
+.modal-tab.active{color:#1d4ed8;border-bottom-color:#1d4ed8}
+.modal-tab:hover{color:#1d4ed8}
+.modal-pane{display:none;padding:24px}
+.modal-pane.active{display:block}
+.detail-section{background:var(--surface);border-radius:12px;padding:18px;margin-bottom:14px}
+.detail-section:last-child{margin-bottom:0}
+.ds-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sub);margin-bottom:14px}
+.ds-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)}
+.ds-row:last-child{border-bottom:none}
+.ds-key{font-size:13px;color:var(--text-sub)}
+.ds-val{font-size:13px;font-weight:700;color:var(--text-main);text-align:right}
+.ds-val.green{color:var(--green)} .ds-val.red{color:var(--red)} .ds-val.blue{color:#1d4ed8}
 
-.table-responsive {
-    border-radius: 10px;
-    
-}
+.modal-footer-custom{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end}
+.btn-close-modal{display:inline-flex;align-items:center;gap:7px;background:var(--surface);color:var(--text-sub);border:1.5px solid var(--border);border-radius:10px;padding:10px 20px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-close-modal:hover{border-color:var(--text-sub);color:var(--text-main)}
 
-.table {
-    margin-bottom: 0;
-}
+.txn-loading{text-align:center;padding:40px}
+.spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:#1d4ed8;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-.table thead th {
-    background-color: #f8f9fa;
-    border-bottom: 2px solid #dee2e6;
-    font-weight: 600;
-    color: #495057;
-    padding: 1rem;
-}
-
-.table tbody tr:hover {
-    background-color: #f1f3f4;
-}
-
-.table tbody td {
-    padding: 1rem;
-    vertical-align: middle;
-}
-
-.form-control {
-    border-radius: 8px;
-    border: 1px solid #ced4da;
-    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-    padding: 0.75rem;
-}
-
-.form-control:focus {
-    border-color: #4099ff;
-    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
-}
-
-.btn-primary {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-    border: none;
-    border-radius: 25px;
-    padding: 0.75rem 2rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
-}
-
-.btn-secondary {
-    border-radius: 25px;
-    padding: 0.75rem 2rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.btn-sm {
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
-}
-
-.alert {
-    border-radius: 10px;
-    border: none;
-    padding: 1rem 1.5rem;
-}
-
-.alert-info {
-    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
-    color: #0c5460;
-}
-
-.alert-success {
-    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-    color: #155724;
-}
-
-.alert-danger {
-    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-    color: #721c24;
-}
-
-.pagination .page-link {
-    border-radius: 20px;
-    margin: 0 3px;
-    padding: 0.5rem 0.85rem;
-    border: none;
-    color: #495057;
-}
-
-.pagination .page-item.active .page-link {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-    color: white;
-}
-
-.pagination .page-item.disabled .page-link {
-    background: transparent;
-    color: #6c757d;
-}
-
-.pagination .page-link:hover {
-    background: #f1f3f4;
-    color: #4099ff;
-}
-
-/* Summary Cards Styling */
-.bg-c-blue {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
-}
-
-.bg-c-green {
-    background: linear-gradient(135deg, #11cdef 0%, #2ed8b6 100%) !important;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(45, 216, 182, 0.3);
-}
-
-.bg-c-yellow {
-    background: linear-gradient(135deg, #ffaf23 0%, #ffc107 100%) !important;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(255, 175, 35, 0.3);
-}
-
-.bg-c-pink {
-    background: linear-gradient(135deg, #f5365c 0%, #fb357a 100%) !important;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(245, 54, 92, 0.3);
-}
-
-.summary-card {
-    border-radius: 10px;
-    
-}
-
-.summary-card .card-body {
-    padding: 1.5rem;
-}
-
-.summary-card .card-body p {
-    margin-bottom: 0.5rem;
-    opacity: 0.9;
-}
-
-.summary-card .card-body h4 {
-    margin-bottom: 0;
-    font-weight: 600;
-}
-
-.summary-card .col-auto i {
-    opacity: 0.5;
-}
-
-/* Modal Styling */
-.modal-header {
-    border-radius: 0;
-    padding: 1rem 1.5rem;
-}
-
-.modal-header.bg-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-}
-
-.modal-header.bg-info {
-    background: linear-gradient(135deg, #11cdef 0%, #2ed8b6 100%) !important;
-}
-
-.modal-header .close {
-    color: white;
-    text-shadow: none;
-    opacity: 0.8;
-}
-
-.modal-header .close:hover {
-    opacity: 1;
-}
-
-.dropdown-menu {
-    border-radius: 10px;
-    border: none;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-}
-
-.dropdown-item {
-    padding: 0.75rem 1.5rem;
-    border-radius: 0;
-}
-
-.dropdown-item:hover {
-    background-color: #f1f3f4;
-}
-
-.dropdown-toggle::after {
-    display: none;
-}
+.pcoded-content{padding:20px!important}
+.page-header{display:none!important}
 </style>
 
-<!-- [ Main Content ] start -->
-    <div class="pcoded-main-container">
-        <div class="pcoded-wrapper">
-            <div class="pcoded-content">
-                <div class="pcoded-inner-content">
-                    <div class="main-body">
-                        <div class="page-wrapper">
-                            <!-- [ Main Content ] start -->
-                            <div class="main-content">
-                                <div class="page-header card">
-                                    <div class="row align-items-center">
-                                        <div class="col-md-6">
-                                            <h5 class="mb-0"><i class="feather icon-credit-card mr-2"></i>Main Accounts</h5>
-                                            <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;">Manage your main accounts and bank balances</p>
-                                        </div>
-                                        <div class="col-md-6 text-end">
-                                            <a href="dashboard.php" class="btn btn-outline-secondary btn-sm">
-                                                <i class="feather icon-arrow-left mr-1"></i>Back to Dashboard
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
+<div class="pcoded-main-container">
+<div class="pcoded-content">
 
-                                <div class="row">
-                                    <!-- Summary Cards -->
-                                    <div class="col-xl-3 col-md-6">
-                                        <div class="card bg-c-blue text-white summary-card">
-                                            <div class="card-body">
-                                                <div class="row align-items-center">
-                                                    <div class="col">
-                                                        <p class="m-b-5">Total USD</p>
-                                                        <h4 class="m-b-0">$<?= number_format($summary['total_usd'] ?? 0, 2) ?></h4>
-                                                    </div>
-                                                    <div class="col col-auto text-right">
-                                                        <i class="feather icon-dollar-sign f-50"></i>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-xl-3 col-md-6">
-                                        <div class="card bg-c-green text-white summary-card">
-                                            <div class="card-body">
-                                                <div class="row align-items-center">
-                                                    <div class="col">
-                                                        <p class="m-b-5">Total AFS</p>
-                                                        <h4 class="m-b-0">AFS <?= number_format($summary['total_afs'] ?? 0, 2) ?></h4>
-                                                    </div>
-                                                    <div class="col col-auto text-right">
-                                                        <i class="feather icon-credit-card f-50"></i>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-xl-3 col-md-6">
-                                        <div class="card bg-c-yellow text-white summary-card">
-                                            <div class="card-body">
-                                                <div class="row align-items-center">
-                                                    <div class="col">
-                                                        <p class="m-b-5">Total EURO</p>
-                                                        <h4 class="m-b-0">€<?= number_format($summary['total_euro'] ?? 0, 2) ?></h4>
-                                                    </div>
-                                                    <div class="col col-auto text-right">
-                                                        <i class="feather icon-repeat f-50"></i>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-xl-3 col-md-6">
-                                        <div class="card bg-c-pink text-white summary-card">
-                                            <div class="card-body">
-                                                <div class="row align-items-center">
-                                                    <div class="col">
-                                                        <p class="m-b-5">Total DARHAM</p>
-                                                        <h4 class="m-b-0">د.إ <?= number_format($summary['total_darham'] ?? 0, 2) ?></h4>
-                                                    </div>
-                                                    <div class="col col-auto text-right">
-                                                        <i class="feather icon-package f-50"></i>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+    <div class="dash-header">
+        <div>
+            <h4><i class="feather icon-credit-card" style="margin-right:8px;"></i>Main Accounts</h4>
+            <p>Manage your main accounts and bank balances</p>
+        </div>
+    </div>
 
-                                <div class="row">
-                                    <div class="col-sm-12">
-                                        <!-- Search Section -->
-                                        <div class="card mb-3">
-                                            <div class="card-header">
-                                                <h5><i class="feather icon-filter mr-2"></i>Filter Options</h5>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="row align-items-center">
-                                                    <div class="col-md-6">
-                                                        <div class="branch-selector">
-                                                            <label for="branchSelect" class="form-label"><i class="feather icon-home mr-2"></i>Select Branch:</label>
-                                                            <select id="branchSelect" class="form-control">
-                                                                <option value="all" <?= $selected_branch === 'all' ? 'selected' : '' ?>>All Branches</option>
-                                                                <?php
-                                                                try {
-                                                                    $branch_stmt = $pdo->prepare("SELECT id, name FROM branches WHERE tenant_id = ? AND status = 'active' ORDER BY name");
-                                                                    $branch_stmt->execute([$tenant_id]);
-                                                                    $branches = $branch_stmt->fetchAll(PDO::FETCH_ASSOC);
+    <!-- Currency summary cards -->
+    <div class="stat-grid">
+        <div class="stat-card usd">
+            <div class="stat-label">Total USD</div>
+            <div class="stat-value">$<?= number_format($summary['total_usd'] ?? 0, 2) ?></div>
+            <i class="feather icon-dollar-sign stat-icon"></i>
+        </div>
+        <div class="stat-card afs">
+            <div class="stat-label">Total AFS</div>
+            <div class="stat-value">AFS <?= number_format($summary['total_afs'] ?? 0, 2) ?></div>
+            <i class="feather icon-credit-card stat-icon"></i>
+        </div>
+        <div class="stat-card euro">
+            <div class="stat-label">Total Euro</div>
+            <div class="stat-value">€<?= number_format($summary['total_euro'] ?? 0, 2) ?></div>
+            <i class="feather icon-repeat stat-icon"></i>
+        </div>
+        <div class="stat-card darham">
+            <div class="stat-label">Total Darham</div>
+            <div class="stat-value">د.إ <?= number_format($summary['total_darham'] ?? 0, 2) ?></div>
+            <i class="feather icon-package stat-icon"></i>
+        </div>
+    </div>
 
-                                                                    foreach ($branches as $branch) {
-                                                                        $selected = ($selected_branch == $branch['id']) ? 'selected' : '';
-                                                                        echo '<option value="' . $branch['id'] . '" ' . $selected . '>' . htmlspecialchars($branch['name']) . '</option>';
-                                                                    }
-                                                                } catch (PDOException $e) {
-                                                                    error_log("Error fetching branches: " . $e->getMessage());
-                                                                }
-                                                                ?>
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <div class="search-box">
-                                                            <div class="input-group">
-                                                                <input type="text" id="searchInput" class="form-control" placeholder="Search by account name, bank account number, or bank name" value="<?= htmlspecialchars($search) ?>">
-                                                                <div class="input-group-append">
-                                                                    <button class="btn btn-primary" type="button" id="searchBtn">
-                                                                        <i class="feather icon-search"></i> Search
-                                                                    </button>
-                                                                    <?php if (!empty($search)): ?>
-                                                                    <a href="?branch=<?= urlencode($selected_branch) ?>" class="btn btn-secondary">
-                                                                        <i class="feather icon-x"></i> Clear
-                                                                    </a>
-                                                                    <?php endif; ?>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- Accounts Table Section -->
-                                        <div class="card">
-                                            <div class="card-header">
-                                                <h5><i class="feather icon-list mr-2"></i>Accounts List <span class="badge badge-info badge-pill ml-2"><?= $total_accounts ?></span></h5>
-                                            </div>
-                                            <div class="card-body p-0">
-                                                <div class="table-responsive">
-                                                    <table class="table table-hover">
-                                                        <thead>
-                                                            <tr>
-                                                                <th class="text-center" width="50"><i class="feather icon-hash mr-1"></i>#</th>
-                                                                <th width="100"><i class="feather icon-cog mr-1"></i>Action</th>
-                                                                <th><i class="feather icon-credit-card mr-1"></i>Account Info</th>
-                                                                <th><i class="feather icon-home mr-1"></i>Bank Details</th>
-                                                                <th><i class="feather icon-dollar-sign mr-1"></i>Balances</th>
-                                                                <th><i class="feather icon-activity mr-1"></i>Activity</th>
-                                                                <th><i class="feather icon-check-circle mr-1"></i>Status</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody id="accountTable">
-                                                            <?php
-                                                            $counter = $offset + 1;
-                                                            foreach ($accounts as $account):
-                                                            ?>
-                                                            <tr>
-                                                                <td class="text-center"><?= $counter++ ?></td>
-                                                                <td>
-                                                                    <div class="dropdown">
-                                                                        <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" data-toggle="dropdown">
-                                                                            <i class="feather icon-more-vertical"></i>
-                                                                        </button>
-                                                                        <div class="dropdown-menu dropdown-menu-right">
-                                                                            <button class="dropdown-item view-details" data-account='<?= htmlspecialchars(json_encode($account)) ?>'>
-                                                                                <i class="feather icon-eye text-primary mr-2"></i> View Details
-                                                                            </button>
-                                                                            <button class="dropdown-item view-transactions" data-account-id="<?= $account['id'] ?>" data-account-name="<?= htmlspecialchars($account['name']) ?>">
-                                                                                <i class="feather icon-list text-info mr-2"></i> View Transactions
-                                                                            </button>
-                                                                        </div>
-                                                                    </div>
-                                                                </td>
-
-                                                                <td>
-                                                                    <div class="account-info">
-                                                                        <div class="account-info__details">
-                                                                            <div class="account-info__name">
-                                                                                <strong><?= htmlspecialchars($account['name']) ?></strong>
-                                                                            </div>
-                                                                            <div class="account-info__type">
-                                                                                <span class="badge badge-<?= $account['account_type'] === 'bank' ? 'primary' : 'secondary' ?>">
-                                                                                    <i class="feather <?= $account['account_type'] === 'bank' ? 'icon-home' : 'icon-credit-card' ?> mr-1"></i><?= ucfirst(htmlspecialchars($account['account_type'])) ?>
-                                                                                </span>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                </td>
-
-                                                                <td>
-                                                                    <div class="bank-info">
-                                                                        <?php if ($account['account_type'] === 'bank'): ?>
-                                                                        <div class="bank-info__details">
-                                                                            <div class="bank-info__name">
-                                                                                <strong><?= htmlspecialchars($account['bank_name'] ?: 'N/A') ?></strong>
-                                                                            </div>
-                                                                            <div class="bank-info__account">
-                                                                                <i class="feather icon-hash mr-1 text-muted"></i><?= htmlspecialchars($account['bank_account_number'] ?: 'N/A') ?>
-                                                                            </div>
-                                                                        </div>
-                                                                        <?php else: ?>
-                                                                        <div class="text-muted">
-                                                                            <i class="feather icon-box mr-1"></i><em>Internal Account</em>
-                                                                        </div>
-                                                                        <?php endif; ?>
-                                                                    </div>
-                                                                </td>
-
-                                                                <td>
-                                                                    <div class="balances-info">
-                                                                        <div class="balances-info__usd">
-                                                                            <span class="text-primary"><i class="feather icon-dollar-sign mr-1"></i>$<?= number_format($account['usd_balance'], 2) ?></span>
-                                                                        </div>
-                                                                        <div class="balances-info__afs">
-                                                                            <span class="text-success"><i class="feather icon-credit-card mr-1"></i>AFS <?= number_format($account['afs_balance'], 2) ?></span>
-                                                                        </div>
-                                                                        <?php if ($account['euro_balance'] > 0 || $account['darham_balance'] > 0): ?>
-                                                                        <div class="balances-info__other">
-                                                                            <?php if ($account['euro_balance'] > 0): ?>
-                                                                            <span class="text-warning"><i class="feather icon-repeat mr-1"></i>€<?= number_format($account['euro_balance'], 2) ?></span><br>
-                                                                            <?php endif; ?>
-                                                                            <?php if ($account['darham_balance'] > 0): ?>
-                                                                            <span class="text-info"><i class="feather icon-package mr-1"></i>د.إ <?= number_format($account['darham_balance'], 2) ?></span>
-                                                                            <?php endif; ?>
-                                                                        </div>
-                                                                        <?php endif; ?>
-                                                                    </div>
-                                                                </td>
-
-                                                                <td>
-                                                                    <div class="activity-info">
-                                                                        <div class="activity-info__transactions">
-                                                                            <i class="feather icon-activity text-muted mr-1"></i>
-                                                                            <?= number_format($account['transaction_count']) ?> transactions
-                                                                        </div>
-                                                                        <div class="activity-info__summary">
-                                                                            <small class="text-muted">
-                                                                                <i class="feather icon-trending-up text-success mr-1"></i>$<?= number_format($account['total_credits'], 2) ?>
-                                                                                <i class="feather icon-trending-down text-danger ml-2 mr-1"></i>$<?= number_format($account['total_debits'], 2) ?>
-                                                                            </small>
-                                                                        </div>
-                                                                    </div>
-                                                                </td>
-
-                                                                <td>
-                                                                    <span class="badge badge-<?= $account['status'] === 'active' ? 'success' : 'secondary' ?>">
-                                                                        <i class="feather <?= $account['status'] === 'active' ? 'icon-check-circle' : 'icon-x-circle' ?> mr-1"></i><?= ucfirst(htmlspecialchars($account['status'])) ?>
-                                                                    </span>
-                                                                </td>
-                                                            </tr>
-                                                            <?php endforeach; ?>
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-
-                                                <!-- Pagination -->
-                                                <div class="card-footer bg-white">
-                                                    <div class="d-flex justify-content-between align-items-center">
-                                                        <div class="text-muted">
-                                                            <i class="feather icon-info mr-1"></i>Showing <?= min(($page - 1) * $results_per_page + 1, $total_accounts) ?> to <?= min($page * $results_per_page, $total_accounts) ?> of <?= $total_accounts ?> main accounts
-                                                        </div>
-                                                        <nav aria-label="Page navigation">
-                                                            <ul class="pagination mb-0">
-                                                                <?php if ($page > 1): ?>
-                                                                    <li class="page-item">
-                                                                        <a class="page-link" href="?page=1&search=<?= urlencode($search) ?>&branch=<?= urlencode($selected_branch) ?>">
-                                                                            <i class="feather icon-chevrons-left"></i>
-                                                                        </a>
-                                                                    </li>
-                                                                    <li class="page-item">
-                                                                        <a class="page-link" href="?page=<?= $page - 1 ?>&search=<?= urlencode($search) ?>&branch=<?= urlencode($selected_branch) ?>">
-                                                                            <i class="feather icon-chevron-left"></i>
-                                                                        </a>
-                                                                    </li>
-                                                                <?php endif; ?>
-
-                                                                <?php
-                                                                $start_page = max(1, $page - 2);
-                                                                $end_page = min($total_pages, $page + 2);
-
-                                                                if ($start_page > 1) {
-                                                                    echo '<li class="page-item"><a class="page-link" href="?page=1&search=' . urlencode($search) . '&branch=' . urlencode($selected_branch) . '">1</a></li>';
-                                                                    if ($start_page > 2) {
-                                                                        echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
-                                                                    }
-                                                                }
-
-                                                                for ($i = $start_page; $i <= $end_page; $i++) {
-                                                                    echo '<li class="page-item ' . ($i == $page ? 'active' : '') . '">
-                                                                        <a class="page-link" href="?page=' . $i . '&search=' . urlencode($search) . '&branch=' . urlencode($selected_branch) . '">' . $i . '</a>
-                                                                    </li>';
-                                                                }
-
-                                                                if ($end_page < $total_pages) {
-                                                                    if ($end_page < $total_pages - 1) {
-                                                                        echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
-                                                                    }
-                                                                    echo '<li class="page-item"><a class="page-link" href="?page=' . $total_pages . '&search=' . urlencode($search) . '&branch=' . urlencode($selected_branch) . '">' . $total_pages . '</a></li>';
-                                                                }
-                                                                ?>
-
-                                                                <?php if ($page < $total_pages): ?>
-                                                                    <li class="page-item">
-                                                                        <a class="page-link" href="?page=<?= $page + 1 ?>&search=<?= urlencode($search) ?>&branch=<?= urlencode($selected_branch) ?>">
-                                                                            <i class="feather icon-chevron-right"></i>
-                                                                        </a>
-                                                                    </li>
-                                                                    <li class="page-item">
-                                                                        <a class="page-link" href="?page=<?= $total_pages ?>&search=<?= urlencode($search) ?>&branch=<?= urlencode($selected_branch) ?>">
-                                                                            <i class="feather icon-chevrons-right"></i>
-                                                                        </a>
-                                                                    </li>
-                                                                <?php endif; ?>
-                                                            </ul>
-                                                        </nav>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+    <!-- Search & Filter -->
+    <div class="dash-card">
+        <div class="dash-card-head">
+            <h6><span class="ico"><i class="feather icon-filter"></i></span>Filter &amp; Search</h6>
+        </div>
+        <div class="dash-card-body">
+            <div class="search-row">
+                <div>
+                    <label class="form-label-custom">Branch</label>
+                    <select class="form-input" id="branchSelect">
+                        <option value="all" <?= $selected_branch==='all'?'selected':'' ?>>All Branches</option>
+                        <?php foreach ($branches as $b): ?>
+                        <option value="<?= $b['id'] ?>" <?= $selected_branch==$b['id']?'selected':'' ?>><?= htmlspecialchars($b['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label-custom">Search</label>
+                    <div class="search-group">
+                        <input type="text" id="searchInput" class="form-input" placeholder="Account name, bank number, or bank name…" value="<?= htmlspecialchars($search) ?>">
+                        <button class="search-btn" id="searchBtn"><i class="feather icon-search"></i>Search</button>
+                        <?php if (!empty($search)): ?>
+                        <a href="?branch=<?= urlencode($selected_branch) ?>" class="clear-btn"><i class="feather icon-x"></i>Clear</a>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Table -->
+    <div class="dash-card">
+        <div class="dash-card-head">
+            <h6><span class="ico"><i class="feather icon-list"></i></span>Accounts List</h6>
+            <span class="count-badge"><?= number_format($total_accounts) ?> total</span>
+        </div>
+
+        <?php if (!empty($accounts)): ?>
+        <div style="overflow-x:auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width:44px;">#</th>
+                        <th style="width:60px;"></th>
+                        <th>Account Info</th>
+                        <th>Bank Details</th>
+                        <th>Balances</th>
+                        <th>Activity</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php $counter = $offset + 1; foreach ($accounts as $acc):
+                    $isBank   = $acc['account_type'] === 'bank';
+                    $statusCls = $acc['status'] === 'active' ? 'sp-active' : 'sp-inactive';
+                    $credits  = floatval($acc['total_credits']);
+                    $debits   = floatval($acc['total_debits']);
+                ?>
+                <tr>
+                    <td class="td-ctr"><?= $counter++ ?></td>
+                    <td>
+                        <div class="dropdown">
+                            <button class="act-btn dropdown-toggle" type="button" data-toggle="dropdown">
+                                <i class="feather icon-more-vertical"></i>
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-right">
+                                <button class="dropdown-item view-details" data-account='<?= htmlspecialchars(json_encode($acc)) ?>'>
+                                    <i class="feather icon-eye" style="color:var(--blue)"></i>View Details
+                                </button>
+                                <button class="dropdown-item view-transactions" data-account-id="<?= $acc['id'] ?>" data-account-name="<?= htmlspecialchars($acc['name']) ?>">
+                                    <i class="feather icon-list" style="color:#0f766e"></i>View Transactions
+                                </button>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="acc-name"><?= htmlspecialchars($acc['name']) ?></div>
+                        <span class="acc-type-pill <?= $isBank ? 'acc-bank' : 'acc-cash' ?>">
+                            <i class="feather <?= $isBank ? 'icon-home' : 'icon-credit-card' ?>"></i>
+                            <?= ucfirst(htmlspecialchars($acc['account_type'])) ?>
+                        </span>
+                    </td>
+                    <td>
+                        <?php if ($isBank): ?>
+                        <div class="bank-name"><?= htmlspecialchars($acc['bank_name'] ?: 'N/A') ?></div>
+                        <div class="bank-num"><i class="feather icon-hash" style="font-size:10px;margin-right:2px;"></i><?= htmlspecialchars($acc['bank_account_number'] ?: 'N/A') ?></div>
+                        <?php else: ?>
+                        <div class="internal-tag"><i class="feather icon-box" style="margin-right:4px;font-size:11px;"></i>Internal Account</div>
+                        <?php endif; ?>
+                    </td>
+                    <td>
+                        <div class="bal-row bal-usd"><span class="bal-dot bd-usd"></span>$<?= number_format($acc['usd_balance'], 2) ?></div>
+                        <div class="bal-row bal-afs"><span class="bal-dot bd-afs"></span>AFS <?= number_format($acc['afs_balance'], 2) ?></div>
+                        <?php if (floatval($acc['euro_balance']) > 0): ?>
+                        <div class="bal-row bal-euro"><span class="bal-dot bd-euro"></span>€<?= number_format($acc['euro_balance'], 2) ?></div>
+                        <?php endif; ?>
+                        <?php if (floatval($acc['darham_balance']) > 0): ?>
+                        <div class="bal-row bal-darham"><span class="bal-dot bd-darham"></span>د.إ <?= number_format($acc['darham_balance'], 2) ?></div>
+                        <?php endif; ?>
+                    </td>
+                    <td>
+                        <div class="txn-count"><?= number_format($acc['transaction_count']) ?> txns</div>
+                        <div class="txn-flows">
+                            <span class="txn-cr">↑ $<?= number_format($credits, 0) ?></span>
+                            <span class="txn-dr">↓ $<?= number_format($debits, 0) ?></span>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="status-pill <?= $statusCls ?>"><?= ucfirst(htmlspecialchars($acc['status'])) ?></span>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pag-wrap">
+            <div class="pag-info">Showing <?= $from ?>–<?= $to ?> of <?= number_format($total_accounts) ?> accounts</div>
+            <div class="pag-links">
+                <?php $base = '?branch='.urlencode($selected_branch).'&search='.urlencode($search); ?>
+                <a href="<?= $base ?>&page=1" class="pag-btn <?= $page<=1?'disabled':'' ?>"><i class="feather icon-chevrons-left"></i></a>
+                <a href="<?= $base ?>&page=<?= $page-1 ?>" class="pag-btn <?= $page<=1?'disabled':'' ?>"><i class="feather icon-chevron-left"></i></a>
+                <?php
+                $sp2=max(1,$page-2); $ep=min($total_pages,$page+2);
+                if($sp2>1){echo '<a href="'.$base.'&page=1" class="pag-btn">1</a>';if($sp2>2)echo '<span class="pag-dots">…</span>';}
+                for($i=$sp2;$i<=$ep;$i++) echo '<a href="'.$base.'&page='.$i.'" class="pag-btn '.($i==$page?'active':'').'">'.$i.'</a>';
+                if($ep<$total_pages){if($ep<$total_pages-1)echo '<span class="pag-dots">…</span>';echo '<a href="'.$base.'&page='.$total_pages.'" class="pag-btn">'.$total_pages.'</a>';}
+                ?>
+                <a href="<?= $base ?>&page=<?= $page+1 ?>" class="pag-btn <?= $page>=$total_pages?'disabled':'' ?>"><i class="feather icon-chevron-right"></i></a>
+                <a href="<?= $base ?>&page=<?= $total_pages ?>" class="pag-btn <?= $page>=$total_pages?'disabled':'' ?>"><i class="feather icon-chevrons-right"></i></a>
+            </div>
+        </div>
+
+        <?php else: ?>
+        <div class="empty-state">
+            <i class="feather icon-credit-card"></i>
+            <p>No accounts found<?= !empty($search) ? ' for "'.$search.'"' : '' ?>.</p>
+        </div>
+        <?php endif; ?>
+    </div>
+
+</div>
+</div>
+
 <!-- Account Details Modal -->
-<div class="modal fade" id="detailsModal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-primary text-white border-0">
-                <h5 class="modal-title">
-                    <i class="feather icon-credit-card mr-2"></i>Main Account Details
-                </h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+<div class="modal fade" id="detailsModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="feather icon-credit-card" style="margin-right:8px;"></i>Main Account Details</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
             </div>
-            <div class="modal-body p-0">
-                <!-- Top Summary Card -->
-                <div class="bg-light p-4 border-bottom">
-                    <div class="row">
-                        <div class="col-md-3 text-center">
-                            <div class="small text-muted mb-1">USD Balance</div>
-                            <h4 class="mb-0 text-primary" id="usd-balance">-</h4>
+            <div class="modal-summary">
+                <div class="ms-cell"><div class="ms-label">USD</div><div class="ms-val usd-c" id="usd-balance">—</div></div>
+                <div class="ms-cell"><div class="ms-label">AFS</div><div class="ms-val afs-c" id="afs-balance">—</div></div>
+                <div class="ms-cell"><div class="ms-label">Euro</div><div class="ms-val euro-c" id="euro-balance">—</div></div>
+                <div class="ms-cell"><div class="ms-label">Darham</div><div class="ms-val darham-c" id="darham-balance">—</div></div>
+            </div>
+            <div class="modal-body">
+                <div class="modal-tabs">
+                    <button class="modal-tab active" onclick="switchTab('summary',this)"><i class="feather icon-info"></i>Summary</button>
+                    <button class="modal-tab" onclick="switchTab('bank',this)"><i class="feather icon-home"></i>Bank Details</button>
+                </div>
+                <div class="modal-pane active" id="pane-summary">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                        <div class="detail-section">
+                            <div class="ds-title">Account Information</div>
+                            <div class="ds-row"><span class="ds-key">Account Name</span><span class="ds-val" id="account-name">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Account Type</span><span class="ds-val" id="account-type">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Status</span><span class="ds-val" id="account-status">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Last Updated</span><span class="ds-val" id="last-updated" style="font-family:'JetBrains Mono',monospace;font-size:11px;">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Created At</span><span class="ds-val" id="created-at" style="font-family:'JetBrains Mono',monospace;font-size:11px;">—</span></div>
                         </div>
-                        <div class="col-md-3 text-center">
-                            <div class="small text-muted mb-1">AFS Balance</div>
-                            <h4 class="mb-0 text-success" id="afs-balance">-</h4>
-                        </div>
-                        <div class="col-md-3 text-center">
-                            <div class="small text-muted mb-1">EURO Balance</div>
-                            <h4 class="mb-0 text-warning" id="euro-balance">-</h4>
-                        </div>
-                        <div class="col-md-3 text-center">
-                            <div class="small text-muted mb-1">DARHAM Balance</div>
-                            <h4 class="mb-0 text-info" id="darham-balance">-</h4>
+                        <div class="detail-section">
+                            <div class="ds-title">Activity Summary</div>
+                            <div class="ds-row"><span class="ds-key">Total Transactions</span><span class="ds-val blue" id="total-transactions" style="font-family:'JetBrains Mono',monospace;">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Total Credits</span><span class="ds-val green" id="total-credits" style="font-family:'JetBrains Mono',monospace;">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Total Debits</span><span class="ds-val red" id="total-debits" style="font-family:'JetBrains Mono',monospace;">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Net Flow</span><span class="ds-val" id="net-flow" style="font-family:'JetBrains Mono',monospace;">—</span></div>
                         </div>
                     </div>
                 </div>
-
-                <!-- Tabs Navigation -->
-                <ul class="nav nav-pills nav-fill p-3" id="detailsTab" role="tablist">
-                    <li class="nav-item">
-                        <a class="nav-link active" id="details-summary-tab" data-toggle="tab" href="#details-summary" role="tab">
-                            <i class="feather icon-info mr-2"></i>Summary
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" id="details-bank-tab" data-toggle="tab" href="#details-bank" role="tab">
-                            <i class="feather icon-home mr-2"></i>Bank Details
-                        </a>
-                    </li>
-                </ul>
-
-                <!-- Tab Content -->
-                <div class="tab-content p-4">
-                    <!-- Summary Tab -->
-                    <div class="tab-pane fade show active" id="details-summary" role="tabpanel">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="card border-0 shadow-sm mb-3">
-                                    <div class="card-body">
-                                        <h6 class="card-subtitle mb-3 text-muted">Account Information</h6>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">Account Name</span>
-                                            <strong id="account-name">-</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">Account Type</span>
-                                            <strong id="account-type">-</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">Status</span>
-                                            <strong id="account-status">-</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">Last Updated</span>
-                                            <strong id="last-updated">-</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between">
-                                            <span class="text-muted">Created At</span>
-                                            <strong id="created-at">-</strong>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="card border-0 shadow-sm mb-3">
-                                    <div class="card-body">
-                                        <h6 class="card-subtitle mb-3 text-muted">Activity Summary</h6>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">Total Transactions</span>
-                                            <strong id="total-transactions">-</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">Total Credits</span>
-                                            <strong class="text-success" id="total-credits">-</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">Total Debits</span>
-                                            <strong class="text-danger" id="total-debits">-</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between">
-                                            <span class="text-muted">Net Flow</span>
-                                            <strong id="net-flow">-</strong>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Bank Details Tab -->
-                    <div class="tab-pane fade" id="details-bank" role="tabpanel">
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-body">
-                                <h6 class="card-subtitle mb-3 text-muted">Bank Information</h6>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Bank Name</span>
-                                    <strong id="bank-name">-</strong>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Account Number</span>
-                                    <strong id="account-number">-</strong>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">AFS Account Number</span>
-                                    <strong id="afs-account-number">-</strong>
-                                </div>
-                            </div>
-                        </div>
+                <div class="modal-pane" id="pane-bank">
+                    <div class="detail-section">
+                        <div class="ds-title">Bank Information</div>
+                        <div class="ds-row"><span class="ds-key">Bank Name</span><span class="ds-val" id="bank-name">—</span></div>
+                        <div class="ds-row"><span class="ds-key">Account Number (USD)</span><span class="ds-val blue" id="account-number" style="font-family:'JetBrains Mono',monospace;">—</span></div>
+                        <div class="ds-row"><span class="ds-key">Account Number (AFS)</span><span class="ds-val" id="afs-account-number" style="font-family:'JetBrains Mono',monospace;color:#0f766e;">—</span></div>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer border-0 bg-light">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">
-                    <i class="feather icon-x mr-2"></i>Close
-                </button>
+            <div class="modal-footer-custom">
+                <button type="button" class="btn-close-modal" data-dismiss="modal"><i class="feather icon-x"></i>Close</button>
             </div>
         </div>
     </div>
 </div>
 
 <!-- Transactions Modal -->
-<div class="modal fade" id="transactionsModal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-info text-white border-0">
-                <h5 class="modal-title">
-                    <i class="feather icon-list mr-2"></i>Account Transactions - <span id="account-name-header"></span>
-                </h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+<div class="modal fade" id="transactionsModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header txn-header">
+                <h5 class="modal-title"><i class="feather icon-list" style="margin-right:8px;"></i>Transactions — <span id="account-name-header"></span></h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body" style="padding:0;">
                 <div id="transactionsContent">
-                    <div class="text-center">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="sr-only">Loading...</span>
-                        </div>
-                        <p class="mt-2">Loading transactions...</p>
+                    <div class="txn-loading">
+                        <div class="spinner"></div>
+                        <p style="color:var(--text-sub);font-size:13px;margin:0;">Loading transactions…</p>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer border-0 bg-light">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">
-                    <i class="feather icon-x mr-2"></i>Close
-                </button>
+            <div class="modal-footer-custom">
+                <button type="button" class="btn-close-modal" data-dismiss="modal"><i class="feather icon-x"></i>Close</button>
             </div>
         </div>
     </div>
@@ -921,90 +462,72 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
 <?php include 'footer.php'; ?>
 
 <script>
-// Handle branch selection
-document.getElementById('branchSelect').addEventListener('change', function() {
-    const branchValue = this.value;
-    const searchValue = document.getElementById('searchInput').value.trim();
+document.getElementById('branchSelect').addEventListener('change', doSearch);
+document.getElementById('searchBtn').addEventListener('click', doSearch);
+document.getElementById('searchInput').addEventListener('keypress', e => { if(e.key==='Enter') doSearch(); });
 
-    let url = '?branch=' + encodeURIComponent(branchValue);
-    if (searchValue) {
-        url += '&search=' + encodeURIComponent(searchValue);
-    }
+function doSearch() {
+    const s = document.getElementById('searchInput').value.trim();
+    const b = document.getElementById('branchSelect').value;
+    window.location.href = '?branch=' + encodeURIComponent(b) + (s ? '&search=' + encodeURIComponent(s) : '');
+}
 
-    window.location.href = url;
-});
+function switchTab(tab, btn) {
+    document.querySelectorAll('.modal-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.modal-tab').forEach(b => b.classList.remove('active'));
+    document.getElementById('pane-' + tab).classList.add('active');
+    btn.classList.add('active');
+}
 
-// Handle search functionality
-document.getElementById('searchBtn').addEventListener('click', function() {
-    const searchValue = document.getElementById('searchInput').value.trim();
-    const branchValue = document.getElementById('branchSelect').value;
+document.querySelectorAll('.view-details').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const a = JSON.parse(this.getAttribute('data-account'));
 
-    let url = '?branch=' + encodeURIComponent(branchValue);
-    if (searchValue) {
-        url += '&search=' + encodeURIComponent(searchValue);
-    }
+        document.getElementById('usd-balance').textContent    = '$'    + parseFloat(a.usd_balance    ||0).toFixed(2);
+        document.getElementById('afs-balance').textContent    = 'AFS ' + parseFloat(a.afs_balance    ||0).toFixed(2);
+        document.getElementById('euro-balance').textContent   = '€'    + parseFloat(a.euro_balance   ||0).toFixed(2);
+        document.getElementById('darham-balance').textContent = 'د.إ ' + parseFloat(a.darham_balance ||0).toFixed(2);
 
-    window.location.href = url;
-});
+        document.getElementById('account-name').textContent  = a.name || '—';
+        document.getElementById('account-type').textContent  = (a.account_type||'').charAt(0).toUpperCase() + (a.account_type||'').slice(1);
+        document.getElementById('account-status').textContent = (a.status||'').charAt(0).toUpperCase() + (a.status||'').slice(1);
+        document.getElementById('last-updated').textContent  = a.last_updated || 'N/A';
+        document.getElementById('created-at').textContent    = a.created_at   || 'N/A';
 
-// Handle enter key in search input
-document.getElementById('searchInput').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        document.getElementById('searchBtn').click();
-    }
-});
+        const cr  = parseFloat(a.total_credits||0);
+        const dr  = parseFloat(a.total_debits ||0);
+        const net = cr - dr;
+        document.getElementById('total-transactions').textContent = parseInt(a.transaction_count||0).toLocaleString();
+        document.getElementById('total-credits').textContent = '+$' + cr.toFixed(2);
+        document.getElementById('total-debits').textContent  = '-$' + dr.toFixed(2);
+        const nEl = document.getElementById('net-flow');
+        nEl.textContent = (net >= 0 ? '+' : '') + '$' + net.toFixed(2);
+        nEl.className = 'ds-val ' + (net >= 0 ? 'green' : 'red');
 
-// Handle view details modal
-document.querySelectorAll('.view-details').forEach(button => {
-    button.addEventListener('click', function() {
-        const accountData = JSON.parse(this.getAttribute('data-account'));
+        document.getElementById('bank-name').textContent           = a.bank_name                 || 'N/A';
+        document.getElementById('account-number').textContent      = a.bank_account_number       || 'N/A';
+        document.getElementById('afs-account-number').textContent  = a.bank_account_afs_number   || 'N/A';
 
-        // Populate modal with account data
-        document.getElementById('usd-balance').textContent = '$' + parseFloat(accountData.usd_balance || 0).toFixed(2);
-        document.getElementById('afs-balance').textContent = 'AFS ' + parseFloat(accountData.afs_balance || 0).toFixed(2);
-        document.getElementById('euro-balance').textContent = '€' + parseFloat(accountData.euro_balance || 0).toFixed(2);
-        document.getElementById('darham-balance').textContent = 'د.إ ' + parseFloat(accountData.darham_balance || 0).toFixed(2);
-
-        document.getElementById('account-name').textContent = accountData.name;
-        document.getElementById('account-type').textContent = accountData.account_type.charAt(0).toUpperCase() + accountData.account_type.slice(1);
-        document.getElementById('account-status').textContent = accountData.status.charAt(0).toUpperCase() + accountData.status.slice(1);
-        document.getElementById('last-updated').textContent = accountData.last_updated || 'N/A';
-
-        document.getElementById('total-transactions').textContent = accountData.transaction_count;
-        document.getElementById('total-credits').textContent = '$' + parseFloat(accountData.total_credits || 0).toFixed(2);
-        document.getElementById('total-debits').textContent = '$' + parseFloat(accountData.total_debits || 0).toFixed(2);
-        const netFlow = parseFloat(accountData.total_credits || 0) - parseFloat(accountData.total_debits || 0);
-        document.getElementById('net-flow').innerHTML = (netFlow >= 0 ? '<span class="text-success">+$' : '<span class="text-danger">-$') + Math.abs(netFlow).toFixed(2) + '</span>';
-
-        document.getElementById('bank-name').textContent = accountData.bank_name || 'N/A';
-        document.getElementById('account-number').textContent = accountData.bank_account_number || 'N/A';
-        document.getElementById('afs-account-number').textContent = accountData.bank_account_afs_number || 'N/A';
-
-        // Show modal
+        switchTab('summary', document.querySelector('.modal-tab'));
         $('#detailsModal').modal('show');
     });
 });
 
-// Handle view transactions modal
-document.querySelectorAll('.view-transactions').forEach(button => {
-    button.addEventListener('click', function() {
-        const accountId = this.getAttribute('data-account-id');
-        const accountName = this.getAttribute('data-account-name');
-
-        document.getElementById('account-name-header').textContent = accountName;
-
-        // Load transactions via AJAX
-        fetch('get_account_transactions.php?account_id=' + accountId)
-            .then(response => response.text())
-            .then(data => {
-                document.getElementById('transactionsContent').innerHTML = data;
-            })
-            .catch(error => {
-                document.getElementById('transactionsContent').innerHTML = '<div class="alert alert-danger">Error loading transactions: ' + error.message + '</div>';
-            });
-
-        // Show modal
+document.querySelectorAll('.view-transactions').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const id   = this.getAttribute('data-account-id');
+        const name = this.getAttribute('data-account-name');
+        document.getElementById('account-name-header').textContent = name;
+        document.getElementById('transactionsContent').innerHTML =
+            '<div class="txn-loading"><div class="spinner"></div><p style="color:var(--text-sub);font-size:13px;margin:0;">Loading transactions…</p></div>';
         $('#transactionsModal').modal('show');
+        fetch('get_account_transactions.php?account_id=' + id)
+            .then(r => r.text())
+            .then(html => { document.getElementById('transactionsContent').innerHTML = html; })
+            .catch(err => {
+                document.getElementById('transactionsContent').innerHTML =
+                    '<div style="padding:20px;color:var(--red);">Error: ' + err.message + '</div>';
+            });
     });
 });
 </script>

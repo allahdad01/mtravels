@@ -1,55 +1,38 @@
 <?php
 /**
  * Request User Add-on - Tenant Interface
- * 
- * Allows tenants to request additional user slots beyond their plan limits.
  */
-
 require_once '../includes/language_helpers.php';
 require_once '../includes/db.php';
 require_once '../includes/UserAddonManager.php';
 require_once '../admin/security.php';
 
-// Start session if not already started
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
-// Initialize UserAddonManager
 $userAddonManager = new UserAddonManager($pdo, $tenant_id);
-
-// Get tenant usage stats
-$usageStats = $userAddonManager->getUsageStats();
-$plan = $usageStats['plan'];
-
-// Get pricing configuration
-$addonPricing = $userAddonManager->getAddonPricing();
-
-// Get currency from plan
-$currency = $plan['currency'] ?? 'USD';
+$usageStats       = $userAddonManager->getUsageStats();
+$plan             = $usageStats['plan'];
+$addonPricing     = $userAddonManager->getAddonPricing();
+$currency         = htmlspecialchars($plan['currency'] ?? 'USD');
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_addon'])) {
-    // Verify CSRF token
     if (!CsrfProtection::validateToken($_POST['csrf_token'] ?? null)) {
         $error = __('invalid_csrf_token');
     } else {
-        $num_users = intval($_POST['num_users'] ?? 0);
+        $num_users     = intval($_POST['num_users'] ?? 0);
         $billing_cycle = $_POST['billing_cycle'] ?? 'monthly';
-        
         if ($num_users <= 0) {
             $error = __('invalid_number_of_users');
         } elseif ($num_users > 100) {
             $error = __('max_users_per_request_exceeded');
         } else {
             $result = $userAddonManager->requestAdditionalUsers($tenant_id, $num_users, $billing_cycle);
-            
             if ($result['success']) {
-                $success = sprintf(__('user_addon_request_submitted'), $num_users, $result['estimated_cost'], $result['currency']);
-                // Refresh stats
+                $success    = sprintf(__('user_addon_request_submitted'), $num_users, $result['estimated_cost'], $result['currency']);
                 $usageStats = $userAddonManager->getUsageStats();
             } else {
                 $error = $result['message'];
@@ -58,611 +41,451 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_addon'])) {
     }
 }
 
-// Get tenant's pending requests and active addons
 $all_pending_requests = $userAddonManager->getTenantAddonRequests($tenant_id, 'pending');
-$all_active_addons = $userAddonManager->getActiveUserAddons($tenant_id);
+$all_active_addons    = $userAddonManager->getActiveUserAddons($tenant_id);
 
-// Pagination for pending requests (5 per page)
-$pending_items_per_page = 5;
-$pending_current_page = intval($_GET['pending_page'] ?? 1);
-$pending_total_items = count($all_pending_requests);
-$pending_total_pages = ceil($pending_total_items / $pending_items_per_page);
-$pending_current_page = max(1, min($pending_current_page, $pending_total_pages));
-$pending_offset = ($pending_current_page - 1) * $pending_items_per_page;
-$pending_requests = array_slice($all_pending_requests, $pending_offset, $pending_items_per_page);
+// Pagination — pending
+$p_per_page     = 5;
+$p_page         = max(1, intval($_GET['pending_page'] ?? 1));
+$p_total        = count($all_pending_requests);
+$p_pages        = max(1, ceil($p_total / $p_per_page));
+$p_page         = min($p_page, $p_pages);
+$pending_requests = array_slice($all_pending_requests, ($p_page - 1) * $p_per_page, $p_per_page);
 
-// Pagination for active addons (5 per page)
-$addon_items_per_page = 5;
-$addon_current_page = intval($_GET['addon_page'] ?? 1);
-$addon_total_items = count($all_active_addons);
-$addon_total_pages = ceil($addon_total_items / $addon_items_per_page);
-$addon_current_page = max(1, min($addon_current_page, $addon_total_pages));
-$addon_offset = ($addon_current_page - 1) * $addon_items_per_page;
-$active_addons = array_slice($all_active_addons, $addon_offset, $addon_items_per_page);
+// Pagination — active addons
+$a_per_page     = 5;
+$a_page         = max(1, intval($_GET['addon_page'] ?? 1));
+$a_total        = count($all_active_addons);
+$a_pages        = max(1, ceil($a_total / $a_per_page));
+$a_page         = min($a_page, $a_pages);
+$active_addons  = array_slice($all_active_addons, ($a_page - 1) * $a_per_page, $a_per_page);
 
-$page_title = __('request_more_users');
+$usage_pct      = min(100, intval($usageStats['usage_percentage'] ?? 0));
+$page_title     = __('request_more_users');
 include 'header.php';
 ?>
-    <!-- [ Main Content ] start -->
-    <div class="pcoded-main-container">
-        <div class="pcoded-wrapper">
-            <div class="pcoded-content">
-                <div class="pcoded-inner-content">
-                    <div class="main-body">
-                        <div class="page-wrapper">
-                            <!-- [ Main Content ] start -->
-                            <div class="main-content">
-                                <div class="page-header card">
-                                    <div class="row align-items-center">
-                                        <div class="col-md-6">
-                                            <h5 class="mb-0"><i class="feather icon-users mr-2"></i><?php echo __('request_more_users'); ?></h5>
-                                            <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;"><?php echo __('request_additional_user_slots'); ?></p>
-                                        </div>
-                                        <div class="col-md-6 text-end">
-                                            <a href="users.php" class="btn btn-outline-secondary btn-sm">
-                                                <i class="feather icon-arrow-left mr-1"></i><?php echo __('back_to_add_employee'); ?>
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
 
-                                <div class="row">
-                                    <!-- Current Usage Card -->
-                                    <div class="col-md-4">
-                                        <div class="card">
-                                            <div class="card-header">
-                                                <h5><i class="feather icon-bar-chart-2 mr-2"></i><?php echo __('current_usage'); ?></h5>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="text-center mb-4">
-                                                    <div class="h2 font-weight-bold text-primary">
-                                                        <i class="feather icon-users mr-2"></i><?php echo $usageStats['current_users']; ?>
-                                                        <span class="text-muted h4">/ <?php echo $usageStats['max_users']; ?></span>
-                                                    </div>
-                                                    <p class="text-muted mb-0"><?php echo __('users_used'); ?></p>
-                                                </div>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
 
-                                                <div class="progress mb-4" style="height: 30px; border-radius: 15px;">
-                                                    <div class="progress-bar <?php echo $usageStats['usage_percentage'] >= 90 ? 'bg-danger' : ($usageStats['usage_percentage'] >= 75 ? 'bg-warning' : 'bg-success'); ?>"
-                                                         role="progressbar"
-                                                         style="width: <?php echo min(100, $usageStats['usage_percentage']); ?>%; border-radius: 15px;">
-                                                        <span class="font-weight-bold"><?php echo $usageStats['usage_percentage']; ?>%</span>
-                                                    </div>
-                                                </div>
+:root {
+    --teal:      #2ed8b6;
+    --blue:      #4099ff;
+    --grad:      linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    --surface:   #f4f7fe;
+    --card-bg:   #ffffff;
+    --border:    #e8edf5;
+    --text-main: #1a2340;
+    --text-sub:  #6b7a99;
+    --green:     #22c55e;
+    --amber:     #f59e0b;
+    --red:       #ef4444;
+    --radius:    14px;
+    --shadow:    0 2px 12px rgba(64,153,255,0.08);
+    --shadow-md: 0 6px 24px rgba(64,153,255,0.13);
+}
 
-                                                <hr class="my-4">
+*, *::before, *::after { box-sizing: border-box; }
+body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !important; background: var(--surface) !important; color: var(--text-main) !important; }
 
-                                                <div class="row text-center">
-                                                    <div class="col-6">
-                                                        <div class="h4 mb-1 font-weight-bold text-info"><?php echo $usageStats['base_users']; ?></div>
-                                                        <small class="text-muted"><i class="feather icon-home mr-1"></i><?php echo __('base_users'); ?></small>
-                                                    </div>
-                                                    <div class="col-6">
-                                                        <div class="h4 mb-1 font-weight-bold text-success">+<?php echo $usageStats['additional_users']; ?></div>
-                                                        <small class="text-muted"><i class="feather icon-plus-circle mr-1"></i><?php echo __('addon_users'); ?></small>
-                                                    </div>
-                                                </div>
+/* ── Page Header ── */
+.dash-header { background:var(--grad); border-radius:var(--radius); padding:24px 28px; margin-bottom:24px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 8px 32px rgba(64,153,255,0.22); position:relative; overflow:hidden; }
+.dash-header::before { content:''; position:absolute; inset:0; background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat; }
+.dash-header h4 { font-size:22px; font-weight:800; color:#fff; margin:0 0 4px; letter-spacing:-0.4px; position:relative; }
+.dash-header p  { color:rgba(255,255,255,0.8); margin:0; font-size:13px; position:relative; }
+.btn-back { display:inline-flex; align-items:center; gap:7px; background:rgba(255,255,255,0.18); color:#fff; border:1px solid rgba(255,255,255,0.3); border-radius:10px; padding:8px 16px; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; text-decoration:none; transition:all 0.2s; position:relative; }
+.btn-back:hover { background:rgba(255,255,255,0.28); color:#fff; text-decoration:none; }
 
-                                                <hr class="my-4">
+/* ── Alerts ── */
+.dash-alert { display:flex; align-items:flex-start; gap:12px; padding:14px 20px; border-radius:var(--radius); margin-bottom:16px; font-size:14px; font-weight:500; animation:slideDown 0.3s ease; }
+.dash-alert-success { background:#dcfce7; color:#166534; border-left:4px solid var(--green); }
+.dash-alert-danger  { background:#fee2e2; color:#991b1b; border-left:4px solid var(--red); }
+.dash-alert-warning { background:#fef3c7; color:#92400e; border-left:4px solid var(--amber); }
+.dash-alert-info    { background:#eff6ff; color:#1e40af; border-left:4px solid var(--blue); }
+.dash-alert .close-btn { background:none; border:none; cursor:pointer; opacity:0.5; font-size:18px; line-height:1; padding:0; color:inherit; margin-left:auto; flex-shrink:0; }
+.dash-alert .close-btn:hover { opacity:1; }
+@keyframes slideDown { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
 
-                                                <div class="text-center">
-                                                    <span class="badge badge-info badge-pill px-3 py-2 h6">
-                                                        <i class="feather icon-package mr-1"></i><?php echo htmlspecialchars($plan['name'] ?? __('no_plan')); ?>
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Pricing Information -->
-                                        <div class="card mt-3">
-                                            <div class="card-header">
-                                                <h5><i class="feather icon-dollar-sign mr-2"></i><?php echo __('addon_pricing'); ?></h5>
-                                            </div>
-                                            <div class="card-body">
-                                                <table class="table table-borderless">
-                                                    <tbody>
-                                                        <tr>
-                                                            <td class="py-3"><i class="feather icon-calendar mr-2 text-primary"></i><?php echo __('monthly'); ?></td>
-                                                            <td class="text-right py-3 font-weight-bold text-success h5"><?php echo number_format($addonPricing['monthly'], 2); ?> <?php echo htmlspecialchars($currency); ?></td>
-                                                        </tr>
-                                                        <tr>
-                                                            <td class="py-3"><i class="feather icon-calendar mr-2 text-warning"></i><?php echo __('quarterly'); ?></td>
-                                                            <td class="text-right py-3 font-weight-bold text-success h5"><?php echo number_format($addonPricing['quarterly'], 2); ?> <?php echo htmlspecialchars($currency); ?></td>
-                                                        </tr>
-                                                        <tr>
-                                                            <td class="py-3"><i class="feather icon-calendar mr-2 text-info"></i><?php echo __('yearly'); ?></td>
-                                                            <td class="text-right py-3 font-weight-bold text-success h5"><?php echo number_format($addonPricing['yearly'], 2); ?> <?php echo htmlspecialchars($currency); ?></td>
-                                                        </tr>
-                                                    </tbody>
-                                                </table>
-                                                <div class="alert alert-light border mt-3">
-                                                    <p class="text-muted mb-0 text-center">
-                                                        <i class="feather icon-info mr-2"></i><?php echo __('per_user_per_billing_cycle'); ?>
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+/* ── Layout ── */
+.page-grid { display:grid; grid-template-columns:300px 1fr; gap:20px; align-items:start; }
+@media(max-width:1024px){ .page-grid{ grid-template-columns:1fr; } }
 
-                                    <!-- Request Form -->
-                                    <div class="col-md-8">
-                                        <?php if (isset($error)): ?>
-                                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                                            <?php echo $error; ?>
-                                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                                <span aria-hidden="true">&times;</span>
-                                            </button>
-                                        </div>
-                                        <?php endif; ?>
+/* ── Cards ── */
+.dash-card { background:var(--card-bg); border-radius:var(--radius); border:1px solid var(--border); box-shadow:var(--shadow); overflow:hidden; margin-bottom:20px; }
+.dash-card:last-child { margin-bottom:0; }
+.dash-card-head { padding:15px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px; }
+.dash-card-head h6 { font-size:14px; font-weight:700; margin:0; display:flex; align-items:center; gap:8px; }
+.dash-card-head h6 .ico { width:28px; height:28px; border-radius:8px; background:var(--grad); display:flex; align-items:center; justify-content:center; color:#fff; font-size:13px; flex-shrink:0; }
+.dash-card-body { padding:20px; }
+.count-badge { background:rgba(64,153,255,0.1); color:var(--blue); border-radius:20px; padding:3px 10px; font-size:11px; font-weight:700; margin-left:auto; }
+.warn-badge  { background:rgba(245,158,11,0.12); color:var(--amber); border-radius:20px; padding:3px 10px; font-size:11px; font-weight:700; margin-left:auto; }
 
-                                        <?php if (isset($success)): ?>
-                                        <div class="alert alert-success alert-dismissible fade show" role="alert">
-                                            <?php echo $success; ?>
-                                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                                <span aria-hidden="true">&times;</span>
-                                            </button>
-                                        </div>
-                                        <?php endif; ?>
+/* ── Usage widget ── */
+.usage-circle-wrap { text-align:center; padding:4px 0 20px; }
+.usage-nums { font-size:36px; font-weight:800; font-family:'JetBrains Mono',monospace; color:var(--blue); line-height:1; margin-bottom:4px; }
+.usage-nums span { font-size:18px; font-weight:600; color:var(--text-sub); }
+.usage-label { font-size:12px; color:var(--text-sub); font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:16px; }
 
-                                        <div class="card">
-                                            <div class="card-header">
-                                                <h5><i class="feather icon-user-plus mr-2"></i><?php echo __('request_additional_users'); ?></h5>
-                                            </div>
-                                            <div class="card-body">
-                                                <form method="POST" action="">
-                                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8') ?>">
-                                                    <input type="hidden" name="request_addon" value="1">
+.usage-bar { height:8px; background:var(--border); border-radius:99px; overflow:hidden; margin-bottom:6px; }
+.usage-bar-fill { height:100%; border-radius:99px; background:var(--grad); transition:width 0.6s ease; }
+.usage-bar-fill.warn { background:linear-gradient(90deg,var(--amber),var(--red)); }
+.usage-bar-pct { display:flex; justify-content:flex-end; font-size:11px; font-weight:700; color:var(--text-sub); margin-bottom:16px; }
 
-                                                    <div class="form-group">
-                                                        <label for="num_users"><i class="feather icon-hash mr-2"></i><?php echo __('number_of_additional_users'); ?> <span class="text-danger">*</span></label>
-                                                        <input type="number" class="form-control form-control-lg" id="num_users" name="num_users"
-                                                               min="1" max="100" value="1" required
-                                                               onchange="updateEstimatedCost()">
-                                                        <small class="form-text text-muted">
-                                                            <i class="feather icon-info mr-1"></i><?php echo __('max_100_users_per_request'); ?>
-                                                        </small>
-                                                    </div>
+.stat-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border); }
+.stat-row:last-child { border-bottom:none; }
+.sr-label { font-size:13px; color:var(--text-sub); display:flex; align-items:center; gap:6px; }
+.sr-val   { font-weight:800; font-family:'JetBrains Mono',monospace; font-size:14px; }
+.sv-blue  { color:var(--blue); }
+.sv-green { color:var(--green); }
+.sv-teal  { color:var(--teal); }
 
-                                                    <div class="form-group">
-                                                        <label for="billing_cycle"><i class="feather icon-repeat mr-2"></i><?php echo __('billing_cycle'); ?> <span class="text-danger">*</span></label>
-                                                        <select class="form-control form-control-lg" id="billing_cycle" name="billing_cycle" required onchange="updateEstimatedCost()">
-                                                            <option value="monthly"><?php echo __('monthly'); ?> - <?php echo number_format($addonPricing['monthly'], 2); ?> <?php echo htmlspecialchars($currency); ?>/<?php echo __('user'); ?></option>
-                                                            <option value="quarterly"><?php echo __('quarterly'); ?> - <?php echo number_format($addonPricing['quarterly'], 2); ?> <?php echo htmlspecialchars($currency); ?>/<?php echo __('user'); ?></option>
-                                                            <option value="yearly"><?php echo __('yearly'); ?> - <?php echo number_format($addonPricing['yearly'], 2); ?> <?php echo htmlspecialchars($currency); ?>/<?php echo __('user'); ?></option>
-                                                        </select>
-                                                    </div>
+.plan-pill { display:inline-flex; align-items:center; gap:6px; background:var(--grad); color:#fff; border-radius:20px; padding:5px 14px; font-size:12px; font-weight:700; }
 
-                                                    <div class="alert alert-info border-0 shadow-sm">
-                                                        <h6 class="text-primary mb-3"><i class="feather icon-calculator mr-2"></i><?php echo __('estimated_cost'); ?></h6>
-                                                        <div class="h3 mb-2 font-weight-bold">
-                                                            <span id="estimated_cost"><?php echo number_format($addonPricing['monthly'], 2); ?></span> <?php echo htmlspecialchars($currency); ?>
-                                                            <span class="text-muted h5" id="cost_period">/ <?php echo __('month'); ?></span>
-                                                        </div>
-                                                        <small class="text-muted" id="cost_breakdown">
-                                                            1 user × <?php echo number_format($addonPricing['monthly'], 2); ?> <?php echo htmlspecialchars($currency); ?> = <?php echo number_format($addonPricing['monthly'], 2); ?> <?php echo htmlspecialchars($currency); ?>/<?php echo __('month'); ?>
-                                                        </small>
-                                                    </div>
+/* ── Pricing table ── */
+.price-row { display:flex; align-items:center; justify-content:space-between; padding:11px 0; border-bottom:1px solid var(--border); }
+.price-row:last-child { border-bottom:none; }
+.price-label { font-size:13px; color:var(--text-sub); display:flex; align-items:center; gap:7px; }
+.price-val   { font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--green); font-size:14px; }
 
-                                                    <div class="form-group mb-0 mt-4">
-                                                        <button type="submit" class="btn btn-primary btn-lg mr-3">
-                                                            <i class="feather icon-send mr-2"></i><?php echo __('submit_request'); ?>
-                                                        </button>
-                                                        <a href="add_employee.php" class="btn btn-secondary btn-lg">
-                                                            <i class="feather icon-x mr-2"></i><?php echo __('cancel'); ?>
-                                                        </a>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
+/* ── Form ── */
+.form-label-custom { font-size:12px; font-weight:700; color:var(--text-sub); text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:7px; }
+.form-input { width:100%; border:1.5px solid var(--border); border-radius:10px; padding:11px 14px; font-family:inherit; font-size:14px; color:var(--text-main); background:var(--surface); outline:none; transition:border-color 0.2s; }
+.form-input:focus { border-color:var(--blue); background:#fff; box-shadow:0 0 0 3px rgba(64,153,255,0.12); }
+.form-hint { font-size:12px; color:var(--text-sub); margin-top:5px; }
+.form-row  { margin-bottom:18px; }
 
-                                        <!-- Pending Requests -->
-                                         <?php if (!empty($all_pending_requests)): ?>
-                                         <div class="card mt-3">
-                                             <div class="card-header">
-                                                 <h5><i class="feather icon-clock mr-2"></i><?php echo __('pending_requests'); ?> <span class="badge badge-warning badge-pill ml-2"><?php echo $pending_total_items; ?></span></h5>
-                                             </div>
-                                             <div class="card-body table-responsive">
-                                                 <table class="table table-hover">
-                                                     <thead>
-                                                         <tr>
-                                                             <th><i class="feather icon-user-plus mr-1"></i><?php echo __('requested_users'); ?></th>
-                                                             <th><i class="feather icon-dollar-sign mr-1"></i><?php echo __('estimated_cost'); ?></th>
-                                                             <th><i class="feather icon-calendar mr-1"></i><?php echo __('requested_at'); ?></th>
-                                                             <th><i class="feather icon-alert-circle mr-1"></i><?php echo __('status'); ?></th>
-                                                         </tr>
-                                                     </thead>
-                                                     <tbody>
-                                                         <?php foreach ($pending_requests as $request): ?>
-                                                         <tr>
-                                                             <td>
-                                                                 <span class="badge badge-success badge-pill px-3 py-2 font-weight-bold">
-                                                                     +<?php echo intval($request['requested_additional_users']); ?>
-                                                                 </span>
-                                                             </td>
-                                                             <td class="text-success font-weight-bold h6">
-                                                                 <?php echo number_format($request['estimated_monthly_cost'], 2); ?> <?php echo htmlspecialchars($currency); ?>
-                                                             </td>
-                                                             <td class="text-muted"><?php echo date('M d, Y H:i', strtotime($request['requested_at'])); ?></td>
-                                                             <td>
-                                                                 <span class="badge badge-warning badge-pill px-3 py-1">
-                                                                     <?php echo ucfirst(htmlspecialchars($request['status'])); ?>
-                                                                 </span>
-                                                             </td>
-                                                         </tr>
-                                                         <?php endforeach; ?>
-                                                     </tbody>
-                                                 </table>
-                                             </div>
+.cost-box { background:var(--surface); border:1.5px solid var(--border); border-radius:12px; padding:18px 20px; margin:20px 0; }
+.cost-box-label { font-size:11px; font-weight:700; color:var(--text-sub); text-transform:uppercase; letter-spacing:0.6px; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+.cost-total { font-size:28px; font-weight:800; color:var(--green); font-family:'JetBrains Mono',monospace; line-height:1; margin-bottom:4px; }
+.cost-period { font-size:13px; color:var(--text-sub); font-weight:600; }
+.cost-breakdown { font-size:12px; color:var(--text-sub); margin-top:6px; }
 
-                                             <!-- Pagination for Pending Requests -->
-                                             <?php if ($pending_total_pages > 1): ?>
-                                             <nav aria-label="Pending requests pagination" class="mt-2 mb-0">
-                                             <ul class="pagination justify-content-center mb-0" style="padding: 1rem;">
-                                             <li class="page-item <?= $pending_current_page === 1 ? 'disabled' : '' ?>">
-                                             <a class="page-link" href="request_user_addon.php?pending_page=<?= $pending_current_page - 1 ?>">
-                                                 <i class="feather icon-chevron-left"></i> Prev
-                                             </a>
-                                             </li>
-                                             <?php 
-                                             $p_start = max(1, $pending_current_page - 2);
-                                             $p_end = min($pending_total_pages, $pending_current_page + 2);
-                                             if ($p_start > 1): ?>
-                                             <li class="page-item"><a class="page-link" href="request_user_addon.php?pending_page=1">1</a></li>
-                                             <?php if ($p_start > 2): ?>
-                                             <li class="page-item disabled"><span class="page-link">...</span></li>
-                                             <?php endif; ?>
-                                             <?php endif; ?>
-                                             <?php for ($i = $p_start; $i <= $p_end; $i++): ?>
-                                             <li class="page-item <?= $i === $pending_current_page ? 'active' : '' ?>">
-                                             <a class="page-link" href="request_user_addon.php?pending_page=<?= $i ?>"><?= $i ?></a>
-                                             </li>
-                                             <?php endfor; ?>
-                                             <?php if ($p_end < $pending_total_pages): ?>
-                                             <?php if ($p_end < $pending_total_pages - 1): ?>
-                                             <li class="page-item disabled"><span class="page-link">...</span></li>
-                                             <?php endif; ?>
-                                             <li class="page-item"><a class="page-link" href="request_user_addon.php?pending_page=<?= $pending_total_pages ?>"><?= $pending_total_pages ?></a></li>
-                                             <?php endif; ?>
-                                             <li class="page-item <?= $pending_current_page === $pending_total_pages ? 'disabled' : '' ?>">
-                                             <a class="page-link" href="request_user_addon.php?pending_page=<?= $pending_current_page + 1 ?>">
-                                                 Next <i class="feather icon-chevron-right"></i>
-                                             </a>
-                                             </li>
-                                             </ul>
-                                             </nav>
-                                             <div class="text-center text-muted small" style="padding: 0 1rem 1rem 1rem;">
-                                             Page <?= $pending_current_page ?> of <?= $pending_total_pages ?>
-                                             </div>
-                                             <?php endif; ?>
-                                         </div>
-                                         <?php endif; ?>
+.form-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:20px; }
+.submit-btn { display:inline-flex; align-items:center; gap:7px; background:var(--grad); color:#fff; border:none; border-radius:10px; padding:12px 24px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; transition:all 0.2s; }
+.submit-btn:hover { opacity:0.9; transform:translateY(-1px); box-shadow:0 4px 16px rgba(64,153,255,0.3); }
+.cancel-btn { display:inline-flex; align-items:center; gap:7px; background:var(--surface); color:var(--text-sub); border:1.5px solid var(--border); border-radius:10px; padding:12px 22px; font-family:inherit; font-size:14px; font-weight:600; cursor:pointer; text-decoration:none; transition:all 0.2s; }
+.cancel-btn:hover { border-color:var(--text-sub); color:var(--text-main); text-decoration:none; }
 
-                                        <!-- Active Add-ons -->
-                                         <?php if (!empty($all_active_addons)): ?>
-                                         <div class="card mt-3">
-                                             <div class="card-header">
-                                                 <h5><i class="feather icon-check-circle mr-2"></i><?php echo __('active_user_addons'); ?> <span class="badge badge-success badge-pill ml-2"><?php echo $addon_total_items; ?></span></h5>
-                                             </div>
-                                             <div class="card-body table-responsive">
-                                                 <table class="table table-hover">
-                                                     <thead>
-                                                         <tr>
-                                                             <th><i class="feather icon-users mr-1"></i><?php echo __('additional_users'); ?></th>
-                                                             <th><i class="feather icon-tag mr-1"></i><?php echo __('cost_per_user'); ?></th>
-                                                             <th><i class="feather icon-credit-card mr-1"></i><?php echo __('total_cost'); ?></th>
-                                                             <th><i class="feather icon-repeat mr-1"></i><?php echo __('billing_cycle'); ?></th>
-                                                             <th><i class="feather icon-refresh-cw mr-1"></i><?php echo __('renewal_date'); ?></th>
-                                                         </tr>
-                                                     </thead>
-                                                     <tbody>
-                                                         <?php foreach ($active_addons as $addon): ?>
-                                                         <tr>
-                                                             <td>
-                                                                 <span class="badge badge-success badge-pill px-3 py-2 font-weight-bold">
-                                                                     +<?php echo intval($addon['additional_users']); ?>
-                                                                 </span>
-                                                             </td>
-                                                             <td class="text-muted font-weight-bold"><?php echo number_format($addon['addon_price_per_user'], 2); ?> <?php echo htmlspecialchars($currency); ?></td>
-                                                             <td class="text-success font-weight-bold h6"><?php echo number_format($addon['total_addon_cost'], 2); ?> <?php echo htmlspecialchars($currency); ?></td>
-                                                             <td class="text-primary font-weight-bold"><?php echo ucfirst(htmlspecialchars($addon['billing_cycle'])); ?></td>
-                                                             <td class="text-muted">
-                                                                 <?php echo $addon['next_renewal_date'] ? date('M d, Y', strtotime($addon['next_renewal_date'])) : '<span class="text-danger">-</span>'; ?>
-                                                             </td>
-                                                         </tr>
-                                                         <?php endforeach; ?>
-                                                     </tbody>
-                                                 </table>
-                                             </div>
+/* ── Tables ── */
+.data-table { width:100%; border-collapse:collapse; }
+.data-table thead th { background:var(--surface); padding:11px 16px; font-size:11px; font-weight:700; color:var(--text-sub); text-transform:uppercase; letter-spacing:0.6px; border-bottom:1.5px solid var(--border); white-space:nowrap; }
+.data-table tbody tr { transition:background 0.15s; }
+.data-table tbody tr:hover { background:var(--surface); }
+.data-table tbody td { padding:13px 16px; border-bottom:1px solid var(--border); font-size:14px; vertical-align:middle; }
+.data-table tbody tr:last-child td { border-bottom:none; }
 
-                                             <!-- Pagination for Active Add-ons -->
-                                             <?php if ($addon_total_pages > 1): ?>
-                                             <nav aria-label="Active addons pagination" class="mt-2 mb-0">
-                                             <ul class="pagination justify-content-center mb-0" style="padding: 1rem;">
-                                             <li class="page-item <?= $addon_current_page === 1 ? 'disabled' : '' ?>">
-                                             <a class="page-link" href="request_user_addon.php?addon_page=<?= $addon_current_page - 1 ?>">
-                                                 <i class="feather icon-chevron-left"></i> Prev
-                                             </a>
-                                             </li>
-                                             <?php 
-                                             $a_start = max(1, $addon_current_page - 2);
-                                             $a_end = min($addon_total_pages, $addon_current_page + 2);
-                                             if ($a_start > 1): ?>
-                                             <li class="page-item"><a class="page-link" href="request_user_addon.php?addon_page=1">1</a></li>
-                                             <?php if ($a_start > 2): ?>
-                                             <li class="page-item disabled"><span class="page-link">...</span></li>
-                                             <?php endif; ?>
-                                             <?php endif; ?>
-                                             <?php for ($i = $a_start; $i <= $a_end; $i++): ?>
-                                             <li class="page-item <?= $i === $addon_current_page ? 'active' : '' ?>">
-                                             <a class="page-link" href="request_user_addon.php?addon_page=<?= $i ?>"><?= $i ?></a>
-                                             </li>
-                                             <?php endfor; ?>
-                                             <?php if ($a_end < $addon_total_pages): ?>
-                                             <?php if ($a_end < $addon_total_pages - 1): ?>
-                                             <li class="page-item disabled"><span class="page-link">...</span></li>
-                                             <?php endif; ?>
-                                             <li class="page-item"><a class="page-link" href="request_user_addon.php?addon_page=<?= $addon_total_pages ?>"><?= $addon_total_pages ?></a></li>
-                                             <?php endif; ?>
-                                             <li class="page-item <?= $addon_current_page === $addon_total_pages ? 'disabled' : '' ?>">
-                                             <a class="page-link" href="request_user_addon.php?addon_page=<?= $addon_current_page + 1 ?>">
-                                                 Next <i class="feather icon-chevron-right"></i>
-                                             </a>
-                                             </li>
-                                             </ul>
-                                             </nav>
-                                             <div class="text-center text-muted small" style="padding: 0 1rem 1rem 1rem;">
-                                             Page <?= $addon_current_page ?> of <?= $addon_total_pages ?>
-                                             </div>
-                                             <?php endif; ?>
-                                         </div>
-                                         <?php endif; ?>
-                                    </div>
-                                </div>
-                            </div>
+.td-num   { font-weight:800; font-family:'JetBrains Mono',monospace; }
+.td-money { font-weight:800; font-family:'JetBrains Mono',monospace; color:var(--green); }
+.td-date  { font-size:12px; color:var(--text-sub); font-family:'JetBrains Mono',monospace; }
+.td-cycle { font-weight:600; color:var(--teal); }
+.td-muted { font-size:13px; color:var(--text-sub); font-family:'JetBrains Mono',monospace; }
+
+.num-pill { display:inline-flex; align-items:center; gap:4px; background:rgba(64,153,255,0.1); color:var(--blue); border-radius:20px; padding:4px 12px; font-size:12px; font-weight:800; font-family:'JetBrains Mono',monospace; }
+.num-pill.green { background:rgba(34,197,94,0.1); color:var(--green); }
+
+.status-pill { display:inline-flex; align-items:center; gap:5px; border-radius:20px; padding:4px 11px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; }
+.sp-pending { background:rgba(245,158,11,0.12); color:#92400e; }
+.sp-active  { background:rgba(34,197,94,0.12);  color:#166534; }
+
+/* Pagination */
+.pag-wrap  { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; padding:14px 20px; border-top:1px solid var(--border); }
+.pag-info  { font-size:12px; color:var(--text-sub); }
+.pag-links { display:flex; gap:4px; }
+.pag-btn   { min-width:32px; height:32px; border-radius:8px; border:1.5px solid var(--border); background:var(--card-bg); color:var(--text-main); font-size:12px; font-weight:600; display:inline-flex; align-items:center; justify-content:center; text-decoration:none; padding:0 8px; transition:all 0.15s; }
+.pag-btn:hover  { border-color:var(--blue); color:var(--blue); text-decoration:none; }
+.pag-btn.active { background:var(--grad); border-color:transparent; color:#fff; }
+.pag-btn.disabled { opacity:0.4; pointer-events:none; }
+.pag-dots  { display:flex; align-items:center; padding:0 4px; color:var(--text-sub); font-size:13px; }
+
+/* Empty */
+.empty-state { text-align:center; padding:40px 20px; }
+.empty-state i { font-size:36px; opacity:0.2; display:block; margin-bottom:12px; }
+.empty-state p { color:var(--text-sub); font-size:14px; margin:0; }
+
+/* Overrides */
+.pcoded-content { padding:20px !important; }
+.page-header { display:none !important; }
+</style>
+
+<div class="pcoded-main-container">
+<div class="pcoded-content">
+
+    <!-- Header -->
+    <div class="dash-header">
+        <div>
+            <h4><i class="feather icon-user-plus" style="margin-right:8px;"></i><?= __('request_more_users') ?></h4>
+            <p><?= __('request_additional_user_slots') ?></p>
+        </div>
+        <a href="users.php" class="btn-back">
+            <i class="feather icon-arrow-left"></i><?= __('back_to_add_employee') ?>
+        </a>
+    </div>
+
+    <!-- Alerts -->
+    <?php if (isset($error)): ?>
+    <div class="dash-alert dash-alert-danger">
+        <i class="feather icon-alert-circle"></i>
+        <div style="flex:1;"><?= $error ?></div>
+        <button class="close-btn" onclick="this.parentElement.remove()">&times;</button>
+    </div>
+    <?php endif; ?>
+    <?php if (isset($success)): ?>
+    <div class="dash-alert dash-alert-success">
+        <i class="feather icon-check-circle"></i>
+        <div style="flex:1;"><?= $success ?></div>
+        <button class="close-btn" onclick="this.parentElement.remove()">&times;</button>
+    </div>
+    <?php endif; ?>
+
+    <div class="page-grid">
+
+        <!-- LEFT SIDEBAR -->
+        <div>
+            <!-- Current Usage -->
+            <div class="dash-card">
+                <div class="dash-card-head">
+                    <h6><span class="ico"><i class="feather icon-bar-chart-2"></i></span><?= __('current_usage') ?></h6>
+                </div>
+                <div class="dash-card-body">
+                    <div class="usage-circle-wrap">
+                        <div class="usage-nums"><?= $usageStats['current_users'] ?><span> / <?= $usageStats['max_users'] ?></span></div>
+                        <div class="usage-label"><?= __('users_used') ?></div>
+                        <div class="usage-bar">
+                            <div class="usage-bar-fill <?= $usage_pct >= 75 ? 'warn' : '' ?>" style="width:<?= $usage_pct ?>%"></div>
                         </div>
+                        <div class="usage-bar-pct"><?= $usage_pct ?>%</div>
+                        <span class="plan-pill"><i class="feather icon-package"></i><?= htmlspecialchars($plan['name'] ?? __('no_plan')) ?></span>
+                    </div>
+
+                    <div class="stat-row">
+                        <div class="sr-label"><i class="feather icon-home"></i><?= __('base_users') ?></div>
+                        <div class="sr-val sv-blue"><?= $usageStats['base_users'] ?></div>
+                    </div>
+                    <div class="stat-row">
+                        <div class="sr-label"><i class="feather icon-plus-circle"></i><?= __('addon_users') ?></div>
+                        <div class="sr-val sv-green">+<?= $usageStats['additional_users'] ?></div>
+                    </div>
+                    <div class="stat-row">
+                        <div class="sr-label"><i class="feather icon-maximize"></i><?= __('max_users') ?? 'Max Allowed' ?></div>
+                        <div class="sr-val sv-teal"><?= $usageStats['max_users'] ?></div>
                     </div>
                 </div>
             </div>
+
+            <!-- Pricing -->
+            <div class="dash-card">
+                <div class="dash-card-head">
+                    <h6><span class="ico"><i class="feather icon-tag"></i></span><?= __('addon_pricing') ?></h6>
+                </div>
+                <div class="dash-card-body">
+                    <?php foreach ([
+                        [__('monthly'),   $addonPricing['monthly'],   'icon-calendar'],
+                        [__('quarterly'), $addonPricing['quarterly'], 'icon-layers'],
+                        [__('yearly'),    $addonPricing['yearly'],    'icon-award'],
+                    ] as [$label, $price, $icon]): ?>
+                    <div class="price-row">
+                        <div class="price-label"><i class="feather <?= $icon ?>"></i><?= $label ?></div>
+                        <div class="price-val"><?= number_format($price, 2) ?> <?= $currency ?></div>
+                    </div>
+                    <?php endforeach; ?>
+                    <div style="margin-top:12px;font-size:12px;color:var(--text-sub);text-align:center;"><?= __('per_user_per_billing_cycle') ?></div>
+                </div>
+            </div>
         </div>
-    </div>
 
-    <style>
-    /* Enhanced custom styles for better layout and design */
-    .page-header.card {
-        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-        color: #ffffff;
-        border: none;
-        margin-bottom: 20px;
-        padding: 20px !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        border-radius: 10px;
-    }
+        <!-- RIGHT MAIN CONTENT -->
+        <div>
+            <!-- Request Form -->
+            <div class="dash-card">
+                <div class="dash-card-head">
+                    <h6><span class="ico"><i class="feather icon-user-plus"></i></span><?= __('request_additional_users') ?></h6>
+                </div>
+                <div class="dash-card-body">
+                    <form method="POST" action="">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8') ?>">
+                        <input type="hidden" name="request_addon" value="1">
 
-    .page-header.card .row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-row">
+                                    <label class="form-label-custom">
+                                        <i class="feather icon-hash" style="margin-right:4px;"></i><?= __('number_of_additional_users') ?> *
+                                    </label>
+                                    <input type="number" class="form-input" id="num_users" name="num_users"
+                                           min="1" max="100" value="1" required onchange="updateEstimatedCost()">
+                                    <div class="form-hint"><i class="feather icon-info" style="margin-right:3px;"></i><?= __('max_100_users_per_request') ?></div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-row">
+                                    <label class="form-label-custom">
+                                        <i class="feather icon-repeat" style="margin-right:4px;"></i><?= __('billing_cycle') ?> *
+                                    </label>
+                                    <select class="form-input" id="billing_cycle" name="billing_cycle" required onchange="updateEstimatedCost()">
+                                        <option value="monthly"><?= __('monthly') ?> — <?= number_format($addonPricing['monthly'], 2) ?> <?= $currency ?>/<?= __('user') ?></option>
+                                        <option value="quarterly"><?= __('quarterly') ?> — <?= number_format($addonPricing['quarterly'], 2) ?> <?= $currency ?>/<?= __('user') ?></option>
+                                        <option value="yearly"><?= __('yearly') ?> — <?= number_format($addonPricing['yearly'], 2) ?> <?= $currency ?>/<?= __('user') ?></option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
 
-    .page-header.card h5 {
-        color: #ffffff;
-        margin: 0;
-        font-weight: 600;
-    }
+                        <!-- Cost Estimator -->
+                        <div class="cost-box">
+                            <div class="cost-box-label"><i class="feather icon-dollar-sign"></i><?= __('estimated_cost') ?></div>
+                            <div class="cost-total"><span id="estimated_cost"><?= number_format($addonPricing['monthly'], 2) ?></span> <?= $currency ?></div>
+                            <div class="cost-period" id="cost_period">/ <?= __('month') ?></div>
+                            <div class="cost-breakdown" id="cost_breakdown">
+                                1 user × <?= number_format($addonPricing['monthly'], 2) ?> <?= $currency ?> = <?= number_format($addonPricing['monthly'], 2) ?> <?= $currency ?>/<?= __('month') ?>
+                            </div>
+                        </div>
 
-    .page-header.card .text-end {
-        text-align: right;
-    }
+                        <div class="form-actions">
+                            <button type="submit" class="submit-btn">
+                                <i class="feather icon-send"></i><?= __('submit_request') ?>
+                            </button>
+                            <a href="add_employee.php" class="cancel-btn">
+                                <i class="feather icon-x"></i><?= __('cancel') ?>
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
 
-    .page-header.card .btn {
-        background: rgba(255,255,255,0.2);
-        color: #ffffff;
-        border: 1px solid rgba(255,255,255,0.3);
-        border-radius: 25px;
-        transition: all 0.3s ease;
-    }
+            <!-- Pending Requests -->
+            <?php if (!empty($all_pending_requests)): ?>
+            <div class="dash-card">
+                <div class="dash-card-head">
+                    <h6>
+                        <span class="ico" style="background:linear-gradient(135deg,var(--amber),#f97316);"><i class="feather icon-clock"></i></span>
+                        <?= __('pending_requests') ?>
+                    </h6>
+                    <span class="warn-badge"><?= $p_total ?> pending</span>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th><?= __('requested_users') ?></th>
+                                <th><?= __('estimated_cost') ?></th>
+                                <th><?= __('requested_at') ?></th>
+                                <th><?= __('status') ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($pending_requests as $req): ?>
+                            <tr>
+                                <td><span class="num-pill">+<?= intval($req['requested_additional_users']) ?></span></td>
+                                <td class="td-money"><?= number_format($req['estimated_monthly_cost'], 2) ?> <?= $currency ?></td>
+                                <td class="td-date"><?= date('M d, Y H:i', strtotime($req['requested_at'])) ?></td>
+                                <td><span class="status-pill sp-pending"><i class="feather icon-clock"></i>Pending</span></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <?php if ($p_pages > 1): ?>
+                <div class="pag-wrap">
+                    <div class="pag-info">Page <?= $p_page ?> of <?= $p_pages ?></div>
+                    <div class="pag-links">
+                        <a href="?pending_page=<?= $p_page - 1 ?>" class="pag-btn <?= $p_page === 1 ? 'disabled' : '' ?>"><i class="feather icon-chevron-left"></i></a>
+                        <?php for ($i = max(1,$p_page-2); $i <= min($p_pages,$p_page+2); $i++): ?>
+                        <a href="?pending_page=<?= $i ?>" class="pag-btn <?= $i === $p_page ? 'active' : '' ?>"><?= $i ?></a>
+                        <?php endfor; ?>
+                        <a href="?pending_page=<?= $p_page + 1 ?>" class="pag-btn <?= $p_page === $p_pages ? 'disabled' : '' ?>"><i class="feather icon-chevron-right"></i></a>
+                    </div>
+                </div>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
 
-    .page-header.card .btn:hover {
-        background: rgba(255,255,255,0.3);
-        border-color: rgba(255,255,255,0.5);
-        transform: translateY(-1px);
-    }
+            <!-- Active Add-ons -->
+            <?php if (!empty($all_active_addons)): ?>
+            <div class="dash-card">
+                <div class="dash-card-head">
+                    <h6>
+                        <span class="ico" style="background:linear-gradient(135deg,var(--green),#16a34a);"><i class="feather icon-check-circle"></i></span>
+                        <?= __('active_user_addons') ?>
+                    </h6>
+                    <span class="count-badge"><?= $a_total ?> active</span>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th><?= __('additional_users') ?></th>
+                                <th><?= __('cost_per_user') ?></th>
+                                <th><?= __('total_cost') ?></th>
+                                <th><?= __('billing_cycle') ?></th>
+                                <th><?= __('renewal_date') ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($active_addons as $addon): ?>
+                            <tr>
+                                <td><span class="num-pill green">+<?= intval($addon['additional_users']) ?></span></td>
+                                <td class="td-muted"><?= number_format($addon['addon_price_per_user'], 2) ?> <?= $currency ?></td>
+                                <td class="td-money"><?= number_format($addon['total_addon_cost'], 2) ?> <?= $currency ?></td>
+                                <td class="td-cycle"><?= ucfirst(htmlspecialchars($addon['billing_cycle'])) ?></td>
+                                <td class="td-date"><?= $addon['next_renewal_date'] ? date('M d, Y', strtotime($addon['next_renewal_date'])) : '—' ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <?php if ($a_pages > 1): ?>
+                <div class="pag-wrap">
+                    <div class="pag-info">Page <?= $a_page ?> of <?= $a_pages ?></div>
+                    <div class="pag-links">
+                        <a href="?addon_page=<?= $a_page - 1 ?>" class="pag-btn <?= $a_page === 1 ? 'disabled' : '' ?>"><i class="feather icon-chevron-left"></i></a>
+                        <?php for ($i = max(1,$a_page-2); $i <= min($a_pages,$a_page+2); $i++): ?>
+                        <a href="?addon_page=<?= $i ?>" class="pag-btn <?= $i === $a_page ? 'active' : '' ?>"><?= $i ?></a>
+                        <?php endfor; ?>
+                        <a href="?addon_page=<?= $a_page + 1 ?>" class="pag-btn <?= $a_page === $a_pages ? 'disabled' : '' ?>"><i class="feather icon-chevron-right"></i></a>
+                    </div>
+                </div>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
 
-    .card {
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-        border: none;
-    }
+        </div><!-- /right -->
+    </div><!-- /page-grid -->
 
-    .card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-    }
+</div>
+</div>
 
-    .card-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 10px 10px 0 0;
-        padding: 1rem 1.5rem;
-        border: none;
-    }
+<script src="../assets/js/vendor-all.min.js"></script>
+<script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+<script src="../assets/js/pcoded.min.js"></script>
 
-    .card-header h5 {
-        margin: 0;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-    }
+<script>
+const pricing = {
+    monthly:   <?= floatval($addonPricing['monthly']) ?>,
+    quarterly: <?= floatval($addonPricing['quarterly']) ?>,
+    yearly:    <?= floatval($addonPricing['yearly']) ?>
+};
+const currency = '<?= addslashes($currency) ?>';
+const cycleLabels = {
+    monthly:   '<?= addslashes(__("month")) ?>',
+    quarterly: '<?= addslashes(__("quarter")) ?>',
+    yearly:    '<?= addslashes(__("year")) ?>'
+};
 
-    .progress {
-        border-radius: 15px;
-        
-        box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
-    }
+function updateEstimatedCost() {
+    const n     = parseInt(document.getElementById('num_users').value) || 1;
+    const cycle = document.getElementById('billing_cycle').value;
+    const price = pricing[cycle];
+    const total = n * price;
+    const label = cycleLabels[cycle];
 
-    .progress-bar {
-        transition: width 0.6s ease;
-    }
+    document.getElementById('estimated_cost').textContent = total.toFixed(2);
+    document.getElementById('cost_period').textContent    = '/ ' + label;
+    document.getElementById('cost_breakdown').textContent =
+        n + ' user' + (n > 1 ? 's' : '') + ' × ' + price.toFixed(2) + ' ' + currency +
+        ' = ' + total.toFixed(2) + ' ' + currency + '/' + label;
+}
 
-    .badge {
-        font-size: 0.85em;
-        padding: 0.5em 0.75em;
-        border-radius: 20px;
-        font-weight: 500;
-    }
+document.addEventListener('DOMContentLoaded', updateEstimatedCost);
+</script>
 
-    .badge-success {
-        background-color: #28a745;
-    }
-
-    .badge-warning {
-        background-color: #ffc107;
-        color: #212529;
-    }
-
-    .badge-info {
-        background-color: #17a2b8;
-    }
-
-    .table-responsive {
-        border-radius: 10px;
-    }
-
-    .table {
-        margin-bottom: 0;
-    }
-
-    .table thead th {
-        background-color: #f8f9fa;
-        border-bottom: 2px solid #dee2e6;
-        font-weight: 600;
-        color: #495057;
-        padding: 1rem;
-    }
-
-    .table tbody tr:hover {
-        background-color: #f1f3f4;
-    }
-
-    .table tbody td {
-        padding: 1rem;
-        vertical-align: middle;
-    }
-
-    .form-control {
-        border-radius: 8px;
-        border: 1px solid #ced4da;
-        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-        padding: 0.75rem;
-    }
-
-    .form-control:focus {
-        border-color: #4099ff;
-        box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
-    }
-
-    .btn-primary {
-        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-        border: none;
-        border-radius: 25px;
-        padding: 0.75rem 2rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-
-    .btn-primary:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
-    }
-
-    .btn-secondary {
-        border-radius: 25px;
-        padding: 0.75rem 2rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-
-    .alert {
-        border-radius: 10px;
-        border: none;
-        padding: 1rem 1.5rem;
-    }
-
-    .alert-info {
-        background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
-        color: #0c5460;
-    }
-
-    .alert-success {
-        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-        color: #155724;
-    }
-
-    .alert-danger {
-        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-        color: #721c24;
-    }
-
-    #estimated_cost {
-        color: #28a745;
-        font-weight: bold;
-    }
-
-    .h2 {
-        font-size: 2.5rem;
-    }
-
-    .h4 {
-        font-size: 1.5rem;
-    }
-
-    .h5 {
-        font-size: 1.25rem;
-    }
-
-    .h6 {
-        font-size: 1rem;
-    }
-    </style>
-
-    <script>
-        // Pricing per billing cycle
-        const pricing = {
-            monthly: <?php echo $addonPricing['monthly']; ?>,
-            quarterly: <?php echo $addonPricing['quarterly']; ?>,
-            yearly: <?php echo $addonPricing['yearly']; ?>
-        };
-        
-        const currency = '<?php echo htmlspecialchars($currency); ?>';
-        
-        const billingCycleLabels = {
-            monthly: '<?php echo __("month"); ?>',
-            quarterly: '<?php echo __("quarter"); ?>',
-            yearly: '<?php echo __("year"); ?>'
-        };
-        
-        function updateEstimatedCost() {
-            const numUsers = parseInt(document.getElementById('num_users').value) || 1;
-            const billingCycle = document.getElementById('billing_cycle').value;
-            const pricePerUser = pricing[billingCycle];
-            const totalCost = numUsers * pricePerUser;
-            
-            document.getElementById('estimated_cost').textContent = totalCost.toFixed(2);
-            document.getElementById('cost_period').textContent = '/ ' + billingCycleLabels[billingCycle];
-            document.getElementById('cost_breakdown').textContent =
-                numUsers + ' user' + (numUsers > 1 ? 's' : '') + ' × ' + pricePerUser.toFixed(2) + ' ' + currency +
-                ' = ' + totalCost.toFixed(2) + ' ' + currency + '/' + billingCycleLabels[billingCycle];
-        }
-        
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            updateEstimatedCost();
-        });
-    </script>
-
-    <!-- Required Js -->
-    <script src="../assets/js/vendor-all.min.js"></script>
-    <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-    <script src="../assets/js/pcoded.min.js"></script>
 <?php include '../includes/admin_footer.php'; ?>

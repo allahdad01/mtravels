@@ -1,799 +1,552 @@
 <?php
 include 'header.php';
 
-// Get tenant and user info
 $tenant_id = $_SESSION['tenant_id'];
-$user_id = $_SESSION['user_id'];
+$user_id   = $_SESSION['user_id'];
 $user_role = $_SESSION['role'];
 
-// Get search parameter
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
-
-// Pagination
-$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$page   = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $results_per_page = 25;
 $offset = ($page - 1) * $results_per_page;
 
-// Build query for clients
-$query = "SELECT
-    c.*,
+$query = "SELECT c.*,
     COUNT(ct.id) as transaction_count,
-    COALESCE(SUM(CASE WHEN ct.type = 'credit' THEN ct.amount ELSE 0 END), 0) as total_credits,
-    COALESCE(SUM(CASE WHEN ct.type = 'debit' THEN ct.amount ELSE 0 END), 0) as total_debits
+    COALESCE(SUM(CASE WHEN ct.type='credit' THEN ct.amount ELSE 0 END),0) as total_credits,
+    COALESCE(SUM(CASE WHEN ct.type='debit'  THEN ct.amount ELSE 0 END),0) as total_debits
 FROM clients c
 LEFT JOIN client_transactions ct ON c.id = ct.client_id
 WHERE c.tenant_id = ? AND c.status = 'active'";
 
-// Add search filter
+$params = [$tenant_id];
 if (!empty($search)) {
     $query .= " AND (c.name LIKE ? OR c.email LIKE ? OR c.phone LIKE ?)";
+    $sp = "%$search%"; $params = array_merge($params, [$sp,$sp,$sp]);
 }
-
-// Group by client and add ordering and pagination
 $query .= " GROUP BY c.id ORDER BY c.created_at DESC LIMIT ? OFFSET ?";
+$params[] = $results_per_page; $params[] = $offset;
 
-// Prepare parameters
-$params = [$tenant_id];
-
-if (!empty($search)) {
-    $search_param = "%$search%";
-    $params[] = $search_param;
-    $params[] = $search_param;
-    $params[] = $search_param;
-}
-
-$params[] = $results_per_page;
-$params[] = $offset;
-
-// Execute query
-$stmt = $pdo->prepare($query);
-$stmt->execute($params);
+$stmt = $pdo->prepare($query); $stmt->execute($params);
 $clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Get total count for pagination
-$count_query = "SELECT COUNT(*) as total FROM clients WHERE tenant_id = ? AND status = 'active'";
-$count_params = [$tenant_id];
-
+$cq = "SELECT COUNT(*) as total FROM clients WHERE tenant_id = ? AND status = 'active'";
+$cp = [$tenant_id];
 if (!empty($search)) {
-    $count_query .= " AND (name LIKE ? OR email LIKE ? OR phone LIKE ?)";
-    $search_param = "%$search%";
-    $count_params[] = $search_param;
-    $count_params[] = $search_param;
-    $count_params[] = $search_param;
+    $cq .= " AND (name LIKE ? OR email LIKE ? OR phone LIKE ?)";
+    $sp = "%$search%"; $cp = array_merge($cp, [$sp,$sp,$sp]);
 }
+$cs = $pdo->prepare($cq); $cs->execute($cp);
+$total_clients = $cs->fetch(PDO::FETCH_ASSOC)['total'];
+$total_pages   = max(1, ceil($total_clients / $results_per_page));
 
-$count_stmt = $pdo->prepare($count_query);
-$count_stmt->execute($count_params);
-$total_clients = $count_stmt->fetch(PDO::FETCH_ASSOC)['total'];
-$total_pages = ceil($total_clients / $results_per_page);
-
-// Get summary data
-$summary_query = "SELECT
-    COUNT(*) as total_clients,
-    SUM(usd_balance) as total_usd_balance,
-    SUM(afs_balance) as total_afs_balance,
+$ss = $pdo->prepare("SELECT COUNT(*) as total_clients,
+    SUM(usd_balance) as total_usd_balance, SUM(afs_balance) as total_afs_balance,
     SUM(CASE WHEN usd_balance > 0 THEN usd_balance ELSE 0 END) as positive_usd_balance,
     SUM(CASE WHEN afs_balance > 0 THEN afs_balance ELSE 0 END) as positive_afs_balance,
     SUM(CASE WHEN usd_balance < 0 THEN ABS(usd_balance) ELSE 0 END) as negative_usd_balance,
     SUM(CASE WHEN afs_balance < 0 THEN ABS(afs_balance) ELSE 0 END) as negative_afs_balance
-FROM clients
-WHERE tenant_id = ? AND status = 'active'";
+FROM clients WHERE tenant_id = ? AND status = 'active'");
+$ss->execute([$tenant_id]);
+$summary = $ss->fetch(PDO::FETCH_ASSOC);
 
-$summary_stmt = $pdo->prepare($summary_query);
-$summary_stmt->execute([$tenant_id]);
-$summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
+$from = min(($page - 1) * $results_per_page + 1, $total_clients);
+$to   = min($page * $results_per_page, $total_clients);
 ?>
 
-<!-- [ Main Content ] start -->
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+
+:root {
+    --surface:#f4f7fe; --card-bg:#ffffff; --border:#e8edf5;
+    --text-main:#1a2340; --text-sub:#6b7a99;
+    --green:#22c55e; --red:#ef4444; --blue:#4099ff; --teal:#2ed8b6;
+    /* Client identity: green → teal (preserving the original .bg-success green) */
+    --c1:#059669; --c2:#0d9488;
+    --radius:14px; --shadow:0 2px 12px rgba(64,153,255,0.08);
+}
+*,*::before,*::after{box-sizing:border-box}
+body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important;background:var(--surface)!important;color:var(--text-main)!important}
+
+/* Header — emerald → teal (client green identity) */
+.dash-header{background:linear-gradient(135deg,#059669 0%,#0d9488 100%);border-radius:var(--radius);padding:24px 28px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 8px 32px rgba(5,150,105,0.25);position:relative;overflow:hidden}
+.dash-header::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.06'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat}
+.dash-header h4{font-size:22px;font-weight:800;color:#fff;margin:0 0 4px;letter-spacing:-0.4px;position:relative}
+.dash-header p{color:rgba(255,255,255,0.8);margin:0;font-size:13px;position:relative}
+
+/* Two-col layout */
+.page-layout{display:grid;grid-template-columns:220px 1fr;gap:20px;align-items:start}
+@media(max-width:900px){.page-layout{grid-template-columns:1fr}}
+
+/* Sidebar stat cards */
+.stat-card{background:var(--card-bg);border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow);padding:18px 20px;margin-bottom:14px;text-align:center}
+.stat-card:last-child{margin-bottom:0}
+.stat-value{font-family:'JetBrains Mono',monospace;font-weight:800;line-height:1;margin-bottom:5px}
+.stat-value.big{font-size:32px;color:#059669}
+.stat-value.med{font-size:20px}
+.stat-value.usd-pos{color:#059669}
+.stat-value.afs-pos{color:#0d9488}
+.stat-value.neg  {color:var(--red)}
+.stat-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sub)}
+.stat-icon{font-size:18px;margin-bottom:8px;opacity:.6}
+
+/* Cards */
+.dash-card{background:var(--card-bg);border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow);overflow:hidden;margin-bottom:20px}
+.dash-card:last-child{margin-bottom:0}
+.dash-card-head{padding:15px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dash-card-head h6{font-size:14px;font-weight:700;margin:0;display:flex;align-items:center;gap:8px}
+.dash-card-head h6 .ico{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#059669,#0d9488);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;flex-shrink:0}
+.dash-card-body{padding:20px}
+.count-badge{background:rgba(5,150,105,.1);color:#059669;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;margin-left:auto}
+
+/* Search */
+.search-group{display:flex;gap:8px}
+.form-label-custom{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sub);display:block;margin-bottom:6px}
+.form-input{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:9px 13px;font-family:inherit;font-size:13px;color:var(--text-main);background:var(--surface);outline:none;transition:border-color .2s}
+.form-input:focus{border-color:#059669;background:#fff;box-shadow:0 0 0 3px rgba(5,150,105,.1)}
+.search-btn{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#059669,#0d9488);color:#fff;border:none;border-radius:10px;padding:9px 18px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:opacity .2s}
+.search-btn:hover{opacity:.9}
+.clear-btn{display:inline-flex;align-items:center;gap:6px;background:var(--surface);color:var(--text-sub);border:1.5px solid var(--border);border-radius:10px;padding:9px 14px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap;flex-shrink:0;transition:all .2s}
+.clear-btn:hover{border-color:var(--text-sub);color:var(--text-main);text-decoration:none}
+
+/* Table */
+.data-table{width:100%;border-collapse:collapse}
+.data-table thead th{background:var(--surface);padding:11px 16px;font-size:11px;font-weight:700;color:var(--text-sub);text-transform:uppercase;letter-spacing:.6px;border-bottom:1.5px solid var(--border);white-space:nowrap}
+.data-table tbody tr{transition:background .15s}
+.data-table tbody tr:hover{background:var(--surface)}
+.data-table tbody td{padding:13px 16px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+.data-table tbody tr:last-child td{border-bottom:none}
+.td-ctr{text-align:center;font-size:12px;color:var(--text-sub);font-family:'JetBrains Mono',monospace}
+
+/* Client cell */
+.cli-name{font-weight:700;color:var(--text-main);margin-bottom:4px}
+.cli-type-pill{display:inline-flex;align-items:center;gap:4px;border-radius:20px;padding:3px 9px;font-size:10px;font-weight:700}
+.ctp-agency  {background:rgba(5,150,105,.1);color:#059669}
+.ctp-default {background:rgba(107,122,153,.1);color:var(--text-sub)}
+
+/* Contact cell */
+.contact-row{display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:4px;color:var(--text-main)}
+.contact-row:last-child{margin-bottom:0}
+.contact-row i{font-size:12px;color:var(--text-sub);flex-shrink:0}
+.no-contact{font-size:12px;color:var(--text-sub);font-style:italic}
+
+/* Balance cells */
+.bal-amount{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:800;margin-bottom:2px}
+.bal-pos-usd{color:#059669} .bal-neg-usd{color:var(--red)}
+.bal-pos-afs{color:#0d9488} .bal-neg-afs{color:var(--red)}
+.bal-label{font-size:11px;font-weight:600;color:var(--text-sub)}
+
+/* Activity */
+.txn-count{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--text-main);margin-bottom:3px}
+.txn-flows{display:flex;gap:10px;font-size:11px;font-family:'JetBrains Mono',monospace}
+.txn-cr{color:#059669;font-weight:700}
+.txn-dr{color:var(--red);font-weight:700}
+
+/* Status */
+.status-pill{display:inline-flex;align-items:center;gap:4px;border-radius:20px;padding:4px 11px;font-size:11px;font-weight:700}
+.sp-active  {background:rgba(34,197,94,.12);color:#166534}
+.sp-inactive{background:rgba(107,122,153,.1);color:var(--text-sub)}
+
+/* Action */
+.act-btn{width:30px;height:30px;border-radius:8px;border:1.5px solid var(--border);background:var(--card-bg);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;color:var(--text-sub);transition:all .15s}
+.act-btn:hover{background:rgba(5,150,105,.08);border-color:#059669;color:#059669}
+.dropdown-menu{border-radius:12px;border:1px solid var(--border);box-shadow:0 8px 24px rgba(0,0,0,.1);padding:6px;min-width:180px}
+.dropdown-item{border-radius:8px;padding:8px 12px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;transition:background .15s}
+.dropdown-item:hover{background:var(--surface)}
+
+.empty-state{text-align:center;padding:60px 20px}
+.empty-state i{font-size:44px;opacity:.2;display:block;margin-bottom:14px}
+.empty-state p{color:var(--text-sub);font-size:14px;margin:0}
+
+/* Pagination */
+.pag-wrap{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:16px 20px;border-top:1px solid var(--border)}
+.pag-info{font-size:12px;color:var(--text-sub)}
+.pag-links{display:flex;gap:4px}
+.pag-btn{min-width:32px;height:32px;border-radius:8px;border:1.5px solid var(--border);background:var(--card-bg);color:var(--text-main);font-size:12px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;padding:0 8px;transition:all .15s}
+.pag-btn:hover{border-color:#059669;color:#059669;text-decoration:none}
+.pag-btn.active{background:linear-gradient(135deg,#059669,#0d9488);border-color:transparent;color:#fff}
+.pag-btn.disabled{opacity:.4;pointer-events:none}
+.pag-dots{display:flex;align-items:center;padding:0 4px;color:var(--text-sub);font-size:13px}
+
+/* Modal */
+.modal-content{border:none;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.18);font-family:inherit}
+.modal-header{background:linear-gradient(135deg,#059669,#0d9488);color:#fff;border-radius:16px 16px 0 0;border:none;padding:18px 24px}
+.modal-header.txn-header{background:linear-gradient(135deg,#0d9488,#0891b2)}
+.modal-header .modal-title{font-weight:700;font-size:15px}
+.modal-header .close{color:#fff;opacity:.8;font-size:22px}
+.modal-header .close:hover{opacity:1}
+
+/* 2-balance strip */
+.modal-summary{display:grid;grid-template-columns:1fr 1fr;background:var(--surface);border-bottom:1px solid var(--border)}
+.ms-cell{padding:20px;text-align:center;border-right:1px solid var(--border)}
+.ms-cell:last-child{border-right:none}
+.ms-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sub);margin-bottom:5px}
+.ms-val{font-size:24px;font-weight:800;font-family:'JetBrains Mono',monospace;line-height:1;margin-bottom:3px}
+.ms-val.usd-p{color:#059669} .ms-val.usd-n{color:var(--red)}
+.ms-val.afs-p{color:#0d9488} .ms-val.afs-n{color:var(--red)}
+.ms-sub{font-size:11px;font-weight:600;color:var(--text-sub)}
+
+.modal-body{padding:0}
+.modal-tabs{display:flex;gap:6px;padding:16px 24px 0;border-bottom:1px solid var(--border)}
+.modal-tab{background:none;border:none;border-bottom:3px solid transparent;padding:8px 16px 12px;font-family:inherit;font-size:13px;font-weight:700;color:var(--text-sub);cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:6px;margin-bottom:-1px}
+.modal-tab.active{color:#059669;border-bottom-color:#059669}
+.modal-tab:hover{color:#059669}
+.modal-pane{display:none;padding:24px}
+.modal-pane.active{display:block}
+.detail-section{background:var(--surface);border-radius:12px;padding:18px;margin-bottom:14px}
+.detail-section:last-child{margin-bottom:0}
+.ds-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sub);margin-bottom:14px}
+.ds-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)}
+.ds-row:last-child{border-bottom:none}
+.ds-key{font-size:13px;color:var(--text-sub)}
+.ds-val{font-size:13px;font-weight:700;color:var(--text-main);text-align:right}
+.ds-val.green{color:#059669} .ds-val.red{color:var(--red)} .ds-val.teal{color:#0d9488}
+
+.modal-footer-custom{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end}
+.btn-close-modal{display:inline-flex;align-items:center;gap:7px;background:var(--surface);color:var(--text-sub);border:1.5px solid var(--border);border-radius:10px;padding:10px 20px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-close-modal:hover{border-color:var(--text-sub);color:var(--text-main)}
+
+.txn-loading{text-align:center;padding:40px}
+.spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:#059669;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.pcoded-content{padding:20px!important}
+.page-header{display:none!important}
+</style>
+
 <div class="pcoded-main-container">
-    <div class="pcoded-wrapper">
-        <div class="pcoded-content">
-            <div class="pcoded-inner-content">
-                <div class="main-body">
-                    <div class="page-wrapper">
-                        <!-- [ Main Content ] start -->
-                        <div class="main-content">
-                            <!-- Page Header Card -->
-                            <div class="page-header card">
-                                <div class="row align-items-center">
-                                    <div class="col-md-6">
-                                        <h5 class="mb-0"><i class="feather icon-users mr-2"></i>Clients</h5>
-                                        <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;">Manage and view all your clients</p>
-                                    </div>
-                                    <div class="col-md-6 text-end">
-                                        <a href="dashboard.php" class="btn btn-outline-secondary btn-sm">
-                                            <i class="feather icon-arrow-left mr-1"></i>Back to Dashboard
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
+<div class="pcoded-content">
 
-                            <div class="row">
-                                <!-- Summary Cards Column -->
-                                <div class="col-md-3">
-                                    <div class="card mb-3">
-                                        <div class="card-body text-center">
-                                            <div class="h2 font-weight-bold text-primary">
-                                                <i class="feather icon-users mr-2"></i><?php echo number_format($summary['total_clients'] ?? 0); ?>
-                                            </div>
-                                            <p class="text-muted mb-0">Total Clients</p>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="card mb-3">
-                                        <div class="card-body text-center">
-                                            <div class="h4 mb-1 font-weight-bold text-success">
-                                                $<?php echo number_format($summary['positive_usd_balance'] ?? 0, 2); ?>
-                                            </div>
-                                            <small class="text-muted"><i class="feather icon-dollar-sign mr-1"></i>Positive USD Balance</small>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="card mb-3">
-                                        <div class="card-body text-center">
-                                            <div class="h4 mb-1 font-weight-bold text-info">
-                                                ؋<?php echo number_format($summary['positive_afs_balance'] ?? 0, 2); ?>
-                                            </div>
-                                            <small class="text-muted"><i class="feather icon-money-bill-wave mr-1"></i>Positive AFS Balance</small>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="card mb-3">
-                                        <div class="card-body text-center">
-                                            <div class="h4 mb-1 font-weight-bold text-danger">
-                                                $<?php echo number_format(($summary['negative_usd_balance'] ?? 0) + ($summary['negative_afs_balance'] ?? 0), 2); ?>
-                                            </div>
-                                            <small class="text-muted"><i class="feather icon-alert-triangle mr-1"></i>Outstanding Balances</small>
-                                        </div>
-                                    </div>
-                                </div>
+    <!-- Header -->
+    <div class="dash-header">
+        <div>
+            <h4><i class="feather icon-users" style="margin-right:8px;"></i>Clients</h4>
+            <p>Manage and view all your clients</p>
+        </div>
+    </div>
 
-                                <!-- Main Content Column -->
-                                <div class="col-md-9">
-                                    <!-- Search Section -->
-                                    <div class="card mb-3">
-                                        <div class="card-body">
-                                            <div class="search-box">
-                                                <div class="input-group">
-                                                    <input type="text" id="searchInput" class="form-control" placeholder="Search by client name, email, or phone" value="<?php echo htmlspecialchars($search); ?>">
-                                                    <div class="input-group-append">
-                                                        <button class="btn btn-primary" type="button" id="searchBtn">
-                                                            <i class="feather icon-search"></i> Search
-                                                        </button>
-                                                        <?php if (!empty($search)): ?>
-                                                        <a href="?" class="btn btn-secondary">
-                                                            <i class="feather icon-x"></i> Clear
-                                                        </a>
-                                                        <?php endif; ?>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+    <div class="page-layout">
 
-                                    <!-- Clients Table Section -->
-                                    <div class="card">
-                                        <div class="card-header">
-                                            <h5><i class="feather icon-list mr-2"></i>Clients List</h5>
-                                        </div>
-                                        <div class="card-body table-responsive p-0">
-                                            <table class="table table-hover">
-                                                <thead>
-                                                    <tr>
-                                                        <th class="text-center" width="50">#</th>
-                                                        <th width="100">Action</th>
-                                                        <th>Client Info</th>
-                                                        <th>Contact Details</th>
-                                                        <th>USD Balance</th>
-                                                        <th>AFS Balance</th>
-                                                        <th>Activity</th>
-                                                        <th>Status</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="clientTable">
-                                                    <?php
-                                                    $counter = $offset + 1;
-                                                    foreach ($clients as $client):
-                                                    ?>
-                                                    <tr>
-                                                        <td class="text-center"><?php echo $counter++; ?></td>
-                                                        <td>
-                                                            <div class="dropdown">
-                                                                <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" data-toggle="dropdown">
-                                                                    <i class="feather icon-more-vertical"></i>
-                                                                </button>
-                                                                <div class="dropdown-menu dropdown-menu-right">
-                                                                    <button class="dropdown-item view-details" data-client='<?php echo htmlspecialchars(json_encode($client)); ?>'>
-                                                                        <i class="feather icon-eye text-primary mr-2"></i> View Details
-                                                                    </button>
-                                                                    <button class="dropdown-item view-transactions" data-client-id="<?php echo $client['id']; ?>" data-client-name="<?php echo htmlspecialchars($client['name']); ?>">
-                                                                        <i class="feather icon-list text-info mr-2"></i> View Transactions
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        </td>
+        <!-- Sidebar stats -->
+        <div>
+            <div class="stat-card">
+                <div class="stat-icon"><i class="feather icon-users" style="color:#059669;font-size:22px;"></i></div>
+                <div class="stat-value big"><?= number_format($summary['total_clients'] ?? 0) ?></div>
+                <div class="stat-label">Total Clients</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label" style="margin-bottom:6px;">Positive USD</div>
+                <div class="stat-value med usd-pos">$<?= number_format($summary['positive_usd_balance'] ?? 0, 2) ?></div>
+                <div class="stat-label">Credit Balances</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label" style="margin-bottom:6px;">Positive AFS</div>
+                <div class="stat-value med afs-pos">؋<?= number_format($summary['positive_afs_balance'] ?? 0, 2) ?></div>
+                <div class="stat-label">Credit Balances</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label" style="margin-bottom:6px;">Outstanding</div>
+                <div class="stat-value med neg">$<?= number_format(($summary['negative_usd_balance'] ?? 0) + ($summary['negative_afs_balance'] ?? 0), 2) ?></div>
+                <div class="stat-label">Overdue Balances</div>
+            </div>
+        </div>
 
-                                                        <td>
-                                                            <div class="client-info">
-                                                                <div class="client-info__details">
-                                                                    <div class="client-info__name">
-                                                                        <strong><?php echo htmlspecialchars($client['name']); ?></strong>
-                                                                    </div>
-                                                                    <div class="client-info__type">
-                                                                        <span class="badge badge-<?php echo $client['client_type'] === 'agency' ? 'primary' : 'secondary'; ?>">
-                                                                            <?php echo ucfirst(htmlspecialchars($client['client_type'])); ?>
-                                                                        </span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-
-                                                        <td>
-                                                            <div class="contact-info">
-                                                                <div class="contact-info__details">
-                                                                    <?php if (!empty($client['phone'])): ?>
-                                                                    <div class="contact-info__phone">
-                                                                        <i class="feather icon-phone mr-1"></i>
-                                                                        <?php echo htmlspecialchars($client['phone']); ?>
-                                                                    </div>
-                                                                    <?php endif; ?>
-                                                                    <?php if (!empty($client['email'])): ?>
-                                                                    <div class="contact-info__email">
-                                                                        <i class="feather icon-mail mr-1"></i>
-                                                                        <?php echo htmlspecialchars($client['email']); ?>
-                                                                    </div>
-                                                                    <?php endif; ?>
-                                                                    <?php if (empty($client['phone']) && empty($client['email'])): ?>
-                                                                    <div class="text-muted">
-                                                                        <em>No contact info</em>
-                                                                    </div>
-                                                                    <?php endif; ?>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-
-                                                        <td>
-                                                            <div class="balance-info">
-                                                                <div class="balance-info__amount">
-                                                                    <span class="text-<?php echo $client['usd_balance'] >= 0 ? 'success' : 'danger'; ?>">
-                                                                        <strong>
-                                                                            $<?php echo number_format($client['usd_balance'], 2); ?>
-                                                                        </strong>
-                                                                    </span>
-                                                                </div>
-                                                                <div class="balance-info__status">
-                                                                    <small class="text-muted">
-                                                                        <?php echo $client['usd_balance'] >= 0 ? 'Credit' : 'Debit'; ?>
-                                                                    </small>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-
-                                                        <td>
-                                                            <div class="balance-info">
-                                                                <div class="balance-info__amount">
-                                                                    <span class="text-<?php echo $client['afs_balance'] >= 0 ? 'info' : 'danger'; ?>">
-                                                                        <strong>
-                                                                            ؋<?php echo number_format($client['afs_balance'], 2); ?>
-                                                                        </strong>
-                                                                    </span>
-                                                                </div>
-                                                                <div class="balance-info__status">
-                                                                    <small class="text-muted">
-                                                                        <?php echo $client['afs_balance'] >= 0 ? 'Credit' : 'Debit'; ?>
-                                                                    </small>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-
-                                                        <td>
-                                                            <div class="activity-info">
-                                                                <div class="activity-info__transactions">
-                                                                    <i class="feather icon-activity text-muted mr-1"></i>
-                                                                    <?php echo number_format($client['transaction_count']); ?> transactions
-                                                                </div>
-                                                                <div class="activity-info__summary">
-                                                                    <small class="text-muted">
-                                                                        Credits: $<?php echo number_format($client['total_credits'], 2); ?><br>
-                                                                        Debits: $<?php echo number_format($client['total_debits'], 2); ?>
-                                                                    </small>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-
-                                                        <td>
-                                                            <span class="badge badge-<?php echo $client['status'] === 'active' ? 'success' : 'secondary'; ?>">
-                                                                <?php echo ucfirst(htmlspecialchars($client['status'])); ?>
-                                                            </span>
-                                                        </td>
-                                                    </tr>
-                                                    <?php endforeach; ?>
-                                                </tbody>
-                                            </table>
-                                        </div>
-
-                                        <!-- Pagination -->
-                                        <div class="card-footer bg-white">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <div class="text-muted">
-                                                    Showing <?php echo min(($page - 1) * $results_per_page + 1, $total_clients); ?> to <?php echo min($page * $results_per_page, $total_clients); ?> of <?php echo $total_clients; ?> clients
-                                                </div>
-                                                <nav aria-label="Page navigation">
-                                                    <ul class="pagination mb-0">
-                                                        <?php if ($page > 1): ?>
-                                                            <li class="page-item">
-                                                                <a class="page-link" href="?page=1&search=<?php echo urlencode($search); ?>">
-                                                                    <i class="feather icon-chevrons-left"></i>
-                                                                </a>
-                                                            </li>
-                                                            <li class="page-item">
-                                                                <a class="page-link" href="?page=<?php echo $page - 1; ?>&search=<?php echo urlencode($search); ?>">
-                                                                    <i class="feather icon-chevron-left"></i>
-                                                                </a>
-                                                            </li>
-                                                        <?php endif; ?>
-
-                                                        <?php
-                                                        $start_page = max(1, $page - 2);
-                                                        $end_page = min($total_pages, $page + 2);
-
-                                                        if ($start_page > 1) {
-                                                            echo '<li class="page-item"><a class="page-link" href="?page=1&search=' . urlencode($search) . '">1</a></li>';
-                                                            if ($start_page > 2) {
-                                                                echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
-                                                            }
-                                                        }
-
-                                                        for ($i = $start_page; $i <= $end_page; $i++) {
-                                                            echo '<li class="page-item ' . ($i == $page ? 'active' : '') . '">
-                                                                <a class="page-link" href="?page=' . $i . '&search=' . urlencode($search) . '">' . $i . '</a>
-                                                            </li>';
-                                                        }
-
-                                                        if ($end_page < $total_pages) {
-                                                            if ($end_page < $total_pages - 1) {
-                                                                echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
-                                                            }
-                                                            echo '<li class="page-item"><a class="page-link" href="?page=' . $total_pages . '&search=' . urlencode($search) . '">' . $total_pages . '</a></li>';
-                                                        }
-                                                        ?>
-
-                                                        <?php if ($page < $total_pages): ?>
-                                                            <li class="page-item">
-                                                                <a class="page-link" href="?page=<?php echo $page + 1; ?>&search=<?php echo urlencode($search); ?>">
-                                                                    <i class="feather icon-chevron-right"></i>
-                                                                </a>
-                                                            </li>
-                                                            <li class="page-item">
-                                                                <a class="page-link" href="?page=<?php echo $total_pages; ?>&search=<?php echo urlencode($search); ?>">
-                                                                    <i class="feather icon-chevrons-right"></i>
-                                                                </a>
-                                                            </li>
-                                                        <?php endif; ?>
-                                                    </ul>
-                                                </nav>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+        <!-- Main content -->
+        <div>
+            <!-- Search -->
+            <div class="dash-card">
+                <div class="dash-card-head">
+                    <h6><span class="ico"><i class="feather icon-search"></i></span>Search Clients</h6>
+                </div>
+                <div class="dash-card-body">
+                    <label class="form-label-custom">Search</label>
+                    <div class="search-group">
+                        <input type="text" id="searchInput" class="form-input" placeholder="Client name, email, or phone…" value="<?= htmlspecialchars($search) ?>">
+                        <button class="search-btn" id="searchBtn"><i class="feather icon-search"></i>Search</button>
+                        <?php if (!empty($search)): ?>
+                        <a href="?" class="clear-btn"><i class="feather icon-x"></i>Clear</a>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
+
+            <!-- Table -->
+            <div class="dash-card">
+                <div class="dash-card-head">
+                    <h6><span class="ico"><i class="feather icon-list"></i></span>Clients List</h6>
+                    <span class="count-badge"><?= number_format($total_clients) ?> total</span>
+                </div>
+
+                <?php if (!empty($clients)): ?>
+                <div style="overflow-x:auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="width:44px;">#</th>
+                                <th style="width:60px;"></th>
+                                <th>Client Info</th>
+                                <th>Contact Details</th>
+                                <th>USD Balance</th>
+                                <th>AFS Balance</th>
+                                <th>Activity</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <?php $counter = $offset + 1; foreach ($clients as $cli):
+                            $usd = floatval($cli['usd_balance']);
+                            $afs = floatval($cli['afs_balance']);
+                            $usdCls = $usd >= 0 ? 'bal-pos-usd' : 'bal-neg-usd';
+                            $afsCls = $afs >= 0 ? 'bal-pos-afs' : 'bal-neg-afs';
+                            $isAgency = strtolower($cli['client_type'] ?? '') === 'agency';
+                            $statusCls = $cli['status'] === 'active' ? 'sp-active' : 'sp-inactive';
+                        ?>
+                        <tr>
+                            <td class="td-ctr"><?= $counter++ ?></td>
+                            <td>
+                                <div class="dropdown">
+                                    <button class="act-btn dropdown-toggle" type="button" data-toggle="dropdown">
+                                        <i class="feather icon-more-vertical"></i>
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-right">
+                                        <button class="dropdown-item view-details" data-client='<?= htmlspecialchars(json_encode($cli)) ?>'>
+                                            <i class="feather icon-eye" style="color:var(--blue)"></i>View Details
+                                        </button>
+                                        <button class="dropdown-item view-transactions" data-client-id="<?= $cli['id'] ?>" data-client-name="<?= htmlspecialchars($cli['name']) ?>">
+                                            <i class="feather icon-list" style="color:#0d9488"></i>View Transactions
+                                        </button>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="cli-name"><?= htmlspecialchars($cli['name']) ?></div>
+                                <span class="cli-type-pill <?= $isAgency ? 'ctp-agency' : 'ctp-default' ?>">
+                                    <i class="feather <?= $isAgency ? 'icon-briefcase' : 'icon-user' ?>"></i>
+                                    <?= ucfirst(htmlspecialchars($cli['client_type'] ?? 'Client')) ?>
+                                </span>
+                            </td>
+                            <td>
+                                <?php if (!empty($cli['phone'])): ?>
+                                <div class="contact-row"><i class="feather icon-phone"></i><?= htmlspecialchars($cli['phone']) ?></div>
+                                <?php endif; ?>
+                                <?php if (!empty($cli['email'])): ?>
+                                <div class="contact-row"><i class="feather icon-mail"></i><?= htmlspecialchars($cli['email']) ?></div>
+                                <?php endif; ?>
+                                <?php if (empty($cli['phone']) && empty($cli['email'])): ?>
+                                <div class="no-contact"><i class="feather icon-minus-circle" style="margin-right:4px;font-size:11px;"></i>No contact info</div>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <div class="bal-amount <?= $usdCls ?>">$<?= number_format($usd, 2) ?></div>
+                                <div class="bal-label"><?= $usd >= 0 ? 'Credit' : 'Debit' ?></div>
+                            </td>
+                            <td>
+                                <div class="bal-amount <?= $afsCls ?>">؋<?= number_format($afs, 2) ?></div>
+                                <div class="bal-label"><?= $afs >= 0 ? 'Credit' : 'Debit' ?></div>
+                            </td>
+                            <td>
+                                <div class="txn-count"><?= number_format($cli['transaction_count']) ?> txns</div>
+                                <div class="txn-flows">
+                                    <span class="txn-cr">C $<?= number_format($cli['total_credits'], 0) ?></span>
+                                    <span class="txn-dr">D $<?= number_format($cli['total_debits'], 0) ?></span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="status-pill <?= $statusCls ?>"><?= ucfirst(htmlspecialchars($cli['status'])) ?></span>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pag-wrap">
+                    <div class="pag-info">Showing <?= $from ?>–<?= $to ?> of <?= number_format($total_clients) ?> clients</div>
+                    <div class="pag-links">
+                        <?php $base = '?search='.urlencode($search); ?>
+                        <a href="<?= $base ?>&page=1" class="pag-btn <?= $page<=1?'disabled':'' ?>"><i class="feather icon-chevrons-left"></i></a>
+                        <a href="<?= $base ?>&page=<?= $page-1 ?>" class="pag-btn <?= $page<=1?'disabled':'' ?>"><i class="feather icon-chevron-left"></i></a>
+                        <?php
+                        $sp2=max(1,$page-2); $ep=min($total_pages,$page+2);
+                        if($sp2>1){echo '<a href="'.$base.'&page=1" class="pag-btn">1</a>';if($sp2>2)echo '<span class="pag-dots">…</span>';}
+                        for($i=$sp2;$i<=$ep;$i++) echo '<a href="'.$base.'&page='.$i.'" class="pag-btn '.($i==$page?'active':'').'">'.$i.'</a>';
+                        if($ep<$total_pages){if($ep<$total_pages-1)echo '<span class="pag-dots">…</span>';echo '<a href="'.$base.'&page='.$total_pages.'" class="pag-btn">'.$total_pages.'</a>';}
+                        ?>
+                        <a href="<?= $base ?>&page=<?= $page+1 ?>" class="pag-btn <?= $page>=$total_pages?'disabled':'' ?>"><i class="feather icon-chevron-right"></i></a>
+                        <a href="<?= $base ?>&page=<?= $total_pages ?>" class="pag-btn <?= $page>=$total_pages?'disabled':'' ?>"><i class="feather icon-chevrons-right"></i></a>
+                    </div>
+                </div>
+
+                <?php else: ?>
+                <div class="empty-state">
+                    <i class="feather icon-users"></i>
+                    <p>No clients found<?= !empty($search) ? ' for "'.$search.'"' : '' ?>.</p>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div><!-- /main col -->
+
+    </div><!-- /page-layout -->
+
+</div>
 </div>
 
 <!-- Client Details Modal -->
-<div class="modal fade" id="detailsModal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-success text-white border-0">
-                <h5 class="modal-title">
-                    <i class="feather icon-user mr-2"></i>Client Details
-                </h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+<div class="modal fade" id="detailsModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="feather icon-user" style="margin-right:8px;"></i>Client Details</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
             </div>
-            <div class="modal-body p-0">
-                <!-- Top Summary Card -->
-                <div class="bg-light p-4 border-bottom">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="balance-summary">
-                                <div class="balance-summary__label">USD Balance</div>
-                                <div class="balance-summary__amount" id="usd-balance">-</div>
-                                <div class="balance-summary__status" id="usd-balance-status">-</div>
-                            </div>
+
+            <!-- Dual-balance strip -->
+            <div class="modal-summary">
+                <div class="ms-cell">
+                    <div class="ms-label">USD Balance</div>
+                    <div class="ms-val" id="modal-usd-bal">—</div>
+                    <div class="ms-sub" id="modal-usd-dir">—</div>
+                </div>
+                <div class="ms-cell">
+                    <div class="ms-label">AFS Balance</div>
+                    <div class="ms-val" id="modal-afs-bal">—</div>
+                    <div class="ms-sub" id="modal-afs-dir">—</div>
+                </div>
+            </div>
+
+            <div class="modal-body">
+                <div class="modal-tabs">
+                    <button class="modal-tab active" onclick="switchTab('summary',this)"><i class="feather icon-info"></i>Summary</button>
+                    <button class="modal-tab" onclick="switchTab('contact',this)"><i class="feather icon-phone"></i>Contact Info</button>
+                </div>
+
+                <div class="modal-pane active" id="pane-summary">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                        <div class="detail-section">
+                            <div class="ds-title">Client Information</div>
+                            <div class="ds-row"><span class="ds-key">Client Name</span><span class="ds-val" id="client-name">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Type</span><span class="ds-val" id="client-type">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Status</span><span class="ds-val" id="client-status">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Created At</span><span class="ds-val" id="created-at" style="font-family:'JetBrains Mono',monospace;font-size:11px;">—</span></div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="balance-summary">
-                                <div class="balance-summary__label">AFS Balance</div>
-                                <div class="balance-summary__amount" id="afs-balance">-</div>
-                                <div class="balance-summary__status" id="afs-balance-status">-</div>
-                            </div>
+                        <div class="detail-section">
+                            <div class="ds-title">Financial Summary</div>
+                            <div class="ds-row"><span class="ds-key">Total Credits</span><span class="ds-val green" id="total-credits" style="font-family:'JetBrains Mono',monospace;">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Total Debits</span><span class="ds-val red" id="total-debits" style="font-family:'JetBrains Mono',monospace;">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Net Position</span><span class="ds-val" id="net-position" style="font-family:'JetBrains Mono',monospace;">—</span></div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Tabs Navigation -->
-                <ul class="nav nav-pills nav-fill p-3" id="detailsTab" role="tablist">
-                    <li class="nav-item">
-                        <a class="nav-link active" id="details-summary-tab" data-toggle="tab" href="#details-summary" role="tab">
-                            <i class="feather icon-info mr-2"></i>Summary
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" id="details-contact-tab" data-toggle="tab" href="#details-contact" role="tab">
-                            <i class="feather icon-phone mr-2"></i>Contact Info
-                        </a>
-                    </li>
-                </ul>
-
-                <!-- Tab Content -->
-                <div class="tab-content p-4">
-                    <!-- Summary Tab -->
-                    <div class="tab-pane fade show active" id="details-summary" role="tabpanel">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="card border-0 shadow-sm mb-3">
-                                    <div class="card-body">
-                                        <h6 class="card-subtitle mb-3 text-muted">Client Information</h6>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">Client Name</span>
-                                            <strong id="client-name">-</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">Type</span>
-                                            <strong id="client-type">-</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">Status</span>
-                                            <strong id="client-status">-</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between">
-                                            <span class="text-muted">Created At</span>
-                                            <strong id="created-at">-</strong>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="card border-0 shadow-sm mb-3">
-                                    <div class="card-body">
-                                        <h6 class="card-subtitle mb-3 text-muted">Financial Summary</h6>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">Total Credits</span>
-                                            <strong class="text-success" id="total-credits">-</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">Total Debits</span>
-                                            <strong class="text-danger" id="total-debits">-</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between">
-                                            <span class="text-muted">Net Position</span>
-                                            <strong id="net-position">-</strong>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Contact Info Tab -->
-                    <div class="tab-pane fade" id="details-contact" role="tabpanel">
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-body">
-                                <h6 class="card-subtitle mb-3 text-muted">Contact Information</h6>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Phone</span>
-                                    <strong id="contact-phone">-</strong>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Email</span>
-                                    <strong id="contact-email">-</strong>
-                                </div>
-                                <div class="d-flex justify-content-between">
-                                    <span class="text-muted">Address</span>
-                                    <strong id="contact-address">-</strong>
-                                </div>
-                            </div>
-                        </div>
+                <div class="modal-pane" id="pane-contact">
+                    <div class="detail-section">
+                        <div class="ds-title">Contact Information</div>
+                        <div class="ds-row"><span class="ds-key">Phone</span><span class="ds-val" id="contact-phone" style="font-family:'JetBrains Mono',monospace;">—</span></div>
+                        <div class="ds-row"><span class="ds-key">Email</span><span class="ds-val" id="contact-email">—</span></div>
+                        <div class="ds-row"><span class="ds-key">Address</span><span class="ds-val" id="contact-address">—</span></div>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer border-0 bg-light">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">
-                    <i class="feather icon-x mr-2"></i>Close
-                </button>
+
+            <div class="modal-footer-custom">
+                <button type="button" class="btn-close-modal" data-dismiss="modal"><i class="feather icon-x"></i>Close</button>
             </div>
         </div>
     </div>
 </div>
 
 <!-- Transactions Modal -->
-<div class="modal fade" id="transactionsModal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-xl" role="document">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-success text-white border-0">
-                <h5 class="modal-title">
-                    <i class="feather icon-list mr-2"></i>Client Transactions - <span id="client-name-header"></span>
-                </h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+<div class="modal fade" id="transactionsModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header txn-header">
+                <h5 class="modal-title"><i class="feather icon-list" style="margin-right:8px;"></i>Transactions — <span id="client-name-header"></span></h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body" style="padding:0;">
                 <div id="transactionsContent">
-                    <div class="text-center">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="sr-only">Loading...</span>
-                        </div>
-                        <p class="mt-2">Loading transactions...</p>
+                    <div class="txn-loading">
+                        <div class="spinner"></div>
+                        <p style="color:var(--text-sub);font-size:13px;margin:0;">Loading transactions…</p>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer border-0 bg-light">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">
-                    <i class="feather icon-x mr-2"></i>Close
-                </button>
+            <div class="modal-footer-custom">
+                <button type="button" class="btn-close-modal" data-dismiss="modal"><i class="feather icon-x"></i>Close</button>
             </div>
         </div>
     </div>
 </div>
 
-<style>
-/* Enhanced custom styles matching request_user_addon.php */
-.page-header.card {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-    color: #ffffff;
-    border: none;
-    margin-bottom: 20px;
-    padding: 20px !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    border-radius: 10px;
-}
-
-.page-header.card .row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.page-header.card h5 {
-    color: #ffffff;
-    margin: 0;
-    font-weight: 600;
-}
-
-.page-header.card .text-end {
-    text-align: right;
-}
-
-.page-header.card .btn {
-    background: rgba(255,255,255,0.2);
-    color: #ffffff;
-    border: 1px solid rgba(255,255,255,0.3);
-    border-radius: 25px;
-    transition: all 0.3s ease;
-}
-
-.page-header.card .btn:hover {
-    background: rgba(255,255,255,0.3);
-    border-color: rgba(255,255,255,0.5);
-    transform: translateY(-1px);
-}
-
-.card {
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    border: none;
-}
-
-.card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-}
-
-.card-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-radius: 10px 10px 0 0;
-    padding: 1rem 1.5rem;
-    border: none;
-}
-
-.card-header h5 {
-    margin: 0;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-}
-
-.badge {
-    font-size: 0.85em;
-    padding: 0.5em 0.75em;
-    border-radius: 20px;
-    font-weight: 500;
-}
-
-.badge-success {
-    background-color: #28a745;
-}
-
-.badge-warning {
-    background-color: #ffc107;
-    color: #212529;
-}
-
-.badge-info {
-    background-color: #17a2b8;
-}
-
-.badge-primary {
-    background-color: #007bff;
-}
-
-.badge-secondary {
-    background-color: #6c757d;
-}
-
-.table-responsive {
-    border-radius: 10px;
-    
-}
-
-.table {
-    margin-bottom: 0;
-}
-
-.table thead th {
-    background-color: #f8f9fa;
-    border-bottom: 2px solid #dee2e6;
-    font-weight: 600;
-    color: #495057;
-    padding: 1rem;
-}
-
-.table tbody tr:hover {
-    background-color: #f1f3f4;
-}
-
-.table tbody td {
-    padding: 1rem;
-    vertical-align: middle;
-}
-
-.form-control {
-    border-radius: 8px;
-    border: 1px solid #ced4da;
-    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-    padding: 0.75rem;
-}
-
-.form-control:focus {
-    border-color: #4099ff;
-    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
-}
-
-.btn-primary {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-    border: none;
-    border-radius: 25px;
-    padding: 0.75rem 2rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
-}
-
-.btn-secondary {
-    border-radius: 25px;
-    padding: 0.75rem 2rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.pagination .page-link {
-    border-radius: 50%;
-    margin: 0 2px;
-    border: none;
-    color: #495057;
-}
-
-.pagination .page-item.active .page-link {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-    color: white;
-}
-
-.pagination .page-link:hover {
-    background-color: #e9ecef;
-}
-
-/* Text colors */
-.text-primary { color: #007bff !important; }
-.text-success { color: #28a745 !important; }
-.text-info { color: #17a2b8 !important; }
-.text-danger { color: #dc3545 !important; }
-.text-muted { color: #6c757d !important; }
-</style>
-
 <script>
-// Handle search functionality
-document.getElementById('searchBtn').addEventListener('click', function() {
-    const searchValue = document.getElementById('searchInput').value.trim();
+document.getElementById('searchBtn').addEventListener('click', doSearch);
+document.getElementById('searchInput').addEventListener('keypress', e => { if(e.key==='Enter') doSearch(); });
 
-    let url = '?';
-    if (searchValue) {
-        url += 'search=' + encodeURIComponent(searchValue);
-    }
+function doSearch() {
+    const s = document.getElementById('searchInput').value.trim();
+    window.location.href = '?' + (s ? 'search=' + encodeURIComponent(s) : '');
+}
 
-    window.location.href = url;
-});
+function switchTab(tab, btn) {
+    document.querySelectorAll('.modal-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.modal-tab').forEach(b => b.classList.remove('active'));
+    document.getElementById('pane-' + tab).classList.add('active');
+    btn.classList.add('active');
+}
 
-// Handle enter key in search input
-document.getElementById('searchInput').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        document.getElementById('searchBtn').click();
-    }
-});
+document.querySelectorAll('.view-details').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const c   = JSON.parse(this.getAttribute('data-client'));
+        const usd = parseFloat(c.usd_balance || 0);
+        const afs = parseFloat(c.afs_balance || 0);
 
-// Handle view details modal
-document.querySelectorAll('.view-details').forEach(button => {
-    button.addEventListener('click', function() {
-        const clientData = JSON.parse(this.getAttribute('data-client'));
+        const uBalEl = document.getElementById('modal-usd-bal');
+        uBalEl.textContent = '$' + usd.toFixed(2);
+        uBalEl.className = 'ms-val ' + (usd >= 0 ? 'usd-p' : 'usd-n');
+        document.getElementById('modal-usd-dir').textContent = usd >= 0 ? 'Credit balance' : 'Debit balance';
 
-        // Populate modal with client data
-        document.getElementById('usd-balance').textContent = '$' + parseFloat(clientData.usd_balance || 0).toFixed(2);
-        document.getElementById('usd-balance-status').textContent = (clientData.usd_balance >= 0 ? 'Credit balance' : 'Debit balance');
-        document.getElementById('afs-balance').textContent = '؋' + parseFloat(clientData.afs_balance || 0).toFixed(2);
-        document.getElementById('afs-balance-status').textContent = (clientData.afs_balance >= 0 ? 'Credit balance' : 'Debit balance');
+        const aBalEl = document.getElementById('modal-afs-bal');
+        aBalEl.textContent = '؋' + afs.toFixed(2);
+        aBalEl.className = 'ms-val ' + (afs >= 0 ? 'afs-p' : 'afs-n');
+        document.getElementById('modal-afs-dir').textContent = afs >= 0 ? 'Credit balance' : 'Debit balance';
 
-        document.getElementById('client-name').textContent = clientData.name;
-        document.getElementById('client-type').textContent = clientData.client_type.charAt(0).toUpperCase() + clientData.client_type.slice(1);
-        document.getElementById('client-status').textContent = clientData.status.charAt(0).toUpperCase() + clientData.status.slice(1);
-        document.getElementById('created-at').textContent = clientData.created_at || 'N/A';
+        document.getElementById('client-name').textContent  = c.name || '—';
+        document.getElementById('client-type').textContent  = (c.client_type||'').charAt(0).toUpperCase() + (c.client_type||'').slice(1);
+        document.getElementById('client-status').textContent = (c.status||'').charAt(0).toUpperCase() + (c.status||'').slice(1);
+        document.getElementById('created-at').textContent   = c.created_at || 'N/A';
 
-        document.getElementById('total-credits').textContent = '$' + parseFloat(clientData.total_credits || 0).toFixed(2);
-        document.getElementById('total-debits').textContent = '$' + parseFloat(clientData.total_debits || 0).toFixed(2);
-        const netPosition = parseFloat(clientData.total_credits || 0) - parseFloat(clientData.total_debits || 0);
-        document.getElementById('net-position').innerHTML = (netPosition >= 0 ? '<span class="text-success">+$' : '<span class="text-danger">-$') + Math.abs(netPosition).toFixed(2) + '</span>';
+        const cr  = parseFloat(c.total_credits || 0);
+        const dr  = parseFloat(c.total_debits  || 0);
+        const net = cr - dr;
+        document.getElementById('total-credits').textContent = '$' + cr.toFixed(2);
+        document.getElementById('total-debits').textContent  = '$' + dr.toFixed(2);
+        const nEl = document.getElementById('net-position');
+        nEl.textContent = (net >= 0 ? '+' : '') + '$' + net.toFixed(2);
+        nEl.className = 'ds-val ' + (net >= 0 ? 'green' : 'red');
 
-        document.getElementById('contact-phone').textContent = clientData.phone || 'N/A';
-        document.getElementById('contact-email').textContent = clientData.email || 'N/A';
-        document.getElementById('contact-address').textContent = clientData.address || 'N/A';
+        document.getElementById('contact-phone').textContent   = c.phone   || 'N/A';
+        document.getElementById('contact-email').textContent   = c.email   || 'N/A';
+        document.getElementById('contact-address').textContent = c.address || 'N/A';
 
-        // Show modal
+        switchTab('summary', document.querySelector('.modal-tab'));
         $('#detailsModal').modal('show');
     });
 });
 
-// Handle view transactions modal
-document.querySelectorAll('.view-transactions').forEach(button => {
-    button.addEventListener('click', function() {
-        const clientId = this.getAttribute('data-client-id');
-        const clientName = this.getAttribute('data-client-name');
-
-        document.getElementById('client-name-header').textContent = clientName;
-
-        // Load transactions via AJAX
-        fetch('get_client_transactions.php?client_id=' + clientId)
-            .then(response => response.text())
-            .then(data => {
-                document.getElementById('transactionsContent').innerHTML = data;
-            })
-            .catch(error => {
-                document.getElementById('transactionsContent').innerHTML = '<div class="alert alert-danger">Error loading transactions: ' + error.message + '</div>';
-            });
-
-        // Show modal
+document.querySelectorAll('.view-transactions').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const id   = this.getAttribute('data-client-id');
+        const name = this.getAttribute('data-client-name');
+        document.getElementById('client-name-header').textContent = name;
+        document.getElementById('transactionsContent').innerHTML =
+            '<div class="txn-loading"><div class="spinner"></div><p style="color:var(--text-sub);font-size:13px;margin:0;">Loading transactions…</p></div>';
         $('#transactionsModal').modal('show');
+        fetch('get_client_transactions.php?client_id=' + id)
+            .then(r => r.text())
+            .then(html => { document.getElementById('transactionsContent').innerHTML = html; })
+            .catch(err => {
+                document.getElementById('transactionsContent').innerHTML =
+                    '<div style="padding:20px;color:var(--red);">Error: ' + err.message + '</div>';
+            });
     });
 });
 </script>

@@ -1,800 +1,425 @@
 <?php
 include 'header.php';
 
-// Get tenant and user info
-$tenant_id = $_SESSION['tenant_id'];
-$user_id = $_SESSION['user_id'];
-$user_role = $_SESSION['role'];
+$tenant_id      = $_SESSION['tenant_id'];
+$user_id        = $_SESSION['user_id'];
+$user_role      = $_SESSION['role'];
 $user_branch_id = $_SESSION['branch_id'] ?? null;
 
-// Get search and branch parameters
-$search = isset($_GET['search']) ? trim($_GET['search']) : '';
-$selected_branch = isset($_GET['branch']) ? $_GET['branch'] : ($user_branch_id ? $user_branch_id : 'all');
-
-// Pagination
-$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$search          = isset($_GET['search']) ? trim($_GET['search']) : '';
+$selected_branch = isset($_GET['branch']) ? $_GET['branch'] : ($user_branch_id ?: 'all');
+$page            = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $results_per_page = 25;
-$offset = ($page - 1) * $results_per_page;
+$offset          = ($page - 1) * $results_per_page;
 
-// Get current branch information
-$current_branch_name = "All Branches";
-if ($selected_branch !== 'all') {
-    $branch_query = "SELECT name FROM branches WHERE id = ? AND tenant_id = ?";
-    $stmt = $pdo->prepare($branch_query);
-    $stmt->execute([$selected_branch, $tenant_id]);
-    $branch_data = $stmt->fetch(PDO::FETCH_ASSOC);
-    if ($branch_data) {
-        $current_branch_name = $branch_data['name'];
-    }
-}
-
-// Build query for expenses
-$query = "SELECT e.*,
-                 ec.name as category_name,
-                 b.name as branch_name
+$query = "SELECT e.*, ec.name as category_name, b.name as branch_name
           FROM expenses e
           LEFT JOIN expense_categories ec ON e.category_id = ec.id
           LEFT JOIN branches b ON e.branch_id = b.id
           WHERE e.tenant_id = ?";
 
-// Add branch filtering
-if ($selected_branch !== 'all') {
-    $query .= " AND e.branch_id = ?";
-}
-
-// Add search filter
-if (!empty($search)) {
-    $query .= " AND (e.description LIKE ? OR ec.name LIKE ? OR u.name LIKE ?)";
-}
-
-// Group by and ordering with pagination
-$query .= " ORDER BY e.date DESC LIMIT ? OFFSET ?";
-
-// Prepare parameters
 $params = [$tenant_id];
-
-if ($selected_branch !== 'all') {
-    $params[] = $selected_branch;
-}
-
+if ($selected_branch !== 'all') { $query .= " AND e.branch_id = ?"; $params[] = $selected_branch; }
 if (!empty($search)) {
-    $search_param = "%$search%";
-    $params[] = $search_param;
-    $params[] = $search_param;
-    $params[] = $search_param;
+    $query .= " AND (e.description LIKE ? OR ec.name LIKE ?)";
+    $sp = "%$search%"; $params = array_merge($params, [$sp,$sp]);
 }
+$query .= " ORDER BY e.date DESC LIMIT ? OFFSET ?";
+$params[] = $results_per_page; $params[] = $offset;
 
-$params[] = $results_per_page;
-$params[] = $offset;
-
-// Execute query
-$stmt = $pdo->prepare($query);
-$stmt->execute($params);
+$stmt = $pdo->prepare($query); $stmt->execute($params);
 $expenses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Get total count for pagination
-$count_query = "SELECT COUNT(*) as total FROM expenses e
-                LEFT JOIN expense_categories ec ON e.category_id = ec.id
-                WHERE e.tenant_id = ?";
-$count_params = [$tenant_id];
-
-if ($selected_branch !== 'all') {
-    $count_query .= " AND e.branch_id = ?";
-    $count_params[] = $selected_branch;
-}
-
+$cq = "SELECT COUNT(*) as total FROM expenses e
+       LEFT JOIN expense_categories ec ON e.category_id = ec.id
+       WHERE e.tenant_id = ?";
+$cp = [$tenant_id];
+if ($selected_branch !== 'all') { $cq .= " AND e.branch_id = ?"; $cp[] = $selected_branch; }
 if (!empty($search)) {
-    $count_query .= " AND (e.description LIKE ? OR ec.name LIKE ? OR u.name LIKE ?)";
-    $search_param = "%$search%";
-    $count_params[] = $search_param;
-    $count_params[] = $search_param;
-    $count_params[] = $search_param;
+    $cq .= " AND (e.description LIKE ? OR ec.name LIKE ?)";
+    $sp = "%$search%"; $cp = array_merge($cp, [$sp,$sp]);
 }
+$cs = $pdo->prepare($cq); $cs->execute($cp);
+$total_expenses = $cs->fetch(PDO::FETCH_ASSOC)['total'];
+$total_pages    = max(1, ceil($total_expenses / $results_per_page));
 
-$count_stmt = $pdo->prepare($count_query);
-$count_stmt->execute($count_params);
-$total_expenses = $count_stmt->fetch(PDO::FETCH_ASSOC)['total'];
-$total_pages = ceil($total_expenses / $results_per_page);
-
-// Get summary data
-$summary_query = "SELECT
-    COUNT(*) as total_expenses,
-    SUM(CASE WHEN currency = 'USD' THEN amount ELSE 0 END) as total_usd_expenses,
-    SUM(CASE WHEN currency = 'AFS' THEN amount ELSE 0 END) as total_afs_expenses,
+$sq = "SELECT COUNT(*) as total_expenses,
+    SUM(CASE WHEN currency='USD' THEN amount ELSE 0 END) as total_usd_expenses,
+    SUM(CASE WHEN currency='AFS' THEN amount ELSE 0 END) as total_afs_expenses,
     AVG(amount) as avg_expense_amount
-FROM expenses
-WHERE tenant_id = ?";
+FROM expenses WHERE tenant_id = ?";
+$sp2 = [$tenant_id];
+if ($selected_branch !== 'all') { $sq .= " AND branch_id = ?"; $sp2[] = $selected_branch; }
+$ss = $pdo->prepare($sq); $ss->execute($sp2);
+$summary = $ss->fetch(PDO::FETCH_ASSOC);
 
-$summary_params = [$tenant_id];
+$bs = $pdo->prepare("SELECT id, name FROM branches WHERE tenant_id = ? AND status='active' ORDER BY name");
+$bs->execute([$tenant_id]);
+$branches = $bs->fetchAll(PDO::FETCH_ASSOC);
 
-if ($selected_branch !== 'all') {
-    $summary_query .= " AND branch_id = ?";
-    $summary_params[] = $selected_branch;
-}
-
-$summary_stmt = $pdo->prepare($summary_query);
-$summary_stmt->execute($summary_params);
-$summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
+$from = min(($page - 1) * $results_per_page + 1, $total_expenses);
+$to   = min($page * $results_per_page, $total_expenses);
 ?>
 
 <style>
-/* Enhanced custom styles for better layout and design - matching request_user_addon.php */
-.page-header.card {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-    color: #ffffff;
-    border: none;
-    margin-bottom: 20px;
-    padding: 20px !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    border-radius: 10px;
-}
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
 
-.page-header.card .row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+:root {
+    --surface:#f4f7fe; --card-bg:#ffffff; --border:#e8edf5;
+    --text-main:#1a2340; --text-sub:#6b7a99;
+    --green:#22c55e; --red:#ef4444; --blue:#4099ff;
+    --radius:14px; --shadow:0 2px 12px rgba(64,153,255,0.08);
 }
+*,*::before,*::after{box-sizing:border-box}
+body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important;background:var(--surface)!important;color:var(--text-main)!important}
 
-.page-header.card h5 {
-    color: #ffffff;
-    margin: 0;
-    font-weight: 600;
-}
+/* Header — rose → orange for expenses/spending */
+.dash-header{background:linear-gradient(135deg,#be123c 0%,#ea580c 100%);border-radius:var(--radius);padding:24px 28px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 8px 32px rgba(190,18,60,0.25);position:relative;overflow:hidden}
+.dash-header::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.06'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat}
+.dash-header h4{font-size:22px;font-weight:800;color:#fff;margin:0 0 4px;letter-spacing:-0.4px;position:relative}
+.dash-header p{color:rgba(255,255,255,0.8);margin:0;font-size:13px;position:relative}
 
-.page-header.card .text-end {
-    text-align: right;
-}
+/* Summary stat cards */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+@media(max-width:900px){.stat-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:500px){.stat-grid{grid-template-columns:1fr}}
+.stat-card{border-radius:var(--radius);padding:20px 22px;color:#fff;position:relative;overflow:hidden}
+.stat-card::after{content:'';position:absolute;right:-10px;bottom:-10px;width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,0.1)}
+.stat-card.total{background:linear-gradient(135deg,#be123c,#e11d48);box-shadow:0 6px 20px rgba(190,18,60,0.3)}
+.stat-card.usd  {background:linear-gradient(135deg,#b45309,#d97706);box-shadow:0 6px 20px rgba(180,83,9,0.3)}
+.stat-card.afs  {background:linear-gradient(135deg,#ea580c,#f97316);box-shadow:0 6px 20px rgba(234,88,12,0.3)}
+.stat-card.avg  {background:linear-gradient(135deg,#7c3aed,#9333ea);box-shadow:0 6px 20px rgba(124,58,237,0.3)}
+.stat-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;opacity:.8;margin-bottom:8px}
+.stat-value{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:800;line-height:1}
+.stat-icon{position:absolute;right:18px;top:50%;transform:translateY(-50%);font-size:32px;opacity:.25}
 
-.page-header.card .btn {
-    background: rgba(255,255,255,0.2);
-    color: #ffffff;
-    border: 1px solid rgba(255,255,255,0.3);
-    border-radius: 25px;
-    transition: all 0.3s ease;
-}
+/* Cards */
+.dash-card{background:var(--card-bg);border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow);overflow:hidden;margin-bottom:20px}
+.dash-card:last-child{margin-bottom:0}
+.dash-card-head{padding:15px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dash-card-head h6{font-size:14px;font-weight:700;margin:0;display:flex;align-items:center;gap:8px}
+.dash-card-head h6 .ico{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#be123c,#ea580c);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;flex-shrink:0}
+.dash-card-body{padding:20px}
+.count-badge{background:rgba(190,18,60,.1);color:#be123c;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;margin-left:auto}
 
-.page-header.card .btn:hover {
-    background: rgba(255,255,255,0.3);
-    border-color: rgba(255,255,255,0.5);
-    transform: translateY(-1px);
-}
+/* Search */
+.search-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:end}
+@media(max-width:700px){.search-row{grid-template-columns:1fr}}
+.form-label-custom{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sub);display:block;margin-bottom:6px}
+.search-group{display:flex;gap:8px}
+.form-input{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:9px 13px;font-family:inherit;font-size:13px;color:var(--text-main);background:var(--surface);outline:none;transition:border-color .2s}
+.form-input:focus{border-color:#be123c;background:#fff;box-shadow:0 0 0 3px rgba(190,18,60,.1)}
+.search-btn{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#be123c,#ea580c);color:#fff;border:none;border-radius:10px;padding:9px 18px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:opacity .2s}
+.search-btn:hover{opacity:.9}
+.clear-btn{display:inline-flex;align-items:center;gap:6px;background:var(--surface);color:var(--text-sub);border:1.5px solid var(--border);border-radius:10px;padding:9px 14px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap;flex-shrink:0;transition:all .2s}
+.clear-btn:hover{border-color:var(--text-sub);color:var(--text-main);text-decoration:none}
 
-.card {
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    border: none;
-}
+/* Table */
+.data-table{width:100%;border-collapse:collapse}
+.data-table thead th{background:var(--surface);padding:11px 16px;font-size:11px;font-weight:700;color:var(--text-sub);text-transform:uppercase;letter-spacing:.6px;border-bottom:1.5px solid var(--border);white-space:nowrap}
+.data-table tbody tr{transition:background .15s}
+.data-table tbody tr:hover{background:var(--surface)}
+.data-table tbody td{padding:13px 16px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+.data-table tbody tr:last-child td{border-bottom:none}
+.td-ctr{text-align:center;font-size:12px;color:var(--text-sub);font-family:'JetBrains Mono',monospace}
 
-.card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-}
+/* Expense detail cell */
+.exp-desc{font-weight:700;color:var(--text-main);margin-bottom:3px}
+.exp-receipt{font-size:11px;color:var(--text-sub);font-family:'JetBrains Mono',monospace;display:flex;align-items:center;gap:4px}
 
-.card-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-radius: 10px 10px 0 0;
-    padding: 1rem 1.5rem;
-    border: none;
-}
+/* Category + amount cell */
+.cat-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(190,18,60,.08);color:#be123c;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;margin-bottom:5px}
+.exp-amount{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:800}
+.amt-usd{color:#b45309}
+.amt-afs{color:#ea580c}
 
-.card-header h5 {
-    margin: 0;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    color: #ffffff !important;
-}
+/* Branch */
+.branch-pill{display:inline-flex;align-items:center;gap:5px;background:rgba(64,153,255,.08);color:var(--blue);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700}
 
-.card-header .card-header-right {
-    color: #ffffff !important;
-}
+/* Date cell */
+.exp-date{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--text-main)}
+.exp-time{font-size:11px;color:var(--text-sub);margin-top:2px;font-family:'JetBrains Mono',monospace}
 
-.card-header .card-header-right .btn {
-    color: #ffffff !important;
-    border-color: rgba(255, 255, 255, 0.3) !important;
-}
+/* Action */
+.act-btn{width:30px;height:30px;border-radius:8px;border:1.5px solid var(--border);background:var(--card-bg);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;color:var(--text-sub);transition:all .15s}
+.act-btn:hover{background:rgba(190,18,60,.08);border-color:#be123c;color:#be123c}
+.dropdown-menu{border-radius:12px;border:1px solid var(--border);box-shadow:0 8px 24px rgba(0,0,0,.1);padding:6px;min-width:160px}
+.dropdown-item{border-radius:8px;padding:8px 12px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;transition:background .15s}
+.dropdown-item:hover{background:var(--surface)}
 
-.card-header .card-header-right .btn:hover {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border-color: rgba(255, 255, 255, 0.5) !important;
-}
-
-/* Summary cards */
-.bg-c-blue, .bg-c-green, .bg-c-red, .bg-c-yellow {
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-}
-
-/* Table styles */
-.table-responsive {
-    border-radius: 10px;
-    
-}
-
-.table {
-    margin-bottom: 0;
-}
-
-.table thead th {
-    background-color: #f8f9fa;
-    border-bottom: 2px solid #dee2e6;
-    font-weight: 600;
-    color: #495057;
-    padding: 1rem;
-}
-
-.table tbody tr:hover {
-    background-color: #f1f3f4;
-}
-
-.table tbody td {
-    padding: 1rem;
-    vertical-align: middle;
-}
-
-/* Badge styles */
-.badge {
-    font-size: 0.85em;
-    padding: 0.5em 0.75em;
-    border-radius: 20px;
-    font-weight: 500;
-}
-
-.badge-success {
-    background-color: #28a745;
-}
-
-.badge-warning {
-    background-color: #ffc107;
-    color: #212529;
-}
-
-.badge-info {
-    background-color: #17a2b8;
-}
-
-/* Button styles */
-.btn-primary {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-    border: none;
-    border-radius: 25px;
-    padding: 0.75rem 2rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
-}
-
-.btn-secondary {
-    border-radius: 25px;
-    padding: 0.75rem 2rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.btn-sm {
-    border-radius: 20px;
-}
-
-/* Form controls */
-.form-control {
-    border-radius: 8px;
-    border: 1px solid #ced4da;
-    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-    padding: 0.75rem;
-}
-
-.form-control:focus {
-    border-color: #4099ff;
-    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
-}
+.empty-state{text-align:center;padding:60px 20px}
+.empty-state i{font-size:44px;opacity:.2;display:block;margin-bottom:14px}
+.empty-state p{color:var(--text-sub);font-size:14px;margin:0}
 
 /* Pagination */
-.pagination .page-link {
-    border-radius: 20px;
-    margin: 0 2px;
-    border: none;
-}
+.pag-wrap{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:16px 20px;border-top:1px solid var(--border)}
+.pag-info{font-size:12px;color:var(--text-sub)}
+.pag-links{display:flex;gap:4px}
+.pag-btn{min-width:32px;height:32px;border-radius:8px;border:1.5px solid var(--border);background:var(--card-bg);color:var(--text-main);font-size:12px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;padding:0 8px;transition:all .15s}
+.pag-btn:hover{border-color:#be123c;color:#be123c;text-decoration:none}
+.pag-btn.active{background:linear-gradient(135deg,#be123c,#ea580c);border-color:transparent;color:#fff}
+.pag-btn.disabled{opacity:.4;pointer-events:none}
+.pag-dots{display:flex;align-items:center;padding:0 4px;color:var(--text-sub);font-size:13px}
 
-.pagination .page-item.active .page-link {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-}
+/* Modal */
+.modal-content{border:none;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.18);font-family:inherit}
+.modal-header{background:linear-gradient(135deg,#be123c,#ea580c);color:#fff;border-radius:16px 16px 0 0;border:none;padding:18px 24px}
+.modal-header .modal-title{font-weight:700;font-size:15px}
+.modal-header .close{color:#fff;opacity:.8;font-size:22px}
+.modal-header .close:hover{opacity:1}
 
-/* Modal styles */
-.modal-content {
-    border-radius: 15px;
-    border: none;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-}
+/* Amount + date strip */
+.modal-summary{display:grid;grid-template-columns:1fr 1fr;background:var(--surface);border-bottom:1px solid var(--border)}
+.ms-cell{padding:20px;text-align:center;border-right:1px solid var(--border)}
+.ms-cell:last-child{border-right:none}
+.ms-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sub);margin-bottom:6px}
+.ms-val{font-size:24px;font-weight:800;font-family:'JetBrains Mono',monospace;line-height:1;margin-bottom:4px}
+.ms-val.rose  {color:#be123c}
+.ms-val.orange{color:#ea580c}
+.ms-sub{font-size:11px;font-weight:600;color:var(--text-sub)}
 
-.modal-header {
-    border-radius: 15px 15px 0 0;
-}
+.modal-body{padding:0}
+.modal-tabs{display:flex;gap:6px;padding:16px 24px 0;border-bottom:1px solid var(--border)}
+.modal-tab{background:none;border:none;border-bottom:3px solid transparent;padding:8px 16px 12px;font-family:inherit;font-size:13px;font-weight:700;color:var(--text-sub);cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:6px;margin-bottom:-1px}
+.modal-tab.active{color:#be123c;border-bottom-color:#be123c}
+.modal-tab:hover{color:#be123c}
+.modal-pane{display:none;padding:24px}
+.modal-pane.active{display:block}
+.detail-section{background:var(--surface);border-radius:12px;padding:18px;margin-bottom:14px}
+.detail-section:last-child{margin-bottom:0}
+.ds-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sub);margin-bottom:14px}
+.ds-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)}
+.ds-row:last-child{border-bottom:none}
+.ds-key{font-size:13px;color:var(--text-sub)}
+.ds-val{font-size:13px;font-weight:700;color:var(--text-main);text-align:right}
+.ds-val.rose  {color:#be123c}
+.ds-val.orange{color:#ea580c}
 
-/* Alert styles */
-.alert {
-    border-radius: 10px;
-    border: none;
-    padding: 1rem 1.5rem;
-}
+.modal-footer-custom{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end}
+.btn-close-modal{display:inline-flex;align-items:center;gap:7px;background:var(--surface);color:var(--text-sub);border:1.5px solid var(--border);border-radius:10px;padding:10px 20px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-close-modal:hover{border-color:var(--text-sub);color:var(--text-main)}
 
-.alert-info {
-    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
-    color: #0c5460;
-}
-
-.alert-success {
-    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-    color: #155724;
-}
-
-.alert-danger {
-    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-    color: #721c24;
-}
-
-/* Progress bars */
-.progress {
-    border-radius: 15px;
-    
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
-}
-
-.progress-bar {
-    transition: width 0.6s ease;
-}
-
-/* Dropdown styles */
-.dropdown-menu {
-    border-radius: 10px;
-    border: none;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-
-.dropdown-item:hover {
-    background-color: #f8f9fa;
-}
+.pcoded-content{padding:20px!important}
+.page-header{display:none!important}
 </style>
 
-<!-- [ Main Content ] start -->
 <div class="pcoded-main-container">
-    <div class="pcoded-wrapper">
-        <div class="pcoded-content">
-            <div class="pcoded-inner-content">
-                <div class="main-body">
-                    <div class="page-wrapper">
-                        <!-- [ Main Content ] start -->
-                        <div class="main-content">
-                            <div class="page-header card">
-                                <div class="row align-items-center">
-                                    <div class="col-md-6">
-                                        <h5 class="mb-0"><i class="feather icon-receipt mr-2"></i>Expenses</h5>
-                                        <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;">Manage and track your expenses</p>
-                                    </div>
-                                    <div class="col-md-6 text-end">
-                                        <a href="dashboard.php" class="btn btn-outline-secondary btn-sm">
-                                            <i class="feather icon-arrow-left mr-1"></i>Back to Dashboard
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
+<div class="pcoded-content">
 
-                            <div class="row">
-                                <!-- Summary Cards -->
-                                <div class="col-xl-3 col-md-6">
-                                    <div class="card bg-c-blue text-white">
-                                        <div class="card-body">
-                                            <div class="row align-items-center">
-                                                <div class="col">
-                                                    <p class="m-b-5">Total Expenses</p>
-                                                    <h4 class="m-b-0"><?= number_format($summary['total_expenses'] ?? 0) ?></h4>
-                                                </div>
-                                                <div class="col col-auto text-right">
-                                                    <i class="fas fa-receipt f-50 text-white"></i>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-xl-3 col-md-6">
-                                    <div class="card bg-c-green text-white">
-                                        <div class="card-body">
-                                            <div class="row align-items-center">
-                                                <div class="col">
-                                                    <p class="m-b-5">Total USD Expenses</p>
-                                                    <h4 class="m-b-0">$<?= number_format($summary['total_usd_expenses'] ?? 0, 2) ?></h4>
-                                                </div>
-                                                <div class="col col-auto text-right">
-                                                    <i class="fas fa-dollar-sign f-50 text-white"></i>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-xl-3 col-md-6">
-                                    <div class="card bg-c-red text-white">
-                                        <div class="card-body">
-                                            <div class="row align-items-center">
-                                                <div class="col">
-                                                    <p class="m-b-5">Total AFS Expenses</p>
-                                                    <h4 class="m-b-0">AFS <?= number_format($summary['total_afs_expenses'] ?? 0, 2) ?></h4>
-                                                </div>
-                                                <div class="col col-auto text-right">
-                                                    <i class="fas fa-money-bill-wave f-50 text-white"></i>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-xl-3 col-md-6">
-                                    <div class="card bg-c-yellow text-white">
-                                        <div class="card-body">
-                                            <div class="row align-items-center">
-                                                <div class="col">
-                                                    <p class="m-b-5">Average Expense</p>
-                                                    <h4 class="m-b-0">$<?= number_format($summary['avg_expense_amount'] ?? 0, 2) ?></h4>
-                                                </div>
-                                                <div class="col col-auto text-right">
-                                                    <i class="fas fa-chart-line f-50 text-white"></i>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+    <!-- Header -->
+    <div class="dash-header">
+        <div>
+            <h4><i class="feather icon-file-text" style="margin-right:8px;"></i>Expenses</h4>
+            <p>Manage and track your expenses</p>
+        </div>
+    </div>
 
-                            <div class="row">
-                                <div class="col-sm-12">
-                                    <!-- Branch and Search Section -->
-                                    <div class="card mb-3">
-                                        <div class="card-body">
-                                            <div class="row align-items-center">
-                                                <div class="col-md-6">
-                                                    <div class="branch-selector">
-                                                        <label for="branchSelect" class="form-label"><i class="feather icon-home mr-2"></i>Select Branch:</label>
-                                                        <select id="branchSelect" class="form-control">
-                                                            <option value="all" <?= $selected_branch === 'all' ? 'selected' : '' ?>>All Branches</option>
-                                                            <?php
-                                                            try {
-                                                                $branch_stmt = $pdo->prepare("SELECT id, name FROM branches WHERE tenant_id = ? AND status = 'active' ORDER BY name");
-                                                                $branch_stmt->execute([$tenant_id]);
-                                                                $branches = $branch_stmt->fetchAll(PDO::FETCH_ASSOC);
+    <!-- Summary cards -->
+    <div class="stat-grid">
+        <div class="stat-card total">
+            <div class="stat-label">Total Expenses</div>
+            <div class="stat-value"><?= number_format($summary['total_expenses'] ?? 0) ?></div>
+            <i class="feather icon-file-text stat-icon"></i>
+        </div>
+        <div class="stat-card usd">
+            <div class="stat-label">Total USD</div>
+            <div class="stat-value">$<?= number_format($summary['total_usd_expenses'] ?? 0, 2) ?></div>
+            <i class="feather icon-dollar-sign stat-icon"></i>
+        </div>
+        <div class="stat-card afs">
+            <div class="stat-label">Total AFS</div>
+            <div class="stat-value">AFS <?= number_format($summary['total_afs_expenses'] ?? 0, 2) ?></div>
+            <i class="feather icon-credit-card stat-icon"></i>
+        </div>
+        <div class="stat-card avg">
+            <div class="stat-label">Avg Expense</div>
+            <div class="stat-value">$<?= number_format($summary['avg_expense_amount'] ?? 0, 2) ?></div>
+            <i class="feather icon-trending-up stat-icon"></i>
+        </div>
+    </div>
 
-                                                                foreach ($branches as $branch) {
-                                                                    $selected = ($selected_branch == $branch['id']) ? 'selected' : '';
-                                                                    echo '<option value="' . $branch['id'] . '" ' . $selected . '>' . htmlspecialchars($branch['name']) . '</option>';
-                                                                }
-                                                            } catch (PDOException $e) {
-                                                                error_log("Error fetching branches: " . $e->getMessage());
-                                                            }
-                                                            ?>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <div class="search-box">
-                                                        <div class="input-group">
-                                                            <input type="text" id="searchInput" class="form-control" placeholder="Search by description, category" value="<?= htmlspecialchars($search) ?>">
-                                                            <div class="input-group-append">
-                                                                <button class="btn btn-primary" type="button" id="searchBtn">
-                                                                    <i class="feather icon-search"></i> Search
-                                                                </button>
-                                                                <?php if (!empty($search)): ?>
-                                                                <a href="?branch=<?= urlencode($selected_branch) ?>" class="btn btn-secondary">
-                                                                    <i class="feather icon-x"></i> Clear
-                                                                </a>
-                                                                <?php endif; ?>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Expenses Table Section -->
-                                    <div class="card">
-                                        <div class="card-header">
-                                            <h5><i class="feather icon-list mr-2"></i>Expenses List</h5>
-                                        </div>
-                                        <div class="card-body p-0">
-                                            <div class="table-responsive">
-                                                <table class="table table-hover">
-                                                    <thead>
-                                                        <tr>
-                                                            <th class="text-center" width="50"><i class="feather icon-hash mr-1"></i>#</th>
-                                                            <th width="100"><i class="feather icon-cog mr-1"></i>Action</th>
-                                                            <th><i class="feather icon-file-text mr-1"></i>Expense Details</th>
-                                                            <th><i class="feather icon-tag mr-1"></i>Category & Amount</th>
-                                                            <th><i class="feather icon-home mr-1"></i>Branch</th>
-                                                            <th><i class="feather icon-calendar mr-1"></i>Date</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody id="expenseTable">
-                                                        <?php
-                                                        $counter = $offset + 1;
-                                                        foreach ($expenses as $expense):
-                                                        ?>
-                                                        <tr>
-                                                            <td class="text-center"><?= $counter++ ?></td>
-                                                            <td>
-                                                                <div class="dropdown">
-                                                                    <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" data-toggle="dropdown">
-                                                                        <i class="feather icon-more-vertical"></i>
-                                                                    </button>
-                                                                    <div class="dropdown-menu dropdown-menu-right">
-                                                                        <button class="dropdown-item view-details" data-expense='<?= htmlspecialchars(json_encode($expense)) ?>'>
-                                                                            <i class="feather icon-eye text-primary mr-2"></i> View Details
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-
-                                                            <td>
-                                                                <div class="expense-info">
-                                                                    <div class="expense-info__description">
-                                                                        <strong><?= htmlspecialchars($expense['description']) ?></strong>
-                                                                    </div>
-                                                                    <?php if (!empty($expense['receipt'])): ?>
-                                                                    <div class="expense-info__receipt">
-                                                                        <small class="text-muted">Receipt: <?= htmlspecialchars($expense['receipt']) ?></small>
-                                                                    </div>
-                                                                    <?php endif; ?>
-                                                                </div>
-                                                            </td>
-
-                                                            <td>
-                                                                <div class="category-amount-info">
-                                                                    <div class="category-amount-info__category">
-                                                                        <span class="badge badge-primary">
-                                                                            <?= htmlspecialchars($expense['category_name'] ?? 'Uncategorized') ?>
-                                                                        </span>
-                                                                    </div>
-                                                                    <div class="category-amount-info__amount">
-                                                                        <strong class="text-<?= $expense['currency'] === 'USD' ? 'success' : 'info' ?>">
-                                                                            <?= $expense['currency'] === 'USD' ? '$' : 'AFS ' ?>
-                                                                            <?= number_format($expense['amount'], 2) ?>
-                                                                        </strong>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-
-                                                            <td>
-                                                                <span class="badge badge-secondary">
-                                                                    <?= htmlspecialchars($expense['branch_name'] ?? 'N/A') ?>
-                                                                </span>
-                                                            </td>
-
-                                                            <td>
-                                                                <div class="date-info">
-                                                                    <div class="date-info__date">
-                                                                        <?= date('d/m/Y', strtotime($expense['date'])) ?>
-                                                                    </div>
-                                                                    <div class="date-info__time">
-                                                                        <small class="text-muted">
-                                                                            <?= date('H:i', strtotime($expense['created_at'])) ?>
-                                                                        </small>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                        <?php endforeach; ?>
-                                                    </tbody>
-                                                </table>
-                                            </div>
-
-                                            <!-- Pagination -->
-                                            <?php if ($total_pages > 1): ?>
-                                            <div class="card-footer bg-white">
-                                                <div class="d-flex justify-content-between align-items-center">
-                                                    <div class="text-muted">
-                                                        Showing <?= min(($page - 1) * $results_per_page + 1, $total_expenses) ?> to <?= min($page * $results_per_page, $total_expenses) ?> of <?= $total_expenses ?> expenses
-                                                    </div>
-                                                    <nav aria-label="Page navigation">
-                                                        <ul class="pagination mb-0">
-                                                            <?php if ($page > 1): ?>
-                                                                <li class="page-item">
-                                                                    <a class="page-link" href="?page=1&search=<?= urlencode($search) ?>&branch=<?= urlencode($selected_branch) ?>">
-                                                                        <i class="feather icon-chevrons-left"></i>
-                                                                    </a>
-                                                                </li>
-                                                                <li class="page-item">
-                                                                    <a class="page-link" href="?page=<?= $page - 1 ?>&search=<?= urlencode($search) ?>&branch=<?= urlencode($selected_branch) ?>">
-                                                                        <i class="feather icon-chevron-left"></i>
-                                                                    </a>
-                                                                </li>
-                                                            <?php endif; ?>
-
-                                                            <?php
-                                                            $start_page = max(1, $page - 2);
-                                                            $end_page = min($total_pages, $page + 2);
-
-                                                            if ($start_page > 1) {
-                                                                echo '<li class="page-item"><a class="page-link" href="?page=1&search=' . urlencode($search) . '&branch=' . urlencode($selected_branch) . '">1</a></li>';
-                                                                if ($start_page > 2) {
-                                                                    echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
-                                                                }
-                                                            }
-
-                                                            for ($i = $start_page; $i <= $end_page; $i++) {
-                                                                echo '<li class="page-item ' . ($i == $page ? 'active' : '') . '">
-                                                                    <a class="page-link" href="?page=' . $i . '&search=' . urlencode($search) . '&branch=' . urlencode($selected_branch) . '">' . $i . '</a>
-                                                                </li>';
-                                                            }
-
-                                                            if ($end_page < $total_pages) {
-                                                                if ($end_page < $total_pages - 1) {
-                                                                    echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
-                                                                }
-                                                                echo '<li class="page-item"><a class="page-link" href="?page=' . $total_pages . '&search=' . urlencode($search) . '&branch=' . urlencode($selected_branch) . '">' . $total_pages . '</a></li>';
-                                                            }
-                                                            ?>
-
-                                                            <?php if ($page < $total_pages): ?>
-                                                                <li class="page-item">
-                                                                    <a class="page-link" href="?page=<?= $page + 1 ?>&search=<?= urlencode($search) ?>&branch=<?= urlencode($selected_branch) ?>">
-                                                                        <i class="feather icon-chevron-right"></i>
-                                                                    </a>
-                                                                </li>
-                                                                <li class="page-item">
-                                                                    <a class="page-link" href="?page=<?= $total_pages ?>&search=<?= urlencode($search) ?>&branch=<?= urlencode($selected_branch) ?>">
-                                                                        <i class="feather icon-chevrons-right"></i>
-                                                                    </a>
-                                                                </li>
-                                                            <?php endif; ?>
-                                                        </ul>
-                                                    </nav>
-                                                </div>
-                                            </div>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+    <!-- Search & Filter -->
+    <div class="dash-card">
+        <div class="dash-card-head">
+            <h6><span class="ico"><i class="feather icon-filter"></i></span>Filter &amp; Search</h6>
+        </div>
+        <div class="dash-card-body">
+            <div class="search-row">
+                <div>
+                    <label class="form-label-custom">Branch</label>
+                    <select class="form-input" id="branchSelect">
+                        <option value="all" <?= $selected_branch==='all'?'selected':'' ?>>All Branches</option>
+                        <?php foreach ($branches as $b): ?>
+                        <option value="<?= $b['id'] ?>" <?= $selected_branch==$b['id']?'selected':'' ?>><?= htmlspecialchars($b['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label-custom">Search</label>
+                    <div class="search-group">
+                        <input type="text" id="searchInput" class="form-input" placeholder="Description or category…" value="<?= htmlspecialchars($search) ?>">
+                        <button class="search-btn" id="searchBtn"><i class="feather icon-search"></i>Search</button>
+                        <?php if (!empty($search)): ?>
+                        <a href="?branch=<?= urlencode($selected_branch) ?>" class="clear-btn"><i class="feather icon-x"></i>Clear</a>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Expenses Table -->
+    <div class="dash-card">
+        <div class="dash-card-head">
+            <h6><span class="ico"><i class="feather icon-list"></i></span>Expenses List</h6>
+            <span class="count-badge"><?= number_format($total_expenses) ?> total</span>
+        </div>
+
+        <?php if (!empty($expenses)): ?>
+        <div style="overflow-x:auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width:44px;">#</th>
+                        <th style="width:60px;"></th>
+                        <th>Expense Details</th>
+                        <th>Category &amp; Amount</th>
+                        <th>Branch</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php $counter = $offset + 1; foreach ($expenses as $exp):
+                    $isUSD   = $exp['currency'] === 'USD';
+                    $amtCls  = $isUSD ? 'amt-usd' : 'amt-afs';
+                    $curr    = $isUSD ? '$' : 'AFS ';
+                ?>
+                <tr>
+                    <td class="td-ctr"><?= $counter++ ?></td>
+                    <td>
+                        <div class="dropdown">
+                            <button class="act-btn dropdown-toggle" type="button" data-toggle="dropdown">
+                                <i class="feather icon-more-vertical"></i>
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-right">
+                                <button class="dropdown-item view-details" data-expense='<?= htmlspecialchars(json_encode($exp)) ?>'>
+                                    <i class="feather icon-eye" style="color:var(--blue)"></i>View Details
+                                </button>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="exp-desc"><?= htmlspecialchars($exp['description']) ?></div>
+                        <?php if (!empty($exp['receipt'])): ?>
+                        <div class="exp-receipt"><i class="feather icon-hash"></i><?= htmlspecialchars($exp['receipt']) ?></div>
+                        <?php endif; ?>
+                    </td>
+                    <td>
+                        <div class="cat-badge"><i class="feather icon-tag"></i><?= htmlspecialchars($exp['category_name'] ?? 'Uncategorized') ?></div>
+                        <div class="exp-amount <?= $amtCls ?>"><?= $curr ?><?= number_format($exp['amount'], 2) ?></div>
+                    </td>
+                    <td>
+                        <span class="branch-pill"><i class="feather icon-git-branch"></i><?= htmlspecialchars($exp['branch_name'] ?? 'N/A') ?></span>
+                    </td>
+                    <td>
+                        <div class="exp-date"><?= date('d/m/Y', strtotime($exp['date'])) ?></div>
+                        <div class="exp-time"><?= date('H:i', strtotime($exp['created_at'])) ?></div>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pag-wrap">
+            <div class="pag-info">Showing <?= $from ?>–<?= $to ?> of <?= number_format($total_expenses) ?> expenses</div>
+            <div class="pag-links">
+                <?php $base = '?branch='.urlencode($selected_branch).'&search='.urlencode($search); ?>
+                <a href="<?= $base ?>&page=1" class="pag-btn <?= $page<=1?'disabled':'' ?>"><i class="feather icon-chevrons-left"></i></a>
+                <a href="<?= $base ?>&page=<?= $page-1 ?>" class="pag-btn <?= $page<=1?'disabled':'' ?>"><i class="feather icon-chevron-left"></i></a>
+                <?php
+                $sp2=max(1,$page-2); $ep=min($total_pages,$page+2);
+                if($sp2>1){echo '<a href="'.$base.'&page=1" class="pag-btn">1</a>';if($sp2>2)echo '<span class="pag-dots">…</span>';}
+                for($i=$sp2;$i<=$ep;$i++) echo '<a href="'.$base.'&page='.$i.'" class="pag-btn '.($i==$page?'active':'').'">'.$i.'</a>';
+                if($ep<$total_pages){if($ep<$total_pages-1)echo '<span class="pag-dots">…</span>';echo '<a href="'.$base.'&page='.$total_pages.'" class="pag-btn">'.$total_pages.'</a>';}
+                ?>
+                <a href="<?= $base ?>&page=<?= $page+1 ?>" class="pag-btn <?= $page>=$total_pages?'disabled':'' ?>"><i class="feather icon-chevron-right"></i></a>
+                <a href="<?= $base ?>&page=<?= $total_pages ?>" class="pag-btn <?= $page>=$total_pages?'disabled':'' ?>"><i class="feather icon-chevrons-right"></i></a>
+            </div>
+        </div>
+
+        <?php else: ?>
+        <div class="empty-state">
+            <i class="feather icon-file-text"></i>
+            <p>No expenses found<?= !empty($search) ? ' for "'.$search.'"' : '' ?>.</p>
+        </div>
+        <?php endif; ?>
+    </div>
+
+</div>
 </div>
 
 <!-- Expense Details Modal -->
-<div class="modal fade" id="detailsModal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-info text-white border-0">
-                <h5 class="modal-title">
-                    <i class="feather icon-file-text mr-2"></i>Expense Details
-                </h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+<div class="modal fade" id="detailsModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="feather icon-file-text" style="margin-right:8px;"></i>Expense Details</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
             </div>
-            <div class="modal-body p-0">
-                <!-- Top Summary Card -->
-                <div class="bg-light p-4 border-bottom">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="amount-summary">
-                                <div class="amount-summary__label">Expense Amount</div>
-                                <div class="amount-summary__amount" id="expense-amount">-</div>
-                                <div class="amount-summary__currency" id="expense-currency">-</div>
-                            </div>
+
+            <!-- Amount + date strip -->
+            <div class="modal-summary">
+                <div class="ms-cell">
+                    <div class="ms-label">Expense Amount</div>
+                    <div class="ms-val rose" id="modal-amount">—</div>
+                    <div class="ms-sub" id="modal-currency">—</div>
+                </div>
+                <div class="ms-cell">
+                    <div class="ms-label">Expense Date</div>
+                    <div class="ms-val orange" id="modal-date" style="font-size:18px;">—</div>
+                    <div class="ms-sub" id="modal-created">—</div>
+                </div>
+            </div>
+
+            <div class="modal-body">
+                <div class="modal-tabs">
+                    <button class="modal-tab active" onclick="switchTab('summary',this)"><i class="feather icon-info"></i>Summary</button>
+                    <button class="modal-tab" onclick="switchTab('additional',this)"><i class="feather icon-file"></i>Additional Info</button>
+                </div>
+
+                <div class="modal-pane active" id="pane-summary">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                        <div class="detail-section">
+                            <div class="ds-title">Expense Information</div>
+                            <div class="ds-row"><span class="ds-key">Description</span><span class="ds-val" id="exp-description">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Category</span><span class="ds-val rose" id="exp-category">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="exp-branch">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Created By</span><span class="ds-val" id="exp-created-by">—</span></div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="date-summary">
-                                <div class="date-summary__label">Expense Date</div>
-                                <div class="date-summary__date" id="expense-date">-</div>
-                                <div class="date-summary__created">Created: <span id="created-date">-</span></div>
-                            </div>
+                        <div class="detail-section">
+                            <div class="ds-title">Financial Details</div>
+                            <div class="ds-row"><span class="ds-key">Amount</span><span class="ds-val orange" id="exp-amount-detail" style="font-family:'JetBrains Mono',monospace;">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Currency</span><span class="ds-val" id="exp-currency-detail" style="font-family:'JetBrains Mono',monospace;">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Main Account</span><span class="ds-val" id="exp-main-account">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Receipt No.</span><span class="ds-val" id="exp-receipt" style="font-family:'JetBrains Mono',monospace;">—</span></div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Tabs Navigation -->
-                <ul class="nav nav-pills nav-fill p-3" id="detailsTab" role="tablist">
-                    <li class="nav-item">
-                        <a class="nav-link active" id="details-summary-tab" data-toggle="tab" href="#details-summary" role="tab">
-                            <i class="feather icon-info mr-2"></i>Summary
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" id="details-additional-tab" data-toggle="tab" href="#details-additional" role="tab">
-                            <i class="feather icon-file mr-2"></i>Additional Info
-                        </a>
-                    </li>
-                </ul>
-
-                <!-- Tab Content -->
-                <div class="tab-content p-4">
-                    <!-- Summary Tab -->
-                    <div class="tab-pane fade show active" id="details-summary" role="tabpanel">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="card border-0 shadow-sm mb-3">
-                                    <div class="card-body">
-                                        <h6 class="card-subtitle mb-3 text-muted">Expense Information</h6>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">Description</span>
-                                            <strong id="expense-description">-</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">Category</span>
-                                            <strong id="expense-category">-</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">Branch</span>
-                                            <strong id="expense-branch">-</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between">
-                                            <span class="text-muted">Created By</span>
-                                            <strong id="expense-created-by">-</strong>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="card border-0 shadow-sm mb-3">
-                                    <div class="card-body">
-                                        <h6 class="card-subtitle mb-3 text-muted">Financial Details</h6>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">Amount</span>
-                                            <strong id="expense-amount-detail">-</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">Currency</span>
-                                            <strong id="expense-currency-detail">-</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">Main Account</span>
-                                            <strong id="expense-main-account">-</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between">
-                                            <span class="text-muted">Receipt Number</span>
-                                            <strong id="expense-receipt">-</strong>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Additional Info Tab -->
-                    <div class="tab-pane fade" id="details-additional" role="tabpanel">
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-body">
-                                <h6 class="card-subtitle mb-3 text-muted">Additional Information</h6>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Expense ID</span>
-                                    <strong id="expense-id">-</strong>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Created At</span>
-                                    <strong id="expense-created-at">-</strong>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Updated At</span>
-                                    <strong id="expense-updated-at">-</strong>
-                                </div>
-                                <div class="d-flex justify-content-between">
-                                    <span class="text-muted">Receipt File</span>
-                                    <strong id="expense-receipt-file">-</strong>
-                                </div>
-                            </div>
-                        </div>
+                <div class="modal-pane" id="pane-additional">
+                    <div class="detail-section">
+                        <div class="ds-title">Additional Information</div>
+                        <div class="ds-row"><span class="ds-key">Expense ID</span><span class="ds-val" id="exp-id" style="font-family:'JetBrains Mono',monospace;">—</span></div>
+                        <div class="ds-row"><span class="ds-key">Created At</span><span class="ds-val" id="exp-created-at" style="font-family:'JetBrains Mono',monospace;font-size:11px;">—</span></div>
+                        <div class="ds-row"><span class="ds-key">Updated At</span><span class="ds-val" id="exp-updated-at" style="font-family:'JetBrains Mono',monospace;font-size:11px;">—</span></div>
+                        <div class="ds-row"><span class="ds-key">Receipt File</span><span class="ds-val" id="exp-receipt-file">—</span></div>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer border-0 bg-light">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">
-                    <i class="feather icon-x mr-2"></i>Close
-                </button>
+
+            <div class="modal-footer-custom">
+                <button type="button" class="btn-close-modal" data-dismiss="modal"><i class="feather icon-x"></i>Close</button>
             </div>
         </div>
     </div>
@@ -803,75 +428,50 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
 <?php include 'footer.php'; ?>
 
 <script>
-// Handle search functionality
-document.getElementById('searchBtn').addEventListener('click', function() {
-    const searchValue = document.getElementById('searchInput').value.trim();
-    const branchValue = document.getElementById('branchSelect').value;
+document.getElementById('branchSelect').addEventListener('change', doSearch);
+document.getElementById('searchBtn').addEventListener('click', doSearch);
+document.getElementById('searchInput').addEventListener('keypress', e => { if(e.key==='Enter') doSearch(); });
 
-    let url = '?';
-    const params = [];
-    if (branchValue) {
-        params.push('branch=' + encodeURIComponent(branchValue));
-    }
-    if (searchValue) {
-        params.push('search=' + encodeURIComponent(searchValue));
-    }
-    url += params.join('&');
+function doSearch() {
+    const s = document.getElementById('searchInput').value.trim();
+    const b = document.getElementById('branchSelect').value;
+    window.location.href = '?branch=' + encodeURIComponent(b) + (s ? '&search=' + encodeURIComponent(s) : '');
+}
 
-    window.location.href = url;
-});
+function switchTab(tab, btn) {
+    document.querySelectorAll('.modal-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.modal-tab').forEach(b => b.classList.remove('active'));
+    document.getElementById('pane-' + tab).classList.add('active');
+    btn.classList.add('active');
+}
 
-// Handle branch selector change
-document.getElementById('branchSelect').addEventListener('change', function() {
-    const branchValue = this.value;
-    const searchValue = document.getElementById('searchInput').value.trim();
+document.querySelectorAll('.view-details').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const e    = JSON.parse(this.getAttribute('data-expense'));
+        const curr = e.currency === 'USD' ? '$' : 'AFS ';
+        const amt  = parseFloat(e.amount || 0).toFixed(2);
 
-    let url = '?';
-    const params = [];
-    if (branchValue) {
-        params.push('branch=' + encodeURIComponent(branchValue));
-    }
-    if (searchValue) {
-        params.push('search=' + encodeURIComponent(searchValue));
-    }
-    url += params.join('&');
+        document.getElementById('modal-amount').textContent   = curr + amt;
+        document.getElementById('modal-currency').textContent = e.currency || '—';
+        document.getElementById('modal-date').textContent     = e.date ? new Date(e.date).toLocaleDateString() : '—';
+        document.getElementById('modal-created').textContent  = e.created_at ? 'Created ' + new Date(e.created_at).toLocaleString() : '—';
 
-    window.location.href = url;
-});
+        document.getElementById('exp-description').textContent  = e.description    || '—';
+        document.getElementById('exp-category').textContent     = e.category_name  || 'Uncategorized';
+        document.getElementById('exp-branch').textContent       = e.branch_name    || '—';
+        document.getElementById('exp-created-by').textContent   = e.created_by_name || '—';
 
-// Handle enter key in search input
-document.getElementById('searchInput').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        document.getElementById('searchBtn').click();
-    }
-});
+        document.getElementById('exp-amount-detail').textContent  = curr + amt;
+        document.getElementById('exp-currency-detail').textContent = e.currency || '—';
+        document.getElementById('exp-main-account').textContent   = e.main_account_name || '—';
+        document.getElementById('exp-receipt').textContent        = e.receipt || '—';
 
-// Handle view details modal
-document.querySelectorAll('.view-details').forEach(button => {
-    button.addEventListener('click', function() {
-        const expenseData = JSON.parse(this.getAttribute('data-expense'));
+        document.getElementById('exp-id').textContent          = e.id || '—';
+        document.getElementById('exp-created-at').textContent  = e.created_at ? new Date(e.created_at).toLocaleString() : '—';
+        document.getElementById('exp-updated-at').textContent  = e.updated_at ? new Date(e.updated_at).toLocaleString() : '—';
+        document.getElementById('exp-receipt-file').textContent = e.receipt_file || 'No file attached';
 
-        // Populate modal with expense data
-        document.getElementById('expense-amount').textContent = (expenseData.currency === 'USD' ? '$' : 'AFS ') + parseFloat(expenseData.amount || 0).toFixed(2);
-        document.getElementById('expense-currency').textContent = expenseData.currency;
-        document.getElementById('expense-date').textContent = expenseData.date ? new Date(expenseData.date).toLocaleDateString() : 'N/A';
-        document.getElementById('created-date').textContent = expenseData.created_at ? new Date(expenseData.created_at).toLocaleString() : 'N/A';
-
-        document.getElementById('expense-description').textContent = expenseData.description || 'N/A';
-        document.getElementById('expense-category').textContent = expenseData.category_name || 'Uncategorized';
-        document.getElementById('expense-branch').textContent = expenseData.branch_name || 'N/A';
-
-        document.getElementById('expense-amount-detail').textContent = (expenseData.currency === 'USD' ? '$' : 'AFS ') + parseFloat(expenseData.amount || 0).toFixed(2);
-        document.getElementById('expense-currency-detail').textContent = expenseData.currency;
-        document.getElementById('expense-main-account').textContent = expenseData.main_account_name || 'N/A';
-        document.getElementById('expense-receipt').textContent = expenseData.receipt || 'N/A';
-
-        document.getElementById('expense-id').textContent = expenseData.id;
-        document.getElementById('expense-created-at').textContent = expenseData.created_at ? new Date(expenseData.created_at).toLocaleString() : 'N/A';
-        document.getElementById('expense-updated-at').textContent = expenseData.updated_at ? new Date(expenseData.updated_at).toLocaleString() : 'N/A';
-        document.getElementById('expense-receipt-file').textContent = expenseData.receipt_file || 'No file attached';
-
-        // Show modal
+        switchTab('summary', document.querySelector('.modal-tab'));
         $('#detailsModal').modal('show');
     });
 });
