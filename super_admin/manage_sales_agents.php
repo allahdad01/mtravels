@@ -130,10 +130,46 @@ $provinces = $stmt->fetchAll();
                     </div>
                 </div>
                 <!-- [ breadcrumb ] end -->
+
+                <!-- Alerts -->
+                <?php if (!empty($_GET['error'])): ?>
+                <div class="sa-alert sa-alert-danger" style="margin: 20px; margin-bottom: 20px;" id="errorAlert">
+                    <div class="sa-alert-icon">⚠</div>
+                    <div class="sa-alert-content">
+                        <strong>Error:</strong> <?= htmlspecialchars($_GET['error']) ?>
+                    </div>
+                    <button type="button" class="sa-alert-close" onclick="document.getElementById('errorAlert').remove();">×</button>
+                </div>
+                <script>
+                    document.getElementById('errorAlert').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                </script>
+                <?php endif; ?>
+
+                <?php if (!empty($_GET['success'])): ?>
+                <div class="sa-alert sa-alert-success" style="margin: 20px; margin-bottom: 20px;" id="successAlert">
+                    <div class="sa-alert-icon">✓</div>
+                    <div class="sa-alert-content">
+                        <strong>Success:</strong> <?= htmlspecialchars($_GET['success']) ?>
+                    </div>
+                    <button type="button" class="sa-alert-close" onclick="document.getElementById('successAlert').remove();">×</button>
+                </div>
+                <script>
+                    document.getElementById('successAlert').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    setTimeout(() => {
+                        const alert = document.getElementById('successAlert');
+                        if (alert) {
+                            alert.style.transition = 'opacity 0.3s ease';
+                            alert.style.opacity = '0';
+                            setTimeout(() => alert.remove(), 300);
+                        }
+                    }, 5000);
+                </script>
+                <?php endif; ?>
+
                 <div class="main-body">
                     <div class="page-wrapper">
-                        <!-- [ Main Content ] start -->
-                        <!-- Search and Filter Bar -->
+                         <!-- [ Main Content ] start -->
+                         <!-- Search and Filter Bar -->
                         <div class="sa-card" style="margin-bottom: 20px;">
                             <div class="sa-card-body">
                                 <form method="GET" action="manage_sales_agents.php" class="sa-search-filter">
@@ -796,6 +832,61 @@ document.querySelectorAll('.delete-agent').forEach(button => {
 .pill-red {
     background: rgba(239, 68, 68, 0.12);
     color: #ef4444;
+}
+
+/* ─── ALERTS ───────────────────────────────────────────────── */
+.sa-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    border-radius: 10px;
+    border: none;
+}
+
+.sa-alert-danger {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.sa-alert-success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.sa-alert-icon {
+    flex-shrink: 0;
+    font-weight: bold;
+    font-size: 1.2rem;
+    width: 24px;
+    text-align: center;
+}
+
+.sa-alert-content {
+    flex: 1;
+    align-self: center;
+}
+
+.sa-alert-close {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: inherit;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.2s ease;
+}
+
+.sa-alert-close:hover {
+    opacity: 0.7;
 }
 
 /* ─── RESPONSIVE ──────────────────────────────────────────── */

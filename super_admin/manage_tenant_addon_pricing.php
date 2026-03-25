@@ -165,14 +165,14 @@ include '../includes/header_super_admin.php';
         <div class="pcoded-content">
             <div class="pcoded-inner-content">
                 <!-- [ breadcrumb ] start -->
-                <div class="page-header card">
+                <div class="page-header card" style="background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%); color: white;">
                     <div class="row align-items-center">
                         <div class="col-md-6">
                             <div class="page-header-content">
-                                <h5 class="page-title mb-0">
+                                <h5 class="page-title mb-0" style="color: white;">
                                     <i class="feather icon-dollar-sign mr-2"></i>Tenant Addon Pricing
                                 </h5>
-                                <p class="page-subtitle mb-0 mt-2">
+                                <p class="page-subtitle mb-0 mt-2" style="color: white; opacity: 0.9;">
                                     Manage pricing for additional branch add-ons per tenant
                                 </p>
                             </div>

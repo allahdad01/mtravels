@@ -8,14 +8,28 @@ function loadOptions() {
     var statementFields = document.getElementById("statementFields");
     var expenseCategoryFields = document.getElementById("expenseCategoryFields");
 
-    // Hide all optional sections initially
-    entitySection.style.display = "none";
-    entitySelection.style.display = "none";
-    entityDropdown.innerHTML = "";
-    reportConfigSection.style.display = "none";
-    reportCategorySelection.style.display = "none";
-    statementFields.style.display = "none";
-    expenseCategoryFields.style.display = "none";
+    // Hide all optional sections initially (check if they exist first)
+    if (entitySection) {
+        entitySection.style.display = "none";
+    }
+    if (entitySelection) {
+        entitySelection.style.display = "none";
+    }
+    if (entityDropdown) {
+        entityDropdown.innerHTML = "";
+    }
+    if (reportConfigSection) {
+        reportConfigSection.style.display = "none";
+    }
+    if (reportCategorySelection) {
+        reportCategorySelection.style.display = "none";
+    }
+    if (statementFields) {
+        statementFields.style.display = "none";
+    }
+    if (expenseCategoryFields) {
+        expenseCategoryFields.style.display = "none";
+    }
 
     // Get allowed features from the page (similar to header.php)
     var allowedFeatures = allowedFeaturesData;
@@ -31,12 +45,18 @@ function loadOptions() {
 
     if (reportType === "general" || reportType === "main_account") {
         // Show report configuration section for general and main account
-        reportConfigSection.style.display = "block";
-        reportCategorySelection.style.display = "block";
+        if (reportConfigSection) {
+            reportConfigSection.style.display = "block";
+        }
+        if (reportCategorySelection) {
+            reportCategorySelection.style.display = "block";
+        }
 
         // Reset or populate report category options for general report
         var reportCategoryDropdown = document.getElementById("reportCategory");
-        reportCategoryDropdown.innerHTML = '<option value="">Select Category</option>';
+        if (reportCategoryDropdown) {
+            reportCategoryDropdown.innerHTML = '<option value="">Select Category</option>';
+        }
 
         // Dynamically add report categories based on allowed features and user role
         var reportCategories = [];
@@ -91,12 +111,20 @@ function loadOptions() {
         });
     } else if (reportType === "supplier" || reportType === "client") {
         // Show entity and report configuration sections for suppliers and clients
-        entitySection.style.display = "block";
-        reportConfigSection.style.display = "block";
-        reportCategorySelection.style.display = "block";
+        if (entitySection) {
+            entitySection.style.display = "block";
+        }
+        if (reportConfigSection) {
+            reportConfigSection.style.display = "block";
+        }
+        if (reportCategorySelection) {
+            reportCategorySelection.style.display = "block";
+        }
 
         var reportCategoryDropdown = document.getElementById("reportCategory");
-        reportCategoryDropdown.innerHTML = '<option value="">Select Category</option>';
+        if (reportCategoryDropdown) {
+            reportCategoryDropdown.innerHTML = '<option value="">Select Category</option>';
+        }
 
         var reportCategories = [
             { value: 'ticket', label: '🎫 Ticket', feature: 'ticket_bookings' },
@@ -121,7 +149,9 @@ function loadOptions() {
     }
 
     if (reportType === "supplier" || reportType === "main_account" || reportType === "client") {
-        entitySelection.style.display = "block";
+        if (entitySelection) {
+            entitySelection.style.display = "block";
+        }
 
         $.ajax({
             url: "../api/report/load_entities.php",
@@ -149,52 +179,76 @@ function loadOptions() {
 
     // Show report configuration section when report type is selected
     if (reportType !== "") {
-        reportConfigSection.style.display = "block";
-        reportCategorySelection.style.display = "block";
+        if (reportConfigSection) {
+            reportConfigSection.style.display = "block";
+        }
+        if (reportCategorySelection) {
+            reportCategorySelection.style.display = "block";
+        }
     }
 
     // Add event listener for report category changes
-    document.getElementById("reportCategory").addEventListener("change", function() {
-        // Clean up all dynamic fields first
-        cleanupDynamicFields();
+    var reportCategoryElement = document.getElementById("reportCategory");
+    if (reportCategoryElement) {
+        reportCategoryElement.addEventListener("change", function() {
+            // Clean up all dynamic fields first
+            cleanupDynamicFields();
 
-        if (this.value === "statement") {
-            statementFields.style.display = "block";
-            expenseCategoryFields.style.display = "none";
-            umrahFamilyFields.style.display = "none";
-            specificFamilySelection.style.display = "none";
-            updateStartDateForStatement(); // Update start date if entity is selected
-        } else if (this.value === "expense") {
-            expenseCategoryFields.style.display = "block";
-            statementFields.style.display = "none";
-            umrahFamilyFields.style.display = "none";
-            specificFamilySelection.style.display = "none";
-            loadExpenseCategories(); // Load expense categories from the database
-        } else if (this.value === "umrah") {
-            umrahFamilyFields.style.display = "block";
-            statementFields.style.display = "none";
-            expenseCategoryFields.style.display = "none";
-            specificFamilySelection.style.display = "none";
-            // Reset family type to default
-            document.getElementById("umrahFamilyType").value = "all";
-            // Reset call counter for new session
-            loadFamiliesCallCount = 0;
-
-            // Load families if specific is selected
-            toggleFamilySelection();
-        } else {
-            statementFields.style.display = "none";
-            expenseCategoryFields.style.display = "none";
-            umrahFamilyFields.style.display = "none";
-            specificFamilySelection.style.display = "none";
-            // Reset family type when switching away
-            document.getElementById("umrahFamilyType").value = "all";
-            // Reset loading flag and counter
-            isLoadingFamilies = false;
-            loadFamiliesCallCount = 0;
-
-        }
-    });
+            if (this.value === "statement") {
+                statementFields.style.display = "block";
+                expenseCategoryFields.style.display = "none";
+                if (document.getElementById("umrahFamilyFields")) {
+                    document.getElementById("umrahFamilyFields").style.display = "none";
+                }
+                if (document.getElementById("specificFamilySelection")) {
+                    document.getElementById("specificFamilySelection").style.display = "none";
+                }
+                updateStartDateForStatement(); // Update start date if entity is selected
+            } else if (this.value === "expense") {
+                expenseCategoryFields.style.display = "block";
+                statementFields.style.display = "none";
+                if (document.getElementById("umrahFamilyFields")) {
+                    document.getElementById("umrahFamilyFields").style.display = "none";
+                }
+                if (document.getElementById("specificFamilySelection")) {
+                    document.getElementById("specificFamilySelection").style.display = "none";
+                }
+                loadExpenseCategories(); // Load expense categories from the database
+            } else if (this.value === "umrah" || this.value === "umrah_refund") {
+                if (document.getElementById("umrahFamilyFields")) {
+                    document.getElementById("umrahFamilyFields").style.display = "block";
+                }
+                statementFields.style.display = "none";
+                expenseCategoryFields.style.display = "none";
+                if (document.getElementById("specificFamilySelection")) {
+                    document.getElementById("specificFamilySelection").style.display = "none";
+                }
+                // Reset family type to default
+                if (document.getElementById("umrahFamilyType")) {
+                    document.getElementById("umrahFamilyType").value = "all";
+                    // Reset call counter for new session
+                    loadFamiliesCallCount = 0;
+                    // Load families if specific is selected
+                    toggleFamilySelection();
+                }
+            } else {
+                statementFields.style.display = "none";
+                expenseCategoryFields.style.display = "none";
+                if (document.getElementById("umrahFamilyFields")) {
+                    document.getElementById("umrahFamilyFields").style.display = "none";
+                }
+                if (document.getElementById("specificFamilySelection")) {
+                    document.getElementById("specificFamilySelection").style.display = "none";
+                }
+                // Reset family type when switching away
+                if (document.getElementById("umrahFamilyType")) {
+                    document.getElementById("umrahFamilyType").value = "all";
+                    isLoadingFamilies = false;
+                    loadFamiliesCallCount = 0;
+                }
+            }
+        });
+    }
 }
 
 // Function to load expense categories from the database
@@ -695,6 +749,22 @@ $(document).ready(function() {
         document.querySelector('meta[name="branch-id"]').getAttribute('content') : '';
     window.allowedFeaturesData = document.querySelector('meta[name="allowed-features"]') ? 
         JSON.parse(document.querySelector('meta[name="allowed-features"]').getAttribute('content')) : [];
+    
+    // For client page: Get current client information from meta tag or API
+    var currentClientId = document.querySelector('meta[name="current-client-id"]') ? 
+        document.querySelector('meta[name="current-client-id"]').getAttribute('content') : '';
+    var currentClientName = document.querySelector('meta[name="current-client-name"]') ? 
+        document.querySelector('meta[name="current-client-name"]').getAttribute('content') : '';
+    
+    // If current client info is available, populate the form
+    if (currentClientId && currentClientName) {
+        document.getElementById('currentClientId').value = currentClientId;
+        document.getElementById('currentClientName').value = currentClientName;
+        document.getElementById('entity').value = currentClientId;
+        
+        // Initialize report options
+        loadOptions();
+    }
 
     // Check for error parameter in URL
     const urlParams = new URLSearchParams(window.location.search);

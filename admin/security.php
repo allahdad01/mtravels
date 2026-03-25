@@ -53,7 +53,7 @@ if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
 }
 
 // Define allowed roles for admin panel
-$admin_roles = ['admin', 'finance', 'sales', 'umrah', 'staff'];
+$admin_roles = ['admin', 'finance', 'sales', 'umrah', 'staff', 'client'];
 
 // Check session timeout (30 minutes = 1800 seconds)
 $sessionTimeout = 1800; // 30 minutes in seconds

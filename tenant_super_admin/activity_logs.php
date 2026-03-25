@@ -1,853 +1,492 @@
-<?php
+﻿<?php
 include 'header.php';
 
-// Get tenant and user info
-$tenant_id = $_SESSION['tenant_id'];
-$user_id = $_SESSION['user_id'];
-$user_role = $_SESSION['role'];
+$tenant_id     = $_SESSION['tenant_id'];
+$user_id       = $_SESSION['user_id'];
+$user_role     = $_SESSION['role'];
 $user_branch_id = $_SESSION['branch_id'] ?? null;
 
-// Get search and filter parameters
-$search = isset($_GET['search']) ? trim($_GET['search']) : '';
-$user_filter = isset($_GET['user_id']) ? trim($_GET['user_id']) : '';
-$action_filter = isset($_GET['action']) ? trim($_GET['action']) : '';
+$search       = isset($_GET['search'])     ? trim($_GET['search'])     : '';
+$user_filter  = isset($_GET['user_id'])    ? trim($_GET['user_id'])    : '';
+$action_filter= isset($_GET['action'])     ? trim($_GET['action'])     : '';
 $table_filter = isset($_GET['table_name']) ? trim($_GET['table_name']) : '';
 
-// Pagination
-$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$page             = isset($_GET['page']) ? max(1,(int)$_GET['page']) : 1;
 $results_per_page = 25;
-$offset = ($page - 1) * $results_per_page;
+$offset           = ($page - 1) * $results_per_page;
 
-// Get current branch information
+// Branch name
 $current_branch_name = "All Branches";
 if ($user_branch_id) {
-    $branch_query = "SELECT name FROM branches WHERE id = ? AND tenant_id = ?";
-    $stmt = $pdo->prepare($branch_query);
-    $stmt->execute([$user_branch_id, $tenant_id]);
-    $branch_data = $stmt->fetch(PDO::FETCH_ASSOC);
-    if ($branch_data) {
-        $current_branch_name = $branch_data['name'];
-    }
+    $s = $pdo->prepare("SELECT name FROM branches WHERE id=? AND tenant_id=?");
+    $s->execute([$user_branch_id, $tenant_id]);
+    $bd = $s->fetch(PDO::FETCH_ASSOC);
+    if ($bd) $current_branch_name = $bd['name'];
 }
 
-// Build query for activity logs
-$query = "SELECT al.*,
-                 u.name as user_name,
-                 b.name as branch_name
-          FROM activity_log al
-          LEFT JOIN users u ON al.user_id = u.id
-          LEFT JOIN branches b ON u.branch_id = b.id
-          WHERE al.tenant_id = ?";
-
-// Add branch filtering
-if ($user_branch_id) {
-    $query .= " AND u.branch_id = ?";
-}
-
-// Add filters
-if (!empty($user_filter)) {
-    $query .= " AND al.user_id = ?";
-}
-if (!empty($action_filter)) {
-    $query .= " AND al.action = ?";
-}
-if (!empty($table_filter)) {
-    $query .= " AND al.table_name = ?";
-}
-
-// Add search filter
+// Main query
+$q = "SELECT al.*,u.name as user_name,b.name as branch_name FROM activity_log al LEFT JOIN users u ON al.user_id=u.id LEFT JOIN branches b ON u.branch_id=b.id WHERE al.tenant_id=?";
+$p = [$tenant_id];
+if ($user_branch_id) { $q .= " AND u.branch_id=?"; $p[] = $user_branch_id; }
+if (!empty($user_filter))  { $q .= " AND al.user_id=?";   $p[] = $user_filter; }
+if (!empty($action_filter)){ $q .= " AND al.action=?";     $p[] = $action_filter; }
+if (!empty($table_filter)) { $q .= " AND al.table_name=?"; $p[] = $table_filter; }
 if (!empty($search)) {
-    $query .= " AND (u.name LIKE ? OR al.action LIKE ? OR al.table_name LIKE ? OR al.record_id LIKE ?)";
+    $q .= " AND (u.name LIKE ? OR al.action LIKE ? OR al.table_name LIKE ? OR al.record_id LIKE ?)";
+    $sp = "%$search%"; $p = array_merge($p,[$sp,$sp,$sp,$sp]);
 }
-
-// Group by and ordering with pagination
-$query .= " ORDER BY al.created_at DESC LIMIT ? OFFSET ?";
-
-// Prepare parameters
-$params = [$tenant_id];
-
-if ($user_branch_id) {
-    $params[] = $user_branch_id;
-}
-
-if (!empty($user_filter)) {
-    $params[] = $user_filter;
-}
-if (!empty($action_filter)) {
-    $params[] = $action_filter;
-}
-if (!empty($table_filter)) {
-    $params[] = $table_filter;
-}
-
-if (!empty($search)) {
-    $search_param = "%$search%";
-    $params[] = $search_param;
-    $params[] = $search_param;
-    $params[] = $search_param;
-    $params[] = $search_param;
-}
-
-$params[] = $results_per_page;
-$params[] = $offset;
-
-// Execute query
-$stmt = $pdo->prepare($query);
-$stmt->execute($params);
+$q .= " ORDER BY al.created_at DESC LIMIT ? OFFSET ?";
+$p[] = $results_per_page; $p[] = $offset;
+$stmt = $pdo->prepare($q); $stmt->execute($p);
 $activity_logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Get total count for pagination
-$count_query = "SELECT COUNT(*) as total FROM activity_log al
-                LEFT JOIN users u ON al.user_id = u.id
-                WHERE al.tenant_id = ?";
-$count_params = [$tenant_id];
-
-if ($user_branch_id) {
-    $count_query .= " AND u.branch_id = ?";
-    $count_params[] = $user_branch_id;
-}
-
-if (!empty($user_filter)) {
-    $count_query .= " AND al.user_id = ?";
-    $count_params[] = $user_filter;
-}
-if (!empty($action_filter)) {
-    $count_query .= " AND al.action = ?";
-    $count_params[] = $action_filter;
-}
-if (!empty($table_filter)) {
-    $count_query .= " AND al.table_name = ?";
-    $count_params[] = $table_filter;
-}
-
+// Count query
+$cq = "SELECT COUNT(*) as total FROM activity_log al LEFT JOIN users u ON al.user_id=u.id WHERE al.tenant_id=?";
+$cp = [$tenant_id];
+if ($user_branch_id) { $cq .= " AND u.branch_id=?"; $cp[] = $user_branch_id; }
+if (!empty($user_filter))  { $cq .= " AND al.user_id=?";   $cp[] = $user_filter; }
+if (!empty($action_filter)){ $cq .= " AND al.action=?";     $cp[] = $action_filter; }
+if (!empty($table_filter)) { $cq .= " AND al.table_name=?"; $cp[] = $table_filter; }
 if (!empty($search)) {
-    $count_query .= " AND (u.name LIKE ? OR al.action LIKE ? OR al.table_name LIKE ? OR al.record_id LIKE ?)";
-    $search_param = "%$search%";
-    $count_params[] = $search_param;
-    $count_params[] = $search_param;
-    $count_params[] = $search_param;
-    $count_params[] = $search_param;
+    $cq .= " AND (u.name LIKE ? OR al.action LIKE ? OR al.table_name LIKE ? OR al.record_id LIKE ?)";
+    $sp = "%$search%"; $cp = array_merge($cp,[$sp,$sp,$sp,$sp]);
 }
-
-$count_stmt = $pdo->prepare($count_query);
-$count_stmt->execute($count_params);
-$total_logs = $count_stmt->fetch(PDO::FETCH_ASSOC)['total'];
+$cs = $pdo->prepare($cq); $cs->execute($cp);
+$total_logs  = $cs->fetch(PDO::FETCH_ASSOC)['total'];
 $total_pages = ceil($total_logs / $results_per_page);
 
-// Get filter options
-$users_query = "SELECT DISTINCT u.id, u.name FROM users u
-                WHERE u.tenant_id = ?";
-$user_params = [$tenant_id];
+// Filter options
+$uq = "SELECT DISTINCT u.id,u.name FROM users u WHERE u.tenant_id=?";
+$up = [$tenant_id];
+if ($user_branch_id){ $uq .= " AND u.branch_id=?"; $up[] = $user_branch_id; }
+$uq .= " ORDER BY u.name";
+$us = $pdo->prepare($uq); $us->execute($up);
+$users = $us->fetchAll(PDO::FETCH_ASSOC);
 
-if ($user_branch_id) {
-    $users_query .= " AND u.branch_id = ?";
-    $user_params[] = $user_branch_id;
+$aq = "SELECT DISTINCT action FROM activity_log WHERE tenant_id=?"; $ap = [$tenant_id];
+if ($user_branch_id){ $aq .= " AND user_id IN(SELECT id FROM users WHERE tenant_id=? AND branch_id=?)"; $ap=array_merge($ap,[$tenant_id,$user_branch_id]); }
+$as2 = $pdo->prepare($aq); $as2->execute($ap); $actions = $as2->fetchAll(PDO::FETCH_ASSOC);
+
+$tq = "SELECT DISTINCT table_name FROM activity_log WHERE tenant_id=?"; $tp = [$tenant_id];
+if ($user_branch_id){ $tq .= " AND user_id IN(SELECT id FROM users WHERE tenant_id=? AND branch_id=?)"; $tp=array_merge($tp,[$tenant_id,$user_branch_id]); }
+$ts = $pdo->prepare($tq); $ts->execute($tp); $tables = $ts->fetchAll(PDO::FETCH_ASSOC);
+
+// Summary
+$sq = "SELECT COUNT(*) as total_logs,COUNT(DISTINCT user_id) as unique_users,COUNT(DISTINCT DATE(created_at)) as active_days FROM activity_log WHERE tenant_id=?";
+$sp2 = [$tenant_id];
+if ($user_branch_id){ $sq .= " AND user_id IN(SELECT id FROM users WHERE tenant_id=? AND branch_id=?)"; $sp2=array_merge($sp2,[$tenant_id,$user_branch_id]); }
+$ss = $pdo->prepare($sq); $ss->execute($sp2);
+$summary = $ss->fetch(PDO::FETCH_ASSOC);
+
+function getActionStyle($action) {
+    $a = strtolower($action);
+    if (in_array($a,['create','insert'])) return ['cls'=>'act-create','icon'=>'plus-circle'];
+    if (in_array($a,['update','edit']))   return ['cls'=>'act-update','icon'=>'edit-2'];
+    if (in_array($a,['delete','remove'])) return ['cls'=>'act-delete','icon'=>'trash-2'];
+    if ($a==='login')                     return ['cls'=>'act-login', 'icon'=>'log-in'];
+    if ($a==='logout')                    return ['cls'=>'act-logout','icon'=>'log-out'];
+    return ['cls'=>'act-other','icon'=>'activity'];
 }
 
-$users_query .= " ORDER BY u.name";
-$users_stmt = $pdo->prepare($users_query);
-$users_stmt->execute($user_params);
-$users = $users_stmt->fetchAll(PDO::FETCH_ASSOC);
-
-$actions_query = "SELECT DISTINCT action FROM activity_log WHERE tenant_id = ?";
-$action_params = [$tenant_id];
-
-if ($user_branch_id) {
-    $actions_query .= " AND user_id IN (SELECT id FROM users WHERE tenant_id = ? AND branch_id = ?)";
-    $action_params[] = $tenant_id;
-    $action_params[] = $user_branch_id;
+function buildPaginationUrl($p,$search,$uf,$af,$tf){
+    return "?page=$p&search=".urlencode($search)."&user_id=".urlencode($uf)."&action=".urlencode($af)."&table_name=".urlencode($tf);
 }
-
-$actions_stmt = $pdo->prepare($actions_query);
-$actions_stmt->execute($action_params);
-$actions = $actions_stmt->fetchAll(PDO::FETCH_ASSOC);
-
-$tables_query = "SELECT DISTINCT table_name FROM activity_log WHERE tenant_id = ?";
-$table_params = [$tenant_id];
-
-if ($user_branch_id) {
-    $tables_query .= " AND user_id IN (SELECT id FROM users WHERE tenant_id = ? AND branch_id = ?)";
-    $table_params[] = $tenant_id;
-    $table_params[] = $user_branch_id;
-}
-
-$tables_stmt = $pdo->prepare($tables_query);
-$tables_stmt->execute($table_params);
-$tables = $tables_stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Get summary data
-$summary_query = "SELECT
-    COUNT(*) as total_logs,
-    COUNT(DISTINCT user_id) as unique_users,
-    COUNT(DISTINCT DATE(created_at)) as active_days
-FROM activity_log
-WHERE tenant_id = ?";
-
-$summary_params = [$tenant_id];
-
-if ($user_branch_id) {
-    $summary_query .= " AND user_id IN (SELECT id FROM users WHERE tenant_id = ? AND branch_id = ?)";
-    $summary_params[] = $tenant_id;
-    $summary_params[] = $user_branch_id;
-}
-
-$summary_stmt = $pdo->prepare($summary_query);
-$summary_stmt->execute($summary_params);
-$summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
 ?>
 
 <style>
-    /* Enhanced custom styles for better layout and design */
-    .page-header.card {
-        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-        color: #ffffff;
-        border: none;
-        margin-bottom: 20px;
-        padding: 20px !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        border-radius: 10px;
-    }
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
 
-    .page-header.card .row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
+:root{
+    --surface:#f4f7fe;--card-bg:#ffffff;--border:#e8edf5;
+    --text-main:#1a2340;--text-sub:#6b7a99;
+    --green:#22c55e;--red:#ef4444;--amber:#f59e0b;
+    /* Activity Logs: Slate â†’ Indigo */
+    --c1:#334155;--c2:#4f46e5;
+    --radius:14px;--shadow:0 2px 12px rgba(51,65,85,.08);
+}
+*,*::before,*::after{box-sizing:border-box}
+body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important;background:var(--surface)!important;color:var(--text-main)!important}
+.pcoded-content{padding:20px!important}
+.page-header{display:none!important}
 
-    .page-header.card h5 {
-        color: #ffffff;
-        margin: 0;
-        font-weight: 600;
-    }
+/* Header */
+.dash-header{background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);border-radius:var(--radius);padding:24px 28px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 8px 32px rgba(51,65,85,.28);position:relative;overflow:hidden}
+.dash-header::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='30' cy='30' r='20' fill='%23ffffff' fill-opacity='0.05'/%3E%3C/svg%3E") repeat}
+.dash-header h4{font-size:22px;font-weight:800;color:#fff;margin:0 0 4px;letter-spacing:-.4px;position:relative}
+.dash-header p{color:rgba(255,255,255,.8);margin:0;font-size:13px;position:relative}
+.back-btn{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.2);color:#fff;border:1.5px solid rgba(255,255,255,.3);border-radius:10px;padding:9px 16px;font-family:inherit;font-size:12px;font-weight:700;text-decoration:none;transition:all .2s;position:relative}
+.back-btn:hover{background:rgba(255,255,255,.3);color:#fff;text-decoration:none}
 
-    .page-header.card .text-end {
-        text-align: right;
-    }
+/* Stat tiles */
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+.stat-tile{border-radius:var(--radius);padding:20px;color:#fff;position:relative;overflow:hidden;text-align:center}
+.stat-tile::after{content:'';position:absolute;right:-10px;bottom:-10px;width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,.1)}
+.st-logs  {background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);box-shadow:0 6px 20px rgba(51,65,85,.28)}
+.st-users {background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);box-shadow:0 6px 20px rgba(5,150,105,.25)}
+.st-days  {background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);box-shadow:0 6px 20px rgba(217,119,6,.25)}
+.stat-icon{width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:18px;margin:0 auto 12px}
+.stat-val{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:800;line-height:1;margin-bottom:4px}
+.stat-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;opacity:.85}
 
-    .page-header.card .btn {
-        background: rgba(255,255,255,0.2);
-        color: #ffffff;
-        border: 1px solid rgba(255,255,255,0.3);
-        border-radius: 25px;
-        transition: all 0.3s ease;
-    }
+/* Cards */
+.dash-card{background:var(--card-bg);border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow);overflow:hidden;margin-bottom:20px}
+.dash-card-head{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.dash-card-head h6{font-size:14px;font-weight:700;margin:0}
+.ico{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;flex-shrink:0}
+.dash-card-body{padding:18px}
 
-    .page-header.card .btn:hover {
-        background: rgba(255,255,255,0.3);
-        border-color: rgba(255,255,255,0.5);
-        transform: translateY(-1px);
-    }
+/* Filter bar */
+.filter-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr auto auto;gap:10px;align-items:end}
+@media(max-width:1100px){.filter-grid{grid-template-columns:1fr 1fr 1fr}}
+.form-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sub);display:block;margin-bottom:5px}
+.form-input{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:9px 12px;font-family:inherit;font-size:13px;color:var(--text-main);background:var(--surface);outline:none;transition:border-color .2s}
+.form-input:focus{border-color:#334155;background:#fff;box-shadow:0 0 0 3px rgba(51,65,85,.1)}
+select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7a99' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:32px}
+.filter-btn{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);color:#fff;border:none;border-radius:10px;padding:9px 18px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+.clear-btn{display:inline-flex;align-items:center;gap:6px;background:var(--surface);color:var(--text-sub);border:1.5px solid var(--border);border-radius:10px;padding:9px 14px;font-family:inherit;font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap}
+.clear-btn:hover{border-color:var(--text-sub);color:var(--text-main);text-decoration:none}
 
-    .card {
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-        border: none;
-    }
+/* Table */
+.data-table{width:100%;border-collapse:collapse}
+.data-table thead th{background:var(--surface);padding:10px 14px;font-size:10px;font-weight:700;color:var(--text-sub);text-transform:uppercase;letter-spacing:.6px;border-bottom:1.5px solid var(--border);white-space:nowrap;text-align:left}
+.data-table tbody tr{cursor:pointer;transition:background .15s}
+.data-table tbody tr:hover{background:rgba(79,70,229,.03)}
+.data-table tbody td{padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;vertical-align:middle}
+.data-table tbody tr:last-child td{border-bottom:none}
 
-    .card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-    }
+/* Action badges */
+.act-badge{display:inline-flex;align-items:center;gap:5px;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700}
+.act-create{background:rgba(34,197,94,.12);color:#166534}
+.act-update{background:rgba(79,70,229,.1);color:#3730a3}
+.act-delete{background:rgba(239,68,68,.1);color:#991b1b}
+.act-login {background:rgba(8,145,178,.1);color:#0e7490}
+.act-logout{background:rgba(107,122,153,.1);color:var(--text-sub)}
+.act-other {background:rgba(217,119,6,.1);color:#92400e}
 
-    .card-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 10px 10px 0 0;
-        padding: 1rem 1.5rem;
-        border: none;
-    }
+/* Cell elements */
+.user-name{font-weight:700;font-size:12px;color:var(--text-main)}
+.branch-tag{display:inline-flex;align-items:center;gap:3px;font-size:10px;color:var(--text-sub);margin-top:2px}
+.table-tag{font-size:10px;color:var(--text-sub);margin-top:2px;font-family:'JetBrains Mono',monospace}
+.record-id{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--text-main)}
+.change-tag{font-size:10px;font-weight:600;margin-top:2px}
+.change-tag.modified{color:#3730a3}
+.change-tag.created {color:#166534}
+.change-tag.deleted {color:#991b1b}
+.ip-code{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-sub);background:var(--surface);border-radius:6px;padding:2px 7px}
+.ts-date{font-size:12px;font-weight:600;color:var(--text-main)}
+.ts-time{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-sub)}
+.view-btn{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;border:1.5px solid var(--border);background:var(--card-bg);cursor:pointer;font-size:12px;color:var(--text-sub);transition:all .15s}
+.view-btn:hover{border-color:#4f46e5;color:#4f46e5}
 
-    .card-header h5 {
-        margin: 0;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-    }
+/* Empty state */
+.empty-state{text-align:center;padding:50px 20px}
+.empty-state i{font-size:44px;opacity:.2;display:block;margin-bottom:14px}
+.empty-state p{color:var(--text-sub);font-size:14px}
 
-    .table-responsive {
-        border-radius: 10px;
-        
-    }
+/* Pagination */
+.pag-row{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-top:1px solid var(--border);flex-wrap:wrap;gap:8px}
+.pag-info{font-size:12px;color:var(--text-sub)}
+.pag-btns{display:flex;gap:4px;flex-wrap:wrap}
+.pag-btn{display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:32px;border-radius:8px;border:1.5px solid var(--border);background:var(--card-bg);font-family:inherit;font-size:12px;font-weight:600;color:var(--text-sub);cursor:pointer;text-decoration:none;transition:all .15s;padding:0 8px}
+.pag-btn:hover{border-color:#334155;color:#334155;text-decoration:none}
+.pag-btn.active{background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);border-color:transparent;color:#fff}
+.pag-btn.disabled{opacity:.4;cursor:default;pointer-events:none}
+.pag-dots{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;color:var(--text-sub);font-size:12px}
 
-    .table {
-        margin-bottom: 0;
-    }
+/* Modal */
+.modal-content{border:none;border-radius:16px;font-family:inherit;box-shadow:0 20px 60px rgba(0,0,0,.18);overflow:hidden}
+.modal-header{background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);color:#fff;border:none;padding:18px 24px}
+.modal-header .modal-title{font-weight:700;font-size:15px}
+.modal-header .close{color:#fff;opacity:.8;font-size:22px}
+.modal-header .close:hover{opacity:1}
 
-    .table thead th {
-        background-color: #f8f9fa;
-        border-bottom: 2px solid #dee2e6;
-        font-weight: 600;
-        color: #495057;
-        padding: 1rem;
-    }
+/* Modal summary strip */
+.modal-summary-strip{background:var(--surface);padding:18px 24px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.mss-item-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sub);margin-bottom:4px}
+.mss-item-val{font-size:14px;font-weight:700;color:var(--text-main)}
+.mss-item-sub{font-size:11px;color:var(--text-sub);margin-top:2px}
 
-    .table tbody tr:hover {
-        background-color: #f1f3f4;
-    }
+/* Modal tabs */
+.modal-tab-bar{display:flex;gap:4px;padding:14px 20px 0;border-bottom:1px solid var(--border)}
+.modal-tab{background:none;border:none;border-bottom:3px solid transparent;padding:8px 16px 12px;font-family:inherit;font-size:13px;font-weight:700;color:var(--text-sub);cursor:pointer;display:flex;align-items:center;gap:6px;margin-bottom:-1px;transition:all .2s}
+.modal-tab.active{color:#4f46e5;border-bottom-color:#4f46e5}
+.modal-tab:hover{color:#4f46e5}
+.modal-pane{display:none;padding:20px}
+.modal-pane.active{display:block}
 
-    .table tbody td {
-        padding: 1rem;
-        vertical-align: middle;
-    }
+/* Modal detail rows */
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.detail-card{background:var(--surface);border-radius:12px;padding:16px}
+.detail-card-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sub);margin-bottom:12px}
+.detail-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.detail-row:last-child{margin-bottom:0}
+.detail-label{font-size:11px;color:var(--text-sub)}
+.detail-val{font-size:12px;font-weight:700;color:var(--text-main);font-family:'JetBrains Mono',monospace;text-align:right;word-break:break-all;max-width:200px}
+.json-pre{background:var(--surface);border-radius:10px;padding:14px;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.6;max-height:360px;overflow-y:auto;color:var(--text-main);border:1.5px solid var(--border)}
+.ua-code{font-family:'JetBrains Mono',monospace;font-size:10px;background:var(--surface);border-radius:8px;padding:8px 12px;color:var(--text-sub);word-break:break-all;border:1.5px solid var(--border);display:block;margin-top:6px}
 
-    .form-control {
-        border-radius: 8px;
-        border: 1px solid #ced4da;
-        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-        padding: 0.75rem;
-    }
-
-    .form-control:focus {
-        border-color: #4099ff;
-        box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
-    }
-
-    .btn-primary {
-        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-        border: none;
-        border-radius: 25px;
-        padding: 0.75rem 2rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-
-    .btn-primary:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
-    }
-
-    .btn-secondary {
-        border-radius: 25px;
-        padding: 0.75rem 2rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-
-    .summary-card {
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-        border: none;
-    }
-
-    .summary-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-    }
-
-    .summary-card .card-body {
-        padding: 1.5rem;
-    }
-
-    .summary-card .h2 {
-        font-size: 2.5rem;
-    }
-
-    .summary-card .h4 {
-        font-size: 1.5rem;
-    }
-
-    .summary-card .text-muted {
-        font-size: 0.875rem;
-    }
-
-    .summary-card i {
-        opacity: 0.8;
-    }
+.btn-close-modal{display:inline-flex;align-items:center;gap:7px;background:var(--surface);color:var(--text-sub);border:1.5px solid var(--border);border-radius:10px;padding:10px 20px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.btn-close-modal:hover{border-color:var(--text-sub);color:var(--text-main)}
 </style>
 
-    <!-- [ Main Content ] start -->
-    <div class="pcoded-main-container">
-        <div class="pcoded-wrapper">
-            <div class="pcoded-content">
-                <div class="pcoded-inner-content">
-                    <div class="main-body">
-                        <div class="page-wrapper">
-                            <!-- [ Main Content ] start -->
-                            <div class="main-content">
-                                <div class="page-header card">
-                                    <div class="row align-items-center">
-                                        <div class="col-md-6">
-                                            <h5 class="mb-0"><i class="feather icon-activity mr-2"></i>Activity Logs</h5>
-                                            <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;">View and monitor all system activity logs</p>
-                                        </div>
-                                        <div class="col-md-6 text-end">
-                                            <a href="dashboard.php" class="btn btn-sm">
-                                                <i class="feather icon-home mr-1"></i>Dashboard
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
+<div class="pcoded-main-container">
+<div class="pcoded-content">
 
-                                <div class="row">
-                                    <!-- Summary Cards -->
-                                    <div class="col-md-4">
-                                        <div class="card summary-card text-white bg-info">
-                                            <div class="card-body">
-                                                <div class="text-center mb-3">
-                                                    <i class="feather icon-list f-50"></i>
-                                                </div>
-                                                <div class="text-center">
-                                                    <div class="h2 font-weight-bold"><?= number_format($summary['total_logs'] ?? 0) ?></div>
-                                                    <p class="text-white-50 mb-0">Total Logs</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="card summary-card text-white bg-success">
-                                            <div class="card-body">
-                                                <div class="text-center mb-3">
-                                                    <i class="feather icon-users f-50"></i>
-                                                </div>
-                                                <div class="text-center">
-                                                    <div class="h2 font-weight-bold"><?= number_format($summary['unique_users'] ?? 0) ?></div>
-                                                    <p class="text-white-50 mb-0">Active Users</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="card summary-card text-white bg-warning">
-                                            <div class="card-body">
-                                                <div class="text-center mb-3">
-                                                    <i class="feather icon-calendar f-50"></i>
-                                                </div>
-                                                <div class="text-center">
-                                                    <div class="h2 font-weight-bold"><?= number_format($summary['active_days'] ?? 0) ?></div>
-                                                    <p class="text-white-50 mb-0">Active Days</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+    <!-- Header -->
+    <div class="dash-header">
+        <div>
+            <h4><i class="feather icon-activity" style="margin-right:8px;"></i>Activity Logs</h4>
+            <p>Monitor all system activity <?= $user_branch_id ? "â€” $current_branch_name" : "â€” All Branches" ?></p>
+        </div>
+        <a href="dashboard.php" class="back-btn"><i class="feather icon-home"></i>Dashboard</a>
+    </div>
 
-                        <div class="row">
-                            <div class="col-sm-12">
-                                <!-- Filters Section -->
-                                <div class="card mb-3">
-                                    <div class="card-body">
-                                        <form method="GET" action="">
-                                            <div class="row align-items-end">
-                                                <div class="col-md-2">
-                                                    <div class="form-group">
-                                                        <label>Search</label>
-                                                        <input type="text" class="form-control" name="search" placeholder="Search logs..." value="<?= htmlspecialchars($search) ?>">
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-2">
-                                                    <div class="form-group">
-                                                        <label>User</label>
-                                                        <select class="form-control" name="user_id">
-                                                            <option value="">All Users</option>
-                                                            <?php foreach ($users as $user): ?>
-                                                            <option value="<?= $user['id'] ?>" <?= $user_filter == $user['id'] ? 'selected' : '' ?>>
-                                                                <?= htmlspecialchars($user['name']) ?>
-                                                            </option>
-                                                            <?php endforeach; ?>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-2">
-                                                    <div class="form-group">
-                                                        <label>Action</label>
-                                                        <select class="form-control" name="action">
-                                                            <option value="">All Actions</option>
-                                                            <?php foreach ($actions as $action): ?>
-                                                            <option value="<?= htmlspecialchars($action['action']) ?>" <?= $action_filter == $action['action'] ? 'selected' : '' ?>>
-                                                                <?= htmlspecialchars($action['action']) ?>
-                                                            </option>
-                                                            <?php endforeach; ?>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-2">
-                                                    <div class="form-group">
-                                                        <label>Table</label>
-                                                        <select class="form-control" name="table_name">
-                                                            <option value="">All Tables</option>
-                                                            <?php foreach ($tables as $table): ?>
-                                                            <option value="<?= htmlspecialchars($table['table_name']) ?>" <?= $table_filter == $table['table_name'] ? 'selected' : '' ?>>
-                                                                <?= htmlspecialchars($table['table_name']) ?>
-                                                            </option>
-                                                            <?php endforeach; ?>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-2">
-                                                    <button type="submit" class="btn btn-primary btn-block">
-                                                        <i class="feather icon-filter mr-1"></i>Filter
-                                                    </button>
-                                                </div>
-                                                <div class="col-md-2">
-                                                    <a href="?" class="btn btn-secondary btn-block">
-                                                        <i class="feather icon-refresh-ccw mr-1"></i>Clear
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        </form>
-                                    </div>
-                                </div>
-
-                                <!-- Activity Logs Table Section -->
-                                <div class="card">
-                                    <div class="card-body p-0">
-                                        <div class="table-responsive">
-                                            <table class="table table-hover">
-                                                <thead>
-                                                    <tr>
-                                                        <th class="text-center" width="50">#</th>
-                                                        <th width="100">Action</th>
-                                                        <th>User & Branch</th>
-                                                        <th>Activity Details</th>
-                                                        <th>Record Info</th>
-                                                        <th>IP Address</th>
-                                                        <th>Timestamp</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="activityTable">
-                                                    <?php
-                                                    $counter = $offset + 1;
-                                                    foreach ($activity_logs as $log):
-                                                    ?>
-                                                    <tr>
-                                                        <td class="text-center"><?= $counter++ ?></td>
-                                                        <td>
-                                                            <div class="dropdown">
-                                                                <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" data-toggle="dropdown">
-                                                                    <i class="feather icon-more-vertical"></i>
-                                                                </button>
-                                                                <div class="dropdown-menu dropdown-menu-right">
-                                                                    <button class="dropdown-item view-details" data-log='<?= htmlspecialchars(json_encode($log)) ?>'>
-                                                                        <i class="feather icon-eye text-primary mr-2"></i> View Details
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-
-                                                        <td>
-                                                            <div class="user-info">
-                                                                <div class="user-info__name">
-                                                                    <strong><?= htmlspecialchars($log['user_name'] ?? 'System') ?></strong>
-                                                                </div>
-                                                                <?php if (!empty($log['branch_name'])): ?>
-                                                                <div class="user-info__branch">
-                                                                    <small class="text-muted">
-                                                                        <i class="feather icon-map-pin mr-1"></i>
-                                                                        <?= htmlspecialchars($log['branch_name']) ?>
-                                                                    </small>
-                                                                </div>
-                                                                <?php endif; ?>
-                                                            </div>
-                                                        </td>
-
-                                                        <td>
-                                                            <div class="activity-info">
-                                                                <div class="activity-info__action">
-                                                                    <span class="badge badge-<?= getActionBadgeClass($log['action']) ?>">
-                                                                        <?= htmlspecialchars($log['action']) ?>
-                                                                    </span>
-                                                                </div>
-                                                                <div class="activity-info__table">
-                                                                    <small class="text-muted">
-                                                                        Table: <?= htmlspecialchars($log['table_name']) ?>
-                                                                    </small>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-
-                                                        <td>
-                                                            <div class="record-info">
-                                                                <div class="record-info__id">
-                                                                    <strong>ID: <?= htmlspecialchars($log['record_id'] ?? 'N/A') ?></strong>
-                                                                </div>
-                                                                <?php if (!empty($log['old_values']) || !empty($log['new_values'])): ?>
-                                                                <div class="record-info__changes">
-                                                                    <small class="text-muted">
-                                                                        <?php
-                                                                        $has_old = !empty($log['old_values']);
-                                                                        $has_new = !empty($log['new_values']);
-                                                                        if ($has_old && $has_new) {
-                                                                            echo 'Modified';
-                                                                        } elseif ($has_new) {
-                                                                            echo 'Created';
-                                                                        } elseif ($has_old) {
-                                                                            echo 'Deleted';
-                                                                        }
-                                                                        ?>
-                                                                    </small>
-                                                                </div>
-                                                                <?php endif; ?>
-                                                            </div>
-                                                        </td>
-
-                                                        <td>
-                                                            <div class="ip-info">
-                                                                <div class="ip-info__address">
-                                                                    <code><?= htmlspecialchars($log['ip_address'] ?? 'N/A') ?></code>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-
-                                                        <td>
-                                                            <div class="timestamp-info">
-                                                                <div class="timestamp-info__date">
-                                                                    <?= date('d/m/Y', strtotime($log['created_at'])) ?>
-                                                                </div>
-                                                                <div class="timestamp-info__time">
-                                                                    <small class="text-muted">
-                                                                        <?= date('H:i:s', strtotime($log['created_at'])) ?>
-                                                                    </small>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                    <?php endforeach; ?>
-                                                </tbody>
-                                            </table>
-                                        </div>
-
-                                        <!-- Pagination -->
-                                        <div class="card-footer bg-white">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <div class="text-muted">
-                                                    Showing <?= min(($page - 1) * $results_per_page + 1, $total_logs) ?> to <?= min($page * $results_per_page, $total_logs) ?> of <?= $total_logs ?> activity logs
-                                                </div>
-                                                <nav aria-label="Page navigation">
-                                                    <ul class="pagination mb-0">
-                                                        <?php if ($page > 1): ?>
-                                                            <li class="page-item">
-                                                                <a class="page-link" href="?page=1&search=<?= urlencode($search) ?>&user_id=<?= urlencode($user_filter) ?>&action=<?= urlencode($action_filter) ?>&table_name=<?= urlencode($table_filter) ?>">
-                                                                    <i class="feather icon-chevrons-left"></i>
-                                                                </a>
-                                                            </li>
-                                                            <li class="page-item">
-                                                                <a class="page-link" href="?page=<?= $page - 1 ?>&search=<?= urlencode($search) ?>&user_id=<?= urlencode($user_filter) ?>&action=<?= urlencode($action_filter) ?>&table_name=<?= urlencode($table_filter) ?>">
-                                                                    <i class="feather icon-chevron-left"></i>
-                                                                </a>
-                                                            </li>
-                                                        <?php endif; ?>
-
-                                                        <?php
-                                                        $start_page = max(1, $page - 2);
-                                                        $end_page = min($total_pages, $page + 2);
-
-                                                        if ($start_page > 1) {
-                                                            echo '<li class="page-item"><a class="page-link" href="?page=1&search=' . urlencode($search) . '&user_id=' . urlencode($user_filter) . '&action=' . urlencode($action_filter) . '&table_name=' . urlencode($table_filter) . '">1</a></li>';
-                                                            if ($start_page > 2) {
-                                                                echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
-                                                            }
-                                                        }
-
-                                                        for ($i = $start_page; $i <= $end_page; $i++) {
-                                                            echo '<li class="page-item ' . ($i == $page ? 'active' : '') . '">
-                                                                <a class="page-link" href="?page=' . $i . '&search=' . urlencode($search) . '&user_id=' . urlencode($user_filter) . '&action=' . urlencode($action_filter) . '&table_name=' . urlencode($table_filter) . '">' . $i . '</a>
-                                                            </li>';
-                                                        }
-
-                                                        if ($end_page < $total_pages) {
-                                                            if ($end_page < $total_pages - 1) {
-                                                                echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
-                                                            }
-                                                            echo '<li class="page-item"><a class="page-link" href="?page=' . $total_pages . '&search=' . urlencode($search) . '&user_id=' . urlencode($user_filter) . '&action=' . urlencode($action_filter) . '&table_name=' . urlencode($table_filter) . '">' . $total_pages . '</a></li>';
-                                                        }
-                                                        ?>
-
-                                                        <?php if ($page < $total_pages): ?>
-                                                            <li class="page-item">
-                                                                <a class="page-link" href="?page=<?= $page + 1 ?>&search=<?= urlencode($search) ?>&user_id=<?= urlencode($user_filter) ?>&action=<?= urlencode($action_filter) ?>&table_name=<?= urlencode($table_filter) ?>">
-                                                                    <i class="feather icon-chevron-right"></i>
-                                                                </a>
-                                                            </li>
-                                                            <li class="page-item">
-                                                                <a class="page-link" href="?page=<?= $total_pages ?>&search=<?= urlencode($search) ?>&user_id=<?= urlencode($user_filter) ?>&action=<?= urlencode($action_filter) ?>&table_name=<?= urlencode($table_filter) ?>">
-                                                                    <i class="feather icon-chevrons-right"></i>
-                                                                </a>
-                                                            </li>
-                                                        <?php endif; ?>
-                                                    </ul>
-                                                </nav>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <!-- Stat tiles -->
+    <div class="stat-row">
+        <div class="stat-tile st-logs">
+            <div class="stat-icon"><i class="feather icon-list"></i></div>
+            <div class="stat-val"><?= number_format($summary['total_logs']??0) ?></div>
+            <div class="stat-lbl">Total Logs</div>
+        </div>
+        <div class="stat-tile st-users">
+            <div class="stat-icon"><i class="feather icon-users"></i></div>
+            <div class="stat-val"><?= number_format($summary['unique_users']??0) ?></div>
+            <div class="stat-lbl">Active Users</div>
+        </div>
+        <div class="stat-tile st-days">
+            <div class="stat-icon"><i class="feather icon-calendar"></i></div>
+            <div class="stat-val"><?= number_format($summary['active_days']??0) ?></div>
+            <div class="stat-lbl">Active Days</div>
         </div>
     </div>
+
+    <!-- Filters -->
+    <div class="dash-card">
+        <div class="dash-card-head">
+            <span class="ico"><i class="feather icon-filter"></i></span>
+            <h6>Filter Logs</h6>
+        </div>
+        <div class="dash-card-body">
+            <form method="GET">
+                <div class="filter-grid">
+                    <div>
+                        <label class="form-label">Search</label>
+                        <input type="text" class="form-input" name="search" placeholder="User, action, tableâ€¦" value="<?= htmlspecialchars($search) ?>">
+                    </div>
+                    <div>
+                        <label class="form-label">User</label>
+                        <select class="form-input" name="user_id">
+                            <option value="">All Users</option>
+                            <?php foreach ($users as $u): ?>
+                            <option value="<?= $u['id'] ?>" <?= $user_filter==$u['id']?'selected':'' ?>><?= htmlspecialchars($u['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Action</label>
+                        <select class="form-input" name="action">
+                            <option value="">All Actions</option>
+                            <?php foreach ($actions as $a): ?>
+                            <option value="<?= htmlspecialchars($a['action']) ?>" <?= $action_filter==$a['action']?'selected':'' ?>><?= htmlspecialchars($a['action']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Table</label>
+                        <select class="form-input" name="table_name">
+                            <option value="">All Tables</option>
+                            <?php foreach ($tables as $t): ?>
+                            <option value="<?= htmlspecialchars($t['table_name']) ?>" <?= $table_filter==$t['table_name']?'selected':'' ?>><?= htmlspecialchars($t['table_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">&nbsp;</label>
+                        <button type="submit" class="filter-btn"><i class="feather icon-filter"></i>Filter</button>
+                    </div>
+                    <div>
+                        <label class="form-label">&nbsp;</label>
+                        <a href="?" class="clear-btn"><i class="feather icon-refresh-ccw"></i>Clear</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Logs table -->
+    <div class="dash-card">
+        <div class="dash-card-head">
+            <span class="ico"><i class="feather icon-clock"></i></span>
+            <h6>Activity Logs</h6>
+            <span style="margin-left:auto;font-size:12px;color:var(--text-sub);">
+                <?= number_format($total_logs) ?> records Â· page <?= $page ?> of <?= max(1,$total_pages) ?>
+            </span>
+        </div>
+        <div style="overflow-x:auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width:38px;">#</th>
+                        <th>Action / Table</th>
+                        <th>User</th>
+                        <th>Record</th>
+                        <th>IP Address</th>
+                        <th>Timestamp</th>
+                        <th style="width:40px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php if (empty($activity_logs)): ?>
+                    <tr><td colspan="7"><div class="empty-state"><i class="feather icon-activity"></i><p>No activity logs found matching your filters.</p></div></td></tr>
+                <?php else: ?>
+                <?php $counter = $offset+1; foreach ($activity_logs as $log):
+                    $style = getActionStyle($log['action']);
+                    $hasOld = !empty($log['old_values']);
+                    $hasNew = !empty($log['new_values']);
+                    $chgLabel = ($hasOld && $hasNew) ? 'modified' : ($hasNew ? 'created' : ($hasOld ? 'deleted' : ''));
+                ?>
+                <tr onclick="showDetails(<?= htmlspecialchars(json_encode($log), ENT_QUOTES) ?>)">
+                    <td style="color:var(--text-sub);font-size:11px;"><?= $counter++ ?></td>
+                    <td>
+                        <span class="act-badge <?= $style['cls'] ?>"><i class="feather icon-<?= $style['icon'] ?>"></i><?= htmlspecialchars($log['action']) ?></span>
+                        <div class="table-tag"><?= htmlspecialchars($log['table_name']) ?></div>
+                    </td>
+                    <td>
+                        <div class="user-name"><?= htmlspecialchars($log['user_name']??'System') ?></div>
+                        <?php if (!empty($log['branch_name'])): ?>
+                        <div class="branch-tag"><i class="feather icon-map-pin" style="font-size:9px;"></i><?= htmlspecialchars($log['branch_name']) ?></div>
+                        <?php endif; ?>
+                    </td>
+                    <td>
+                        <span class="record-id">#<?= htmlspecialchars($log['record_id']??'â€”') ?></span>
+                        <?php if ($chgLabel): ?><div class="change-tag <?= $chgLabel ?>"><?= ucfirst($chgLabel) ?></div><?php endif; ?>
+                    </td>
+                    <td><span class="ip-code"><?= htmlspecialchars($log['ip_address']??'â€”') ?></span></td>
+                    <td>
+                        <div class="ts-date"><?= date('d M Y', strtotime($log['created_at'])) ?></div>
+                        <div class="ts-time"><?= date('H:i:s', strtotime($log['created_at'])) ?></div>
+                    </td>
+                    <td><button class="view-btn" title="View details"><i class="feather icon-eye"></i></button></td>
+                </tr>
+                <?php endforeach; ?>
+                <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <?php if ($total_pages > 1): ?>
+        <div class="pag-row">
+            <div class="pag-info">Showing <?= min(($page-1)*$results_per_page+1,$total_logs) ?>â€“<?= min($page*$results_per_page,$total_logs) ?> of <?= number_format($total_logs) ?></div>
+            <div class="pag-btns">
+                <?php if ($page>1): ?>
+                <a class="pag-btn" href="<?= buildPaginationUrl(1,$search,$user_filter,$action_filter,$table_filter) ?>"><i class="feather icon-chevrons-left"></i></a>
+                <a class="pag-btn" href="<?= buildPaginationUrl($page-1,$search,$user_filter,$action_filter,$table_filter) ?>"><i class="feather icon-chevron-left"></i></a>
+                <?php else: ?>
+                <span class="pag-btn disabled"><i class="feather icon-chevrons-left"></i></span>
+                <span class="pag-btn disabled"><i class="feather icon-chevron-left"></i></span>
+                <?php endif; ?>
+
+                <?php
+                $sp = max(1,$page-2); $ep = min($total_pages,$page+2);
+                if ($sp>1){ echo '<a class="pag-btn" href="'.buildPaginationUrl(1,$search,$user_filter,$action_filter,$table_filter).'">1</a>'; if ($sp>2) echo '<span class="pag-dots">â€¦</span>'; }
+                for($i=$sp;$i<=$ep;$i++) echo '<a class="pag-btn'.($i==$page?' active':'').'" href="'.buildPaginationUrl($i,$search,$user_filter,$action_filter,$table_filter).'">'.$i.'</a>';
+                if ($ep<$total_pages){ if($ep<$total_pages-1) echo '<span class="pag-dots">â€¦</span>'; echo '<a class="pag-btn" href="'.buildPaginationUrl($total_pages,$search,$user_filter,$action_filter,$table_filter).'">'.$total_pages.'</a>'; }
+                ?>
+
+                <?php if ($page<$total_pages): ?>
+                <a class="pag-btn" href="<?= buildPaginationUrl($page+1,$search,$user_filter,$action_filter,$table_filter) ?>"><i class="feather icon-chevron-right"></i></a>
+                <a class="pag-btn" href="<?= buildPaginationUrl($total_pages,$search,$user_filter,$action_filter,$table_filter) ?>"><i class="feather icon-chevrons-right"></i></a>
+                <?php else: ?>
+                <span class="pag-btn disabled"><i class="feather icon-chevron-right"></i></span>
+                <span class="pag-btn disabled"><i class="feather icon-chevrons-right"></i></span>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+    </div>
+
+</div>
 </div>
 
-<!-- Activity Log Details Modal -->
-<div class="modal fade" id="detailsModal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-xl" role="document">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-                <h5 class="modal-title">
-                    <i class="feather icon-file-text mr-2"></i>Activity Log Details
-                </h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+<!-- Detail Modal -->
+<div class="modal fade" id="detailsModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="feather icon-activity" style="margin-right:8px;"></i>Activity Log Details</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
             </div>
-            <div class="modal-body p-0">
-                <!-- Top Summary Card -->
-                <div class="bg-light p-4 border-bottom">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="activity-summary">
-                                <div class="activity-summary__label">Activity Type</div>
-                                <div class="activity-summary__action" id="activity-action">-</div>
-                                <div class="activity-summary__timestamp" id="activity-timestamp">-</div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="user-summary">
-                                <div class="user-summary__label">Performed By</div>
-                                <div class="user-summary__user" id="activity-user">-</div>
-                                <div class="user-summary__ip" id="activity-ip">-</div>
-                            </div>
-                        </div>
-                    </div>
+
+            <!-- Summary strip -->
+            <div class="modal-summary-strip">
+                <div>
+                    <div class="mss-item-label">Action</div>
+                    <div class="mss-item-val" id="ms-action">â€”</div>
+                    <div class="mss-item-sub" id="ms-table">â€”</div>
                 </div>
+                <div>
+                    <div class="mss-item-label">Performed By</div>
+                    <div class="mss-item-val" id="ms-user">â€”</div>
+                    <div class="mss-item-sub" id="ms-ts">â€”</div>
+                </div>
+            </div>
 
-                <!-- Tabs Navigation -->
-                <ul class="nav nav-pills nav-fill p-3" id="detailsTab" role="tablist">
-                    <li class="nav-item">
-                        <a class="nav-link active" id="details-summary-tab" data-toggle="tab" href="#details-summary" role="tab">
-                            <i class="feather icon-info mr-2"></i>Summary
-                        </a>
-                    </li>
-                    <li class="nav-item" id="old-values-tab" style="display: none;">
-                        <a class="nav-link" id="details-old-tab" data-toggle="tab" href="#details-old" role="tab">
-                            <i class="feather icon-minus-circle mr-2"></i>Old Values
-                        </a>
-                    </li>
-                    <li class="nav-item" id="new-values-tab" style="display: none;">
-                        <a class="nav-link" id="details-new-tab" data-toggle="tab" href="#details-new" role="tab">
-                            <i class="feather icon-plus-circle mr-2"></i>New Values
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" id="details-technical-tab" data-toggle="tab" href="#details-technical" role="tab">
-                            <i class="feather icon-cpu mr-2"></i>Technical Details
-                        </a>
-                    </li>
-                </ul>
+            <!-- Tabs -->
+            <div class="modal-tab-bar">
+                <button class="modal-tab active" onclick="switchTab('summary',this)"><i class="feather icon-info"></i>Summary</button>
+                <button class="modal-tab" id="tabOld" onclick="switchTab('old',this)" style="display:none;"><i class="feather icon-minus-circle"></i>Old Values</button>
+                <button class="modal-tab" id="tabNew" onclick="switchTab('new',this)" style="display:none;"><i class="feather icon-plus-circle"></i>New Values</button>
+                <button class="modal-tab" onclick="switchTab('tech',this)"><i class="feather icon-cpu"></i>Technical</button>
+            </div>
 
-                <!-- Tab Content -->
-                <div class="tab-content p-4">
-                    <!-- Summary Tab -->
-                    <div class="tab-pane fade show active" id="details-summary" role="tabpanel">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="card border-0 shadow-sm mb-3">
-                                    <div class="card-body">
-                                        <h6 class="card-subtitle mb-3 text-muted">Activity Information</h6>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">Action</span>
-                                            <strong id="summary-action">-</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">Table</span>
-                                            <strong id="summary-table">-</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">Record ID</span>
-                                            <strong id="summary-record-id">-</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between">
-                                            <span class="text-muted">Branch</span>
-                                            <strong id="summary-branch">-</strong>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="card border-0 shadow-sm mb-3">
-                                    <div class="card-body">
-                                        <h6 class="card-subtitle mb-3 text-muted">User & System Info</h6>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">User</span>
-                                            <strong id="summary-user">-</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">IP Address</span>
-                                            <strong id="summary-ip">-</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">Timestamp</span>
-                                            <strong id="summary-timestamp">-</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between">
-                                            <span class="text-muted">Log ID</span>
-                                            <strong id="summary-log-id">-</strong>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+            <!-- Panes -->
+            <div class="modal-pane active" id="pane-summary">
+                <div class="detail-grid">
+                    <div class="detail-card">
+                        <div class="detail-card-title">Activity Information</div>
+                        <div class="detail-row"><span class="detail-label">Action</span><span class="detail-val" id="d-action">â€”</span></div>
+                        <div class="detail-row"><span class="detail-label">Table</span><span class="detail-val" id="d-table">â€”</span></div>
+                        <div class="detail-row"><span class="detail-label">Record ID</span><span class="detail-val" id="d-record">â€”</span></div>
+                        <div class="detail-row"><span class="detail-label">Branch</span><span class="detail-val" id="d-branch">â€”</span></div>
                     </div>
-
-                    <!-- Old Values Tab -->
-                    <div class="tab-pane fade" id="details-old" role="tabpanel">
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-body">
-                                <h6 class="card-subtitle mb-3 text-muted">Previous Values</h6>
-                                <pre id="old-values-content" class="bg-light p-3 rounded" style="max-height: 400px; overflow-y: auto; font-size: 0.875rem;">No old values available</pre>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- New Values Tab -->
-                    <div class="tab-pane fade" id="details-new" role="tabpanel">
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-body">
-                                <h6 class="card-subtitle mb-3 text-muted">New Values</h6>
-                                <pre id="new-values-content" class="bg-light p-3 rounded" style="max-height: 400px; overflow-y: auto; font-size: 0.875rem;">No new values available</pre>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Technical Details Tab -->
-                    <div class="tab-pane fade" id="details-technical" role="tabpanel">
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-body">
-                                <h6 class="card-subtitle mb-3 text-muted">Technical Information</h6>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Log ID</span>
-                                    <strong id="tech-log-id">-</strong>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Tenant ID</span>
-                                    <strong id="tech-tenant-id">-</strong>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">User ID</span>
-                                    <strong id="tech-user-id">-</strong>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Created At</span>
-                                    <strong id="tech-created-at">-</strong>
-                                </div>
-                                <div class="mb-3">
-                                    <span class="text-muted">User Agent</span>
-                                    <div class="mt-1">
-                                        <code id="tech-user-agent" class="d-block p-2 bg-light rounded" style="font-size: 0.75rem; word-break: break-all;">-</code>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="detail-card">
+                        <div class="detail-card-title">User &amp; System</div>
+                        <div class="detail-row"><span class="detail-label">User</span><span class="detail-val" id="d-user">â€”</span></div>
+                        <div class="detail-row"><span class="detail-label">IP Address</span><span class="detail-val" id="d-ip">â€”</span></div>
+                        <div class="detail-row"><span class="detail-label">Timestamp</span><span class="detail-val" id="d-ts">â€”</span></div>
+                        <div class="detail-row"><span class="detail-label">Log ID</span><span class="detail-val" id="d-logid">â€”</span></div>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer border-0 bg-light">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">
-                    <i class="feather icon-x mr-2"></i>Close
-                </button>
+
+            <div class="modal-pane" id="pane-old">
+                <div class="detail-card" style="border-radius:10px;">
+                    <div class="detail-card-title">Previous Values (Before Change)</div>
+                    <pre class="json-pre" id="d-old">No old values available</pre>
+                </div>
+            </div>
+
+            <div class="modal-pane" id="pane-new">
+                <div class="detail-card" style="border-radius:10px;">
+                    <div class="detail-card-title">New Values (After Change)</div>
+                    <pre class="json-pre" id="d-new">No new values available</pre>
+                </div>
+            </div>
+
+            <div class="modal-pane" id="pane-tech">
+                <div class="detail-card" style="border-radius:10px;">
+                    <div class="detail-card-title">Technical Information</div>
+                    <div class="detail-row"><span class="detail-label">Log ID</span><span class="detail-val" id="t-logid">â€”</span></div>
+                    <div class="detail-row"><span class="detail-label">Tenant ID</span><span class="detail-val" id="t-tenantid">â€”</span></div>
+                    <div class="detail-row"><span class="detail-label">User ID</span><span class="detail-val" id="t-userid">â€”</span></div>
+                    <div class="detail-row"><span class="detail-label">Created At</span><span class="detail-val" id="t-createdat">â€”</span></div>
+                    <div style="margin-top:10px;"><span class="detail-label">User Agent</span><code class="ua-code" id="t-useragent">â€”</code></div>
+                </div>
+            </div>
+
+            <div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">
+                <button type="button" class="btn-close-modal" data-dismiss="modal"><i class="feather icon-x"></i>Close</button>
             </div>
         </div>
     </div>
@@ -855,77 +494,66 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
 
 <?php include 'footer.php'; ?>
 
-<?php
-function getActionBadgeClass($action) {
-    $action = strtolower($action);
-    switch ($action) {
-        case 'create':
-        case 'insert':
-            return 'success';
-        case 'update':
-        case 'edit':
-            return 'primary';
-        case 'delete':
-        case 'remove':
-            return 'danger';
-        case 'login':
-            return 'info';
-        case 'logout':
-            return 'secondary';
-        default:
-            return 'secondary';
-    }
-}
-?>
-
 <script>
-// Handle view details modal
-document.querySelectorAll('.view-details').forEach(button => {
-    button.addEventListener('click', function() {
-        const logData = JSON.parse(this.getAttribute('data-log'));
+function switchTab(name, btn) {
+    document.querySelectorAll('.modal-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.modal-pane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('pane-'+name).classList.add('active');
+}
 
-        // Populate modal with log data
-        document.getElementById('activity-action').textContent = logData.action || 'N/A';
-        document.getElementById('activity-timestamp').textContent = logData.created_at ? new Date(logData.created_at).toLocaleString() : 'N/A';
-        document.getElementById('activity-user').textContent = logData.user_name || 'System';
-        document.getElementById('activity-ip').textContent = logData.ip_address || 'N/A';
+function showDetails(log) {
+    // Summary strip
+    document.getElementById('ms-action').textContent = log.action || 'â€”';
+    document.getElementById('ms-table').textContent  = log.table_name || 'â€”';
+    document.getElementById('ms-user').textContent   = log.user_name || 'System';
+    document.getElementById('ms-ts').textContent     = log.created_at ? new Date(log.created_at).toLocaleString() : 'â€”';
 
-        document.getElementById('summary-action').textContent = logData.action || 'N/A';
-        document.getElementById('summary-table').textContent = logData.table_name || 'N/A';
-        document.getElementById('summary-record-id').textContent = logData.record_id || 'N/A';
-        document.getElementById('summary-branch').textContent = logData.branch_name || 'N/A';
-        document.getElementById('summary-user').textContent = logData.user_name || 'System';
-        document.getElementById('summary-ip').textContent = logData.ip_address || 'N/A';
-        document.getElementById('summary-timestamp').textContent = logData.created_at ? new Date(logData.created_at).toLocaleString() : 'N/A';
-        document.getElementById('summary-log-id').textContent = logData.id;
+    // Summary tab
+    document.getElementById('d-action').textContent = log.action || 'â€”';
+    document.getElementById('d-table').textContent  = log.table_name || 'â€”';
+    document.getElementById('d-record').textContent = log.record_id || 'â€”';
+    document.getElementById('d-branch').textContent = log.branch_name || 'â€”';
+    document.getElementById('d-user').textContent   = log.user_name || 'System';
+    document.getElementById('d-ip').textContent     = log.ip_address || 'â€”';
+    document.getElementById('d-ts').textContent     = log.created_at ? new Date(log.created_at).toLocaleString() : 'â€”';
+    document.getElementById('d-logid').textContent  = log.id;
 
-        // Handle old values
-        if (logData.old_values) {
-            document.getElementById('old-values-content').textContent = JSON.stringify(JSON.parse(logData.old_values), null, 2);
-            document.getElementById('old-values-tab').style.display = 'block';
-        } else {
-            document.getElementById('old-values-content').textContent = 'No old values available';
-            document.getElementById('old-values-tab').style.display = 'none';
-        }
+    // Old values tab
+    const tabOld = document.getElementById('tabOld');
+    if (log.old_values) {
+        try { document.getElementById('d-old').textContent = JSON.stringify(JSON.parse(log.old_values), null, 2); }
+        catch(e) { document.getElementById('d-old').textContent = log.old_values; }
+        tabOld.style.display = 'flex';
+    } else {
+        document.getElementById('d-old').textContent = 'No old values available';
+        tabOld.style.display = 'none';
+    }
 
-        // Handle new values
-        if (logData.new_values) {
-            document.getElementById('new-values-content').textContent = JSON.stringify(JSON.parse(logData.new_values), null, 2);
-            document.getElementById('new-values-tab').style.display = 'block';
-        } else {
-            document.getElementById('new-values-content').textContent = 'No new values available';
-            document.getElementById('new-values-tab').style.display = 'none';
-        }
+    // New values tab
+    const tabNew = document.getElementById('tabNew');
+    if (log.new_values) {
+        try { document.getElementById('d-new').textContent = JSON.stringify(JSON.parse(log.new_values), null, 2); }
+        catch(e) { document.getElementById('d-new').textContent = log.new_values; }
+        tabNew.style.display = 'flex';
+    } else {
+        document.getElementById('d-new').textContent = 'No new values available';
+        tabNew.style.display = 'none';
+    }
 
-        // Technical details
-        document.getElementById('tech-log-id').textContent = logData.id;
-        document.getElementById('tech-tenant-id').textContent = logData.tenant_id;
-        document.getElementById('tech-user-id').textContent = logData.user_id || 'N/A';
-        document.getElementById('tech-created-at').textContent = logData.created_at ? new Date(logData.created_at).toLocaleString() : 'N/A';
-        document.getElementById('tech-user-agent').textContent = logData.user_agent || 'N/A';
+    // Technical tab
+    document.getElementById('t-logid').textContent     = log.id;
+    document.getElementById('t-tenantid').textContent  = log.tenant_id;
+    document.getElementById('t-userid').textContent    = log.user_id || 'â€”';
+    document.getElementById('t-createdat').textContent = log.created_at ? new Date(log.created_at).toLocaleString() : 'â€”';
+    document.getElementById('t-useragent').textContent = log.user_agent || 'â€”';
 
-        // Show modal
-        $('#detailsModal').modal('show');
-    });
-});
+    // Reset to summary tab
+    document.querySelectorAll('.modal-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.modal-pane').forEach(p => p.classList.remove('active'));
+    document.querySelector('.modal-tab').classList.add('active');
+    document.getElementById('pane-summary').classList.add('active');
+
+    $('#detailsModal').modal('show');
+}
 </script>

@@ -1044,14 +1044,14 @@ $avgAFS = $afsCount > 0 ? $totalAmountByAFS / $afsCount : 0;
 
     /* ─── PAGE HEADER ─────────────────────────────────── */
     .sa-page-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
         border-radius: 16px;
         padding: 24px 28px;
         margin-bottom: 24px;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        box-shadow: 0 4px 20px rgba(102, 126, 234, 0.35);
+        box-shadow: 0 4px 20px rgba(64, 153, 255, 0.35);
     }
 
     .sa-page-header .sph-content {

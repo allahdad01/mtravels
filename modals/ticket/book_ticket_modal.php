@@ -13,44 +13,44 @@
                     <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                     <input type="file" id="ticketPdfFile" accept=".pdf" style="display:none;" />
                     
-                    <div class="modal-body">
-                        <!-- PDF Upload Section (Auto-Fill Feature) -->
-                        <div class="card mb-3" style="background: linear-gradient(135deg, #f0f9ff 0%, #f5f3ff 100%); border: none;">
-                            <div class="card-header" style="background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%); color: white; border-radius: 8px 8px 0 0;">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <h6 class="mb-0">
-                                        <i class="feather icon-upload-cloud mr-2"></i><?= __('quick_ticket_import') ?>
-                                    </h6>
-                                    <small style="opacity: 0.9;"><?= __('saves_90_percent_data_entry') ?></small>
-                                </div>
-                            </div>
-                            <div class="card-body" style="padding: 15px;">
-                                <div id="pdfUploadZone" style="min-height: 120px; display: flex; align-items: center; justify-content: center;">
-                                    <div style="text-align: center; padding: 40px 20px;">
-                                        <i class="feather icon-upload-cloud" style="font-size: 48px; color: #999; margin-bottom: 15px;"></i>
-                                        <h6><?= __('drop_airline_ticket_here') ?></h6>
-                                        <p style="color: #999; margin: 10px 0;"><?= __('or_click_to_browse') ?></p>
-                                        <small style="color: #ccc;">
-                                            <?= __('supports') ?>: TBO, Sirena, Amadeus, FlyDubai, <?= __('and_all_airlines') ?> (Max 10MB)
-                                        </small>
-                                    </div>
-                                </div>
-                                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
-                                    <small style="color: #666;">
-                                        <i class="feather icon-info" style="color: #f59e0b;"></i>
-                                        <?= __('auto_fill_notice') ?>
-                                    </small>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="modal-body" style="overflow-y: auto; overflow-x: hidden;">
+                         <!-- PDF Upload Section (Auto-Fill Feature) -->
+                         <div class="card mb-3" style="background: linear-gradient(135deg, #f0f9ff 0%, #f5f3ff 100%); border: none;">
+                             <div class="card-header" style="background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%); color: white; border-radius: 8px 8px 0 0;">
+                                 <div class="d-flex align-items-center justify-content-between">
+                                     <h6 class="mb-0">
+                                         <i class="feather icon-upload-cloud mr-2"></i><?= __('quick_ticket_import') ?>
+                                     </h6>
+                                     <small style="opacity: 0.9;"><?= __('saves_90_percent_data_entry') ?></small>
+                                 </div>
+                             </div>
+                             <div class="card-body" style="padding: 15px;">
+                                 <div id="pdfUploadZone" style="min-height: 120px; display: flex; align-items: center; justify-content: center;">
+                                     <div style="text-align: center; padding: 40px 20px;">
+                                         <i class="feather icon-upload-cloud" style="font-size: 48px; color: #999; margin-bottom: 15px;"></i>
+                                         <h6><?= __('drop_airline_ticket_here') ?></h6>
+                                         <p style="color: #999; margin: 10px 0;"><?= __('or_click_to_browse') ?></p>
+                                         <small style="color: #ccc;">
+                                             <?= __('supports') ?>: TBO, Sirena, Amadeus, FlyDubai, <?= __('and_all_airlines') ?> (Max 10MB)
+                                         </small>
+                                     </div>
+                                 </div>
+                                 <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+                                     <small style="color: #666;">
+                                         <i class="feather icon-info" style="color: #f59e0b;"></i>
+                                         <?= __('auto_fill_notice') ?>
+                                     </small>
+                                 </div>
+                             </div>
+                         </div>
 
-                        <!-- Client and Trip Information -->
-                        <div class="card">
-                            <div class="card-header bg-light">
-                                <h6 class="mb-0"><?= __('booking_details') ?></h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="form-row">
+                         <!-- Client and Trip Information -->
+                         <div class="card" style="position: relative; overflow: visible !important; z-index: 100;">
+                             <div class="card-header bg-light">
+                                 <h6 class="mb-0"><?= __('booking_details') ?></h6>
+                             </div>
+                             <div class="card-body" style="overflow: visible !important; padding-bottom: 400px;">
+                                 <div class="form-row">
                                     <div class="form-group col-md-4">
                                         <label for="supplier">
                                             <i class="feather icon-user mr-1"></i><?= __('supplier') ?>

@@ -24,28 +24,61 @@
 	$encryptor = new MessageEncryption($pdo);
 
 	$currentUserId = (int)$_SESSION['user_id'];
+	$sessionRole = $_SESSION['role'] ?? 'user'; // 'admin', 'client', 'sales_agent', etc.
 
 	$method = $_SERVER['REQUEST_METHOD'];
 
-	// Validate current user and get tenant, role, and branch
+	// Validate current user and get tenant, role, and branch (check both users and clients)
 	$stmt = secure_query($pdo, 'SELECT id, tenant_id, branch_id, role FROM users WHERE id = ?', [$currentUserId]);
 	$me = $stmt ? $stmt->fetch() : null;
+	
+	// If not a user, check if it's a client
+	if (!$me && $sessionRole === 'client') {
+		$stmt = secure_query($pdo, 'SELECT id, tenant_id, branch_id, status as role FROM clients WHERE id = ?', [$currentUserId]);
+		$me = $stmt ? $stmt->fetch() : null;
+	}
+	
 	if (!$me) { http_response_code(404); echo json_encode(['error' => 'user_not_found']); exit; }
 	$tenantId = (int)$me['tenant_id'];
 	$myBranch = isset($me['branch_id']) ? (int)$me['branch_id'] : 0;
 	$userRole = $me['role'];
+	
+	// Normalize user type: 'user' for all non-client users, 'client' for clients
+	$currentUserType = ($me && isset($me['id'])) ? ($sessionRole === 'client' ? 'client' : 'user') : 'user';
 
-	function room_from_users($a, $b) {
-		$ids = [$a, $b]; sort($ids, SORT_NUMERIC); return 'u-' . $ids[0] . '-' . $ids[1];
+	function room_from_users($a, $b, $typeA = 'user', $typeB = 'user') {
+		// Create pairs and sort them to ensure consistent room IDs
+		$pairs = [
+			['id' => $a, 'type' => $typeA],
+			['id' => $b, 'type' => $typeB]
+		];
+		
+		// Sort by ID numerically to ensure consistent ordering
+		usort($pairs, function($x, $y) {
+			return $x['id'] - $y['id'];
+		});
+		
+		// Format: msg-type1_id1-type2_id2 (where type is 'u' for user, 'c' for client)
+		$t1 = substr($pairs[0]['type'], 0, 1);
+		$t2 = substr($pairs[1]['type'], 0, 1);
+		return 'msg-' . $t1 . $pairs[0]['id'] . '-' . $t2 . $pairs[1]['id'];
 	}
 
 	if ($method === 'GET') {
 		$peerId = isset($_GET['peer_id']) ? (int)$_GET['peer_id'] : 0;
+		$peerType = isset($_GET['peer_type']) ? $_GET['peer_type'] : 'user'; // 'user' or 'client'
 		if ($peerId <= 0) { http_response_code(400); echo json_encode(['error' => 'invalid_peer']); exit; }
 		
-		// Validate peer exists and get their info
-		$peerStmt = secure_query($pdo, 'SELECT id, tenant_id, branch_id, role FROM users WHERE id = ?', [$peerId]);
-		$peerUser = $peerStmt ? $peerStmt->fetch(PDO::FETCH_ASSOC) : null;
+		// Validate peer exists and get their info (check both users and clients)
+		$peerUser = null;
+		if ($peerType === 'client') {
+			$peerStmt = secure_query($pdo, 'SELECT id, tenant_id, branch_id, status as role FROM clients WHERE id = ?', [$peerId]);
+			$peerUser = $peerStmt ? $peerStmt->fetch(PDO::FETCH_ASSOC) : null;
+		} else {
+			$peerStmt = secure_query($pdo, 'SELECT id, tenant_id, branch_id, role FROM users WHERE id = ?', [$peerId]);
+			$peerUser = $peerStmt ? $peerStmt->fetch(PDO::FETCH_ASSOC) : null;
+		}
+		
 		if (!$peerUser) { http_response_code(404); echo json_encode(['error' => 'peer_not_found']); exit; }
 		
 		$peerTenant = (int)$peerUser['tenant_id'];
@@ -86,7 +119,7 @@
 			}
 		}
 		
-		$room = room_from_users($currentUserId, $peerId);
+		$room = room_from_users($currentUserId, $peerId, $currentUserType, $peerType);
 
 		$limit = isset($_GET['limit']) ? max(1, min(200, (int)$_GET['limit'])) : 50;
 		$beforeId = isset($_GET['before_id']) ? (int)$_GET['before_id'] : 0;
@@ -159,8 +192,9 @@
 		$action = $_POST['action'] ?? '';
 		if ($action === 'mark_seen') {
 			$peerId = isset($_POST['peer_id']) ? (int)$_POST['peer_id'] : 0;
+			$peerType = isset($_POST['peer_type']) ? $_POST['peer_type'] : 'user'; // 'user' or 'client'
 			if ($peerId <= 0) { http_response_code(400); echo json_encode(['error' => 'invalid_peer']); exit; }
-			$room = room_from_users($currentUserId, $peerId);
+			$room = room_from_users($currentUserId, $peerId, $currentUserType, $peerType);
 			$upd = secure_query($pdo, 'UPDATE chat_messages SET seen_at = NOW() WHERE room_id = ? AND to_user_id = ? AND seen_at IS NULL', [$room, $currentUserId]);
 			
 			// Log the mark_seen action for each message read
@@ -179,6 +213,7 @@
 		}
 
 		$toUserId = isset($_POST['to_user_id']) ? (int)$_POST['to_user_id'] : 0;
+		$toUserType = isset($_POST['to_user_type']) ? $_POST['to_user_type'] : 'user'; // 'user' or 'client'
 		$content = isset($_POST['content']) ? trim($_POST['content']) : '';
 		if ($toUserId <= 0 || $content === '') { http_response_code(400); echo json_encode(['error' => 'invalid_input']); exit; }
 		
@@ -208,10 +243,20 @@
 			exit;
 		}
 
-		// Validate recipient exists and get their details
-		$recipientStmt = secure_query($pdo, 'SELECT id, tenant_id, branch_id, role, deleted_at, fired FROM users WHERE id = ?', [$toUserId]);
-		$recipient = $recipientStmt ? $recipientStmt->fetch(PDO::FETCH_ASSOC) : null;
-		if (!$recipient || $recipient['deleted_at'] !== null || $recipient['fired']) {
+		// Validate recipient exists and get their details (check both users and clients)
+		$recipient = null;
+		if ($toUserType === 'client') {
+			$recipientStmt = secure_query($pdo, 'SELECT id, tenant_id, branch_id, status as role FROM clients WHERE id = ?', [$toUserId]);
+			$recipient = $recipientStmt ? $recipientStmt->fetch(PDO::FETCH_ASSOC) : null;
+		} else {
+			$recipientStmt = secure_query($pdo, 'SELECT id, tenant_id, branch_id, role, deleted_at, fired FROM users WHERE id = ?', [$toUserId]);
+			$recipient = $recipientStmt ? $recipientStmt->fetch(PDO::FETCH_ASSOC) : null;
+			if ($recipient && ($recipient['deleted_at'] !== null || $recipient['fired'])) {
+				$recipient = null;
+			}
+		}
+		
+		if (!$recipient) {
 			http_response_code(404);
 			echo json_encode(['error' => 'recipient_not_found']);
 			exit;
@@ -278,7 +323,7 @@
 			exit;
 		}
 
-		$room = room_from_users($currentUserId, $toUserId);
+		$room = room_from_users($currentUserId, $toUserId, $currentUserType, $toUserType);
 		
 		// Try to encrypt message content (if encryption columns exist)
 		$encryptionData = null;

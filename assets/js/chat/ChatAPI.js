@@ -83,9 +83,9 @@ class ChatAPI {
      * Fetch messages for a contact
      */
     async getMessages(contactId, options = {}) {
-        const { limit = 50, beforeId = null } = options;
+        const { limit = 50, beforeId = null, peerType = 'user' } = options;
         
-        let endpoint = `api/messages.php?peer_id=${encodeURIComponent(contactId)}&limit=${limit}`;
+        let endpoint = `api/messages.php?peer_id=${encodeURIComponent(contactId)}&peer_type=${encodeURIComponent(peerType)}&limit=${limit}`;
         if (beforeId) {
             endpoint += `&before_id=${encodeURIComponent(beforeId)}`;
         }
@@ -101,7 +101,9 @@ class ChatAPI {
     /**
      * Send a text message
      */
-    async sendMessage(contactId, content) {
+    async sendMessage(contactId, content, options = {}) {
+        const { peerType = 'user' } = options;
+        
         if (!contactId || !content) {
             throw new Error('Contact ID and content are required');
         }
@@ -109,6 +111,7 @@ class ChatAPI {
         try {
             const formData = new URLSearchParams({
                 to_user_id: contactId,
+                to_user_type: peerType,
                 content: content,
                 csrf_token: window.csrfToken || ''
             });
@@ -257,7 +260,9 @@ class ChatAPI {
     /**
      * Send a voice message
      */
-    async sendVoiceMessage(contactId, audioBlob, duration = 0) {
+    async sendVoiceMessage(contactId, audioBlob, duration = 0, options = {}) {
+        const { peerType = 'user' } = options;
+        
         if (!contactId || !audioBlob) {
             throw new Error('Contact ID and audio blob are required');
         }
@@ -265,6 +270,7 @@ class ChatAPI {
         try {
             const formData = new FormData();
             formData.append('to_user_id', contactId);
+            formData.append('to_user_type', peerType);
             formData.append('audio', audioBlob, `voice-${Date.now()}.webm`);
             formData.append('duration', duration);
             formData.append('csrf_token', window.csrfToken || '');
@@ -496,6 +502,161 @@ class ChatAPI {
             }).then(r => r.json()).catch(() => null);
         } catch (error) {
 
+        }
+    }
+
+    /**
+     * Get messages for a group
+     */
+    async getGroupMessages(groupId, options = {}) {
+        const { limit = 50, beforeId = null } = options;
+        
+        let endpoint = `api/group_messages.php?group_id=${encodeURIComponent(groupId)}&limit=${limit}`;
+        if (beforeId) {
+            endpoint += `&before_id=${encodeURIComponent(beforeId)}`;
+        }
+
+        try {
+            return await this.request(endpoint);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    /**
+     * Send message to group
+     */
+    async sendGroupMessage(groupId, content) {
+        if (!groupId || !content) {
+            throw new Error('Group ID and content are required');
+        }
+
+        try {
+            const formData = new URLSearchParams({
+                action: 'send',
+                group_id: groupId,
+                content: content,
+                message_type: 'text',
+                csrf_token: window.csrfToken || ''
+            });
+
+            const response = await fetch('api/group_messages.php', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString()
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    /**
+     * Send voice message to a group
+     */
+    async sendGroupVoiceMessage(groupId, audioBlob, duration = 0) {
+        if (!groupId) {
+            throw new Error('Group ID is required');
+        }
+        
+        if (!audioBlob || audioBlob.size === 0) {
+            throw new Error('Audio blob is empty or missing');
+        }
+
+        try {
+            const formData = new FormData();
+            formData.append('action', 'send');
+            formData.append('group_id', groupId);
+            formData.append('message_type', 'voice');
+            formData.append('duration', duration);
+            formData.append('audio', audioBlob, `voice-${Date.now()}.webm`);
+            formData.append('csrf_token', window.csrfToken || '');
+
+            console.log('[ChatAPI] Sending group voice message', {
+                groupId,
+                blobSize: audioBlob.size,
+                blobType: audioBlob.type,
+                duration
+            });
+
+            const response = await fetch('api/group_messages.php', {
+                method: 'POST',
+                credentials: 'include',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('[ChatAPI] Voice message send failed:', errorText);
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('[ChatAPI] Voice message error:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Mark group messages as read
+     */
+    async markGroupMessagesRead(groupId, messageIds) {
+        try {
+            const formData = new URLSearchParams({
+                action: 'mark_read',
+                group_id: groupId,
+                message_ids: JSON.stringify(messageIds),
+                csrf_token: window.csrfToken || ''
+            });
+
+            return await fetch('api/group_messages.php', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString()
+            }).then(r => r.json());
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    /**
+     * Get group members
+     */
+    async getGroupMembers(groupId) {
+        try {
+            return await this.request(`api/group_members.php?group_id=${groupId}`);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    /**
+     * Delete group message
+     */
+    async deleteGroupMessage(messageId) {
+        try {
+            const formData = new URLSearchParams({
+                action: 'delete',
+                message_id: messageId,
+                csrf_token: window.csrfToken || ''
+            });
+
+            return await fetch('api/group_messages.php', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString()
+            }).then(r => r.json());
+        } catch (error) {
+            throw error;
         }
     }
 }

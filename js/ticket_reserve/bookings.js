@@ -29,43 +29,58 @@ document.getElementById('supplier').addEventListener('change', function () {
         document.getElementById('curr').value = '';
     }
 });
-document.getElementById('bookTicketForm').addEventListener('submit', function (event) {
-    event.preventDefault(); // Prevent default form submission
-    const submitBtn = this.querySelector('input[type="submit"], button[type="submit"]');
-    if (submitBtn) {
-        submitBtn.disabled = true; // Disable button to prevent multiple clicks
-        submitBtn.dataset.originalText = submitBtn.textContent || submitBtn.value; // Store original text
-        submitBtn.textContent = submitBtn.value = 'Loading...'; // Show loading state
+document.addEventListener('DOMContentLoaded', function() {
+    const bookForm = document.getElementById('bookTicketForm');
+    if (bookForm) {
+        bookForm.addEventListener('submit', function (event) {
+            event.preventDefault(); // Prevent default form submission
+            const submitBtn = this.querySelector('input[type="submit"], button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true; // Disable button to prevent multiple clicks
+                submitBtn.dataset.originalText = submitBtn.textContent || submitBtn.value; // Store original text
+                submitBtn.textContent = submitBtn.value = 'Loading...'; // Show loading state
+            }
+
+            const formData = new FormData(this); // Collect form data
+
+            // Create a timeout promise
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Request timeout')), 30000); // 30 second timeout
+            });
+
+            Promise.race([
+                fetch('../api/ticket_reserve/save_ticket_reserve.php', {
+                    method: 'POST',
+                    body: formData
+                }).then(response => {
+                    if (!response.ok) {
+                        throw new Error('HTTP error, status = ' + response.status);
+                    }
+                    return response.json();
+                }),
+                timeoutPromise
+            ])
+            .then(data => {
+                if (data.status === 'success') { // Check for status
+                    showToast(data.message, 'success');
+                    $('#bookTicketModal').modal('hide');
+                    location.reload(); // Reload page
+                } else {
+                    showToast('Error: ' + (data.message || 'Unknown error'), 'error'); // Display specific error message
+                }
+            })
+            .catch(error => {
+                console.error('Booking error:', error);
+                showToast('An unexpected error occurred: ' + error.message, 'error');
+            })
+            .finally(() => {
+                if (submitBtn) {
+                    submitBtn.disabled = false; // Re-enable button
+                    submitBtn.textContent = submitBtn.value = submitBtn.dataset.originalText; // Restore original text
+                }
+            });
+        });
     }
-
-    const formData = new FormData(this); // Collect form data
-
-    fetch('../api/ticket_reserve/save_ticket_reserve.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json()) // Parse JSON response
-    .then(data => {
-        if (data.status === 'success') { // Check for status
-            showToast(data.message, 'success');
-            $('#bookTicketModal').modal('hide');
-            location.reload(); // Reload page
-        } else {
-            showToast('Error: ' + data.message, 'error'); // Display specific error message
-        }
-        if (submitBtn) {
-            submitBtn.disabled = false; // Re-enable button
-            submitBtn.textContent = submitBtn.value = submitBtn.dataset.originalText; // Restore original text
-        }
-    })
-    .catch(error => {
-
-        showToast('An unexpected error occurred.', 'error');
-        if (submitBtn) {
-            submitBtn.disabled = false; // Re-enable button
-            submitBtn.textContent = submitBtn.value = submitBtn.dataset.originalText; // Restore original text
-        }
-    });
 });
 function deleteTicket(id) {
     if (confirm('are_you_sure_you_want_to_delete_this_ticket')) {

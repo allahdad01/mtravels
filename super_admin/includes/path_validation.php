@@ -76,6 +76,25 @@ function getSafeUploadsDir($subfolder = '') {
 }
 
 /**
+ * Validate input length to prevent buffer overflow and injection attacks
+ * 
+ * @param string $input The input string to validate
+ * @param int $max_length Maximum allowed length
+ * @return string|null The sanitized input or null if too long
+ */
+function validate_input_length($input, $max_length = 255) {
+    if (empty($input)) {
+        return '';
+    }
+    
+    if (strlen($input) > $max_length) {
+        return null; // Input exceeds max length
+    }
+    
+    return trim($input);
+}
+
+/**
  * Validate a filename for safe upload
  * 
  * @param string $filename The filename to validate

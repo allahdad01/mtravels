@@ -17,8 +17,8 @@ if (!isset($_SESSION['user_id'])) {
 require_once '../includes/db.php';
 require_once '../admin/security.php';
 
-// CSRF Protection for POST requests
-if (($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_POST['action'])) && !verify_csrf_token()) {
+// CSRF Protection for POST requests (skip for GET requests)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verify_csrf_token()) {
     http_response_code(403);
     header('Content-Type: application/json');
     echo json_encode(['error' => 'Security validation failed. Please try again.']);
@@ -28,6 +28,7 @@ if (($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_POST['action'])) && !verif
 $user_id = $_SESSION['user_id'];
 $tenant_id = $_SESSION['tenant_id'] ?? null;
 $branch_id = $_SESSION['branch_id'] ?? null;
+$user_type = $_SESSION['role'] ?? 'user'; // 'admin', 'client', 'sales_agent', etc.
 
 // Sales agents may not have tenant_id (they work across tenants)
 // Allow null values for sales agents
@@ -77,7 +78,7 @@ try {
 }
 
 function getTasks() {
-    global $pdo, $user_id, $tenant_id, $branch_id;
+    global $pdo, $user_id, $tenant_id, $branch_id, $user_type;
 
     try {
         // Check if table exists first
@@ -91,10 +92,10 @@ function getTasks() {
         $stmt = $pdo->prepare("
             SELECT id, task_text, completed, created_at
             FROM floating_tasks
-            WHERE user_id = ? AND tenant_id = ? AND branch_id = ?
+            WHERE user_id = ? AND user_type = ? AND tenant_id = ? AND branch_id = ?
             ORDER BY created_at DESC
         ");
-        $stmt->execute([$user_id, $tenant_id, $branch_id]);
+        $stmt->execute([$user_id, $user_type, $tenant_id, $branch_id]);
         $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Format response
@@ -116,7 +117,7 @@ function getTasks() {
 }
 
 function addTask() {
-    global $pdo, $user_id, $tenant_id, $branch_id;
+    global $pdo, $user_id, $tenant_id, $branch_id, $user_type;
 
     // Parse JSON body first, then fall back to POST
     $json = json_decode(file_get_contents('php://input'), true);
@@ -131,10 +132,10 @@ function addTask() {
 
     try {
         $stmt = $pdo->prepare("
-            INSERT INTO floating_tasks (user_id, tenant_id, branch_id, task_text, completed, created_at)
-            VALUES (?, ?, ?, ?, 0, NOW())
+            INSERT INTO floating_tasks (user_id, user_type, tenant_id, branch_id, task_text, completed, created_at)
+            VALUES (?, ?, ?, ?, ?, 0, NOW())
         ");
-        $stmt->execute([$user_id, $tenant_id, $branch_id, $text]);
+        $stmt->execute([$user_id, $user_type, $tenant_id, $branch_id, $text]);
         
         $taskId = $pdo->lastInsertId();
         
@@ -155,7 +156,7 @@ function addTask() {
 }
 
 function updateTask() {
-    global $pdo, $user_id, $tenant_id, $branch_id;
+    global $pdo, $user_id, $tenant_id, $branch_id, $user_type;
 
     // Parse JSON body first, then fall back to POST
     $json = json_decode(file_get_contents('php://input'), true);
@@ -173,9 +174,9 @@ function updateTask() {
         // Verify ownership
         $stmt = $pdo->prepare("
             SELECT id FROM floating_tasks
-            WHERE id = ? AND user_id = ? AND tenant_id = ? AND branch_id = ?
+            WHERE id = ? AND user_id = ? AND user_type = ? AND tenant_id = ? AND branch_id = ?
         ");
-        $stmt->execute([$id, $user_id, $tenant_id, $branch_id]);
+        $stmt->execute([$id, $user_id, $user_type, $tenant_id, $branch_id]);
 
         if (!$stmt->fetch()) {
             http_response_code(403);
@@ -186,9 +187,9 @@ function updateTask() {
         $stmt = $pdo->prepare("
             UPDATE floating_tasks
             SET completed = ?
-            WHERE id = ? AND user_id = ? AND tenant_id = ? AND branch_id = ?
+            WHERE id = ? AND user_id = ? AND user_type = ? AND tenant_id = ? AND branch_id = ?
         ");
-        $stmt->execute([$completed ? 1 : 0, $id, $user_id, $tenant_id, $branch_id]);
+        $stmt->execute([$completed ? 1 : 0, $id, $user_id, $user_type, $tenant_id, $branch_id]);
         
         echo json_encode(['success' => true]);
     } catch (PDOException $e) {
@@ -199,7 +200,7 @@ function updateTask() {
 }
 
 function deleteTask() {
-    global $pdo, $user_id, $tenant_id, $branch_id;
+    global $pdo, $user_id, $tenant_id, $branch_id, $user_type;
 
     // Parse JSON body first, then fall back to POST
     $json = json_decode(file_get_contents('php://input'), true);
@@ -216,9 +217,9 @@ function deleteTask() {
         // Verify ownership
         $stmt = $pdo->prepare("
             SELECT id FROM floating_tasks
-            WHERE id = ? AND user_id = ? AND tenant_id = ? AND branch_id = ?
+            WHERE id = ? AND user_id = ? AND user_type = ? AND tenant_id = ? AND branch_id = ?
         ");
-        $stmt->execute([$id, $user_id, $tenant_id, $branch_id]);
+        $stmt->execute([$id, $user_id, $user_type, $tenant_id, $branch_id]);
 
         if (!$stmt->fetch()) {
             http_response_code(403);
@@ -228,9 +229,9 @@ function deleteTask() {
 
         $stmt = $pdo->prepare("
             DELETE FROM floating_tasks
-            WHERE id = ? AND user_id = ? AND tenant_id = ? AND branch_id = ?
+            WHERE id = ? AND user_id = ? AND user_type = ? AND tenant_id = ? AND branch_id = ?
         ");
-        $stmt->execute([$id, $user_id, $tenant_id, $branch_id]);
+        $stmt->execute([$id, $user_id, $user_type, $tenant_id, $branch_id]);
         
         echo json_encode(['success' => true]);
     } catch (PDOException $e) {
@@ -241,14 +242,14 @@ function deleteTask() {
 }
 
 function clearCompleted() {
-    global $pdo, $user_id, $tenant_id, $branch_id;
+    global $pdo, $user_id, $tenant_id, $branch_id, $user_type;
 
     try {
         $stmt = $pdo->prepare("
             DELETE FROM floating_tasks
-            WHERE user_id = ? AND tenant_id = ? AND branch_id = ? AND completed = 1
+            WHERE user_id = ? AND user_type = ? AND tenant_id = ? AND branch_id = ? AND completed = 1
         ");
-        $stmt->execute([$user_id, $tenant_id, $branch_id]);
+        $stmt->execute([$user_id, $user_type, $tenant_id, $branch_id]);
         
         echo json_encode(['success' => true]);
     } catch (PDOException $e) {

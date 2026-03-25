@@ -35,6 +35,7 @@ $name = $_POST['name'] ?? '';
 $description = $_POST['description'] ?? '';
 $features = $_POST['features'] ?? '';
 $price = $_POST['price'] ?? 0;
+$currency = $_POST['currency'] ?? 'USD';
 $max_users = $_POST['max_users'] ?? 0;
 $trial_days = $_POST['trial_days'] ?? 0;
 $errors = [];
@@ -58,6 +59,13 @@ if (!is_numeric($max_users) || $max_users < 0) {
 if (!is_numeric($trial_days) || $trial_days < 0) {
     $errors[] = "Trial days must be a non-negative number.";
 }
+
+// Validate currency
+$allowed_currencies = ['USD', 'AFN', 'EUR', 'GBP', 'INR', 'JPY', 'CNY', 'AUD', 'CAD', 'CHF', 'SEK', 'NZD'];
+if (!in_array($currency, $allowed_currencies)) {
+    $errors[] = "Invalid currency selected.";
+}
+
 if (!preg_match('/^[a-zA-Z0-9_]+$/', $name)) {
     $errors[] = "Plan name can only contain letters, numbers, and underscores.";
 }
@@ -74,14 +82,14 @@ if ($stmt->fetch()['count'] > 0) {
 }
 if (empty($errors)) {
     // Insert new plan
-    $stmt = $pdo->prepare("INSERT INTO plans (name, description, features, price, max_users, trial_days, status, created_at, updated_at) 
-                            VALUES (?, ?, ?, ?, ?, ?, 'active', NOW(), NOW())");
-    $stmt->execute([$name, $description, $features, $price, $max_users, $trial_days]);
+    $stmt = $pdo->prepare("INSERT INTO plans (name, description, features, price, currency, max_users, trial_days, status, created_at, updated_at) 
+                            VALUES (?, ?, ?, ?, ?, ?, ?, 'active', NOW(), NOW())");
+    $stmt->execute([$name, $description, $features, $price, $currency, $max_users, $trial_days]);
     // Log action
     $user_id = $_SESSION['user_id'];
     $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at) 
                             VALUES (?, 'create_plan', 'plan', ?, ?, ?, NOW())");
-    $details = json_encode(['name' => $name, 'description' => $description, 'price' => $price, 'max_users' => $max_users, 'trial_days' => $trial_days]);
+    $details = json_encode(['name' => $name, 'description' => $description, 'price' => $price, 'currency' => $currency, 'max_users' => $max_users, 'trial_days' => $trial_days]);
     $ip_address = $_SERVER['REMOTE_ADDR'];
     $stmt->execute([$user_id, $name, $details, $ip_address]);
     header('Location: manage_plans.php?success=plan_created');

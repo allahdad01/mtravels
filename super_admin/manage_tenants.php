@@ -39,7 +39,7 @@ require_once '../includes/db.php';
 if (isset($_GET['action']) && $_GET['action'] === 'get_tenant' && isset($_GET['id'])) {
     $tenant_id = intval($_GET['id']);
     
-    $stmt = $pdo->prepare("SELECT id, name, subdomain, identifier, status, plan, billing_email, created_at FROM tenants WHERE id = ? AND status != 'deleted'");
+    $stmt = $pdo->prepare("SELECT id, name, identifier, status, plan, billing_email, created_at FROM tenants WHERE id = ? AND status != 'deleted'");
     $stmt->execute([$tenant_id]);
     $tenant = $stmt->fetch();
     if ($tenant) {
@@ -62,7 +62,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     
     $tenant_id = intval($_POST['tenant_id']);
     $name = trim($_POST['name'] ?? '');
-    $subdomain = trim($_POST['subdomain'] ?? '');
     $identifier = trim($_POST['identifier'] ?? '');
     $plan = trim($_POST['plan'] ?? '');
     $status = trim($_POST['status'] ?? '');
@@ -71,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $errors = [];
 
     // Validate input
-    if (empty($name) || empty($subdomain) || empty($identifier) || empty($plan) || empty($status) || empty($billing_email)) {
+    if (empty($name) || empty($identifier) || empty($plan) || empty($status) || empty($billing_email)) {
         $errors[] = "All required fields must be filled.";
     }
     if (!filter_var($billing_email, FILTER_VALIDATE_EMAIL)) {
@@ -80,18 +79,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     if (!in_array($status, ['active', 'inactive', 'suspended'])) {
         $errors[] = "Invalid status.";
     }
-    if (!preg_match('/^[a-zA-Z0-9_-]+$/', $subdomain)) {
-        $errors[] = "Invalid subdomain format.";
-    }
     if (!preg_match('/^[a-zA-Z0-9_-]+$/', $identifier)) {
         $errors[] = "Invalid identifier format.";
-    }
-
-    // Check for duplicate subdomain (excluding current tenant)
-    $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM tenants WHERE subdomain = ? AND id != ? AND status != 'deleted'");
-    $stmt->execute([$subdomain, $tenant_id]);
-    if ($stmt->fetch()['count'] > 0) {
-        $errors[] = "Subdomain already exists.";
     }
     // Check for duplicate identifier (excluding current tenant)
     $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM tenants WHERE identifier = ? AND id != ? AND status != 'deleted'");
@@ -107,13 +96,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
     if (empty($errors)) {
         // Update tenant
-        $stmt = $pdo->prepare("
-            UPDATE tenants 
-            SET name = ?, subdomain = ?, identifier = ?, plan = ?, status = ?, 
-                billing_email = ?, updated_at = NOW()
-            WHERE id = ?
-        ");
-        $stmt->execute([$name, $subdomain, $identifier, $plan, $status, $billing_email, $tenant_id]);
+         $stmt = $pdo->prepare("
+             UPDATE tenants 
+             SET name = ?, identifier = ?, plan = ?, status = ?, 
+                 billing_email = ?, updated_at = NOW()
+             WHERE id = ?
+         ");
+         $stmt->execute([$name, $identifier, $plan, $status, $billing_email, $tenant_id]);
         // Log action
         $user_id = $_SESSION['user_id'];
         $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at) 
@@ -156,9 +145,8 @@ $count_query = "SELECT COUNT(*) as total FROM tenants WHERE status != 'deleted'"
 $filter_params = [];
 
 if (!empty($search_query)) {
-    $count_query .= " AND (name LIKE ? OR subdomain LIKE ? OR identifier LIKE ? OR billing_email LIKE ?)";
+    $count_query .= " AND (name LIKE ? OR identifier LIKE ? OR billing_email LIKE ?)";
     $search_term = "%{$search_query}%";
-    $filter_params[] = $search_term;
     $filter_params[] = $search_term;
     $filter_params[] = $search_term;
     $filter_params[] = $search_term;
@@ -176,10 +164,10 @@ $current_page = max(1, min($current_page, $total_pages));
 $offset = ($current_page - 1) * $items_per_page;
 
 // Fetch paginated tenants
-$query = "SELECT id, name, subdomain, identifier, status, plan, billing_email, created_at FROM tenants WHERE status != 'deleted'";
+$query = "SELECT id, name, identifier, status, plan, billing_email, created_at FROM tenants WHERE status != 'deleted'";
 
 if (!empty($search_query)) {
-    $query .= " AND (name LIKE ? OR subdomain LIKE ? OR identifier LIKE ? OR billing_email LIKE ?)";
+    $query .= " AND (name LIKE ? OR identifier LIKE ? OR billing_email LIKE ?)";
 }
 if (!empty($status_filter)) {
     $query .= " AND status = ?";
@@ -195,7 +183,7 @@ $stmt->execute($query_params);
 $tenants = $stmt->fetchAll();
 
 // Fetch plans for create and edit tenant forms
-$stmt = $pdo->prepare("SELECT name FROM plans WHERE status = 'active'");
+$stmt = $pdo->prepare("SELECT id, name, price, currency FROM plans WHERE status = 'active' ORDER BY name");
 $stmt->execute();
 $plans = $stmt->fetchAll();
 ?>
@@ -314,7 +302,6 @@ $plans = $stmt->fetchAll();
                                         <div class="tc-header">
                                             <div class="tc-title">
                                                 <h3><?= htmlspecialchars($tenant['name']) ?></h3>
-                                                <div class="tc-subdomain"><?= htmlspecialchars($tenant['subdomain']) ?>.mtravels</div>
                                             </div>
                                             <span class="pill <?= $status_pill ?>"><?= htmlspecialchars($tenant['status']) ?></span>
                                         </div>
@@ -407,140 +394,195 @@ $plans = $stmt->fetchAll();
                                 <?php endif; ?>
 
                                             <!-- Create Tenant Modal -->
-                        <div class="modal fade" id="createTenantModal" tabindex="-1" role="dialog" aria-labelledby="createTenantModalLabel" aria-hidden="true">
-                            <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
-                                <div class="modal-content">
-                                    <div class="modal-header bg-primary text-white">
-                                        <h5 class="modal-title" id="createTenantModalLabel"><?= __('create_new_tenant') ?></h5>
-                                        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                                            <span aria-hidden="true">&times;</span>
-                                        </button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <form id="createTenantForm" method="POST" action="create_tenant.php">
+                                            <div class="modal fade" id="createTenantModal" tabindex="-1" role="dialog" aria-labelledby="createTenantModalLabel" aria-hidden="true">
+                                            <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+                                            <div class="modal-content sa-modal-content">
+                                            <div class="sa-modal-header">
+                                            <div class="sa-modal-title-group">
+                                            <h5 class="sa-modal-title" id="createTenantModalLabel">
+                                                <i class="feather icon-plus-circle mr-2"></i><?= __('create_new_tenant') ?>
+                                            </h5>
+                                            <p class="sa-modal-subtitle">Set up a new tenant account with essential information</p>
+                                            </div>
+                                            <button type="button" class="sa-modal-close" data-dismiss="modal" aria-label="Close">
+                                            <i class="feather icon-x"></i>
+                                            </button>
+                                            </div>
+                                            <div class="sa-modal-body">
+                                            <form id="createTenantForm" method="POST" action="create_tenant.php">
                                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                                             
-                                            <div class="form-group">
-                                                <label for="tenantName"><?= __('tenant_name') ?></label>
-                                                <input type="text" class="form-control" id="tenantName" name="name" required>
-                                            </div>
-                                            
-                                            <div class="form-group">
-                                                <label for="subdomain"><?= __('subdomain') ?></label>
-                                                <input type="text" class="form-control" id="subdomain" name="subdomain" required>
-                                            </div>
-                                            
-                                            <div class="form-group">
-                                                <label for="identifier"><?= __('identifier') ?></label>
-                                                <input type="text" class="form-control" id="identifier" name="identifier" required>
-                                            </div>
-                                            
-                                            <div class="form-group">
-                                                <label for="plan"><?= __('plan') ?></label>
-                                                <select class="form-control" id="plan" name="plan" required>
-                                                    <?php foreach ($plans as $plan): ?>
-                                                    <option value="<?= htmlspecialchars($plan['name']) ?>"><?= htmlspecialchars($plan['name']) ?></option>
-                                                    <?php endforeach; ?>
-                                                </select>
-                                            </div>
-                                            
-                                            <div class="form-group">
-                                                <label for="billingEmail"><?= __('billing_email') ?></label>
-                                                <input type="email" class="form-control" id="billingEmail" name="billing_email" required>
-                                            </div>
-
-                                            <div class="form-group">
-                                                <label for="agencyName"><?= __('agency_name') ?></label>
-                                                <input type="text" class="form-control" id="agencyName" name="agency_name" required>
-                                            </div>
-
-                                            <div class="form-group">
-                                                <label for="title"><?= __('title') ?></label>
-                                                <input type="text" class="form-control" id="title" name="title" value="Travel Agency">
-                                            </div>
-
-                                            <div class="form-group">
-                                                <label for="phone"><?= __('phone') ?></label>
-                                                <input type="text" class="form-control" id="phone" name="phone">
+                                            <!-- Tenant Configuration Section -->
+                                            <div class="sa-form-section">
+                                                <h6 class="sa-form-section-title">Tenant Configuration</h6>
+                                                <div class="sa-form-grid-2">
+                                                    <div class="sa-form-group">
+                                                        <label for="tenantName" class="sa-form-label">
+                                                            <?= __('tenant_name') ?>
+                                                            <span class="sa-required">*</span>
+                                                        </label>
+                                                        <input type="text" class="sa-form-input" id="tenantName" name="name" placeholder="e.g., Luxury Travels Inc." required>
+                                                        <p class="sa-form-hint">The display name for this tenant</p>
+                                                    </div>
+                                                    
+                                                    <div class="sa-form-group">
+                                                        <label for="plan" class="sa-form-label">
+                                                            <?= __('plan') ?>
+                                                            <span class="sa-required">*</span>
+                                                        </label>
+                                                        <select class="sa-form-input sa-form-select" id="plan" name="plan" required>
+                                                            <option value="">Select a plan</option>
+                                                            <?php foreach ($plans as $plan): ?>
+                                                            <option value="<?= htmlspecialchars($plan['name']) ?>" 
+                                                                    data-price="<?= htmlspecialchars($plan['price']) ?>"
+                                                                    data-currency="<?= htmlspecialchars($plan['currency']) ?>">
+                                                                <?= htmlspecialchars($plan['name']) ?>
+                                                            </option>
+                                                            <?php endforeach; ?>
+                                                        </select>
+                                                        <div id="planPriceDisplay" style="margin-top: 12px; padding: 12px; background: var(--surface2); border-radius: 6px; display: none;">
+                                                            <p style="margin: 0; font-size: 0.9rem; color: var(--muted); margin-bottom: 6px;">Plan Price</p>
+                                                            <p style="margin: 0; font-size: 1.3rem; font-weight: 700; color: var(--text);">
+                                                                <span id="planPrice">-</span> <span id="planCurrency">-</span>
+                                                            </p>
+                                                            <p style="margin: 6px 0 0 0; font-size: 0.75rem; color: var(--muted);">A subscription will be automatically created for this plan</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
 
-                                            <div class="form-group">
-                                                <label for="address"><?= __('address') ?></label>
-                                                <textarea class="form-control" id="address" name="address"></textarea>
+                                            <!-- Agency Information Section -->
+                                            <div class="sa-form-section">
+                                                <h6 class="sa-form-section-title">Agency Information</h6>
+                                                <div class="sa-form-grid-2">
+                                                    <div class="sa-form-group">
+                                                        <label for="agencyName" class="sa-form-label">
+                                                            <?= __('agency_name') ?>
+                                                            <span class="sa-required">*</span>
+                                                        </label>
+                                                        <input type="text" class="sa-form-input" id="agencyName" name="agency_name" placeholder="e.g., Luxury Travels Inc." required>
+                                                    </div>
+
+                                                    <div class="sa-form-group">
+                                                        <label for="title" class="sa-form-label"><?= __('title') ?></label>
+                                                        <input type="text" class="sa-form-input" id="title" name="title" placeholder="e.g., Travel Agency" value="Travel Agency">
+                                                    </div>
+
+                                                    <div class="sa-form-group">
+                                                        <label for="billingEmail" class="sa-form-label">
+                                                            <?= __('billing_email') ?>
+                                                            <span class="sa-required">*</span>
+                                                        </label>
+                                                        <input type="email" class="sa-form-input" id="billingEmail" name="billing_email" placeholder="billing@agency.com" required>
+                                                    </div>
+
+                                                    <div class="sa-form-group">
+                                                        <label for="phone" class="sa-form-label"><?= __('phone') ?></label>
+                                                        <input type="text" class="sa-form-input" id="phone" name="phone" placeholder="+1 (555) 123-4567">
+                                                    </div>
+                                                </div>
+
+                                                <div class="sa-form-group">
+                                                    <label for="address" class="sa-form-label"><?= __('address') ?></label>
+                                                    <textarea class="sa-form-input sa-form-textarea" id="address" name="address" placeholder="Street address, city, state, country" rows="3"></textarea>
+                                                </div>
                                             </div>
-                                        </form>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-outline-secondary" data-dismiss="modal"><?= __('cancel') ?></button>
-                                        <button type="submit" form="createTenantForm" class="btn btn-primary"><?= __('create') ?></button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                                            </form>
+                                            </div>
+                                            <div class="sa-modal-footer">
+                                            <button type="button" class="sa-btn sa-btn-ghost" data-dismiss="modal"><?= __('cancel') ?></button>
+                                            <button type="submit" form="createTenantForm" class="sa-btn sa-btn-primary">
+                                            <i class="feather icon-check mr-1"></i><?= __('create') ?>
+                                            </button>
+                                            </div>
+                                            </div>
+                                            </div>
+                                            </div>
 
                         <!-- Edit Tenant Modal -->
                         <div class="modal fade" id="editTenantModal" tabindex="-1" role="dialog" aria-labelledby="editTenantModalLabel" aria-hidden="true">
                             <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
-                                <div class="modal-content">
-                                    <div class="modal-header bg-primary text-white">
-                                        <h5 class="modal-title" id="editTenantModalLabel"><?= __('edit_tenant') ?></h5>
-                                        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                                            <span aria-hidden="true">&times;</span>
+                                <div class="modal-content sa-modal-content">
+                                    <div class="sa-modal-header">
+                                        <div class="sa-modal-title-group">
+                                            <h5 class="sa-modal-title" id="editTenantModalLabel">
+                                                <i class="feather icon-edit-2 mr-2"></i><?= __('edit_tenant') ?>
+                                            </h5>
+                                            <p class="sa-modal-subtitle">Update tenant configuration and details</p>
+                                        </div>
+                                        <button type="button" class="sa-modal-close" data-dismiss="modal" aria-label="Close">
+                                            <i class="feather icon-x"></i>
                                         </button>
                                     </div>
-                                    <div class="modal-body">
-                                        <div id="editTenantLoader" class="text-center" style="display: none;">
-                                            <div class="spinner-border" role="status">
-                                                <span class="sr-only">Loading...</span>
-                                            </div>
+                                    <div class="sa-modal-body">
+                                        <div id="editTenantLoader" class="sa-edit-loader">
+                                            <div class="sa-spinner"></div>
+                                            <p>Loading tenant data...</p>
                                         </div>
                                         <form method="POST" action="manage_tenants.php" id="editTenantForm" style="display: none;">
                                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                                             <input type="hidden" name="action" value="update_tenant">
                                             <input type="hidden" name="tenant_id" id="edit_tenant_id">
                                             
-                                            <div class="form-group">
-                                                <label for="edit_tenant_name"><?= __('tenant_name') ?></label>
-                                                <input type="text" class="form-control" id="edit_tenant_name" name="name" required>
-                                            </div>
-                                            
-                                            <div class="form-group">
-                                                <label for="edit_subdomain"><?= __('subdomain') ?></label>
-                                                <input type="text" class="form-control" id="edit_subdomain" name="subdomain" required>
-                                            </div>
-                                            
-                                            <div class="form-group">
-                                                <label for="edit_identifier"><?= __('identifier') ?></label>
-                                                <input type="text" class="form-control" id="edit_identifier" name="identifier" required>
-                                            </div>
-                                            
-                                            <div class="form-group">
-                                                <label for="edit_plan"><?= __('plan') ?></label>
-                                                <select class="form-control" id="edit_plan" name="plan" required>
-                                                    <?php foreach ($plans as $plan): ?>
-                                                    <option value="<?= htmlspecialchars($plan['name']) ?>"><?= htmlspecialchars($plan['name']) ?></option>
-                                                    <?php endforeach; ?>
-                                                </select>
-                                            </div>
-                                            
-                                            <div class="form-group">
-                                                <label for="edit_status"><?= __('status') ?></label>
-                                                <select class="form-control" id="edit_status" name="status" required>
-                                                    <option value="active">Active</option>
-                                                    <option value="inactive">Inactive</option>
-                                                    <option value="suspended">Suspended</option>
-                                                </select>
-                                            </div>
-                                            
-                                            <div class="form-group">
-                                                <label for="edit_billing_email"><?= __('billing_email') ?></label>
-                                                <input type="email" class="form-control" id="edit_billing_email" name="billing_email" required>
+                                            <!-- Tenant Configuration Section -->
+                                            <div class="sa-form-section">
+                                                <h6 class="sa-form-section-title">Tenant Configuration</h6>
+                                                <div class="sa-form-grid-2">
+                                                    <div class="sa-form-group">
+                                                        <label for="edit_tenant_name" class="sa-form-label">
+                                                            <?= __('tenant_name') ?>
+                                                            <span class="sa-required">*</span>
+                                                        </label>
+                                                        <input type="text" class="sa-form-input" id="edit_tenant_name" name="name" required>
+                                                    </div>
+                                                    
+                                                    <div class="sa-form-group">
+                                                        <label for="edit_plan" class="sa-form-label">
+                                                            <?= __('plan') ?>
+                                                            <span class="sa-required">*</span>
+                                                        </label>
+                                                        <select class="sa-form-input sa-form-select" id="edit_plan" name="plan" required>
+                                                            <?php foreach ($plans as $plan): ?>
+                                                            <option value="<?= htmlspecialchars($plan['name']) ?>"><?= htmlspecialchars($plan['name']) ?></option>
+                                                            <?php endforeach; ?>
+                                                        </select>
+                                                    </div>
+                                                    
+                                                    <div class="sa-form-group">
+                                                         <label for="edit_identifier" class="sa-form-label">Identifier</label>
+                                                         <input type="hidden" id="edit_identifier" name="identifier">
+                                                         <input type="text" class="sa-form-input" id="edit_identifier_display" readonly style="background: var(--surface2); cursor: not-allowed;">
+                                                         <p class="sa-form-hint">Auto-generated and cannot be changed</p>
+                                                     </div>
+                                                    
+                                                    <div class="sa-form-group">
+                                                        <label for="edit_status" class="sa-form-label">
+                                                            <?= __('status') ?>
+                                                            <span class="sa-required">*</span>
+                                                        </label>
+                                                        <select class="sa-form-input sa-form-select" id="edit_status" name="status" required>
+                                                            <option value="active">Active</option>
+                                                            <option value="inactive">Inactive</option>
+                                                            <option value="suspended">Suspended</option>
+                                                        </select>
+                                                    </div>
+                                                    
+                                                    <div class="sa-form-group">
+                                                        <label for="edit_billing_email" class="sa-form-label">
+                                                            <?= __('billing_email') ?>
+                                                            <span class="sa-required">*</span>
+                                                        </label>
+                                                        <input type="email" class="sa-form-input" id="edit_billing_email" name="billing_email" required>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </form>
                                     </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-outline-secondary" data-dismiss="modal"><?= __('cancel') ?></button>
-                                        <button type="submit" form="editTenantForm" class="btn btn-primary" id="saveEditTenant"><?= __('save_changes') ?></button>
+                                    <div class="sa-modal-footer">
+                                        <button type="button" class="sa-btn sa-btn-ghost" data-dismiss="modal"><?= __('cancel') ?></button>
+                                        <button type="submit" form="editTenantForm" class="sa-btn sa-btn-primary" id="saveEditTenant">
+                                            <i class="feather icon-save mr-1"></i><?= __('save_changes') ?>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -1049,6 +1091,233 @@ $plans = $stmt->fetchAll();
     .h6 {
         font-size: 1rem;
     }
+
+    /* ─── MODAL STYLES ─────────────────────────────────────────── */
+    .sa-modal-content {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        background: var(--surface);
+    }
+
+    .sa-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: 24px;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(135deg, rgba(108,99,255,0.05), rgba(56,189,248,0.05));
+    }
+
+    .sa-modal-title-group {
+        flex: 1;
+    }
+
+    .sa-modal-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin: 0;
+        color: var(--text);
+        display: flex;
+        align-items: center;
+    }
+
+    .sa-modal-subtitle {
+        font-size: 0.85rem;
+        color: var(--muted);
+        margin: 6px 0 0 0;
+    }
+
+    .sa-modal-close {
+        background: none;
+        border: none;
+        color: var(--muted);
+        font-size: 1.5rem;
+        cursor: pointer;
+        padding: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        margin-left: 16px;
+    }
+
+    .sa-modal-close:hover {
+        color: var(--text);
+    }
+
+    .sa-modal-body {
+        padding: 24px;
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+
+    .sa-modal-footer {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        padding: 16px 24px;
+        border-top: 1px solid var(--border);
+        background: var(--surface2);
+    }
+
+    /* ─── FORM SECTIONS ────────────────────────────────────────── */
+    .sa-form-section {
+        margin-bottom: 24px;
+    }
+
+    .sa-form-section:last-child {
+        margin-bottom: 0;
+    }
+
+    .sa-form-section-title {
+        font-size: 0.9rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--accent);
+        margin: 0 0 16px 0;
+        padding-bottom: 12px;
+        border-bottom: 2px solid var(--border);
+    }
+
+    .sa-form-grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    @media (max-width: 768px) {
+        .sa-form-grid-2 {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .sa-form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .sa-form-label {
+        font-size: 0.875rem;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .sa-required {
+        color: var(--red);
+        font-weight: 700;
+    }
+
+    .sa-form-input {
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--surface);
+        color: var(--text);
+        font-size: 0.95rem;
+        transition: all 0.2s;
+        font-family: inherit;
+    }
+
+    .sa-form-input::placeholder {
+        color: var(--muted);
+    }
+
+    .sa-form-input:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.1);
+        background: var(--surface);
+    }
+
+    .sa-form-input:disabled {
+        background: var(--surface2);
+        color: var(--muted);
+        cursor: not-allowed;
+    }
+
+    .sa-form-select {
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236c63ff' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        padding-right: 36px;
+        cursor: pointer;
+    }
+
+    .sa-form-textarea {
+        resize: vertical;
+        min-height: 80px;
+    }
+
+    .sa-form-hint {
+        font-size: 0.75rem;
+        color: var(--muted);
+        margin: 6px 0 0 0;
+        line-height: 1.4;
+    }
+
+    .sa-subdomain-wrapper {
+        display: flex;
+        align-items: center;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--surface);
+        overflow: hidden;
+    }
+
+    .sa-subdomain-wrapper .sa-form-input {
+        flex: 1;
+        border: none;
+        border-radius: 0;
+    }
+
+    .sa-subdomain-suffix {
+        padding: 10px 12px;
+        background: var(--surface2);
+        color: var(--muted);
+        font-weight: 500;
+        font-size: 0.9rem;
+        border-left: 1px solid var(--border);
+        white-space: nowrap;
+        font-family: 'Courier New', monospace;
+    }
+
+    /* ─── LOADER STYLES ────────────────────────────────────────── */
+    .sa-edit-loader {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 20px;
+        min-height: 200px;
+    }
+
+    .sa-spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid var(--border);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin-bottom: 16px;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .sa-edit-loader p {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin: 0;
+    }
     </style>
 
 <!-- Required Js -->
@@ -1075,14 +1344,14 @@ $(document).on('click', '.edit-tenant-btn', function() {
         },
         dataType: 'json',
         success: function(data) {
-            // Populate form fields
-            $('#edit_tenant_id').val(data.id);
-            $('#edit_tenant_name').val(data.name);
-            $('#edit_subdomain').val(data.subdomain);
-            $('#edit_identifier').val(data.identifier);
-            $('#edit_plan').val(data.plan);
-            $('#edit_status').val(data.status);
-            $('#edit_billing_email').val(data.billing_email);
+             // Populate form fields
+              $('#edit_tenant_id').val(data.id);
+              $('#edit_tenant_name').val(data.name);
+              $('#edit_identifier').val(data.identifier);
+              $('#edit_identifier_display').val(data.identifier);
+              $('#edit_plan').val(data.plan);
+              $('#edit_status').val(data.status);
+              $('#edit_billing_email').val(data.billing_email);
             
             // Update modal title
             $('#editTenantModalLabel').text('Edit Tenant - ' + data.name);
@@ -1124,6 +1393,32 @@ document.querySelectorAll('.delete-tenant').forEach(button => {
             form.submit();
         }
     });
+});
+
+// Handle plan selection and display price
+document.getElementById('plan').addEventListener('change', function() {
+    const selectedOption = this.options[this.selectedIndex];
+    const priceDisplay = document.getElementById('planPriceDisplay');
+    
+    if (this.value === '') {
+        priceDisplay.style.display = 'none';
+    } else {
+        const price = selectedOption.getAttribute('data-price');
+        const currency = selectedOption.getAttribute('data-currency');
+        
+        document.getElementById('planPrice').textContent = parseFloat(price).toFixed(2);
+        document.getElementById('planCurrency').textContent = currency + '/month';
+        priceDisplay.style.display = 'block';
+    }
+});
+
+// Initialize price display if plan is pre-selected
+window.addEventListener('load', function() {
+    const planSelect = document.getElementById('plan');
+    if (planSelect && planSelect.value !== '') {
+        const event = new Event('change');
+        planSelect.dispatchEvent(event);
+    }
 });
 </script>
 </body>

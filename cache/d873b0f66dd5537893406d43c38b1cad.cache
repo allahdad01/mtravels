@@ -1,4 +1,4 @@
-a:4:{i:0;a:7:{s:2:"id";i:1;s:4:"name";s:5:"basic";s:11:"description";s:337:"Basic plan: Streamline your agency’s ticket operations with this plan. Manage bookings, reservations, refunds, and date changes effortlessly. Keep track of ticket profits, internal expenses, and generate basic financial statements — all automated to save time and reduce errors. Includes internal staff chat for smooth communication.";s:8:"features";s:207:"[
+a:4:{i:0;a:7:{s:2:"id";i:1;s:4:"name";s:5:"basic";s:11:"description";s:337:"Basic plan: Streamline your agency’s ticket operations with this plan. Manage bookings, reservations, refunds, and date changes effortlessly. Keep track of ticket profits, internal expenses, and generate basic financial statements — all automated to save time and reduce errors. Includes internal staff chat for smooth communication.";s:8:"features";s:217:"[
     "ticket_bookings",
     "ticket_reservations",
     "refunded_tickets",
@@ -8,14 +8,14 @@ a:4:{i:0;a:7:{s:2:"id";i:1;s:4:"name";s:5:"basic";s:11:"description";s:337:"Basi
     "inter_tenant_chat",
     "expense_management"
   ]
-";s:5:"price";s:7:"1000.00";s:9:"max_users";i:10;s:10:"trial_days";i:14;}i:1;a:7:{s:2:"id";i:4;s:4:"name";s:5:"Umrah";s:11:"description";s:202:"Features: All the Umrah-specific features (family management, member management, ID card generation, agreement generation, cancellation generation, refund processing, payment processing, multi-currency)";s:8:"features";s:138:"[
+";s:5:"price";s:7:"1000.00";s:9:"max_users";i:10;s:10:"trial_days";i:14;}i:1;a:7:{s:2:"id";i:4;s:4:"name";s:5:"Umrah";s:11:"description";s:202:"Features: All the Umrah-specific features (family management, member management, ID card generation, agreement generation, cancellation generation, refund processing, payment processing, multi-currency)";s:8:"features";s:145:"[
     "inter_tenant_chat",
     "umrah_bookings",
     "umrah_refunds",
     "salary",
     "financial_statements",
     "expense_management"
-]";s:5:"price";s:7:"2000.00";s:9:"max_users";i:10;s:10:"trial_days";i:14;}i:2;a:7:{s:2:"id";i:2;s:4:"name";s:3:"pro";s:11:"description";s:395:"Pro plan: Take your agency operations to the next level. Includes all Basic ticket management features, plus full visa and hotel management. Add extra services with automatic profit tracking. Collaborate with other agencies using limited inter-tenant chat, allowing secure trading of tickets, visas, and Umrah services. Advanced financial statements help you monitor profits and expenses easily.";s:8:"features";s:319:"[
+]";s:5:"price";s:7:"2000.00";s:9:"max_users";i:10;s:10:"trial_days";i:14;}i:2;a:7:{s:2:"id";i:2;s:4:"name";s:3:"pro";s:11:"description";s:395:"Pro plan: Take your agency operations to the next level. Includes all Basic ticket management features, plus full visa and hotel management. Add extra services with automatic profit tracking. Collaborate with other agencies using limited inter-tenant chat, allowing secure trading of tickets, visas, and Umrah services. Advanced financial statements help you monitor profits and expenses easily.";s:8:"features";s:334:"[
     "ticket_bookings",
     "ticket_reservations",
     "refunded_tickets",
@@ -30,7 +30,7 @@ a:4:{i:0;a:7:{s:2:"id";i:1;s:4:"name";s:5:"basic";s:11:"description";s:337:"Basi
     "expense_management",
     "inter_tenant_chat"
   ]
-";s:5:"price";s:7:"2500.00";s:9:"max_users";i:15;s:10:"trial_days";i:14;}i:3;a:7:{s:2:"id";i:3;s:4:"name";s:10:"enterprise";s:11:"description";s:486:"Enterprise plan: The complete solution for large or multi-branch agencies. Includes all Pro features, plus full Umrah management, HR & payroll automation (salaries, JV payments, additional staff payments), debtor/creditor tracking, Sarafi/currency management, assets management, and manage maktobs. Unlimited inter-tenant collaboration allows multiple agencies to trade services seamlessly, while real-time financial statements give you complete control over your agency’s operations.";s:8:"features";s:518:"[
+";s:5:"price";s:7:"2500.00";s:9:"max_users";i:15;s:10:"trial_days";i:14;}i:3;a:7:{s:2:"id";i:3;s:4:"name";s:10:"enterprise";s:11:"description";s:486:"Enterprise plan: The complete solution for large or multi-branch agencies. Includes all Pro features, plus full Umrah management, HR & payroll automation (salaries, JV payments, additional staff payments), debtor/creditor tracking, Sarafi/currency management, assets management, and manage maktobs. Unlimited inter-tenant collaboration allows multiple agencies to trade services seamlessly, while real-time financial statements give you complete control over your agency’s operations.";s:8:"features";s:543:"[
     "ticket_bookings",
     "ticket_reservations", 
     "refunded_tickets",

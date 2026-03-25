@@ -40,11 +40,13 @@
 		$messageId = isset($_GET['message_id']) ? (int)$_GET['message_id'] : 0;
 		if ($messageId <= 0) { http_response_code(400); echo json_encode(['error' => 'invalid_message_id']); exit; }
 
-		// Get all reactions for this message
+		// Get all reactions for this message from message_reactions table
+		// This supports both direct and group message reactions (message IDs are unique across tables)
+		// Note: GET requests for reactions don't require auth checking as they're already loaded in the UI
 		$stmt = secure_query($pdo, '
 			SELECT mr.emoji, mr.user_id, u.name as user_name
 			FROM message_reactions mr
-			JOIN users u ON mr.user_id = u.id
+			LEFT JOIN users u ON mr.user_id = u.id
 			WHERE mr.message_id = ?
 			ORDER BY mr.created_at ASC
 		', [$messageId]);
@@ -58,7 +60,7 @@
 				}
 				$reactions[$emoji][] = [
 					'user_id' => (int)$row['user_id'],
-					'user_name' => $row['user_name']
+					'user_name' => $row['user_name'] ?? 'Unknown'
 				];
 			}
 		}
@@ -87,13 +89,43 @@
 		}
 
 		// Verify message exists and user has access to it
+		// Check direct messages first
 		$stmt = secure_query($pdo, '
-			SELECT cm.room_id
+			SELECT cm.room_id, "direct" as message_type
 			FROM chat_messages cm
 			WHERE cm.id = ? AND (cm.from_user_id = ? OR cm.to_user_id = ?)
 		', [$messageId, $currentUserId, $currentUserId]);
 
-		if (!$stmt || !$stmt->fetch()) {
+		$messageExists = $stmt && $stmt->fetch();
+		
+		// If not found in direct messages, check group messages
+		if (!$messageExists) {
+			// Get current user type
+			$userTypeStmt = secure_query($pdo, '
+				SELECT "user" as user_type
+				FROM users
+				WHERE id = ?
+				UNION
+				SELECT "client" as user_type
+				FROM clients
+				WHERE id = ?
+			', [$currentUserId, $currentUserId]);
+			
+			$userTypeRow = $userTypeStmt ? $userTypeStmt->fetch() : null;
+			$userType = $userTypeRow ? $userTypeRow['user_type'] : 'user';
+			
+			// Check if message exists in group and user is a member
+			$stmt = secure_query($pdo, '
+				SELECT cgm.group_id, "group" as message_type
+				FROM chat_group_messages cgm
+				JOIN chat_group_members gm ON cgm.group_id = gm.group_id
+				WHERE cgm.id = ? AND gm.member_id = ? AND gm.member_type = ? AND gm.left_at IS NULL
+			', [$messageId, $currentUserId, $userType]);
+			
+			$messageExists = $stmt && $stmt->fetch();
+		}
+
+		if (!$messageExists) {
 			http_response_code(403);
 			echo json_encode(['error' => 'message_not_found_or_access_denied']);
 			exit;

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 include 'header.php';
 
 // Get tenant ID from session

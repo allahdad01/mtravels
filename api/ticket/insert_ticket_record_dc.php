@@ -119,7 +119,7 @@ if (
                 (tenant_id, supplier, sold_to, paid_to, ticket_id, title, passenger_name, pnr, origin, destination, return_origin, return_destination, phone, airline, gender,
                 issue_date, departure_date, return_date, date_type, currency, base, sold, supplier_penalty, service_penalty,
                 status, remarks, created_at, updated_at, created_by, branch_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)");
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)");
 
             $insertDateChangeStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
             $insertDateChangeStmt->bindParam(2, $supplierId, PDO::PARAM_INT);

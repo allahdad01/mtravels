@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * Umrah Bookings - Tenant Interface
  */
@@ -75,8 +75,8 @@ include 'header.php';
 *,*::before,*::after{box-sizing:border-box}
 body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important;background:var(--surface)!important;color:var(--text-main)!important}
 
-/* Header — warm gold → deep amber for Umrah/pilgrimage */
-.dash-header{background:linear-gradient(135deg,#d97706 0%,#92400e 100%);border-radius:var(--radius);padding:24px 28px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 8px 32px rgba(217,119,6,0.25);position:relative;overflow:hidden}
+/* Header â€” warm gold â†’ deep amber for Umrah/pilgrimage */
+.dash-header{background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);border-radius:var(--radius);padding:24px 28px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 8px 32px rgba(217,119,6,0.25);position:relative;overflow:hidden}
 .dash-header::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.06'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat}
 .dash-header h4{font-size:22px;font-weight:800;color:#fff;margin:0 0 4px;letter-spacing:-0.4px;position:relative}
 .dash-header p{color:rgba(255,255,255,0.8);margin:0;font-size:13px;position:relative}
@@ -86,7 +86,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 .dash-card:last-child{margin-bottom:0}
 .dash-card-head{padding:15px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .dash-card-head h6{font-size:14px;font-weight:700;margin:0;display:flex;align-items:center;gap:8px}
-.dash-card-head h6 .ico{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#d97706,#92400e);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;flex-shrink:0}
+.dash-card-head h6 .ico{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;flex-shrink:0}
 .dash-card-body{padding:20px}
 .count-badge{background:rgba(217,119,6,.12);color:#92400e;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;margin-left:auto}
 
@@ -97,7 +97,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 .search-group{display:flex;gap:8px}
 .form-input{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:9px 13px;font-family:inherit;font-size:13px;color:var(--text-main);background:var(--surface);outline:none;transition:border-color .2s}
 .form-input:focus{border-color:#d97706;background:#fff;box-shadow:0 0 0 3px rgba(217,119,6,.1)}
-.search-btn{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#d97706,#92400e);color:#fff;border:none;border-radius:10px;padding:9px 18px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap;flex-shrink:0}
+.search-btn{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);color:#fff;border:none;border-radius:10px;padding:9px 18px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap;flex-shrink:0}
 .search-btn:hover{opacity:.9}
 .clear-btn{display:inline-flex;align-items:center;gap:6px;background:var(--surface);color:var(--text-sub);border:1.5px solid var(--border);border-radius:10px;padding:9px 14px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap;flex-shrink:0;transition:all .2s}
 .clear-btn:hover{border-color:var(--text-sub);color:var(--text-main);text-decoration:none}
@@ -160,13 +160,13 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 .pag-links{display:flex;gap:4px}
 .pag-btn{min-width:32px;height:32px;border-radius:8px;border:1.5px solid var(--border);background:var(--card-bg);color:var(--text-main);font-size:12px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;padding:0 8px;transition:all .15s}
 .pag-btn:hover{border-color:#d97706;color:#d97706;text-decoration:none}
-.pag-btn.active{background:linear-gradient(135deg,#d97706,#92400e);border-color:transparent;color:#fff}
+.pag-btn.active{background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);border-color:transparent;color:#fff}
 .pag-btn.disabled{opacity:.4;pointer-events:none}
 .pag-dots{display:flex;align-items:center;padding:0 4px;color:var(--text-sub);font-size:13px}
 
 /* Modal */
 .modal-content{border:none;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.18);font-family:inherit}
-.modal-header{background:linear-gradient(135deg,#d97706,#92400e);color:#fff;border-radius:16px 16px 0 0;border:none;padding:18px 24px}
+.modal-header{background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);color:#fff;border-radius:16px 16px 0 0;border:none;padding:18px 24px}
 .modal-header .modal-title{font-weight:700;font-size:15px}
 .modal-header .close{color:#fff;opacity:.8;font-size:22px}
 .modal-header .close:hover{opacity:1}
@@ -209,7 +209,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 <div class="pcoded-main-container">
 <div class="pcoded-content">
 
-    <!-- Header — warm gold → deep amber for Umrah pilgrimage -->
+    <!-- Header â€” warm gold â†’ deep amber for Umrah pilgrimage -->
     <div class="dash-header">
         <div>
             <h4><i class="feather icon-map-pin" style="margin-right:8px;"></i><?php echo __('umrah_bookings'); ?></h4>
@@ -227,7 +227,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                 <div>
                     <label class="form-label-custom">Search</label>
                     <div class="search-group">
-                        <input type="text" id="searchInput" class="form-input" placeholder="Pilgrim name, passport, or head of family…" value="<?= htmlspecialchars($search) ?>">
+                        <input type="text" id="searchInput" class="form-input" placeholder="Pilgrim name, passport, or head of familyâ€¦" value="<?= htmlspecialchars($search) ?>">
                         <button class="search-btn" id="searchBtn"><i class="feather icon-search"></i>Search</button>
                         <?php if (!empty($search)): ?>
                         <a href="?branch=<?= $branch_filter ?>" class="clear-btn"><i class="feather icon-x"></i>Clear</a>
@@ -343,16 +343,16 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
         </div>
 
         <div class="pag-wrap">
-            <div class="pag-info">Showing <?= $from ?>–<?= $to ?> of <?= number_format($total_bookings) ?> umrah bookings</div>
+            <div class="pag-info">Showing <?= $from ?>â€“<?= $to ?> of <?= number_format($total_bookings) ?> umrah bookings</div>
             <div class="pag-links">
                 <?php $base = '?branch='.urlencode($branch_filter).'&search='.urlencode($search); ?>
                 <a href="<?= $base ?>&page=1" class="pag-btn <?= $page<=1?'disabled':'' ?>"><i class="feather icon-chevrons-left"></i></a>
                 <a href="<?= $base ?>&page=<?= $page-1 ?>" class="pag-btn <?= $page<=1?'disabled':'' ?>"><i class="feather icon-chevron-left"></i></a>
                 <?php
                 $sp2=max(1,$page-2); $ep=min($total_pages,$page+2);
-                if($sp2>1){echo '<a href="'.$base.'&page=1" class="pag-btn">1</a>';if($sp2>2)echo '<span class="pag-dots">…</span>';}
+                if($sp2>1){echo '<a href="'.$base.'&page=1" class="pag-btn">1</a>';if($sp2>2)echo '<span class="pag-dots">â€¦</span>';}
                 for($i=$sp2;$i<=$ep;$i++) echo '<a href="'.$base.'&page='.$i.'" class="pag-btn '.($i==$page?'active':'').'">'.$i.'</a>';
-                if($ep<$total_pages){if($ep<$total_pages-1)echo '<span class="pag-dots">…</span>';echo '<a href="'.$base.'&page='.$total_pages.'" class="pag-btn">'.$total_pages.'</a>';}
+                if($ep<$total_pages){if($ep<$total_pages-1)echo '<span class="pag-dots">â€¦</span>';echo '<a href="'.$base.'&page='.$total_pages.'" class="pag-btn">'.$total_pages.'</a>';}
                 ?>
                 <a href="<?= $base ?>&page=<?= $page+1 ?>" class="pag-btn <?= $page>=$total_pages?'disabled':'' ?>"><i class="feather icon-chevron-right"></i></a>
                 <a href="<?= $base ?>&page=<?= $total_pages ?>" class="pag-btn <?= $page>=$total_pages?'disabled':'' ?>"><i class="feather icon-chevrons-right"></i></a>
@@ -381,9 +381,9 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 
             <!-- Financial summary strip -->
             <div class="modal-summary">
-                <div class="ms-cell"><div class="ms-label">Sold Price</div><div class="ms-val gold" id="sold-price">—</div></div>
-                <div class="ms-cell"><div class="ms-label">Base Price</div><div class="ms-val brown" id="base-price">—</div></div>
-                <div class="ms-cell"><div class="ms-label">Profit</div><div class="ms-val green" id="profit">—</div></div>
+                <div class="ms-cell"><div class="ms-label">Sold Price</div><div class="ms-val gold" id="sold-price">â€”</div></div>
+                <div class="ms-cell"><div class="ms-label">Base Price</div><div class="ms-val brown" id="base-price">â€”</div></div>
+                <div class="ms-cell"><div class="ms-label">Profit</div><div class="ms-val green" id="profit">â€”</div></div>
             </div>
 
             <div class="modal-body">
@@ -397,21 +397,21 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                         <div class="detail-section">
                             <div class="ds-title">Pilgrim Information</div>
-                            <div class="ds-row"><span class="ds-key">Full Name</span><span class="ds-val" id="pilgrim-name">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Passport No.</span><span class="ds-val gold" id="passport-number" style="font-family:'JetBrains Mono',monospace;">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Relation</span><span class="ds-val" id="relation">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Gender</span><span class="ds-val" id="gender">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="branch-name">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Created By</span><span class="ds-val" id="created-by">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Full Name</span><span class="ds-val" id="pilgrim-name">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Passport No.</span><span class="ds-val gold" id="passport-number" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Relation</span><span class="ds-val" id="relation">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Gender</span><span class="ds-val" id="gender">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="branch-name">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Created By</span><span class="ds-val" id="created-by">â€”</span></div>
                         </div>
                         <div class="detail-section">
                             <div class="ds-title">Booking Information</div>
-                            <div class="ds-row"><span class="ds-key">Entry Date</span><span class="ds-val" id="entry-date" style="font-family:'JetBrains Mono',monospace;">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Flight Date</span><span class="ds-val" id="flight-date" style="font-family:'JetBrains Mono',monospace;">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Return Date</span><span class="ds-val" id="return-date" style="font-family:'JetBrains Mono',monospace;">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Duration</span><span class="ds-val" id="duration">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Sold To</span><span class="ds-val" id="sold-to">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Status</span><span class="ds-val" id="booking-status">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Entry Date</span><span class="ds-val" id="entry-date" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Flight Date</span><span class="ds-val" id="flight-date" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Return Date</span><span class="ds-val" id="return-date" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Duration</span><span class="ds-val" id="duration">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Sold To</span><span class="ds-val" id="sold-to">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Status</span><span class="ds-val" id="booking-status">â€”</span></div>
                         </div>
                     </div>
                 </div>
@@ -421,22 +421,22 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                         <div class="detail-section">
                             <div class="ds-title">Family & Location</div>
-                            <div class="ds-row"><span class="ds-key">Head of Family</span><span class="ds-val" id="head-of-family">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Province</span><span class="ds-val" id="province">—</span></div>
-                            <div class="ds-row"><span class="ds-key">District</span><span class="ds-val" id="district">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Contact</span><span class="ds-val" id="contact" style="font-family:'JetBrains Mono',monospace;">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Head of Family</span><span class="ds-val" id="head-of-family">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Province</span><span class="ds-val" id="province">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">District</span><span class="ds-val" id="district">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Contact</span><span class="ds-val" id="contact" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
                         </div>
                         <div class="detail-section">
                             <div class="ds-title">Payment Details</div>
-                            <div class="ds-row"><span class="ds-key">Room Type</span><span class="ds-val" id="room-type">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Currency</span><span class="ds-val" id="currency" style="font-family:'JetBrains Mono',monospace;">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Paid Amount</span><span class="ds-val green" id="paid-amount" style="font-family:'JetBrains Mono',monospace;">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Due Amount</span><span class="ds-val amber" id="due-amount" style="font-family:'JetBrains Mono',monospace;">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Room Type</span><span class="ds-val" id="room-type">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Currency</span><span class="ds-val" id="currency" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Paid Amount</span><span class="ds-val green" id="paid-amount" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Due Amount</span><span class="ds-val amber" id="due-amount" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
                         </div>
                     </div>
                     <div class="detail-section" style="margin-top:0;">
                         <div class="ds-title">Remarks</div>
-                        <p id="remarks" style="font-size:14px;color:var(--text-main);margin:0;line-height:1.7;">—</p>
+                        <p id="remarks" style="font-size:14px;color:var(--text-main);margin:0;line-height:1.7;">â€”</p>
                     </div>
                 </div>
             </div>
@@ -488,7 +488,7 @@ document.querySelectorAll('.view-details').forEach(btn => {
         document.getElementById('profit').className       = 'ms-val ' + (prof >= 0 ? 'green' : 'red');
 
         document.getElementById('pilgrim-name').textContent  = [d.name, d.fname, d.gfname].filter(Boolean).join(' ');
-        document.getElementById('passport-number').textContent = d.passport_number || '—';
+        document.getElementById('passport-number').textContent = d.passport_number || 'â€”';
         document.getElementById('relation').textContent      = d.relation     || 'N/A';
         document.getElementById('gender').textContent        = d.gender       || 'N/A';
         document.getElementById('branch-name').textContent   = d.branch_name  || 'No Branch';

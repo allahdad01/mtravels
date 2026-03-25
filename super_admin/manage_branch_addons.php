@@ -138,14 +138,14 @@ $display_items = array_slice(array_values($filtered_items), $offset, $items_per_
         <div class="pcoded-content">
             <div class="pcoded-inner-content">
                 <!-- [ breadcrumb ] start -->
-                <div class="page-header card">
+                <div class="page-header card" style="background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%); color: white;">
                     <div class="row align-items-center">
                         <div class="col-md-6">
                             <div class="page-header-content">
-                                <h5 class="page-title mb-0">
+                                <h5 class="page-title mb-0" style="color: white;">
                                     <i class="feather icon-layers mr-2"></i>Branch Add-on Requests
                                 </h5>
-                                <p class="page-subtitle mb-0 mt-2">
+                                <p class="page-subtitle mb-0 mt-2" style="color: white; opacity: 0.9;">
                                     Manage branch add-on requests and active add-ons for your tenants
                                 </p>
                             </div>

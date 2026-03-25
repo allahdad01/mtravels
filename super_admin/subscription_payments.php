@@ -1045,7 +1045,7 @@ $pay_total_pages = $payment_total_pages;
 <div class="modal fade" id="recordPaymentModal" tabindex="-1" role="dialog" aria-labelledby="recordPaymentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
+            <div class="modal-header text-white" style="background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);">
                 <h5 class="modal-title" id="recordPaymentModalLabel">
                     <i class="feather icon-credit-card mr-2"></i>Record Subscription Payment
                 </h5>
@@ -1172,7 +1172,7 @@ $pay_total_pages = $payment_total_pages;
 <div class="modal fade" id="subscriptionPaymentsModal" tabindex="-1" role="dialog" aria-labelledby="subscriptionPaymentsModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl" role="document">
         <div class="modal-content">
-            <div class="modal-header bg-info text-white">
+            <div class="modal-header text-white" style="background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);">
                 <h5 class="modal-title" id="subscriptionPaymentsModalLabel">
                     <i class="feather icon-list mr-2"></i>Subscription Payment History
                 </h5>

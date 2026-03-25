@@ -322,6 +322,13 @@ if (!function_exists('h')) {
                     </a>
                 </li>
 
+                <li data-username="file_browser" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'file_browser.php' ? 'active' : ''; ?>">
+                    <a href="file_browser.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-folder"></i></span>
+                        <span class="pcoded-mtext">File Browser</span>
+                    </a>
+                </li>
+
             </ul>
         </div>
         <!-- /sidebar menu -->

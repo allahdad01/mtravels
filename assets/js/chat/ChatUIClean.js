@@ -368,7 +368,7 @@ class ChatUI {
         const displayRole = contact.role ? this.formatRole(contact.role) : '';
 
         return `
-            <div class="contact-item" data-id="${contact.id}" role="button">
+            <div class="contact-item" data-id="${contact.id}" data-user-type="${contact.user_type || 'user'}" role="button">
                 <div class="contact-avatar">
                     ${avatar}
                     ${onlineIndicator}
@@ -386,17 +386,25 @@ class ChatUI {
         `;
     }
 
-    renderContacts(contacts) {
+    renderContacts(contacts, groups = []) {
         // Group contacts by tenant
         const groupedByTenant = {};
         contacts.forEach(contact => {
             const tenantId = contact.tenant_id;
             const tenantName = contact.tenant_name || 'Unknown Tenant';
             if (!groupedByTenant[tenantId]) {
-                groupedByTenant[tenantId] = { name: tenantName, contacts: [] };
+                groupedByTenant[tenantId] = { name: tenantName, contacts: [], groups: [] };
             }
             groupedByTenant[tenantId].contacts.push(contact);
         });
+
+        // Add groups to the first tenant (all groups belong to user's current tenant)
+        if (groups.length > 0) {
+            const firstTenant = Object.keys(groupedByTenant)[0];
+            if (firstTenant) {
+                groupedByTenant[firstTenant].groups = groups;
+            }
+        }
 
         // Build HTML with collapsible sections
         let html = '';
@@ -410,10 +418,11 @@ class ChatUI {
                     <div class="tenant-header" data-tenant-id="${tenantId}" role="button">
                         <span class="tenant-arrow">${arrowIcon}</span>
                         <span class="tenant-name">${this.escape(group.name)}</span>
-                        <span class="tenant-count">(${group.contacts.length})</span>
+                        <span class="tenant-count">(${group.contacts.length}${group.groups?.length > 0 ? '+' + group.groups.length : ''})</span>
                     </div>
                     <div class="tenant-contacts" style="display: ${contactsDisplay}">
                         ${group.contacts.map(c => this.renderContactItem(c)).join('')}
+                        ${group.groups?.length > 0 ? '<div class="group-section"><div style="padding: 8px 16px; font-weight: 600; color: #666; font-size: 12px; text-transform: uppercase;">Groups</div>' + group.groups.map(g => this.renderGroupItem(g)).join('') + '</div>' : ''}
                     </div>
                 </div>
             `;
@@ -437,16 +446,57 @@ class ChatUI {
             });
         });
 
-        // Add click listeners for contact items
-        this.elements.contactList.querySelectorAll('.contact-item').forEach(item => {
+        // Add click listeners for contact items (exclude group items)
+        this.elements.contactList.querySelectorAll('.contact-item:not(.group-item)').forEach(item => {
             item.addEventListener('click', () => {
                 const contactId = parseInt(item.getAttribute('data-id'), 10);
+                const userType = item.getAttribute('data-user-type') || 'user';
                 window.dispatchEvent(new CustomEvent('contactSelected', {
-                    detail: { contactId }
+                    detail: { contactId, userType }
+                }));
+            });
+        });
+
+        // Add click listeners for group items
+        this.elements.contactList.querySelectorAll('.group-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const groupId = parseInt(item.getAttribute('data-group-id'), 10);
+                window.dispatchEvent(new CustomEvent('groupSelected', {
+                    detail: { groupId }
                 }));
             });
         });
     }
+
+    renderGroupItem(group) {
+         const icon = '👥';
+         let avatarContent = '';
+         
+         if (group.profile_pic) {
+             // Display group image if available
+             avatarContent = `<img src="${this.escape(group.profile_pic)}" alt="${this.escape(group.group_name)}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" onerror="this.parentElement.innerHTML='<span>${icon}</span>'; this.parentElement.style.background='#667eea';">`;
+         } else {
+             // Display icon if no image
+             avatarContent = `<span>${icon}</span>`;
+         }
+         
+         // Extract last message preview and timestamp
+         const lastMessage = group.lastMessage ? this.extractMessagePreview(group.lastMessage) : `${group.member_count} member${group.member_count !== 1 ? 's' : ''}`;
+         const time = group.time ? group.time : '';
+         
+         return `
+             <div class="group-item contact-item" data-group-id="${group.id}" role="button" style="cursor: pointer;">
+                 <div class="contact-avatar" style="background: #667eea;">
+                     ${avatarContent}
+                 </div>
+                 <div class="contact-info">
+                     <p class="contact-name">${this.escape(group.group_name)}</p>
+                     <p class="contact-message" style="font-size: 12px; color: #999; margin: 4px 0 0 0;">${this.escape(lastMessage)}</p>
+                 </div>
+                 ${time ? `<span class="contact-time" style="font-size: 11px; color: #ccc;">${time}</span>` : ''}
+             </div>
+         `;
+     }
 
     extractMessagePreview(messageText) {
          if (!messageText) return 'No messages yet';

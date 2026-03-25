@@ -18,11 +18,19 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $currentUserId = (int)$_SESSION['user_id'];
+$sessionRole = $_SESSION['role'] ?? 'user'; // 'admin', 'client', 'sales_agent', etc.
 $method = $_SERVER['REQUEST_METHOD'];
 
-// Validate current user and get tenant and role
+// Validate current user and get tenant and role (check both users and clients)
 $stmt = secure_query($pdo, 'SELECT id, tenant_id, role FROM users WHERE id = ?', [$currentUserId]);
 $me = $stmt ? $stmt->fetch() : null;
+
+// If not a user, check if it's a client
+if (!$me && $sessionRole === 'client') {
+    $stmt = secure_query($pdo, 'SELECT id, tenant_id, status as role FROM clients WHERE id = ?', [$currentUserId]);
+    $me = $stmt ? $stmt->fetch(PDO::FETCH_ASSOC) : null;
+}
+
 if (!$me) {
     http_response_code(404);
     echo json_encode(['error' => 'user_not_found']);
@@ -31,11 +39,26 @@ if (!$me) {
 $tenantId = (int)$me['tenant_id'];
 $userRole = $me['role'];
 
+// Normalize user type: 'user' for all non-client users, 'client' for clients
+$currentUserType = ($sessionRole === 'client' ? 'client' : 'user');
+
 // Helper function to create room ID
-function room_from_users($a, $b) {
-    $ids = [$a, $b];
-    sort($ids, SORT_NUMERIC);
-    return 'u-' . $ids[0] . '-' . $ids[1];
+function room_from_users($a, $b, $typeA = 'user', $typeB = 'user') {
+    // Create pairs and sort them to ensure consistent room IDs
+    $pairs = [
+        ['id' => $a, 'type' => $typeA],
+        ['id' => $b, 'type' => $typeB]
+    ];
+    
+    // Sort by ID numerically to ensure consistent ordering
+    usort($pairs, function($x, $y) {
+        return $x['id'] - $y['id'];
+    });
+    
+    // Format: msg-type1_id1-type2_id2 (where type is 'u' for user, 'c' for client)
+    $t1 = substr($pairs[0]['type'], 0, 1);
+    $t2 = substr($pairs[1]['type'], 0, 1);
+    return 'msg-' . $t1 . $pairs[0]['id'] . '-' . $t2 . $pairs[1]['id'];
 }
 
 // POST: Upload voice message
@@ -48,6 +71,7 @@ if ($method === 'POST') {
     }
 
     $toUserId = (int)$_POST['to_user_id'];
+    $toUserType = isset($_POST['to_user_type']) ? $_POST['to_user_type'] : 'user'; // 'user' or 'client'
     $duration = isset($_POST['duration']) ? (int)$_POST['duration'] : 0;
     $audioFile = $_FILES['audio'];
 
@@ -171,7 +195,7 @@ if ($method === 'POST') {
     $voiceUrl = 'uploads/voices/' . $tenantId . '/' . $currentUserId . '/' . $filename;
 
     // Store voice message in database
-    $room = room_from_users($currentUserId, $toUserId);
+    $room = room_from_users($currentUserId, $toUserId, $currentUserType, $toUserType);
     
     // Create content JSON with voice metadata
     $content = json_encode([

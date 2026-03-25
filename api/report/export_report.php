@@ -1585,7 +1585,7 @@ try {
                             GROUP BY dc.id
                             
                             ORDER BY COALESCE(parent_id, id), record_type";
-                        $params = [$entity, $startDate, $endDate, $tenant_id, $entity, $startDate, $endDate, $tenant_id, $entity, $startDate, $endDate, $tenant_id, $branch_id];
+                            $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id, $entity, $startDate, $endDate, $tenant_id, $branch_id];
                         $headers = ['PNR', 'Title', 'Passenger Name', 'Phone', 'Gender', 
                                   'Sector', 'Trip Type', 'Airline',
                                   'Issue Date', 'Departure Date', 

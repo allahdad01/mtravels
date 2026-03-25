@@ -5,9 +5,12 @@
 class ChatManager {
     constructor() {
         this.currentContactId = null;
+        this.currentGroupId = null;
         this.currentRoomId = null;
+        this.currentType = 'contact'; // 'contact' or 'group'
         this.contacts = [];
-        this.messages = new Map(); // contactId -> array of messages
+        this.groups = [];
+        this.messages = new Map(); // contactId/groupId -> array of messages
         this.preferences = {
             blocked: new Set(),
             muted: new Set()
@@ -62,7 +65,7 @@ class ChatManager {
     }
 
     /**
-     * Load contacts from server
+     * Load contacts and groups from server
      */
     async loadContacts() {
         try {
@@ -73,10 +76,11 @@ class ChatManager {
             
             const data = await response.json();
             this.contacts = data.contacts || [];
-            return this.contacts;
+            this.groups = data.groups || [];
+            return { contacts: this.contacts, groups: this.groups };
         } catch (error) {
 
-            return [];
+            return { contacts: [], groups: [] };
         }
     }
 
@@ -185,11 +189,12 @@ class ChatManager {
     /**
      * Select a contact as current
      */
-    selectContact(contactId) {
-        const contact = this.contacts.find(c => c.id === contactId);
+    selectContact(contactId, userType = 'user') {
+        const contact = this.contacts.find(c => c.id === contactId && (c.user_type || 'user') === userType);
         if (!contact) return null;
         
         this.currentContactId = contactId;
+        this.currentContactUserType = userType;
         this.currentRoomId = contact.room_id;
         
         // Clear unread for this contact
@@ -209,7 +214,7 @@ class ChatManager {
      * Get current contact
      */
     getCurrentContact() {
-        return this.contacts.find(c => c.id === this.currentContactId);
+        return this.contacts.find(c => c.id === this.currentContactId && (c.user_type || 'user') === (this.currentContactUserType || 'user'));
     }
 
     /**
@@ -353,7 +358,7 @@ class ChatManager {
     /**
      * Mark messages as read
      */
-    async markAsRead(contactId) {
+    async markAsRead(contactId, userType = 'user') {
          try {
              await fetch('api/messages.php', {
                  method: 'POST',
@@ -362,6 +367,7 @@ class ChatManager {
                  body: new URLSearchParams({
                      action: 'mark_seen',
                      peer_id: contactId,
+                     peer_type: userType,
                      csrf_token: window.csrfToken || ''
                  })
              });

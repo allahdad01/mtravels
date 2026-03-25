@@ -1,812 +1,479 @@
-<?php
+﻿<?php
 include 'header.php';
 
-// Get tenant and user info
-$tenant_id = $_SESSION['tenant_id'];
-$user_id = $_SESSION['user_id'];
-$user_role = $_SESSION['role'];
+$tenant_id      = $_SESSION['tenant_id'];
+$user_id        = $_SESSION['user_id'];
+$user_role      = $_SESSION['role'];
 $user_branch_id = $_SESSION['branch_id'] ?? null;
 
-// Get search and branch parameters
-$search = isset($_GET['search']) ? trim($_GET['search']) : '';
-$selected_branch = isset($_GET['branch']) ? $_GET['branch'] : ($user_branch_id ? $user_branch_id : 'all');
-
-// Pagination
-$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$search          = isset($_GET['search']) ? trim($_GET['search']) : '';
+$selected_branch = isset($_GET['branch']) ? $_GET['branch'] : ($user_branch_id ?: 'all');
+$page            = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $results_per_page = 25;
-$offset = ($page - 1) * $results_per_page;
+$offset          = ($page - 1) * $results_per_page;
 
-// Get current branch information
-$current_branch_name = "All Branches";
-if ($selected_branch !== 'all') {
-    $branch_query = "SELECT name FROM branches WHERE id = ? AND tenant_id = ?";
-    $stmt = $pdo->prepare($branch_query);
-    $stmt->execute([$selected_branch, $tenant_id]);
-    $branch_data = $stmt->fetch(PDO::FETCH_ASSOC);
-    if ($branch_data) {
-        $current_branch_name = $branch_data['name'];
-    }
-}
-
-// Build query for creditors
 $query = "SELECT c.*,
                  b.name as branch_name,
                  COUNT(ct.id) as transaction_count,
-                 COALESCE(SUM(CASE WHEN ct.transaction_type = 'debit' THEN ct.amount ELSE -ct.amount END), 0) as current_balance
+                 COALESCE(SUM(CASE WHEN ct.transaction_type='debit' THEN ct.amount ELSE -ct.amount END), 0) as current_balance
           FROM creditors c
           LEFT JOIN branches b ON c.branch_id = b.id
           LEFT JOIN creditor_transactions ct ON c.id = ct.creditor_id AND ct.tenant_id = c.tenant_id
           WHERE c.tenant_id = ?";
 
-// Add branch filtering
-if ($selected_branch !== 'all') {
-    $query .= " AND c.branch_id = ?";
-}
-
-// Add search filter
+$params = [$tenant_id];
+if ($selected_branch !== 'all') { $query .= " AND c.branch_id = ?"; $params[] = $selected_branch; }
 if (!empty($search)) {
     $query .= " AND (c.name LIKE ? OR c.email LIKE ? OR c.phone LIKE ?)";
+    $sp = "%$search%"; $params = array_merge($params, [$sp,$sp,$sp]);
 }
-
-// Group by and ordering with pagination
 $query .= " GROUP BY c.id ORDER BY c.name ASC LIMIT ? OFFSET ?";
+$params[] = $results_per_page; $params[] = $offset;
 
-// Prepare parameters
-$params = [$tenant_id];
-
-if ($selected_branch !== 'all') {
-    $params[] = $selected_branch;
-}
-
-if (!empty($search)) {
-    $search_param = "%$search%";
-    $params[] = $search_param;
-    $params[] = $search_param;
-    $params[] = $search_param;
-}
-
-$params[] = $results_per_page;
-$params[] = $offset;
-
-// Execute query
-$stmt = $pdo->prepare($query);
-$stmt->execute($params);
+$stmt = $pdo->prepare($query); $stmt->execute($params);
 $creditors = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Get total count for pagination
-$count_query = "SELECT COUNT(*) as total FROM creditors c WHERE c.tenant_id = ?";
-$count_params = [$tenant_id];
-
-if ($selected_branch !== 'all') {
-    $count_query .= " AND c.branch_id = ?";
-    $count_params[] = $selected_branch;
-}
-
+$cq = "SELECT COUNT(*) as total FROM creditors c WHERE c.tenant_id = ?";
+$cp = [$tenant_id];
+if ($selected_branch !== 'all') { $cq .= " AND c.branch_id = ?"; $cp[] = $selected_branch; }
 if (!empty($search)) {
-    $count_query .= " AND (c.name LIKE ? OR c.email LIKE ? OR c.phone LIKE ?)";
-    $search_param = "%$search%";
-    $count_params[] = $search_param;
-    $count_params[] = $search_param;
-    $count_params[] = $search_param;
+    $cq .= " AND (c.name LIKE ? OR c.email LIKE ? OR c.phone LIKE ?)";
+    $sp = "%$search%"; $cp = array_merge($cp, [$sp,$sp,$sp]);
 }
+$cs = $pdo->prepare($cq); $cs->execute($cp);
+$total_creditors = $cs->fetch(PDO::FETCH_ASSOC)['total'];
+$total_pages     = max(1, ceil($total_creditors / $results_per_page));
 
-$count_stmt = $pdo->prepare($count_query);
-$count_stmt->execute($count_params);
-$total_creditors = $count_stmt->fetch(PDO::FETCH_ASSOC)['total'];
-$total_pages = ceil($total_creditors / $results_per_page);
-
-// Get summary data
-$summary_query = "SELECT
-    COUNT(*) as total_creditors,
-    COUNT(CASE WHEN status = 'active' THEN 1 END) as active_creditors,
-    COUNT(CASE WHEN status = 'inactive' THEN 1 END) as inactive_creditors,
+$sq = "SELECT COUNT(*) as total_creditors,
+    COUNT(CASE WHEN status='active'   THEN 1 END) as active_creditors,
+    COUNT(CASE WHEN status='inactive' THEN 1 END) as inactive_creditors,
     SUM(balance) as total_outstanding,
     AVG(balance) as avg_credit_amount
-FROM creditors
-WHERE tenant_id = ?";
+FROM creditors WHERE tenant_id = ?";
+$sp2 = [$tenant_id];
+if ($selected_branch !== 'all') { $sq .= " AND branch_id = ?"; $sp2[] = $selected_branch; }
+$ss = $pdo->prepare($sq); $ss->execute($sp2);
+$summary = $ss->fetch(PDO::FETCH_ASSOC);
 
-$summary_params = [$tenant_id];
+$bs = $pdo->prepare("SELECT id, name FROM branches WHERE tenant_id = ? AND status='active' ORDER BY name");
+$bs->execute([$tenant_id]);
+$branches = $bs->fetchAll(PDO::FETCH_ASSOC);
 
-if ($selected_branch !== 'all') {
-    $summary_query .= " AND branch_id = ?";
-    $summary_params[] = $selected_branch;
-}
-
-$summary_stmt = $pdo->prepare($summary_query);
-$summary_stmt->execute($summary_params);
-$summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
+$from = min(($page - 1) * $results_per_page + 1, $total_creditors);
+$to   = min($page * $results_per_page, $total_creditors);
 ?>
 
-<!-- [ Main Content ] start -->
-<div class="pcoded-main-container">
-    <div class="pcoded-wrapper">
-        <div class="pcoded-content">
-            <div class="pcoded-inner-content">
-                <div class="main-body">
-                    <div class="page-wrapper">
-                        <!-- [ Main Content ] start -->
-                        <div class="main-content">
-                            <div class="page-header card">
-                                <div class="row align-items-center">
-                                    <div class="col-md-6">
-                                        <h5 class="mb-0"><i class="feather icon-users mr-2"></i>Creditors Management</h5>
-                                        <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;">Manage your creditors and track outstanding balances</p>
-                                    </div>
-                                    <div class="col-md-6 text-end">
-                                        <a href="dashboard.php" class="btn btn-outline-secondary btn-sm">
-                                            <i class="feather icon-arrow-left mr-1"></i>Back to Dashboard
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="row">
-                                <!-- Summary Cards -->
-                                <div class="col-xl-3 col-md-6">
-                                    <div class="card text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                                        <div class="card-body">
-                                            <div class="row align-items-center">
-                                                <div class="col">
-                                                    <p class="m-b-5 text-white" style="opacity: 0.9;">Total Creditors</p>
-                                                    <h4 class="m-b-0 font-weight-bold"><?= number_format($summary['total_creditors'] ?? 0) ?></h4>
-                                                </div>
-                                                <div class="col col-auto text-right">
-                                                    <i class="fas fa-users f-50" style="opacity: 0.3;"></i>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-xl-3 col-md-6">
-                                    <div class="card text-white" style="background: linear-gradient(135deg, #2ed8b6 0%, #20bf6b 100%);">
-                                        <div class="card-body">
-                                            <div class="row align-items-center">
-                                                <div class="col">
-                                                    <p class="m-b-5 text-white" style="opacity: 0.9;">Active Creditors</p>
-                                                    <h4 class="m-b-0 font-weight-bold"><?= number_format($summary['active_creditors'] ?? 0) ?></h4>
-                                                </div>
-                                                <div class="col col-auto text-right">
-                                                    <i class="fas fa-user-check f-50" style="opacity: 0.3;"></i>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-xl-3 col-md-6">
-                                    <div class="card text-white" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);">
-                                        <div class="card-body">
-                                            <div class="row align-items-center">
-                                                <div class="col">
-                                                    <p class="m-b-5 text-white" style="opacity: 0.9;">Total Outstanding</p>
-                                                    <h4 class="m-b-0 font-weight-bold">$<?= number_format($summary['total_outstanding'] ?? 0, 2) ?></h4>
-                                                </div>
-                                                <div class="col col-auto text-right">
-                                                    <i class="fas fa-dollar-sign f-50" style="opacity: 0.3;"></i>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-xl-3 col-md-6">
-                                    <div class="card text-white" style="background: linear-gradient(135deg, #feca57 0%, #ff9f43 100%);">
-                                        <div class="card-body">
-                                            <div class="row align-items-center">
-                                                <div class="col">
-                                                    <p class="m-b-5 text-white" style="opacity: 0.9;">Average Credit</p>
-                                                    <h4 class="m-b-0 font-weight-bold">$<?= number_format($summary['avg_credit_amount'] ?? 0, 2) ?></h4>
-                                                </div>
-                                                <div class="col col-auto text-right">
-                                                    <i class="fas fa-chart-line f-50" style="opacity: 0.3;"></i>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="row">
-                                <div class="col-md-12">
-                                    <!-- Branch and Search Section -->
-                                    <div class="card">
-                                        <div class="card-body">
-                                            <div class="row align-items-center">
-                                                <div class="col-md-4">
-                                                    <div class="branch-selector">
-                                                        <label for="branchSelect" class="form-label mb-2">
-                                                            <i class="feather icon-map-pin mr-1"></i>Select Branch:
-                                                        </label>
-                                                        <select id="branchSelect" class="form-control">
-                                                            <option value="all" <?= $selected_branch === 'all' ? 'selected' : '' ?>>All Branches</option>
-                                                            <?php
-                                                            try {
-                                                                $branch_stmt = $pdo->prepare("SELECT id, name FROM branches WHERE tenant_id = ? AND status = 'active' ORDER BY name");
-                                                                $branch_stmt->execute([$tenant_id]);
-                                                                $branches = $branch_stmt->fetchAll(PDO::FETCH_ASSOC);
-
-                                                                foreach ($branches as $branch) {
-                                                                    $selected = ($selected_branch == $branch['id']) ? 'selected' : '';
-                                                                    echo '<option value="' . $branch['id'] . '" ' . $selected . '>' . htmlspecialchars($branch['name']) . '</option>';
-                                                                }
-                                                            } catch (PDOException $e) {
-                                                                error_log("Error fetching branches: " . $e->getMessage());
-                                                            }
-                                                            ?>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-8">
-                                                    <div class="search-box">
-                                                        <label for="searchInput" class="form-label mb-2">
-                                                            <i class="feather icon-search mr-1"></i>Search:
-                                                        </label>
-                                                        <div class="input-group">
-                                                            <input type="text" id="searchInput" class="form-control" placeholder="Search by creditor name, email, or phone" value="<?= htmlspecialchars($search) ?>">
-                                                            <div class="input-group-append">
-                                                                <button class="btn btn-primary" type="button" id="searchBtn">
-                                                                    <i class="feather icon-search"></i> Search
-                                                                </button>
-                                                                <?php if (!empty($search)): ?>
-                                                                <a href="?branch=<?= urlencode($selected_branch) ?>" class="btn btn-secondary">
-                                                                    <i class="feather icon-x"></i> Clear
-                                                                </a>
-                                                                <?php endif; ?>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Creditors Table Section -->
-                                    <div class="card">
-                                        <div class="card-header">
-                                            <h5><i class="feather icon-list mr-2"></i>Creditors List</h5>
-                                        </div>
-                                        <div class="card-body p-0">
-                                            <div class="table-responsive">
-                                                <table class="table table-hover">
-                                                    <thead>
-                                                        <tr>
-                                                            <th class="text-center" width="50">#</th>
-                                                            <th width="100">
-                                                                <i class="feather icon-cog mr-1"></i>Action
-                                                            </th>
-                                                            <th>
-                                                                <i class="feather icon-user mr-1"></i>Creditor Details
-                                                            </th>
-                                                            <th>
-                                                                <i class="feather icon-dollar-sign mr-1"></i>Financial Info
-                                                            </th>
-                                                            <th>
-                                                                <i class="feather icon-map-pin mr-1"></i>Branch
-                                                            </th>
-                                                            <th>
-                                                                <i class="feather icon-info mr-1"></i>Status
-                                                            </th>
-                                                            <th>
-                                                                <i class="feather icon-calendar mr-1"></i>Created Date
-                                                            </th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody id="creditorsTable">
-                                                        <?php
-                                                        $counter = $offset + 1;
-                                                        foreach ($creditors as $creditor):
-                                                        ?>
-                                                        <tr>
-                                                            <td class="text-center"><?= $counter++ ?></td>
-                                                            <td>
-                                                                <div class="dropdown">
-                                                                    <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" data-toggle="dropdown">
-                                                                        <i class="feather icon-more-vertical"></i>
-                                                                    </button>
-                                                                    <div class="dropdown-menu dropdown-menu-right">
-                                                                        <button class="dropdown-item view-details" data-creditor='<?= htmlspecialchars(json_encode($creditor)) ?>'>
-                                                                            <i class="feather icon-eye text-primary mr-2"></i> View Details
-                                                                        </button>
-                                                                        <button class="dropdown-item view-transactions" data-creditor-id="<?= $creditor['id'] ?>" data-creditor-name="<?= htmlspecialchars($creditor['name']) ?>">
-                                                                            <i class="feather icon-activity text-info mr-2"></i> View Transactions
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-
-                                                            <td>
-                                                                <div class="creditor-info">
-                                                                    <div class="creditor-info__name">
-                                                                        <strong><?= htmlspecialchars($creditor['name']) ?></strong>
-                                                                    </div>
-                                                                    <?php if (!empty($creditor['email'])): ?>
-                                                                    <div class="creditor-info__email">
-                                                                        <small class="text-muted">
-                                                                            <i class="feather icon-mail mr-1"></i>
-                                                                            <?= htmlspecialchars($creditor['email']) ?>
-                                                                        </small>
-                                                                    </div>
-                                                                    <?php endif; ?>
-                                                                    <?php if (!empty($creditor['phone'])): ?>
-                                                                    <div class="creditor-info__phone">
-                                                                        <small class="text-muted">
-                                                                            <i class="feather icon-phone mr-1"></i>
-                                                                            <?= htmlspecialchars($creditor['phone']) ?>
-                                                                        </small>
-                                                                    </div>
-                                                                    <?php endif; ?>
-                                                                </div>
-                                                            </td>
-
-                                                            <td>
-                                                                <div class="financial-info">
-                                                                    <div class="financial-info__balance">
-                                                                        <strong class="text-<?= $creditor['current_balance'] >= 0 ? 'success' : 'danger' ?>">
-                                                                            $<?= number_format(abs($creditor['current_balance']), 2) ?>
-                                                                        </strong>
-                                                                        <small class="text-muted d-block">
-                                                                            (<?= $creditor['current_balance'] >= 0 ? 'We owe' : 'Owed to us' ?>)
-                                                                        </small>
-                                                                    </div>
-                                                                    <div class="financial-info__transactions mt-1">
-                                                                        <small class="text-muted">
-                                                                            <i class="feather icon-activity mr-1"></i>
-                                                                            <?= number_format($creditor['transaction_count']) ?> transactions
-                                                                        </small>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-
-                                                            <td>
-                                                                <span class="badge badge-secondary">
-                                                                    <?= htmlspecialchars($creditor['branch_name'] ?? 'N/A') ?>
-                                                                </span>
-                                                            </td>
-
-                                                            <td>
-                                                                <div class="status-info">
-                                                                    <span class="badge badge-<?= $creditor['status'] === 'active' ? 'success' : 'secondary' ?> badge-pill">
-                                                                        <?= ucfirst(htmlspecialchars($creditor['status'])) ?>
-                                                                    </span>
-                                                                </div>
-                                                            </td>
-
-                                                            <td>
-                                                                <div class="date-info">
-                                                                    <div class="date-info__date">
-                                                                        <?= date('d/m/Y', strtotime($creditor['created_at'])) ?>
-                                                                    </div>
-                                                                    <div class="date-info__time">
-                                                                        <small class="text-muted">
-                                                                            <?= date('H:i', strtotime($creditor['created_at'])) ?>
-                                                                        </small>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                        <?php endforeach; ?>
-                                                    </tbody>
-                                                </table>
-                                            </div>
-
-                                            <!-- Pagination -->
-                                            <?php if ($total_pages > 1): ?>
-                                            <div class="card-footer bg-white">
-                                                <div class="d-flex justify-content-between align-items-center">
-                                                    <div class="text-muted">
-                                                        Showing <?= min(($page - 1) * $results_per_page + 1, $total_creditors) ?> to <?= min($page * $results_per_page, $total_creditors) ?> of <?= $total_creditors ?> creditors
-                                                    </div>
-                                                    <nav aria-label="Page navigation">
-                                                        <ul class="pagination mb-0">
-                                                            <?php if ($page > 1): ?>
-                                                                <li class="page-item">
-                                                                    <a class="page-link" href="?page=1&search=<?= urlencode($search) ?>&branch=<?= urlencode($selected_branch) ?>">
-                                                                        <i class="feather icon-chevrons-left"></i>
-                                                                    </a>
-                                                                </li>
-                                                                <li class="page-item">
-                                                                    <a class="page-link" href="?page=<?= $page - 1 ?>&search=<?= urlencode($search) ?>&branch=<?= urlencode($selected_branch) ?>">
-                                                                        <i class="feather icon-chevron-left"></i>
-                                                                    </a>
-                                                                </li>
-                                                            <?php endif; ?>
-
-                                                            <?php
-                                                            $start_page = max(1, $page - 2);
-                                                            $end_page = min($total_pages, $page + 2);
-
-                                                            if ($start_page > 1) {
-                                                                echo '<li class="page-item"><a class="page-link" href="?page=1&search=' . urlencode($search) . '&branch=' . urlencode($selected_branch) . '">1</a></li>';
-                                                                if ($start_page > 2) {
-                                                                    echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
-                                                                }
-                                                            }
-
-                                                            for ($i = $start_page; $i <= $end_page; $i++) {
-                                                                echo '<li class="page-item ' . ($i == $page ? 'active' : '') . '">
-                                                                    <a class="page-link" href="?page=' . $i . '&search=' . urlencode($search) . '&branch=' . urlencode($selected_branch) . '">' . $i . '</a>
-                                                                </li>';
-                                                            }
-
-                                                            if ($end_page < $total_pages) {
-                                                                if ($end_page < $total_pages - 1) {
-                                                                    echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
-                                                                }
-                                                                echo '<li class="page-item"><a class="page-link" href="?page=' . $total_pages . '&search=' . urlencode($search) . '&branch=' . urlencode($selected_branch) . '">' . $total_pages . '</a></li>';
-                                                            }
-                                                            ?>
-
-                                                            <?php if ($page < $total_pages): ?>
-                                                                <li class="page-item">
-                                                                    <a class="page-link" href="?page=<?= $page + 1 ?>&search=<?= urlencode($search) ?>&branch=<?= urlencode($selected_branch) ?>">
-                                                                        <i class="feather icon-chevron-right"></i>
-                                                                    </a>
-                                                                </li>
-                                                                <li class="page-item">
-                                                                    <a class="page-link" href="?page=<?= $total_pages ?>&search=<?= urlencode($search) ?>&branch=<?= urlencode($selected_branch) ?>">
-                                                                        <i class="feather icon-chevrons-right"></i>
-                                                                    </a>
-                                                                </li>
-                                                            <?php endif; ?>
-                                                        </ul>
-                                                    </nav>
-                                                </div>
-                                            </div>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 <style>
-    /* Enhanced custom styles matching request_user_addon.php */
-    .page-header.card {
-        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-        color: #ffffff;
-        border: none;
-        margin-bottom: 20px;
-        padding: 20px !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        border-radius: 10px;
-    }
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
 
-    .page-header.card .row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
+:root {
+    --surface:#f4f7fe; --card-bg:#ffffff; --border:#e8edf5;
+    --text-main:#1a2340; --text-sub:#6b7a99;
+    --green:#22c55e; --red:#ef4444;
+    /* Creditors identity: purple â†’ indigo (liabilities) */
+    --c1:#7c3aed; --c2:#4f46e5;
+    --radius:14px; --shadow:0 2px 12px rgba(124,58,237,0.08);
+}
+*,*::before,*::after{box-sizing:border-box}
+body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important;background:var(--surface)!important;color:var(--text-main)!important}
 
-    .page-header.card h5 {
-        color: #ffffff;
-        margin: 0;
-        font-weight: 600;
-    }
+.dash-header{background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);border-radius:var(--radius);padding:24px 28px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 8px 32px rgba(124,58,237,0.28);position:relative;overflow:hidden}
+.dash-header::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.06'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat}
+.dash-header h4{font-size:22px;font-weight:800;color:#fff;margin:0 0 4px;letter-spacing:-0.4px;position:relative}
+.dash-header p{color:rgba(255,255,255,0.8);margin:0;font-size:13px;position:relative}
 
-    .page-header.card .text-end {
-        text-align: right;
-    }
+/* Stat grid */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+@media(max-width:900px){.stat-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:500px){.stat-grid{grid-template-columns:1fr}}
+.stat-card{border-radius:var(--radius);padding:20px 22px;color:#fff;position:relative;overflow:hidden}
+.stat-card::after{content:'';position:absolute;right:-10px;bottom:-10px;width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,0.1)}
+.stat-card.total    {background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);box-shadow:0 6px 20px rgba(124,58,237,0.3)}
+.stat-card.active   {background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);box-shadow:0 6px 20px rgba(5,150,105,0.3)}
+.stat-card.owed     {background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);box-shadow:0 6px 20px rgba(79,70,229,0.3)}
+.stat-card.avg      {background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);box-shadow:0 6px 20px rgba(180,83,9,0.3)}
+.stat-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;opacity:.8;margin-bottom:8px}
+.stat-value{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:800;line-height:1}
+.stat-icon{position:absolute;right:18px;top:50%;transform:translateY(-50%);font-size:30px;opacity:.22}
 
-    .page-header.card .btn {
-        background: rgba(255,255,255,0.2);
-        color: #ffffff;
-        border: 1px solid rgba(255,255,255,0.3);
-        border-radius: 25px;
-        transition: all 0.3s ease;
-    }
+/* Cards */
+.dash-card{background:var(--card-bg);border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow);overflow:hidden;margin-bottom:20px}
+.dash-card:last-child{margin-bottom:0}
+.dash-card-head{padding:15px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dash-card-head h6{font-size:14px;font-weight:700;margin:0;display:flex;align-items:center;gap:8px}
+.dash-card-head h6 .ico{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;flex-shrink:0}
+.dash-card-body{padding:20px}
+.count-badge{background:rgba(124,58,237,.1);color:#7c3aed;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;margin-left:auto}
 
-    .page-header.card .btn:hover {
-        background: rgba(255,255,255,0.3);
-        border-color: rgba(255,255,255,0.5);
-        transform: translateY(-1px);
-    }
+/* Search */
+.search-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:end}
+@media(max-width:700px){.search-row{grid-template-columns:1fr}}
+.form-label-custom{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sub);display:block;margin-bottom:6px}
+.search-group{display:flex;gap:8px}
+.form-input{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:9px 13px;font-family:inherit;font-size:13px;color:var(--text-main);background:var(--surface);outline:none;transition:border-color .2s}
+.form-input:focus{border-color:#7c3aed;background:#fff;box-shadow:0 0 0 3px rgba(124,58,237,.1)}
+.search-btn{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);color:#fff;border:none;border-radius:10px;padding:9px 18px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:opacity .2s}
+.search-btn:hover{opacity:.9}
+.clear-btn{display:inline-flex;align-items:center;gap:6px;background:var(--surface);color:var(--text-sub);border:1.5px solid var(--border);border-radius:10px;padding:9px 14px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap;flex-shrink:0;transition:all .2s}
+.clear-btn:hover{border-color:var(--text-sub);color:var(--text-main);text-decoration:none}
 
-    .card {
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-        border: none;
-    }
+/* Table */
+.data-table{width:100%;border-collapse:collapse}
+.data-table thead th{background:var(--surface);padding:11px 16px;font-size:11px;font-weight:700;color:var(--text-sub);text-transform:uppercase;letter-spacing:.6px;border-bottom:1.5px solid var(--border);white-space:nowrap}
+.data-table tbody tr{transition:background .15s}
+.data-table tbody tr:hover{background:var(--surface)}
+.data-table tbody td{padding:13px 16px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+.data-table tbody tr:last-child td{border-bottom:none}
+.td-ctr{text-align:center;font-size:12px;color:var(--text-sub);font-family:'JetBrains Mono',monospace}
 
-    .card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-    }
+/* Creditor cell */
+.cred-name{font-weight:700;color:var(--text-main);margin-bottom:4px}
+.cred-contact{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-sub);margin-bottom:3px}
+.cred-contact:last-child{margin-bottom:0}
+.cred-contact i{font-size:11px}
 
-    .card-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 10px 10px 0 0;
-        padding: 1rem 1.5rem;
-        border: none;
-    }
+/* Balance cell â€” creditor balance direction is inverse of debtor */
+.bal-val{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:800;margin-bottom:3px}
+.bal-val.owe {color:#dc2626}  /* we owe them */
+.bal-val.due {color:#059669}  /* owed to us  */
+.bal-dir{font-size:11px;font-weight:600;margin-bottom:4px}
+.bal-dir.owe{color:#dc2626} .bal-dir.due{color:#059669}
+.txn-count{font-size:11px;color:var(--text-sub);display:flex;align-items:center;gap:4px}
 
-    .card-header h5 {
-        margin: 0;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-        color: #ffffff;
-    }
+/* Status pill */
+.status-pill{display:inline-flex;align-items:center;gap:4px;border-radius:20px;padding:4px 11px;font-size:11px;font-weight:700}
+.sp-active  {background:rgba(34,197,94,.12);color:#166534}
+.sp-inactive{background:rgba(107,122,153,.1);color:var(--text-sub)}
 
-    .table-responsive {
-        border-radius: 10px;
-        
-    }
+/* Branch */
+.branch-pill{display:inline-flex;align-items:center;gap:5px;background:rgba(124,58,237,.08);color:#7c3aed;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700}
 
-    .table {
-        margin-bottom: 0;
-    }
+/* Date */
+.date-val{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-main);font-weight:600}
+.time-val{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-sub)}
 
-    .table thead th {
-        background-color: #f8f9fa;
-        border-bottom: 2px solid #dee2e6;
-        font-weight: 600;
-        color: #495057;
-        padding: 1rem;
-    }
+/* Action */
+.act-btn{width:30px;height:30px;border-radius:8px;border:1.5px solid var(--border);background:var(--card-bg);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;color:var(--text-sub);transition:all .15s}
+.act-btn:hover{background:rgba(124,58,237,.08);border-color:#7c3aed;color:#7c3aed}
+.dropdown-menu{border-radius:12px;border:1px solid var(--border);box-shadow:0 8px 24px rgba(0,0,0,.1);padding:6px;min-width:180px}
+.dropdown-item{border-radius:8px;padding:8px 12px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;transition:background .15s}
+.dropdown-item:hover{background:var(--surface)}
 
-    .table tbody tr:hover {
-        background-color: #f1f3f4;
-    }
+.empty-state{text-align:center;padding:60px 20px}
+.empty-state i{font-size:44px;opacity:.2;display:block;margin-bottom:14px}
+.empty-state p{color:var(--text-sub);font-size:14px;margin:0}
 
-    .table tbody td {
-        padding: 1rem;
-        vertical-align: middle;
-    }
+/* Pagination */
+.pag-wrap{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:16px 20px;border-top:1px solid var(--border)}
+.pag-info{font-size:12px;color:var(--text-sub)}
+.pag-links{display:flex;gap:4px}
+.pag-btn{min-width:32px;height:32px;border-radius:8px;border:1.5px solid var(--border);background:var(--card-bg);color:var(--text-main);font-size:12px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;padding:0 8px;transition:all .15s}
+.pag-btn:hover{border-color:#7c3aed;color:#7c3aed;text-decoration:none}
+.pag-btn.active{background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);border-color:transparent;color:#fff}
+.pag-btn.disabled{opacity:.4;pointer-events:none}
+.pag-dots{display:flex;align-items:center;padding:0 4px;color:var(--text-sub);font-size:13px}
 
-    .form-control {
-        border-radius: 8px;
-        border: 1px solid #ced4da;
-        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-        padding: 0.75rem;
-    }
+/* Modal */
+.modal-content{border:none;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.18);font-family:inherit}
+.modal-header{background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);color:#fff;border-radius:16px 16px 0 0;border:none;padding:18px 24px}
+.modal-header.txn-header{background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%)}
+.modal-header .modal-title{font-weight:700;font-size:15px}
+.modal-header .close{color:#fff;opacity:.8;font-size:22px}
+.modal-header .close:hover{opacity:1}
 
-    .form-control:focus {
-        border-color: #4099ff;
-        box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
-    }
+/* 2-col strip */
+.modal-summary{display:grid;grid-template-columns:1fr 1fr;background:var(--surface);border-bottom:1px solid var(--border)}
+.ms-cell{padding:20px;text-align:center;border-right:1px solid var(--border)}
+.ms-cell:last-child{border-right:none}
+.ms-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sub);margin-bottom:6px}
+.ms-val{font-size:24px;font-weight:800;font-family:'JetBrains Mono',monospace;line-height:1;margin-bottom:4px}
+.ms-val.purple{color:#7c3aed} .ms-val.indigo{color:#4f46e5}
+.ms-val.owe{color:#dc2626}    .ms-val.due{color:#059669}
+.ms-sub{font-size:11px;font-weight:600;color:var(--text-sub)}
 
-    .form-label {
-        font-weight: 500;
-        color: #495057;
-    }
+.modal-body{padding:0}
+.modal-tabs{display:flex;gap:6px;padding:16px 24px 0;border-bottom:1px solid var(--border)}
+.modal-tab{background:none;border:none;border-bottom:3px solid transparent;padding:8px 16px 12px;font-family:inherit;font-size:13px;font-weight:700;color:var(--text-sub);cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:6px;margin-bottom:-1px}
+.modal-tab.active{color:#7c3aed;border-bottom-color:#7c3aed}
+.modal-tab:hover{color:#7c3aed}
+.modal-pane{display:none;padding:24px}
+.modal-pane.active{display:block}
+.detail-section{background:var(--surface);border-radius:12px;padding:18px;margin-bottom:14px}
+.detail-section:last-child{margin-bottom:0}
+.ds-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sub);margin-bottom:14px}
+.ds-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)}
+.ds-row:last-child{border-bottom:none}
+.ds-key{font-size:13px;color:var(--text-sub)}
+.ds-val{font-size:13px;font-weight:700;color:var(--text-main);text-align:right}
+.ds-val.purple{color:#7c3aed} .ds-val.indigo{color:#4f46e5}
+.ds-val.owe{color:#dc2626}    .ds-val.due{color:#059669}
 
-    .btn-primary {
-        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-        border: none;
-        border-radius: 25px;
-        padding: 0.75rem 2rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
+.txn-loading{text-align:center;padding:40px}
+.spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:#7c3aed;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-    .btn-primary:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
-    }
+.modal-footer-custom{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end}
+.btn-close-modal{display:inline-flex;align-items:center;gap:7px;background:var(--surface);color:var(--text-sub);border:1.5px solid var(--border);border-radius:10px;padding:10px 20px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-close-modal:hover{border-color:var(--text-sub);color:var(--text-main)}
 
-    .btn-secondary {
-        border-radius: 25px;
-        padding: 0.75rem 2rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-
-    .badge {
-        font-size: 0.85em;
-        padding: 0.5em 0.75em;
-        border-radius: 20px;
-        font-weight: 500;
-    }
-
-    .badge-success {
-        background-color: #28a745;
-    }
-
-    .badge-secondary {
-        background-color: #6c757d;
-    }
-
-    .pagination .page-link {
-        border-radius: 50%;
-        margin: 0 2px;
-        border: none;
-        color: #495057;
-    }
-
-    .pagination .page-item.active .page-link {
-        background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-        color: white;
-    }
-
-    .pagination .page-link:hover {
-        background: #f1f3f4;
-    }
-
-    .dropdown-menu {
-        border-radius: 10px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        border: none;
-    }
-
-    .dropdown-item {
-        border-radius: 5px;
-        margin: 2px 5px;
-        padding: 0.5rem 1rem;
-    }
-
-    .dropdown-item:hover {
-        background-color: #f1f3f4;
-    }
+.pcoded-content{padding:20px!important}
+.page-header{display:none!important}
 </style>
 
+<div class="pcoded-main-container">
+<div class="pcoded-content">
+
+    <!-- Header -->
+    <div class="dash-header">
+        <div>
+            <h4><i class="feather icon-users" style="margin-right:8px;"></i>Creditors Management</h4>
+            <p>Manage creditors and track outstanding liabilities</p>
+        </div>
+    </div>
+
+    <!-- Stat cards -->
+    <div class="stat-grid">
+        <div class="stat-card total">
+            <div class="stat-label">Total Creditors</div>
+            <div class="stat-value"><?= number_format($summary['total_creditors'] ?? 0) ?></div>
+            <i class="feather icon-users stat-icon"></i>
+        </div>
+        <div class="stat-card active">
+            <div class="stat-label">Active Creditors</div>
+            <div class="stat-value"><?= number_format($summary['active_creditors'] ?? 0) ?></div>
+            <i class="feather icon-user-check stat-icon"></i>
+        </div>
+        <div class="stat-card owed">
+            <div class="stat-label">Total Outstanding</div>
+            <div class="stat-value">$<?= number_format($summary['total_outstanding'] ?? 0, 0) ?></div>
+            <i class="feather icon-credit-card stat-icon"></i>
+        </div>
+        <div class="stat-card avg">
+            <div class="stat-label">Average Credit</div>
+            <div class="stat-value">$<?= number_format($summary['avg_credit_amount'] ?? 0, 0) ?></div>
+            <i class="feather icon-trending-up stat-icon"></i>
+        </div>
+    </div>
+
+    <!-- Search & Filter -->
+    <div class="dash-card">
+        <div class="dash-card-head">
+            <h6><span class="ico"><i class="feather icon-filter"></i></span>Filter &amp; Search</h6>
+        </div>
+        <div class="dash-card-body">
+            <div class="search-row">
+                <div>
+                    <label class="form-label-custom">Branch</label>
+                    <select class="form-input" id="branchSelect">
+                        <option value="all" <?= $selected_branch==='all'?'selected':'' ?>>All Branches</option>
+                        <?php foreach ($branches as $b): ?>
+                        <option value="<?= $b['id'] ?>" <?= $selected_branch==$b['id']?'selected':'' ?>><?= htmlspecialchars($b['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label-custom">Search Creditor</label>
+                    <div class="search-group">
+                        <input type="text" id="searchInput" class="form-input" placeholder="Name, email, or phoneâ€¦" value="<?= htmlspecialchars($search) ?>">
+                        <button class="search-btn" id="searchBtn"><i class="feather icon-search"></i>Search</button>
+                        <?php if (!empty($search)): ?>
+                        <a href="?branch=<?= urlencode($selected_branch) ?>" class="clear-btn"><i class="feather icon-x"></i>Clear</a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="dash-card">
+        <div class="dash-card-head">
+            <h6><span class="ico"><i class="feather icon-list"></i></span>Creditors List</h6>
+            <span class="count-badge"><?= number_format($total_creditors) ?> creditors</span>
+        </div>
+
+        <?php if (!empty($creditors)): ?>
+        <div style="overflow-x:auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width:44px;">#</th>
+                        <th style="width:60px;"></th>
+                        <th>Creditor Details</th>
+                        <th>Balance</th>
+                        <th>Branch</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php $counter = $offset + 1; foreach ($creditors as $cred):
+                    $bal    = floatval($cred['current_balance']);
+                    // For creditors: positive balance = we owe them (bad), negative = owed to us (good)
+                    $weOwe  = $bal >= 0;
+                    $balCls = $weOwe ? 'owe' : 'due';
+                    $balDir = $weOwe ? 'We owe' : 'Owed to us';
+                    $stCls  = $cred['status'] === 'active' ? 'sp-active' : 'sp-inactive';
+                ?>
+                <tr>
+                    <td class="td-ctr"><?= $counter++ ?></td>
+                    <td>
+                        <div class="dropdown">
+                            <button class="act-btn dropdown-toggle" type="button" data-toggle="dropdown">
+                                <i class="feather icon-more-vertical"></i>
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-right">
+                                <button class="dropdown-item view-details" data-creditor='<?= htmlspecialchars(json_encode($cred)) ?>'>
+                                    <i class="feather icon-eye" style="color:#7c3aed"></i>View Details
+                                </button>
+                                <button class="dropdown-item view-transactions" data-creditor-id="<?= $cred['id'] ?>" data-creditor-name="<?= htmlspecialchars($cred['name']) ?>">
+                                    <i class="feather icon-activity" style="color:#4f46e5"></i>View Transactions
+                                </button>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="cred-name"><?= htmlspecialchars($cred['name']) ?></div>
+                        <?php if (!empty($cred['email'])): ?>
+                        <div class="cred-contact"><i class="feather icon-mail"></i><?= htmlspecialchars($cred['email']) ?></div>
+                        <?php endif; ?>
+                        <?php if (!empty($cred['phone'])): ?>
+                        <div class="cred-contact"><i class="feather icon-phone"></i><?= htmlspecialchars($cred['phone']) ?></div>
+                        <?php endif; ?>
+                    </td>
+                    <td>
+                        <div class="bal-val <?= $balCls ?>">$<?= number_format(abs($bal), 2) ?></div>
+                        <div class="bal-dir <?= $balCls ?>"><?= $balDir ?></div>
+                        <div class="txn-count"><i class="feather icon-activity"></i><?= number_format($cred['transaction_count']) ?> txns</div>
+                    </td>
+                    <td>
+                        <span class="branch-pill"><i class="feather icon-git-branch"></i><?= htmlspecialchars($cred['branch_name'] ?? 'N/A') ?></span>
+                    </td>
+                    <td>
+                        <span class="status-pill <?= $stCls ?>"><?= ucfirst(htmlspecialchars($cred['status'] ?? 'â€”')) ?></span>
+                    </td>
+                    <td>
+                        <div class="date-val"><?= date('d/m/Y', strtotime($cred['created_at'])) ?></div>
+                        <div class="time-val"><?= date('H:i', strtotime($cred['created_at'])) ?></div>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pag-wrap">
+            <div class="pag-info">Showing <?= $from ?>â€“<?= $to ?> of <?= number_format($total_creditors) ?> creditors</div>
+            <div class="pag-links">
+                <?php $base = '?branch='.urlencode($selected_branch).'&search='.urlencode($search); ?>
+                <a href="<?= $base ?>&page=1" class="pag-btn <?= $page<=1?'disabled':'' ?>"><i class="feather icon-chevrons-left"></i></a>
+                <a href="<?= $base ?>&page=<?= $page-1 ?>" class="pag-btn <?= $page<=1?'disabled':'' ?>"><i class="feather icon-chevron-left"></i></a>
+                <?php
+                $sp2=max(1,$page-2); $ep=min($total_pages,$page+2);
+                if($sp2>1){echo '<a href="'.$base.'&page=1" class="pag-btn">1</a>';if($sp2>2)echo '<span class="pag-dots">â€¦</span>';}
+                for($i=$sp2;$i<=$ep;$i++) echo '<a href="'.$base.'&page='.$i.'" class="pag-btn '.($i==$page?'active':'').'">'.$i.'</a>';
+                if($ep<$total_pages){if($ep<$total_pages-1)echo '<span class="pag-dots">â€¦</span>';echo '<a href="'.$base.'&page='.$total_pages.'" class="pag-btn">'.$total_pages.'</a>';}
+                ?>
+                <a href="<?= $base ?>&page=<?= $page+1 ?>" class="pag-btn <?= $page>=$total_pages?'disabled':'' ?>"><i class="feather icon-chevron-right"></i></a>
+                <a href="<?= $base ?>&page=<?= $total_pages ?>" class="pag-btn <?= $page>=$total_pages?'disabled':'' ?>"><i class="feather icon-chevrons-right"></i></a>
+            </div>
+        </div>
+
+        <?php else: ?>
+        <div class="empty-state">
+            <i class="feather icon-users"></i>
+            <p>No creditors found<?= !empty($search) ? ' for "'.$search.'"' : '' ?>.</p>
+        </div>
+        <?php endif; ?>
+    </div>
+
+</div>
+</div>
+
 <!-- Creditor Details Modal -->
-<div class="modal fade" id="detailsModal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header text-white border-0" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                <h5 class="modal-title">
-                    <i class="feather icon-user mr-2"></i>Creditor Details
-                </h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+<div class="modal fade" id="detailsModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="feather icon-user" style="margin-right:8px;"></i>Creditor Details</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
             </div>
-            <div class="modal-body p-0">
-                <!-- Top Summary Card -->
-                <div class="bg-light p-4 border-bottom">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="balance-summary">
-                                <div class="balance-summary__label">Current Balance</div>
-                                <div class="balance-summary__amount" id="current-balance">-</div>
-                                <div class="balance-summary__status" id="balance-status">-</div>
-                            </div>
+
+            <!-- 2-col strip -->
+            <div class="modal-summary">
+                <div class="ms-cell">
+                    <div class="ms-label">Current Balance</div>
+                    <div class="ms-val" id="modal-balance">â€”</div>
+                    <div class="ms-sub" id="modal-balance-dir">â€”</div>
+                </div>
+                <div class="ms-cell">
+                    <div class="ms-label">Transactions</div>
+                    <div class="ms-val purple" id="modal-txn-count">â€”</div>
+                    <div class="ms-sub" id="modal-created">â€”</div>
+                </div>
+            </div>
+
+            <div class="modal-body">
+                <div class="modal-tabs">
+                    <button class="modal-tab active" onclick="switchTab('summary',this)"><i class="feather icon-info"></i>Summary</button>
+                    <button class="modal-tab" onclick="switchTab('contact',this)"><i class="feather icon-phone"></i>Contact Info</button>
+                </div>
+
+                <div class="modal-pane active" id="pane-summary">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                        <div class="detail-section">
+                            <div class="ds-title">Creditor Information</div>
+                            <div class="ds-row"><span class="ds-key">Name</span><span class="ds-val" id="cred-name">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Status</span><span class="ds-val" id="cred-status">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="cred-branch">â€”</span></div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="transaction-summary">
-                                <div class="transaction-summary__label">Transaction History</div>
-                                <div class="transaction-summary__count" id="transaction-count">-</div>
-                                <div class="transaction-summary__created" id="created-date">-</div>
-                            </div>
+                        <div class="detail-section">
+                            <div class="ds-title">Financial Summary</div>
+                            <div class="ds-row"><span class="ds-key">Original Balance</span><span class="ds-val purple" id="cred-orig-bal" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Current Balance</span><span class="ds-val" id="cred-cur-bal" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Currency</span><span class="ds-val" id="cred-currency" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Transactions</span><span class="ds-val indigo" id="cred-txn-count" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Tabs Navigation -->
-                <ul class="nav nav-pills nav-fill p-3" id="detailsTab" role="tablist">
-                    <li class="nav-item">
-                        <a class="nav-link active" id="details-summary-tab" data-toggle="tab" href="#details-summary" role="tab">
-                            <i class="feather icon-info mr-2"></i>Summary
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" id="details-contact-tab" data-toggle="tab" href="#details-contact" role="tab">
-                            <i class="feather icon-phone mr-2"></i>Contact Info
-                        </a>
-                    </li>
-                </ul>
-
-                <!-- Tab Content -->
-                <div class="tab-content p-4">
-                    <!-- Summary Tab -->
-                    <div class="tab-pane fade show active" id="details-summary" role="tabpanel">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="card border-0 shadow-sm mb-3">
-                                    <div class="card-body">
-                                        <h6 class="card-subtitle mb-3 text-muted">Creditor Information</h6>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">Name</span>
-                                            <strong id="creditor-name">-</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">Status</span>
-                                            <strong id="creditor-status">-</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between">
-                                            <span class="text-muted">Branch</span>
-                                            <strong id="creditor-branch">-</strong>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="card border-0 shadow-sm mb-3">
-                                    <div class="card-body">
-                                        <h6 class="card-subtitle mb-3 text-muted">Financial Summary</h6>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">Original Balance</span>
-                                            <strong id="original-balance">-</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">Current Balance</span>
-                                            <strong id="current-balance-detail">-</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted">Currency</span>
-                                            <strong id="creditor-currency">-</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between">
-                                            <span class="text-muted">Total Transactions</span>
-                                            <strong id="total-transactions">-</strong>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Contact Info Tab -->
-                    <div class="tab-pane fade" id="details-contact" role="tabpanel">
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-body">
-                                <h6 class="card-subtitle mb-3 text-muted">Contact Information</h6>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Email</span>
-                                    <strong id="creditor-email">-</strong>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Phone</span>
-                                    <strong id="creditor-phone">-</strong>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Address</span>
-                                    <strong id="creditor-address">-</strong>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Creditor ID</span>
-                                    <strong id="creditor-id">-</strong>
-                                </div>
-                                <div class="d-flex justify-content-between">
-                                    <span class="text-muted">Created At</span>
-                                    <strong id="creditor-created-at">-</strong>
-                                </div>
-                            </div>
-                        </div>
+                <div class="modal-pane" id="pane-contact">
+                    <div class="detail-section">
+                        <div class="ds-title">Contact Information</div>
+                        <div class="ds-row"><span class="ds-key">Email</span><span class="ds-val" id="cred-email" style="font-size:12px;">â€”</span></div>
+                        <div class="ds-row"><span class="ds-key">Phone</span><span class="ds-val" id="cred-phone" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
+                        <div class="ds-row"><span class="ds-key">Address</span><span class="ds-val" id="cred-address">â€”</span></div>
+                        <div class="ds-row"><span class="ds-key">Creditor ID</span><span class="ds-val" id="cred-id" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
+                        <div class="ds-row"><span class="ds-key">Created At</span><span class="ds-val" id="cred-created" style="font-family:'JetBrains Mono',monospace;font-size:11px;">â€”</span></div>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer border-0 bg-light">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">
-                    <i class="feather icon-x mr-2"></i>Close
-                </button>
+
+            <div class="modal-footer-custom">
+                <button type="button" class="btn-close-modal" data-dismiss="modal"><i class="feather icon-x"></i>Close</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Transaction History Modal -->
-<div class="modal fade" id="transactionsModal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-xl" role="document">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header text-white border-0" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                <h5 class="modal-title">
-                    <i class="feather icon-activity mr-2"></i>Transaction History - <span id="creditor-name-header"></span>
-                </h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+<!-- Transactions Modal -->
+<div class="modal fade" id="transactionsModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header txn-header">
+                <h5 class="modal-title"><i class="feather icon-activity" style="margin-right:8px;"></i>Transaction History â€” <span id="creditor-name-header"></span></h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body" style="padding:0;">
                 <div id="transactionsContent">
-                    <div class="text-center">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="sr-only">Loading...</span>
-                        </div>
-                        <p class="mt-2">Loading transaction history...</p>
+                    <div class="txn-loading">
+                        <div class="spinner"></div>
+                        <p style="color:var(--text-sub);font-size:13px;margin:0;">Loading transaction historyâ€¦</p>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer border-0 bg-light">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">
-                    <i class="feather icon-x mr-2"></i>Close
-                </button>
+            <div class="modal-footer-custom">
+                <button type="button" class="btn-close-modal" data-dismiss="modal"><i class="feather icon-x"></i>Close</button>
             </div>
         </div>
     </div>
@@ -815,101 +482,75 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
 <?php include 'footer.php'; ?>
 
 <script>
-// Handle search functionality
-document.getElementById('searchBtn').addEventListener('click', function() {
-    const searchValue = document.getElementById('searchInput').value.trim();
-    const branchValue = document.getElementById('branchSelect').value;
+document.getElementById('branchSelect').addEventListener('change', doSearch);
+document.getElementById('searchBtn').addEventListener('click', doSearch);
+document.getElementById('searchInput').addEventListener('keypress', e => { if(e.key==='Enter') doSearch(); });
 
-    let url = '?';
-    const params = [];
-    if (branchValue) {
-        params.push('branch=' + encodeURIComponent(branchValue));
-    }
-    if (searchValue) {
-        params.push('search=' + encodeURIComponent(searchValue));
-    }
-    url += params.join('&');
+function doSearch() {
+    const s = document.getElementById('searchInput').value.trim();
+    const b = document.getElementById('branchSelect').value;
+    window.location.href = '?branch=' + encodeURIComponent(b) + (s ? '&search=' + encodeURIComponent(s) : '');
+}
 
-    window.location.href = url;
-});
+function switchTab(tab, btn) {
+    document.querySelectorAll('.modal-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.modal-tab').forEach(b => b.classList.remove('active'));
+    document.getElementById('pane-' + tab).classList.add('active');
+    btn.classList.add('active');
+}
 
-// Handle branch selector change
-document.getElementById('branchSelect').addEventListener('change', function() {
-    const branchValue = this.value;
-    const searchValue = document.getElementById('searchInput').value.trim();
+document.querySelectorAll('.view-details').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const c   = JSON.parse(this.getAttribute('data-creditor'));
+        const bal = parseFloat(c.current_balance || 0);
+        const weOwe = bal >= 0;
+        const balFmt = '$' + Math.abs(bal).toFixed(2);
+        const balDir = weOwe ? 'We owe' : 'Owed to us';
 
-    let url = '?';
-    const params = [];
-    if (branchValue) {
-        params.push('branch=' + encodeURIComponent(branchValue));
-    }
-    if (searchValue) {
-        params.push('search=' + encodeURIComponent(searchValue));
-    }
-    url += params.join('&');
+        const mBal = document.getElementById('modal-balance');
+        mBal.textContent = balFmt;
+        mBal.className   = 'ms-val ' + (weOwe ? 'owe' : 'due');
+        document.getElementById('modal-balance-dir').textContent = balDir;
+        document.getElementById('modal-txn-count').textContent  = c.transaction_count + ' transactions';
+        document.getElementById('modal-created').textContent    = c.created_at ? new Date(c.created_at).toLocaleDateString() : 'â€”';
 
-    window.location.href = url;
-});
+        document.getElementById('cred-name').textContent   = c.name || 'â€”';
+        document.getElementById('cred-status').textContent = (c.status||'').charAt(0).toUpperCase() + (c.status||'').slice(1);
+        document.getElementById('cred-branch').textContent = c.branch_name || 'N/A';
 
-// Handle enter key in search input
-document.getElementById('searchInput').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        document.getElementById('searchBtn').click();
-    }
-});
+        document.getElementById('cred-orig-bal').textContent = '$' + parseFloat(c.balance||0).toFixed(2);
+        const curEl = document.getElementById('cred-cur-bal');
+        curEl.textContent = balFmt;
+        curEl.className   = 'ds-val ' + (weOwe ? 'owe' : 'due');
+        document.getElementById('cred-currency').textContent  = c.currency || 'â€”';
+        document.getElementById('cred-txn-count').textContent = c.transaction_count;
 
-// Handle view details modal
-document.querySelectorAll('.view-details').forEach(button => {
-    button.addEventListener('click', function() {
-        const creditorData = JSON.parse(this.getAttribute('data-creditor'));
+        document.getElementById('cred-email').textContent   = c.email   || 'N/A';
+        document.getElementById('cred-phone').textContent   = c.phone   || 'N/A';
+        document.getElementById('cred-address').textContent = c.address || 'N/A';
+        document.getElementById('cred-id').textContent      = c.id      || 'â€”';
+        document.getElementById('cred-created').textContent = c.created_at ? new Date(c.created_at).toLocaleString() : 'â€”';
 
-        // Populate modal with creditor data
-        const balance = parseFloat(creditorData.current_balance || 0);
-        document.getElementById('current-balance').textContent = '$' + Math.abs(balance).toFixed(2);
-        document.getElementById('balance-status').textContent = balance >= 0 ? 'We owe' : 'Owed to us';
-        document.getElementById('transaction-count').textContent = creditorData.transaction_count + ' transactions';
-        document.getElementById('created-date').textContent = creditorData.created_at ? new Date(creditorData.created_at).toLocaleString() : 'N/A';
-
-        document.getElementById('creditor-name').textContent = creditorData.name;
-        document.getElementById('creditor-status').textContent = creditorData.status.charAt(0).toUpperCase() + creditorData.status.slice(1);
-        document.getElementById('creditor-branch').textContent = creditorData.branch_name || 'N/A';
-
-        document.getElementById('original-balance').textContent = '$' + parseFloat(creditorData.balance || 0).toFixed(2);
-        document.getElementById('current-balance-detail').textContent = '$' + Math.abs(balance).toFixed(2);
-        document.getElementById('creditor-currency').textContent = creditorData.currency;
-        document.getElementById('total-transactions').textContent = creditorData.transaction_count;
-
-        document.getElementById('creditor-email').textContent = creditorData.email || 'N/A';
-        document.getElementById('creditor-phone').textContent = creditorData.phone || 'N/A';
-        document.getElementById('creditor-address').textContent = creditorData.address || 'N/A';
-        document.getElementById('creditor-id').textContent = creditorData.id;
-        document.getElementById('creditor-created-at').textContent = creditorData.created_at ? new Date(creditorData.created_at).toLocaleString() : 'N/A';
-
-        // Show modal
+        switchTab('summary', document.querySelector('.modal-tab'));
         $('#detailsModal').modal('show');
     });
 });
 
-// Handle view transactions modal
-document.querySelectorAll('.view-transactions').forEach(button => {
-    button.addEventListener('click', function() {
-        const creditorId = this.getAttribute('data-creditor-id');
-        const creditorName = this.getAttribute('data-creditor-name');
-
-        document.getElementById('creditor-name-header').textContent = creditorName;
-
-        // Load transactions via AJAX
-        fetch('get_creditor_transactions.php?creditor_id=' + creditorId)
-            .then(response => response.text())
-            .then(data => {
-                document.getElementById('transactionsContent').innerHTML = data;
-            })
-            .catch(error => {
-                document.getElementById('transactionsContent').innerHTML = '<div class="alert alert-danger">Error loading transactions: ' + error.message + '</div>';
-            });
-
-        // Show modal
+document.querySelectorAll('.view-transactions').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const id   = this.getAttribute('data-creditor-id');
+        const name = this.getAttribute('data-creditor-name');
+        document.getElementById('creditor-name-header').textContent = name;
+        document.getElementById('transactionsContent').innerHTML =
+            '<div class="txn-loading"><div class="spinner"></div><p style="color:var(--text-sub);font-size:13px;margin:0;">Loading transactionsâ€¦</p></div>';
         $('#transactionsModal').modal('show');
+        fetch('get_creditor_transactions.php?creditor_id=' + id)
+            .then(r => r.text())
+            .then(html => { document.getElementById('transactionsContent').innerHTML = html; })
+            .catch(err => {
+                document.getElementById('transactionsContent').innerHTML =
+                    '<div style="padding:20px;color:var(--red);">Error: ' + err.message + '</div>';
+            });
     });
 });
 </script>

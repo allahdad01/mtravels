@@ -219,11 +219,11 @@ $plans = $stmt->fetchAll();
         <div class="pcoded-content">
             <div class="pcoded-inner-content">
                 <!-- [ breadcrumb ] start -->
-                <div class="page-header card">
+                <div class="page-header card" style="background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%); color: white;">
                     <div class="row align-items-center">
                         <div class="col-md-6">
-                            <h5 class="mb-0"><i class="feather icon-credit-card mr-2"></i><?= __('manage_subscriptions') ?></h5>
-                            <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;"><?php echo __('manage_active_subscriptions'); ?></p>
+                            <h5 class="mb-0" style="color: white;"><i class="feather icon-credit-card mr-2"></i><?= __('manage_subscriptions') ?></h5>
+                            <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9; color: white;"><?php echo __('manage_active_subscriptions'); ?></p>
                         </div>
                         <div class="col-md-6 text-end">
                             <a href="dashboard.php" class="btn btn-outline-secondary btn-sm">
@@ -412,99 +412,142 @@ $plans = $stmt->fetchAll();
 <!-- Create Subscription Modal -->
 <div class="modal fade" id="createSubscriptionModal" tabindex="-1" role="dialog" aria-labelledby="createSubscriptionModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="createSubscriptionModalLabel"><?= __('create_subscription') ?></h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
+        <div class="modal-content sa-modal-content">
+            <div class="sa-modal-header">
+                <div class="sa-modal-title-group">
+                    <h5 class="sa-modal-title" id="createSubscriptionModalLabel">
+                        <i class="feather icon-plus-circle mr-2"></i><?= __('create_subscription') ?>
+                    </h5>
+                    <p class="sa-modal-subtitle">Set up a new subscription for a tenant</p>
+                </div>
+                <button type="button" class="sa-modal-close" data-dismiss="modal" aria-label="Close">
+                    <i class="feather icon-x"></i>
                 </button>
             </div>
-            <div class="modal-body">
+            <div class="sa-modal-body">
                 <form method="POST" action="create_subscription.php" id="createSubscriptionForm">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                     
-                    <div class="form-group">
-                        <label for="tenant_id"><?= __('tenant') ?></label>
-                        <select class="form-control" id="tenant_id" name="tenant_id" required>
-                            <option value=""><?= __('select_tenant') ?></option>
-                            <?php 
-                            // Fetch active tenants
-                            $stmt = $pdo->prepare("SELECT id, name FROM tenants WHERE status != 'deleted' ORDER BY name");
-                            $stmt->execute();
-                            $tenants_list = $stmt->fetchAll();
-                            foreach ($tenants_list as $tenant): 
-                            ?>
-                            <option value="<?= htmlspecialchars($tenant['id']) ?>">
-                                <?= htmlspecialchars($tenant['name']) ?>
-                            </option>
-                            <?php endforeach; ?>
-                        </select>
+                    <!-- Tenant & Plan Section -->
+                    <div class="sa-form-section">
+                        <h6 class="sa-form-section-title">Tenant & Plan</h6>
+                        <div class="sa-form-grid-2">
+                            <div class="sa-form-group">
+                                <label for="tenant_id" class="sa-form-label">
+                                    <?= __('tenant') ?>
+                                    <span class="sa-required">*</span>
+                                </label>
+                                <select class="sa-form-input sa-form-select" id="tenant_id" name="tenant_id" required>
+                                    <option value=""><?= __('select_tenant') ?></option>
+                                    <?php 
+                                    $stmt = $pdo->prepare("SELECT id, name FROM tenants WHERE status != 'deleted' ORDER BY name");
+                                    $stmt->execute();
+                                    $tenants_list = $stmt->fetchAll();
+                                    foreach ($tenants_list as $tenant): 
+                                    ?>
+                                    <option value="<?= htmlspecialchars($tenant['id']) ?>">
+                                        <?= htmlspecialchars($tenant['name']) ?>
+                                    </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            
+                            <div class="sa-form-group">
+                                <label for="create_plan_id" class="sa-form-label">
+                                    <?= __('plan') ?>
+                                    <span class="sa-required">*</span>
+                                </label>
+                                <select class="sa-form-input sa-form-select" id="create_plan_id" name="plan_id" required>
+                                    <option value=""><?= __('select_plan') ?></option>
+                                    <?php foreach ($plans as $plan): ?>
+                                    <option value="<?= htmlspecialchars($plan['id']) ?>" 
+                                            data-price="<?= htmlspecialchars($plan['price']) ?>">
+                                        <?= htmlspecialchars($plan['name']) ?> (<?= number_format($plan['price'], 2) ?>)
+                                    </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                     
-                    <div class="form-group">
-                        <label for="create_plan_id"><?= __('plan') ?></label>
-                        <select class="form-control" id="create_plan_id" name="plan_id" required>
-                            <option value=""><?= __('select_plan') ?></option>
-                            <?php foreach ($plans as $plan): ?>
-                            <option value="<?= htmlspecialchars($plan['id']) ?>" 
-                                    data-price="<?= htmlspecialchars($plan['price']) ?>">
-                                <?= htmlspecialchars($plan['name']) ?> - 
-                                <?= number_format($plan['price'], 2) ?> - 
-                                <?= htmlspecialchars($plan['max_users']) ?> users - 
-                                <?= htmlspecialchars($plan['trial_days']) ?> trial days
-                            </option>
-                            <?php endforeach; ?>
-                        </select>
+                    <!-- Subscription Details Section -->
+                    <div class="sa-form-section">
+                        <h6 class="sa-form-section-title">Subscription Details</h6>
+                        <div class="sa-form-grid-2">
+                            <div class="sa-form-group">
+                                <label for="create_status" class="sa-form-label">
+                                    <?= __('status') ?>
+                                    <span class="sa-required">*</span>
+                                </label>
+                                <select class="sa-form-input sa-form-select" id="create_status" name="status" required>
+                                    <option value="active"><?= __('active') ?></option>
+                                    <option value="pending"><?= __('pending') ?></option>
+                                    <option value="expired"><?= __('expired') ?></option>
+                                    <option value="cancelled"><?= __('cancelled') ?></option>
+                                </select>
+                            </div>
+                            
+                            <div class="sa-form-group">
+                                <label for="create_billing_cycle" class="sa-form-label">
+                                    <?= __('billing_cycle') ?>
+                                    <span class="sa-required">*</span>
+                                </label>
+                                <select class="sa-form-input sa-form-select" id="create_billing_cycle" name="billing_cycle" required>
+                                    <option value="monthly"><?= __('monthly') ?></option>
+                                    <option value="quarterly"><?= __('quarterly') ?></option>
+                                    <option value="yearly"><?= __('yearly') ?></option>
+                                </select>
+                            </div>
+                            
+                            <div class="sa-form-group">
+                                <label for="create_amount" class="sa-form-label">
+                                    <?= __('amount') ?>
+                                    <span class="sa-required">*</span>
+                                </label>
+                                <input type="number" step="0.01" class="sa-form-input" id="create_amount" name="amount" placeholder="0.00" required>
+                            </div>
+                            
+                            <div class="sa-form-group">
+                                <label for="create_currency" class="sa-form-label">
+                                    <?= __('currency') ?>
+                                    <span class="sa-required">*</span>
+                                </label>
+                                <input type="text" class="sa-form-input" id="create_currency" name="currency" value="USD" placeholder="USD" required>
+                                <p class="sa-form-hint">3-letter currency code (e.g., USD, EUR)</p>
+                            </div>
+                            
+                            <div class="sa-form-group">
+                                <label for="create_start_date" class="sa-form-label">
+                                    <?= __('start_date') ?>
+                                    <span class="sa-required">*</span>
+                                </label>
+                                <input type="date" class="sa-form-input" id="create_start_date" name="start_date" value="<?= date('Y-m-d') ?>" required>
+                            </div>
+                            
+                            <div class="sa-form-group">
+                                <label for="create_next_billing_date" class="sa-form-label"><?= __('next_billing_date') ?></label>
+                                <input type="date" class="sa-form-input" id="create_next_billing_date" name="next_billing_date">
+                            </div>
+                        </div>
                     </div>
                     
-                    <div class="form-group">
-                        <label for="create_status"><?= __('status') ?></label>
-                        <select class="form-control" id="create_status" name="status" required>
-                            <option value="active"><?= __('active') ?></option>
-                            <option value="pending"><?= __('pending') ?></option>
-                            <option value="expired"><?= __('expired') ?></option>
-                            <option value="cancelled"><?= __('cancelled') ?></option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="create_billing_cycle"><?= __('billing_cycle') ?></label>
-                        <select class="form-control" id="create_billing_cycle" name="billing_cycle" required>
-                            <option value="monthly"><?= __('monthly') ?></option>
-                            <option value="quarterly"><?= __('quarterly') ?></option>
-                            <option value="yearly"><?= __('yearly') ?></option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="create_amount"><?= __('amount') ?></label>
-                        <input type="number" step="0.01" class="form-control" id="create_amount" name="amount" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="create_currency"><?= __('currency') ?></label>
-                        <input type="text" class="form-control" id="create_currency" name="currency" value="USD" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="create_payment_method"><?= __('payment_method') ?></label>
-                        <input type="text" class="form-control" id="create_payment_method" name="payment_method">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="create_start_date"><?= __('start_date') ?></label>
-                        <input type="date" class="form-control" id="create_start_date" name="start_date" value="<?= date('Y-m-d') ?>" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="create_next_billing_date"><?= __('next_billing_date') ?></label>
-                        <input type="date" class="form-control" id="create_next_billing_date" name="next_billing_date">
+                    <!-- Payment Section -->
+                    <div class="sa-form-section">
+                        <h6 class="sa-form-section-title">Payment Information</h6>
+                        <div class="sa-form-grid-2">
+                            <div class="sa-form-group">
+                                <label for="create_payment_method" class="sa-form-label"><?= __('payment_method') ?></label>
+                                <input type="text" class="sa-form-input" id="create_payment_method" name="payment_method" placeholder="e.g., Credit Card, Bank Transfer">
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('cancel') ?></button>
-                <button type="submit" form="createSubscriptionForm" class="btn btn-primary"><?= __('create') ?></button>
+            <div class="sa-modal-footer">
+                <button type="button" class="sa-btn sa-btn-ghost" data-dismiss="modal"><?= __('cancel') ?></button>
+                <button type="submit" form="createSubscriptionForm" class="sa-btn sa-btn-primary">
+                    <i class="feather icon-check mr-1"></i><?= __('create') ?>
+                </button>
             </div>
         </div>
     </div>
@@ -513,87 +556,119 @@ $plans = $stmt->fetchAll();
 <!-- Edit Subscription Modal -->
 <div class="modal fade" id="editSubscriptionModal" tabindex="-1" role="dialog" aria-labelledby="editSubscriptionModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editSubscriptionModalLabel"><?= __('edit_subscription') ?></h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
+        <div class="modal-content sa-modal-content">
+            <div class="sa-modal-header">
+                <div class="sa-modal-title-group">
+                    <h5 class="sa-modal-title" id="editSubscriptionModalLabel">
+                        <i class="feather icon-edit-2 mr-2"></i><?= __('edit_subscription') ?>
+                    </h5>
+                    <p class="sa-modal-subtitle">Update subscription details and billing information</p>
+                </div>
+                <button type="button" class="sa-modal-close" data-dismiss="modal" aria-label="Close">
+                    <i class="feather icon-x"></i>
                 </button>
             </div>
-            <div class="modal-body">
-                <div id="editSubscriptionLoader" class="text-center" style="display: none;">
-                    <div class="spinner-border" role="status">
-                        <span class="sr-only">Loading...</span>
-                    </div>
+            <div class="sa-modal-body">
+                <div id="editSubscriptionLoader" class="sa-edit-loader">
+                    <div class="sa-spinner"></div>
+                    <p>Loading subscription data...</p>
                 </div>
                 <form method="POST" action="manage_subscriptions.php" id="editSubscriptionForm" style="display: none;">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                     <input type="hidden" name="action" value="update_subscription">
                     <input type="hidden" name="subscription_id" id="edit_subscription_id">
                     
-                    <div class="form-group">
-                        <label for="edit_tenant_name"><?= __('tenant') ?></label>
-                        <input type="text" class="form-control" id="edit_tenant_name" readonly>
+                    <!-- Tenant & Plan Section -->
+                    <div class="sa-form-section">
+                        <h6 class="sa-form-section-title">Tenant & Plan</h6>
+                        <div class="sa-form-grid-2">
+                            <div class="sa-form-group">
+                                <label for="edit_tenant_name" class="sa-form-label"><?= __('tenant') ?></label>
+                                <input type="text" class="sa-form-input" id="edit_tenant_name" readonly>
+                                <p class="sa-form-hint">Tenant is read-only for security</p>
+                            </div>
+                            
+                            <div class="sa-form-group">
+                                <label for="edit_plan_id" class="sa-form-label">
+                                    <?= __('plan') ?>
+                                    <span class="sa-required">*</span>
+                                </label>
+                                <select class="sa-form-input sa-form-select" id="edit_plan_id" name="plan_id" required>
+                                    <?php foreach ($plans as $plan): ?>
+                                    <option value="<?= htmlspecialchars($plan['id']) ?>" 
+                                            data-price="<?= htmlspecialchars($plan['price']) ?>">
+                                        <?= htmlspecialchars($plan['name']) ?> (<?= number_format($plan['price'], 2) ?>)
+                                    </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                     
-                    <div class="form-group">
-                        <label for="edit_plan_id"><?= __('plan') ?></label>
-                        <select class="form-control" id="edit_plan_id" name="plan_id" required>
-                            <?php foreach ($plans as $plan): ?>
-                            <option value="<?= htmlspecialchars($plan['id']) ?>" 
-                                    data-price="<?= htmlspecialchars($plan['price']) ?>">
-                                <?= htmlspecialchars($plan['name']) ?> - 
-                                <?= number_format($plan['price'], 2) ?> - 
-                                <?= htmlspecialchars($plan['max_users']) ?> users - 
-                                <?= htmlspecialchars($plan['trial_days']) ?> trial days
-                            </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="edit_status"><?= __('status') ?></label>
-                        <select class="form-control" id="edit_status" name="status" required>
-                            <option value="active">Active</option>
-                            <option value="pending">Pending</option>
-                            <option value="expired">Expired</option>
-                            <option value="cancelled">Cancelled</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="edit_billing_cycle"><?= __('billing_cycle') ?></label>
-                        <select class="form-control" id="edit_billing_cycle" name="billing_cycle" required>
-                            <option value="monthly">Monthly</option>
-                            <option value="quarterly">Quarterly</option>
-                            <option value="yearly">Yearly</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="edit_amount"><?= __('amount') ?></label>
-                        <input type="number" step="0.01" class="form-control" id="edit_amount" name="amount" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="edit_currency"><?= __('currency') ?></label>
-                        <input type="text" class="form-control" id="edit_currency" name="currency" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="edit_payment_method"><?= __('payment_method') ?></label>
-                        <input type="text" class="form-control" id="edit_payment_method" name="payment_method">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="edit_next_billing_date"><?= __('next_billing_date') ?></label>
-                        <input type="date" class="form-control" id="edit_next_billing_date" name="next_billing_date">
+                    <!-- Subscription Details Section -->
+                    <div class="sa-form-section">
+                        <h6 class="sa-form-section-title">Subscription Details</h6>
+                        <div class="sa-form-grid-2">
+                            <div class="sa-form-group">
+                                <label for="edit_status" class="sa-form-label">
+                                    <?= __('status') ?>
+                                    <span class="sa-required">*</span>
+                                </label>
+                                <select class="sa-form-input sa-form-select" id="edit_status" name="status" required>
+                                    <option value="active">Active</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="expired">Expired</option>
+                                    <option value="cancelled">Cancelled</option>
+                                </select>
+                            </div>
+                            
+                            <div class="sa-form-group">
+                                <label for="edit_billing_cycle" class="sa-form-label">
+                                    <?= __('billing_cycle') ?>
+                                    <span class="sa-required">*</span>
+                                </label>
+                                <select class="sa-form-input sa-form-select" id="edit_billing_cycle" name="billing_cycle" required>
+                                    <option value="monthly">Monthly</option>
+                                    <option value="quarterly">Quarterly</option>
+                                    <option value="yearly">Yearly</option>
+                                </select>
+                            </div>
+                            
+                            <div class="sa-form-group">
+                                <label for="edit_amount" class="sa-form-label">
+                                    <?= __('amount') ?>
+                                    <span class="sa-required">*</span>
+                                </label>
+                                <input type="number" step="0.01" class="sa-form-input" id="edit_amount" name="amount" placeholder="0.00" required>
+                            </div>
+                            
+                            <div class="sa-form-group">
+                                <label for="edit_currency" class="sa-form-label">
+                                    <?= __('currency') ?>
+                                    <span class="sa-required">*</span>
+                                </label>
+                                <input type="text" class="sa-form-input" id="edit_currency" name="currency" placeholder="USD" required>
+                                <p class="sa-form-hint">3-letter currency code</p>
+                            </div>
+                            
+                            <div class="sa-form-group">
+                                <label for="edit_payment_method" class="sa-form-label"><?= __('payment_method') ?></label>
+                                <input type="text" class="sa-form-input" id="edit_payment_method" name="payment_method" placeholder="e.g., Credit Card">
+                            </div>
+                            
+                            <div class="sa-form-group">
+                                <label for="edit_next_billing_date" class="sa-form-label"><?= __('next_billing_date') ?></label>
+                                <input type="date" class="sa-form-input" id="edit_next_billing_date" name="next_billing_date">
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('cancel') ?></button>
-                <button type="submit" form="editSubscriptionForm" class="btn btn-primary" id="saveEditSubscription"><?= __('save_changes') ?></button>
+            <div class="sa-modal-footer">
+                <button type="button" class="sa-btn sa-btn-ghost" data-dismiss="modal"><?= __('cancel') ?></button>
+                <button type="submit" form="editSubscriptionForm" class="sa-btn sa-btn-primary" id="saveEditSubscription">
+                    <i class="feather icon-save mr-1"></i><?= __('save_changes') ?>
+                </button>
             </div>
         </div>
     </div>
@@ -1293,6 +1368,207 @@ $plans = $stmt->fetchAll();
     .sa-3col {
         grid-template-columns: 1fr;
     }
+}
+
+/* ─── MODAL STYLES ─────────────────────────────────────────── */
+.sa-modal-content {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+    background: var(--surface);
+}
+
+.sa-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 24px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(135deg, rgba(108,99,255,0.05), rgba(56,189,248,0.05));
+}
+
+.sa-modal-title-group {
+    flex: 1;
+}
+
+.sa-modal-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+}
+
+.sa-modal-subtitle {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin: 6px 0 0 0;
+}
+
+.sa-modal-close {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    margin-left: 16px;
+}
+
+.sa-modal-close:hover {
+    color: var(--text);
+}
+
+.sa-modal-body {
+    padding: 24px;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.sa-modal-footer {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    background: var(--surface2);
+}
+
+/* ─── FORM SECTIONS ────────────────────────────────────────── */
+.sa-form-section {
+    margin-bottom: 24px;
+}
+
+.sa-form-section:last-child {
+    margin-bottom: 0;
+}
+
+.sa-form-section-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--accent);
+    margin: 0 0 16px 0;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--border);
+}
+
+.sa-form-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+@media (max-width: 768px) {
+    .sa-form-grid-2 {
+        grid-template-columns: 1fr;
+    }
+}
+
+.sa-form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.sa-form-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.sa-required {
+    color: var(--red);
+    font-weight: 700;
+}
+
+.sa-form-input {
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 0.95rem;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.sa-form-input::placeholder {
+    color: var(--muted);
+}
+
+.sa-form-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.1);
+    background: var(--surface);
+}
+
+.sa-form-input:disabled {
+    background: var(--surface2);
+    color: var(--muted);
+    cursor: not-allowed;
+}
+
+.sa-form-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236c63ff' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+    cursor: pointer;
+}
+
+.sa-form-textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.sa-form-hint {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin: 6px 0 0 0;
+    line-height: 1.4;
+}
+
+/* ─── LOADER STYLES ────────────────────────────────────────── */
+.sa-edit-loader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    min-height: 200px;
+}
+
+.sa-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 16px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.sa-edit-loader p {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin: 0;
 }
  </style>
 

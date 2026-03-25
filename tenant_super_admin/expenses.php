@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 include 'header.php';
 
 $tenant_id      = $_SESSION['tenant_id'];
@@ -73,8 +73,8 @@ $to   = min($page * $results_per_page, $total_expenses);
 *,*::before,*::after{box-sizing:border-box}
 body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important;background:var(--surface)!important;color:var(--text-main)!important}
 
-/* Header — rose → orange for expenses/spending */
-.dash-header{background:linear-gradient(135deg,#be123c 0%,#ea580c 100%);border-radius:var(--radius);padding:24px 28px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 8px 32px rgba(190,18,60,0.25);position:relative;overflow:hidden}
+/* Header â€” rose â†’ orange for expenses/spending */
+.dash-header{background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);border-radius:var(--radius);padding:24px 28px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 8px 32px rgba(190,18,60,0.25);position:relative;overflow:hidden}
 .dash-header::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.06'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat}
 .dash-header h4{font-size:22px;font-weight:800;color:#fff;margin:0 0 4px;letter-spacing:-0.4px;position:relative}
 .dash-header p{color:rgba(255,255,255,0.8);margin:0;font-size:13px;position:relative}
@@ -85,10 +85,10 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 @media(max-width:500px){.stat-grid{grid-template-columns:1fr}}
 .stat-card{border-radius:var(--radius);padding:20px 22px;color:#fff;position:relative;overflow:hidden}
 .stat-card::after{content:'';position:absolute;right:-10px;bottom:-10px;width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,0.1)}
-.stat-card.total{background:linear-gradient(135deg,#be123c,#e11d48);box-shadow:0 6px 20px rgba(190,18,60,0.3)}
-.stat-card.usd  {background:linear-gradient(135deg,#b45309,#d97706);box-shadow:0 6px 20px rgba(180,83,9,0.3)}
-.stat-card.afs  {background:linear-gradient(135deg,#ea580c,#f97316);box-shadow:0 6px 20px rgba(234,88,12,0.3)}
-.stat-card.avg  {background:linear-gradient(135deg,#7c3aed,#9333ea);box-shadow:0 6px 20px rgba(124,58,237,0.3)}
+.stat-card.total{background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);box-shadow:0 6px 20px rgba(190,18,60,0.3)}
+.stat-card.usd  {background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);box-shadow:0 6px 20px rgba(180,83,9,0.3)}
+.stat-card.afs  {background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);box-shadow:0 6px 20px rgba(234,88,12,0.3)}
+.stat-card.avg  {background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);box-shadow:0 6px 20px rgba(124,58,237,0.3)}
 .stat-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;opacity:.8;margin-bottom:8px}
 .stat-value{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:800;line-height:1}
 .stat-icon{position:absolute;right:18px;top:50%;transform:translateY(-50%);font-size:32px;opacity:.25}
@@ -98,7 +98,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 .dash-card:last-child{margin-bottom:0}
 .dash-card-head{padding:15px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .dash-card-head h6{font-size:14px;font-weight:700;margin:0;display:flex;align-items:center;gap:8px}
-.dash-card-head h6 .ico{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#be123c,#ea580c);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;flex-shrink:0}
+.dash-card-head h6 .ico{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;flex-shrink:0}
 .dash-card-body{padding:20px}
 .count-badge{background:rgba(190,18,60,.1);color:#be123c;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;margin-left:auto}
 
@@ -109,7 +109,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 .search-group{display:flex;gap:8px}
 .form-input{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:9px 13px;font-family:inherit;font-size:13px;color:var(--text-main);background:var(--surface);outline:none;transition:border-color .2s}
 .form-input:focus{border-color:#be123c;background:#fff;box-shadow:0 0 0 3px rgba(190,18,60,.1)}
-.search-btn{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#be123c,#ea580c);color:#fff;border:none;border-radius:10px;padding:9px 18px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:opacity .2s}
+.search-btn{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);color:#fff;border:none;border-radius:10px;padding:9px 18px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:opacity .2s}
 .search-btn:hover{opacity:.9}
 .clear-btn{display:inline-flex;align-items:center;gap:6px;background:var(--surface);color:var(--text-sub);border:1.5px solid var(--border);border-radius:10px;padding:9px 14px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap;flex-shrink:0;transition:all .2s}
 .clear-btn:hover{border-color:var(--text-sub);color:var(--text-main);text-decoration:none}
@@ -157,13 +157,13 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 .pag-links{display:flex;gap:4px}
 .pag-btn{min-width:32px;height:32px;border-radius:8px;border:1.5px solid var(--border);background:var(--card-bg);color:var(--text-main);font-size:12px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;padding:0 8px;transition:all .15s}
 .pag-btn:hover{border-color:#be123c;color:#be123c;text-decoration:none}
-.pag-btn.active{background:linear-gradient(135deg,#be123c,#ea580c);border-color:transparent;color:#fff}
+.pag-btn.active{background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);border-color:transparent;color:#fff}
 .pag-btn.disabled{opacity:.4;pointer-events:none}
 .pag-dots{display:flex;align-items:center;padding:0 4px;color:var(--text-sub);font-size:13px}
 
 /* Modal */
 .modal-content{border:none;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.18);font-family:inherit}
-.modal-header{background:linear-gradient(135deg,#be123c,#ea580c);color:#fff;border-radius:16px 16px 0 0;border:none;padding:18px 24px}
+.modal-header{background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);color:#fff;border-radius:16px 16px 0 0;border:none;padding:18px 24px}
 .modal-header .modal-title{font-weight:700;font-size:15px}
 .modal-header .close{color:#fff;opacity:.8;font-size:22px}
 .modal-header .close:hover{opacity:1}
@@ -257,7 +257,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                 <div>
                     <label class="form-label-custom">Search</label>
                     <div class="search-group">
-                        <input type="text" id="searchInput" class="form-input" placeholder="Description or category…" value="<?= htmlspecialchars($search) ?>">
+                        <input type="text" id="searchInput" class="form-input" placeholder="Description or categoryâ€¦" value="<?= htmlspecialchars($search) ?>">
                         <button class="search-btn" id="searchBtn"><i class="feather icon-search"></i>Search</button>
                         <?php if (!empty($search)): ?>
                         <a href="?branch=<?= urlencode($selected_branch) ?>" class="clear-btn"><i class="feather icon-x"></i>Clear</a>
@@ -332,16 +332,16 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
         </div>
 
         <div class="pag-wrap">
-            <div class="pag-info">Showing <?= $from ?>–<?= $to ?> of <?= number_format($total_expenses) ?> expenses</div>
+            <div class="pag-info">Showing <?= $from ?>â€“<?= $to ?> of <?= number_format($total_expenses) ?> expenses</div>
             <div class="pag-links">
                 <?php $base = '?branch='.urlencode($selected_branch).'&search='.urlencode($search); ?>
                 <a href="<?= $base ?>&page=1" class="pag-btn <?= $page<=1?'disabled':'' ?>"><i class="feather icon-chevrons-left"></i></a>
                 <a href="<?= $base ?>&page=<?= $page-1 ?>" class="pag-btn <?= $page<=1?'disabled':'' ?>"><i class="feather icon-chevron-left"></i></a>
                 <?php
                 $sp2=max(1,$page-2); $ep=min($total_pages,$page+2);
-                if($sp2>1){echo '<a href="'.$base.'&page=1" class="pag-btn">1</a>';if($sp2>2)echo '<span class="pag-dots">…</span>';}
+                if($sp2>1){echo '<a href="'.$base.'&page=1" class="pag-btn">1</a>';if($sp2>2)echo '<span class="pag-dots">â€¦</span>';}
                 for($i=$sp2;$i<=$ep;$i++) echo '<a href="'.$base.'&page='.$i.'" class="pag-btn '.($i==$page?'active':'').'">'.$i.'</a>';
-                if($ep<$total_pages){if($ep<$total_pages-1)echo '<span class="pag-dots">…</span>';echo '<a href="'.$base.'&page='.$total_pages.'" class="pag-btn">'.$total_pages.'</a>';}
+                if($ep<$total_pages){if($ep<$total_pages-1)echo '<span class="pag-dots">â€¦</span>';echo '<a href="'.$base.'&page='.$total_pages.'" class="pag-btn">'.$total_pages.'</a>';}
                 ?>
                 <a href="<?= $base ?>&page=<?= $page+1 ?>" class="pag-btn <?= $page>=$total_pages?'disabled':'' ?>"><i class="feather icon-chevron-right"></i></a>
                 <a href="<?= $base ?>&page=<?= $total_pages ?>" class="pag-btn <?= $page>=$total_pages?'disabled':'' ?>"><i class="feather icon-chevrons-right"></i></a>
@@ -372,13 +372,13 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
             <div class="modal-summary">
                 <div class="ms-cell">
                     <div class="ms-label">Expense Amount</div>
-                    <div class="ms-val rose" id="modal-amount">—</div>
-                    <div class="ms-sub" id="modal-currency">—</div>
+                    <div class="ms-val rose" id="modal-amount">â€”</div>
+                    <div class="ms-sub" id="modal-currency">â€”</div>
                 </div>
                 <div class="ms-cell">
                     <div class="ms-label">Expense Date</div>
-                    <div class="ms-val orange" id="modal-date" style="font-size:18px;">—</div>
-                    <div class="ms-sub" id="modal-created">—</div>
+                    <div class="ms-val orange" id="modal-date" style="font-size:18px;">â€”</div>
+                    <div class="ms-sub" id="modal-created">â€”</div>
                 </div>
             </div>
 
@@ -392,17 +392,17 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                         <div class="detail-section">
                             <div class="ds-title">Expense Information</div>
-                            <div class="ds-row"><span class="ds-key">Description</span><span class="ds-val" id="exp-description">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Category</span><span class="ds-val rose" id="exp-category">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="exp-branch">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Created By</span><span class="ds-val" id="exp-created-by">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Description</span><span class="ds-val" id="exp-description">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Category</span><span class="ds-val rose" id="exp-category">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="exp-branch">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Created By</span><span class="ds-val" id="exp-created-by">â€”</span></div>
                         </div>
                         <div class="detail-section">
                             <div class="ds-title">Financial Details</div>
-                            <div class="ds-row"><span class="ds-key">Amount</span><span class="ds-val orange" id="exp-amount-detail" style="font-family:'JetBrains Mono',monospace;">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Currency</span><span class="ds-val" id="exp-currency-detail" style="font-family:'JetBrains Mono',monospace;">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Main Account</span><span class="ds-val" id="exp-main-account">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Receipt No.</span><span class="ds-val" id="exp-receipt" style="font-family:'JetBrains Mono',monospace;">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Amount</span><span class="ds-val orange" id="exp-amount-detail" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Currency</span><span class="ds-val" id="exp-currency-detail" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Main Account</span><span class="ds-val" id="exp-main-account">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Receipt No.</span><span class="ds-val" id="exp-receipt" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
                         </div>
                     </div>
                 </div>
@@ -410,10 +410,10 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                 <div class="modal-pane" id="pane-additional">
                     <div class="detail-section">
                         <div class="ds-title">Additional Information</div>
-                        <div class="ds-row"><span class="ds-key">Expense ID</span><span class="ds-val" id="exp-id" style="font-family:'JetBrains Mono',monospace;">—</span></div>
-                        <div class="ds-row"><span class="ds-key">Created At</span><span class="ds-val" id="exp-created-at" style="font-family:'JetBrains Mono',monospace;font-size:11px;">—</span></div>
-                        <div class="ds-row"><span class="ds-key">Updated At</span><span class="ds-val" id="exp-updated-at" style="font-family:'JetBrains Mono',monospace;font-size:11px;">—</span></div>
-                        <div class="ds-row"><span class="ds-key">Receipt File</span><span class="ds-val" id="exp-receipt-file">—</span></div>
+                        <div class="ds-row"><span class="ds-key">Expense ID</span><span class="ds-val" id="exp-id" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
+                        <div class="ds-row"><span class="ds-key">Created At</span><span class="ds-val" id="exp-created-at" style="font-family:'JetBrains Mono',monospace;font-size:11px;">â€”</span></div>
+                        <div class="ds-row"><span class="ds-key">Updated At</span><span class="ds-val" id="exp-updated-at" style="font-family:'JetBrains Mono',monospace;font-size:11px;">â€”</span></div>
+                        <div class="ds-row"><span class="ds-key">Receipt File</span><span class="ds-val" id="exp-receipt-file">â€”</span></div>
                     </div>
                 </div>
             </div>
@@ -452,23 +452,23 @@ document.querySelectorAll('.view-details').forEach(btn => {
         const amt  = parseFloat(e.amount || 0).toFixed(2);
 
         document.getElementById('modal-amount').textContent   = curr + amt;
-        document.getElementById('modal-currency').textContent = e.currency || '—';
-        document.getElementById('modal-date').textContent     = e.date ? new Date(e.date).toLocaleDateString() : '—';
-        document.getElementById('modal-created').textContent  = e.created_at ? 'Created ' + new Date(e.created_at).toLocaleString() : '—';
+        document.getElementById('modal-currency').textContent = e.currency || 'â€”';
+        document.getElementById('modal-date').textContent     = e.date ? new Date(e.date).toLocaleDateString() : 'â€”';
+        document.getElementById('modal-created').textContent  = e.created_at ? 'Created ' + new Date(e.created_at).toLocaleString() : 'â€”';
 
-        document.getElementById('exp-description').textContent  = e.description    || '—';
+        document.getElementById('exp-description').textContent  = e.description    || 'â€”';
         document.getElementById('exp-category').textContent     = e.category_name  || 'Uncategorized';
-        document.getElementById('exp-branch').textContent       = e.branch_name    || '—';
-        document.getElementById('exp-created-by').textContent   = e.created_by_name || '—';
+        document.getElementById('exp-branch').textContent       = e.branch_name    || 'â€”';
+        document.getElementById('exp-created-by').textContent   = e.created_by_name || 'â€”';
 
         document.getElementById('exp-amount-detail').textContent  = curr + amt;
-        document.getElementById('exp-currency-detail').textContent = e.currency || '—';
-        document.getElementById('exp-main-account').textContent   = e.main_account_name || '—';
-        document.getElementById('exp-receipt').textContent        = e.receipt || '—';
+        document.getElementById('exp-currency-detail').textContent = e.currency || 'â€”';
+        document.getElementById('exp-main-account').textContent   = e.main_account_name || 'â€”';
+        document.getElementById('exp-receipt').textContent        = e.receipt || 'â€”';
 
-        document.getElementById('exp-id').textContent          = e.id || '—';
-        document.getElementById('exp-created-at').textContent  = e.created_at ? new Date(e.created_at).toLocaleString() : '—';
-        document.getElementById('exp-updated-at').textContent  = e.updated_at ? new Date(e.updated_at).toLocaleString() : '—';
+        document.getElementById('exp-id').textContent          = e.id || 'â€”';
+        document.getElementById('exp-created-at').textContent  = e.created_at ? new Date(e.created_at).toLocaleString() : 'â€”';
+        document.getElementById('exp-updated-at').textContent  = e.updated_at ? new Date(e.updated_at).toLocaleString() : 'â€”';
         document.getElementById('exp-receipt-file').textContent = e.receipt_file || 'No file attached';
 
         switchTab('summary', document.querySelector('.modal-tab'));

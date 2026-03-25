@@ -39,7 +39,7 @@ define('APP_ENV', EnvLoader::get('APP_ENV', 'development'));
 
 // Hesabpay API Configuration - Using environment variables for security
 define('HESABPAY_MERCHANT_ID', EnvLoader::get('HESABPAY_MERCHANT_ID', ''));
-define('HESABPAY_API_KEY', EnvLoader::get('HESABPAY_API_KEY', ''));
+define('HESABPAY_API_KEY', EnvLoader::get('HESABPAY_API_KEY', 'MzI0ZjM3NzEtMTg3OS00YzllLTgzZjMtOTg4ZDdmOTY1MTg4X185OGE2Njg3MWU0YzgzZmZjOTFmMQ=='));
 define('HESABPAY_BASE_URL', EnvLoader::get('HESABPAY_BASE_URL', 'https://api-sandbox.hesab.com/api/v1'));
 
 // Platform Configuration

@@ -330,6 +330,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         // Set session variables for client
                                         $_SESSION["loggedin"] = true;
                                         $_SESSION["user_id"] = $id;
+                                        $_SESSION["client_id"] = $id;  // Client ID is same as user_id for clients
                                         $_SESSION["tenant_id"] = $tenant_id;
                                         $_SESSION["branch_id"] = $branch_id;
                                         $_SESSION["name"] = $name;
@@ -393,6 +394,8 @@ function completeLogin() {
     // Add client-specific data if available
     if (isset($_SESSION["pending_user_client_type"])) {
         $_SESSION["client_type"] = $_SESSION["pending_user_client_type"];
+        // For clients, client_id is same as user_id
+        $_SESSION["client_id"] = $_SESSION["pending_user_id"];
     }
     
     // Clear temporary TOTP verification data

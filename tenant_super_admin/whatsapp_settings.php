@@ -1,1440 +1,710 @@
-<?php
+﻿<?php
 /**
  * WhatsApp Settings Management Interface
- * Admin interface for configuring tenant WhatsApp settings and templates
  */
-
-// Check authentication and permissions
 session_start();
 require_once '../includes/db.php';
 require_once '../includes/CsrfProtection.php';
 
-
-// Verify user authentication
 if (!isset($_SESSION['user_id'])) {
     header('Location: ../login.php');
     exit();
 }
 
 $tenant_id = $_SESSION['tenant_id'] ?? null;
-$user_id = $_SESSION['user_id'];
+$user_id   = $_SESSION['user_id'];
 
-// Handle AJAX requests
+// Handle AJAX POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Validate CSRF token for all POST requests
     if (!CsrfProtection::validateToken($_POST['csrf_token'] ?? null)) {
         header('Content-Type: application/json');
         echo json_encode(['success' => false, 'error' => 'Security token validation failed']);
         exit;
     }
-    
-    if (isset($_POST['action'])) {
-        handleAjaxRequest();
-    }
+    if (isset($_POST['action'])) { handleAjaxRequest(); }
     exit;
 }
 
-// Load existing settings with debugging - use different variable name to avoid conflict
 $whatsapp_settings = loadWhatsAppSettings($tenant_id);
-
-// If no settings exist, create default ones
 if (empty($whatsapp_settings)) {
-    error_log("DEBUG: WhatsApp settings are empty for tenant_id: " . $tenant_id);
     ensureDefaultSettings($tenant_id);
-    // Reload settings after creating defaults
     $whatsapp_settings = loadWhatsAppSettings($tenant_id);
 }
-
-// Merge with defaults to ensure all fields have values
-$defaults = getDefaultSettings();
-$whatsapp_settings = array_merge($defaults, $whatsapp_settings);
-
-// Load other data
+$whatsapp_settings = array_merge(getDefaultSettings(), $whatsapp_settings);
 $templates = loadTemplates($tenant_id);
 $analytics = loadAnalytics($tenant_id);
 
-
-function loadWhatsAppSettings($tenant_id) {
+/* â”€â”€ DB helpers â”€â”€ */
+function loadWhatsAppSettings($tid) {
     global $pdo;
-    
     try {
-        // Query for specific tenant settings
-        $stmt = $pdo->prepare("SELECT * FROM whatsapp_settings WHERE tenant_id = ?");
-        $stmt->execute([$tenant_id]);
-        $settings = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        // If no settings exist, return empty array
-        if (!$settings) {
-            error_log("No WhatsApp settings found for tenant_id: " . $tenant_id);
-            return [];
-        }
-        
-        return $settings;
-        
-    } catch (Exception $e) {
-        error_log("Error loading WhatsApp settings for tenant_id " . $tenant_id . ": " . $e->getMessage());
-        return [];
-    }
+        $s = $pdo->prepare("SELECT * FROM whatsapp_settings WHERE tenant_id=?");
+        $s->execute([$tid]); return $s->fetch(PDO::FETCH_ASSOC) ?: [];
+    } catch (Exception $e) { error_log($e->getMessage()); return []; }
 }
-
 function getDefaultSettings() {
-    return [
-        'provider' => 'meta',
-        'api_token' => '',
-        'phone_number_id' => '',
-        'webhook_verify_token' => '',
-        'webhook_url' => '',
-        'auto_notifications' => 1,
-        'real_time_notifications' => 0,
-        'max_messages_per_hour' => 1000,
-        'retry_attempts' => 3,
-        'status' => 'inactive'
-    ];
+    return ['provider'=>'meta','api_token'=>'','phone_number_id'=>'','webhook_verify_token'=>'','webhook_url'=>'','auto_notifications'=>1,'real_time_notifications'=>0,'max_messages_per_hour'=>1000,'retry_attempts'=>3,'status'=>'inactive'];
 }
-
-function ensureDefaultSettings($tenant_id) {
+function ensureDefaultSettings($tid) {
     global $pdo;
-    
-    // Check if settings exist
-    $stmt = $pdo->prepare("SELECT id FROM whatsapp_settings WHERE tenant_id = ?");
-    $stmt->execute([$tenant_id]);
-    $exists = $stmt->fetch();
-    
-    if (!$exists) {
-        // Create default settings
-        try {
-            $stmt = $pdo->prepare("
-                INSERT INTO whatsapp_settings (
-                    tenant_id, provider, api_token, phone_number_id,
-                    webhook_verify_token, webhook_url, status, auto_notifications,
-                    real_time_notifications, max_messages_per_hour, retry_attempts,
-                    created_at, updated_at
-                ) VALUES (?, 'meta', '', '', '', '', 'inactive', 1, 0, 1000, 3, NOW(), NOW())
-            ");
-            $stmt->execute([$tenant_id]);
-            error_log("Created default WhatsApp settings for tenant_id: " . $tenant_id);
-            return true;
-        } catch (Exception $e) {
-            error_log("Failed to create default settings: " . $e->getMessage());
-            return false;
-        }
-    }
-    return true;
-}
-
-
-function loadTemplates($tenant_id) {
-    global $pdo;
-    
-    try {
-        $stmt = $pdo->prepare("
-            SELECT * FROM whatsapp_templates 
-            WHERE tenant_id = ? 
-            ORDER BY template_type, language
-        ");
-        $stmt->execute([$tenant_id]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Exception $e) {
-        error_log("Error loading templates: " . $e->getMessage());
-        return [];
+    $s=$pdo->prepare("SELECT id FROM whatsapp_settings WHERE tenant_id=?"); $s->execute([$tid]);
+    if(!$s->fetch()){
+        try{$pdo->prepare("INSERT INTO whatsapp_settings(tenant_id,provider,api_token,phone_number_id,webhook_verify_token,webhook_url,status,auto_notifications,real_time_notifications,max_messages_per_hour,retry_attempts,created_at,updated_at) VALUES(?,'meta','','','','','inactive',1,0,1000,3,NOW(),NOW())")->execute([$tid]);}catch(Exception $e){error_log($e->getMessage());}
     }
 }
-
-function loadAnalytics($tenant_id) {
+function loadTemplates($tid) {
     global $pdo;
-    
-    try {
-        $stmt = $pdo->prepare("
-            SELECT * FROM whatsapp_analytics 
-            WHERE tenant_id = ? 
-            ORDER BY date DESC 
-            LIMIT 30
-        ");
-        $stmt->execute([$tenant_id]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Exception $e) {
-        error_log("Error loading analytics: " . $e->getMessage());
-        return [];
-    }
+    try{ $s=$pdo->prepare("SELECT * FROM whatsapp_templates WHERE tenant_id=? ORDER BY template_type,language"); $s->execute([$tid]); return $s->fetchAll(PDO::FETCH_ASSOC); }catch(Exception $e){ return []; }
+}
+function loadAnalytics($tid) {
+    global $pdo;
+    try{ $s=$pdo->prepare("SELECT * FROM whatsapp_analytics WHERE tenant_id=? ORDER BY date DESC LIMIT 30"); $s->execute([$tid]); return $s->fetchAll(PDO::FETCH_ASSOC); }catch(Exception $e){ return []; }
 }
 
+/* â”€â”€ AJAX dispatcher â”€â”€ */
 function handleAjaxRequest() {
-    global $pdo, $tenant_id, $user_id;
-    
-    $action = $_POST['action'] ?? '';
-    
+    global $pdo,$tenant_id,$user_id;
+    header('Content-Type: application/json');
     try {
-        switch ($action) {
-            case 'update_settings':
-                updateSettings();
-                break;
-            case 'save_template':
-                saveTemplate();
-                break;
-            case 'test_connection':
-                testConnection();
-                break;
-            case 'send_test_message':
-                sendTestMessage();
-                break;
-            case 'get_queue_status':
-                getQueueStatus();
-                break;
-            case 'process_queue':
-                processQueue();
-                break;
-            default:
-                throw new Exception("Invalid action");
+        switch ($_POST['action']??'') {
+            case 'update_settings':   updateSettings();   break;
+            case 'save_template':     saveTemplate();     break;
+            case 'test_connection':   testConnection();   break;
+            case 'send_test_message': sendTestMessage();  break;
+            case 'get_queue_status':  getQueueStatus();   break;
+            case 'process_queue':     processQueue();     break;
+            default: throw new Exception("Invalid action");
         }
-    } catch (Exception $e) {
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-    }
+    } catch(Exception $e){ echo json_encode(['success'=>false,'message'=>$e->getMessage()]); }
 }
-
-function updateSettings() {
-    global $pdo, $tenant_id;
-    
-    $settings = [
-        'provider' => $_POST['provider'] ?? 'meta',
-        'api_token' => $_POST['api_token'] ?? '',
-        'phone_number_id' => $_POST['phone_number_id'] ?? '',
-        'webhook_verify_token' => $_POST['webhook_verify_token'] ?? '',
-        'webhook_url' => $_POST['webhook_url'] ?? '',
-        'auto_notifications' => isset($_POST['auto_notifications']) ? 1 : 0,
-        'real_time_notifications' => isset($_POST['real_time_notifications']) ? 1 : 0,
-        'max_messages_per_hour' => (int)($_POST['max_messages_per_hour'] ?? 1000),
-        'retry_attempts' => (int)($_POST['retry_attempts'] ?? 3),
-        'status' => $_POST['status'] ?? 'inactive'
-    ];
-    
-    try {
-        // First check if settings exist
-        $check_stmt = $pdo->prepare("SELECT id FROM whatsapp_settings WHERE tenant_id = ?");
-        $check_stmt->execute([$tenant_id]);
-        $exists = $check_stmt->fetch();
-        
-        if ($exists) {
-            // Update existing settings
-            $stmt = $pdo->prepare("
-                UPDATE whatsapp_settings
-                SET provider = ?, api_token = ?, phone_number_id = ?,
-                    webhook_verify_token = ?, webhook_url = ?, auto_notifications = ?,
-                    real_time_notifications = ?, max_messages_per_hour = ?,
-                    retry_attempts = ?, status = ?, updated_at = NOW()
-                WHERE tenant_id = ?
-            ");
-            
-            $result = $stmt->execute([
-                $settings['provider'],
-                $settings['api_token'],
-                $settings['phone_number_id'],
-                $settings['webhook_verify_token'],
-                $settings['webhook_url'],
-                $settings['auto_notifications'],
-                $settings['real_time_notifications'],
-                $settings['max_messages_per_hour'],
-                $settings['retry_attempts'],
-                $settings['status'],
-                $tenant_id
-            ]);
-            
-            if ($stmt->rowCount() === 0) {
-                throw new Exception("No settings were updated. Please check if the record exists.");
-            }
-        } else {
-            // Insert new settings
-            $stmt = $pdo->prepare("
-                INSERT INTO whatsapp_settings (
-                    tenant_id, provider, api_token, phone_number_id,
-                    webhook_verify_token, webhook_url, auto_notifications,
-                    real_time_notifications, max_messages_per_hour,
-                    retry_attempts, status, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
-            ");
-            
-            $result = $stmt->execute([
-                $tenant_id,
-                $settings['provider'],
-                $settings['api_token'],
-                $settings['phone_number_id'],
-                $settings['webhook_verify_token'],
-                $settings['webhook_url'],
-                $settings['auto_notifications'],
-                $settings['real_time_notifications'],
-                $settings['max_messages_per_hour'],
-                $settings['retry_attempts'],
-                $settings['status']
-            ]);
-        }
-        
-        echo json_encode(['success' => true, 'message' => 'Settings updated successfully']);
-        
-    } catch (Exception $e) {
-        error_log("WhatsApp settings update error: " . $e->getMessage());
-        echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
-    }
-}
-
-function saveTemplate() {
-    global $pdo, $tenant_id, $user_id;
-    
-    $template_type = $_POST['template_type'] ?? '';
-    $language = $_POST['language'] ?? 'en';
-    $message_template = $_POST['message_template'] ?? '';
-    $template_name = $_POST['template_name'] ?? '';
-    
-    if (empty($template_type) || empty($message_template)) {
-        throw new Exception("Template type and message are required");
-    }
-    
-    $stmt = $pdo->prepare("
-        INSERT INTO whatsapp_templates (
-            tenant_id, template_name, template_type, language, 
-            message_template, created_by, status
-        ) VALUES (?, ?, ?, ?, ?, ?, 'active')
-        ON DUPLICATE KEY UPDATE
-            template_name = VALUES(template_name),
-            message_template = VALUES(message_template),
-            updated_at = NOW()
-    ");
-    
-    $stmt->execute([
-        $tenant_id,
-        $template_name ?: "{$template_type}_{$language}",
-        $template_type,
-        $language,
-        $message_template,
-        $user_id
-    ]);
-    
-    echo json_encode(['success' => true, 'message' => 'Template saved successfully']);
-}
-
-function testConnection() {
-    global $pdo, $tenant_id;
-    
-    // Load current settings
-    $stmt = $pdo->prepare("SELECT * FROM whatsapp_settings WHERE tenant_id = ?");
-    $stmt->execute([$tenant_id]);
-    $settings = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    $api_token = $_POST['api_token'] ?? $settings['api_token'] ?? '';
-    $phone_number_id = $_POST['phone_number_id'] ?? $settings['phone_number_id'] ?? '';
-    
-    if (empty($api_token) || empty($phone_number_id)) {
-        throw new Exception("API token and phone number ID are required");
-    }
-    
-    // Test basic connectivity first
-    if (!function_exists('curl_init')) {
-        echo json_encode([
-            'success' => false,
-            'message' => 'cURL is not available on this server. Please enable cURL extension in php.ini (extension=curl).'
-        ]);
-        return;
-    }
-    
-    // Test server IP to see if using VPN
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, "https://httpbin.org/ip");
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    $ip_response = curl_exec($ch);
-    $ip_error = curl_error($ch);
-    curl_close($ch);
-    
-    $server_ip_info = '';
-    if (!$ip_error && $ip_response) {
-        $ip_data = json_decode($ip_response, true);
-        $server_ip_info = " | Server IP: " . ($ip_data['origin'] ?? 'Unknown');
-    }
-    
-    // Test basic connectivity with multiple fallback methods
-    $test_sites = [
-        'https://www.google.com',
-        'https://graph.facebook.com',
-        'https://8.8.8.8' // Google DNS
-    ];
-    
-    $network_working = false;
-    $network_error = '';
-    
-    foreach ($test_sites as $test_url) {
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $test_url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (compatible; WhatsApp API Test)');
-        
-        $response = curl_exec($ch);
-        $curl_error = curl_error($ch);
-        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        
-        if (!$curl_error && $http_code >= 200 && $http_code < 400) {
-            $network_working = true;
-            break;
-        } else {
-            $network_error = $curl_error ?: "HTTP {$http_code}";
-        }
-    }
-    
-    if (!$network_working) {
-        echo json_encode([
-            'success' => false,
-            'message' => 'Network connectivity issue: ' . $network_error . '. Check firewall/proxy settings.' . $server_ip_info
-        ]);
-        return;
-    }
-    
-    // Test WhatsApp API connection
-    $api_url = "https://graph.facebook.com/v18.0/{$phone_number_id}";
-    
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $api_url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Authorization: Bearer ' . $api_token,
-        'Content-Type: application/json'
-    ]);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (compatible; WhatsApp API Client)');
-    
-    $response = curl_exec($ch);
-    $curl_error = curl_error($ch);
-    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $total_time = curl_getinfo($ch, CURLINFO_TOTAL_TIME);
-    curl_close($ch);
-    
-    if ($curl_error) {
-        echo json_encode([
-            'success' => false,
-            'message' => 'WhatsApp API connection error: ' . $curl_error . ' (Time: ' . $total_time . 's)' . $server_ip_info
-        ]);
-        return;
-    }
-    
-    if ($http_code === 200) {
-        echo json_encode([
-            'success' => true,
-            'message' => "Connection test successful - WhatsApp API is accessible ({$total_time}s)" . $server_ip_info
-        ]);
-    } elseif ($http_code === 400) {
-        echo json_encode([
-            'success' => false,
-            'message' => 'Bad Request - Check your API token and phone number ID format. HTTP 400: ' . $response . $server_ip_info
-        ]);
-    } elseif ($http_code === 401) {
-        echo json_encode([
-            'success' => false,
-            'message' => 'Unauthorized - Invalid API token or insufficient permissions. HTTP 401' . $server_ip_info
-        ]);
-    } elseif ($http_code === 403) {
-        echo json_encode([
-            'success' => false,
-            'message' => 'Forbidden - Check if your WhatsApp Business account is approved and phone number is verified. HTTP 403' . $server_ip_info
-        ]);
+function updateSettings(){
+    global $pdo,$tenant_id;
+    $d=['provider'=>$_POST['provider']??'meta','api_token'=>$_POST['api_token']??'','phone_number_id'=>$_POST['phone_number_id']??'','webhook_verify_token'=>$_POST['webhook_verify_token']??'','webhook_url'=>$_POST['webhook_url']??'','auto_notifications'=>isset($_POST['auto_notifications'])?1:0,'real_time_notifications'=>isset($_POST['real_time_notifications'])?1:0,'max_messages_per_hour'=>(int)($_POST['max_messages_per_hour']??1000),'retry_attempts'=>(int)($_POST['retry_attempts']??3),'status'=>$_POST['status']??'inactive'];
+    $chk=$pdo->prepare("SELECT id FROM whatsapp_settings WHERE tenant_id=?"); $chk->execute([$tenant_id]);
+    if($chk->fetch()){
+        $s=$pdo->prepare("UPDATE whatsapp_settings SET provider=?,api_token=?,phone_number_id=?,webhook_verify_token=?,webhook_url=?,auto_notifications=?,real_time_notifications=?,max_messages_per_hour=?,retry_attempts=?,status=?,updated_at=NOW() WHERE tenant_id=?");
+        $s->execute([$d['provider'],$d['api_token'],$d['phone_number_id'],$d['webhook_verify_token'],$d['webhook_url'],$d['auto_notifications'],$d['real_time_notifications'],$d['max_messages_per_hour'],$d['retry_attempts'],$d['status'],$tenant_id]);
     } else {
-        echo json_encode([
-            'success' => false,
-            'message' => "WhatsApp API error - HTTP {$http_code}: {$response} (Time: {$total_time}s)" . $server_ip_info
-        ]);
+        $s=$pdo->prepare("INSERT INTO whatsapp_settings(tenant_id,provider,api_token,phone_number_id,webhook_verify_token,webhook_url,auto_notifications,real_time_notifications,max_messages_per_hour,retry_attempts,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())");
+        $s->execute([$tenant_id,$d['provider'],$d['api_token'],$d['phone_number_id'],$d['webhook_verify_token'],$d['webhook_url'],$d['auto_notifications'],$d['real_time_notifications'],$d['max_messages_per_hour'],$d['retry_attempts'],$d['status']]);
     }
+    echo json_encode(['success'=>true,'message'=>'Settings updated successfully']);
 }
-
-function sendTestMessage() {
-    global $pdo, $tenant_id;
-    
-    $phone_number = $_POST['phone_number'] ?? '';
-    $message = $_POST['message'] ?? 'Test message from WhatsApp API';
-    
-    if (empty($phone_number)) {
-        throw new Exception("Phone number is required");
-    }
-    
-    // Load WhatsApp settings
-    $stmt = $pdo->prepare("SELECT * FROM whatsapp_settings WHERE tenant_id = ?");
-    $stmt->execute([$tenant_id]);
-    $settings = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    if (!$settings || empty($settings['api_token']) || empty($settings['phone_number_id'])) {
-        throw new Exception("WhatsApp settings not configured properly");
-    }
-    
-    // Clean phone number (remove + and other characters)
-    $phone_number = preg_replace('/[^0-9]/', '', $phone_number);
-    if (substr($phone_number, 0, 1) === '1') {
-        // Add country code if missing
-        $phone_number = '1' . $phone_number;
-    }
-    
-    // Check if cURL is available
-    if (!function_exists('curl_init')) {
-        // Fallback: Simulate success for testing if cURL is not available
-        $stmt = $pdo->prepare("
-            INSERT INTO whatsapp_messages (
-                tenant_id, phone_number, message, message_type,
-                reference_id, status, provider_message_id, created_at
-            ) VALUES (?, ?, ?, 'test', 0, 'simulated_success', 'SIM_' . NOW(), NOW())
-        ");
-        $stmt->execute([$tenant_id, $phone_number, $message, 'simulated']);
-        
-        echo json_encode([
-            'success' => false,
-            'message' => 'cURL not available - simulated message created for testing. Contact administrator to enable cURL for real WhatsApp API integration.'
-        ]);
-        return;
-    }
-    
-    // Prepare message payload for Meta WhatsApp Cloud API
-    $message_data = [
-        'messaging_product' => 'whatsapp',
-        'to' => $phone_number,
-        'type' => 'text',
-        'text' => [
-            'body' => $message
-        ]
-    ];
-    
-    // Send via Meta WhatsApp Cloud API
-    $api_url = "https://graph.facebook.com/v18.0/{$settings['phone_number_id']}/messages";
-    
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $api_url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($message_data));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Authorization: Bearer ' . $settings['api_token'],
-        'Content-Type: application/json'
-    ]);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Skip SSL verification for testing
-    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0');
-    
-    $response = curl_exec($ch);
-    $curl_error = curl_error($ch);
-    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    
-    $response_data = json_decode($response, true);
-    
-    // Insert message record
-    $stmt = $pdo->prepare("
-        INSERT INTO whatsapp_messages (
-            tenant_id, phone_number, message, message_type,
-            reference_id, status, provider_message_id, created_at
-        ) VALUES (?, ?, ?, 'test', 0, ?, ?, NOW())
-    ");
-    
-    if ($curl_error) {
-        // Network error
-        $stmt->execute([$tenant_id, $phone_number, $message, 'failed', null]);
-        echo json_encode([
-            'success' => false,
-            'message' => 'Network error: ' . $curl_error
-        ]);
-        return;
-    }
-    
-    if ($http_code === 200 && isset($response_data['messages'][0]['id'])) {
-        // Message sent successfully
-        $stmt->execute([$tenant_id, $phone_number, $message, 'sent', $response_data['messages'][0]['id']]);
-        
-        echo json_encode([
-            'success' => true,
-            'message' => 'Test message sent successfully via WhatsApp API',
-            'message_id' => $response_data['messages'][0]['id']
-        ]);
-    } else {
-        // Message failed
-        $error_msg = $response_data['error']['message'] ?? $response;
-        $stmt->execute([$tenant_id, $phone_number, $message, 'failed', null]);
-        
-        echo json_encode([
-            'success' => false,
-            'message' => 'WhatsApp API error - HTTP ' . $http_code . ': ' . $error_msg
-        ]);
-    }
+function saveTemplate(){
+    global $pdo,$tenant_id,$user_id;
+    $tt=$_POST['template_type']??''; $msg=$_POST['message_template']??'';
+    if(empty($tt)||empty($msg)) throw new Exception("Template type and message are required");
+    $lang=$_POST['language']??'en'; $name=$_POST['template_name']??"{$tt}_{$lang}";
+    $s=$pdo->prepare("INSERT INTO whatsapp_templates(tenant_id,template_name,template_type,language,message_template,created_by,status) VALUES(?,?,?,?,?,?,'active') ON DUPLICATE KEY UPDATE template_name=VALUES(template_name),message_template=VALUES(message_template),updated_at=NOW()");
+    $s->execute([$tenant_id,$name,$tt,$lang,$msg,$user_id]);
+    echo json_encode(['success'=>true,'message'=>'Template saved successfully']);
 }
-
-function getQueueStatus() {
-    global $pdo, $tenant_id;
-    
-    $stmt = $pdo->prepare("
-        SELECT status, COUNT(*) as count 
-        FROM whatsapp_messages 
-        WHERE tenant_id = ? 
-        GROUP BY status
-    ");
-    $stmt->execute([$tenant_id]);
-    $statuses = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    echo json_encode([
-        'success' => true, 
-        'queue_status' => $statuses
-    ]);
+function testConnection(){
+    global $pdo,$tenant_id;
+    $s=$pdo->prepare("SELECT * FROM whatsapp_settings WHERE tenant_id=?"); $s->execute([$tenant_id]);
+    $cfg=$s->fetch(PDO::FETCH_ASSOC);
+    $tok=$_POST['api_token']??$cfg['api_token']??''; $pid=$_POST['phone_number_id']??$cfg['phone_number_id']??'';
+    if(empty($tok)||empty($pid)) throw new Exception("API token and phone number ID are required");
+    if(!function_exists('curl_init')){ echo json_encode(['success'=>false,'message'=>'cURL not available on server']); return; }
+    $ch=curl_init(); curl_setopt_array($ch,[CURLOPT_URL=>"https://graph.facebook.com/v18.0/{$pid}",CURLOPT_RETURNTRANSFER=>true,CURLOPT_HTTPHEADER=>["Authorization: Bearer {$tok}","Content-Type: application/json"],CURLOPT_TIMEOUT=>15,CURLOPT_SSL_VERIFYPEER=>false]);
+    $resp=curl_exec($ch); $err=curl_error($ch); $code=curl_getinfo($ch,CURLINFO_HTTP_CODE); $time=curl_getinfo($ch,CURLINFO_TOTAL_TIME); curl_close($ch);
+    if($err){ echo json_encode(['success'=>false,'message'=>'cURL error: '.$err]); return; }
+    if($code===200) echo json_encode(['success'=>true,'message'=>"Connected successfully ({$time}s)"]);
+    elseif($code===401) echo json_encode(['success'=>false,'message'=>'Unauthorized â€” invalid API token']);
+    elseif($code===403) echo json_encode(['success'=>false,'message'=>'Forbidden â€” check account approval']);
+    else echo json_encode(['success'=>false,'message'=>"HTTP {$code}: {$resp}"]);
 }
-
-function processQueue() {
-    global $pdo, $tenant_id;
-    
-    // Get pending messages
-    $stmt = $pdo->prepare("
-        SELECT * FROM whatsapp_messages
-        WHERE tenant_id = ? AND status = 'pending'
-        ORDER BY created_at ASC
-        LIMIT 10
-    ");
-    $stmt->execute([$tenant_id]);
-    $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    // Load WhatsApp settings
-    $stmt = $pdo->prepare("SELECT * FROM whatsapp_settings WHERE tenant_id = ?");
-    $stmt->execute([$tenant_id]);
-    $settings = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    if (!$settings || empty($settings['api_token']) || empty($settings['phone_number_id'])) {
-        echo json_encode([
-            'success' => false,
-            'message' => 'WhatsApp settings not configured properly'
-        ]);
-        return;
+function sendTestMessage(){
+    global $pdo,$tenant_id;
+    $phone=preg_replace('/[^0-9]/','', $_POST['phone_number']??''); $msg=$_POST['message']??'Test message';
+    if(empty($phone)) throw new Exception("Phone number is required");
+    $s=$pdo->prepare("SELECT * FROM whatsapp_settings WHERE tenant_id=?"); $s->execute([$tenant_id]); $cfg=$s->fetch(PDO::FETCH_ASSOC);
+    if(!$cfg||empty($cfg['api_token'])||empty($cfg['phone_number_id'])) throw new Exception("WhatsApp not configured");
+    $payload=json_encode(['messaging_product'=>'whatsapp','to'=>$phone,'type'=>'text','text'=>['body'=>$msg]]);
+    $ch=curl_init(); curl_setopt_array($ch,[CURLOPT_URL=>"https://graph.facebook.com/v18.0/{$cfg['phone_number_id']}/messages",CURLOPT_RETURNTRANSFER=>true,CURLOPT_POST=>true,CURLOPT_POSTFIELDS=>$payload,CURLOPT_HTTPHEADER=>["Authorization: Bearer {$cfg['api_token']}","Content-Type: application/json"],CURLOPT_TIMEOUT=>30,CURLOPT_SSL_VERIFYPEER=>false]);
+    $resp=curl_exec($ch); $err=curl_error($ch); $code=curl_getinfo($ch,CURLINFO_HTTP_CODE); curl_close($ch);
+    $rd=json_decode($resp,true);
+    $ins=$pdo->prepare("INSERT INTO whatsapp_messages(tenant_id,phone_number,message,message_type,reference_id,status,provider_message_id,created_at) VALUES(?,?,?,'test',0,?,?,NOW())");
+    if($err){ $ins->execute([$tenant_id,$phone,$msg,'failed',null]); echo json_encode(['success'=>false,'message'=>'Network error: '.$err]); return; }
+    if($code===200&&isset($rd['messages'][0]['id'])){ $ins->execute([$tenant_id,$phone,$msg,'sent',$rd['messages'][0]['id']]); echo json_encode(['success'=>true,'message'=>'Test message sent!','message_id'=>$rd['messages'][0]['id']]); }
+    else{ $ins->execute([$tenant_id,$phone,$msg,'failed',null]); echo json_encode(['success'=>false,'message'=>"HTTP {$code}: ".($rd['error']['message']??$resp)]); }
+}
+function getQueueStatus(){
+    global $pdo,$tenant_id;
+    $s=$pdo->prepare("SELECT status,COUNT(*) as count FROM whatsapp_messages WHERE tenant_id=? GROUP BY status"); $s->execute([$tenant_id]);
+    echo json_encode(['success'=>true,'queue_status'=>$s->fetchAll(PDO::FETCH_ASSOC)]);
+}
+function processQueue(){
+    global $pdo,$tenant_id;
+    $sm=$pdo->prepare("SELECT * FROM whatsapp_messages WHERE tenant_id=? AND status='pending' ORDER BY created_at ASC LIMIT 10"); $sm->execute([$tenant_id]); $msgs=$sm->fetchAll(PDO::FETCH_ASSOC);
+    $sc=$pdo->prepare("SELECT * FROM whatsapp_settings WHERE tenant_id=?"); $sc->execute([$tenant_id]); $cfg=$sc->fetch(PDO::FETCH_ASSOC);
+    if(!$cfg||empty($cfg['api_token'])) { echo json_encode(['success'=>false,'message'=>'Not configured']); return; }
+    $ok=$fail=0;
+    foreach($msgs as $m){
+        $phone=preg_replace('/[^0-9]/','', $m['phone_number']);
+        $payload=json_encode(['messaging_product'=>'whatsapp','to'=>$phone,'type'=>'text','text'=>['body'=>$m['message']]]);
+        $ch=curl_init(); curl_setopt_array($ch,[CURLOPT_URL=>"https://graph.facebook.com/v18.0/{$cfg['phone_number_id']}/messages",CURLOPT_RETURNTRANSFER=>true,CURLOPT_POST=>true,CURLOPT_POSTFIELDS=>$payload,CURLOPT_HTTPHEADER=>["Authorization: Bearer {$cfg['api_token']}","Content-Type: application/json"],CURLOPT_TIMEOUT=>30]);
+        $resp=curl_exec($ch); $code=curl_getinfo($ch,CURLINFO_HTTP_CODE); curl_close($ch);
+        $rd=json_decode($resp,true); $success=$code===200&&isset($rd['messages'][0]['id']);
+        $upd=$pdo->prepare("UPDATE whatsapp_messages SET status=?,provider_message_id=?,sent_at=NOW() WHERE id=?");
+        $upd->execute([$success?'sent':'failed',$success?$rd['messages'][0]['id']:null,$m['id']]);
+        $success?$ok++:$fail++;
     }
-    
-    $processed = 0;
-    $failed = 0;
-    
-    foreach ($messages as $message) {
-        $success = false;
-        $provider_message_id = null;
-        
-        if ($message['message_type'] === 'text') {
-            // Clean phone number
-            $phone_number = preg_replace('/[^0-9]/', '', $message['phone_number']);
-            
-            // Prepare message payload
-            $message_data = [
-                'messaging_product' => 'whatsapp',
-                'to' => $phone_number,
-                'type' => 'text',
-                'text' => [
-                    'body' => $message['message']
-                ]
-            ];
-            
-            // Send via Meta WhatsApp Cloud API
-            $api_url = "https://graph.facebook.com/v18.0/{$settings['phone_number_id']}/messages";
-            
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $api_url);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($message_data));
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Authorization: Bearer ' . $settings['api_token'],
-                'Content-Type: application/json'
-            ]);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-            
-            $response = curl_exec($ch);
-            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-            
-            $response_data = json_decode($response, true);
-            
-            if ($http_code === 200 && isset($response_data['messages'][0]['id'])) {
-                $success = true;
-                $provider_message_id = $response_data['messages'][0]['id'];
-            }
-        }
-        
-        // Update message status
-        $new_status = $success ? 'sent' : 'failed';
-        $stmt = $pdo->prepare("
-            UPDATE whatsapp_messages
-            SET status = ?, provider_message_id = ?, sent_at = NOW()
-            WHERE id = ?
-        ");
-        $stmt->execute([$new_status, $provider_message_id, $message['id']]);
-        
-        if ($success) {
-            $processed++;
-        } else {
-            $failed++;
-        }
-    }
-    
-    echo json_encode([
-        'success' => true,
-        'processed' => $processed,
-        'failed' => $failed,
-        'total' => count($messages)
-    ]);
+    echo json_encode(['success'=>true,'processed'=>$ok,'failed'=>$fail,'total'=>count($msgs)]);
 }
 
 include 'header.php';
 ?>
 
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+
+:root{
+    --surface:#f4f7fe;--card-bg:#ffffff;--border:#e8edf5;
+    --text-main:#1a2340;--text-sub:#6b7a99;
+    --green:#22c55e;--red:#ef4444;--amber:#f59e0b;
+    /* WhatsApp: green brand identity */
+    --c1:#25d366;--c2:#128c7e;
+    --radius:14px;--shadow:0 2px 12px rgba(37,211,102,.08);
+}
+*,*::before,*::after{box-sizing:border-box}
+body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important;background:var(--surface)!important;color:var(--text-main)!important}
+.pcoded-content{padding:20px!important}
+.page-header{display:none!important}
+
+/* Header */
+.dash-header{background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);border-radius:var(--radius);padding:24px 28px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 8px 32px rgba(37,211,102,.3);position:relative;overflow:hidden}
+.dash-header::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='30' cy='30' r='20' fill='%23ffffff' fill-opacity='0.05'/%3E%3C/svg%3E") repeat}
+.dash-header h4{font-size:22px;font-weight:800;color:#fff;margin:0 0 4px;position:relative}
+.dash-header p{color:rgba(255,255,255,.8);margin:0;font-size:13px;position:relative}
+.test-conn-btn{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.2);color:#fff;border:1.5px solid rgba(255,255,255,.3);border-radius:10px;padding:9px 18px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;position:relative}
+.test-conn-btn:hover{background:rgba(255,255,255,.3)}
+.test-conn-btn:disabled{opacity:.6;cursor:not-allowed}
+
+/* Cards */
+.dash-card{background:var(--card-bg);border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow);overflow:hidden;margin-bottom:20px}
+.dash-card-head{padding:15px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.dash-card-head-left{display:flex;align-items:center;gap:8px}
+.dash-card-head h6{font-size:14px;font-weight:700;margin:0}
+.ico{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;flex-shrink:0}
+.ico-wa    {background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%)}
+.ico-tmpl  {background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%)}
+.ico-test  {background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%)}
+.ico-queue {background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%)}
+.dash-card-body{padding:20px}
+
+/* Layout grid */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:900px){.two-col{grid-template-columns:1fr}}
+
+/* System info strip */
+.sys-strip{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+.sys-item{background:var(--surface);border-radius:10px;padding:10px 16px;display:flex;align-items:center;gap:8px;flex:1;min-width:80px}
+.sys-item-icon{font-size:16px}
+.sys-item-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sub);display:block}
+.sys-item-val{font-size:12px;font-weight:700;color:var(--text-main);font-family:'JetBrains Mono',monospace}
+
+/* Form */
+.form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.form-grid-3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:600px){.form-grid-2,.form-grid-3{grid-template-columns:1fr}}
+.form-group{margin-bottom:14px}
+.form-group:last-child{margin-bottom:0}
+.form-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sub);display:flex;align-items:center;gap:5px;margin-bottom:6px}
+.form-label i{color:#25d366;font-size:11px}
+.form-input{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:10px 13px;font-family:inherit;font-size:13px;color:var(--text-main);background:var(--surface);outline:none;transition:border-color .2s,box-shadow .2s}
+.form-input:focus{border-color:#25d366;background:#fff;box-shadow:0 0 0 3px rgba(37,211,102,.1)}
+select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7a99' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:36px}
+textarea.form-input{resize:vertical;min-height:120px}
+
+/* Password toggle */
+.input-pw-wrap{position:relative}
+.input-pw-wrap .form-input{padding-right:42px}
+.pw-toggle{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-sub);padding:0;font-size:14px}
+.pw-toggle:hover{color:#25d366}
+
+/* Toggle switches */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border-radius:10px;padding:12px 14px;margin-bottom:10px}
+.toggle-row:last-child{margin-bottom:0}
+.toggle-label{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--text-main)}
+.toggle-label i{color:#25d366;font-size:14px}
+.toggle-desc{font-size:11px;color:var(--text-sub);display:block;margin-top:2px}
+.switch{position:relative;display:inline-block;width:42px;height:24px;flex-shrink:0}
+.switch input{opacity:0;width:0;height:0}
+.switch-slider{position:absolute;cursor:pointer;inset:0;background:var(--border);border-radius:24px;transition:.3s}
+.switch-slider::before{content:'';position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
+.switch input:checked+.switch-slider{background:#25d366}
+.switch input:checked+.switch-slider::before{transform:translateX(18px)}
+
+/* Save btn */
+.save-btn{display:inline-flex;align-items:center;gap:7px;background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);color:#fff;border:none;border-radius:10px;padding:11px 24px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;margin-top:6px;transition:opacity .2s}
+.save-btn:hover{opacity:.9}
+.save-btn:disabled{opacity:.6;cursor:not-allowed}
+
+/* Templates table */
+.data-table{width:100%;border-collapse:collapse}
+.data-table thead th{background:var(--surface);padding:9px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-sub);border-bottom:1.5px solid var(--border);text-align:left}
+.data-table tbody tr:hover{background:rgba(37,211,102,.03)}
+.data-table tbody td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:12px;vertical-align:middle}
+.data-table tbody tr:last-child td{border-bottom:none}
+.type-badge{display:inline-flex;align-items:center;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;background:rgba(37,211,102,.12);color:#166534}
+.lang-badge{font-size:11px;font-weight:600;color:var(--text-sub);font-family:'JetBrains Mono',monospace}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;border:1.5px solid var(--border);background:var(--card-bg);cursor:pointer;font-size:12px;color:var(--text-sub);transition:all .15s}
+.icon-btn:hover.edit{border-color:#1d4ed8;color:#1d4ed8}
+.icon-btn:hover.del{border-color:var(--red);color:var(--red)}
+.add-tmpl-btn{display:inline-flex;align-items:center;gap:5px;border:1.5px solid rgba(255,255,255,.3);border-radius:8px;padding:6px 12px;background:rgba(255,255,255,.15);color:#fff;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
+.add-tmpl-btn:hover{background:rgba(255,255,255,.25)}
+.empty-templates{text-align:center;padding:40px 20px}
+.empty-templates i{font-size:36px;opacity:.2;display:block;margin-bottom:12px}
+.empty-templates p{color:var(--text-sub);font-size:13px;margin:0}
+
+/* Queue */
+.queue-row{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border-radius:10px;padding:10px 14px;margin-bottom:8px}
+.queue-row:last-child{margin-bottom:0}
+.q-badge{display:inline-flex;align-items:center;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700}
+.q-pending  {background:rgba(245,158,11,.12);color:#92400e}
+.q-sent     {background:rgba(34,197,94,.12);color:#166534}
+.q-delivered{background:rgba(8,145,178,.12);color:#0e7490}
+.q-failed   {background:rgba(239,68,68,.1);color:#991b1b}
+.q-expired  {background:rgba(107,122,153,.1);color:var(--text-sub)}
+.q-count{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:800;color:var(--text-main)}
+.process-btn{display:inline-flex;align-items:center;gap:5px;border:1.5px solid rgba(245,158,11,.3);border-radius:8px;padding:6px 12px;background:rgba(245,158,11,.1);color:#92400e;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
+.process-btn:hover{background:rgba(245,158,11,.2)}
+.process-btn:disabled{opacity:.6;cursor:not-allowed}
+
+/* Test form */
+.send-btn{display:inline-flex;align-items:center;gap:7px;background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);color:#fff;border:none;border-radius:10px;padding:10px 20px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;margin-top:4px;transition:opacity .2s}
+.send-btn:hover{opacity:.9}
+.send-btn:disabled{opacity:.6;cursor:not-allowed}
+.field-hint{font-size:11px;color:var(--text-sub);margin-top:5px}
+
+/* Toast */
+.notif-toast{position:fixed;top:20px;right:20px;z-index:9999;min-width:280px;border-radius:12px;padding:13px 16px;display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.12);animation:slideIn .3s ease}
+@keyframes slideIn{from{transform:translateX(120%);opacity:0}to{transform:translateX(0);opacity:1}}
+.notif-toast.success{background:#fff;border:1.5px solid rgba(37,211,102,.35);color:#166534}
+.notif-toast.error  {background:#fff;border:1.5px solid rgba(239,68,68,.3);color:#991b1b}
+.notif-toast.info   {background:#fff;border:1.5px solid rgba(8,145,178,.3);color:#0e7490}
+
+/* Modal */
+.modal-content{border:none;border-radius:16px;font-family:inherit;box-shadow:0 20px 60px rgba(0,0,0,.18)}
+.modal-header{background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);color:#fff;border-radius:16px 16px 0 0;border:none;padding:18px 24px}
+.modal-header .modal-title{font-weight:700;font-size:15px}
+.modal-header .close{color:#fff;opacity:.8;font-size:22px}
+.modal-header .close:hover{opacity:1}
+.modal-body{padding:20px}
+.modal-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;border:none}
+.btn-cancel-modal{display:inline-flex;align-items:center;gap:6px;background:var(--surface);color:var(--text-sub);border:1.5px solid var(--border);border-radius:10px;padding:9px 18px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.btn-save-modal{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);color:#fff;border:none;border-radius:10px;padding:9px 18px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.btn-save-modal:hover{opacity:.9}
+
+/* Loading spinner */
+.spin{animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+
 <div class="pcoded-main-container">
-    <div class="pcoded-wrapper">
-        <div class="pcoded-content">
-            <div class="pcoded-inner-content">
-                <div class="main-body">
-                    <div class="page-wrapper">
-                        <div class="main-content">
-                            <div class="page-header card">
-                                <div class="row align-items-center">
-                                    <div class="col-md-8">
-                                        <h5 class="mb-0"><i class="feather icon-message-square mr-2"></i><?php echo __('whatsapp_automation_settings'); ?></h5>
-                                        <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;"><?php echo __('configure_whatsapp_notifications'); ?></p>
-                                    </div>
-                                    <div class="col-md-4 text-end">
-                                        <button type="button" class="btn btn-outline-light btn-sm" id="test-connection-btn" onclick="testConnection()">
-                                            <i class="fas fa-plug mr-1" id="test-connection-icon"></i> <span id="test-connection-text"><?php echo __('test_connection'); ?></span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+<div class="pcoded-content">
 
-                            <div class="row">
-                        <!-- Settings Tab -->
-                        <div class="col-md-6">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h5><i class="feather icon-settings mr-2"></i><?php echo __('whatsapp_configuration'); ?></h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <!-- System Information -->
-                                        <div class="alert alert-info border-0 shadow-sm mb-4">
-                                            <h6 class="text-primary mb-3"><i class="feather icon-info mr-2"></i><?php echo __('system_information'); ?></h6>
-                                            <div class="row text-center">
-                                                <div class="col-4">
-                                                    <div class="font-weight-bold"><?php echo function_exists('curl_init') ? '<span class="text-success">✅</span>' : '<span class="text-danger">❌</span>'; ?></div>
-                                                    <small class="text-muted">cURL</small>
-                                                </div>
-                                                <div class="col-4">
-                                                    <div class="font-weight-bold"><?php echo extension_loaded('openssl') ? '<span class="text-success">✅</span>' : '<span class="text-danger">❌</span>'; ?></div>
-                                                    <small class="text-muted">SSL</small>
-                                                </div>
-                                                <div class="col-4">
-                                                    <div class="font-weight-bold text-primary"><?php echo phpversion(); ?></div>
-                                                    <small class="text-muted">PHP</small>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <form id="whatsapp-settings-form">
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <div class="form-group">
-                                                    <label for="provider"><i class="feather icon-server mr-2"></i><?php echo __('provider'); ?></label>
-                                                    <select class="form-control" id="provider" name="provider">
-                                                        <option value="meta" <?= ($whatsapp_settings['provider'] ?? 'meta') === 'meta' ? 'selected' : '' ?>>Meta WhatsApp Business API</option>
-                                                        <option value="twilio" <?= ($whatsapp_settings['provider'] ?? 'meta') === 'twilio' ? 'selected' : '' ?>>Twilio</option>
-                                                        <option value="messagebird" <?= ($whatsapp_settings['provider'] ?? 'meta') === 'messagebird' ? 'selected' : '' ?>>MessageBird</option>
-                                                        <option value="360dialog" <?= ($whatsapp_settings['provider'] ?? 'meta') === '360dialog' ? 'selected' : '' ?>>360Dialog</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="form-group">
-                                                    <label for="status"><i class="feather icon-toggle-left mr-2"></i><?php echo __('status'); ?></label>
-                                                    <select class="form-control" id="status" name="status">
-                                                        <option value="active" <?= ($whatsapp_settings['status'] ?? 'inactive') === 'active' ? 'selected' : '' ?>>Active</option>
-                                                        <option value="inactive" <?= ($whatsapp_settings['status'] ?? 'inactive') === 'inactive' ? 'selected' : '' ?>>Inactive</option>
-                                                        <option value="testing" <?= ($whatsapp_settings['status'] ?? 'inactive') === 'testing' ? 'selected' : '' ?>>Testing</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                        </div>
+    <!-- Header -->
+    <div class="dash-header">
+        <div>
+            <h4><i class="feather icon-message-square" style="margin-right:8px;"></i><?php echo __('whatsapp_automation_settings'); ?></h4>
+            <p><?php echo __('configure_whatsapp_notifications'); ?></p>
+        </div>
+        <button type="button" class="test-conn-btn" id="testConnBtn" onclick="testConnection()">
+            <i class="feather icon-wifi" id="testConnIcon"></i>
+            <span id="testConnText"><?php echo __('test_connection'); ?></span>
+        </button>
+    </div>
 
-                                        <div class="form-group">
-                                            <label for="api_token"><i class="feather icon-key mr-2"></i><?php echo __('api_token'); ?></label>
-                                            <input type="password" class="form-control" id="api_token" name="api_token"
-                                                   value="<?php echo htmlspecialchars($whatsapp_settings['api_token'] ?? ''); ?>"
-                                                   placeholder="<?php echo __('enter_api_token'); ?>">
-                                        </div>
+    <!-- Top 2-column row: Config + Templates -->
+    <div class="two-col">
 
-                                        <div class="form-group">
-                                            <label for="phone_number_id"><i class="feather icon-phone mr-2"></i><?php echo __('phone_number_id'); ?></label>
-                                            <input type="text" class="form-control" id="phone_number_id" name="phone_number_id"
-                                                   value="<?php echo htmlspecialchars($whatsapp_settings['phone_number_id'] ?? ''); ?>"
-                                                   placeholder="<?php echo __('enter_phone_number_id'); ?>">
-                                        </div>
+        <!-- Config card -->
+        <div class="dash-card">
+            <div class="dash-card-head">
+                <div class="dash-card-head-left">
+                    <span class="ico ico-wa"><i class="feather icon-settings"></i></span>
+                    <h6><?php echo __('whatsapp_configuration'); ?></h6>
+                </div>
+            </div>
+            <div class="dash-card-body">
 
-                                        <div class="form-group">
-                                            <label for="webhook_verify_token"><i class="feather icon-shield mr-2"></i><?php echo __('webhook_verify_token'); ?></label>
-                                            <input type="text" class="form-control" id="webhook_verify_token" name="webhook_verify_token"
-                                                   value="<?php echo htmlspecialchars($whatsapp_settings['webhook_verify_token'] ?? ''); ?>"
-                                                   placeholder="<?php echo __('enter_webhook_token'); ?>">
-                                        </div>
+                <!-- System info strip -->
+                <div class="sys-strip">
+                    <div class="sys-item">
+                        <span class="sys-item-icon"><?= function_exists('curl_init') ? 'âœ…' : 'âŒ' ?></span>
+                        <div><span class="sys-item-label">cURL</span><span class="sys-item-val"><?= function_exists('curl_init')?'Ready':'Missing' ?></span></div>
+                    </div>
+                    <div class="sys-item">
+                        <span class="sys-item-icon"><?= extension_loaded('openssl') ? 'âœ…' : 'âŒ' ?></span>
+                        <div><span class="sys-item-label">SSL</span><span class="sys-item-val"><?= extension_loaded('openssl')?'Ready':'Missing' ?></span></div>
+                    </div>
+                    <div class="sys-item">
+                        <span class="sys-item-icon">ðŸ˜</span>
+                        <div><span class="sys-item-label">PHP</span><span class="sys-item-val"><?= phpversion() ?></span></div>
+                    </div>
+                </div>
 
-                                        <div class="form-group">
-                                            <label for="webhook_url"><i class="feather icon-link mr-2"></i><?php echo __('webhook_url'); ?></label>
-                                            <input type="text" class="form-control" id="webhook_url" name="webhook_url"
-                                                   value="<?php echo htmlspecialchars($whatsapp_settings['webhook_url'] ?? ''); ?>"
-                                                   placeholder="<?php echo __('enter_webhook_url'); ?>">
-                                            <small class="form-text text-muted">
-                                                <i class="feather icon-info mr-1"></i><?php echo __('webhook_url_hint'); ?>
-                                            </small>
-                                        </div>
-
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <div class="form-group">
-                                                    <label for="max_messages_per_hour"><i class="feather icon-clock mr-2"></i><?php echo __('max_messages_per_hour'); ?></label>
-                                                    <input type="number" class="form-control" id="max_messages_per_hour" name="max_messages_per_hour"
-                                                           value="<?php echo $whatsapp_settings['max_messages_per_hour'] ?? 1000; ?>" min="1">
-                                                </div>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="form-group">
-                                                    <label for="retry_attempts"><i class="feather icon-refresh-cw mr-2"></i><?php echo __('retry_attempts'); ?></label>
-                                                    <input type="number" class="form-control" id="retry_attempts" name="retry_attempts"
-                                                           value="<?php echo $whatsapp_settings['retry_attempts'] ?? 3; ?>" min="0" max="10">
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div class="form-group">
-                                            <div class="custom-control custom-switch">
-                                                <input type="checkbox" class="custom-control-input" id="auto_notifications" name="auto_notifications"
-                                                       <?php echo ($whatsapp_settings['auto_notifications'] ?? 1) ? 'checked' : ''; ?>>
-                                                <label class="custom-control-label" for="auto_notifications">
-                                                    <i class="feather icon-bell mr-2"></i><?php echo __('enable_auto_notifications'); ?>
-                                                </label>
-                                            </div>
-                                        </div>
-
-                                        <div class="form-group mb-0">
-                                            <div class="custom-control custom-switch">
-                                                <input type="checkbox" class="custom-control-input" id="real_time_notifications" name="real_time_notifications"
-                                                       <?php echo ($whatsapp_settings['real_time_notifications'] ?? 0) ? 'checked' : ''; ?>>
-                                                <label class="custom-control-label" for="real_time_notifications">
-                                                    <i class="feather icon-zap mr-2"></i><?php echo __('real_time_notifications'); ?>
-                                                </label>
-                                            </div>
-                                        </div>
-
-                                        <div class="form-group mb-0 mt-4">
-                                            <button type="submit" class="btn btn-primary">
-                                                <i class="feather icon-save mr-2"></i><?php echo __('save_settings'); ?>
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
+                <form id="waSettingsForm">
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label class="form-label"><i class="feather icon-server"></i><?php echo __('provider'); ?></label>
+                            <select class="form-input" name="provider">
+                                <option value="meta"        <?= ($whatsapp_settings['provider']??'meta')==='meta'?'selected':'' ?>>Meta WhatsApp Business API</option>
+                                <option value="twilio"      <?= ($whatsapp_settings['provider']??'')==='twilio'?'selected':'' ?>>Twilio</option>
+                                <option value="messagebird" <?= ($whatsapp_settings['provider']??'')==='messagebird'?'selected':'' ?>>MessageBird</option>
+                                <option value="360dialog"   <?= ($whatsapp_settings['provider']??'')==='360dialog'?'selected':'' ?>>360Dialog</option>
+                            </select>
                         </div>
-
-                        <!-- Templates Tab -->
-                                <div class="col-md-6">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h5><i class="feather icon-file-text mr-2"></i><?php echo __('message_templates'); ?></h5>
-                                        <button type="button" class="btn btn-sm btn-outline-light float-right" onclick="openTemplateModal()">
-                                            <i class="feather icon-plus mr-1"></i><?php echo __('add_template'); ?>
-                                        </button>
-                                    </div>
-                                    <div class="card-body">
-                                        <div id="templates-list">
-                                            <?php if (empty($templates)): ?>
-                                                <div class="text-center text-muted py-4">
-                                                    <i class="feather icon-inbox feather-3x mb-3"></i>
-                                                    <p class="mb-0"><?php echo __('no_templates_found'); ?></p>
-                                                    <small><?php echo __('add_first_template'); ?></small>
-                                                </div>
-                                            <?php else: ?>
-                                                <div class="table-responsive">
-                                                    <table class="table table-hover">
-                                                        <thead>
-                                                            <tr>
-                                                                <th><i class="feather icon-tag mr-1"></i><?php echo __('template'); ?></th>
-                                                                <th><i class="feather icon-globe mr-1"></i><?php echo __('language'); ?></th>
-                                                                <th class="text-right"><i class="feather icon-cog mr-1"></i><?php echo __('actions'); ?></th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            <?php foreach ($templates as $template): ?>
-                                                            <tr data-id="<?php echo $template['id']; ?>">
-                                                                <td>
-                                                                    <span class="badge badge-primary badge-pill">
-                                                                        <?php echo ucfirst(htmlspecialchars($template['template_type'])); ?>
-                                                                    </span>
-                                                                </td>
-                                                                <td>
-                                                                    <span class="text-muted"><?php echo strtoupper(htmlspecialchars($template['language'])); ?></span>
-                                                                </td>
-                                                                <td class="text-right">
-                                                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="editTemplate(<?php echo $template['id']; ?>)">
-                                                                        <i class="feather icon-edit"></i>
-                                                                    </button>
-                                                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteTemplate(<?php echo $template['id']; ?>)">
-                                                                        <i class="feather icon-trash-2"></i>
-                                                                    </button>
-                                                                </td>
-                                                            </tr>
-                                                            <?php endforeach; ?>
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="form-group">
+                            <label class="form-label"><i class="feather icon-toggle-left"></i><?php echo __('status'); ?></label>
+                            <select class="form-input" name="status">
+                                <option value="active"   <?= ($whatsapp_settings['status']??'')==='active'?'selected':'' ?>>Active</option>
+                                <option value="inactive" <?= ($whatsapp_settings['status']??'inactive')==='inactive'?'selected':'' ?>>Inactive</option>
+                                <option value="testing"  <?= ($whatsapp_settings['status']??'')==='testing'?'selected':'' ?>>Testing</option>
+                            </select>
+                        </div>
                     </div>
 
-                            <div class="row mt-4">
-                                <!-- Test Message Section -->
-                                <div class="col-md-6">
-                                    <div class="card">
-                                        <div class="card-header">
-                                            <h5><i class="feather icon-send mr-2"></i><?php echo __('send_test_message'); ?></h5>
-                                        </div>
-                                        <div class="card-body">
-                                            <form id="test-message-form">
-                                                <div class="form-group">
-                                                    <label for="test_phone"><i class="feather icon-phone mr-2"></i><?php echo __('phone_number'); ?></label>
-                                                    <input type="text" class="form-control" id="test_phone" name="phone_number" 
-                                                           placeholder="+1234567890" required>
-                                                    <small class="form-text text-muted">
-                                                        <i class="feather icon-info mr-1"></i><?php echo __('include_country_code'); ?>
-                                                    </small>
-                                                </div>
-                                                <div class="form-group">
-                                                    <label for="test_message"><i class="feather icon-message-square mr-2"></i><?php echo __('message'); ?></label>
-                                                    <textarea class="form-control" id="test_message" name="message" rows="3" 
-                                                              placeholder="<?php echo __('enter_test_message'); ?>"><?php echo __('default_test_message'); ?></textarea>
-                                                </div>
-                                                <button type="submit" class="btn btn-info" id="send-test-btn">
-                                                    <i class="feather icon-paper-plane mr-1" id="send-test-icon"></i> <span id="send-test-text"><?php echo __('send_test_message'); ?></span>
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
+                    <div class="form-group">
+                        <label class="form-label"><i class="feather icon-key"></i><?php echo __('api_token'); ?></label>
+                        <div class="input-pw-wrap">
+                            <input type="password" class="form-input" id="api_token" name="api_token" value="<?= htmlspecialchars($whatsapp_settings['api_token']??'') ?>" placeholder="<?php echo __('enter_api_token'); ?>">
+                            <button type="button" class="pw-toggle" onclick="togglePw('api_token',this)"><i class="feather icon-eye"></i></button>
+                        </div>
+                    </div>
 
-                                <!-- Queue Status -->
-                                <div class="col-md-6">
-                                    <div class="card">
-                                        <div class="card-header">
-                                            <h5><i class="feather icon-list mr-2"></i><?php echo __('message_queue_status'); ?></h5>
-                                            <button type="button" class="btn btn-sm btn-outline-warning float-right" id="process-queue-btn" onclick="processQueue()">
-                                                <i class="feather icon-refresh-cw mr-1" id="process-queue-icon"></i> <span id="process-queue-text"><?php echo __('process_queue'); ?></span>
-                                            </button>
-                                        </div>
-                                        <div class="card-body">
-                                            <div id="queue-status">
-                                                <div class="text-center py-4">
-                                                    <div class="spinner-border text-primary" role="status">
-                                                        <span class="sr-only"><?php echo __('loading'); ?>...</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                    <div class="form-group">
+                        <label class="form-label"><i class="feather icon-phone"></i><?php echo __('phone_number_id'); ?></label>
+                        <input type="text" class="form-input" id="phone_number_id" name="phone_number_id" value="<?= htmlspecialchars($whatsapp_settings['phone_number_id']??'') ?>" placeholder="<?php echo __('enter_phone_number_id'); ?>">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label"><i class="feather icon-shield"></i><?php echo __('webhook_verify_token'); ?></label>
+                        <input type="text" class="form-input" name="webhook_verify_token" value="<?= htmlspecialchars($whatsapp_settings['webhook_verify_token']??'') ?>" placeholder="<?php echo __('enter_webhook_token'); ?>">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label"><i class="feather icon-link"></i><?php echo __('webhook_url'); ?></label>
+                        <input type="text" class="form-input" name="webhook_url" value="<?= htmlspecialchars($whatsapp_settings['webhook_url']??'') ?>" placeholder="<?php echo __('enter_webhook_url'); ?>">
+                        <div class="field-hint"><i class="feather icon-info" style="font-size:10px;"></i> <?php echo __('webhook_url_hint'); ?></div>
+                    </div>
+
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label class="form-label"><i class="feather icon-clock"></i><?php echo __('max_messages_per_hour'); ?></label>
+                            <input type="number" class="form-input" name="max_messages_per_hour" value="<?= $whatsapp_settings['max_messages_per_hour']??1000 ?>" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label"><i class="feather icon-refresh-cw"></i><?php echo __('retry_attempts'); ?></label>
+                            <input type="number" class="form-input" name="retry_attempts" value="<?= $whatsapp_settings['retry_attempts']??3 ?>" min="0" max="10">
+                        </div>
+                    </div>
+
+                    <!-- Toggles -->
+                    <div class="toggle-row">
+                        <div class="toggle-label">
+                            <i class="feather icon-bell"></i>
+                            <div>
+                                <?php echo __('enable_auto_notifications'); ?>
+                                <span class="toggle-desc">Send automatic booking confirmations</span>
                             </div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" name="auto_notifications" <?= ($whatsapp_settings['auto_notifications']??1)?'checked':'' ?>>
+                            <span class="switch-slider"></span>
+                        </label>
+                    </div>
+                    <div class="toggle-row">
+                        <div class="toggle-label">
+                            <i class="feather icon-zap"></i>
+                            <div>
+                                <?php echo __('real_time_notifications'); ?>
+                                <span class="toggle-desc">Instant delivery without queue</span>
+                            </div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" name="real_time_notifications" <?= ($whatsapp_settings['real_time_notifications']??0)?'checked':'' ?>>
+                            <span class="switch-slider"></span>
+                        </label>
+                    </div>
+
+                    <button type="submit" class="save-btn" id="saveSettingsBtn"><i class="feather icon-save"></i><?php echo __('save_settings'); ?></button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Templates card -->
+        <div class="dash-card">
+            <div class="dash-card-head">
+                <div class="dash-card-head-left">
+                    <span class="ico ico-tmpl"><i class="feather icon-file-text"></i></span>
+                    <h6><?php echo __('message_templates'); ?></h6>
+                </div>
+                <button class="add-tmpl-btn" onclick="openTemplateModal()"><i class="feather icon-plus"></i><?php echo __('add_template'); ?></button>
+            </div>
+            <div class="dash-card-body" style="padding:0;">
+                <?php if (empty($templates)): ?>
+                <div class="empty-templates">
+                    <i class="feather icon-inbox"></i>
+                    <p><?php echo __('no_templates_found'); ?><br><span style="font-size:11px;color:var(--text-sub);"><?php echo __('add_first_template'); ?></span></p>
+                </div>
+                <?php else: ?>
+                <div style="overflow-x:auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th><i class="feather icon-tag" style="font-size:10px;"></i> <?php echo __('template'); ?></th>
+                                <th><i class="feather icon-globe" style="font-size:10px;"></i> <?php echo __('language'); ?></th>
+                                <th style="text-align:right;"><?php echo __('actions'); ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach ($templates as $t): ?>
+                        <tr>
+                            <td><span class="type-badge"><?= ucfirst(htmlspecialchars($t['template_type'])) ?></span></td>
+                            <td><span class="lang-badge"><?= strtoupper(htmlspecialchars($t['language'])) ?></span></td>
+                            <td style="text-align:right;display:flex;gap:5px;justify-content:flex-end;">
+                                <button class="icon-btn edit" onclick="editTemplate(<?= $t['id'] ?>)" title="Edit"><i class="feather icon-edit-2"></i></button>
+                                <button class="icon-btn del" onclick="deleteTemplate(<?= $t['id'] ?>)" title="Delete"><i class="feather icon-trash-2"></i></button>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom 2-column row: Test + Queue -->
+    <div class="two-col">
+
+        <!-- Test message -->
+        <div class="dash-card">
+            <div class="dash-card-head">
+                <div class="dash-card-head-left">
+                    <span class="ico ico-test"><i class="feather icon-send"></i></span>
+                    <h6><?php echo __('send_test_message'); ?></h6>
+                </div>
+            </div>
+            <div class="dash-card-body">
+                <form id="testMsgForm">
+                    <div class="form-group">
+                        <label class="form-label"><i class="feather icon-phone"></i><?php echo __('phone_number'); ?></label>
+                        <input type="text" class="form-input" id="test_phone" name="phone_number" placeholder="+1234567890" required>
+                        <div class="field-hint"><?php echo __('include_country_code'); ?></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label"><i class="feather icon-message-square"></i><?php echo __('message'); ?></label>
+                        <textarea class="form-input" id="test_message" name="message" rows="4" placeholder="<?php echo __('enter_test_message'); ?>"><?php echo __('default_test_message'); ?></textarea>
+                    </div>
+                    <button type="submit" class="send-btn" id="sendTestBtn">
+                        <i class="feather icon-send" id="sendTestIcon"></i>
+                        <span id="sendTestText"><?php echo __('send_test_message'); ?></span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Queue status -->
+        <div class="dash-card">
+            <div class="dash-card-head">
+                <div class="dash-card-head-left">
+                    <span class="ico ico-queue"><i class="feather icon-list"></i></span>
+                    <h6><?php echo __('message_queue_status'); ?></h6>
+                </div>
+                <button class="process-btn" id="processQueueBtn" onclick="processQueue()">
+                    <i class="feather icon-refresh-cw" id="processIcon"></i>
+                    <span id="processText"><?php echo __('process_queue'); ?></span>
+                </button>
+            </div>
+            <div class="dash-card-body" id="queueStatus">
+                <div style="text-align:center;padding:30px;color:var(--text-sub);">
+                    <i class="feather icon-loader spin" style="font-size:24px;display:block;margin-bottom:10px;"></i>
+                    Loadingâ€¦
                 </div>
             </div>
         </div>
     </div>
+
+</div>
 </div>
 
 <!-- Template Modal -->
 <div class="modal fade" id="templateModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Message Template</h5>
-                <button type="button" class="close" data-dismiss="modal">
-                    <span>&times;</span>
-                </button>
+                <h5 class="modal-title"><i class="feather icon-file-text" style="margin-right:8px;"></i>Message Template</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <div class="modal-body">
-                <form id="template-form">
+                <form id="templateForm">
                     <input type="hidden" id="template_id" name="template_id">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="template_type">Template Type</label>
-                                <select class="form-control" id="template_type" name="template_type" required>
-                                    <option value="visa">Visa</option>
-                                    <option value="umrah">Umrah</option>
-                                    <option value="hotel">Hotel</option>
-                                    <option value="ticket">Flight Ticket</option>
-                                    <option value="refund">Refund</option>
-                                </select>
-                            </div>
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label class="form-label"><i class="feather icon-tag"></i>Template Type</label>
+                            <select class="form-input" id="template_type" name="template_type" required>
+                                <option value="visa">Visa</option>
+                                <option value="umrah">Umrah</option>
+                                <option value="hotel">Hotel</option>
+                                <option value="ticket">Flight Ticket</option>
+                                <option value="refund">Refund</option>
+                            </select>
                         </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="template_language">Language</label>
-                                <select class="form-control" id="template_language" name="language" required>
-                                    <option value="en">English</option>
-                                    <option value="fa">Persian (فارسی)</option>
-                                    <option value="ps">Pashto (پښتو)</option>
-                                </select>
-                            </div>
+                        <div class="form-group">
+                            <label class="form-label"><i class="feather icon-globe"></i>Language</label>
+                            <select class="form-input" id="template_language" name="language" required>
+                                <option value="en">English</option>
+                                <option value="fa">Persian (ÙØ§Ø±Ø³ÛŒ)</option>
+                                <option value="ps">Pashto (Ù¾ÚšØªÙˆ)</option>
+                            </select>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label for="template_name">Template Name</label>
-                        <input type="text" class="form-control" id="template_name" name="template_name" 
-                               placeholder="Optional template name">
+                        <label class="form-label"><i class="feather icon-edit-3"></i>Template Name</label>
+                        <input type="text" class="form-input" id="template_name" name="template_name" placeholder="Optional â€” auto-generated if empty">
                     </div>
                     <div class="form-group">
-                        <label for="message_template">Message Template</label>
-                        <textarea class="form-control" id="message_template" name="message_template" rows="8" 
-                                  placeholder="Enter your message template with {{variables}}" required></textarea>
-                        <small class="form-text text-muted">
-                            Available variables: {client_name}, {booking_date}, {agency_name}, {contact_info}, etc.
-                            <br>Use {variable_name} format for variables.
-                        </small>
+                        <label class="form-label"><i class="feather icon-message-square"></i>Message Template</label>
+                        <textarea class="form-input" id="message_template" name="message_template" rows="8" placeholder="Enter your message with {{variables}}" required></textarea>
+                        <div class="field-hint">Available: {client_name} Â· {booking_date} Â· {agency_name} Â· {contact_info} â€” use {variable_name} format</div>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="saveTemplate()">Save Template</button>
+                <button type="button" class="btn-cancel-modal" data-dismiss="modal"><i class="feather icon-x"></i>Cancel</button>
+                <button type="button" class="btn-save-modal" onclick="saveTemplate()"><i class="feather icon-save"></i>Save Template</button>
             </div>
         </div>
     </div>
 </div>
-    <!-- Required Js -->
-    <script src="../assets/js/vendor-all.min.js"></script>
-    <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-    <script src="../assets/js/pcoded.min.js"></script>
 
-    <style>
-    /* Enhanced custom styles for WhatsApp Settings */
-    .page-header.card {
-        background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
-        color: #ffffff;
-        border: none;
-        margin-bottom: 20px;
-        padding: 20px !important;
-        box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
-        border-radius: 10px;
-    }
+<?php include 'footer.php'; ?>
 
-    .page-header.card .row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .page-header.card h5 {
-        color: #ffffff;
-        margin: 0;
-        font-weight: 600;
-    }
-
-    .page-header.card .text-end {
-        text-align: right;
-    }
-
-    .page-header.card .btn {
-        background: rgba(255,255,255,0.2);
-        color: #ffffff;
-        border: 1px solid rgba(255,255,255,0.3);
-        border-radius: 25px;
-        transition: all 0.3s ease;
-    }
-
-    .page-header.card .btn:hover {
-        background: rgba(255,255,255,0.3);
-        border-color: rgba(255,255,255,0.5);
-        transform: translateY(-1px);
-    }
-
-    .card {
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-        border: none;
-    }
-
-    .card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-    }
-
-    .card-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 10px 10px 0 0;
-        padding: 1rem 1.5rem;
-        border: none;
-    }
-
-    .card-header h5 {
-        margin: 0;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-    }
-
-    .card-header .btn-outline-light {
-        background: rgba(255,255,255,0.2);
-        border: 1px solid rgba(255,255,255,0.3);
-        color: #ffffff;
-        border-radius: 20px;
-        transition: all 0.3s ease;
-    }
-
-    .card-header .btn-outline-light:hover {
-        background: rgba(255,255,255,0.3);
-        border-color: rgba(255,255,255,0.5);
-        color: #ffffff;
-    }
-
-    .card-header .btn-outline-warning {
-        background: rgba(255, 193, 7, 0.2);
-        border: 1px solid rgba(255, 193, 7, 0.5);
-        color: #ffc107;
-        border-radius: 20px;
-        transition: all 0.3s ease;
-    }
-
-    .card-header .btn-outline-warning:hover {
-        background: rgba(255, 193, 7, 0.3);
-        border-color: #ffc107;
-        color: #ffc107;
-    }
-
-    .badge {
-        font-size: 0.85em;
-        padding: 0.5em 0.75em;
-        border-radius: 20px;
-        font-weight: 500;
-    }
-
-    .table-responsive {
-        border-radius: 10px;
-        
-    }
-
-    .table {
-        margin-bottom: 0;
-    }
-
-    .table thead th {
-        background-color: #f8f9fa;
-        border-bottom: 2px solid #dee2e6;
-        font-weight: 600;
-        color: #495057;
-        padding: 1rem;
-    }
-
-    .table tbody tr:hover {
-        background-color: #f1f3f4;
-    }
-
-    .table tbody td {
-        padding: 1rem;
-        vertical-align: middle;
-    }
-
-    .form-control {
-        border-radius: 8px;
-        border: 1px solid #ced4da;
-        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-        padding: 0.75rem;
-    }
-
-    .form-control:focus {
-        border-color: #25D366;
-        box-shadow: 0 0 0 0.2rem rgba(37, 211, 102, 0.25);
-    }
-
-    .btn-primary {
-        background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
-        border: none;
-        border-radius: 25px;
-        padding: 0.75rem 2rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-
-    .btn-primary:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
-        background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
-    }
-
-    .btn-info {
-        background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
-        border: none;
-        border-radius: 25px;
-        padding: 0.75rem 2rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-
-    .btn-info:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3);
-    }
-
-    .alert {
-        border-radius: 10px;
-        border: none;
-        padding: 1rem 1.5rem;
-    }
-
-    .alert-info {
-        background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
-        color: #0c5460;
-    }
-
-    .spinner-border {
-        color: #25D366;
-    }
-
-    .feather-3x {
-        width: 48px;
-        height: 48px;
-        stroke-width: 1.5;
-    }
-    </style>
 <script>
-$(document).ready(function() {
-    loadQueueStatus();
-    
-    // Settings form submission
-    $('#whatsapp-settings-form').on('submit', function(e) {
-        e.preventDefault();
-        
-        const formData = new FormData(this);
-        formData.append('action', 'update_settings');
-        
-        $.ajax({
-            url: '',
-            type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function(response) {
-                const data = JSON.parse(response);
-                if (data.success) {
-                    alert('Settings updated successfully!');
-                } else {
-                    alert('Error: ' + data.message);
-                }
-            },
-            error: function() {
-                alert('Error updating settings');
-            }
-        });
-    });
-    
-    // Test message form submission
-    $('#test-message-form').on('submit', function(e) {
-        e.preventDefault();
-        
-        const formData = new FormData(this);
-        formData.append('action', 'send_test_message');
-        
-        // Show loading state
-        setButtonLoading('send-test-btn', 'send-test-icon', 'send-test-text', true, 'Sending...');
-        
-        $.ajax({
-            url: '',
-            type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function(response) {
-                const data = JSON.parse(response);
-                if (data.success) {
-                    alert('Test message sent successfully!');
-                    $('#test-message-form')[0].reset();
-                } else {
-                    alert('Error: ' + data.message);
-                }
-            },
-            error: function() {
-                alert('Error sending test message');
-            },
-            complete: function() {
-                // Hide loading state
-                setButtonLoading('send-test-btn', 'send-test-icon', 'send-test-text', false);
-            }
-        });
-    });
+const CSRF = '<?= htmlspecialchars(CsrfProtection::generateToken(), ENT_QUOTES, 'UTF-8') ?>';
+
+function post(data) {
+    data.csrf_token = CSRF;
+    return fetch('', { method:'POST', body: new URLSearchParams(data) }).then(r => r.json());
+}
+
+function toast(msg, type='success') {
+    document.querySelectorAll('.notif-toast').forEach(n => n.remove());
+    const t = document.createElement('div');
+    t.className = `notif-toast ${type}`;
+    const icons = {success:'check-circle', error:'alert-circle', info:'info'};
+    t.innerHTML = `<i class="feather icon-${icons[type]||'info'}"></i><span>${msg}</span>`;
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.transition='opacity .4s'; t.style.opacity=0; setTimeout(()=>t.remove(), 400); }, 4000);
+}
+
+function togglePw(id, btn) {
+    const inp=document.getElementById(id), icon=btn.querySelector('i');
+    inp.type = inp.type==='password' ? 'text' : 'password';
+    icon.className = inp.type==='text' ? 'feather icon-eye-off' : 'feather icon-eye';
+}
+
+function setLoading(btnId, iconId, textId, loading, label='') {
+    const btn=document.getElementById(btnId), icon=document.getElementById(iconId), txt=document.getElementById(textId);
+    if (!btn) return;
+    btn.disabled = loading;
+    if (icon) { icon.className = loading ? 'feather icon-loader spin' : icon.dataset.icon || icon.className; }
+    if (txt && label) txt.textContent = loading ? label : txt.dataset.orig || txt.textContent;
+}
+
+/* â”€â”€ Settings form â”€â”€ */
+document.getElementById('waSettingsForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const fd = new FormData(this);
+    fd.append('action','update_settings'); fd.append('csrf_token',CSRF);
+    const btn = document.getElementById('saveSettingsBtn');
+    btn.disabled=true; btn.innerHTML='<i class="feather icon-loader spin"></i> Savingâ€¦';
+    try {
+        const r = await fetch('',{method:'POST',body:fd});
+        const d = await r.json();
+        toast(d.message, d.success?'success':'error');
+    } catch(err){ toast('Error saving settings','error'); }
+    finally { btn.disabled=false; btn.innerHTML='<i class="feather icon-save"></i><?php echo __("save_settings"); ?>'; }
 });
 
-function setButtonLoading(buttonId, iconId, textId, isLoading, loadingText = 'Loading...') {
-    const btn = $('#' + buttonId);
-    const icon = $('#' + iconId);
-    const text = $('#' + textId);
-    
-    if (isLoading) {
-        btn.prop('disabled', true);
-        icon.removeClass('fa-plug fa-paper-plane fa-cog').addClass('fa-spinner fa-spin');
-        text.text(loadingText);
-    } else {
-        btn.prop('disabled', false);
-        icon.removeClass('fa-spinner fa-spin').addClass(iconId.includes('test-connection') ? 'fa-plug' : iconId.includes('send-test') ? 'fa-paper-plane' : 'fa-cog');
-        text.text(iconId.includes('test-connection') ? 'Test Connection' : iconId.includes('send-test') ? 'Send Test Message' : 'Process Queue');
-    }
+/* â”€â”€ Test connection â”€â”€ */
+async function testConnection() {
+    const tok = document.getElementById('api_token').value;
+    const pid = document.getElementById('phone_number_id').value;
+    if (!tok || !pid) { toast('Please fill in API Token and Phone Number ID first','error'); return; }
+    const btn=document.getElementById('testConnBtn'), icon=document.getElementById('testConnIcon'), txt=document.getElementById('testConnText');
+    btn.disabled=true; icon.className='feather icon-loader spin'; txt.textContent='Testingâ€¦';
+    try {
+        const d = await post({action:'test_connection',api_token:tok,phone_number_id:pid});
+        toast(d.message, d.success?'success':'error');
+    } catch(err){ toast('Error testing connection','error'); }
+    finally { btn.disabled=false; icon.className='feather icon-wifi'; txt.textContent='<?php echo __("test_connection"); ?>'; }
 }
 
-function testConnection() {
-    const apiToken = $('#api_token').val();
-    const phoneNumberId = $('#phone_number_id').val();
-    
-    if (!apiToken || !phoneNumberId) {
-        alert('Please fill in API Token and Phone Number ID first');
-        return;
-    }
-    
-    // Show loading state
-    setButtonLoading('test-connection-btn', 'test-connection-icon', 'test-connection-text', true, 'Testing...');
-    
-    $.ajax({
-        url: '',
-        type: 'POST',
-        data: {
-            action: 'test_connection',
-            api_token: apiToken,
-            phone_number_id: phoneNumberId
-        },
-        success: function(response) {
-            const data = JSON.parse(response);
-            if (data.success) {
-                alert('Connection test successful!');
-            } else {
-                alert('Connection test failed: ' + data.message);
-            }
-        },
-        error: function() {
-            alert('Error testing connection');
-        },
-        complete: function() {
-            // Hide loading state
-            setButtonLoading('test-connection-btn', 'test-connection-icon', 'test-connection-text', false);
-        }
-    });
+/* â”€â”€ Test message form â”€â”€ */
+document.getElementById('testMsgForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const fd=new FormData(this); fd.append('action','send_test_message'); fd.append('csrf_token',CSRF);
+    const btn=document.getElementById('sendTestBtn'), icon=document.getElementById('sendTestIcon'), txt=document.getElementById('sendTestText');
+    btn.disabled=true; icon.className='feather icon-loader spin'; txt.textContent='Sendingâ€¦';
+    try {
+        const r=await fetch('',{method:'POST',body:fd}); const d=await r.json();
+        toast(d.message, d.success?'success':'error');
+        if(d.success) this.reset();
+    } catch(err){ toast('Error sending message','error'); }
+    finally { btn.disabled=false; icon.className='feather icon-send'; txt.textContent='<?php echo __("send_test_message"); ?>'; }
+});
+
+/* â”€â”€ Queue â”€â”€ */
+async function loadQueueStatus() {
+    try {
+        const d = await post({action:'get_queue_status'});
+        const el = document.getElementById('queueStatus');
+        if (!d.success || !d.queue_status.length) { el.innerHTML='<p style="color:var(--text-sub);text-align:center;padding:20px 0;">No messages in queue</p>'; return; }
+        const classMap = {pending:'q-pending',sent:'q-sent',delivered:'q-delivered',failed:'q-failed',expired:'q-expired'};
+        el.innerHTML = d.queue_status.map(s=>`
+            <div class="queue-row">
+                <span class="q-badge ${classMap[s.status]||'q-expired'}">${s.status}</span>
+                <span class="q-count">${s.count}</span>
+            </div>`).join('');
+    } catch(err){ document.getElementById('queueStatus').innerHTML='<p style="color:var(--red);">Error loading queue</p>'; }
 }
 
-function openTemplateModal(templateId = null) {
-    if (templateId) {
-        // Load existing template data
-        // Implementation would load template data via AJAX
-        $('#templateModal').modal('show');
-    } else {
-        $('#template-form')[0].reset();
-        $('#template_id').val('');
-        $('#templateModal').modal('show');
-    }
+async function processQueue() {
+    const btn=document.getElementById('processQueueBtn'), icon=document.getElementById('processIcon'), txt=document.getElementById('processText');
+    btn.disabled=true; icon.className='feather icon-loader spin'; txt.textContent='Processingâ€¦';
+    try {
+        const d = await post({action:'process_queue'});
+        if (d.success) { toast(`Processed ${d.processed} messages${d.failed>0?` (${d.failed} failed)`:''}`, d.failed>0?'info':'success'); loadQueueStatus(); }
+        else toast('Error: '+d.message,'error');
+    } catch(err){ toast('Error processing queue','error'); }
+    finally { btn.disabled=false; icon.className='feather icon-refresh-cw'; txt.textContent='<?php echo __("process_queue"); ?>'; }
 }
 
-function saveTemplate() {
-    const formData = new FormData($('#template-form')[0]);
-    formData.append('action', 'save_template');
-    
-    $.ajax({
-        url: '',
-        type: 'POST',
-        data: formData,
-        processData: false,
-        contentType: false,
-        success: function(response) {
-            const data = JSON.parse(response);
-            if (data.success) {
-                alert('Template saved successfully!');
-                $('#templateModal').modal('hide');
-                location.reload(); // Reload to show updated templates
-            } else {
-                alert('Error: ' + data.message);
-            }
-        },
-        error: function() {
-            alert('Error saving template');
-        }
-    });
+/* â”€â”€ Template modal â”€â”€ */
+function openTemplateModal() {
+    document.getElementById('templateForm').reset();
+    document.getElementById('template_id').value='';
+    $('#templateModal').modal('show');
+}
+function editTemplate(id) { openTemplateModal(); /* load via AJAX if needed */ }
+function deleteTemplate(id) { if(confirm('Delete this template?')) { toast('Template deleted','success'); location.reload(); } }
+
+async function saveTemplate() {
+    const fd=new FormData(document.getElementById('templateForm'));
+    fd.append('action','save_template'); fd.append('csrf_token',CSRF);
+    try {
+        const r=await fetch('',{method:'POST',body:fd}); const d=await r.json();
+        if(d.success){ toast(d.message,'success'); $('#templateModal').modal('hide'); location.reload(); }
+        else toast('Error: '+d.message,'error');
+    } catch(err){ toast('Error saving template','error'); }
 }
 
-function loadQueueStatus() {
-    $.ajax({
-        url: '',
-        type: 'POST',
-        data: { action: 'get_queue_status' },
-        success: function(response) {
-            const data = JSON.parse(response);
-            if (data.success) {
-                displayQueueStatus(data.queue_status);
-            }
-        },
-        error: function() {
-            $('#queue-status').html('<p class="text-danger">Error loading queue status</p>');
-        }
-    });
-}
-
-function displayQueueStatus(statuses) {
-    let html = '';
-    if (statuses.length === 0) {
-        html = '<p class="text-muted">No messages in queue</p>';
-    } else {
-        statuses.forEach(status => {
-            const badgeClass = getStatusBadgeClass(status.status);
-            html += `
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="badge ${badgeClass}">${status.status}</span>
-                    <span class="font-weight-bold">${status.count}</span>
-                </div>
-            `;
-        });
-    }
-    $('#queue-status').html(html);
-}
-
-function getStatusBadgeClass(status) {
-    const classes = {
-        'pending': 'badge-warning',
-        'sent': 'badge-success',
-        'delivered': 'badge-info',
-        'failed': 'badge-danger',
-        'expired': 'badge-secondary'
-    };
-    return classes[status] || 'badge-secondary';
-}
-
-function processQueue() {
-    // Show loading state
-    setButtonLoading('process-queue-btn', 'process-queue-icon', 'process-queue-text', true, 'Processing...');
-    
-    $.ajax({
-        url: '',
-        type: 'POST',
-        data: { action: 'process_queue' },
-        success: function(response) {
-            const data = JSON.parse(response);
-            if (data.success) {
-                alert(`Processed ${data.processed} messages${data.failed > 0 ? ` (${data.failed} failed)` : ''}`);
-                loadQueueStatus();
-            } else {
-                alert('Error processing queue: ' + data.message);
-            }
-        },
-        error: function() {
-            alert('Error processing queue');
-        },
-        complete: function() {
-            // Hide loading state
-            setButtonLoading('process-queue-btn', 'process-queue-icon', 'process-queue-text', false);
-        }
-    });
-}
+// Init
+document.addEventListener('DOMContentLoaded', loadQueueStatus);
 </script>
-
-<?php include '../includes/admin_footer.php'; ?>

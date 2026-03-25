@@ -411,8 +411,10 @@ class VoiceMessageAdvanced {
             const response = await fetch(url);
             const blob = await response.blob();
 
-            // Send as new voice message
-            const result = await this.chatAPI.sendVoiceMessage(contactId, blob, 0);
+            // Send as new voice message with peerType
+            const manager = window.chatApp?.manager;
+            const peerType = manager?.currentContactUserType || 'user';
+            const result = await this.chatAPI.sendVoiceMessage(contactId, blob, 0, { peerType });
             if (result.success) {
                 alert('Voice message forwarded successfully');
             }

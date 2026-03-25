@@ -22,11 +22,15 @@ if (isset($_GET['lang'])) {
 // Database connection
 require_once('../includes/db.php');
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'] ?? null;
 
 // Fetch user data with proper error handling
 try {
-    $stmt = $pdo->prepare("SELECT * FROM clients WHERE id = ? and tenant_id = ?");
-    $stmt->execute([$_SESSION['user_id'], $tenant_id]);
+
+        $stmt = $pdo->prepare("SELECT * FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->execute([$_SESSION['user_id'], $tenant_id, $branch_id]);
+
+    
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$user) {
@@ -56,30 +60,6 @@ if ($tenant_id) {
     $stmt->execute();
     if ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $allowed_features = json_decode($row['features'], true) ?? [];
-
-        // Debug: Log the features for troubleshooting
-        error_log("Tenant ID: " . $tenant_id);
-        error_log("Features JSON: " . $row['features']);
-        error_log("Parsed Features: " . print_r($allowed_features, true));
-    } else {
-        // Debug: Log if no subscription found
-        error_log("No active subscription found for tenant: " . $tenant_id);
-
-        // Check if tenant exists in tenant_subscriptions
-        $debug_query = "SELECT * FROM tenant_subscriptions WHERE tenant_id = ?";
-        $debug_stmt = $pdo->prepare($debug_query);
-        $debug_stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
-        $debug_stmt->execute();
-        $debug_rows = $debug_stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        if (count($debug_rows) === 0) {
-            error_log("No subscriptions found for tenant: " . $tenant_id);
-        } else {
-            error_log("Found subscriptions but none active for tenant: " . $tenant_id);
-            foreach ($debug_rows as $debug_row) {
-                error_log("Subscription: " . print_r($debug_row, true));
-            }
-        }
     }
 } else {
     error_log("Tenant ID is empty or null");
@@ -117,10 +97,7 @@ if (empty($allowed_features)) {
 
 // Helper function to check if a feature is allowed
 function hasFeature($feature, $allowed_features) {
-    $hasIt = in_array($feature, $allowed_features);
-    // Debug: Log feature checks
-    error_log("Checking feature '$feature': " . ($hasIt ? 'ALLOWED' : 'DENIED'));
-    return $hasIt;
+    return in_array($feature, $allowed_features);
 }
 
 // Fetch settings data
@@ -138,6 +115,11 @@ $user_id = $_SESSION["user_id"];
 $profilePic = !empty($user['image']) ? htmlspecialchars($user['image']) : 'default-avatar.jpg';
 $imagePath = "../assets/images/client/" . $profilePic;
 
+// Generate CSRF token if not already in session
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+$csrf_token = $_SESSION['csrf_token'];
 
 ?>
 
@@ -1637,3 +1619,140 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
     </div>
 </nav>
 <!-- [ navigation menu ] end -->
+
+<?php if (hasFeature('inter_tenant_chat', $allowed_features)): ?>
+<!-- ── Floating Chat Widget ─────────────────────────────────── -->
+<div id="alqChatFab" class="alq-chat-fab" title="Chat">
+    <i class="feather icon-message-circle"></i>
+    <span class="unread-badge" id="alqChatUnreadBadge">0</span>
+    <span class="sr-only">Open chat</span>
+</div>
+<div id="alqChatPanel" class="alq-chat-panel" aria-hidden="true">
+    <div class="alq-chat-panel__header">
+        <span>Chat</span>
+        <div class="alq-chat-panel__actions">
+            <button id="alqChatOpenFull" class="alq-chat-btn" title="Open full page">
+                <i class="feather icon-external-link"></i>
+            </button>
+            <button id="alqChatClose" class="alq-chat-btn" title="Close">
+                <i class="feather icon-x"></i>
+            </button>
+        </div>
+    </div>
+    <iframe id="alqChatFrame" class="alq-chat-iframe"
+            src="../chat.php?embed=1" loading="lazy" referrerpolicy="no-referrer"></iframe>
+</div>
+<?php endif; ?>
+
+<!-- ── Floating Tasks Widget ──────────────────────────────────── -->
+<?php include_once 'floating_tasks.php'; ?>
+
+<!-- ── Scripts ────────────────────────────────────────────────── -->
+<script>
+// Make CSRF token available to JavaScript
+window.csrfToken = '<?= htmlspecialchars($csrf_token) ?>';
+
+document.addEventListener('DOMContentLoaded', function () {
+    // ── Mobile sidebar ────────────────────────────────────────────
+    var mobileFloat = document.querySelector('.mobile-menu-float');
+    var mobileToggle = document.getElementById('mobile-collapse');
+
+    function openSidebar() {
+        var navbar  = document.querySelector('.pcoded-navbar');
+        var overlay = document.querySelector('.mobile-menu-overlay');
+        if (!navbar) return;
+        navbar.classList.add('mobile-overlay', 'open');
+        mobileFloat && mobileFloat.classList.add('active');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.className = 'mobile-menu-overlay';
+            overlay.addEventListener('click', closeSidebar);
+            document.body.appendChild(overlay);
+        }
+        overlay.classList.add('show');
+    }
+
+    function closeSidebar() {
+        var navbar  = document.querySelector('.pcoded-navbar');
+        var overlay = document.querySelector('.mobile-menu-overlay');
+        if (!navbar) return;
+        navbar.classList.remove('open');
+        mobileFloat && mobileFloat.classList.remove('active');
+        overlay && overlay.classList.remove('show');
+    }
+
+    function toggleSidebar(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (window.innerWidth >= 992) return; // desktop – let the theme handle it
+        var navbar = document.querySelector('.pcoded-navbar');
+        navbar && navbar.classList.contains('open') ? closeSidebar() : openSidebar();
+    }
+
+    mobileFloat  && mobileFloat.addEventListener('click', toggleSidebar);
+    mobileToggle && mobileToggle.addEventListener('click', toggleSidebar);
+});
+</script>
+
+<?php if (hasFeature('inter_tenant_chat', $allowed_features)): ?>
+<script>
+(function () {
+    var fab        = document.getElementById('alqChatFab');
+    var panel      = document.getElementById('alqChatPanel');
+    var closeBtn   = document.getElementById('alqChatClose');
+    var openFull   = document.getElementById('alqChatOpenFull');
+    var badge      = document.getElementById('alqChatUnreadBadge');
+    var unreadCount = 0;
+
+    if (!fab || !panel) return;
+
+    function togglePanel(forceOpen) {
+        var isOpen = panel.classList.contains('open');
+        if (forceOpen === true || !isOpen) {
+            panel.classList.add('open');
+            panel.setAttribute('aria-hidden', 'false');
+            if (unreadCount > 0) markAsSeen();
+        } else {
+            panel.classList.remove('open');
+            panel.setAttribute('aria-hidden', 'true');
+        }
+    }
+
+    function updateBadge(count) {
+        unreadCount = count;
+        if (count > 0) {
+            badge.textContent = count > 99 ? '99+' : count;
+            badge.classList.add('show');
+        } else {
+            badge.classList.remove('show');
+        }
+    }
+
+    function fetchUnreadCount() {
+        fetch('../api/unread_count.php', { credentials: 'include' })
+            .then(function (r) { return r.json(); })
+            .then(function (d) { if (d.total_unread !== undefined) updateBadge(d.total_unread); })
+            .catch(function (e) { console.error('Unread count error:', e); });
+    }
+
+    function markAsSeen() {
+        var frame = document.getElementById('alqChatFrame');
+        if (frame && frame.contentWindow) {
+            frame.contentWindow.postMessage({ type: 'markAsSeen' }, '*');
+        }
+    }
+
+    fetchUnreadCount();
+    setInterval(fetchUnreadCount, 30000);
+
+    window.addEventListener('message', function (e) {
+        if (e.data && e.data.type === 'unreadCountUpdate') updateBadge(e.data.count);
+    });
+
+    fab.addEventListener('click',     function (e) { e.preventDefault(); e.stopPropagation(); togglePanel(); });
+    closeBtn && closeBtn.addEventListener('click', function (e) { e.preventDefault(); togglePanel(false); });
+    openFull && openFull.addEventListener('click', function (e) { e.preventDefault(); window.location.href = '../chat.php'; });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && panel.classList.contains('open')) togglePanel(false); });
+}());
+</script>
+<?php endif; ?>

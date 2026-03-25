@@ -2,6 +2,32 @@
 session_start();
 require_once '../includes/db.php';
 
+// Function to generate unique identifier
+function generateUniqueIdentifier($pdo, $name) {
+    // Extract first 3-4 letters from name for readability
+    $prefix = strtoupper(preg_replace('/[^a-zA-Z]/', '', substr($name, 0, 10)));
+    // Ensure prefix is at least 3 chars, pad if needed
+    $prefix = substr($prefix, 0, 4);
+    if (strlen($prefix) < 3) {
+        $prefix = str_pad($prefix, 3, 'T');
+    }
+    
+    // Generate random suffix (6 alphanumeric chars)
+    $suffix = strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
+    
+    $identifier = $prefix . '-' . $suffix;
+    
+    // Check if identifier exists, if so, regenerate
+    $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM tenants WHERE identifier = ?");
+    $stmt->execute([$identifier]);
+    if ($stmt->fetch()['count'] > 0) {
+        // Recursively generate new identifier if collision occurs
+        return generateUniqueIdentifier($pdo, $name);
+    }
+    
+    return $identifier;
+}
+
 // Set secure headers
 header("X-XSS-Protection: 1; mode=block");
 header("X-Content-Type-Options: nosniff");
@@ -32,8 +58,6 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role
 }
 
 $name = $_POST['name'] ?? '';
-$subdomain = $_POST['subdomain'] ?? '';
-$identifier = $_POST['identifier'] ?? '';
 $plan = $_POST['plan'] ?? '';
 $billing_email = $_POST['billing_email'] ?? '';
 $agency_name = $_POST['agency_name'] ?? '';
@@ -43,25 +67,15 @@ $address = $_POST['address'] ?? '';
 $errors = [];
 
 // Validate input
-if (empty($name) || empty($subdomain) || empty($identifier) || empty($plan) || empty($billing_email) || empty($agency_name) || empty($title)) {
+if (empty($name) || empty($plan) || empty($billing_email) || empty($agency_name) || empty($title)) {
     $errors[] = "All required fields must be filled.";
 }
 if (!filter_var($billing_email, FILTER_VALIDATE_EMAIL)) {
     $errors[] = "Invalid billing email format.";
 }
-if (!preg_match('/^[a-zA-Z0-9_-]+$/', $subdomain)) {
-    $errors[] = "Subdomain can only contain letters, numbers, hyphens, and underscores.";
-}
-if (!preg_match('/^[a-zA-Z0-9_-]+$/', $identifier)) {
-    $errors[] = "Identifier can only contain letters, numbers, hyphens, and underscores.";
-}
 
-// Check if subdomain or identifier already exists
-$stmt = $pdo->prepare("SELECT COUNT(*) as count FROM tenants WHERE subdomain = ? OR identifier = ?");
-$stmt->execute([$subdomain, $identifier]);
-if ($stmt->fetch()['count'] > 0) {
-    $errors[] = "Subdomain or identifier already exists.";
-}
+// Auto-generate unique identifier
+$identifier = generateUniqueIdentifier($pdo, $name);
 // Verify plan exists
 $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM plans WHERE name = ? AND status = 'active'");
 $stmt->execute([$plan]);
@@ -69,26 +83,83 @@ if ($stmt->fetch()['count'] == 0) {
     $errors[] = "Invalid or inactive plan selected.";
 }
 if (empty($errors)) {
-    // Insert new tenant
-    $stmt = $pdo->prepare("INSERT INTO tenants (name, subdomain, identifier, status, plan, billing_email, created_at, updated_at) 
-                            VALUES (?, ?, ?, 'active', ?, ?, NOW(), NOW())");
-    $stmt->execute([$name, $subdomain, $identifier, $plan, $billing_email]);
-    $tenant_id = $pdo->lastInsertId();
-    // Insert settings for the new tenant
-    $stmt = $pdo->prepare("INSERT INTO settings (tenant_id, agency_name, title, phone, email, address) VALUES (?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$tenant_id, $agency_name, $title, $phone, $billing_email, $address]);
-    // Send welcome email to tenant
-    require_once '../includes/functions.php';
-    sendTenantWelcomeEmail($billing_email, $name, $agency_name, $subdomain);
+    try {
+        // Start transaction
+        $pdo->beginTransaction();
 
-    // Log action
-    $user_id = $_SESSION['user_id'];
-    $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at)
-                            VALUES (?, 'create_tenant', 'tenant', ?, ?, ?, NOW())");
-    $details = json_encode(['name' => $name, 'subdomain' => $subdomain, 'identifier' => $identifier, 'plan' => $plan]);
-    $ip_address = $_SERVER['REMOTE_ADDR'];
-    $stmt->execute([$user_id, $tenant_id, $details, $ip_address]);
-    header('Location: manage_tenants.php?success=tenant_created');
+        // Insert new tenant
+        $stmt = $pdo->prepare("INSERT INTO tenants (name, identifier, status, plan, billing_email, created_at, updated_at) 
+                                VALUES (?, ?, 'active', ?, ?, NOW(), NOW())");
+        $stmt->execute([$name, $identifier, $plan, $billing_email]);
+        $tenant_id = $pdo->lastInsertId();
+
+        // Insert settings for the new tenant
+        $stmt = $pdo->prepare("INSERT INTO settings (tenant_id, agency_name, title, phone, email, address) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$tenant_id, $agency_name, $title, $phone, $billing_email, $address]);
+
+        // Generate temporary password (12+ characters for security)
+        $temp_password = bin2hex(random_bytes(6)) . strtoupper(bin2hex(random_bytes(2))) . '!1';
+        $hashed_password = password_hash($temp_password, PASSWORD_DEFAULT);
+
+        // Create tenant super admin user
+        $stmt = $pdo->prepare("
+            INSERT INTO users (tenant_id, name, email, password, role, created_at, updated_at)
+            VALUES (?, ?, ?, ?, 'tenant_super_admin', NOW(), NOW())
+        ");
+        $stmt->execute([$tenant_id, $agency_name, $billing_email, $hashed_password]);
+        $user_id = $pdo->lastInsertId();
+
+        // Get plan details for subscription
+        $stmt = $pdo->prepare("SELECT id, price, currency FROM plans WHERE name = ? AND status = 'active'");
+        $stmt->execute([$plan]);
+        $plan_details = $stmt->fetch();
+        
+        // Create automatic subscription for the tenant
+        $start_date = date('Y-m-d');
+        $end_date = date('Y-m-d', strtotime("+1 month", strtotime($start_date)));
+        $next_billing_date = $end_date;
+        $billing_cycle = 'monthly'; // Default billing cycle
+        $currency = $plan_details['currency'] ?? 'USD';
+        $amount = $plan_details['price'] ?? 0;
+        
+        $stmt = $pdo->prepare("
+            INSERT INTO tenant_subscriptions 
+            (tenant_id, plan_id, status, billing_cycle, start_date, end_date, 
+             amount, currency, payment_method, next_billing_date, created_at, updated_at) 
+            VALUES (?, ?, 'active', ?, ?, ?, ?, ?, '', ?, NOW(), NOW())
+        ");
+        $stmt->execute([$tenant_id, $plan_details['id'], $billing_cycle, $start_date, $end_date, $amount, $currency, $next_billing_date]);
+
+        // Send welcome email with login credentials
+        require_once '../includes/functions.php';
+        sendTenantWelcomeEmailWithCredentials($billing_email, $name, $agency_name, $temp_password);
+
+        // Log action
+        $admin_user_id = $_SESSION['user_id'];
+        $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at)
+                                VALUES (?, 'create_tenant', 'tenant', ?, ?, ?, NOW())");
+        $details = json_encode([
+            'name' => $name, 
+            'identifier' => $identifier, 
+            'plan' => $plan,
+            'subscription_amount' => $amount,
+            'currency' => $currency,
+            'admin_user_id' => $user_id,
+            'admin_email' => $billing_email
+        ]);
+        $ip_address = $_SERVER['REMOTE_ADDR'];
+        $stmt->execute([$admin_user_id, $tenant_id, $details, $ip_address]);
+
+        // Commit transaction
+        $pdo->commit();
+
+        header('Location: manage_tenants.php?success=tenant_created');
+    } catch (Exception $e) {
+        // Rollback transaction on error
+        $pdo->rollBack();
+        error_log("Error creating tenant: " . $e->getMessage());
+        header('Location: manage_tenants.php?error=' . urlencode("Error creating tenant: " . $e->getMessage()));
+    }
 } else {
     header('Location: manage_tenants.php?error=' . urlencode(implode(', ', $errors)));
 }

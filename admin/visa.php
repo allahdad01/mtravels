@@ -666,7 +666,7 @@ function isCancelledEtc($status) {
                         <div class="visa-page-header">
                             <div class="visa-page-title">
                                 <div class="visa-page-title-icon">
-                                    <i class="feather icon-passport"></i>
+                                    <i class="fas fa-id-card"></i>
                                 </div>
                                 <div>
                                     <h1><?= __('visa_applications') ?></h1>
@@ -901,14 +901,14 @@ function isCancelledEtc($status) {
 
                                         <!-- Refund -->
                                         <?php if ($isApproved): ?>
-                                        <button class="vc-btn vc-btn--warn vc-btn--disabled"
-                                                disabled title="<?= __('cannot_refund_approved_visas') ?>">
-                                            <i class="feather icon-refresh-cw"></i>
-                                        </button>
-                                        <?php else: ?>
                                         <button class="vc-btn vc-btn--warn"
                                                 onclick="openRefundModal(<?= $visa['id'] ?>, <?= htmlspecialchars($visa['sold']) ?>, <?= htmlspecialchars($visa['profit']) ?>, '<?= htmlspecialchars($visa['currency']) ?>')"
                                                 title="<?= __('refund_visa') ?>">
+                                            <i class="feather icon-refresh-cw"></i>
+                                        </button>
+                                        <?php else: ?>
+                                        <button class="vc-btn vc-btn--warn vc-btn--disabled"
+                                                disabled title="<?= __('cannot_refund_unapproved_visas') ?>">
                                             <i class="feather icon-refresh-cw"></i>
                                         </button>
                                         <?php endif; ?>

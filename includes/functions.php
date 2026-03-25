@@ -837,6 +837,112 @@ function sendTenantWelcomeEmail($tenantEmail, $tenantName, $agencyName, $subdoma
     return sendEmail($tenantEmail, $subject, $body, true, 'tenant_welcome', $tenantName, null); // Use platform SMTP for tenant welcome
 }
 
+// Send tenant welcome email with login credentials
+function sendTenantWelcomeEmailWithCredentials($tenantEmail, $tenantName, $agencyName, $tempPassword) {
+    $subject = "Welcome to MTravels - Your Account is Ready! Login Credentials Included";
+
+    $body = "
+    <html>
+    <head>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }
+            .welcome-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea; }
+            .credentials-box { background: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107; border: 2px solid #ffc107; }
+            .credential-item { margin: 12px 0; font-family: 'Courier New', monospace; }
+            .credential-label { font-weight: bold; color: #333; }
+            .credential-value { background: white; padding: 10px; border-radius: 4px; margin-top: 4px; word-break: break-all; }
+            .login-info { background: #e7f3ff; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #0066cc; }
+            .cta-button { display: inline-block; background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin: 10px 0; }
+            .warning-box { background: #fff5f5; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #ef4444; }
+            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+        </style>
+    </head>
+    <body>
+        <div class='container'>
+            <div class='header'>
+                <h1>Welcome to MTravels!</h1>
+                <p>Your Travel Agency Management Platform</p>
+            </div>
+            <div class='content'>
+                <h2>Dear {$tenantName},</h2>
+                <p>Congratulations! Your agency account has been successfully created on the MTravels platform, and your administrator account is ready to use.</p>
+
+                <div class='welcome-box'>
+                    <h3>🎉 Your Account Details</h3>
+                    <p><strong>Agency Name:</strong> {$agencyName}</p>
+                    <p><strong>Status:</strong> Active</p>
+                </div>
+
+                <div class='credentials-box'>
+                    <h4>🔐 Your Login Credentials</h4>
+                    <p style='margin-top: 0; color: #d97706;'><strong>⚠️ Please change your password immediately after first login!</strong></p>
+                    
+                    <div class='credential-item'>
+                        <div class='credential-label'>Email Address:</div>
+                        <div class='credential-value'>{$tenantEmail}</div>
+                    </div>
+                    
+                    <div class='credential-item'>
+                        <div class='credential-label'>Temporary Password:</div>
+                        <div class='credential-value'>{$tempPassword}</div>
+                    </div>
+
+                    <p style='margin-top: 15px; font-size: 12px; color: #666;'><strong>Note:</strong> This password is temporary and will expire after 90 days if not changed. For security, we recommend changing it immediately.</p>
+                </div>
+
+                <div class='login-info'>
+                    <h4>🚀 Getting Started</h4>
+                    <p>To access your agency dashboard:</p>
+                    <ol>
+                        <li>Use the email and password provided above to log in</li>
+                        <li><strong>Change your password immediately</strong> to something secure</li>
+                        <li>Complete your agency profile and SMTP configuration</li>
+                        <li>Start adding team members and managing bookings</li>
+                    </ol>
+                </div>
+
+                <div class='welcome-box'>
+                    <h4>📋 What's Next?</h4>
+                    <ul>
+                        <li><strong>Change Your Password:</strong> Set a secure password unique to your agency</li>
+                        <li><strong>Configure SMTP:</strong> Set up email sending for notifications</li>
+                        <li><strong>Add Team Members:</strong> Create user accounts for your staff</li>
+                        <li><strong>Import Clients:</strong> Upload your existing client database</li>
+                        <li><strong>Customize Settings:</strong> Personalize your agency branding</li>
+                    </ul>
+                </div>
+
+                <div class='warning-box'>
+                    <h4>🔒 Security Tips</h4>
+                    <ul>
+                        <li>Never share your login credentials with anyone</li>
+                        <li>Change your temporary password immediately</li>
+                        <li>Use a strong password (mix of letters, numbers, special characters)</li>
+                        <li>Enable two-factor authentication in your account settings for added security</li>
+                    </ul>
+                </div>
+
+                <p>If you have any questions or need assistance getting started, please don't hesitate to contact our support team at <a href='mailto:support@mtravels.com'>support@mtravels.com</a>.</p>
+
+                <p>Welcome aboard! We're excited to help your agency grow and succeed.</p>
+
+                <p>Best regards,<br><strong>The MTravels Team</strong></p>
+            </div>
+            <div class='footer'>
+                <p>This is an automated welcome message from MTravels Platform.<br>
+                © 2024 MTravels. All rights reserved.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    ";
+
+    return sendEmail($tenantEmail, $subject, $body, true, 'tenant_welcome_credentials', $tenantName, null); // Use platform SMTP for tenant welcome
+}
+
 // Send user credentials email
 function sendUserCredentialsEmail($userEmail, $userName, $password, $role, $tenantId = null) {
     // Get tenant information if applicable

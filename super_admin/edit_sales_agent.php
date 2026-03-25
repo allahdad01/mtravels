@@ -49,7 +49,7 @@ if (!$agent) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Verify CSRF token
     if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-        header('Location: edit_sales_agent.php?id=' . $agent_id . '&error=invalid_csrf');
+        header('Location: edit_sales_agent.php?id=' . $agent_id . '&error=Security+check+failed');
         exit();
     }
 
@@ -62,6 +62,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $base_salary = $_POST['base_salary'] ?? $agent['base_salary'];
     $status = $_POST['status'] ?? $agent['status'];
     $notes = $_POST['notes'] ?? '';
+    $password = $_POST['password'] ?? '';
+    $password_confirm = $_POST['password_confirm'] ?? '';
     $errors = [];
 
     // Validate input
@@ -85,6 +87,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!in_array($status, ['active', 'inactive', 'suspended'])) {
         $errors[] = "Invalid status.";
     }
+    
+    // Validate password if provided
+    if (!empty($password)) {
+        if (strlen($password) < 8) {
+            $errors[] = "Password must be at least 8 characters long.";
+        }
+        if ($password !== $password_confirm) {
+            $errors[] = "Passwords do not match.";
+        }
+    }
 
     if (empty($errors)) {
         try {
@@ -106,9 +118,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $agent_id
             ]);
 
-            // Also update user name
-            $stmt = $pdo->prepare("UPDATE users SET name = ?, updated_at = NOW() WHERE id = ?");
-            $stmt->execute([$name, $agent['user_id']]);
+            // Also update user name and password
+            if (!empty($password)) {
+                $hashed_password = password_hash($password, PASSWORD_BCRYPT);
+                $stmt = $pdo->prepare("UPDATE users SET name = ?, password = ?, updated_at = NOW() WHERE id = ?");
+                $stmt->execute([$name, $hashed_password, $agent['user_id']]);
+            } else {
+                $stmt = $pdo->prepare("UPDATE users SET name = ?, updated_at = NOW() WHERE id = ?");
+                $stmt->execute([$name, $agent['user_id']]);
+            }
 
             // Log action
             $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at)
@@ -125,13 +143,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$_SESSION['user_id'], $agent_id, $details, $_SERVER['REMOTE_ADDR']]);
 
             error_log("SALES_AGENT_UPDATED: Admin {$_SESSION['user_id']} updated sales agent {$agent_id}");
-            header('Location: manage_sales_agents.php?success=agent_updated');
+            header('Location: manage_sales_agents.php?success=Sales+agent+updated+successfully');
         } catch (Exception $e) {
             error_log("Error updating sales agent: " . $e->getMessage());
-            header('Location: edit_sales_agent.php?id=' . $agent_id . '&error=database_error');
+            header('Location: edit_sales_agent.php?id=' . $agent_id . '&error=Failed+to+update:+' . urlencode($e->getMessage()));
         }
     } else {
-        header('Location: edit_sales_agent.php?id=' . $agent_id . '&error=' . urlencode(implode(', ', $errors)));
+        header('Location: edit_sales_agent.php?id=' . $agent_id . '&error=' . urlencode(implode('. ', $errors)));
     }
     exit();
 }
@@ -198,13 +216,40 @@ $provinces = $stmt->fetchAll();
                         </div>
 
                         <?php if (!empty($_GET['error'])): ?>
-                        <div class="sa-alert sa-alert-danger" style="margin-bottom: 20px;">
+                        <div class="sa-alert sa-alert-danger" style="margin-bottom: 20px;" id="errorAlert">
                             <div class="sa-alert-icon">⚠</div>
                             <div class="sa-alert-content">
-                                <?= htmlspecialchars($_GET['error']) ?>
+                                <strong>Error:</strong> <?= htmlspecialchars($_GET['error']) ?>
                             </div>
-                            <button type="button" class="sa-alert-close" onclick="this.parentElement.style.display='none';">×</button>
+                            <button type="button" class="sa-alert-close" onclick="document.getElementById('errorAlert').remove();">×</button>
                         </div>
+                        <script>
+                            // Auto-scroll to alert
+                            document.getElementById('errorAlert').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        </script>
+                        <?php endif; ?>
+
+                        <?php if (!empty($_GET['success'])): ?>
+                        <div class="sa-alert sa-alert-success" style="margin-bottom: 20px;" id="successAlert">
+                            <div class="sa-alert-icon">✓</div>
+                            <div class="sa-alert-content">
+                                <strong>Success:</strong> <?= htmlspecialchars($_GET['success']) ?>
+                            </div>
+                            <button type="button" class="sa-alert-close" onclick="document.getElementById('successAlert').remove();">×</button>
+                        </div>
+                        <script>
+                            // Auto-scroll to alert
+                            document.getElementById('successAlert').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            // Auto-hide success alert after 5 seconds
+                            setTimeout(() => {
+                                const alert = document.getElementById('successAlert');
+                                if (alert) {
+                                    alert.style.transition = 'opacity 0.3s ease';
+                                    alert.style.opacity = '0';
+                                    setTimeout(() => alert.remove(), 300);
+                                }
+                            }, 5000);
+                        </script>
                         <?php endif; ?>
 
                         <div class="sa-card">
@@ -294,7 +339,26 @@ $provinces = $stmt->fetchAll();
                                         <textarea class="form-control" id="notes" name="notes" rows="3"><?= htmlspecialchars($agent['notes'] ?? '') ?></textarea>
                                     </div>
 
-                                    <div class="form-group" style="margin-top: 20px;">
+                                    <hr style="margin: 25px 0; border-color: #e0e0e0;">
+                                    <h5 style="margin-bottom: 20px; color: #333; font-weight: 600;">Change Password (Optional)</h5>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="password">New Password</label>
+                                                <input type="password" class="form-control" id="password" name="password" placeholder="Leave empty to keep current password" minlength="8">
+                                                <small style="color: #999; margin-top: 4px; display: block;">Minimum 8 characters</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="password_confirm">Confirm Password</label>
+                                                <input type="password" class="form-control" id="password_confirm" name="password_confirm" placeholder="Confirm new password" minlength="8">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group" style="margin-top: 25px;">
                                         <button type="submit" class="sa-btn sa-btn-primary">
                                             <i class="feather icon-save"></i> Update Sales Agent
                                         </button>
@@ -324,6 +388,54 @@ document.getElementById('salary_type')?.addEventListener('change', function() {
     } else {
         baseSalaryGroup.style.display = 'none';
         document.getElementById('base_salary').required = false;
+    }
+});
+
+// Password validation
+const passwordInput = document.getElementById('password');
+const passwordConfirmInput = document.getElementById('password_confirm');
+
+if (passwordInput && passwordConfirmInput) {
+    const validatePasswordMatch = () => {
+        if (passwordInput.value && passwordConfirmInput.value) {
+            if (passwordInput.value === passwordConfirmInput.value) {
+                passwordConfirmInput.style.borderColor = '#10b981';
+                passwordConfirmInput.style.boxShadow = '0 0 0 3px rgba(16, 185, 129, 0.1)';
+            } else {
+                passwordConfirmInput.style.borderColor = '#ef4444';
+                passwordConfirmInput.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.1)';
+            }
+        } else {
+            passwordConfirmInput.style.borderColor = '#e0e0e0';
+            passwordConfirmInput.style.boxShadow = '';
+        }
+    };
+
+    passwordConfirmInput.addEventListener('input', validatePasswordMatch);
+    passwordInput.addEventListener('input', validatePasswordMatch);
+}
+
+// Form submission validation
+document.querySelector('form')?.addEventListener('submit', function(e) {
+    const password = document.getElementById('password').value;
+    const passwordConfirm = document.getElementById('password_confirm').value;
+
+    if (password && password !== passwordConfirm) {
+        e.preventDefault();
+        alert('Passwords do not match. Please check and try again.');
+        return false;
+    }
+
+    if (password && password.length < 8) {
+        e.preventDefault();
+        alert('Password must be at least 8 characters long.');
+        return false;
+    }
+
+    if (!password && passwordConfirm) {
+        e.preventDefault();
+        alert('Please enter a password or leave both fields empty.');
+        return false;
     }
 });
 </script>
@@ -444,6 +556,12 @@ document.getElementById('salary_type')?.addEventListener('change', function() {
     background: #f8d7da;
     color: #721c24;
     border: 1px solid #f5c6cb;
+}
+
+.sa-alert-success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
 }
 
 .sa-alert-icon {

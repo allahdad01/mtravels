@@ -555,7 +555,7 @@ $platform_settings = $landingData['settings'];
             flex-wrap: wrap;
         }
 
-        .btn-primary, .btn-secondary {
+        .btn-primaryi, .btn-secondaryi {
             padding: 0.9rem 2.5rem;
             border: 2px solid transparent;
             border-radius: 8px;
@@ -567,23 +567,23 @@ $platform_settings = $landingData['settings'];
             display: inline-block;
         }
 
-        .btn-primary {
+        .btn-primaryi {
             background: white;
             color: var(--primary);
         }
 
-        .btn-primary:hover {
+        .btn-primaryi:hover {
             transform: translateY(-3px);
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
         }
 
-        .btn-secondary {
+        .btn-secondaryi {
             background: transparent;
             color: white;
             border-color: white;
         }
 
-        .btn-secondary:hover {
+        .btn-secondaryi:hover {
             background: rgba(255, 255, 255, 0.1);
         }
 
@@ -1706,8 +1706,8 @@ $platform_settings = $landingData['settings'];
                 <h3>Ready to Revolutionize Your Travel Agency?</h3>
                 <p>Start your free 14-day trial today. No credit card required. Full access to all features.</p>
                 <div class="cta-buttons">
-                    <a href="book-demo.php" class="btn-primary">Schedule Demo</a>
-                    <a href="index.php#pricing" class="btn-secondary">View Pricing</a>
+                    <a href="book-demo.php" class="btn-primaryi">Schedule Demo</a>
+                    <a href="index.php#pricing" class="btn-secondaryi">View Pricing</a>
                 </div>
             </section>
 

@@ -13,16 +13,16 @@
                         <h5 class="modal-title"><?= __('edit_ticket') ?></h5>
                         <button type="button" class="close" data-dismiss="modal">&times;</button>
                     </div>
-                    <div class="modal-body">
-                        <input type="hidden" id="editTicketId" name="id">
-                        
-                        <!-- Client and Trip Information -->
-                        <div class="card">
-                            <div class="card-header bg-light">
-                                <h6 class="mb-0"><?= __('booking_details') ?></h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="form-row">
+                    <div class="modal-body" style="overflow-y: auto; overflow-x: hidden;">
+                         <input type="hidden" id="editTicketId" name="id">
+                         
+                         <!-- Client and Trip Information -->
+                         <div class="card" style="position: relative; overflow: visible !important; z-index: 100;">
+                             <div class="card-header bg-light">
+                                 <h6 class="mb-0"><?= __('booking_details') ?></h6>
+                             </div>
+                             <div class="card-body" style="overflow: visible !important; padding-bottom: 400px;">
+                                 <div class="form-row">
                                     <div class="form-group col-md-4">
                                         <label for="editSupplier">
                                             <i class="feather icon-user mr-1"></i><?= __('supplier') ?>

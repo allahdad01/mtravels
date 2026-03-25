@@ -13,14 +13,30 @@ $offset = ($page - 1) * $results_per_page;
 
 // Search
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
+$status = isset($_GET['status']) ? trim($_GET['status']) : 'all';
 $searchCondition = "";
 $searchParams    = [];
 $searchTypes     = "";
 
+// Build status condition
+$statusCondition = "";
+if ($status !== 'all') {
+    $statusMap = [
+        'booked' => 'Booked',
+        'date_changed' => 'Date Changed',
+        'refunded' => 'Refunded'
+    ];
+    if (isset($statusMap[$status])) {
+        $statusCondition = " AND tb.status = ?";
+        $searchParams[] = $statusMap[$status];
+        $searchTypes .= "s";
+    }
+}
+
 // Build search condition dynamically
 if (!empty($search)) {
     $searchTerm = "%{$search}%";
-    $searchCondition = " AND (
+    $searchCondition .= " AND (
         tb.pnr LIKE ? OR 
         tb.passenger_name LIKE ? OR 
         tb.airline LIKE ? OR 
@@ -29,27 +45,26 @@ if (!empty($search)) {
         tb.origin LIKE ? OR 
         tb.destination LIKE ?
     )";
-    $searchParams = array_fill(0, 7, $searchTerm);
-    $searchTypes  = str_repeat("s", 7);
+    for ($i = 0; $i < 7; $i++) {
+        $searchParams[] = $searchTerm;
+        $searchTypes .= "s";
+    }
 }
 
 // Count total
 $totalCountQuery = "SELECT COUNT(*) as total
                     FROM ticket_bookings tb
-                    WHERE tb.tenant_id = ? AND tb.branch_id = ? $searchCondition";
+                    WHERE tb.tenant_id = ? AND tb.branch_id = ? $statusCondition $searchCondition";
 $stmtCount = $pdo->prepare($totalCountQuery);
 
-if (!empty($searchCondition)) {
-    $stmtCount->bindParam(1, $tenant_id, PDO::PARAM_INT);
-    $stmtCount->bindParam(2, $branch_id, PDO::PARAM_INT);
-    $paramIndex = 3;
-    foreach ($searchParams as $param) {
-        $stmtCount->bindParam($paramIndex++, $param, PDO::PARAM_STR);
-    }
-} else {
-    $stmtCount->bindParam(1, $tenant_id, PDO::PARAM_INT);
-    $stmtCount->bindParam(2, $branch_id, PDO::PARAM_INT);
+$stmtCount->bindParam(1, $tenant_id, PDO::PARAM_INT);
+$stmtCount->bindParam(2, $branch_id, PDO::PARAM_INT);
+$paramIndex = 3;
+
+foreach ($searchParams as $index => $param) {
+    $stmtCount->bindParam($paramIndex++, $searchParams[$index], PDO::PARAM_STR);
 }
+
 $stmtCount->execute();
 $totalTickets = $stmtCount->fetch(PDO::FETCH_ASSOC)['total'];
 $total_pages  = ceil($totalTickets / $results_per_page);
@@ -87,7 +102,7 @@ $ticketsQuery = "
     LEFT JOIN clients c   ON tb.sold_to = c.id AND c.tenant_id = tb.tenant_id AND c.branch_id = tb.branch_id
     LEFT JOIN main_account ma ON tb.paid_to = ma.id AND ma.tenant_id = tb.tenant_id AND ma.branch_id = tb.branch_id
     LEFT JOIN users u ON tb.created_by = u.id AND u.tenant_id = tb.tenant_id AND u.branch_id = tb.branch_id
-    WHERE tb.tenant_id = ? AND tb.branch_id = ? $searchCondition
+    WHERE tb.tenant_id = ? AND tb.branch_id = ? $statusCondition $searchCondition
     ORDER BY tb.id DESC
     LIMIT ?, ?
 ";
@@ -95,27 +110,17 @@ $ticketsQuery = "
 $stmt = $pdo->prepare($ticketsQuery);
 
 // Bind params
-if (!empty($searchCondition)) {
-    // Bind tenant_id, branch_id, offset, and limit
-    $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
-    $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
+$stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
 
-    // Bind search parameters
-    $paramIndex = 3;
-    foreach ($searchParams as $param) {
-        $stmt->bindParam($paramIndex++, $param, PDO::PARAM_STR);
-    }
-
-    // Bind offset and limit
-    $stmt->bindParam($paramIndex++, $offset, PDO::PARAM_INT);
-    $stmt->bindParam($paramIndex++, $results_per_page, PDO::PARAM_INT);
-
-} else {
-    $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
-    $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
-    $stmt->bindParam(3, $offset, PDO::PARAM_INT);
-    $stmt->bindParam(4, $results_per_page, PDO::PARAM_INT);
+$paramIndex = 3;
+foreach ($searchParams as $index => $param) {
+    $stmt->bindParam($paramIndex++, $searchParams[$index], PDO::PARAM_STR);
 }
+
+// Bind offset and limit
+$stmt->bindParam($paramIndex++, $offset, PDO::PARAM_INT);
+$stmt->bindParam($paramIndex++, $results_per_page, PDO::PARAM_INT);
 
 $stmt->execute();
 $ticketsResult = $stmt->fetchAll(PDO::FETCH_ASSOC);

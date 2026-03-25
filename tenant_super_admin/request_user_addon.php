@@ -5,6 +5,7 @@
 require_once '../includes/language_helpers.php';
 require_once '../includes/db.php';
 require_once '../includes/UserAddonManager.php';
+require_once '../includes/CsrfProtection.php';
 require_once '../admin/security.php';
 
 if (session_status() === PHP_SESSION_NONE) { session_start(); }

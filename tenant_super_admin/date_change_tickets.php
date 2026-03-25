@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 include 'header.php';
 
 $tenant_id = $_SESSION['tenant_id'];
@@ -65,8 +65,8 @@ $to   = min($page * $results_per_page, $total_tickets);
 *,*::before,*::after{box-sizing:border-box}
 body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important;background:var(--surface)!important;color:var(--text-main)!important}
 
-/* Header — amber/purple for date changes */
-.dash-header{background:linear-gradient(135deg,#f59e0b 0%,#8b5cf6 100%);border-radius:var(--radius);padding:24px 28px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 8px 32px rgba(245,158,11,0.22);position:relative;overflow:hidden}
+/* Header â€” amber/purple for date changes */
+.dash-header{background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);border-radius:var(--radius);padding:24px 28px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 8px 32px rgba(245,158,11,0.22);position:relative;overflow:hidden}
 .dash-header::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat}
 .dash-header h4{font-size:22px;font-weight:800;color:#fff;margin:0 0 4px;letter-spacing:-0.4px;position:relative}
 .dash-header p{color:rgba(255,255,255,0.8);margin:0;font-size:13px;position:relative}
@@ -76,7 +76,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 .dash-card:last-child{margin-bottom:0}
 .dash-card-head{padding:15px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .dash-card-head h6{font-size:14px;font-weight:700;margin:0;display:flex;align-items:center;gap:8px}
-.dash-card-head h6 .ico{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#f59e0b,#8b5cf6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;flex-shrink:0}
+.dash-card-head h6 .ico{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;flex-shrink:0}
 .dash-card-body{padding:20px}
 .count-badge{background:rgba(245,158,11,.12);color:#92400e;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;margin-left:auto}
 
@@ -87,7 +87,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 .search-group{display:flex;gap:8px}
 .form-input{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:9px 13px;font-family:inherit;font-size:13px;color:var(--text-main);background:var(--surface);outline:none;transition:border-color .2s}
 .form-input:focus{border-color:var(--amber);background:#fff;box-shadow:0 0 0 3px rgba(245,158,11,.1)}
-.search-btn{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#f59e0b,#8b5cf6);color:#fff;border:none;border-radius:10px;padding:9px 18px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap;flex-shrink:0}
+.search-btn{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);color:#fff;border:none;border-radius:10px;padding:9px 18px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap;flex-shrink:0}
 .search-btn:hover{opacity:.9}
 .clear-btn{display:inline-flex;align-items:center;gap:6px;background:var(--surface);color:var(--text-sub);border:1.5px solid var(--border);border-radius:10px;padding:9px 14px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap;flex-shrink:0;transition:all .2s}
 .clear-btn:hover{border-color:var(--text-sub);color:var(--text-main);text-decoration:none}
@@ -143,13 +143,13 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 .pag-links{display:flex;gap:4px}
 .pag-btn{min-width:32px;height:32px;border-radius:8px;border:1.5px solid var(--border);background:var(--card-bg);color:var(--text-main);font-size:12px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;padding:0 8px;transition:all .15s}
 .pag-btn:hover{border-color:var(--amber);color:var(--amber);text-decoration:none}
-.pag-btn.active{background:linear-gradient(135deg,#f59e0b,#8b5cf6);border-color:transparent;color:#fff}
+.pag-btn.active{background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);border-color:transparent;color:#fff}
 .pag-btn.disabled{opacity:.4;pointer-events:none}
 .pag-dots{display:flex;align-items:center;padding:0 4px;color:var(--text-sub);font-size:13px}
 
 /* Modal */
 .modal-content{border:none;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.18);font-family:inherit}
-.modal-header{background:linear-gradient(135deg,#f59e0b,#8b5cf6);color:#fff;border-radius:16px 16px 0 0;border:none;padding:18px 24px}
+.modal-header{background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);color:#fff;border-radius:16px 16px 0 0;border:none;padding:18px 24px}
 .modal-header .modal-title{font-weight:700;font-size:15px}
 .modal-header .close{color:#fff;opacity:.8;font-size:22px}
 .modal-header .close:hover{opacity:1}
@@ -193,7 +193,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 <div class="pcoded-main-container">
 <div class="pcoded-content">
 
-    <!-- Header — amber→purple for date changes -->
+    <!-- Header â€” amberâ†’purple for date changes -->
     <div class="dash-header">
         <div>
             <h4><i class="feather icon-calendar" style="margin-right:8px;"></i>Date Change Tickets</h4>
@@ -211,7 +211,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                 <div>
                     <label class="form-label-custom">Search</label>
                     <div class="search-group">
-                        <input type="text" id="searchInput" class="form-input" placeholder="Passenger, PNR, airline, or route…" value="<?= htmlspecialchars($search) ?>">
+                        <input type="text" id="searchInput" class="form-input" placeholder="Passenger, PNR, airline, or routeâ€¦" value="<?= htmlspecialchars($search) ?>">
                         <button class="search-btn" id="searchBtn"><i class="feather icon-search"></i>Search</button>
                         <?php if (!empty($search)): ?>
                         <a href="?branch=<?= $branch_filter ?>" class="clear-btn"><i class="feather icon-x"></i>Clear</a>
@@ -297,8 +297,8 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                         <span class="branch-pill"><i class="feather icon-git-branch"></i><?= htmlspecialchars($t['branch_name'] ?: 'No Branch') ?></span>
                     </td>
                     <td class="td-r">
-                        <div class="pen-supplier">↓ Supplier: <?= htmlspecialchars($t['currency']) ?> <?= number_format($supPen, 2) ?></div>
-                        <div class="pen-service">⚠ Service: <?= htmlspecialchars($t['currency']) ?> <?= number_format($svcPen, 2) ?></div>
+                        <div class="pen-supplier">â†“ Supplier: <?= htmlspecialchars($t['currency']) ?> <?= number_format($supPen, 2) ?></div>
+                        <div class="pen-service">âš  Service: <?= htmlspecialchars($t['currency']) ?> <?= number_format($svcPen, 2) ?></div>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -307,16 +307,16 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
         </div>
 
         <div class="pag-wrap">
-            <div class="pag-info">Showing <?= $from ?>–<?= $to ?> of <?= number_format($total_tickets) ?> records</div>
+            <div class="pag-info">Showing <?= $from ?>â€“<?= $to ?> of <?= number_format($total_tickets) ?> records</div>
             <div class="pag-links">
                 <?php $base = '?branch='.urlencode($branch_filter).'&search='.urlencode($search); ?>
                 <a href="<?= $base ?>&page=1" class="pag-btn <?= $page<=1?'disabled':'' ?>"><i class="feather icon-chevrons-left"></i></a>
                 <a href="<?= $base ?>&page=<?= $page-1 ?>" class="pag-btn <?= $page<=1?'disabled':'' ?>"><i class="feather icon-chevron-left"></i></a>
                 <?php
                 $sp2=max(1,$page-2); $ep=min($total_pages,$page+2);
-                if($sp2>1){echo '<a href="'.$base.'&page=1" class="pag-btn">1</a>';if($sp2>2)echo '<span class="pag-dots">…</span>';}
+                if($sp2>1){echo '<a href="'.$base.'&page=1" class="pag-btn">1</a>';if($sp2>2)echo '<span class="pag-dots">â€¦</span>';}
                 for($i=$sp2;$i<=$ep;$i++) echo '<a href="'.$base.'&page='.$i.'" class="pag-btn '.($i==$page?'active':'').'">'.$i.'</a>';
-                if($ep<$total_pages){if($ep<$total_pages-1)echo '<span class="pag-dots">…</span>';echo '<a href="'.$base.'&page='.$total_pages.'" class="pag-btn">'.$total_pages.'</a>';}
+                if($ep<$total_pages){if($ep<$total_pages-1)echo '<span class="pag-dots">â€¦</span>';echo '<a href="'.$base.'&page='.$total_pages.'" class="pag-btn">'.$total_pages.'</a>';}
                 ?>
                 <a href="<?= $base ?>&page=<?= $page+1 ?>" class="pag-btn <?= $page>=$total_pages?'disabled':'' ?>"><i class="feather icon-chevron-right"></i></a>
                 <a href="<?= $base ?>&page=<?= $total_pages ?>" class="pag-btn <?= $page>=$total_pages?'disabled':'' ?>"><i class="feather icon-chevrons-right"></i></a>
@@ -345,9 +345,9 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 
             <!-- Penalty summary strip -->
             <div class="modal-summary">
-                <div class="ms-cell"><div class="ms-label">Supplier Penalty</div><div class="ms-val red" id="supplier-penalty">—</div></div>
-                <div class="ms-cell"><div class="ms-label">Service Penalty</div><div class="ms-val amber" id="service-penalty">—</div></div>
-                <div class="ms-cell"><div class="ms-label">Total Penalty</div><div class="ms-val purple" id="total-penalty">—</div></div>
+                <div class="ms-cell"><div class="ms-label">Supplier Penalty</div><div class="ms-val red" id="supplier-penalty">â€”</div></div>
+                <div class="ms-cell"><div class="ms-label">Service Penalty</div><div class="ms-val amber" id="service-penalty">â€”</div></div>
+                <div class="ms-cell"><div class="ms-label">Total Penalty</div><div class="ms-val purple" id="total-penalty">â€”</div></div>
             </div>
 
             <div class="modal-body">
@@ -361,19 +361,19 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                         <div class="detail-section">
                             <div class="ds-title">Client Information</div>
-                            <div class="ds-row"><span class="ds-key">Passenger</span><span class="ds-val" id="passenger-name">—</span></div>
-                            <div class="ds-row"><span class="ds-key">PNR</span><span class="ds-val" id="pnr" style="font-family:'JetBrains Mono',monospace;color:var(--blue);">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Supplier</span><span class="ds-val" id="supplier-name">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Sold To</span><span class="ds-val" id="sold-to">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="branch-name">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Created By</span><span class="ds-val" id="created-by">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Passenger</span><span class="ds-val" id="passenger-name">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">PNR</span><span class="ds-val" id="pnr" style="font-family:'JetBrains Mono',monospace;color:var(--blue);">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Supplier</span><span class="ds-val" id="supplier-name">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Sold To</span><span class="ds-val" id="sold-to">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="branch-name">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Created By</span><span class="ds-val" id="created-by">â€”</span></div>
                         </div>
                         <div class="detail-section">
                             <div class="ds-title">Flight Information</div>
-                            <div class="ds-row"><span class="ds-key">Airline</span><span class="ds-val" id="airline">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Route</span><span class="ds-val" id="route">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Original Date</span><span class="ds-val" id="original-date">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Issue Date</span><span class="ds-val" id="issue-date">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Airline</span><span class="ds-val" id="airline">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Route</span><span class="ds-val" id="route">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Original Date</span><span class="ds-val" id="original-date">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Issue Date</span><span class="ds-val" id="issue-date">â€”</span></div>
                         </div>
                     </div>
                 </div>
@@ -383,20 +383,20 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     <div class="dc-grid">
                         <div class="detail-section">
                             <div class="ds-title">Original Pricing</div>
-                            <div class="ds-row"><span class="ds-key">Sold Price</span><span class="ds-val" id="original-sold">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Base Price</span><span class="ds-val" id="original-base">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Original Departure</span><span class="ds-val" id="original-departure">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Sold Price</span><span class="ds-val" id="original-sold">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Base Price</span><span class="ds-val" id="original-base">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Original Departure</span><span class="ds-val" id="original-departure">â€”</span></div>
                         </div>
                         <div class="detail-section">
                             <div class="ds-title">Change Penalties</div>
-                            <div class="ds-row"><span class="ds-key">Supplier Penalty</span><span class="ds-val red" id="supplier-penalty-detail">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Service Penalty</span><span class="ds-val amber" id="service-penalty-detail">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Status</span><span class="ds-val" id="change-status">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Supplier Penalty</span><span class="ds-val red" id="supplier-penalty-detail">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Service Penalty</span><span class="ds-val amber" id="service-penalty-detail">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Status</span><span class="ds-val" id="change-status">â€”</span></div>
                         </div>
                     </div>
                     <div class="detail-section" style="margin-top:0;">
                         <div class="ds-title">Remarks</div>
-                        <p id="change-remarks" style="font-size:14px;color:var(--text-main);margin:0;line-height:1.7;">—</p>
+                        <p id="change-remarks" style="font-size:14px;color:var(--text-main);margin:0;line-height:1.7;">â€”</p>
                     </div>
                 </div>
             </div>
@@ -441,14 +441,14 @@ document.querySelectorAll('.view-details').forEach(btn => {
         document.getElementById('total-penalty').textContent    = curr + ' ' + total.toFixed(2);
 
         document.getElementById('passenger-name').textContent = (t.title||'') + ' ' + (t.passenger_name||'');
-        document.getElementById('pnr').textContent            = t.pnr || '—';
+        document.getElementById('pnr').textContent            = t.pnr || 'â€”';
         document.getElementById('supplier-name').textContent  = t.supplier || 'N/A';
         document.getElementById('sold-to').textContent        = t.sold_to || 'N/A';
         document.getElementById('branch-name').textContent    = t.branch_name || 'No Branch';
         document.getElementById('created-by').textContent     = t.created_by_name || 'N/A';
 
         document.getElementById('airline').textContent        = t.airline || 'N/A';
-        document.getElementById('route').textContent          = (t.origin||'') + ' → ' + (t.destination||'');
+        document.getElementById('route').textContent          = (t.origin||'') + ' â†’ ' + (t.destination||'');
         document.getElementById('original-date').textContent  = t.departure_date || 'N/A';
         document.getElementById('issue-date').textContent     = t.issue_date || 'N/A';
 

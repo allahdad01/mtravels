@@ -61,7 +61,8 @@ try {
 $amount_afn = $amount;
 
 // Build redirect URLs properly
-$base_url = 'http://' . $_SERVER['HTTP_HOST'] . '/almoqadas/mtravels/admin/subscription_payments.php';
+// Using tenant_super_admin path - the correct subscription payments page
+$base_url = 'http://' . $_SERVER['HTTP_HOST'] . '/almoqadas/mtravels/tenant_super_admin/subscription_payments.php';
 $success_params = http_build_query([
     'payment' => 'success',
     'subscription_id' => $subscription_id

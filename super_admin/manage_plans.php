@@ -92,7 +92,7 @@ $current_page = max(1, min($current_page, $total_pages));
 $offset = ($current_page - 1) * $items_per_page;
 
 // Fetch paginated plans
-$query = "SELECT name, description, features, price, max_users, trial_days, status, created_at FROM plans WHERE 1=1";
+$query = "SELECT name, description, features, price, currency, max_users, trial_days, status, created_at FROM plans WHERE 1=1";
 
 if (!empty($search_query)) {
     $query .= " AND (name LIKE ? OR description LIKE ?)";
@@ -257,10 +257,10 @@ $plans = $stmt->fetchAll();
                                         </div>
                                         
                                         <div class="pc-body">
-                                            <div class="pc-price">
-                                                <span class="price-value"><?= getCurrencySymbol($defaultCurrency) ?><?= number_format($plan['price'], 2) ?></span>
-                                                <span class="price-label">per month</span>
-                                            </div>
+                                             <div class="pc-price">
+                                                 <span class="price-value"><?= getCurrencySymbol($plan['currency'] ?? $defaultCurrency) ?><?= number_format($plan['price'], 2) ?></span>
+                                                 <span class="price-label">per month</span>
+                                             </div>
                                             <p class="pc-description"><?= htmlspecialchars(substr($plan['description'], 0, 80)) ?>...</p>
                                             <div class="pc-info">
                                                 <div class="pc-info-row">
@@ -399,10 +399,29 @@ $plans = $stmt->fetchAll();
                                 <input type="text" class="form-control" id="planName" name="name" required>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-3">
                             <div class="form-group">
-                                <label for="price">Price ($)</label>
+                                <label for="price">Price</label>
                                 <input type="number" step="0.01" min="0" class="form-control" id="price" name="price" value="0.00">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="currency">Currency</label>
+                                <select class="form-control" id="currency" name="currency" required>
+                                    <option value="USD">USD ($)</option>
+                                    <option value="AFN">AFN (؋)</option>
+                                    <option value="EUR">EUR (€)</option>
+                                    <option value="GBP">GBP (£)</option>
+                                    <option value="INR">INR (₹)</option>
+                                    <option value="JPY">JPY (¥)</option>
+                                    <option value="CNY">CNY (¥)</option>
+                                    <option value="AUD">AUD (A$)</option>
+                                    <option value="CAD">CAD (C$)</option>
+                                    <option value="CHF">CHF</option>
+                                    <option value="SEK">SEK (kr)</option>
+                                    <option value="NZD">NZD (NZ$)</option>
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -446,6 +465,102 @@ $plans = $stmt->fetchAll();
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                 <button type="submit" form="createPlanForm" class="btn btn-primary">Create Plan</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Plan Modal -->
+<div class="modal fade" id="editPlanModal" tabindex="-1" role="dialog" aria-labelledby="editPlanModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editPlanModalLabel">
+                    <i class="feather icon-edit-2"></i> Edit Plan
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="editPlanForm" method="POST" action="update_plan.php">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+                    <input type="hidden" name="original_name" id="original_name" value="">
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="editPlanName">Plan Name</label>
+                                <input type="text" class="form-control" id="editPlanName" name="name" required readonly>
+                                <small class="form-text text-muted">Plan name cannot be changed after creation.</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="editPrice">Price</label>
+                                <input type="number" step="0.01" min="0" class="form-control" id="editPrice" name="price" value="0.00" required>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="editCurrency">Currency</label>
+                                <select class="form-control" id="editCurrency" name="currency" required>
+                                    <option value="USD">USD ($)</option>
+                                    <option value="AFN">AFN (؋)</option>
+                                    <option value="EUR">EUR (€)</option>
+                                    <option value="GBP">GBP (£)</option>
+                                    <option value="INR">INR (₹)</option>
+                                    <option value="JPY">JPY (¥)</option>
+                                    <option value="CNY">CNY (¥)</option>
+                                    <option value="AUD">AUD (A$)</option>
+                                    <option value="CAD">CAD (C$)</option>
+                                    <option value="CHF">CHF</option>
+                                    <option value="SEK">SEK (kr)</option>
+                                    <option value="NZD">NZD (NZ$)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editDescription">Description</label>
+                        <textarea class="form-control" id="editDescription" name="description" rows="3" required></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="editMaxUsers">Max Users</label>
+                                <input type="number" min="0" class="form-control" id="editMaxUsers" name="max_users" value="0" required>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="editTrialDays">Trial Days</label>
+                                <input type="number" min="0" class="form-control" id="editTrialDays" name="trial_days" value="0" required>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="editStatus">Status</label>
+                                <select class="form-control" id="editStatus" name="status" required>
+                                    <option value="active">Active</option>
+                                    <option value="inactive">Inactive</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editFeatures">Features (JSON Array)</label>
+                        <textarea class="form-control" id="editFeatures" name="features" rows="4" placeholder='["feature1","feature2","feature3"]' required></textarea>
+                        <small class="form-text text-muted">Enter features as a JSON array, e.g., ["feature1", "feature2"]</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="submit" form="editPlanForm" class="btn btn-primary">Update Plan</button>
             </div>
         </div>
     </div>
@@ -1383,6 +1498,36 @@ function viewAllFeatures(button) {
         console.error('Error parsing features:', error);
         alert('Error loading features');
     }
+}
+
+// Edit plan function
+function editPlan(planName) {
+    // Fetch plan data via AJAX
+    fetch('get_plan.php?name=' + encodeURIComponent(planName))
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Populate form fields
+                document.getElementById('editPlanName').value = data.plan.name;
+                document.getElementById('original_name').value = data.plan.name;
+                document.getElementById('editPrice').value = data.plan.price;
+                document.getElementById('editCurrency').value = data.plan.currency || 'USD';
+                document.getElementById('editDescription').value = data.plan.description;
+                document.getElementById('editMaxUsers').value = data.plan.max_users;
+                document.getElementById('editTrialDays').value = data.plan.trial_days;
+                document.getElementById('editStatus').value = data.plan.status;
+                document.getElementById('editFeatures').value = data.plan.features;
+                
+                // Show modal
+                $('#editPlanModal').modal('show');
+            } else {
+                alert('Error loading plan: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error loading plan data');
+        });
 }
 
 // JavaScript for Plan Management

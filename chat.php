@@ -19,6 +19,20 @@ $csrfToken = $_SESSION['csrf_token'];
 // Database connection
 require_once('includes/db.php');
 $tenant_id = $_SESSION['tenant_id'];
+
+// Fetch user role
+$userRole = 'user'; // default
+try {
+    $userStmt = $pdo->prepare("SELECT role FROM users WHERE id = ?");
+    $userStmt->execute([$currentUserId]);
+    $userRow = $userStmt->fetch(PDO::FETCH_ASSOC);
+    if ($userRow) {
+        $userRole = $userRow['role'];
+    }
+} catch (PDOException $e) {
+    error_log("User Role Error: " . $e->getMessage());
+}
+
 // Fetch settings data
 try {
     $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
@@ -1813,6 +1827,9 @@ try {
             <div class="sidebar-header">
                 <div class="d-flex justify-content-between align-items-center">
                     <h5>Messages</h5>
+                    <button class="btn btn-sm btn-outline-primary" id="createGroupBtn" title="Create a new group" style="display: none;">
+                        <i class="fas fa-plus"></i>
+                    </button>
                 </div>
             </div>
             
@@ -1865,7 +1882,7 @@ try {
                     </div>
                 </div>
                 
-                <!-- Chat options menu (hidden by default) -->
+                <!-- Chat options menu (hidden by default) - for direct messages -->
                 <div class="chat-menu-dropdown hidden" id="chatMenuDropdown">
                     <button class="chat-menu-item" id="deleteChatBtn">
                         <i class="fas fa-trash"></i>
@@ -1879,6 +1896,27 @@ try {
                     <button class="chat-menu-item" id="chatInfoBtn">
                         <i class="fas fa-info-circle"></i>
                         <span>Chat info</span>
+                    </button>
+                </div>
+                
+                <!-- Group menu (hidden by default) - for group chats -->
+                <div class="chat-menu-dropdown hidden" id="groupMenuDropdown">
+                    <button class="chat-menu-item" id="editGroupBtn">
+                        <i class="fas fa-edit"></i>
+                        <span>Edit group</span>
+                    </button>
+                    <button class="chat-menu-item" id="manageGroupMembersBtn">
+                        <i class="fas fa-users"></i>
+                        <span>Manage members</span>
+                    </button>
+                    <button class="chat-menu-item" id="changeGroupImageBtn">
+                        <i class="fas fa-image"></i>
+                        <span>Change image</span>
+                    </button>
+                    <div class="chat-menu-divider"></div>
+                    <button class="chat-menu-item" id="deleteGroupBtn" style="color: #dc3545;">
+                        <i class="fas fa-trash"></i>
+                        <span>Delete group</span>
                     </button>
                 </div>
             </div>
@@ -1952,7 +1990,113 @@ try {
         </div>
     </div>
 
-    <!-- Image Lightbox Modal -->
+    <!-- Create Group Modal -->
+    <div class="modal fade" id="createGroupModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create New Group</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createGroupForm">
+                        <div class="mb-3">
+                            <label for="groupName" class="form-label">Group Name</label>
+                            <input type="text" class="form-control" id="groupName" placeholder="Enter group name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="groupDescription" class="form-label">Description (optional)</label>
+                            <textarea class="form-control" id="groupDescription" rows="3" placeholder="Enter group description"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Select Members</label>
+                            <input type="text" class="form-control form-control-sm mb-2" id="memberSearchInput" placeholder="Search members...">
+                            <div id="groupMembersList" style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 10px;">
+                                <!-- Members will be listed here -->
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="createGroupSubmitBtn">Create Group</button>
+                </div>
+            </div>
+        </div>
+        </div>
+
+        <!-- Edit Group Modal -->
+        <div class="modal fade" id="editGroupModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Group</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editGroupForm">
+                        <div class="mb-3">
+                            <label for="editGroupName" class="form-label">Group Name</label>
+                            <input type="text" class="form-control" id="editGroupName" placeholder="Enter group name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editGroupDescription" class="form-label">Description</label>
+                            <textarea class="form-control" id="editGroupDescription" rows="3" placeholder="Enter group description"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="editGroupSubmitBtn">Save Changes</button>
+                </div>
+            </div>
+        </div>
+        </div>
+
+        <!-- Manage Group Members Modal -->
+        <div class="modal fade" id="manageGroupMembersModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Manage Group Members</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="currentGroupMembers" style="max-height: 400px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 10px;">
+                            <!-- Current members will be listed here -->
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" id="addMembersBtn">Add Members</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Members to Group Modal -->
+        <div class="modal fade" id="addGroupMembersModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Add Members to Group</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="text" class="form-control form-control-sm mb-2" id="addMemberSearchInput" placeholder="Search members...">
+                        <div id="availableMembersList" style="max-height: 400px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 10px;">
+                            <!-- Available members will be listed here -->
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="saveNewMembersBtn">Add Selected Members</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Image Lightbox Modal -->
     <div id="imageLightboxModal" class="image-lightbox-modal hidden">
         <div class="lightbox-overlay" id="lightboxOverlay"></div>
         <div class="lightbox-container">
@@ -2094,7 +2238,497 @@ try {
                  alert('Chat with: ' + contactName);
                  chatMenuDropdown?.classList.add('hidden');
              });
-         });
-     </script>
-</body>
-</html>
+             
+             // Group menu handling
+             const groupMenuDropdown = document.getElementById('groupMenuDropdown');
+             
+             // Toggle group menu
+             const originalChatMenuClick = chatMenuBtn?.onclick;
+             chatMenuBtn?.removeEventListener('click', () => {});
+             chatMenuBtn?.addEventListener('click', (e) => {
+                 e.stopPropagation();
+                 const currentType = window.chatApp?.manager?.currentType;
+                 
+                 if (currentType === 'group') {
+                     chatMenuDropdown?.classList.add('hidden');
+                     groupMenuDropdown?.classList.toggle('hidden');
+                 } else {
+                     groupMenuDropdown?.classList.add('hidden');
+                     chatMenuDropdown?.classList.toggle('hidden');
+                 }
+             });
+             
+             // Close menus on outside click
+             document.addEventListener('click', (e) => {
+                 if (!e.target.closest('#chatMenuBtn')) {
+                     chatMenuDropdown?.classList.add('hidden');
+                     groupMenuDropdown?.classList.add('hidden');
+                 }
+             });
+             
+             // Group menu actions
+             document.getElementById('editGroupBtn')?.addEventListener('click', async () => {
+                 const groupId = window.chatApp?.manager?.currentGroupId;
+                 const group = window.chatApp?.manager?.groups?.find(g => g.id === groupId);
+                 
+                 if (!group) return;
+                 
+                 document.getElementById('editGroupName').value = group.group_name;
+                 document.getElementById('editGroupDescription').value = group.description || '';
+                 
+                 const modal = new bootstrap.Modal(document.getElementById('editGroupModal'));
+                 modal.show();
+                 groupMenuDropdown?.classList.add('hidden');
+             });
+             
+             document.getElementById('editGroupSubmitBtn')?.addEventListener('click', async () => {
+                 const groupId = window.chatApp?.manager?.currentGroupId;
+                 const groupName = document.getElementById('editGroupName').value;
+                 const description = document.getElementById('editGroupDescription').value;
+                 
+                 try {
+                     const response = await fetch('api/group_chats.php', {
+                         method: 'POST',
+                         credentials: 'include',
+                         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                         body: new URLSearchParams({
+                             action: 'update',
+                             group_id: groupId,
+                             group_name: groupName,
+                             description: description,
+                             csrf_token: window.csrfToken
+                         })
+                     });
+                     
+                     if (!response.ok) {
+                         alert('Error updating group');
+                         return;
+                     }
+                     
+                     alert('Group updated successfully!');
+                     bootstrap.Modal.getInstance(document.getElementById('editGroupModal'))?.hide();
+                     
+                     // Reload contacts
+                     if (window.chatApp?.manager) {
+                         await window.chatApp.manager.loadContacts();
+                         window.chatApp.ui.renderContacts(window.chatApp.manager.contacts, window.chatApp.manager.groups);
+                     }
+                 } catch (error) {
+                     console.error('Error updating group:', error);
+                     alert('Error updating group: ' + error.message);
+                 }
+             });
+             
+             document.getElementById('manageGroupMembersBtn')?.addEventListener('click', async () => {
+                 const groupId = window.chatApp?.manager?.currentGroupId;
+                 
+                 try {
+                     const response = await fetch(`api/group_members.php?group_id=${groupId}`, {
+                         credentials: 'include'
+                     });
+                     
+                     if (!response.ok) {
+                         alert('Error loading members');
+                         return;
+                     }
+                     
+                     const data = await response.json();
+                     const membersList = document.getElementById('currentGroupMembers');
+                     membersList.innerHTML = '';
+                     
+                     if (data.members && data.members.length > 0) {
+                         data.members.forEach(member => {
+                             const div = document.createElement('div');
+                             div.className = 'd-flex justify-content-between align-items-center p-2 border-bottom';
+                             div.innerHTML = `
+                                 <div>
+                                     <strong>${member.name}</strong>
+                                     <br/>
+                                     <small class="text-muted">${member.role}</small>
+                                 </div>
+                                 ${member.role !== 'admin' ? `<button class="btn btn-sm btn-danger" onclick="removeMember(${groupId}, ${member.member_id}, '${member.member_type}')">Remove</button>` : ''}
+                             `;
+                             membersList.appendChild(div);
+                         });
+                     }
+                     
+                     const modal = new bootstrap.Modal(document.getElementById('manageGroupMembersModal'));
+                     modal.show();
+                     groupMenuDropdown?.classList.add('hidden');
+                 } catch (error) {
+                     console.error('Error loading members:', error);
+                     alert('Error loading members: ' + error.message);
+                     }
+                     });
+                     
+                     document.getElementById('addMembersBtn')?.addEventListener('click', async () => {
+                     const groupId = window.chatApp?.manager?.currentGroupId;
+                     
+                     try {
+                     // Get current members
+                     const membersResponse = await fetch(`api/group_members.php?group_id=${groupId}`, {
+                         credentials: 'include'
+                     });
+                     
+                     if (!membersResponse.ok) {
+                         alert('Error loading group members');
+                         return;
+                     }
+                     
+                     const membersData = await membersResponse.json();
+                     const currentMemberIds = new Set(membersData.members?.map(m => `${m.member_id}-${m.member_type}`) || []);
+                     
+                     // Get all available contacts
+                     const contacts = window.chatApp?.manager?.contacts || [];
+                     const availableMembers = contacts.filter(contact => 
+                         !currentMemberIds.has(`${contact.id}-${contact.user_type}`)
+                     );
+                     
+                     // Populate available members list
+                     const membersList = document.getElementById('availableMembersList');
+                     membersList.innerHTML = '';
+                     
+                     if (availableMembers.length === 0) {
+                         membersList.innerHTML = '<p class="text-muted">All contacts are already members of this group</p>';
+                     } else {
+                         availableMembers.forEach(contact => {
+                             const div = document.createElement('div');
+                             div.className = 'form-check';
+                             div.innerHTML = `
+                                 <input class="form-check-input add-member-checkbox" type="checkbox" value="${contact.id}-${contact.user_type}" id="addMember_${contact.id}">
+                                 <label class="form-check-label" for="addMember_${contact.id}">
+                                     <div>${contact.name} <small class="text-muted">(${contact.role})</small></div>
+                                     <small class="text-muted">${contact.tenant_name || ''}</small>
+                                 </label>
+                             `;
+                             membersList.appendChild(div);
+                         });
+                     }
+                     
+                     const modal = new bootstrap.Modal(document.getElementById('addGroupMembersModal'));
+                     modal.show();
+                     } catch (error) {
+                     console.error('Error loading available members:', error);
+                     alert('Error loading available members: ' + error.message);
+                     }
+                     });
+                     
+                     document.getElementById('saveNewMembersBtn')?.addEventListener('click', async () => {
+                     const groupId = window.chatApp?.manager?.currentGroupId;
+                     const selectedMembers = Array.from(document.querySelectorAll('.add-member-checkbox:checked'))
+                     .map(cb => cb.value);
+                     
+                     if (selectedMembers.length === 0) {
+                     alert('Please select at least one member');
+                     return;
+                     }
+                     
+                     try {
+                     const memberIds = [];
+                     const memberTypes = [];
+                     selectedMembers.forEach(member => {
+                         const [id, type] = member.split('-');
+                         memberIds.push(id);
+                         memberTypes.push(type);
+                     });
+                     
+                     const response = await fetch('api/group_chats.php', {
+                         method: 'POST',
+                         credentials: 'include',
+                         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                         body: new URLSearchParams({
+                             action: 'add_members',
+                             group_id: groupId,
+                             member_ids: JSON.stringify(memberIds),
+                             member_types: JSON.stringify(memberTypes),
+                             csrf_token: window.csrfToken
+                         })
+                     });
+                     
+                     if (!response.ok) {
+                         const error = await response.json();
+                         alert('Error: ' + (error.error || 'Failed to add members'));
+                         return;
+                     }
+                     
+                     alert('Members added successfully!');
+                     bootstrap.Modal.getInstance(document.getElementById('addGroupMembersModal'))?.hide();
+                     bootstrap.Modal.getInstance(document.getElementById('manageGroupMembersModal'))?.hide();
+                     
+                     // Reload group members
+                     document.getElementById('manageGroupMembersBtn')?.click();
+                     } catch (error) {
+                     console.error('Error adding members:', error);
+                     alert('Error adding members: ' + error.message);
+                     }
+                     });
+                     
+                     document.getElementById('changeGroupImageBtn')?.addEventListener('click', async () => {
+                         const fileInput = document.createElement('input');
+                         fileInput.type = 'file';
+                         fileInput.accept = 'image/*';
+                         fileInput.onchange = async (e) => {
+                             const file = e.target.files[0];
+                             if (!file) return;
+                             
+                             const groupId = window.chatApp?.manager?.currentGroupId;
+                             
+                             try {
+                                 const formData = new FormData();
+                                 formData.append('action', 'update_image');
+                                 formData.append('group_id', groupId);
+                                 formData.append('image', file);
+                                 formData.append('csrf_token', window.csrfToken);
+                                 
+                                 const response = await fetch('api/group_chats.php', {
+                                     method: 'POST',
+                                     credentials: 'include',
+                                     body: formData
+                                 });
+                                 
+                                 if (!response.ok) {
+                                     const error = await response.json();
+                                     alert('Error: ' + (error.error || 'Failed to upload image'));
+                                     return;
+                                 }
+                                 
+                                 alert('Group image updated successfully!');
+                                 groupMenuDropdown?.classList.add('hidden');
+                                 
+                                 // Reload contacts to show new image
+                                 if (window.chatApp?.manager) {
+                                     await window.chatApp.manager.loadContacts();
+                                     window.chatApp.ui.renderContacts(window.chatApp.manager.contacts, window.chatApp.manager.groups);
+                                 }
+                             } catch (error) {
+                                 console.error('Error uploading image:', error);
+                                 alert('Error uploading image: ' + error.message);
+                             }
+                         };
+                         fileInput.click();
+                     });
+                     
+                     document.getElementById('deleteGroupBtn')?.addEventListener('click', async () => {
+                 if (!confirm('Are you sure you want to delete this group? This cannot be undone.')) return;
+                 
+                 const groupId = window.chatApp?.manager?.currentGroupId;
+                 
+                 try {
+                     const response = await fetch('api/group_chats.php', {
+                         method: 'POST',
+                         credentials: 'include',
+                         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                         body: new URLSearchParams({
+                             action: 'delete',
+                             group_id: groupId,
+                             csrf_token: window.csrfToken
+                         })
+                     });
+                     
+                     if (!response.ok) {
+                         alert('Error deleting group');
+                         return;
+                     }
+                     
+                     alert('Group deleted!');
+                     groupMenuDropdown?.classList.add('hidden');
+                     
+                     // Reload contacts and show welcome screen
+                     if (window.chatApp?.manager) {
+                         await window.chatApp.manager.loadContacts();
+                         window.chatApp.ui.renderContacts(window.chatApp.manager.contacts, window.chatApp.manager.groups);
+                         document.getElementById('welcomeScreen')?.classList.remove('hidden');
+                         document.getElementById('chatHeader')?.classList.add('hidden');
+                         document.getElementById('messagesContainer')?.classList.add('hidden');
+                     }
+                 } catch (error) {
+                     console.error('Error deleting group:', error);
+                     alert('Error deleting group: ' + error.message);
+                 }
+             });
+             
+             // Show "Create Group" button only for admin and tenant_super_admin
+             const userRole = <?php echo json_encode($userRole ?? 'user'); ?>;
+             const isAdmin = userRole === 'admin' || userRole === 'tenant_super_admin';
+             const createGroupBtn = document.getElementById('createGroupBtn');
+             if (isAdmin && createGroupBtn) {
+                 createGroupBtn.style.display = 'block';
+                 
+                 // Open modal when clicked
+                 createGroupBtn.addEventListener('click', () => {
+                     populateGroupMembers();
+                     const modal = new bootstrap.Modal(document.getElementById('createGroupModal'));
+                     modal.show();
+                 });
+             }
+             
+             // Store all contacts for search functionality
+             let allGroupMembers = [];
+             
+             // Populate group members list
+             function populateGroupMembers() {
+                 const membersList = document.getElementById('groupMembersList');
+                 
+                 const contacts = window.chatApp?.manager?.contacts || [];
+                 const currentUserId = window.ALQ_USER_ID;
+                 
+                 // Filter out current user (they're already the creator/admin)
+                 allGroupMembers = contacts.filter(contact => contact.id !== currentUserId);
+                 
+                 if (allGroupMembers.length === 0) {
+                     membersList.innerHTML = '<p class="text-muted">No other contacts available</p>';
+                     return;
+                 }
+                 
+                 renderMembersList(allGroupMembers);
+             }
+             
+             // Render members list
+             function renderMembersList(membersToShow) {
+                 const membersList = document.getElementById('groupMembersList');
+                 membersList.innerHTML = '';
+                 
+                 if (membersToShow.length === 0) {
+                     membersList.innerHTML = '<p class="text-muted">No members match your search</p>';
+                     return;
+                 }
+                 
+                 membersToShow.forEach(contact => {
+                     const div = document.createElement('div');
+                     div.className = 'form-check mb-2';
+                     const roleText = contact.role ? ` (${contact.role})` : '';
+                     const tenantText = contact.tenant_name ? ` • ${contact.tenant_name}` : '';
+                     div.innerHTML = `
+                         <input class="form-check-input group-member-checkbox" type="checkbox" value="${contact.id}-${contact.user_type || 'user'}" id="member_${contact.id}">
+                         <label class="form-check-label" for="member_${contact.id}" style="cursor: pointer;">
+                             <div>${contact.name}${roleText}</div>
+                             <small class="text-muted">${tenantText}</small>
+                         </label>
+                     `;
+                     membersList.appendChild(div);
+                 });
+             }
+             
+             // Search members
+             document.getElementById('memberSearchInput')?.addEventListener('input', (e) => {
+                 const searchTerm = e.target.value.toLowerCase();
+                 
+                 if (!searchTerm) {
+                     renderMembersList(allGroupMembers);
+                     return;
+                 }
+                 
+                 const filtered = allGroupMembers.filter(contact => {
+                     const name = (contact.name || '').toLowerCase();
+                     const tenant = (contact.tenant_name || '').toLowerCase();
+                     const role = (contact.role || '').toLowerCase();
+                     return name.includes(searchTerm) || tenant.includes(searchTerm) || role.includes(searchTerm);
+                 });
+                 
+                 renderMembersList(filtered);
+             });
+             
+             // Handle group creation
+             document.getElementById('createGroupSubmitBtn')?.addEventListener('click', async () => {
+                 const groupName = document.getElementById('groupName')?.value;
+                 const groupDescription = document.getElementById('groupDescription')?.value || '';
+                 
+                 if (!groupName?.trim()) {
+                     alert('Please enter a group name');
+                     return;
+                 }
+                 
+                 const selectedMembers = Array.from(document.querySelectorAll('.group-member-checkbox:checked'))
+                     .map(cb => cb.value);
+                 
+                 if (selectedMembers.length === 0) {
+                     alert('Please select at least one member');
+                     return;
+                 }
+                 
+                 try {
+                     // Parse member IDs and types from the selected values (format: "id-type")
+                     const memberIds = [];
+                     const memberTypes = [];
+                     selectedMembers.forEach(member => {
+                         const [id, type] = member.split('-');
+                         memberIds.push(id);
+                         memberTypes.push(type);
+                     });
+                     
+                     const formData = new URLSearchParams();
+                     formData.append('action', 'create');
+                     formData.append('group_name', groupName);
+                     formData.append('description', groupDescription);
+                     formData.append('member_ids', JSON.stringify(memberIds));
+                     formData.append('member_types', JSON.stringify(memberTypes));
+                     formData.append('csrf_token', window.csrfToken);
+                     
+                     const response = await fetch('api/group_chats.php', {
+                         method: 'POST',
+                         credentials: 'include',
+                         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                         body: formData.toString()
+                     });
+                     
+                     if (!response.ok) {
+                         const error = await response.json();
+                         alert('Error: ' + (error.error || 'Failed to create group'));
+                         return;
+                     }
+                     
+                     const result = await response.json();
+                     alert('Group created successfully!');
+                     
+                     // Reset form and close modal
+                     document.getElementById('createGroupForm')?.reset();
+                     bootstrap.Modal.getInstance(document.getElementById('createGroupModal'))?.hide();
+                     
+                     // Reload contacts to show the new group
+                     if (window.chatApp?.manager) {
+                         await window.chatApp.manager.loadContacts();
+                         window.chatApp.ui.renderContacts(window.chatApp.manager.contacts, window.chatApp.manager.groups);
+                     }
+                 } catch (error) {
+                     console.error('Error creating group:', error);
+                     alert('Error creating group: ' + error.message);
+                 }
+             });
+             });
+             
+             // Remove member from group
+             window.removeMember = async function(groupId, memberId, memberType) {
+                 if (!confirm('Remove this member from the group?')) return;
+                 
+                 try {
+                     const response = await fetch('api/group_members.php', {
+                         method: 'POST',
+                         credentials: 'include',
+                         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                         body: new URLSearchParams({
+                             action: 'remove',
+                             group_id: groupId,
+                             member_id: memberId,
+                             member_type: memberType,
+                             csrf_token: window.csrfToken
+                         })
+                     });
+                     
+                     if (!response.ok) {
+                         const error = await response.json();
+                         alert('Error: ' + (error.error || 'Failed to remove member'));
+                         return;
+                     }
+                     
+                     alert('Member removed successfully!');
+                     
+                     // Reload members list
+                     document.getElementById('manageGroupMembersBtn')?.click();
+                 } catch (error) {
+                     console.error('Error removing member:', error);
+                     alert('Error removing member: ' + error.message);
+                 }
+             };
+             </script>
+             </body>
+             </html>

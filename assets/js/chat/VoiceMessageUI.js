@@ -59,8 +59,10 @@ class VoiceMessageUI {
     async startRecording() {
         try {
             const contactId = window.chatApp?.manager?.currentContactId;
-            if (!contactId) {
-                alert('Please select a contact first');
+            const groupId = window.chatApp?.manager?.currentGroupId;
+            
+            if (!contactId && !groupId) {
+                alert('Please select a contact or group first');
                 return;
             }
 
@@ -110,9 +112,13 @@ class VoiceMessageUI {
      */
     async sendVoiceMessage(audioBlob) {
         try {
-            const contactId = window.chatApp?.manager?.currentContactId;
-            if (!contactId) {
-                alert('No contact selected');
+            const manager = window.chatApp?.manager;
+            const contactId = manager?.currentContactId;
+            const groupId = manager?.currentGroupId;
+            const currentType = manager?.currentType; // 'contact' or 'group'
+            
+            if (!contactId && !groupId) {
+                alert('No contact or group selected');
                 return;
             }
 
@@ -126,12 +132,20 @@ class VoiceMessageUI {
 
             const duration = this.recordingDuration;
 
-            // Send to API
-            const response = await this.chatAPI.sendVoiceMessage(
-                contactId,
-                audioBlob,
-                duration
-            );
+            // Send to appropriate endpoint based on type
+            let response;
+            if (currentType === 'group' && groupId) {
+                // Send to group
+                response = await this.chatAPI.sendGroupVoiceMessage(groupId, audioBlob, duration);
+            } else {
+                // Send to contact
+                response = await this.chatAPI.sendVoiceMessage(
+                    contactId,
+                    audioBlob,
+                    duration,
+                    { peerType: manager.currentContactUserType || 'user' }
+                );
+            }
 
             if (response.success || response.message_id) {
 

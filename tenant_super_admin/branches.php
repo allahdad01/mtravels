@@ -679,9 +679,21 @@ function editBranch(branchId) {
 }
 
 function deleteBranch(id, name) {
-    $('#deleteBranchId').val(id);
-    $('#deleteBranchName').text('"' + name + '"');
-    $('#deleteBranchModal').modal('show');
+     // Refresh CSRF token before showing delete modal
+     $.ajax({
+         url: 'get_csrf_token.php',
+         type: 'GET',
+         dataType: 'json',
+         success: function(response) {
+             if (response.csrf_token) {
+                 $('input[name="csrf_token"]', '#deleteBranchForm').val(response.csrf_token);
+             }
+         }
+     });
+     
+     $('#deleteBranchId').val(id);
+     $('#deleteBranchName').text('"' + name + '"');
+     $('#deleteBranchModal').modal('show');
 }
 </script>
 
