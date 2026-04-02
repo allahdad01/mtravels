@@ -649,6 +649,32 @@ function isCancelledEtc($status) {
     .vc-amount__value { font-size: 16px; }
     .visa-card__name { max-width: 200px; }
 }
+/* ─── FAB ──────────────────────────────────────────────── */
+.pg-fab {
+    position: fixed;
+    bottom: 80px;
+    z-index: 1050;
+}
+
+.pg-fab button {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #185FA5;
+    border: none;
+    color: #fff;
+    font-size: 25px;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(24,95,165,0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background .15s;
+}
+
+.pg-fab button:hover {
+    background: #0C447C;
+}
 </style>
 
 <!-- [ Main Content ] start -->

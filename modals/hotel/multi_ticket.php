@@ -80,8 +80,8 @@
 </div>
 
 <!-- Add a floating action button for launching the multi-ticket invoice modal -->
-<div id="floatingActionButton" class="position-fixed" style="bottom: 80px; <?php echo is_rtl() ? 'left' : 'right'; ?>: 20px; z-index: 1050;">
-    <button type="button" class="btn btn-lg shadow" id="launchMultiTicketInvoice" title="<?= __('generate_multi_ticket_invoice') ?>">
+<div class="pg-fab" style="<?php echo is_rtl() ? 'left:20px' : 'right:20px' ?>; margin-bottom: 5px;">
+    <button type="button" id="launchMultiTicketInvoice" title="<?= __('generate_multi_ticket_invoice') ?>">
         <i class="feather icon-file-text"></i>
     </button>
 </div>

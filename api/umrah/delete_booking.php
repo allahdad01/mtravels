@@ -179,6 +179,98 @@ if ($booking_id !== null) {
         $stmt_get_umrah_txn_ids->execute();
         $umrah_txn_ids = $stmt_get_umrah_txn_ids->fetchAll(PDO::FETCH_COLUMN);
 
+        // Step 3b: Handle Type 2 Client Transactions (payment-level)
+        if ($isActiveStatus && !empty($umrah_txn_ids)) {
+            $placeholders = implode(',', array_fill(0, count($umrah_txn_ids), '?'));
+            $clientTransactions2 = "SELECT id, amount, type FROM client_transactions
+                                   WHERE client_id = ? AND transaction_of = 'umrah_transaction'
+                                   AND reference_id IN ($placeholders) 
+                                   AND tenant_id = ? AND branch_id = ?
+                                   ORDER BY id ASC";
+            $stmt = $pdo->prepare($clientTransactions2);
+            
+            $param_index = 1;
+            $stmt->bindValue($param_index++, $client_id, PDO::PARAM_INT);
+            foreach ($umrah_txn_ids as $txn_id) {
+                $stmt->bindValue($param_index++, $txn_id, PDO::PARAM_INT);
+            }
+            $stmt->bindValue($param_index++, $tenant_id, PDO::PARAM_INT);
+            $stmt->bindValue($param_index++, $branch_id, PDO::PARAM_INT);
+            $stmt->execute();
+            $clientResults2 = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            if ($client_type === 'regular') {
+                // For regular clients, adjust balances
+                foreach ($clientResults2 as $row) {
+                    $amount = abs($row['amount']);
+                    $transaction_id = $row['id'];
+                    $transaction_type = $row['type'];
+
+                    $clientBalanceField = ($currency == 'USD') ? 'usd_balance' : 'afs_balance';
+
+                    // Update subsequent transactions' running balances BEFORE deleting
+                    if ($transaction_type == 'debit') {
+                        $updateSubsequentBalances = "UPDATE client_transactions
+                                                    SET balance = balance + ?
+                                                    WHERE client_id = ?
+                                                    AND id > ?
+                                                    AND currency = ?
+                                                    AND tenant_id = ? AND branch_id = ?";
+                    } else {
+                        $updateSubsequentBalances = "UPDATE client_transactions
+                                                    SET balance = balance - ?
+                                                    WHERE client_id = ?
+                                                    AND id > ?
+                                                    AND currency = ?
+                                                    AND tenant_id = ? AND branch_id = ?";
+                    }
+
+                    $stmtUpdate = $pdo->prepare($updateSubsequentBalances);
+                    $stmtUpdate->bindParam(1, $amount, PDO::PARAM_STR);
+                    $stmtUpdate->bindParam(2, $client_id, PDO::PARAM_INT);
+                    $stmtUpdate->bindParam(3, $transaction_id, PDO::PARAM_INT);
+                    $stmtUpdate->bindParam(4, $currency, PDO::PARAM_STR);
+                    $stmtUpdate->bindParam(5, $tenant_id, PDO::PARAM_INT);
+                    $stmtUpdate->bindParam(6, $branch_id, PDO::PARAM_INT);
+                    $stmtUpdate->execute();
+
+                    // Adjust Client Balance
+                    if ($transaction_type == 'debit') {
+                        $adjustClientBalance = "UPDATE clients
+                                               SET $clientBalanceField = $clientBalanceField + ?
+                                               WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+                    } else {
+                        $adjustClientBalance = "UPDATE clients
+                                               SET $clientBalanceField = $clientBalanceField - ?
+                                               WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+                    }
+
+                    $stmt = $pdo->prepare($adjustClientBalance);
+                    $stmt->bindParam(1, $amount, PDO::PARAM_STR);
+                    $stmt->bindParam(2, $client_id, PDO::PARAM_INT);
+                    $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                    $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
+                    $stmt->execute();
+                }
+            }
+
+            // Delete all Type 2 client transactions
+            $param_index = 1;
+            $stmt_delete_client_tx2 = $pdo->prepare("
+                DELETE FROM client_transactions
+                WHERE client_id = ? AND transaction_of = 'umrah_transaction'
+                AND reference_id IN ($placeholders)
+                AND tenant_id = ? AND branch_id = ?
+            ");
+            $stmt_delete_client_tx2->bindValue($param_index++, $client_id, PDO::PARAM_INT);
+            foreach ($umrah_txn_ids as $txn_id) {
+                $stmt_delete_client_tx2->bindValue($param_index++, $txn_id, PDO::PARAM_INT);
+            }
+            $stmt_delete_client_tx2->bindValue($param_index++, $tenant_id, PDO::PARAM_INT);
+            $stmt_delete_client_tx2->bindValue($param_index++, $branch_id, PDO::PARAM_INT);
+            $stmt_delete_client_tx2->execute();
+        }
+
         // Step 4: Reverse Supplier Transactions for all unique suppliers (only if status is active)
         if ($isActiveStatus) {
             $uniqueSuppliers = [];
@@ -371,7 +463,6 @@ if ($booking_id !== null) {
                         WHERE main_account_id = ?
                         AND id > ?
                         AND currency = ?
-                        AND transaction_of = 'umrah_transaction'
                         AND tenant_id = ? AND branch_id = ?
                     ");
                 } else {
@@ -381,7 +472,6 @@ if ($booking_id !== null) {
                         WHERE main_account_id = ?
                         AND id > ?
                         AND currency = ?
-                        AND transaction_of = 'umrah_transaction'
                         AND tenant_id = ? AND branch_id = ?
                     ");
                 }

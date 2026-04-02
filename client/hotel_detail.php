@@ -6,8 +6,6 @@ if (session_status() === PHP_SESSION_NONE) {
 // Include security module
 require_once 'security.php';
 
-// Enforce authentication
-enforce_auth();
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -17,7 +15,6 @@ if (!isset($_SESSION['user_id'])) {
 
 // Include database connection
 include '../includes/db.php';
-include '../includes/conn.php';
 
 // Get tenant_id and branch_id from session
 $tenant_id = isset($_SESSION['tenant_id']) ? (int)$_SESSION['tenant_id'] : 0;

@@ -91,8 +91,12 @@ $query = "SELECT ct.*,
                 WHEN ct.transaction_of = 'date_change' THEN CONCAT(dc.passenger_name,' Sector: ', dc.origin,'-',dc.destination,' PNR: ', dc.pnr) 
                 WHEN ct.transaction_of = 'weight_sale' THEN CONCAT(tbt.passenger_name,' Sector: ', tbt.origin,'-',tbt.destination,' PNR: ', tbt.pnr)
                 WHEN ct.transaction_of = 'visa_sale' THEN CONCAT(vs.applicant_name) 
+                WHEN ct.transaction_of = 'visa_refund' THEN CONCAT(vr_app.applicant_name)
                 WHEN ct.transaction_of = 'umrah' THEN CONCAT(ub.name)
+                WHEN ct.transaction_of = 'umrah_transaction' THEN CONCAT(ub_ut.name)
+                WHEN ct.transaction_of = 'umrah_refund' THEN CONCAT(ur_book.name)
                 WHEN ct.transaction_of = 'hotel' THEN CONCAT(hb.title, ' ', hb.first_name, ' ', hb.last_name)
+                WHEN ct.transaction_of = 'hotel_refund' THEN CONCAT(hr_book.title, ' ', hr_book.first_name, ' ', hr_book.last_name)
                 WHEN ct.transaction_of = 'fund' THEN CONCAT(usr.name) 
                 WHEN ct.transaction_of = 'jv_payment' THEN CONCAT(jv.jv_name)
                 WHEN ct.transaction_of = 'additional_payment' THEN CONCAT(ap.payment_type)
@@ -104,10 +108,18 @@ $query = "SELECT ct.*,
           LEFT JOIN ticket_weights tw ON ct.reference_id = tw.id AND ct.transaction_of = 'weight_sale' AND tw.tenant_id = ? AND tw.branch_id = ?
           LEFT JOIN ticket_bookings tbt ON tw.ticket_id = tbt.id AND ct.transaction_of = 'weight_sale' AND tbt.tenant_id = ? AND tbt.branch_id = ?
           LEFT JOIN visa_applications vs ON ct.reference_id = vs.id AND ct.transaction_of = 'visa_sale' AND vs.tenant_id = ? AND vs.branch_id = ?
+          LEFT JOIN visa_refunds vr ON ct.reference_id = vr.id AND ct.transaction_of = 'visa_refund' AND vr.tenant_id = ? AND vr.branch_id = ?
+          LEFT JOIN visa_applications vr_app ON vr.visa_id = vr_app.id AND ct.transaction_of = 'visa_refund' AND vr_app.tenant_id = ? AND vr_app.branch_id = ?
           LEFT JOIN refunded_tickets rt ON ct.reference_id = rt.id AND ct.transaction_of = 'ticket_refund' AND rt.tenant_id = ? AND rt.branch_id = ?
           LEFT JOIN date_change_tickets dc ON ct.reference_id = dc.id AND ct.transaction_of = 'date_change' AND dc.tenant_id = ? AND dc.branch_id = ?
           LEFT JOIN umrah_bookings ub ON ct.reference_id = ub.booking_id AND ct.transaction_of = 'umrah' AND ub.tenant_id = ? AND ub.branch_id = ?
+          LEFT JOIN umrah_transactions ut ON ct.transaction_of = 'umrah_transaction' AND ct.reference_id = ut.id
+          LEFT JOIN umrah_bookings ub_ut ON ut.umrah_booking_id = ub_ut.booking_id
+          LEFT JOIN umrah_refunds ur ON ct.reference_id = ur.id AND ct.transaction_of = 'umrah_refund' AND ur.tenant_id = ? AND ur.branch_id = ?
+          LEFT JOIN umrah_bookings ur_book ON ur.booking_id = ur_book.booking_id AND ct.transaction_of = 'umrah_refund' AND ur_book.tenant_id = ? AND ur_book.branch_id = ?
           LEFT JOIN hotel_bookings hb ON ct.reference_id = hb.id AND ct.transaction_of = 'hotel' AND hb.tenant_id = ? AND hb.branch_id = ?
+          LEFT JOIN hotel_refunds hr ON ct.reference_id = hr.id AND ct.transaction_of = 'hotel_refund' AND hr.tenant_id = ? AND hr.branch_id = ?
+          LEFT JOIN hotel_bookings hr_book ON hr.booking_id = hr_book.id AND ct.transaction_of = 'hotel_refund' AND hr_book.tenant_id = ? AND hr_book.branch_id = ?
           LEFT JOIN users usr ON usr.id = ct.reference_id AND ct.transaction_of = 'fund' AND usr.tenant_id = ? AND usr.branch_id = ?
           LEFT JOIN jv_payments jv ON jv.id = ct.reference_id AND ct.transaction_of = 'jv_payment' AND jv.tenant_id = ? AND jv.branch_id = ?
           LEFT JOIN additional_payments ap ON ap.id = ct.reference_id AND ct.transaction_of = 'additional_payment' AND ap.tenant_id = ? AND ap.branch_id = ?
@@ -122,11 +134,11 @@ try {
     }
 
     // Prepare parameters array with tenant/branch from joins
-    $joinParams = [];
-    for ($i = 0; $i < 12; $i++) {
-        $joinParams[] = $tenant_id;
-        $joinParams[] = $branch_id;
-    }
+     $joinParams = [];
+     for ($i = 0; $i < 18; $i++) {
+         $joinParams[] = $tenant_id;
+         $joinParams[] = $branch_id;
+     }
 
     // Merge join params with filter params and LIMIT/OFFSET
     $allParams = array_merge($joinParams, $params, [$perPage, $offset]);

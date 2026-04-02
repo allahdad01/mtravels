@@ -484,8 +484,6 @@ $search_param_str = !empty($search_query) ? '&search=' . urlencode($search_query
 
 <div class="pcoded-main-container">
   <div class="pcoded-wrapper">
-    <div class="pcoded-content">
-      <div class="pcoded-inner-content">
         <div class="main-body">
           <div class="page-wrapper">
             <div class="jvp-wrap">
@@ -709,8 +707,6 @@ $search_param_str = !empty($search_query) ? '&search=' . urlencode($search_query
             </div><!-- /jvp-wrap -->
           </div>
         </div>
-      </div>
-    </div>
   </div>
 </div>
 

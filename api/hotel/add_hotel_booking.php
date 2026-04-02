@@ -232,8 +232,8 @@ $title = isset($_POST['title']) ? DbSecurity::validateInput($_POST['title'], 'st
             $stmtSupplierTrans->bindParam(7, $branch_id, PDO::PARAM_INT);
         } else {
             // For non-external suppliers, just record the transaction without balance
-            $stmtSupplierTrans = $pdo->prepare("INSERT INTO supplier_transactions (supplier_id, transaction_type, amount, transaction_of, remarks, reference_id, transaction_date, tenant_id, branch_id)
-                                               VALUES (?, 'Debit', ?, 'hotel', ?, ?, NOW(), ?, ?)");
+            $stmtSupplierTrans = $pdo->prepare("INSERT INTO supplier_transactions (supplier_id, transaction_type, amount, transaction_of, remarks, reference_id, transaction_date, tenant_id, branch_id, balance)
+                                               VALUES (?, 'Debit', ?, 'hotel', ?, ?, NOW(), ?, ?, '0')");
             $supplierDescription = "Hotel booking for $title $first_name $last_name";
             $stmtSupplierTrans->bindParam(1, $supplier_id, PDO::PARAM_INT);
             $stmtSupplierTrans->bindParam(2, $base_amount, PDO::PARAM_STR);

@@ -78,6 +78,7 @@ try {
     $stmt = $pdo->prepare("
         SELECT
             id,
+            booking_id,
             refund_amount,
             reason,
             currency,
@@ -626,7 +627,7 @@ function currencySymbol(string $currency): string {
 
                                 <!-- Action -->
                                 <td style="text-align:center;">
-                                    <a href="hotel_refund_detail.php?id=<?= urlencode($refund['id']) ?>"
+                                    <a href="hotel_detail.php?id=<?= urlencode($refund['booking_id']) ?>"
                                        class="btn-view" title="View Details">
                                         <i class="feather icon-eye"></i>
                                     </a>

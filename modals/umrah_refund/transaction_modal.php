@@ -172,15 +172,14 @@
                                             </div>
                                         </div>
                                         <div class="col-md-6">
-                                            <div class="form-group" id="exchangeRateField" style="display: none;">
-                                                <label for="exchangeRate">
-                                                    <i class="feather icon-trending-up mr-1"></i><?= __('exchange_rate') ?>
-                                                </label>
-                                                <input type="number" class="form-control" id="exchangeRate" name="exchange_rate" step="0.00001" min="0.00001" placeholder="Enter exchange rate">
-                                                <small class="form-text text-muted"><?= __('exchange_rate_required_for_currency_conversion') ?></small>
-                                                <div class="validation-feedback"></div>
-                                            </div>
-                                        </div>
+                                             <div class="form-group" id="exchangeRateField" style="display: none;">
+                                                 <label for="exchangeRate">
+                                                     <i class="feather icon-refresh-cw mr-1"></i><?= __('exchange_rate') ?>
+                                                 </label>
+                                                 <input type="number" class="form-control" id="exchangeRate" name="exchange_rate" step="0.01" placeholder="0.00">
+                                                 <div class="validation-feedback"></div>
+                                             </div>
+                                         </div>
                                     </div>
 
                                     <div class="form-group">

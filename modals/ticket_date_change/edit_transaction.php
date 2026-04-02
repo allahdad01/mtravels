@@ -50,12 +50,12 @@
                         </div>
 
                         <div class="form-group" id="editExchangeRateField" style="display: none;">
-                            <label for="editTransactionExchangeRate"><?= __('exchange_rate') ?></label>
+                            <label id="editExchangeRateLabel" for="editTransactionExchangeRate"><?= __('exchange_rate') ?></label>
                             <input type="number" class="form-control" id="editTransactionExchangeRate"
-                                name="exchange_rate" step="0.01" placeholder="Enter exchange rate" required>
-                            <small class="form-text text-muted">
-                                <i class="feather icon-info mr-1"></i>
-                                <?= __('required_when_payment_currency_differs_from_ticket_currency') ?>
+                                name="exchange_rate" step="0.01" placeholder="0.00" required>
+                            <small class="form-text text-muted d-block mt-1">
+                                Enter how many <span id="editExchangeRateTarget"></span> equals 1 <span id="editExchangeRateBase"></span>
+                                <span id="editExchangeRateExample" class="d-block mt-1" style="color: #666;"></span>
                             </small>
                         </div>
                         

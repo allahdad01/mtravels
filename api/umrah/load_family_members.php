@@ -78,6 +78,22 @@ try {
 
     // Build HTML for members
     ob_start();
+    
+    // Check if any family member has regular client type
+    $hasRegularClient = false;
+    $checkClientTypeStmt = $pdo->prepare("
+        SELECT COUNT(*) as regular_count 
+        FROM umrah_bookings ub
+        JOIN clients c ON ub.sold_to = c.id
+        WHERE ub.family_id = ? AND c.client_type = 'regular' 
+        AND ub.tenant_id = ? AND ub.branch_id = ?
+    ");
+    $checkClientTypeStmt->bindParam(1, $family_id, PDO::PARAM_INT);
+    $checkClientTypeStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $checkClientTypeStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+    $checkClientTypeStmt->execute();
+    $clientTypeResult = $checkClientTypeStmt->fetch(PDO::FETCH_ASSOC);
+    $hasRegularClient = $clientTypeResult && $clientTypeResult['regular_count'] > 0;
     ?>
     <!-- Family-level Bulk Actions -->
     <div class="family-bulk-actions mb-3">
@@ -154,11 +170,13 @@ try {
                     <?php endif; ?>
                     
                     <!-- Financial Details - Below Name/Status -->
-                    <div class="member-financial-row" style="margin-top: 0.5rem; display: flex; gap: 1rem; flex-wrap: wrap;">
-                        <span style="font-size: 0.75rem;"><strong><?= __('sold_price') ?>:</strong> <?= number_format($member['sold_price'] ?? 0, 2) ?> <?= htmlspecialchars($member['currency'] ?? 'USD') ?></span>
-                        <span style="font-size: 0.75rem; color: #059669;"><strong><?= __('paid') ?>:</strong> <?= number_format($member['paid'] ?? 0, 2) ?> <?= htmlspecialchars($member['currency'] ?? 'USD') ?></span>
-                        <span style="font-size: 0.75rem; <?= (($member['due'] ?? 0) > 0) ? 'color: #ef4444;' : 'color: #059669;' ?>"><strong><?= __('due') ?>:</strong> <?= number_format($member['due'] ?? 0, 2) ?> <?= htmlspecialchars($member['currency'] ?? 'USD') ?></span>
-                    </div>
+                     <div class="member-financial-row" style="margin-top: 0.5rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+                         <span style="font-size: 0.75rem;"><strong><?= __('sold_price') ?>:</strong> <?= number_format($member['sold_price'] ?? 0, 2) ?> <?= htmlspecialchars($member['currency'] ?? 'USD') ?></span>
+                         <?php if (!$hasRegularClient): ?>
+                         <span style="font-size: 0.75rem; color: #059669;"><strong><?= __('paid') ?>:</strong> <?= number_format($member['paid'] ?? 0, 2) ?> <?= htmlspecialchars($member['currency'] ?? 'USD') ?></span>
+                         <span style="font-size: 0.75rem; <?= (($member['due'] ?? 0) > 0) ? 'color: #ef4444;' : 'color: #059669;' ?>"><strong><?= __('due') ?>:</strong> <?= number_format($member['due'] ?? 0, 2) ?> <?= htmlspecialchars($member['currency'] ?? 'USD') ?></span>
+                         <?php endif; ?>
+                     </div>
                 </div>
                 <div class="member-actions">
                     <button class="btn-icon-sm" onclick="viewMemberDetails(<?= $member['booking_id'] ?>)" title="<?= __('view_details') ?>">

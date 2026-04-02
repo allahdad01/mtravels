@@ -1,16 +1,47 @@
- // Transaction Management System
- const transactionManager = {
-    // Initialize transaction modal and form handlers
-    init: function() {
-        this.bindEvents();
-        this.setDefaultDateTime();
-    },
+ // Currency display mapping
+ const getCurrencyDisplay = function(currencyCode) {
+     const currencyMap = {
+         'USD': 'USD',
+         'AFS': 'AFS',
+         'EUR': 'EUR',
+         'DARHAM': 'AED'
+     };
+     return currencyMap[currencyCode] || currencyCode;
+ };
 
-    // Bind all event listeners
-    bindEvents: function() {
-        $('#hotelTransactionForm').off('submit').on('submit', this.handleTransactionSubmit);
-        $('#paymentCurrency').on('change', this.handleCurrencyChange);
-    },
+ // Generate dynamic exchange rate example
+ const getExchangeRateExample = function(baseCurrency, targetCurrency) {
+     const examples = {
+         'USD-AFS': 'Example: If 1 USD = 88 AFS, enter 88',
+         'USD-EUR': 'Example: If 1 USD = 0.95 EUR, enter 0.95',
+         'USD-AED': 'Example: If 1 USD = 3.67 AED, enter 3.67',
+         'AFS-USD': 'Example: If 1 AFS = 0.0114 USD, enter 0.0114',
+         'AFS-EUR': 'Example: If 1 AFS = 0.0108 EUR, enter 0.0108',
+         'AFS-AED': 'Example: If 1 AFS = 0.0417 AED, enter 0.0417',
+         'EUR-USD': 'Example: If 1 EUR = 1.05 USD, enter 1.05',
+         'EUR-AFS': 'Example: If 1 EUR = 92.5 AFS, enter 92.5',
+         'EUR-AED': 'Example: If 1 EUR = 3.86 AED, enter 3.86',
+         'AED-USD': 'Example: If 1 AED = 0.27 USD, enter 0.27',
+         'AED-AFS': 'Example: If 1 AED = 23.99 AFS, enter 23.99',
+         'AED-EUR': 'Example: If 1 AED = 0.26 EUR, enter 0.26'
+     };
+     const key = `${baseCurrency}-${targetCurrency}`;
+     return examples[key] || 'Enter the exchange rate';
+ };
+
+ // Transaction Management System
+   const transactionManager = {
+      // Initialize transaction modal and form handlers
+      init: function() {
+          this.bindEvents();
+          this.setDefaultDateTime();
+      },
+
+      // Bind all event listeners
+      bindEvents: function() {
+          $('#hotelTransactionForm').off('submit').on('submit', this.handleTransactionSubmit);
+          $('#paymentCurrency').on('change', this.handleCurrencyChange);
+      },
     
     // Set today's date and current time as default
     setDefaultDateTime: function() {
@@ -29,26 +60,37 @@
     handleCurrencyChange: function() {
         const selectedCurrency = $(this).val();
         const refundCurrency = window.refundCurrency || 'USD';
-        const amount = parseFloat($('#paymentAmount').val()) || 0;
-        const exchangeRate = parseFloat($('#exchangeRateDisplay').text()) || 1;
+        const exchangeRateField = $('#exchangeRateField');
 
         // Show/Hide exchange rate field
         if (selectedCurrency && selectedCurrency !== refundCurrency) {
-            $('#exchangeRateField').slideDown();
+            exchangeRateField.slideDown();
             $('#exchangeRate').attr('required', true);
+            
+            // Get display names for currencies
+            const baseDisplay = getCurrencyDisplay(refundCurrency);
+            const targetDisplay = getCurrencyDisplay(selectedCurrency);
+            
+            // Update label with proper exchange rate direction
+            const label = `<i class="feather icon-refresh-cw mr-1"></i>${baseDisplay} to ${targetDisplay} Exchange Rate`;
+            const labelElement = exchangeRateField.find('label');
+            labelElement.html(label);
+            
+            // Update helper text
+            const example = getExchangeRateExample(baseDisplay, targetDisplay);
+            const helpText = `<small class="form-text text-muted d-block mt-1">
+                Enter how many ${targetDisplay} equals 1 ${baseDisplay}
+                <span class="d-block mt-1" style="color: #666;">${example}</span>
+            </small>`;
+            
+            // Remove old help text and add new one
+            exchangeRateField.find('small').remove();
+            exchangeRateField.find('input').after(helpText);
         } else {
-            $('#exchangeRateField').slideUp();
+            exchangeRateField.slideUp();
             $('#exchangeRate').removeAttr('required').val('');
-        }
-
-        if (selectedCurrency === 'AFS' && $('#paymentAmount').data('usd-amount')) {
-            // Convert USD to AFS
-            const afsAmount = amount * exchangeRate;
-            $('#paymentAmount').val(afsAmount.toFixed(2));
-        } else if (selectedCurrency === 'USD' && $('#paymentAmount').data('afs-amount')) {
-            // Convert AFS to USD
-            const usdAmount = amount / exchangeRate;
-            $('#paymentAmount').val(usdAmount.toFixed(2));
+            // Remove help text
+            exchangeRateField.find('small').remove();
         }
     },
 
@@ -363,7 +405,45 @@ $(document).ready(function() {
     $('#addTransactionForm').on('shown.bs.collapse', function() {
         $('#exchangeRateField').hide();
         $('#exchangeRate').removeAttr('required').val('');
+        // Remove help text
+        $('#exchangeRateField').find('small').remove();
         transactionManager.setDefaultDateTime();
+    });
+    
+    // Show/Hide exchange rate field in edit form based on currency difference
+    $('#editPaymentCurrency').on('change', function() {
+        const selectedCurrency = $(this).val();
+        const refundCurrency = window.refundCurrency || 'USD';
+        const exchangeRateField = $('#editExchangeRateField');
+
+        if (selectedCurrency && selectedCurrency !== refundCurrency) {
+            exchangeRateField.slideDown();
+            $('#editExchangeRate').attr('required', true);
+            
+            // Get display names for currencies
+            const baseDisplay = getCurrencyDisplay(refundCurrency);
+            const targetDisplay = getCurrencyDisplay(selectedCurrency);
+            
+            // Update label with proper exchange rate direction
+            const label = `<i class="feather icon-refresh-cw mr-1"></i>${baseDisplay} to ${targetDisplay} Exchange Rate`;
+            exchangeRateField.find('label').html(label);
+            
+            // Update helper text
+            const example = getExchangeRateExample(baseDisplay, targetDisplay);
+            const helpText = `<small class="form-text text-muted d-block mt-1">
+                Enter how many ${targetDisplay} equals 1 ${baseDisplay}
+                <span class="d-block mt-1" style="color: #666;">${example}</span>
+            </small>`;
+            
+            // Remove old help text and add new one
+            exchangeRateField.find('small').remove();
+            exchangeRateField.find('input').after(helpText);
+        } else {
+            exchangeRateField.slideUp();
+            $('#editExchangeRate').removeAttr('required').val('');
+            // Remove help text
+            exchangeRateField.find('small').remove();
+        }
     });
 });
 

@@ -604,7 +604,7 @@ function checkInUrgency(string $checkIn): string {
 
                                 <!-- Action -->
                                 <td style="text-align:center;">
-                                    <a href="hotel_detail.php?booking_id=<?= urlencode($hotel['id']) ?>"
+                                    <a href="hotel_detail.php?id=<?= urlencode($hotel['id']) ?>"
                                        class="btn-view" title="View Details">
                                         <i class="feather icon-eye"></i>
                                     </a>

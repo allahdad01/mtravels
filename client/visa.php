@@ -690,7 +690,7 @@ function visaTypeIcon(string $type): string {
 
                                 <!-- Action -->
                                 <td style="text-align:center;">
-                                    <a href="visa_details.php?booking_id=<?= urlencode($visa['id']) ?>"
+                                    <a href="visa_detail.php?id=<?= urlencode($visa['id']) ?>"
                                        class="btn-view" title="View Details">
                                         <i class="feather icon-eye"></i>
                                     </a>

@@ -1,3 +1,34 @@
+// Currency display mapping
+const getCurrencyDisplay = function(currencyCode) {
+    const currencyMap = {
+        'USD': 'USD',
+        'AFS': 'AFS',
+        'EUR': 'EUR',
+        'DARHAM': 'AED'
+    };
+    return currencyMap[currencyCode] || currencyCode;
+};
+
+// Generate dynamic exchange rate example
+const getExchangeRateExample = function(baseCurrency, targetCurrency) {
+    const examples = {
+        'USD-AFS': 'Example: If 1 USD = 88 AFS, enter 88',
+        'USD-EUR': 'Example: If 1 USD = 0.95 EUR, enter 0.95',
+        'USD-AED': 'Example: If 1 USD = 3.67 AED, enter 3.67',
+        'AFS-USD': 'Example: If 1 AFS = 0.0114 USD, enter 0.0114',
+        'AFS-EUR': 'Example: If 1 AFS = 0.0108 EUR, enter 0.0108',
+        'AFS-AED': 'Example: If 1 AFS = 0.0417 AED, enter 0.0417',
+        'EUR-USD': 'Example: If 1 EUR = 1.05 USD, enter 1.05',
+        'EUR-AFS': 'Example: If 1 EUR = 92.5 AFS, enter 92.5',
+        'EUR-AED': 'Example: If 1 EUR = 3.86 AED, enter 3.86',
+        'AED-USD': 'Example: If 1 AED = 0.27 USD, enter 0.27',
+        'AED-AFS': 'Example: If 1 AED = 23.99 AFS, enter 23.99',
+        'AED-EUR': 'Example: If 1 AED = 0.26 EUR, enter 0.26'
+    };
+    const key = `${baseCurrency}-${targetCurrency}`;
+    return examples[key] || 'Enter the exchange rate';
+};
+
 function openTransactionTab(umrahId, soldAmount) {
     // Make sure soldAmount is a number
     soldAmount = parseFloat(soldAmount) || 0;
@@ -416,10 +447,8 @@ $('#paymentCurrency').on('change', function() {
         $('#receiptNumberField').hide();
 
         // Reset exchange rate field
-        const exchangeRateField = $('#transactionExchangeRate').closest('.form-group');
-        exchangeRateField.hide();
+        $('#exchangeRateField').hide();
         $('#transactionExchangeRate').removeAttr('required').val('');
-        exchangeRateField.find('.text-warning').remove();
 
         // Set today's date
         const today = new Date().toISOString().split('T')[0];
@@ -568,6 +597,43 @@ $(document).ready(function() {
         $('#paymentTime').val(`${hours}:${minutes}`);
     }
     
+    // Wire up currency change event in add transaction form
+    $('#paymentCurrency').on('change', function() {
+        const selectedCurrency = $(this).val();
+        const baseCurrency = window.bookingCurrency || 'USD';
+        const exchangeRateField = $('#exchangeRateField');
+
+        if (selectedCurrency && baseCurrency && selectedCurrency !== baseCurrency) {
+            exchangeRateField.slideDown();
+            $('#transactionExchangeRate').attr('required', true);
+            
+            // Get display names for currencies
+            const baseDisplay = getCurrencyDisplay(baseCurrency);
+            const targetDisplay = getCurrencyDisplay(selectedCurrency);
+            
+            // Update label with proper exchange rate direction
+            const label = `<i class="feather icon-refresh-cw mr-1"></i>${baseDisplay} to ${targetDisplay} Exchange Rate`;
+            const labelElement = exchangeRateField.find('label');
+            labelElement.html(label);
+            
+            // Update helper text
+            const example = getExchangeRateExample(baseDisplay, targetDisplay);
+            const helpText = `<small class="form-text text-muted d-block mt-1">
+                Enter how many ${targetDisplay} equals 1 ${baseDisplay}
+                <span class="d-block mt-1" style="color: #666;">${example}</span>
+            </small>`;
+            
+            // Remove old help text and add new one
+            exchangeRateField.find('small').remove();
+            exchangeRateField.find('input').after(helpText);
+        } else {
+            exchangeRateField.slideUp();
+            $('#transactionExchangeRate').removeAttr('required').val('');
+            // Remove help text
+            exchangeRateField.find('small').remove();
+        }
+    });
+    
     // Add event handler for edit transaction form submission
     $('#editTransactionForm').off('submit').on('submit', function(e) {
         e.preventDefault();
@@ -658,9 +724,30 @@ $(document).ready(function() {
         if (selectedCurrency && selectedCurrency !== bookingCurrency) {
             exchangeRateField.slideDown();
             $('#editExchangeRate').attr('required', true);
+            
+            // Get display names for currencies
+            const baseDisplay = getCurrencyDisplay(bookingCurrency);
+            const targetDisplay = getCurrencyDisplay(selectedCurrency);
+            
+            // Update label with proper exchange rate direction
+            const label = `<i class="feather icon-refresh-cw mr-1"></i>${baseDisplay} to ${targetDisplay} Exchange Rate`;
+            exchangeRateField.find('label').html(label);
+            
+            // Update helper text
+            const example = getExchangeRateExample(baseDisplay, targetDisplay);
+            const helpText = `<small class="form-text text-muted d-block mt-1">
+                Enter how many ${targetDisplay} equals 1 ${baseDisplay}
+                <span class="d-block mt-1" style="color: #666;">${example}</span>
+            </small>`;
+            
+            // Remove old help text and add new one
+            exchangeRateField.find('small').remove();
+            exchangeRateField.find('input').after(helpText);
         } else {
             exchangeRateField.slideUp();
-            $('#editExchangeRate').removeAttr('required');
+            $('#editExchangeRate').removeAttr('required').val('');
+            // Remove help text
+            exchangeRateField.find('small').remove();
         }
     });
 });

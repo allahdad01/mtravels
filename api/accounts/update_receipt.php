@@ -76,6 +76,72 @@ try {
         } else {
             echo json_encode(['success' => false, 'message' => 'Transaction not found or no changes made']);
         }
+    } elseif ($transaction_type === 'supplier') {
+        // Update supplier transaction
+        $query = "UPDATE supplier_transactions 
+                  SET receipt = ? 
+                  WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+        
+        $stmt = $pdo->prepare($query);
+        $stmt->execute([$receipt, $transaction_id, $tenant_id, $branch_id]);
+        
+        if ($stmt->rowCount() > 0) {
+            // Get the supplier ID and name for response
+            $getAccountQuery = "SELECT st.supplier_id, s.name 
+                               FROM supplier_transactions st
+                               JOIN suppliers s ON st.supplier_id = s.id
+                               WHERE st.id = ? AND st.tenant_id = ? AND st.branch_id = ?";
+            
+            $getStmt = $pdo->prepare($getAccountQuery);
+            $getStmt->execute([$transaction_id, $tenant_id, $branch_id]);
+            $result = $getStmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($result) {
+                echo json_encode([
+                    'success' => true, 
+                    'message' => 'Receipt updated successfully',
+                    'account_id' => $result['supplier_id'],
+                    'account_name' => $result['name']
+                ]);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Supplier information not found']);
+            }
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Transaction not found or no changes made']);
+        }
+    } elseif ($transaction_type === 'client') {
+        // Update client transaction
+        $query = "UPDATE client_transactions 
+                  SET receipt = ? 
+                  WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+        
+        $stmt = $pdo->prepare($query);
+        $stmt->execute([$receipt, $transaction_id, $tenant_id, $branch_id]);
+        
+        if ($stmt->rowCount() > 0) {
+            // Get the client ID and name for response
+            $getAccountQuery = "SELECT ct.client_id, c.name 
+                               FROM client_transactions ct
+                               JOIN clients c ON ct.client_id = c.id
+                               WHERE ct.id = ? AND ct.tenant_id = ? AND ct.branch_id = ?";
+            
+            $getStmt = $pdo->prepare($getAccountQuery);
+            $getStmt->execute([$transaction_id, $tenant_id, $branch_id]);
+            $result = $getStmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($result) {
+                echo json_encode([
+                    'success' => true, 
+                    'message' => 'Receipt updated successfully',
+                    'account_id' => $result['client_id'],
+                    'account_name' => $result['name']
+                ]);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Client information not found']);
+            }
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Transaction not found or no changes made']);
+        }
     } else {
         echo json_encode(['success' => false, 'message' => 'Invalid transaction type']);
     }

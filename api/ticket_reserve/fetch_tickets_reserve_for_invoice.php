@@ -9,7 +9,7 @@ require_once '../../admin/security.php';
 // Enforce authentication
 enforce_auth();
 
-include '../../includes/conn.php';
+include '../../includes/db.php';
 
 // Check if the user is logged in
 if (!isset($_SESSION['name'])) {
@@ -19,35 +19,23 @@ if (!isset($_SESSION['name'])) {
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 try {
-    // Query to get tickets
-    $query = "SELECT tb.id, tb.passenger_name, tb.pnr, tb.origin, tb.destination, 
-              tb.airline, tb.departure_date, tb.sold, tb.trip_type, tb.return_destination, 
-              tb.return_date, c.name as client_name
-              FROM ticket_reservations tb
-              JOIN clients c ON tb.sold_to = c.id
-              WHERE tb.tenant_id = ? AND tb.branch_id = ?
-              ORDER BY tb.id DESC
-              LIMIT 100";
-    
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param('ii', $tenant_id, $branch_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    
-    if (!$result) {
-        throw new Exception("Database query failed: " . $conn->error);
-    }
-    
-    $tickets = [];
-    while ($row = $result->fetch_assoc()) {
-        $tickets[] = $row;
-    }
-    
-    echo json_encode(['status' => 'success', 'tickets' => $tickets]);
-    
-} catch (Exception $e) {
-    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
-}
-
-$conn->close();
+     // Query to get tickets
+     $query = "SELECT tb.id, tb.passenger_name, tb.pnr, tb.origin, tb.destination, 
+               tb.airline, tb.departure_date, tb.sold, tb.trip_type, tb.return_destination, 
+               tb.return_date, c.name as client_name
+               FROM ticket_reservations tb
+               JOIN clients c ON tb.sold_to = c.id
+               WHERE tb.tenant_id = :tenant_id AND tb.branch_id = :branch_id
+               ORDER BY tb.id DESC
+               LIMIT 100";
+     
+     $stmt = $pdo->prepare($query);
+     $stmt->execute([':tenant_id' => $tenant_id, ':branch_id' => $branch_id]);
+     $tickets = $stmt->fetchAll();
+     
+     echo json_encode(['status' => 'success', 'tickets' => $tickets]);
+     
+ } catch (Exception $e) {
+     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+ }
 ?> 

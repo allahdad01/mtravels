@@ -60,21 +60,21 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
         $totalPages = ceil($totalRefunds / $recordsPerPage);
 
         // Then fetch paginated refunds
-        $refundsQuery = "
-            SELECT r.*, h.title, h.first_name, h.last_name, h.check_in_date, h.check_out_date,
-                   h.accommodation_details, h.currency as booking_currency,
-                   u.name as processed_by_name, m.name as account_name,
-                   s.name as supplier_name, c.name as client_name
-            FROM hotel_refunds r
-            LEFT JOIN hotel_bookings h ON r.booking_id = h.id
-            LEFT JOIN users u ON r.processed_by = u.id
-            LEFT JOIN main_account m ON h.paid_to = m.id
-            LEFT JOIN suppliers s ON h.supplier_id = s.id
-            LEFT JOIN clients c ON h.sold_to = c.id
-            WHERE r.tenant_id = ? AND r.branch_id = ?
-            ORDER BY r.created_at DESC
-            LIMIT ? OFFSET ?
-        ";
+         $refundsQuery = "
+             SELECT r.*, h.title, h.first_name, h.last_name, h.check_in_date, h.check_out_date,
+                    h.accommodation_details, h.currency as booking_currency,
+                    u.name as processed_by_name, m.name as account_name,
+                    s.name as supplier_name, c.name as client_name, c.client_type
+             FROM hotel_refunds r
+             LEFT JOIN hotel_bookings h ON r.booking_id = h.id
+             LEFT JOIN users u ON r.processed_by = u.id
+             LEFT JOIN main_account m ON h.paid_to = m.id
+             LEFT JOIN suppliers s ON h.supplier_id = s.id
+             LEFT JOIN clients c ON h.sold_to = c.id
+             WHERE r.tenant_id = ? AND r.branch_id = ?
+             ORDER BY r.created_at DESC
+             LIMIT ? OFFSET ?
+         ";
 
         $stmt = $pdo->prepare($refundsQuery);
         $stmt->bindValue(1, (int)$tenant_id, PDO::PARAM_INT);
@@ -91,234 +91,6 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
 
 <link rel="stylesheet" href="../css/general/modal-styles.css">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
-
-<!-- Main Content -->
-<div class="pcoded-main-container">
-    <div class="pcoded-wrapper">
-        <div class="pcoded-content">
-            <div class="pcoded-inner-content">
-                <div class="main-body">
-                    <div class="page-wrapper">
-
-                        <!-- Page Header -->
-                        <div class="hb-page-header">
-                            <div class="hb-page-header-left">
-                                <h1><i class="fa-solid fa-credit-card"></i><?= __('hotel_refunds') ?></h1>
-                                <p><?= __('manage_hotel_refunds_efficiently') ?></p>
-                            </div>
-                            <div class="hb-page-header-right">
-                                <a href="hotel.php" class="hb-btn-back">
-                                    <i class="feather icon-arrow-left"></i><?= __('back_to_bookings') ?>
-                                </a>
-                            </div>
-                        </div>
-
-                        <!-- Toast Container -->
-                        <div class="toast-container"></div>
-
-                        <!-- Column Headers -->
-                        <div class="hb-list-header">
-                            <div class="lh-bar"></div>
-                            <div class="lh-guest">Guest</div>
-                            <div class="lh-room">Room</div>
-                            <div class="lh-dates">Refund Info</div>
-                            <div class="lh-price">Amount</div>
-                            <div class="lh-status">Date</div>
-                            <div class="lh-actions"></div>
-                        </div>
-
-                        <!-- Refunds List -->
-                        <div class="hb-list" id="refundsContainer">
-                            <?php if (!$tableExists || empty($refunds)): ?>
-                                <div class="hb-empty">
-                                    <i class="feather icon-inbox"></i>
-                                    <h4><?= __('no_hotel_refunds_have_been_processed_yet') ?></h4>
-                                    <p><?= __('when_refunds_are_processed_they_will_appear_here') ?></p>
-                                </div>
-                            <?php else: ?>
-                                <?php foreach ($refunds as $i => $refund): ?>
-                                    <?php
-                                    // Status styling
-                                    $refundType = $refund['refund_type'] ?? 'full';
-                                    $statusClass = ($refundType === 'full') ? 'hb-status-cancelled' : 'hb-status-pending';
-                                    $statusLabel = ($refundType === 'full') ? 'Full Refund' : 'Partial Refund';
-                                    $statusBar = ($refundType === 'full') ? '#d1d5db' : 'linear-gradient(180deg,#d97706 0%,#f59e0b 100%)';
-                                    ?>
-                                    <div class="hb-row" 
-                                         data-refund-id="<?= $refund['id'] ?>"
-                                         data-refund-type="<?= htmlspecialchars($refundType) ?>"
-                                         style="animation-delay: <?= $i * 0.04 ?>s">
-
-                                        <!-- Accent Bar -->
-                                        <div class="hb-accent-bar" style="background: <?= $statusBar ?>;"></div>
-
-                                        <!-- Guest -->
-                                        <div class="hb-guest-cell">
-                                            <div class="hb-guest-name"><?= htmlspecialchars(getValue($refund, 'title') . ' ' . getValue($refund, 'first_name') . ' ' . getValue($refund, 'last_name')) ?></div>
-                                            <div class="hb-guest-meta">
-                                                <?php if (!empty($refund['client_name'])): ?>
-                                                <span><i class="feather icon-briefcase"></i><?= htmlspecialchars($refund['client_name']) ?></span>
-                                                <?php endif; ?>
-                                                <?php if (!empty($refund['supplier_name'])): ?>
-                                                <span><i class="feather icon-home"></i><?= htmlspecialchars($refund['supplier_name']) ?></span>
-                                                <?php endif; ?>
-                                            </div>
-                                        </div>
-
-                                        <!-- Room -->
-                                        <div class="hb-room-cell">
-                                            <div class="hb-cell-label">Room</div>
-                                            <div class="hb-room-name"><?= htmlspecialchars(getValue($refund, 'accommodation_details')) ?></div>
-                                        </div>
-
-                                        <!-- Refund Info -->
-                                        <div class="hb-dates-cell">
-                                            <div class="hb-cell-label">Refund</div>
-                                            <div class="hb-dates-track">
-                                                <span class="hb-status-pill <?= $statusClass ?>">
-                                                    <span class="hb-dot"></span><?= $statusLabel ?>
-                                                </span>
-                                                <small style="display: block; margin-top: 4px; color: #9ca3af; font-size: .75rem;">
-                                                    <?= htmlspecialchars($refund['reason'] ?? 'No reason provided') ?>
-                                                </small>
-                                            </div>
-                                        </div>
-
-                                        <!-- Amount -->
-                                        <div class="hb-price-cell">
-                                            <div class="hb-price-amount">
-                                                <span class="hb-currency"><?= htmlspecialchars(getValue($refund, 'currency')) ?></span>
-                                                <?= number_format(getValue($refund, 'refund_amount', 0), 2) ?>
-                                            </div>
-                                            <?php if (!empty($refund['exchange_rate']) && $refund['exchange_rate'] != 1): ?>
-                                            <div style="font-size: .73rem; color: #9ca3af; margin-top: 4px;">
-                                                <i class="feather icon-repeat"></i> Rate: <?= number_format($refund['exchange_rate'], 4) ?>
-                                            </div>
-                                            <?php endif; ?>
-                                        </div>
-
-                                        <!-- Date -->
-                                        <div class="hb-status-cell">
-                                            <div style="font-weight: 600; color: #111827;">
-                                                <i class="feather icon-calendar"></i> <?= date('M d, Y', strtotime($refund['created_at'])) ?>
-                                            </div>
-                                            <div class="hb-created-by">
-                                                <i class="feather icon-clock"></i>
-                                                <?= date('h:i A', strtotime($refund['created_at'])) ?>
-                                            </div>
-                                            <?php if ($refund['processed_by_name']): ?>
-                                            <div class="hb-created-by">
-                                                <i class="feather icon-user"></i>
-                                                <?= htmlspecialchars($refund['processed_by_name']) ?>
-                                            </div>
-                                            <?php endif; ?>
-                                        </div>
-
-                                        <!-- Actions -->
-                                        <div class="hb-actions-cell">
-                                            <button class="hb-btn-icon hb-view"
-                                                    data-tip="<?= __('view_booking') ?>"
-                                                    onclick="window.location.href='hotel.php?id=<?= $refund['booking_id'] ?>'">
-                                                <i class="feather icon-file-text"></i>
-                                            </button>
-
-                                            <?php if (!empty($refund['transaction_id']) && $canEdit): ?>
-                                            <button class="hb-btn-icon hb-trans"
-                                                    data-tip="<?= __('view_transaction') ?>"
-                                                    onclick="viewTransaction(<?= $refund['transaction_id'] ?>)">
-                                                <i class="feather icon-credit-card"></i>
-                                            </button>
-                                            <?php endif; ?>
-
-                                            <?php if ($refund['processed'] != 1 && $canEdit): ?>
-                                            <button class="hb-btn-icon hb-edit"
-                                                    data-tip="<?= __('process_payment') ?>"
-                                                    onclick="processRefundTransaction(<?= $refund['id'] ?>)">
-                                                <i class="feather icon-check-circle"></i>
-                                            </button>
-                                            <?php endif; ?>
-
-                                            <button class="hb-btn-icon hb-view"
-                                                    data-tip="<?= __('print_agreement') ?>"
-                                                    onclick="printRefundAgreement(<?= $refund['id'] ?>)">
-                                                <i class="feather icon-printer"></i>
-                                            </button>
-
-                                            <?php if ($canEdit): ?>
-                                            <div class="hb-dropdown-wrap">
-                                                <button class="hb-btn-icon hb-more"
-                                                        data-tip="More"
-                                                        onclick="toggleHbDropdown(this)">
-                                                    <i class="feather icon-more-vertical"></i>
-                                                </button>
-                                                <div class="hb-dropdown-menu">
-                                                    <button class="hb-dropdown-item hb-danger"
-                                                            onclick="deleteRefund(<?= $refund['id'] ?>)">
-                                                        <i class="feather icon-trash-2"></i><?= __('delete_refund') ?>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <?php endif; ?>
-                                        </div>
-
-                                    </div><!-- /.hb-row -->
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </div>
-
-                        <!-- Pagination -->
-                        <?php if (!empty($refunds) && isset($totalPages) && $totalPages > 1): ?>
-                        <div class="hb-pagination">
-                            <span class="hb-pagination-info">
-                                <?php
-                                if (isset($page, $recordsPerPage, $totalRefunds)) {
-                                    $startRecord = (($page - 1) * $recordsPerPage) + 1;
-                                    $endRecord   = min($page * $recordsPerPage, $totalRefunds);
-                                    echo sprintf('Showing %d–%d of %d entries', $startRecord, $endRecord, $totalRefunds);
-                                }
-                                ?>
-                            </span>
-                            <nav class="hb-pager">
-                                <?php
-                                $prevDisabled = ($page <= 1) ? 'disabled' : '';
-                                echo '<a class="hb-page-btn ' . $prevDisabled . '" href="' . ($prevDisabled ? '#' : '?page=' . ($page - 1)) . '"><i class="feather icon-chevron-left"></i></a>';
-
-                                $maxPages  = 5;
-                                $startPage = max(1, min($page - floor($maxPages / 2), $totalPages - $maxPages + 1));
-                                $endPage   = min($startPage + $maxPages - 1, $totalPages);
-
-                                if ($startPage > 1) {
-                                    echo '<a class="hb-page-btn" href="?page=1">1</a>';
-                                    if ($startPage > 2) echo '<span class="hb-page-ellipsis">…</span>';
-                                }
-
-                                for ($p = $startPage; $p <= $endPage; $p++) {
-                                    $activeClass = ($p == $page) ? 'hb-page-active' : '';
-                                    echo '<a class="hb-page-btn ' . $activeClass . '" href="?page=' . $p . '">' . $p . '</a>';
-                                }
-
-                                if ($endPage < $totalPages) {
-                                    if ($endPage < $totalPages - 1) echo '<span class="hb-page-ellipsis">…</span>';
-                                    echo '<a class="hb-page-btn" href="?page=' . $totalPages . '">' . $totalPages . '</a>';
-                                }
-
-                                $nextDisabled = ($page >= $totalPages) ? 'disabled' : '';
-                                echo '<a class="hb-page-btn ' . $nextDisabled . '" href="' . ($nextDisabled ? '#' : '?page=' . ($page + 1)) . '"><i class="feather icon-chevron-right"></i></a>';
-                                ?>
-                            </nav>
-                        </div>
-                        <?php endif; ?>
-
-                    </div><!-- /.page-wrapper -->
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<?php include '../modals/hotel_refund/transaction_modal.php'; ?>
-<?php include '../modals/hotel_refund/edit_transaction_modal.php'; ?>
-
 <style>
 /* ═══════════════════════════════════════════════════════
    Hotel Refunds — Row Card Design (matching hotel.php)
@@ -799,6 +571,234 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
     max-width: 350px;
 }
 </style>
+<!-- Main Content -->
+<div class="pcoded-main-container">
+    <div class="pcoded-wrapper">
+        <div class="pcoded-content">
+            <div class="pcoded-inner-content">
+                <div class="main-body">
+                    <div class="page-wrapper">
+
+                        <!-- Page Header -->
+                        <div class="hb-page-header">
+                            <div class="hb-page-header-left">
+                                <h1><i class="fa-solid fa-credit-card"></i><?= __('hotel_refunds') ?></h1>
+                                <p><?= __('manage_hotel_refunds_efficiently') ?></p>
+                            </div>
+                            <div class="hb-page-header-right">
+                                <a href="hotel.php" class="hb-btn-back">
+                                    <i class="feather icon-arrow-left"></i><?= __('back_to_bookings') ?>
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Toast Container -->
+                        <div class="toast-container"></div>
+
+                        <!-- Column Headers -->
+                        <div class="hb-list-header">
+                            <div class="lh-bar"></div>
+                            <div class="lh-guest">Guest</div>
+                            <div class="lh-room">Room</div>
+                            <div class="lh-dates">Refund Info</div>
+                            <div class="lh-price">Amount</div>
+                            <div class="lh-status">Date</div>
+                            <div class="lh-actions"></div>
+                        </div>
+
+                        <!-- Refunds List -->
+                        <div class="hb-list" id="refundsContainer">
+                            <?php if (!$tableExists || empty($refunds)): ?>
+                                <div class="hb-empty">
+                                    <i class="feather icon-inbox"></i>
+                                    <h4><?= __('no_hotel_refunds_have_been_processed_yet') ?></h4>
+                                    <p><?= __('when_refunds_are_processed_they_will_appear_here') ?></p>
+                                </div>
+                            <?php else: ?>
+                                <?php foreach ($refunds as $i => $refund): ?>
+                                    <?php
+                                    // Status styling
+                                    $refundType = $refund['refund_type'] ?? 'full';
+                                    $statusClass = ($refundType === 'full') ? 'hb-status-cancelled' : 'hb-status-pending';
+                                    $statusLabel = ($refundType === 'full') ? 'Full Refund' : 'Partial Refund';
+                                    $statusBar = ($refundType === 'full') ? '#d1d5db' : 'linear-gradient(180deg,#d97706 0%,#f59e0b 100%)';
+                                    ?>
+                                    <div class="hb-row" 
+                                         data-refund-id="<?= $refund['id'] ?>"
+                                         data-refund-type="<?= htmlspecialchars($refundType) ?>"
+                                         style="animation-delay: <?= $i * 0.04 ?>s">
+
+                                        <!-- Accent Bar -->
+                                        <div class="hb-accent-bar" style="background: <?= $statusBar ?>;"></div>
+
+                                        <!-- Guest -->
+                                        <div class="hb-guest-cell">
+                                            <div class="hb-guest-name"><?= htmlspecialchars(getValue($refund, 'title') . ' ' . getValue($refund, 'first_name') . ' ' . getValue($refund, 'last_name')) ?></div>
+                                            <div class="hb-guest-meta">
+                                                <?php if (!empty($refund['client_name'])): ?>
+                                                <span><i class="feather icon-briefcase"></i><?= htmlspecialchars($refund['client_name']) ?></span>
+                                                <?php endif; ?>
+                                                <?php if (!empty($refund['supplier_name'])): ?>
+                                                <span><i class="feather icon-home"></i><?= htmlspecialchars($refund['supplier_name']) ?></span>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+
+                                        <!-- Room -->
+                                        <div class="hb-room-cell">
+                                            <div class="hb-cell-label">Room</div>
+                                            <div class="hb-room-name"><?= htmlspecialchars(getValue($refund, 'accommodation_details')) ?></div>
+                                        </div>
+
+                                        <!-- Refund Info -->
+                                        <div class="hb-dates-cell">
+                                            <div class="hb-cell-label">Refund</div>
+                                            <div class="hb-dates-track">
+                                                <span class="hb-status-pill <?= $statusClass ?>">
+                                                    <span class="hb-dot"></span><?= $statusLabel ?>
+                                                </span>
+                                                <small style="display: block; margin-top: 4px; color: #9ca3af; font-size: .75rem;">
+                                                    <?= htmlspecialchars($refund['reason'] ?? 'No reason provided') ?>
+                                                </small>
+                                            </div>
+                                        </div>
+
+                                        <!-- Amount -->
+                                        <div class="hb-price-cell">
+                                            <div class="hb-price-amount">
+                                                <span class="hb-currency"><?= htmlspecialchars(getValue($refund, 'currency')) ?></span>
+                                                <?= number_format(getValue($refund, 'refund_amount', 0), 2) ?>
+                                            </div>
+                                            <?php if (!empty($refund['exchange_rate']) && $refund['exchange_rate'] != 1): ?>
+                                            <div style="font-size: .73rem; color: #9ca3af; margin-top: 4px;">
+                                                <i class="feather icon-repeat"></i> Rate: <?= number_format($refund['exchange_rate'], 4) ?>
+                                            </div>
+                                            <?php endif; ?>
+                                        </div>
+
+                                        <!-- Date -->
+                                        <div class="hb-status-cell">
+                                            <div style="font-weight: 600; color: #111827;">
+                                                <i class="feather icon-calendar"></i> <?= date('M d, Y', strtotime($refund['created_at'])) ?>
+                                            </div>
+                                            <div class="hb-created-by">
+                                                <i class="feather icon-clock"></i>
+                                                <?= date('h:i A', strtotime($refund['created_at'])) ?>
+                                            </div>
+                                            <?php if ($refund['processed_by_name']): ?>
+                                            <div class="hb-created-by">
+                                                <i class="feather icon-user"></i>
+                                                <?= htmlspecialchars($refund['processed_by_name']) ?>
+                                            </div>
+                                            <?php endif; ?>
+                                        </div>
+
+                                        <!-- Actions -->
+                                        <div class="hb-actions-cell">
+                                            <button class="hb-btn-icon hb-view"
+                                                    data-tip="<?= __('view_booking') ?>"
+                                                    onclick="window.location.href='hotel.php?id=<?= $refund['booking_id'] ?>'">
+                                                <i class="feather icon-file-text"></i>
+                                            </button>
+
+                                            <?php if (!empty($refund['transaction_id']) && $canEdit): ?>
+                                            <button class="hb-btn-icon hb-trans"
+                                                    data-tip="<?= __('view_transaction') ?>"
+                                                    onclick="viewTransaction(<?= $refund['transaction_id'] ?>)">
+                                                <i class="feather icon-credit-card"></i>
+                                            </button>
+                                            <?php endif; ?>
+
+                                            <?php if ($refund['processed'] != 1 && $canEdit && strtolower($refund['client_type'] ?? 'regular') !== 'regular'): ?>
+                                             <button class="hb-btn-icon hb-edit"
+                                                     data-tip="<?= __('process_payment') ?>"
+                                                     onclick="processRefundTransaction(<?= $refund['id'] ?>)">
+                                                 <i class="feather icon-check-circle"></i>
+                                             </button>
+                                             <?php endif; ?>
+
+                                            <button class="hb-btn-icon hb-view"
+                                                    data-tip="<?= __('print_agreement') ?>"
+                                                    onclick="printRefundAgreement(<?= $refund['id'] ?>)">
+                                                <i class="feather icon-printer"></i>
+                                            </button>
+
+                                            <?php if ($canEdit): ?>
+                                            <div class="hb-dropdown-wrap">
+                                                <button class="hb-btn-icon hb-more"
+                                                        data-tip="More"
+                                                        onclick="toggleHbDropdown(this)">
+                                                    <i class="feather icon-more-vertical"></i>
+                                                </button>
+                                                <div class="hb-dropdown-menu">
+                                                    <button class="hb-dropdown-item hb-danger"
+                                                            onclick="deleteRefund(<?= $refund['id'] ?>)">
+                                                        <i class="feather icon-trash-2"></i><?= __('delete_refund') ?>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <?php endif; ?>
+                                        </div>
+
+                                    </div><!-- /.hb-row -->
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </div>
+
+                        <!-- Pagination -->
+                        <?php if (!empty($refunds) && isset($totalPages) && $totalPages > 1): ?>
+                        <div class="hb-pagination">
+                            <span class="hb-pagination-info">
+                                <?php
+                                if (isset($page, $recordsPerPage, $totalRefunds)) {
+                                    $startRecord = (($page - 1) * $recordsPerPage) + 1;
+                                    $endRecord   = min($page * $recordsPerPage, $totalRefunds);
+                                    echo sprintf('Showing %d–%d of %d entries', $startRecord, $endRecord, $totalRefunds);
+                                }
+                                ?>
+                            </span>
+                            <nav class="hb-pager">
+                                <?php
+                                $prevDisabled = ($page <= 1) ? 'disabled' : '';
+                                echo '<a class="hb-page-btn ' . $prevDisabled . '" href="' . ($prevDisabled ? '#' : '?page=' . ($page - 1)) . '"><i class="feather icon-chevron-left"></i></a>';
+
+                                $maxPages  = 5;
+                                $startPage = max(1, min($page - floor($maxPages / 2), $totalPages - $maxPages + 1));
+                                $endPage   = min($startPage + $maxPages - 1, $totalPages);
+
+                                if ($startPage > 1) {
+                                    echo '<a class="hb-page-btn" href="?page=1">1</a>';
+                                    if ($startPage > 2) echo '<span class="hb-page-ellipsis">…</span>';
+                                }
+
+                                for ($p = $startPage; $p <= $endPage; $p++) {
+                                    $activeClass = ($p == $page) ? 'hb-page-active' : '';
+                                    echo '<a class="hb-page-btn ' . $activeClass . '" href="?page=' . $p . '">' . $p . '</a>';
+                                }
+
+                                if ($endPage < $totalPages) {
+                                    if ($endPage < $totalPages - 1) echo '<span class="hb-page-ellipsis">…</span>';
+                                    echo '<a class="hb-page-btn" href="?page=' . $totalPages . '">' . $totalPages . '</a>';
+                                }
+
+                                $nextDisabled = ($page >= $totalPages) ? 'disabled' : '';
+                                echo '<a class="hb-page-btn ' . $nextDisabled . '" href="' . ($nextDisabled ? '#' : '?page=' . ($page + 1)) . '"><i class="feather icon-chevron-right"></i></a>';
+                                ?>
+                            </nav>
+                        </div>
+                        <?php endif; ?>
+
+                    </div><!-- /.page-wrapper -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php include '../modals/hotel_refund/transaction_modal.php'; ?>
+<?php include '../modals/hotel_refund/edit_transaction_modal.php'; ?>
+
+
 
 <script>
 function toggleHbDropdown(btn) {

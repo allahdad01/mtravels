@@ -2,13 +2,18 @@
 // Include security module
 require_once 'security.php';
 
-// Enforce authentication
-enforce_auth();
+// Enforce authentication is handled automatically in security.php
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
     header('Location: ../login.php');
     exit();
+}
+// Define h() function for HTML escaping
+if (!function_exists('h')) {
+  function h($string) {
+      return htmlspecialchars($string, ENT_QUOTES, 'UTF-8');
+  }
 }
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];

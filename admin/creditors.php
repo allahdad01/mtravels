@@ -417,12 +417,9 @@ try {
 </script>
 
 
-    <!-- [ Main Content ] start -->
-    <div class="pcoded-main-container">
-        <div class="pcoded-wrapper">
-                <div class="pcoded-inner-content">
+                <!-- [ Main Content ] start -->
+                <div class="pcoded-main-container">
                     <div class="main-body">
-                        <div class="page-wrapper">
                             <div class="container mt-4">
                                 <!-- Page Header -->
                                 <div class="dash-header">
@@ -457,11 +454,9 @@ try {
                                      </div>
                                  <?php endif; ?>
                                 
-
-                                
                                 <!-- Status Toggle Tabs -->
                                 <div class="dash-wrap" style="padding:0;">
-                                <div class="dash-inner">
+                                    <div class="dash-inner">
                                        <div class="status-tabs">
                                            <a href="creditors.php" class="status-tab <?php echo h($status_filter) === 'active' ? 'active' : ''; ?>">
                                                <i class="fas fa-user-check mr-2"></i><?= __('active_creditors') ?> <span style="margin-left:6px;font-weight:700;"><?php echo $active_count; ?></span>
@@ -471,167 +466,165 @@ try {
                                            </a>
                                        </div>
                                 
-                                <!-- Creditors Cards Grid -->
-                                <div class="sec-label"><i class="fas fa-building"></i> <?= __($status_filter . '_creditors') ?></div>
-                                
-                                <div class="creditor-grid">
-                                           <?php if (count($creditors) > 0): ?>
-                                               <?php foreach ($creditors as $creditor): ?>
-                                               <div class="creditor-card">
-                                                   <div class="cc-icon"><i class="fas fa-handshake"></i></div>
-                                                   <div style="min-width:150px;">
-                                                       <div class="cc-label"><?= __('name') ?></div>
-                                                       <div class="cc-name"><?php echo htmlspecialchars($creditor['name']); ?></div>
-                                                   </div>
-                                                   <div style="min-width:120px;">
-                                                       <div class="cc-label"><?= __('balance') ?></div>
-                                                       <div class="cc-balance"><?php echo number_format($creditor['balance'], 2); ?></div>
-                                                       <div class="cc-currency"><?php echo htmlspecialchars($creditor['currency']); ?></div>
-                                                   </div>
-                                                   <div style="min-width:110px;">
-                                                       <div class="cc-label"><?= __('status') ?></div>
-                                                       <div class="cc-status <?php echo h($creditor['status']); ?>">
-                                                           <i class="fas <?php echo h($creditor['status']) === 'active' ? 'fa-check-circle' : 'fa-times-circle'; ?>"></i>
-                                                           <?= ucfirst(__($creditor['status'])) ?>
-                                                       </div>
-                                                   </div>
-                                                   <div class="cc-stats">
-                                                       <?php if (!empty($creditor['email'])): ?>
-                                                       <div class="cc-stat">
-                                                           <div class="cc-stat-label"><i class="fas fa-envelope"></i> <?= __('email') ?></div>
-                                                           <div class="cc-stat-value"><?php echo htmlspecialchars($creditor['email']); ?></div>
-                                                       </div>
-                                                       <?php endif; ?>
-                                                       <?php if (!empty($creditor['phone'])): ?>
-                                                       <div class="cc-stat">
-                                                           <div class="cc-stat-label"><i class="fas fa-phone"></i> <?= __('phone') ?></div>
-                                                           <div class="cc-stat-value"><?php echo htmlspecialchars($creditor['phone']); ?></div>
-                                                       </div>
-                                                       <?php endif; ?>
-                                                   </div>
-                                                   <div class="cc-actions">
-                                                       <button class="cc-btn cc-btn-primary" data-toggle="modal" data-target="#paymentModal_<?php echo h($creditor['id']); ?>" title="<?= __('process_payment') ?>" data-bs-toggle="tooltip" data-placement="top">
-                                                           <i class="fas fa-credit-card"></i>
-                                                           <span><?= __('pay') ?></span>
-                                                       </button>
-                                                       <button class="cc-btn cc-btn-info" data-toggle="modal" data-target="#transactionsModal_<?php echo h($creditor['id']); ?>" title="<?= __('view_transactions') ?>" data-bs-toggle="tooltip" data-placement="top">
-                                                           <i class="fas fa-list"></i>
-                                                           <span><?= __('transactions') ?></span>
-                                                       </button>
-                                                       <a href="../api/creditor/print_creditor_statement.php?id=<?php echo h($creditor['id']); ?>" class="cc-btn cc-btn-warning" target="_blank" title="<?= __('print_statement') ?>" data-bs-toggle="tooltip" data-placement="top">
-                                                           <i class="fas fa-print"></i>
-                                                           <span><?= __('print') ?></span>
-                                                       </a>
-                                                       <button class="cc-btn cc-btn-info" data-toggle="modal" data-target="#editCreditorModal_<?php echo h($creditor['id']); ?>" title="<?= __('edit_creditor') ?>" data-bs-toggle="tooltip" data-placement="top">
-                                                           <i class="fas fa-edit"></i>
-                                                           <span><?= __('edit') ?></span>
-                                                       </button>
-                                                       <?php if ($isAdmin): ?>
-                                                       <button class="cc-btn cc-btn-danger" data-toggle="modal" data-target="#deleteCreditorModal_<?php echo h($creditor['id']); ?>" title="<?= __('delete_creditor') ?>" data-bs-toggle="tooltip" data-placement="top">
-                                                           <i class="fas fa-trash"></i>
-                                                           <span><?= __('delete') ?></span>
-                                                       </button>
-                                                       <?php endif; ?>
-                                                   </div>
-                                               </div>
-                                               <?php endforeach; ?>
-                                           <?php else: ?>
-                                               <div style="grid-column:1/-1;text-align:center;padding:40px 20px;">
-                                                   <i class="fas fa-inbox" style="font-size:48px;color:var(--text-muted);margin-bottom:16px;display:block;"></i>
-                                                   <p style="color:var(--text-muted);font-size:14px;">
-                                                       <?php if ($status_filter === 'active'): ?>
-                                                           <?= __("add_new_creditors_to_start_tracking_your_credits") ?>
-                                                       <?php else: ?>
-                                                           <?= __("deactivated_creditors_will_appear_here") ?>
-                                                       <?php endif; ?>
-                                                   </p>
-                                               </div>
-                                           <?php endif; ?>
-                                       </div>
-                                        
-                                        <!-- Pagination -->
-                                        <div class="mt-3 mt-md-4">
-                                            <nav aria-label="Page navigation">
-                                                <ul class="pagination pagination-sm justify-content-center flex-wrap">
-                                                    <?php
-                                                    // Previous button
-                                                    if ($current_page > 1): ?>
-                                                        <li class="page-item">
-                                                            <a class="page-link" href="?page=<?= $current_page - 1 ?><?= $status_filter === 'inactive' ? '&status=inactive' : '' ?>" aria-label="Previous">
-                                                                <span aria-hidden="true">«</span>
-                                                            </a>
-                                                        </li>
-                                                    <?php else: ?>
-                                                        <li class="page-item disabled">
-                                                            <a class="page-link" href="#" aria-label="Previous">
-                                                                <span aria-hidden="true">«</span>
-                                                            </a>
-                                                        </li>
-                                                    <?php endif;
-                                                    
-                                                    // Page numbers
-                                                    $start_page = max(1, $current_page - 2);
-                                                    $end_page = min($total_pages, $current_page + 2);
-                                                    
-                                                    if ($start_page > 1): ?>
-                                                        <li class="page-item">
-                                                            <a class="page-link" href="?page=1<?= $status_filter === 'inactive' ? '&status=inactive' : '' ?>">1</a>
-                                                        </li>
-                                                        <?php if ($start_page > 2): ?>
+                                        <!-- Creditors Cards Grid -->
+                                        <div class="sec-label"><i class="fas fa-building"></i> <?= __($status_filter . '_creditors') ?></div>
+                                    
+                                            <div class="creditor-grid">
+                                            <?php if (count($creditors) > 0): ?>
+                                                <?php foreach ($creditors as $creditor): ?>
+                                                <div class="creditor-card">
+                                                    <div class="cc-icon"><i class="fas fa-handshake"></i></div>
+                                                    <div style="min-width:150px;">
+                                                        <div class="cc-label"><?= __('name') ?></div>
+                                                        <div class="cc-name"><?php echo htmlspecialchars($creditor['name']); ?></div>
+                                                    </div>
+                                                    <div style="min-width:120px;">
+                                                        <div class="cc-label"><?= __('balance') ?></div>
+                                                        <div class="cc-balance"><?php echo number_format($creditor['balance'], 2); ?></div>
+                                                        <div class="cc-currency"><?php echo htmlspecialchars($creditor['currency']); ?></div>
+                                                    </div>
+                                                    <div style="min-width:110px;">
+                                                        <div class="cc-label"><?= __('status') ?></div>
+                                                        <div class="cc-status <?php echo h($creditor['status']); ?>">
+                                                            <i class="fas <?php echo h($creditor['status']) === 'active' ? 'fa-check-circle' : 'fa-times-circle'; ?>"></i>
+                                                            <?= ucfirst(__($creditor['status'])) ?>
+                                                        </div>
+                                                    </div>
+                                                    <div class="cc-stats">
+                                                        <?php if (!empty($creditor['email'])): ?>
+                                                        <div class="cc-stat">
+                                                            <div class="cc-stat-label"><i class="fas fa-envelope"></i> <?= __('email') ?></div>
+                                                            <div class="cc-stat-value"><?php echo htmlspecialchars($creditor['email']); ?></div>
+                                                        </div>
+                                                        <?php endif; ?>
+                                                        <?php if (!empty($creditor['phone'])): ?>
+                                                        <div class="cc-stat">
+                                                            <div class="cc-stat-label"><i class="fas fa-phone"></i> <?= __('phone') ?></div>
+                                                            <div class="cc-stat-value"><?php echo htmlspecialchars($creditor['phone']); ?></div>
+                                                        </div>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                    <div class="cc-actions">
+                                                        <button class="cc-btn cc-btn-primary" data-toggle="modal" data-target="#paymentModal_<?php echo h($creditor['id']); ?>" title="<?= __('process_payment') ?>" data-bs-toggle="tooltip" data-placement="top">
+                                                            <i class="fas fa-credit-card"></i>
+                                                            <span><?= __('pay') ?></span>
+                                                        </button>
+                                                        <button class="cc-btn cc-btn-info" data-toggle="modal" data-target="#transactionsModal_<?php echo h($creditor['id']); ?>" title="<?= __('view_transactions') ?>" data-bs-toggle="tooltip" data-placement="top">
+                                                            <i class="fas fa-list"></i>
+                                                            <span><?= __('transactions') ?></span>
+                                                        </button>
+                                                        <a href="../api/creditor/print_creditor_statement.php?id=<?php echo h($creditor['id']); ?>" class="cc-btn cc-btn-warning" target="_blank" title="<?= __('print_statement') ?>" data-bs-toggle="tooltip" data-placement="top">
+                                                            <i class="fas fa-print"></i>
+                                                            <span><?= __('print') ?></span>
+                                                        </a>
+                                                        <button class="cc-btn cc-btn-info" data-toggle="modal" data-target="#editCreditorModal_<?php echo h($creditor['id']); ?>" title="<?= __('edit_creditor') ?>" data-bs-toggle="tooltip" data-placement="top">
+                                                            <i class="fas fa-edit"></i>
+                                                            <span><?= __('edit') ?></span>
+                                                        </button>
+                                                        <?php if ($isAdmin): ?>
+                                                        <button class="cc-btn cc-btn-danger" data-toggle="modal" data-target="#deleteCreditorModal_<?php echo h($creditor['id']); ?>" title="<?= __('delete_creditor') ?>" data-bs-toggle="tooltip" data-placement="top">
+                                                            <i class="fas fa-trash"></i>
+                                                            <span><?= __('delete') ?></span>
+                                                        </button>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </div>
+                                                <?php endforeach; ?>
+                                            <?php else: ?>
+                                                <div style="grid-column:1/-1;text-align:center;padding:40px 20px;">
+                                                    <i class="fas fa-inbox" style="font-size:48px;color:var(--text-muted);margin-bottom:16px;display:block;"></i>
+                                                    <p style="color:var(--text-muted);font-size:14px;">
+                                                        <?php if ($status_filter === 'active'): ?>
+                                                            <?= __("add_new_creditors_to_start_tracking_your_credits") ?>
+                                                        <?php else: ?>
+                                                            <?= __("deactivated_creditors_will_appear_here") ?>
+                                                        <?php endif; ?>
+                                                    </p>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                            
+                                            <!-- Pagination -->
+                                            <div class="mt-3 mt-md-4">
+                                                <nav aria-label="Page navigation">
+                                                    <ul class="pagination pagination-sm justify-content-center flex-wrap">
+                                                        <?php
+                                                        // Previous button
+                                                        if ($current_page > 1): ?>
+                                                            <li class="page-item">
+                                                                <a class="page-link" href="?page=<?= $current_page - 1 ?><?= $status_filter === 'inactive' ? '&status=inactive' : '' ?>" aria-label="Previous">
+                                                                    <span aria-hidden="true">«</span>
+                                                                </a>
+                                                            </li>
+                                                        <?php else: ?>
                                                             <li class="page-item disabled">
-                                                                <a class="page-link" href="#">...</a>
+                                                                <a class="page-link" href="#" aria-label="Previous">
+                                                                    <span aria-hidden="true">«</span>
+                                                                </a>
                                                             </li>
                                                         <?php endif;
-                                                    endif;
-                                                    
-                                                    for ($i = $start_page; $i <= $end_page; $i++): ?>
-                                                        <li class="page-item <?= $i === $current_page ? 'active' : '' ?>">
-                                                            <a class="page-link" href="?page=<?= $i ?><?= $status_filter === 'inactive' ? '&status=inactive' : '' ?>"><?= $i ?></a>
-                                                        </li>
-                                                    <?php endfor;
-                                                    
-                                                    if ($end_page < $total_pages):
-                                                        if ($end_page < $total_pages - 1): ?>
+                                                        
+                                                        // Page numbers
+                                                        $start_page = max(1, $current_page - 2);
+                                                        $end_page = min($total_pages, $current_page + 2);
+                                                        
+                                                        if ($start_page > 1): ?>
+                                                            <li class="page-item">
+                                                                <a class="page-link" href="?page=1<?= $status_filter === 'inactive' ? '&status=inactive' : '' ?>">1</a>
+                                                            </li>
+                                                            <?php if ($start_page > 2): ?>
+                                                                <li class="page-item disabled">
+                                                                    <a class="page-link" href="#">...</a>
+                                                                </li>
+                                                            <?php endif;
+                                                        endif;
+                                                        
+                                                        for ($i = $start_page; $i <= $end_page; $i++): ?>
+                                                            <li class="page-item <?= $i === $current_page ? 'active' : '' ?>">
+                                                                <a class="page-link" href="?page=<?= $i ?><?= $status_filter === 'inactive' ? '&status=inactive' : '' ?>"><?= $i ?></a>
+                                                            </li>
+                                                        <?php endfor;
+                                                        
+                                                        if ($end_page < $total_pages):
+                                                            if ($end_page < $total_pages - 1): ?>
+                                                                <li class="page-item disabled">
+                                                                    <a class="page-link" href="#">...</a>
+                                                                </li>
+                                                            <?php endif; ?>
+                                                            <li class="page-item">
+                                                                <a class="page-link" href="?page=<?= $total_pages ?><?= $status_filter === 'inactive' ? '&status=inactive' : '' ?>"><?= $total_pages ?></a>
+                                                            </li>
+                                                        <?php endif;
+                                                        
+                                                        // Next button
+                                                        if ($current_page < $total_pages): ?>
+                                                            <li class="page-item">
+                                                                <a class="page-link" href="?page=<?= $current_page + 1 ?><?= $status_filter === 'inactive' ? '&status=inactive' : '' ?>" aria-label="Next">
+                                                                    <span aria-hidden="true">»</span>
+                                                                </a>
+                                                            </li>
+                                                        <?php else: ?>
                                                             <li class="page-item disabled">
-                                                                <a class="page-link" href="#">...</a>
+                                                                <a class="page-link" href="#" aria-label="Next">
+                                                                    <span aria-hidden="true">»</span>
+                                                                </a>
                                                             </li>
                                                         <?php endif; ?>
-                                                        <li class="page-item">
-                                                            <a class="page-link" href="?page=<?= $total_pages ?><?= $status_filter === 'inactive' ? '&status=inactive' : '' ?>"><?= $total_pages ?></a>
-                                                        </li>
-                                                    <?php endif;
-                                                    
-                                                    // Next button
-                                                    if ($current_page < $total_pages): ?>
-                                                        <li class="page-item">
-                                                            <a class="page-link" href="?page=<?= $current_page + 1 ?><?= $status_filter === 'inactive' ? '&status=inactive' : '' ?>" aria-label="Next">
-                                                                <span aria-hidden="true">»</span>
-                                                            </a>
-                                                        </li>
-                                                    <?php else: ?>
-                                                        <li class="page-item disabled">
-                                                            <a class="page-link" href="#" aria-label="Next">
-                                                                <span aria-hidden="true">»</span>
-                                                            </a>
-                                                        </li>
-                                                    <?php endif; ?>
-                                                </ul>
-                                            </nav>
-                                            <div class="text-center mt-2">
-                                                <small class="text-muted">
-                                                    <?= __('showing') ?> <?= count($creditors) ?> <?= __('of') ?> <?= $total_count ?> <?= __('creditors') ?> |
-                                                    <?= __('page') ?> <?= $current_page ?> <?= __('of') ?> <?= $total_pages ?>
-                                                </small>
+                                                    </ul>
+                                                </nav>
+                                                <div class="text-center mt-2">
+                                                    <small class="text-muted">
+                                                        <?= __('showing') ?> <?= count($creditors) ?> <?= __('of') ?> <?= $total_count ?> <?= __('creditors') ?> |
+                                                        <?= __('page') ?> <?= $current_page ?> <?= __('of') ?> <?= $total_pages ?>
+                                                    </small>
                                                 </div>
-                                                </div>
-                                                </div>
-                                                </div>
-                                                </div>
-                                                </div>
-                                                </div>
-                                                
-                                                </div>
-                                                </div>
+                                            </div>
+                                    </div>
+                                </div>
+                            </div>                      
+                        
+                    </div>
+                </div>
                                             
                                             <!-- Add Creditor Modal -->
     <div class="modal fade" id="addCreditorModal" tabindex="-1" role="dialog" aria-hidden="true">
@@ -764,7 +757,7 @@ try {
 
     <script src="../js/creditor/modal_init.js"></script>
 
-<script src="../js/creditor/currency_check.js"></script>
+    <script src="../js/creditor/currency_check.js"></script>
 
 <?php foreach ($creditors as $creditor): ?>
     <!-- Transactions Modal -->

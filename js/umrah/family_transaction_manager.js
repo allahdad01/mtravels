@@ -1,3 +1,34 @@
+// Currency display mapping
+const getCurrencyDisplay = function(currencyCode) {
+    const currencyMap = {
+        'USD': 'USD',
+        'AFS': 'AFS',
+        'EUR': 'EUR',
+        'DARHAM': 'AED'
+    };
+    return currencyMap[currencyCode] || currencyCode;
+};
+
+// Generate dynamic exchange rate example
+const getExchangeRateExample = function(baseCurrency, targetCurrency) {
+    const examples = {
+        'USD-AFS': 'Example: If 1 USD = 88 AFS, enter 88',
+        'USD-EUR': 'Example: If 1 USD = 0.95 EUR, enter 0.95',
+        'USD-AED': 'Example: If 1 USD = 3.67 AED, enter 3.67',
+        'AFS-USD': 'Example: If 1 AFS = 0.0114 USD, enter 0.0114',
+        'AFS-EUR': 'Example: If 1 AFS = 0.0108 EUR, enter 0.0108',
+        'AFS-AED': 'Example: If 1 AFS = 0.0417 AED, enter 0.0417',
+        'EUR-USD': 'Example: If 1 EUR = 1.05 USD, enter 1.05',
+        'EUR-AFS': 'Example: If 1 EUR = 92.5 AFS, enter 92.5',
+        'EUR-AED': 'Example: If 1 EUR = 3.86 AED, enter 3.86',
+        'AED-USD': 'Example: If 1 AED = 0.27 USD, enter 0.27',
+        'AED-AFS': 'Example: If 1 AED = 23.99 AFS, enter 23.99',
+        'AED-EUR': 'Example: If 1 AED = 0.26 EUR, enter 0.26'
+    };
+    const key = `${baseCurrency}-${targetCurrency}`;
+    return examples[key] || 'Enter the exchange rate';
+};
+
 function openFamilyTransactionModal(familyId, familyName, packageName, totalMembers) {
     // Set family info
     document.getElementById('familyTransactionFamilyId').value = familyId;
@@ -77,44 +108,65 @@ function loadFamilyMembersTransactionTable(members) {
 }
 
 function loadFamilyMemberPaymentInputs(members) {
-    const container = $('#familyMemberPayments');
-    container.empty();
+     const container = $('#familyMemberPayments');
+     container.empty();
 
-    // Reset member currencies array
-    window.familyMemberCurrencies = [];
+     // Reset member currencies array
+     window.familyMemberCurrencies = [];
 
-    if (!members || members.length === 0) {
-        container.html('<div class="col-12"><p class="text-muted">No members available for payment</p></div>');
-        return;
-    }
+     if (!members || members.length === 0) {
+         container.html('<div class="col-12"><p class="text-muted">No members available for payment</p></div>');
+         return;
+     }
 
-    members.forEach(member => {
-        // Store member currency for exchange rate logic
-        window.familyMemberCurrencies.push(member.currency);
-        const memberInput = `
-            <div class="col-md-6 mb-3">
-                <div class="card border-light">
-                    <div class="card-body p-3">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <strong>${member.name}</strong>
-                            <small class="text-muted">Due: ${member.due || '0.00'}</small>
-                        </div>
-                        <div class="form-group mb-0">
-                            <label class="small">Payment Amount</label>
-                            <input type="number" class="form-control form-control-sm"
-                                   name="member_payments[${member.booking_id}][amount]"
-                                   id="payment_${member.booking_id}"
-                                   step="0.01" min="0"
-                                   placeholder="0.00">
-                            <input type="hidden" name="member_payments[${member.booking_id}][booking_id]" value="${member.booking_id}">
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        container.append(memberInput);
-    });
-}
+     members.forEach(member => {
+         // Store member currency for exchange rate logic
+         window.familyMemberCurrencies.push(member.currency);
+         
+         // Check if we're in bank transaction mode
+         const isBank = $('#familyTransactionTo').val() === 'Bank';
+         
+         let receiptInput = '';
+         if (isBank) {
+             receiptInput = `
+                 <div class="form-group mb-2">
+                     <label class="small text-primary">
+                         <i class="feather icon-file-text"></i> Receipt Number
+                     </label>
+                     <input type="text" class="form-control form-control-sm member-receipt-input"
+                            name="member_payments[${member.booking_id}][receipt_number]"
+                            id="receipt_${member.booking_id}"
+                            placeholder="Enter receipt #"
+                            data-booking-id="${member.booking_id}">
+                 </div>
+             `;
+         }
+         
+         const memberInput = `
+             <div class="col-md-6 mb-3">
+                 <div class="card border-light">
+                     <div class="card-body p-3">
+                         <div class="d-flex justify-content-between align-items-center mb-2">
+                             <strong>${member.name}</strong>
+                             <small class="text-muted">Due: ${member.due || '0.00'}</small>
+                         </div>
+                         <div class="form-group mb-2">
+                             <label class="small">Payment Amount</label>
+                             <input type="number" class="form-control form-control-sm"
+                                    name="member_payments[${member.booking_id}][amount]"
+                                    id="payment_${member.booking_id}"
+                                    step="0.01" min="0"
+                                    placeholder="0.00">
+                             <input type="hidden" name="member_payments[${member.booking_id}][booking_id]" value="${member.booking_id}">
+                         </div>
+                         ${receiptInput}
+                     </div>
+                 </div>
+             </div>
+         `;
+         container.append(memberInput);
+     });
+ }
 
 $(document).ready(function() {
     // Form submission handler
@@ -129,26 +181,56 @@ $(document).ready(function() {
         const formData = new FormData(this);
 
         // Collect member payments
-        const memberPayments = [];
-        $('input[name^="member_payments"]').each(function() {
-            const name = $(this).attr('name');
-            const value = $(this).val();
+         const memberPayments = [];
+         const isBank = $('#familyTransactionTo').val() === 'Bank';
+         
+         // Track booking IDs that have amounts
+         const bookingIdsWithAmounts = new Set();
+         
+         $('input[name^="member_payments"]').each(function() {
+             const name = $(this).attr('name');
+             const value = $(this).val();
 
-            if (name.includes('[amount]') && value && parseFloat(value) > 0) {
-                const bookingId = name.match(/\[(\d+)\]/)[1];
-                memberPayments.push({
-                    booking_id: bookingId,
-                    amount: parseFloat(value)
-                });
-            }
-        });
+             if (name.includes('[amount]') && value && parseFloat(value) > 0) {
+                 const bookingId = name.match(/\[(\d+)\]/)[1];
+                 bookingIdsWithAmounts.add(bookingId);
+                 memberPayments.push({
+                     booking_id: bookingId,
+                     amount: parseFloat(value)
+                 });
+             }
+         });
 
-        if (memberPayments.length === 0) {
-            alert('Please enter payment amounts for at least one member');
-            submitBtn.prop('disabled', false);
-            submitBtn.html(originalHtml);
-            return;
-        }
+         if (memberPayments.length === 0) {
+             alert('Please enter payment amounts for at least one member');
+             submitBtn.prop('disabled', false);
+             submitBtn.html(originalHtml);
+             return;
+         }
+         
+         // For bank transactions, validate that each member has a receipt number
+         if (isBank) {
+             let missingReceipts = [];
+             bookingIdsWithAmounts.forEach(bookingId => {
+                 const receiptValue = $(`#receipt_${bookingId}`).val();
+                 if (!receiptValue || receiptValue.trim() === '') {
+                     missingReceipts.push(bookingId);
+                 } else {
+                     // Add receipt to member payment
+                     const memberPayment = memberPayments.find(m => m.booking_id == bookingId);
+                     if (memberPayment) {
+                         memberPayment.receipt_number = receiptValue.trim();
+                     }
+                 }
+             });
+             
+             if (missingReceipts.length > 0) {
+                 alert('Bank transactions require a receipt number for each member.\nPlease enter receipt numbers for all members.');
+                 submitBtn.prop('disabled', false);
+                 submitBtn.html(originalHtml);
+                 return;
+             }
+         }
 
         // Add member payments to form data
         formData.append('member_payments', JSON.stringify(memberPayments));
@@ -210,14 +292,24 @@ $(document).ready(function() {
         });
     });
 
-    // Show/Hide receipt number field
-    $('#familyTransactionTo').on('change', function() {
-        if ($(this).val() === 'Bank') {
-            $('#familyReceiptNumberField').slideDown();
-        } else {
-            $('#familyReceiptNumberField').slideUp();
-        }
-    });
+    // Show/Hide receipt number field and reload member inputs with receipts
+     $('#familyTransactionTo').on('change', function() {
+         const isBankTransaction = $(this).val() === 'Bank';
+         
+         if (isBankTransaction) {
+             $('#familyReceiptNumberField').slideDown();
+             $('#bankReceiptAlert').slideDown();
+             // Reload member inputs to show receipt fields
+             const familyId = $('#familyTransactionFamilyId').val();
+             loadFamilyTransactionData(familyId);
+         } else {
+             $('#familyReceiptNumberField').slideUp();
+             $('#bankReceiptAlert').slideUp();
+             // Reload member inputs to hide receipt fields
+             const familyId = $('#familyTransactionFamilyId').val();
+             loadFamilyTransactionData(familyId);
+         }
+     });
 
     // Show/Hide exchange rate field based on currency difference
     $('#familyPaymentCurrency').on('change', function() {
@@ -231,15 +323,32 @@ $(document).ready(function() {
         if (needsExchangeRate) {
             exchangeRateField.slideDown();
             $('#familyExchangeRate').attr('required', true);
-            // Add visual indicator
-            if (!exchangeRateField.find('.text-warning').length) {
-                exchangeRateField.find('label').after('<small class="text-warning d-block">Exchange rate required when payment currency differs from member currency</small>');
-            }
+            
+            // Get display names for currencies - use first different currency for display
+            const baseCurrency = window.familyMemberCurrencies[0] || 'USD';
+            const baseDisplay = getCurrencyDisplay(baseCurrency);
+            const targetDisplay = getCurrencyDisplay(selectedCurrency);
+            
+            // Update label with proper exchange rate direction
+            const label = `<i class="feather icon-refresh-cw mr-1"></i>${baseDisplay} to ${targetDisplay} Exchange Rate`;
+            const labelElement = exchangeRateField.find('label');
+            labelElement.html(label);
+            
+            // Update helper text
+            const example = getExchangeRateExample(baseDisplay, targetDisplay);
+            const helpText = `<small class="form-text text-muted d-block mt-1">
+                Enter how many ${targetDisplay} equals 1 ${baseDisplay}
+                <span class="d-block mt-1" style="color: #666;">${example}</span>
+            </small>`;
+            
+            // Remove old help text and add new one
+            exchangeRateField.find('small').remove();
+            exchangeRateField.find('input').after(helpText);
         } else {
             exchangeRateField.slideUp();
             $('#familyExchangeRate').removeAttr('required').val('');
-            // Remove visual indicator
-            exchangeRateField.find('.text-warning').remove();
+            // Remove help text
+            exchangeRateField.find('small').remove();
         }
     });
 

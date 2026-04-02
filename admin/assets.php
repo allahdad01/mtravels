@@ -547,9 +547,6 @@ table.ap-table { width:100%;border-collapse:collapse; }
 
 <!-- pcoded wrapper so header.php layout works -->
 <div class="pcoded-main-container">
-<div class="pcoded-wrapper">
-<div class="pcoded-content">
-<div class="pcoded-inner-content">
 <div class="main-body">
 <div class="page-wrapper">
 
@@ -869,7 +866,7 @@ table.ap-table { width:100%;border-collapse:collapse; }
   </div><!-- /table card -->
 
 </div><!-- /assets-page -->
-</div></div></div></div></div></div>
+</div></div></div>
 
 <!-- ══════════════════════════════════════════════════════
      ADD MODAL

@@ -98,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $reversal_amount = -$payment_amount;
 
         // Step 2: Fetch Umrah booking details
-        $stmt_fetch_umrah = $pdo->prepare("SELECT paid_to, received_bank_payment, paid FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt_fetch_umrah = $pdo->prepare("SELECT paid_to, sold_to, received_bank_payment, paid FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?");
         $stmt_fetch_umrah->bindParam(1, $umrah_id, PDO::PARAM_INT);
         $stmt_fetch_umrah->bindParam(2, $tenant_id, PDO::PARAM_INT);
         $stmt_fetch_umrah->bindParam(3, $branch_id, PDO::PARAM_INT);
@@ -111,6 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $umrah = $umrah_result;
         $paid_to = $umrah['paid_to'];
+        $client_id = $umrah['sold_to'];
         $received_bank_payment = $umrah['received_bank_payment'];
         $current_paid = $umrah['paid'];
 
@@ -212,8 +213,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new PDOException("Failed to update supplier balance");
                 }
 
+                // Get the actual supplier_transactions ID for this umrah transaction
+                $stmt_get_supplier_tx_id = $pdo->prepare("SELECT id FROM supplier_transactions WHERE reference_id = ? AND transaction_of = 'umrah_transaction' AND tenant_id = ? AND branch_id = ? LIMIT 1");
+                $stmt_get_supplier_tx_id->bindParam(1, $transaction_id, PDO::PARAM_INT);
+                $stmt_get_supplier_tx_id->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                $stmt_get_supplier_tx_id->bindParam(3, $branch_id, PDO::PARAM_INT);
+                $stmt_get_supplier_tx_id->execute();
+                $supplier_tx_result = $stmt_get_supplier_tx_id->fetch(PDO::FETCH_ASSOC);
+                
+                if ($supplier_tx_result) {
+                    $supplier_tx_id = $supplier_tx_result['id'];
+                    
+                    // Update balances of all subsequent supplier transactions
+                    $stmt_update_subsequent_supplier = $pdo->prepare("
+                        UPDATE supplier_transactions
+                        SET balance = balance - ?
+                        WHERE supplier_id = ?
+                        AND id > ?
+                        AND tenant_id = ? AND branch_id = ?
+                    ");
+                    $stmt_update_subsequent_supplier->bindParam(1, $payment_amount, PDO::PARAM_STR);
+                    $stmt_update_subsequent_supplier->bindParam(2, $supplier_id, PDO::PARAM_INT);
+                    $stmt_update_subsequent_supplier->bindParam(3, $supplier_tx_id, PDO::PARAM_INT);
+                    $stmt_update_subsequent_supplier->bindParam(4, $tenant_id, PDO::PARAM_INT);
+                    $stmt_update_subsequent_supplier->bindParam(5, $branch_id, PDO::PARAM_INT);
+
+                    if (!$stmt_update_subsequent_supplier->execute()) {
+                        throw new PDOException("Failed to update subsequent supplier transaction balances");
+                    }
+                }
+
                 // Delete related supplier_transactions record
-                $stmt_delete_supplier_transaction = $pdo->prepare("DELETE FROM supplier_transactions WHERE reference_id = ? AND transaction_of = 'umrah' AND tenant_id = ? AND branch_id = ?");
+                $stmt_delete_supplier_transaction = $pdo->prepare("DELETE FROM supplier_transactions WHERE reference_id = ? AND transaction_of = 'umrah_transaction' AND tenant_id = ? AND branch_id = ?");
                 $stmt_delete_supplier_transaction->bindParam(1, $transaction_id, PDO::PARAM_INT);
                 $stmt_delete_supplier_transaction->bindParam(2, $tenant_id, PDO::PARAM_INT);
                 $stmt_delete_supplier_transaction->bindParam(3, $branch_id, PDO::PARAM_INT);
@@ -222,7 +253,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // For Internal suppliers with Bank transaction, check if a custom main_account was used
                 // Try to find the main_account_transactions record to get the actual account used
                 $stmt_get_main_account_tx = $pdo->prepare("
-                    SELECT main_account_id FROM main_account_transactions 
+                    SELECT id, main_account_id FROM main_account_transactions 
                     WHERE reference_id = ? AND transaction_of = 'umrah_transaction' AND tenant_id = ? AND branch_id = ?
                     LIMIT 1
                 ");
@@ -278,13 +309,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                      SET balance = balance - ?
                      WHERE main_account_id = ? AND currency = ?
                      AND id > ?
-                     AND transaction_of = 'umrah_transaction'
                      AND tenant_id = ? AND branch_id = ?
                  ");
                  $stmt_update_subsequent->bindParam(1, $payment_amount, PDO::PARAM_STR);
                  $stmt_update_subsequent->bindParam(2, $actual_account_id, PDO::PARAM_INT);
                  $stmt_update_subsequent->bindParam(3, $currency, PDO::PARAM_STR);
-                 $stmt_update_subsequent->bindParam(4, $transaction_id, PDO::PARAM_INT);
+                 $stmt_update_subsequent->bindParam(4, $$main_account_tx_result['id'], PDO::PARAM_INT);
                  $stmt_update_subsequent->bindParam(5, $tenant_id, PDO::PARAM_INT);
                  $stmt_update_subsequent->bindParam(6, $branch_id, PDO::PARAM_INT);
 
@@ -298,8 +328,87 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                  $stmt_delete_main_transaction->bindParam(2, $tenant_id, PDO::PARAM_INT);
                  $stmt_delete_main_transaction->bindParam(3, $branch_id, PDO::PARAM_INT);
                  $stmt_delete_main_transaction->execute();
-                }
-        } elseif ($transaction_to_lower === 'internal account') {
+                 }
+
+                 // Reverse client balance if client type is regular
+                 if ($client_id > 0) {
+                 // Check client type
+                 $stmt_check_client_type = $pdo->prepare("SELECT client_type FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                 $stmt_check_client_type->bindParam(1, $client_id, PDO::PARAM_INT);
+                 $stmt_check_client_type->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                 $stmt_check_client_type->bindParam(3, $branch_id, PDO::PARAM_INT);
+                 $stmt_check_client_type->execute();
+                 $client_type_result = $stmt_check_client_type->fetch(PDO::FETCH_ASSOC);
+                 
+                 if ($client_type_result && $client_type_result['client_type'] === 'regular') {
+                    // Get current client balance based on currency
+                    $balance_column = ($currency === 'USD') ? 'usd_balance' : 'afs_balance';
+                    $stmt_get_client_balance = $pdo->prepare("SELECT $balance_column FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                    $stmt_get_client_balance->bindParam(1, $client_id, PDO::PARAM_INT);
+                    $stmt_get_client_balance->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                    $stmt_get_client_balance->bindParam(3, $branch_id, PDO::PARAM_INT);
+                    $stmt_get_client_balance->execute();
+                    $client_balance_result = $stmt_get_client_balance->fetch(PDO::FETCH_ASSOC);
+                    
+                    if ($client_balance_result) {
+                        $current_client_balance = floatval($client_balance_result[$balance_column]);
+                        // Add back payment to client balance (reversing the deduction)
+                        $new_client_balance = $current_client_balance - $payment_amount;
+
+                        // Update client balance
+                        $update_query = ($currency === 'USD')
+                            ? "UPDATE clients SET usd_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?"
+                            : "UPDATE clients SET afs_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+                        $stmt_update_client = $pdo->prepare($update_query);
+                        $stmt_update_client->bindParam(1, $new_client_balance, PDO::PARAM_STR);
+                        $stmt_update_client->bindParam(2, $client_id, PDO::PARAM_INT);
+                        $stmt_update_client->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                        $stmt_update_client->bindParam(4, $branch_id, PDO::PARAM_INT);
+                        if (!$stmt_update_client->execute()) {
+                            throw new PDOException('Failed to revert client balance: ' . $stmt_update_client->error);
+                        }
+
+                        // Get the actual client_transactions ID for this umrah transaction
+                        $stmt_get_client_tx_id = $pdo->prepare("SELECT id FROM client_transactions WHERE reference_id = ? AND transaction_of = 'umrah_transaction' AND tenant_id = ? AND branch_id = ? LIMIT 1");
+                        $stmt_get_client_tx_id->bindParam(1, $transaction_id, PDO::PARAM_INT);
+                        $stmt_get_client_tx_id->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                        $stmt_get_client_tx_id->bindParam(3, $branch_id, PDO::PARAM_INT);
+                        $stmt_get_client_tx_id->execute();
+                        $client_tx_result = $stmt_get_client_tx_id->fetch(PDO::FETCH_ASSOC);
+                        
+                        if ($client_tx_result) {
+                            $client_tx_id = $client_tx_result['id'];
+                            
+                            // Update balances of all subsequent client transactions
+                            $stmt_update_subsequent_client = $pdo->prepare("
+                                UPDATE client_transactions
+                                SET balance = balance - ?
+                                WHERE client_id = ? AND currency = ?
+                                AND id > ?
+                                AND tenant_id = ? AND branch_id = ?
+                            ");
+                            $stmt_update_subsequent_client->bindParam(1, $payment_amount, PDO::PARAM_STR);
+                            $stmt_update_subsequent_client->bindParam(2, $client_id, PDO::PARAM_INT);
+                            $stmt_update_subsequent_client->bindParam(3, $currency, PDO::PARAM_STR);
+                            $stmt_update_subsequent_client->bindParam(4, $client_tx_id, PDO::PARAM_INT);
+                            $stmt_update_subsequent_client->bindParam(5, $tenant_id, PDO::PARAM_INT);
+                            $stmt_update_subsequent_client->bindParam(6, $branch_id, PDO::PARAM_INT);
+
+                            if (!$stmt_update_subsequent_client->execute()) {
+                                throw new PDOException("Failed to update subsequent client transaction balances");
+                            }
+                        }
+
+                        // Delete related client_transactions record
+                        $stmt_delete_client_transaction = $pdo->prepare("DELETE FROM client_transactions WHERE reference_id = ? AND transaction_of = 'umrah_transaction' AND tenant_id = ? AND branch_id = ?");
+                        $stmt_delete_client_transaction->bindParam(1, $transaction_id, PDO::PARAM_INT);
+                        $stmt_delete_client_transaction->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                        $stmt_delete_client_transaction->bindParam(3, $branch_id, PDO::PARAM_INT);
+                        $stmt_delete_client_transaction->execute();
+                    }
+                 }
+                 }
+                 } elseif ($transaction_to_lower === 'internal account') {
             // Determine balance field based on transaction currency
             if ($currency === 'USD') {
                 $balance_field = 'usd_balance';
@@ -336,7 +445,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             // Get the transaction date to find subsequent transactions
-            $stmt_get_transaction_date = $pdo->prepare("SELECT created_at FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'umrah_transaction' AND tenant_id = ? AND branch_id = ?");
+            $stmt_get_transaction_date = $pdo->prepare("SELECT id, created_at FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'umrah_transaction' AND tenant_id = ? AND branch_id = ?");
             $stmt_get_transaction_date->bindParam(1, $transaction_id, PDO::PARAM_INT);
             $stmt_get_transaction_date->bindParam(2, $tenant_id, PDO::PARAM_INT);
             $stmt_get_transaction_date->bindParam(3, $branch_id, PDO::PARAM_INT);
@@ -355,15 +464,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 SET balance = balance - ?
                 WHERE currency = ?
                 AND id > ?
-                AND reference_id != ?
                 AND tenant_id = ? AND branch_id = ?
             ");
             $stmt_update_subsequent->bindParam(1, $payment_amount, PDO::PARAM_STR);
             $stmt_update_subsequent->bindParam(2, $currency, PDO::PARAM_STR);
-            $stmt_update_subsequent->bindParam(3, $transaction_id, PDO::PARAM_INT);
-            $stmt_update_subsequent->bindParam(4, $transaction_id, PDO::PARAM_INT);
-            $stmt_update_subsequent->bindParam(5, $tenant_id, PDO::PARAM_INT);
-            $stmt_update_subsequent->bindParam(6, $branch_id, PDO::PARAM_INT);
+            $stmt_update_subsequent->bindParam(3, $$date_result['id'], PDO::PARAM_INT);
+            $stmt_update_subsequent->bindParam(4, $tenant_id, PDO::PARAM_INT);
+            $stmt_update_subsequent->bindParam(5, $branch_id, PDO::PARAM_INT);
 
             if (!$stmt_update_subsequent->execute()) {
                 throw new PDOException("Failed to update subsequent transaction balances");

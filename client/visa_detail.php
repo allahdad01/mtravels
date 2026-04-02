@@ -1,7 +1,12 @@
 <?php
 require_once 'security.php';
 require_once '../includes/language_helpers.php';
-enforce_auth();
+// Define h() function for HTML escaping
+if (!function_exists('h')) {
+  function h($string) {
+      return htmlspecialchars($string, ENT_QUOTES, 'UTF-8');
+  }
+}
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
@@ -987,8 +992,6 @@ body, .pcoded-main-container { background: var(--bg) !important; font-family: va
             ══════════════════════════════════ -->
             <?php
               $cCount = count($clientTransactions);
-              $sCount = count($supplierTransactions);
-              $mCount = count($mainAccountTransactions);
               $aCount = count($allTx);
             ?>
             <div class="vp-ledger">
@@ -1000,12 +1003,6 @@ body, .pcoded-main-container { background: var(--bg) !important; font-family: va
                   </button>
                   <button class="vp-pill" data-filter="client">
                     <?= __('client') ?> <span class="vp-pill-ct"><?= $cCount ?></span>
-                  </button>
-                  <button class="vp-pill" data-filter="supplier">
-                    <?= __('supplier') ?> <span class="vp-pill-ct"><?= $sCount ?></span>
-                  </button>
-                  <button class="vp-pill" data-filter="main">
-                    <?= __('main_account') ?> <span class="vp-pill-ct"><?= $mCount ?></span>
                   </button>
                 </div>
               </div>

@@ -98,11 +98,10 @@
                                             </div>
                                             <div class="col-md-6">
                                                  <div class="form-group" id="familyReceiptNumberField" style="display: none;">
-                                                     <label for="familyReceiptNumber">
-                                                         <i class="feather icon-file-text mr-1"></i><?= __('receipt_number') ?>
+                                                     <label class="text-info">
+                                                         <i class="feather icon-alert-circle mr-1"></i><?= __('receipt_numbers_per_member') ?? 'Receipt Numbers (per member)' ?>
                                                      </label>
-                                                     <input type="text" class="form-control" id="familyReceiptNumber"
-                                                            name="receipt_number" placeholder="Enter receipt number">
+                                                     <small class="d-block text-muted mb-2">Each member will have their own receipt number below</small>
                                                  </div>
                                              </div>
                                             </div>
@@ -120,11 +119,11 @@
                                              </div>
                                              <div class="col-md-6">
                                                  <div class="form-group" id="familyExchangeRateField" style="display: none;">
-                                                     <label for="familyExchangeRate">
+                                                     <label id="familyExchangeRateLabel" for="familyExchangeRate">
                                                          <i class="feather icon-refresh-cw mr-1"></i><?= __('exchange_rate') ?>
                                                      </label>
                                                      <input type="number" class="form-control" id="familyExchangeRate"
-                                                            name="exchange_rate" step="0.01" min="0.01" placeholder="Enter exchange rate">
+                                                            name="exchange_rate" step="0.01" min="0.01" placeholder="0.00">
                                                  </div>
                                              </div>
                                             </div>
@@ -139,12 +138,16 @@
                                         </div>
 
                                         <!-- Member Payment Inputs -->
-                                        <div class="mt-4">
-                                            <h6 class="mb-3"><?= __('member_payments') ?></h6>
-                                            <div id="familyMemberPayments" class="row">
-                                                <!-- Member payment inputs will be loaded here -->
-                                            </div>
-                                        </div>
+                                         <div class="mt-4">
+                                             <h6 class="mb-3"><?= __('member_payments') ?></h6>
+                                             <div class="alert alert-info" id="bankReceiptAlert" style="display: none;">
+                                                 <i class="feather icon-info mr-2"></i>
+                                                 <strong>Bank Transaction Mode:</strong> Please enter a unique receipt number for each member below.
+                                             </div>
+                                             <div id="familyMemberPayments" class="row">
+                                                 <!-- Member payment inputs will be loaded here -->
+                                             </div>
+                                         </div>
 
                                         <div class="text-right mt-3">
                                             <button type="button" class="btn btn-secondary" data-toggle="collapse"

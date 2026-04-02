@@ -43,327 +43,6 @@ $paginationPattern = empty($search)
 
 <link rel="stylesheet" href="../css/general/modal-styles.css">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
-
-<!-- Main Content -->
-<div class="pcoded-main-container">
-    <div class="pcoded-wrapper">
-        <div class="pcoded-content">
-            <div class="pcoded-inner-content">
-                <div class="main-body">
-                    <div class="page-wrapper">
-
-                        <!-- Page Header -->
-                        <div class="hb-page-header">
-                            <div class="hb-page-header-left">
-                                <h1><i class="fa-solid fa-hotel"></i><?= __('hotel_bookings') ?></h1>
-                                <p><?= __('manage_hotel_bookings_efficiently') ?></p>
-                            </div>
-                            <div class="hb-page-header-right">
-                                <a href="dashboard.php" class="hb-btn-back">
-                                    <i class="feather icon-arrow-left"></i><?= __('back_to_dashboard') ?>
-                                </a>
-                                <button class="hb-btn-new" data-toggle="modal" data-target="#addBookingModal">
-                                    <i class="feather icon-plus"></i><?= __('new_booking') ?>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Toast Container -->
-                        <div class="toast-container"></div>
-
-                        <!-- Toolbar -->
-                        <div class="hb-toolbar">
-                            <form class="hb-search-wrap" method="get">
-                                <i class="feather icon-search"></i>
-                                <input type="text"
-                                       id="searchBookings"
-                                       name="search"
-                                       value="<?= htmlspecialchars($search ?? '') ?>"
-                                       placeholder="<?= __('search_bookings') ?>…">
-                                <?php if (!empty($search)): ?>
-                                    <a href="hotel.php" class="hb-clear-btn" title="<?= __('clear') ?>">
-                                        <i class="feather icon-x"></i>
-                                    </a>
-                                <?php endif; ?>
-                            </form>
-                            <div class="hb-filter-tabs">
-                                <button class="hb-filter-tab active" data-filter="all">All</button>
-                                <button class="hb-filter-tab" data-filter="confirmed">Confirmed</button>
-                                <button class="hb-filter-tab" data-filter="pending">Pending</button>
-                                <button class="hb-filter-tab" data-filter="cancelled">Cancelled</button>
-                            </div>
-                        </div>
-
-                        <!-- Column Headers -->
-                        <div class="hb-list-header">
-                            <div class="lh-bar"></div>
-                            <div class="lh-icon"></div>
-                            <div class="lh-guest">Guest</div>
-                            <div class="lh-room">Room</div>
-                            <div class="lh-dates">Dates</div>
-                            <div class="lh-price">Amount</div>
-                            <div class="lh-status">Status</div>
-                            <div class="lh-actions"></div>
-                        </div>
-
-                        <!-- Bookings List -->
-                        <div class="hb-list" id="bookingsContainer">
-                            <?php if (!empty($bookings)): ?>
-                                <?php foreach ($bookings as $i => $booking): ?>
-                                    <?php
-                                    // Check agency client
-                                    $isAgencyClient = false;
-                                    if (!empty($booking['sold_to'])) {
-                                        try {
-                                            $clientStmt = $pdo->prepare("SELECT client_type FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                                            $clientStmt->execute([$booking['sold_to'], $tenant_id, $branch_id]);
-                                            $clientRow = $clientStmt->fetch(PDO::FETCH_ASSOC);
-                                            if ($clientRow) {
-                                                $isAgencyClient = ($clientRow['client_type'] === 'agency');
-                                            }
-                                        } catch (PDOException $e) {
-                                            error_log("Error checking client type: " . $e->getMessage());
-                                        }
-                                    }
-
-                                    // Compute nights
-                                    $nights = '';
-                                    if (!empty($booking['check_in_date']) && !empty($booking['check_out_date'])) {
-                                        $cin  = new DateTime($booking['check_in_date']);
-                                        $cout = new DateTime($booking['check_out_date']);
-                                        $nights = $cin->diff($cout)->days;
-                                    }
-
-                                    // Status — default confirmed; extend as needed
-                                    $status     = $booking['status'] ?? 'confirmed';
-                                    $statusMap  = [
-                                        'confirmed' => ['label' => 'Confirmed', 'class' => 'hb-status-confirmed', 'bar' => 'linear-gradient(180deg,#1a56db 0%,#7c3aed 100%)'],
-                                        'pending'   => ['label' => 'Pending',   'class' => 'hb-status-pending',   'bar' => 'linear-gradient(180deg,#d97706 0%,#f59e0b 100%)'],
-                                        'cancelled' => ['label' => 'Cancelled', 'class' => 'hb-status-cancelled', 'bar' => '#d1d5db'],
-                                    ];
-                                    $statusInfo = $statusMap[$status] ?? $statusMap['confirmed'];
-                                    $isCancelled = ($status === 'cancelled');
-
-                                    // Icon colour per status
-                                    $iconStyle = match($status) {
-                                        'pending'   => 'background:#fffbeb; color:#d97706;',
-                                        'cancelled' => 'background:#f9fafb; color:#9ca3af;',
-                                        default     => 'background:#eff3ff; color:#1a56db;',
-                                    };
-                                    ?>
-                                    <div class="hb-row<?= $isCancelled ? ' hb-row-cancelled' : '' ?>" 
-                                         data-booking-id="<?= $booking['id'] ?>"
-                                         data-status="<?= htmlspecialchars($status) ?>"
-                                         style="animation-delay: <?= $i * 0.04 ?>s">
-
-                                        <!-- Accent Bar -->
-                                        <div class="hb-accent-bar" style="background: <?= $statusInfo['bar'] ?>;"></div>
-
-                                        <!-- Hotel Icon -->
-                                        <div class="hb-icon-cell">
-                                            <div class="hb-hotel-icon" style="<?= $iconStyle ?>">
-                                                <i class="feather icon-home"></i>
-                                            </div>
-                                        </div>
-
-                                        <!-- Guest -->
-                                        <div class="hb-guest-cell">
-                                            <div class="hb-guest-name"><?= htmlspecialchars(getValue($booking, 'guest_name')) ?></div>
-                                            <div class="hb-guest-meta">
-                                                <?php if (!empty($booking['contact_no'])): ?>
-                                                <span><i class="feather icon-phone"></i><?= htmlspecialchars($booking['contact_no']) ?></span>
-                                                <?php endif; ?>
-                                                <?php if (!empty($booking['client_name'])): ?>
-                                                <span><i class="feather icon-briefcase"></i><?= htmlspecialchars($booking['client_name']) ?></span>
-                                                <?php endif; ?>
-                                            </div>
-                                            <div class="hb-order-id <?= $isCancelled ? 'hb-order-id-muted' : '' ?>">
-                                                <i class="feather icon-hash"></i><?= htmlspecialchars(getValue($booking, 'order_id')) ?>
-                                            </div>
-                                        </div>
-
-                                        <!-- Room -->
-                                        <div class="hb-room-cell">
-                                            <div class="hb-cell-label">Room</div>
-                                            <div class="hb-room-name"><?= htmlspecialchars(getValue($booking, 'accommodation_details')) ?></div>
-                                        </div>
-
-                                        <!-- Dates -->
-                                        <div class="hb-dates-cell">
-                                            <div class="hb-cell-label">Stay</div>
-                                            <div class="hb-dates-track">
-                                                <div class="hb-date-block">
-                                                    <span class="hb-date-day">
-                                                        <?= !empty($booking['check_in_date']) ? date('d', strtotime($booking['check_in_date'])) : '—' ?>
-                                                    </span>
-                                                    <span class="hb-date-month">
-                                                        <?= !empty($booking['check_in_date']) ? date('M Y', strtotime($booking['check_in_date'])) : '' ?>
-                                                    </span>
-                                                </div>
-                                                <div class="hb-arrow"><i class="feather icon-arrow-right"></i></div>
-                                                <div class="hb-date-block">
-                                                    <span class="hb-date-day">
-                                                        <?= !empty($booking['check_out_date']) ? date('d', strtotime($booking['check_out_date'])) : '—' ?>
-                                                    </span>
-                                                    <span class="hb-date-month">
-                                                        <?= !empty($booking['check_out_date']) ? date('M Y', strtotime($booking['check_out_date'])) : '' ?>
-                                                    </span>
-                                                </div>
-                                                <?php if ($nights !== ''): ?>
-                                                <span class="hb-nights-pill">
-                                                    <i class="feather icon-moon"></i><?= $nights ?>n
-                                                </span>
-                                                <?php endif; ?>
-                                            </div>
-                                        </div>
-
-                                        <!-- Price -->
-                                        <div class="hb-price-cell">
-                                            <div class="hb-price-amount <?= $isCancelled ? 'hb-muted' : '' ?>">
-                                                <span class="hb-currency"><?= htmlspecialchars(getValue($booking, 'currency')) ?></span>
-                                                <?= number_format(getValue($booking, 'sold_amount', 0), 2) ?>
-                                            </div>
-                                            <?php if (!$isCancelled): ?>
-                                            <div class="hb-profit-row">
-                                                <i class="feather icon-trending-up"></i>
-                                                <span>+ <?= getValue($booking, 'currency') ?> <?= number_format(getValue($booking, 'profit', 0), 2) ?></span>
-                                            </div>
-                                            <?php else: ?>
-                                            <div class="hb-profit-row hb-refunded">
-                                                <i class="feather icon-minus"></i><span>Refunded</span>
-                                            </div>
-                                            <?php endif; ?>
-                                        </div>
-
-                                        <!-- Status + Created By -->
-                                        <div class="hb-status-cell">
-                                            <span class="hb-status-pill <?= $statusInfo['class'] ?>">
-                                                <span class="hb-dot"></span><?= $statusInfo['label'] ?>
-                                            </span>
-                                            <div class="hb-created-by">
-                                                <i class="feather icon-user"></i>
-                                                <?= htmlspecialchars($booking['created_by'] ?? '') ?>
-                                            </div>
-                                        </div>
-
-                                        <!-- Actions -->
-                                        <div class="hb-actions-cell">
-                                            <button class="hb-btn-icon hb-view"
-                                                    data-tip="<?= __('view_details') ?>"
-                                                    onclick="viewBooking(<?= $booking['id'] ?>)">
-                                                <i class="feather icon-eye"></i>
-                                            </button>
-
-                                            <?php if ($canEdit && !$isCancelled): ?>
-                                            <button class="hb-btn-icon hb-edit"
-                                                    data-tip="<?= __('edit_booking') ?>"
-                                                    onclick="editBooking(<?= $booking['id'] ?>)">
-                                                <i class="feather icon-edit-2"></i>
-                                            </button>
-                                            <?php endif; ?>
-
-                                            <?php if ($isAgencyClient && $canEdit): ?>
-                                            <button class="hb-btn-icon hb-trans"
-                                                    data-tip="<?= __('manage_transactions') ?>"
-                                                    onclick="manageTransactions(<?= $booking['id'] ?>)">
-                                                <i class="fas fa-dollar-sign"></i>
-                                            </button>
-                                            <?php endif; ?>
-
-                                            <div class="hb-dropdown-wrap">
-                                                <button class="hb-btn-icon hb-more"
-                                                        data-tip="More"
-                                                        onclick="toggleHbDropdown(this)">
-                                                    <i class="feather icon-more-vertical"></i>
-                                                </button>
-                                                <div class="hb-dropdown-menu">
-                                                    <button class="hb-dropdown-item"
-                                                            onclick="openRefundModal(<?= $booking['id'] ?>, <?= $booking['sold_amount'] ?>, <?= $booking['profit'] ?>, '<?= $booking['currency'] ?>')">
-                                                        <i class="feather icon-refresh-ccw"></i><?= __('process_refund') ?>
-                                                    </button>
-                                                    <?php if ($canEdit): ?>
-                                                    <button class="hb-dropdown-item hb-danger"
-                                                            onclick="deleteBooking(<?= $booking['id'] ?>)">
-                                                        <i class="feather icon-trash-2"></i><?= __('delete_booking') ?>
-                                                    </button>
-                                                    <?php endif; ?>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                    </div><!-- /.hb-row -->
-                                <?php endforeach; ?>
-
-                            <?php else: ?>
-                                <div class="hb-empty">
-                                    <i class="feather icon-inbox"></i>
-                                    <h4><?= __('no_bookings_found') ?></h4>
-                                    <p><?= __('start_by_adding_your_first_hotel_booking') ?></p>
-                                    <button class="hb-btn-new mt-3" data-toggle="modal" data-target="#addBookingModal">
-                                        <i class="feather icon-plus"></i><?= __('add_new_booking') ?>
-                                    </button>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-
-                        <!-- Pagination -->
-                        <?php if (!empty($bookings) && isset($totalPages) && $totalPages > 1): ?>
-                        <div class="hb-pagination">
-                            <span class="hb-pagination-info">
-                                <?php
-                                if (isset($currentPage, $itemsPerPage, $totalRecords)) {
-                                    $startRecord = (($currentPage - 1) * $itemsPerPage) + 1;
-                                    $endRecord   = min($currentPage * $itemsPerPage, $totalRecords);
-                                    echo sprintf('Showing %d–%d of %d entries', $startRecord, $endRecord, $totalRecords);
-                                }
-                                ?>
-                            </span>
-                            <nav class="hb-pager">
-                                <?php
-                                $prevDisabled = ($currentPage <= 1) ? 'disabled' : '';
-                                echo '<a class="hb-page-btn ' . $prevDisabled . '" href="' . ($prevDisabled ? '#' : $paginationPattern . ($currentPage - 1)) . '"><i class="feather icon-chevron-left"></i></a>';
-
-                                $maxPages  = 5;
-                                $startPage = max(1, min($currentPage - floor($maxPages / 2), $totalPages - $maxPages + 1));
-                                $endPage   = min($startPage + $maxPages - 1, $totalPages);
-
-                                if ($startPage > 1) {
-                                    echo '<a class="hb-page-btn" href="' . $paginationPattern . '1">1</a>';
-                                    if ($startPage > 2) echo '<span class="hb-page-ellipsis">…</span>';
-                                }
-
-                                for ($p = $startPage; $p <= $endPage; $p++) {
-                                    $activeClass = ($p == $currentPage) ? 'hb-page-active' : '';
-                                    echo '<a class="hb-page-btn ' . $activeClass . '" href="' . $paginationPattern . $p . '">' . $p . '</a>';
-                                }
-
-                                if ($endPage < $totalPages) {
-                                    if ($endPage < $totalPages - 1) echo '<span class="hb-page-ellipsis">…</span>';
-                                    echo '<a class="hb-page-btn" href="' . $paginationPattern . $totalPages . '">' . $totalPages . '</a>';
-                                }
-
-                                $nextDisabled = ($currentPage >= $totalPages) ? 'disabled' : '';
-                                echo '<a class="hb-page-btn ' . $nextDisabled . '" href="' . ($nextDisabled ? '#' : $paginationPattern . ($currentPage + 1)) . '"><i class="feather icon-chevron-right"></i></a>';
-                                ?>
-                            </nav>
-                        </div>
-                        <?php endif; ?>
-
-                    </div><!-- /.page-wrapper -->
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<?php include '../modals/hotel/refund_modal.php'; ?>
-<?php include '../modals/hotel/transaction_modal.php'; ?>
-<?php include '../modals/hotel/edit_transaction_modal.php'; ?>
-<?php include '../modals/hotel/add_hotel_modal.php'; ?>
-<?php include '../modals/hotel/edit_hotel_modal.php'; ?>
-<?php include '../modals/hotel/view_details_modal.php'; ?>
-<?php include '../modals/hotel/multi_ticket.php'; ?>
-
 <style>
 /* ═══════════════════════════════════════════════════════
    Hotel Bookings — Row Card Design
@@ -1043,7 +722,354 @@ $paginationPattern = empty($search)
     z-index: 9999;
     max-width: 350px;
 }
+/* ─── FAB ──────────────────────────────────────────────── */
+.pg-fab {
+    position: fixed;
+    bottom: 80px;
+    z-index: 1050;
+}
+
+.pg-fab button {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #185FA5;
+    border: none;
+    color: #fff;
+    font-size: 25px;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(24,95,165,0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background .15s;
+}
+
+.pg-fab button:hover {
+    background: #0C447C;
+}
 </style>
+<!-- Main Content -->
+<div class="pcoded-main-container">
+    <div class="pcoded-wrapper">
+        <div class="pcoded-content">
+            <div class="pcoded-inner-content">
+                <div class="main-body">
+                    <div class="page-wrapper">
+
+                        <!-- Page Header -->
+                        <div class="hb-page-header">
+                            <div class="hb-page-header-left">
+                                <h1><i class="fa-solid fa-hotel"></i><?= __('hotel_bookings') ?></h1>
+                                <p><?= __('manage_hotel_bookings_efficiently') ?></p>
+                            </div>
+                            <div class="hb-page-header-right">
+                                <a href="dashboard.php" class="hb-btn-back">
+                                    <i class="feather icon-arrow-left"></i><?= __('back_to_dashboard') ?>
+                                </a>
+                                <button class="hb-btn-new" data-toggle="modal" data-target="#addBookingModal">
+                                    <i class="feather icon-plus"></i><?= __('new_booking') ?>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Toast Container -->
+                        <div class="toast-container"></div>
+
+                        <!-- Toolbar -->
+                        <div class="hb-toolbar">
+                            <form class="hb-search-wrap" method="get">
+                                <i class="feather icon-search"></i>
+                                <input type="text"
+                                       id="searchBookings"
+                                       name="search"
+                                       value="<?= htmlspecialchars($search ?? '') ?>"
+                                       placeholder="<?= __('search_bookings') ?>…">
+                                <?php if (!empty($search)): ?>
+                                    <a href="hotel.php" class="hb-clear-btn" title="<?= __('clear') ?>">
+                                        <i class="feather icon-x"></i>
+                                    </a>
+                                <?php endif; ?>
+                            </form>
+                            <div class="hb-filter-tabs">
+                                <button class="hb-filter-tab active" data-filter="all">All</button>
+                                <button class="hb-filter-tab" data-filter="confirmed">Confirmed</button>
+                                <button class="hb-filter-tab" data-filter="pending">Pending</button>
+                                <button class="hb-filter-tab" data-filter="cancelled">Cancelled</button>
+                            </div>
+                        </div>
+
+                        <!-- Column Headers -->
+                        <div class="hb-list-header">
+                            <div class="lh-bar"></div>
+                            <div class="lh-icon"></div>
+                            <div class="lh-guest">Guest</div>
+                            <div class="lh-room">Room</div>
+                            <div class="lh-dates">Dates</div>
+                            <div class="lh-price">Amount</div>
+                            <div class="lh-status">Status</div>
+                            <div class="lh-actions"></div>
+                        </div>
+
+                        <!-- Bookings List -->
+                        <div class="hb-list" id="bookingsContainer">
+                            <?php if (!empty($bookings)): ?>
+                                <?php foreach ($bookings as $i => $booking): ?>
+                                    <?php
+                                    // Check agency client
+                                    $isAgencyClient = false;
+                                    if (!empty($booking['sold_to'])) {
+                                        try {
+                                            $clientStmt = $pdo->prepare("SELECT client_type FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                                            $clientStmt->execute([$booking['sold_to'], $tenant_id, $branch_id]);
+                                            $clientRow = $clientStmt->fetch(PDO::FETCH_ASSOC);
+                                            if ($clientRow) {
+                                                $isAgencyClient = ($clientRow['client_type'] === 'agency');
+                                            }
+                                        } catch (PDOException $e) {
+                                            error_log("Error checking client type: " . $e->getMessage());
+                                        }
+                                    }
+
+                                    // Compute nights
+                                    $nights = '';
+                                    if (!empty($booking['check_in_date']) && !empty($booking['check_out_date'])) {
+                                        $cin  = new DateTime($booking['check_in_date']);
+                                        $cout = new DateTime($booking['check_out_date']);
+                                        $nights = $cin->diff($cout)->days;
+                                    }
+
+                                    // Status — default confirmed; extend as needed
+                                    $status     = $booking['status'] ?? 'confirmed';
+                                    $statusMap  = [
+                                        'confirmed' => ['label' => 'Confirmed', 'class' => 'hb-status-confirmed', 'bar' => 'linear-gradient(180deg,#1a56db 0%,#7c3aed 100%)'],
+                                        'pending'   => ['label' => 'Pending',   'class' => 'hb-status-pending',   'bar' => 'linear-gradient(180deg,#d97706 0%,#f59e0b 100%)'],
+                                        'cancelled' => ['label' => 'Cancelled', 'class' => 'hb-status-cancelled', 'bar' => '#d1d5db'],
+                                    ];
+                                    $statusInfo = $statusMap[$status] ?? $statusMap['confirmed'];
+                                    $isCancelled = ($status === 'cancelled');
+
+                                    // Icon colour per status
+                                    $iconStyle = match($status) {
+                                        'pending'   => 'background:#fffbeb; color:#d97706;',
+                                        'cancelled' => 'background:#f9fafb; color:#9ca3af;',
+                                        default     => 'background:#eff3ff; color:#1a56db;',
+                                    };
+                                    ?>
+                                    <div class="hb-row<?= $isCancelled ? ' hb-row-cancelled' : '' ?>" 
+                                         data-booking-id="<?= $booking['id'] ?>"
+                                         data-status="<?= htmlspecialchars($status) ?>"
+                                         style="animation-delay: <?= $i * 0.04 ?>s">
+
+                                        <!-- Accent Bar -->
+                                        <div class="hb-accent-bar" style="background: <?= $statusInfo['bar'] ?>;"></div>
+
+                                        <!-- Hotel Icon -->
+                                        <div class="hb-icon-cell">
+                                            <div class="hb-hotel-icon" style="<?= $iconStyle ?>">
+                                                <i class="feather icon-home"></i>
+                                            </div>
+                                        </div>
+
+                                        <!-- Guest -->
+                                        <div class="hb-guest-cell">
+                                            <div class="hb-guest-name"><?= htmlspecialchars(getValue($booking, 'guest_name')) ?></div>
+                                            <div class="hb-guest-meta">
+                                                <?php if (!empty($booking['contact_no'])): ?>
+                                                <span><i class="feather icon-phone"></i><?= htmlspecialchars($booking['contact_no']) ?></span>
+                                                <?php endif; ?>
+                                                <?php if (!empty($booking['client_name'])): ?>
+                                                <span><i class="feather icon-briefcase"></i><?= htmlspecialchars($booking['client_name']) ?></span>
+                                                <?php endif; ?>
+                                            </div>
+                                            <div class="hb-order-id <?= $isCancelled ? 'hb-order-id-muted' : '' ?>">
+                                                <i class="feather icon-hash"></i><?= htmlspecialchars(getValue($booking, 'order_id')) ?>
+                                            </div>
+                                        </div>
+
+                                        <!-- Room -->
+                                        <div class="hb-room-cell">
+                                            <div class="hb-cell-label">Room</div>
+                                            <div class="hb-room-name"><?= htmlspecialchars(getValue($booking, 'accommodation_details')) ?></div>
+                                        </div>
+
+                                        <!-- Dates -->
+                                        <div class="hb-dates-cell">
+                                            <div class="hb-cell-label">Stay</div>
+                                            <div class="hb-dates-track">
+                                                <div class="hb-date-block">
+                                                    <span class="hb-date-day">
+                                                        <?= !empty($booking['check_in_date']) ? date('d', strtotime($booking['check_in_date'])) : '—' ?>
+                                                    </span>
+                                                    <span class="hb-date-month">
+                                                        <?= !empty($booking['check_in_date']) ? date('M Y', strtotime($booking['check_in_date'])) : '' ?>
+                                                    </span>
+                                                </div>
+                                                <div class="hb-arrow"><i class="feather icon-arrow-right"></i></div>
+                                                <div class="hb-date-block">
+                                                    <span class="hb-date-day">
+                                                        <?= !empty($booking['check_out_date']) ? date('d', strtotime($booking['check_out_date'])) : '—' ?>
+                                                    </span>
+                                                    <span class="hb-date-month">
+                                                        <?= !empty($booking['check_out_date']) ? date('M Y', strtotime($booking['check_out_date'])) : '' ?>
+                                                    </span>
+                                                </div>
+                                                <?php if ($nights !== ''): ?>
+                                                <span class="hb-nights-pill">
+                                                    <i class="feather icon-moon"></i><?= $nights ?>n
+                                                </span>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+
+                                        <!-- Price -->
+                                        <div class="hb-price-cell">
+                                            <div class="hb-price-amount <?= $isCancelled ? 'hb-muted' : '' ?>">
+                                                <span class="hb-currency"><?= htmlspecialchars(getValue($booking, 'currency')) ?></span>
+                                                <?= number_format(getValue($booking, 'sold_amount', 0), 2) ?>
+                                            </div>
+                                            <?php if (!$isCancelled): ?>
+                                            <div class="hb-profit-row">
+                                                <i class="feather icon-trending-up"></i>
+                                                <span>+ <?= getValue($booking, 'currency') ?> <?= number_format(getValue($booking, 'profit', 0), 2) ?></span>
+                                            </div>
+                                            <?php else: ?>
+                                            <div class="hb-profit-row hb-refunded">
+                                                <i class="feather icon-minus"></i><span>Refunded</span>
+                                            </div>
+                                            <?php endif; ?>
+                                        </div>
+
+                                        <!-- Status + Created By -->
+                                        <div class="hb-status-cell">
+                                            <span class="hb-status-pill <?= $statusInfo['class'] ?>">
+                                                <span class="hb-dot"></span><?= $statusInfo['label'] ?>
+                                            </span>
+                                            <div class="hb-created-by">
+                                                <i class="feather icon-user"></i>
+                                                <?= htmlspecialchars($booking['created_by'] ?? '') ?>
+                                            </div>
+                                        </div>
+
+                                        <!-- Actions -->
+                                        <div class="hb-actions-cell">
+                                            <button class="hb-btn-icon hb-view"
+                                                    data-tip="<?= __('view_details') ?>"
+                                                    onclick="viewBooking(<?= $booking['id'] ?>)">
+                                                <i class="feather icon-eye"></i>
+                                            </button>
+
+                                            <?php if ($canEdit && !$isCancelled): ?>
+                                            <button class="hb-btn-icon hb-edit"
+                                                    data-tip="<?= __('edit_booking') ?>"
+                                                    onclick="editBooking(<?= $booking['id'] ?>)">
+                                                <i class="feather icon-edit-2"></i>
+                                            </button>
+                                            <?php endif; ?>
+
+                                            <?php if ($isAgencyClient && $canEdit): ?>
+                                            <button class="hb-btn-icon hb-trans"
+                                                    data-tip="<?= __('manage_transactions') ?>"
+                                                    onclick="manageTransactions(<?= $booking['id'] ?>)">
+                                                <i class="fas fa-dollar-sign"></i>
+                                            </button>
+                                            <?php endif; ?>
+
+                                            <div class="hb-dropdown-wrap">
+                                                <button class="hb-btn-icon hb-more"
+                                                        data-tip="More"
+                                                        onclick="toggleHbDropdown(this)">
+                                                    <i class="feather icon-more-vertical"></i>
+                                                </button>
+                                                <div class="hb-dropdown-menu">
+                                                    <button class="hb-dropdown-item"
+                                                            onclick="openRefundModal(<?= $booking['id'] ?>, <?= $booking['sold_amount'] ?>, <?= $booking['profit'] ?>, '<?= $booking['currency'] ?>')">
+                                                        <i class="feather icon-refresh-ccw"></i><?= __('process_refund') ?>
+                                                    </button>
+                                                    <?php if ($canEdit): ?>
+                                                    <button class="hb-dropdown-item hb-danger"
+                                                            onclick="deleteBooking(<?= $booking['id'] ?>)">
+                                                        <i class="feather icon-trash-2"></i><?= __('delete_booking') ?>
+                                                    </button>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div><!-- /.hb-row -->
+                                <?php endforeach; ?>
+
+                            <?php else: ?>
+                                <div class="hb-empty">
+                                    <i class="feather icon-inbox"></i>
+                                    <h4><?= __('no_bookings_found') ?></h4>
+                                    <p><?= __('start_by_adding_your_first_hotel_booking') ?></p>
+                                    <button class="hb-btn-new mt-3" data-toggle="modal" data-target="#addBookingModal">
+                                        <i class="feather icon-plus"></i><?= __('add_new_booking') ?>
+                                    </button>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+
+                        <!-- Pagination -->
+                        <?php if (!empty($bookings) && isset($totalPages) && $totalPages > 1): ?>
+                        <div class="hb-pagination">
+                            <span class="hb-pagination-info">
+                                <?php
+                                if (isset($currentPage, $itemsPerPage, $totalRecords)) {
+                                    $startRecord = (($currentPage - 1) * $itemsPerPage) + 1;
+                                    $endRecord   = min($currentPage * $itemsPerPage, $totalRecords);
+                                    echo sprintf('Showing %d–%d of %d entries', $startRecord, $endRecord, $totalRecords);
+                                }
+                                ?>
+                            </span>
+                            <nav class="hb-pager">
+                                <?php
+                                $prevDisabled = ($currentPage <= 1) ? 'disabled' : '';
+                                echo '<a class="hb-page-btn ' . $prevDisabled . '" href="' . ($prevDisabled ? '#' : $paginationPattern . ($currentPage - 1)) . '"><i class="feather icon-chevron-left"></i></a>';
+
+                                $maxPages  = 5;
+                                $startPage = max(1, min($currentPage - floor($maxPages / 2), $totalPages - $maxPages + 1));
+                                $endPage   = min($startPage + $maxPages - 1, $totalPages);
+
+                                if ($startPage > 1) {
+                                    echo '<a class="hb-page-btn" href="' . $paginationPattern . '1">1</a>';
+                                    if ($startPage > 2) echo '<span class="hb-page-ellipsis">…</span>';
+                                }
+
+                                for ($p = $startPage; $p <= $endPage; $p++) {
+                                    $activeClass = ($p == $currentPage) ? 'hb-page-active' : '';
+                                    echo '<a class="hb-page-btn ' . $activeClass . '" href="' . $paginationPattern . $p . '">' . $p . '</a>';
+                                }
+
+                                if ($endPage < $totalPages) {
+                                    if ($endPage < $totalPages - 1) echo '<span class="hb-page-ellipsis">…</span>';
+                                    echo '<a class="hb-page-btn" href="' . $paginationPattern . $totalPages . '">' . $totalPages . '</a>';
+                                }
+
+                                $nextDisabled = ($currentPage >= $totalPages) ? 'disabled' : '';
+                                echo '<a class="hb-page-btn ' . $nextDisabled . '" href="' . ($nextDisabled ? '#' : $paginationPattern . ($currentPage + 1)) . '"><i class="feather icon-chevron-right"></i></a>';
+                                ?>
+                            </nav>
+                        </div>
+                        <?php endif; ?>
+
+                    </div><!-- /.page-wrapper -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php include '../modals/hotel/refund_modal.php'; ?>
+<?php include '../modals/hotel/transaction_modal.php'; ?>
+<?php include '../modals/hotel/edit_transaction_modal.php'; ?>
+<?php include '../modals/hotel/add_hotel_modal.php'; ?>
+<?php include '../modals/hotel/edit_hotel_modal.php'; ?>
+<?php include '../modals/hotel/view_details_modal.php'; ?>
+<?php include '../modals/hotel/multi_ticket.php'; ?>
+
+
 
 <script>
 function toggleHbDropdown(btn) {

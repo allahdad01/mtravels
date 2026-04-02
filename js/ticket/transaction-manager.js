@@ -2,6 +2,37 @@
 const transactionManager = {
     isSubmitting: false, // Flag to track submission state
 
+    // Currency display mapping
+    getCurrencyDisplay: function(currencyCode) {
+        const currencyMap = {
+            'USD': 'USD',
+            'AFS': 'AFS',
+            'EUR': 'EUR',
+            'DARHAM': 'AED'
+        };
+        return currencyMap[currencyCode] || currencyCode;
+    },
+
+    // Generate dynamic exchange rate example
+    getExchangeRateExample: function(baseCurrency, targetCurrency) {
+        const examples = {
+            'USD-AFS': 'Example: If 1 USD = 88 AFS, enter 88',
+            'USD-EUR': 'Example: If 1 USD = 0.95 EUR, enter 0.95',
+            'USD-AED': 'Example: If 1 USD = 3.67 AED, enter 3.67',
+            'AFS-USD': 'Example: If 1 AFS = 0.0114 USD, enter 0.0114',
+            'AFS-EUR': 'Example: If 1 AFS = 0.0108 EUR, enter 0.0108',
+            'AFS-AED': 'Example: If 1 AFS = 0.0417 AED, enter 0.0417',
+            'EUR-USD': 'Example: If 1 EUR = 1.05 USD, enter 1.05',
+            'EUR-AFS': 'Example: If 1 EUR = 92.5 AFS, enter 92.5',
+            'EUR-AED': 'Example: If 1 EUR = 3.86 AED, enter 3.86',
+            'AED-USD': 'Example: If 1 AED = 0.27 USD, enter 0.27',
+            'AED-AFS': 'Example: If 1 AED = 23.99 AFS, enter 23.99',
+            'AED-EUR': 'Example: If 1 AED = 0.26 EUR, enter 0.26'
+        };
+        const key = `${baseCurrency}-${targetCurrency}`;
+        return examples[key] || 'Enter the exchange rate';
+    },
+
     // Initialize transaction modal and form handlers
     init: function() {
         this.bindEvents();
@@ -35,6 +66,22 @@ const transactionManager = {
         if (selectedCurrency && baseCurrency && selectedCurrency !== baseCurrency) {
             $('#exchangeRateField').show();
             $('#transactionExchangeRate').attr('required', true);
+            
+            // Get display names for currencies
+            const baseDisplay = transactionManager.getCurrencyDisplay(baseCurrency);
+            const targetDisplay = transactionManager.getCurrencyDisplay(selectedCurrency);
+            
+            // Update label with proper exchange rate direction
+            const label = `<i class="feather icon-refresh-cw mr-1"></i>${baseDisplay} to ${targetDisplay} Exchange Rate`;
+            $('#exchangeRateLabel').html(label);
+            
+            // Update helper text
+            $('#exchangeRateBase').text(baseDisplay);
+            $('#exchangeRateTarget').text(targetDisplay);
+            
+            // Update example based on currency pair
+            const example = transactionManager.getExchangeRateExample(baseDisplay, targetDisplay);
+            $('#exchangeRateExample').text(example);
         } else {
             $('#exchangeRateField').hide();
             $('#transactionExchangeRate').attr('required', false);
@@ -49,6 +96,22 @@ const transactionManager = {
         if (selectedCurrency && baseCurrency && selectedCurrency !== baseCurrency) {
             $('#editExchangeRateField').show();
             $('#editTransactionExchangeRate').attr('required', true);
+            
+            // Get display names for currencies
+            const baseDisplay = transactionManager.getCurrencyDisplay(baseCurrency);
+            const targetDisplay = transactionManager.getCurrencyDisplay(selectedCurrency);
+            
+            // Update label with proper exchange rate direction
+            const label = `<i class="feather icon-refresh-cw mr-1"></i>${baseDisplay} to ${targetDisplay} Exchange Rate`;
+            $('#editExchangeRateLabel').html(label);
+            
+            // Update helper text
+            $('#editExchangeRateBase').text(baseDisplay);
+            $('#editExchangeRateTarget').text(targetDisplay);
+            
+            // Update example based on currency pair
+            const example = transactionManager.getExchangeRateExample(baseDisplay, targetDisplay);
+            $('#editExchangeRateExample').text(example);
         } else {
             $('#editExchangeRateField').hide();
             $('#editTransactionExchangeRate').attr('required', false);
@@ -432,11 +495,15 @@ const transactionManager = {
                                         </div>
                                         <div class="col-md-6">
                                             <div class="form-group" id="editExchangeRateField" style="display: none;">
-                                                <label for="editTransactionExchangeRate">
+                                                <label id="editExchangeRateLabel" for="editTransactionExchangeRate">
                                                     <i class="feather icon-refresh-cw mr-1"></i>Exchange Rate
                                                 </label>
                                                 <input type="number" class="form-control" id="editTransactionExchangeRate"
-                                                       name="exchange_rate" step="0.01" placeholder="Enter exchange rate">
+                                                       name="exchange_rate" step="0.01" placeholder="0.00">
+                                                <small class="form-text text-muted d-block mt-1">
+                                                    Enter how many <span id="editExchangeRateTarget"></span> equals 1 <span id="editExchangeRateBase"></span>
+                                                    <span id="editExchangeRateExample" class="d-block mt-1" style="color: #666;"></span>
+                                                </small>
                                             </div>
                                         </div>
                                     </div>

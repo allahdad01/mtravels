@@ -59,22 +59,22 @@ if ($tableExists) {
     $totalPages = ceil($totalRefunds / $recordsPerPage);
 
     // Then fetch paginated refunds
-    $refundsQuery = "
-        SELECT r.*, um.name, um.flight_date, um.return_date, um.room_type, um.duration, um.price, um.sold_price, um.paid, um.received_bank_payment, um.bank_receipt_number, um.due, um.profit,
-               f.package_type, um.currency as booking_currency,
-               u.name as processed_by_name, m.name as account_name,
-               c.name as client_name
-        FROM umrah_refunds r
-        LEFT JOIN umrah_bookings um ON r.booking_id = um.booking_id
-        LEFT JOIN families f ON um.family_id = f.family_id
-        LEFT JOIN users u ON r.processed_by = u.id
-        LEFT JOIN main_account m ON um.paid_to = m.id
-        LEFT JOIN clients c ON um.sold_to = c.id
-        WHERE r.tenant_id = ? AND r.branch_id = ?
-        AND um.tenant_id = ? AND um.branch_id = ?
-        ORDER BY r.created_at DESC
-        LIMIT ? OFFSET ?
-    ";
+     $refundsQuery = "
+         SELECT r.*, um.name, um.flight_date, um.return_date, um.room_type, um.duration, um.price, um.sold_price, um.paid, um.received_bank_payment, um.bank_receipt_number, um.due, um.profit,
+                f.package_type, um.currency as booking_currency,
+                u.name as processed_by_name, m.name as account_name,
+                c.name as client_name, c.client_type
+         FROM umrah_refunds r
+         LEFT JOIN umrah_bookings um ON r.booking_id = um.booking_id
+         LEFT JOIN families f ON um.family_id = f.family_id
+         LEFT JOIN users u ON r.processed_by = u.id
+         LEFT JOIN main_account m ON um.paid_to = m.id
+         LEFT JOIN clients c ON um.sold_to = c.id
+         WHERE r.tenant_id = ? AND r.branch_id = ?
+         AND um.tenant_id = ? AND um.branch_id = ?
+         ORDER BY r.created_at DESC
+         LIMIT ? OFFSET ?
+     ";
 
     $stmt = $pdo->prepare($refundsQuery);
     $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
@@ -257,7 +257,7 @@ if ($tableExists) {
                                                                                         <i class="feather icon-credit-card text-success mr-2"></i><?= __('view_transaction') ?>
                                                                                     </a>
                                                                                 <?php endif; ?>
-                                                                                <?php if ($refund['processed'] != 1 && $canEdit): ?>
+                                                                                <?php if ($refund['processed'] != 1 && $canEdit && strtolower($refund['client_type'] ?? 'regular') !== 'regular'): ?>
                                                                                     <a class="dropdown-item" href="javascript:void(0)" 
                                                                                        onclick="processRefundTransaction(<?= $refund['id'] ?>)">
                                                                                         <i class="feather icon-check-circle text-primary mr-2"></i><?= __('process_payment') ?>

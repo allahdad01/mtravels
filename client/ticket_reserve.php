@@ -621,7 +621,7 @@ function expiryClass(int $days): string {
 
                                 <!-- Action -->
                                 <td style="text-align:center;">
-                                    <a href="ticket_reservation_detail.php?booking_id=<?= urlencode($res['reservation_id']) ?>"
+                                    <a href="ticket_reservation_detail.php?id=<?= urlencode($res['reservation_id']) ?>"
                                        class="btn-view" title="View Details">
                                         <i class="feather icon-eye"></i>
                                     </a>

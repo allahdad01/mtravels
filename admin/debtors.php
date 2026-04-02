@@ -285,12 +285,9 @@ try {
 .cc-stat-value,.dc-stat-value{font-size:13px;color:var(--text);margin-top:2px;word-break:break-word;}
 </style>
 
- <!-- [ Main Content ] start -->
-    <div class="pcoded-main-container">
-        <div class="pcoded-wrapper">
-                <div class="pcoded-inner-content">
+                <!-- [ Main Content ] start -->
+                <div class="pcoded-main-container">
                     <div class="main-body">
-                        <div class="page-wrapper">
                             <div class="container mt-4">
                                 <!-- Page Header -->
                                 <div class="dash-header">
@@ -894,12 +891,8 @@ try {
                                 <?php endforeach; ?>
                             </div>
                         <!-- [ Main Content ] end -->
-                        </div>
                     </div>
                 </div>
-            
-        </div>
-    </div>
 
 
 

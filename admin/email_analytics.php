@@ -164,7 +164,7 @@ require_once '../api/dashboard/dashboard_handler.php';
 .d-table tbody td{padding:14px 20px;font-size:13px;color:var(--text);white-space:nowrap;}
 
 /* Badge Styles */
-.badge{font-size:11px;padding:4px 12px;border-radius:20px;font-weight:600;display:inline-block;}
+.x{font-size:11px;padding:4px 12px;border-radius:20px;font-weight:600;display:inline-block;}
 .badge-success{background:rgba(16,185,129,.15);color:var(--emerald);}
 .badge-secondary{background:rgba(100,116,139,.15);color:var(--text-muted);}
 
@@ -395,7 +395,7 @@ require_once '../api/dashboard/dashboard_handler.php';
                                             <td><?php echo date('M d, Y H:i', strtotime($email['sent_at'])); ?></td>
                                             <td><?php echo htmlspecialchars($email['recipient_email']); ?></td>
                                             <td><?php echo htmlspecialchars($email['email_type']); ?></td>
-                                            <td><span class="badge <?php echo $email['opened'] ? 'badge-success' : 'badge-secondary'; ?>"><?php echo $email['opened'] ? 'Opened' : 'Sent'; ?></span></td>
+                                            <td><span class="x <?php echo $email['opened'] ? 'badge-success' : 'badge-secondary'; ?>"><?php echo $email['opened'] ? 'Opened' : 'Sent'; ?></span></td>
                                             <td><?php echo $email['opened_at'] ? date('M d, Y H:i', strtotime($email['opened_at'])) : '-'; ?></td>
                                         </tr>
                                         <?php endforeach; ?>

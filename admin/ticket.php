@@ -622,13 +622,13 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
 }
 
 .pg-fab button {
-    width: 52px;
-    height: 52px;
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
     background: #185FA5;
     border: none;
     color: #fff;
-    font-size: 18px;
+    font-size: 25px;
     cursor: pointer;
     box-shadow: 0 4px 14px rgba(24,95,165,0.35);
     display: flex;
@@ -680,42 +680,6 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
 
                 <!-- ── Page Body ── -->
                 <div class="pg-body">
-
-                    <!-- KPI Strip -->
-                    <div class="kpi-row">
-                        <div class="kpi-card">
-                            <div class="kpi-accent" style="background:#185FA5"></div>
-                            <div class="kpi-label"><?= __('total_tickets') ?? 'Total tickets' ?></div>
-                            <div class="kpi-value"><?= $totalTickets ?></div>
-                            <div class="kpi-sub"><?= __('this_month') ?? 'This month' ?></div>
-                        </div>
-                        <div class="kpi-card">
-                            <div class="kpi-accent" style="background:#5a9e42"></div>
-                            <div class="kpi-label"><?= __('paid') ?? 'Paid' ?></div>
-                            <div class="kpi-value" style="color:#3b6d11"><?= $paidCount ?? '—' ?></div>
-                            <div class="kpi-sub">
-                                <?php if (!empty($paidCount) && $totalTickets > 0): ?>
-                                    <span class="kpi-badge green"><?= number_format($paidCount / $totalTickets * 100, 1) ?>%</span>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                        <div class="kpi-card">
-                            <div class="kpi-accent" style="background:#d4a574"></div>
-                            <div class="kpi-label"><?= __('partial_unpaid') ?? 'Partial / Unpaid' ?></div>
-                            <div class="kpi-value" style="color:#854f0b"><?= $unpaidCount ?? '—' ?></div>
-                            <div class="kpi-sub">
-                                <?php if (!empty($unpaidCount) && $totalTickets > 0): ?>
-                                    <span class="kpi-badge amber"><?= number_format($unpaidCount / $totalTickets * 100, 1) ?>%</span>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                        <div class="kpi-card">
-                            <div class="kpi-accent" style="background:#185FA5"></div>
-                            <div class="kpi-label"><?= __('revenue') ?? 'Revenue' ?></div>
-                            <div class="kpi-value"><?= number_format($monthlyRevenue ?? 0) ?></div>
-                            <div class="kpi-sub"><?= __('this_month') ?? 'This month' ?></div>
-                        </div>
-                    </div>
 
                     <!-- Toolbar -->
                     <div class="pg-toolbar">
@@ -993,7 +957,7 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
 </div>
 
 <!-- FAB -->
-<div class="pg-fab" style="<?php echo is_rtl() ? 'left:20px' : 'right:20px' ?>">
+<div class="pg-fab" style="<?php echo is_rtl() ? 'left:20px' : 'right:20px' ?>; margin-bottom: 5px;">
     <button type="button" id="launchMultiTicketInvoice"
             title="<?= __('generate_multi_ticket_invoice') ?>">
         <i class="feather icon-file-text"></i>

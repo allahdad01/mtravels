@@ -76,6 +76,7 @@ require_once '../api/dashboard/client_notification.php';
 <?php include '../includes/header.php'; ?>
 <meta name="csrf-token" content="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
 <link href="../css/account/styles.css" rel="stylesheet">
+<link href="../assets/css/transaction-account.css" rel="stylesheet">
 <link rel="stylesheet" type="text/css" href="../assets/plugins/daterangepicker/daterangepicker.css" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">

@@ -70,31 +70,79 @@ $totalPages = ceil($totalTransactions / $perPage);
 
 // Prepare and execute query with pagination and filters
 $query = "SELECT mt.*, 
-            CASE 
-                            WHEN mt.transaction_of = 'ticket_sale' THEN CONCAT(tb.passenger_name) 
-                            WHEN mt.transaction_of = 'ticket_reserve' THEN CONCAT(tr.passenger_name) 
-                            WHEN mt.transaction_of = 'ticket_refund' THEN CONCAT(rt.passenger_name) 
-                            WHEN mt.transaction_of = 'date_change' THEN CONCAT(dc.passenger_name) 
-                            WHEN mt.transaction_of = 'visa_sale' THEN CONCAT(vs.applicant_name) 
-                            WHEN mt.transaction_of = 'umrah' THEN CONCAT(ub.name)
-                            WHEN mt.transaction_of = 'hotel' THEN CONCAT(hb.title,hb.first_name, hb.last_name)
-                            WHEN mt.transaction_of = 'fund' THEN CONCAT(usr.name) 
-                            WHEN mt.transaction_of = 'hotel_refund' THEN CONCAT(hb.title,hb.first_name, hb.last_name)
-                ELSE mt.reference_id
-            END AS reference_name
-          FROM main_account_transactions mt
-          LEFT JOIN ticket_bookings tb ON mt.reference_id = tb.id AND mt.transaction_of = 'ticket_sale'
-          LEFT JOIN ticket_reservations tr ON mt.reference_id = tr.id AND mt.transaction_of = 'ticket_reserve'
-          LEFT JOIN visa_applications vs ON mt.reference_id = vs.id AND mt.transaction_of = 'visa_sale'
-          LEFT JOIN refunded_tickets rt ON mt.reference_id = rt.id AND mt.transaction_of = 'ticket_refund'
-          LEFT JOIN date_change_tickets dc ON mt.reference_id = dc.id AND mt.transaction_of = 'date_change'
-          LEFT JOIN umrah_bookings ub ON mt.reference_id = ub.booking_id AND mt.transaction_of = 'umrah'
-          LEFT JOIN hotel_bookings hb ON mt.reference_id = hb.id AND mt.transaction_of = 'hotel'
-          LEFT JOIN hotel_refunds hr ON mt.reference_id = hr.id AND mt.transaction_of = 'hotel_refund'
-          LEFT JOIN users usr ON usr.id = mt.reference_id AND mt.transaction_of = 'fund'
-          WHERE " . $whereClause . "
-          ORDER BY mt.id DESC
-          LIMIT ? OFFSET ?";
+             CASE 
+                             WHEN mt.transaction_of = 'ticket_sale' THEN CONCAT(tb.passenger_name, ' (Ticket Sale)') 
+                             WHEN mt.transaction_of = 'ticket_reserve' THEN CONCAT(tr.passenger_name, ' (Ticket Reserve)') 
+                             WHEN mt.transaction_of = 'ticket_refund' THEN CONCAT(rft.passenger_name, ' (Ticket Refund)') 
+                             WHEN mt.transaction_of = 'date_change' THEN CONCAT(dc.passenger_name, ' (Date Change)') 
+                             WHEN mt.transaction_of = 'visa_sale' THEN CONCAT(va_sale.applicant_name, ' (Visa Sale)') 
+                             WHEN mt.transaction_of = 'umrah' THEN CONCAT(ub.name, ' (Umrah)')
+                             WHEN mt.transaction_of = 'hotel' THEN CONCAT(hb_txn.title, hb_txn.first_name, ' ', hb_txn.last_name, ' (Hotel)')
+                             WHEN mt.transaction_of = 'fund' THEN CONCAT(usr.name, ' (Fund)') 
+                             WHEN mt.transaction_of = 'hotel_refund' THEN CONCAT(hb_refund.title, hb_refund.first_name, ' ', hb_refund.last_name, ' (Hotel Refund)')
+                             WHEN mt.transaction_of = 'deposit_sarafi' THEN CONCAT(sc.name, ' (Deposit Sarafi)')
+                             WHEN mt.transaction_of = 'withdrawal_sarafi' THEN CONCAT(sc.name, ' (Withdrawal Sarafi)')
+                             WHEN mt.transaction_of = 'hawala_sarafi' THEN CONCAT(sc.name, ' (Hawala Sarafi)')
+                             WHEN mt.transaction_of = 'salary_payment' THEN CONCAT(su.name, ' (Salary Payment)')
+                             WHEN mt.transaction_of = 'debtor' THEN CONCAT(d.name, ' (Debtor)')
+                             WHEN mt.transaction_of = 'creditor' THEN CONCAT(COALESCE(c.name, cd.name), ' (Creditor)')
+                             WHEN mt.transaction_of = 'supplier_fund' THEN CONCAT(sup.name, ' (Supplier Fund)')
+                             WHEN mt.transaction_of = 'supplier_fund_withdrawal' THEN CONCAT(sup2.name, ' (Supplier Fund Withdrawal)')
+                             WHEN mt.transaction_of = 'client_fund' THEN CONCAT(cl.name, ' (Client Fund)')
+                             WHEN mt.transaction_of = 'budget_allocation' THEN CONCAT(ec.name, ' (Budget Allocation)')
+                             WHEN mt.transaction_of = 'expense' THEN CONCAT(exp_cat.name, ' (Expense)')
+                             WHEN mt.transaction_of = 'transfer' THEN CONCAT(xfr_acct.name, ' (Transfer)')
+                             WHEN mt.transaction_of = 'umrah_transaction' THEN CONCAT(ub_txn.name, ' (Umrah Transaction)')
+                             WHEN mt.transaction_of = 'additional_payment' THEN CONCAT(ap.description, ' (Additional Payment)')
+                             WHEN mt.transaction_of = 'visa_refund' THEN CONCAT(va.applicant_name, ' (Visa Refund)')
+                             WHEN mt.transaction_of = 'weight' THEN CONCAT(tb_weight.passenger_name, ' (Weight)')
+                             WHEN mt.transaction_of = 'umrah_refund' THEN CONCAT(ub_refund.name, ' (Umrah Refund)')
+                  ELSE CONCAT(mt.reference_id, ' (', mt.transaction_of, ')')
+              END AS reference_name
+           FROM main_account_transactions mt
+           LEFT JOIN ticket_bookings tb ON mt.reference_id = tb.id AND mt.transaction_of = 'ticket_sale'
+           LEFT JOIN ticket_reservations tr ON mt.reference_id = tr.id AND mt.transaction_of = 'ticket_reserve'
+           LEFT JOIN refunded_tickets rt ON mt.reference_id = rt.id AND mt.transaction_of = 'ticket_refund'
+           LEFT JOIN date_change_tickets dc ON mt.reference_id = dc.id AND mt.transaction_of = 'date_change'
+           LEFT JOIN umrah_bookings ub ON mt.reference_id = ub.booking_id AND mt.transaction_of = 'umrah'
+           LEFT JOIN users usr ON usr.id = mt.reference_id AND mt.transaction_of = 'fund'
+           LEFT JOIN sarafi_transactions st ON mt.reference_id = st.id AND mt.transaction_of IN ('deposit_sarafi', 'withdrawal_sarafi', 'hawala_sarafi')
+           LEFT JOIN customers sc ON st.customer_id = sc.id AND mt.transaction_of IN ('deposit_sarafi', 'withdrawal_sarafi', 'hawala_sarafi')
+           LEFT JOIN salary_payments sp ON mt.reference_id = sp.id AND mt.transaction_of = 'salary_payment'
+           LEFT JOIN users su ON sp.user_id = su.id AND mt.transaction_of = 'salary_payment'
+           LEFT JOIN debtor_transactions dt ON mt.reference_id = dt.id AND mt.transaction_of = 'debtor'
+           LEFT JOIN debtors d ON dt.debtor_id = d.id AND mt.transaction_of = 'debtor'
+           LEFT JOIN creditor_transactions ct ON mt.reference_id = ct.id AND mt.transaction_of = 'creditor'
+           LEFT JOIN creditors c ON ct.creditor_id = c.id AND mt.transaction_of = 'creditor'
+           LEFT JOIN creditors cd ON mt.reference_id = cd.id AND mt.transaction_of = 'creditor'
+           LEFT JOIN supplier_transactions st2 ON mt.reference_id = st2.id AND mt.transaction_of = 'supplier_fund'
+           LEFT JOIN suppliers sup ON st2.supplier_id = sup.id AND mt.transaction_of = 'supplier_fund'
+           LEFT JOIN supplier_transactions st3 ON mt.reference_id = st3.id AND mt.transaction_of = 'supplier_fund_withdrawal'
+           LEFT JOIN suppliers sup2 ON st3.supplier_id = sup2.id AND mt.transaction_of = 'supplier_fund_withdrawal'
+           LEFT JOIN client_transactions clt ON mt.reference_id = clt.id AND mt.transaction_of = 'client_fund'
+           LEFT JOIN clients cl ON clt.client_id = cl.id AND mt.transaction_of = 'client_fund'
+           LEFT JOIN budget_allocations ba ON mt.reference_id = ba.id AND mt.transaction_of = 'budget_allocation'
+           LEFT JOIN expense_categories ec ON ba.category_id = ec.id AND mt.transaction_of = 'budget_allocation'
+           LEFT JOIN expenses exp ON mt.reference_id = exp.id AND mt.transaction_of = 'expense'
+           LEFT JOIN expense_categories exp_cat ON exp.category_id = exp_cat.id AND mt.transaction_of = 'expense'
+           LEFT JOIN main_account xfr_acct ON mt.reference_id = xfr_acct.id AND mt.transaction_of = 'transfer'
+           LEFT JOIN umrah_transactions ut ON mt.reference_id = ut.id AND mt.transaction_of = 'umrah_transaction'
+           LEFT JOIN umrah_bookings ub_txn ON ut.umrah_booking_id = ub_txn.booking_id AND mt.transaction_of = 'umrah_transaction'
+           LEFT JOIN additional_payments ap ON mt.reference_id = ap.id AND mt.transaction_of = 'additional_payment'
+           LEFT JOIN visa_refunds vr ON mt.reference_id = vr.id AND mt.transaction_of = 'visa_refund'
+           LEFT JOIN visa_applications va ON vr.visa_id = va.id AND mt.transaction_of = 'visa_refund'
+           LEFT JOIN ticket_weights tw ON mt.reference_id = tw.id AND mt.transaction_of = 'weight'
+           LEFT JOIN ticket_bookings tb_weight ON tw.ticket_id = tb_weight.id AND mt.transaction_of = 'weight'
+           LEFT JOIN refunded_tickets rft ON mt.reference_id = rft.id AND mt.transaction_of = 'ticket_refund'
+           LEFT JOIN hotel_bookings hb_txn ON mt.reference_id = hb_txn.id AND mt.transaction_of = 'hotel'
+           LEFT JOIN hotel_refunds hr ON mt.reference_id = hr.id AND mt.transaction_of = 'hotel_refund'
+           LEFT JOIN hotel_bookings hb_refund ON hr.booking_id = hb_refund.id AND mt.transaction_of = 'hotel_refund'
+           LEFT JOIN visa_applications va_sale ON mt.reference_id = va_sale.id AND mt.transaction_of = 'visa_sale'
+           LEFT JOIN umrah_refunds ur ON mt.reference_id = ur.id AND mt.transaction_of = 'umrah_refund'
+           LEFT JOIN umrah_bookings ub_refund ON ur.booking_id = ub_refund.booking_id AND mt.transaction_of = 'umrah_refund'
+           WHERE " . $whereClause . "
+           ORDER BY mt.id DESC
+           LIMIT ? OFFSET ?";
 
 $stmt = $pdo->prepare($query);
 // Add LIMIT and OFFSET parameters

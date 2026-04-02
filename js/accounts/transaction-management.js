@@ -1,1052 +1,618 @@
-  // Add this to your existing scripts
-  
-  // Function to load transactions - defined globally so it can be accessed from event handlers
-  function loadTransactions(accountType, accountId, accountName) {
-        let tableBody, loader, noTransactionsMessage, modal;
-        
-        // Set the appropriate elements based on account type
-        if (accountType === 'main') {
-            tableBody = document.getElementById('transactionsTableBody');
-            loader = document.getElementById('transactionsLoader');
-            noTransactionsMessage = document.getElementById('noTransactionsMessage');
-            document.getElementById('accountNameDisplay').textContent = accountName;
-            // Store account ID for filter functions
-            if (!document.getElementById('mainAccountTransactionId')) {
-                const idField = document.createElement('input');
-                idField.type = 'hidden';
-                idField.id = 'mainAccountTransactionId';
-                document.body.appendChild(idField);
-            }
-            document.getElementById('mainAccountTransactionId').value = accountId;
-            modal = new bootstrap.Modal(document.getElementById('transactionHistoryModal'));
-        } else if (accountType === 'supplier') {
-            tableBody = document.getElementById('supplierTransactionsTableBody');
-            loader = document.getElementById('supplierTransactionsLoader');
-            noTransactionsMessage = document.getElementById('noSupplierTransactionsMessage');
-            document.getElementById('supplierNameDisplay').textContent = accountName;
-            // Store supplier ID for filter functions
-            if (!document.getElementById('supplierTransactionId')) {
-                const idField = document.createElement('input');
-                idField.type = 'hidden';
-                idField.id = 'supplierTransactionId';
-                document.body.appendChild(idField);
-            }
-            document.getElementById('supplierTransactionId').value = accountId;
-            modal = new bootstrap.Modal(document.getElementById('supplierTransactionHistoryModal'));
-        } else if (accountType === 'client') {
-            tableBody = document.getElementById('clientTransactionsTableBody');
-            loader = document.getElementById('clientTransactionsLoader');
-            noTransactionsMessage = document.getElementById('noClientTransactionsMessage');
-            document.getElementById('clientNameDisplay').textContent = accountName;
-            // Store client ID for filter functions
-            if (!document.getElementById('clientTransactionId')) {
-                const idField = document.createElement('input');
-                idField.type = 'hidden';
-                idField.id = 'clientTransactionId';
-                document.body.appendChild(idField);
-            }
-            document.getElementById('clientTransactionId').value = accountId;
-            modal = new bootstrap.Modal(document.getElementById('clientTransactionHistoryModal'));
-        }
-        
-        // Show loader, hide no transactions message
-        loader.classList.remove('d-none');
-        noTransactionsMessage.classList.add('d-none');
-        tableBody.innerHTML = '';
-        
-        // Add row number variable
-        let rowNumber = 1;
-        
-        // Show the modal
-        modal.show();
-        
-        // Determine endpoint based on account type with filter parameters
-        let endpoint;
-        if (accountType === 'main') {
-            endpoint = '../api/accounts/get_main_account_transactions.php?account_id=' + accountId;
-            // Add filters if available
-            const currency = document.getElementById('mainAccountCurrencyFilter')?.value;
-            const receipt = document.getElementById('receiptSearch')?.value;
-            const dateRange = document.getElementById('dateRangeFilter')?.value;
-            if (currency && currency !== 'all') endpoint += '&currency=' + encodeURIComponent(currency);
-            if (receipt) endpoint += '&receipt=' + encodeURIComponent(receipt);
-            if (dateRange) {
-                const dates = dateRange.split(' - ');
-                if (dates.length === 2) {
-                    endpoint += '&startDate=' + encodeURIComponent(dates[0].trim()) + '&endDate=' + encodeURIComponent(dates[1].trim());
-                }
-            }
-        } else if (accountType === 'supplier') {
-            endpoint = '../api/accounts/get_supplier_transactions_main.php?supplier_id=' + accountId;
-            // Add filters if available
-            const receipt = document.getElementById('supplierReceiptSearch')?.value;
-            const dateRange = document.getElementById('supplierDateRangeFilter')?.value;
-            if (receipt) endpoint += '&receipt=' + encodeURIComponent(receipt);
-            if (dateRange) {
-                const dates = dateRange.split(' - ');
-                if (dates.length === 2) {
-                    endpoint += '&startDate=' + encodeURIComponent(dates[0].trim()) + '&endDate=' + encodeURIComponent(dates[1].trim());
-                }
-            }
-        } else if (accountType === 'client') {
-            endpoint = '../api/accounts/get_client_transactions.php?client_id=' + accountId;
-            // Add filters if available
-            const currency = document.getElementById('clientCurrencyFilter')?.value;
-            const receipt = document.getElementById('clientReceiptSearch')?.value;
-            const dateRange = document.getElementById('clientDateRangeFilter')?.value;
-            if (currency && currency !== 'all') endpoint += '&currency=' + encodeURIComponent(currency);
-            if (receipt) endpoint += '&receipt=' + encodeURIComponent(receipt);
-            if (dateRange) {
-                const dates = dateRange.split(' - ');
-                if (dates.length === 2) {
-                    endpoint += '&startDate=' + encodeURIComponent(dates[0].trim()) + '&endDate=' + encodeURIComponent(dates[1].trim());
-                }
-            }
-        }
-        
-        // Fetch transactions from the server
-        fetch(endpoint)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('HTTP error, status = ' + response.status);
-                }
-                return response.json();
-            })
-            .then(data => {
-                // Hide loader
-                loader.classList.add('d-none');
-                
-                // Handle both old format (array) and new format (object with data and pagination)
-                let transactions = Array.isArray(data) ? data : (data && data.data) ? data.data : [];
-                let pagination = (data && data.pagination) ? data.pagination : null;
-                
-                if (!transactions || transactions.length === 0) {
-                    // Show no transactions message
-                    noTransactionsMessage.classList.remove('d-none');
-                } else {
-                    // Initialize row counter
-                    let rowNumber = 1;
-                    
-                    // Populate table with transactions
-                    transactions.forEach(transaction => {
-            const row = document.createElement('tr');
-                        
-                        // Format the date (handle both transaction_date and created_at fields)
-                        const dateField = transaction.transaction_date || transaction.created_at;
-                        const date = dateField ? new Date(dateField) : new Date();
-                        const formattedDate = date.toLocaleString();
-                        
-                        // Format the amount with proper sign
-                        const amount = parseFloat(transaction.amount || 0);
-                        const amountClass = transaction.type === 'credit' || transaction.transaction_type === 'credit' ? 'text-success' : 'text-danger';
-                        const formattedAmount = Math.abs(amount).toFixed(3);
-                        
-                        // Get transaction sign for display
-                        const amountSign = transaction.type === 'credit' || transaction.transaction_type === 'credit' ? '+' : '-';
-                        
-                        // Get currency symbol
-                        let currencySymbol = '';
-                        
-                        if (transaction.currency === 'USD') currencySymbol = '$';
-                        else if (transaction.currency === 'AFS') currencySymbol = '؋';
-                        else if (transaction.currency === 'EUR') currencySymbol = '€';
-                        else if (transaction.currency === 'DARHAM') currencySymbol = 'AED';
-                        
-                        // Check if this transaction should show delete button based on account type and admin role
-                         let showDeleteButton = false;
-                         let showEditButton = false;
-                         let showEditReceiptButton = false;
+// ── Helpers ────────────────────────────────────────────────────────────────
 
-                         if (accountType === 'main') {
-                             // For main accounts, show delete for fund, transfer, and supplier_bonus, but NOT client_fund (admin only)
-                             showDeleteButton = isUserAdmin && (transaction.transaction_of && (
-                                 transaction.transaction_of.toLowerCase() === 'fund' ||
-                                 transaction.transaction_of.toLowerCase() === 'transfer' ||
-                                 transaction.transaction_of.toLowerCase() === 'supplier_bonus'
-                             ));
-                             // Show edit button only for fund transactions in main accounts
-                             showEditButton = (transaction.transaction_of && transaction.transaction_of.toLowerCase() === 'fund');
-                             // Show edit receipt button for all main account transactions
-                             showEditReceiptButton = true;
-                         } else if (accountType === 'supplier') {
-                             // For suppliers, show delete for supplier_bonus, fund, and fund_withdrawal transactions (admin only)
-                             showDeleteButton = isUserAdmin && (transaction.transaction_of && (
-                                 transaction.transaction_of.toLowerCase() === 'supplier_bonus' ||
-                                 transaction.transaction_of.toLowerCase() === 'fund' ||
-                                 transaction.transaction_of.toLowerCase() === 'fund_withdrawal'
-                             ));
-                         } else if (accountType === 'client') {
-                             // For clients, show delete for fund transactions (admin only)
-                             showDeleteButton = isUserAdmin && (transaction.transaction_of && transaction.transaction_of.toLowerCase() === 'fund');
-                         }
-
-                        let actionsHtml = '';
-                        if (showDeleteButton || showEditButton || showEditReceiptButton) {
-                            actionsHtml += '<td class="text-center">';
-                            if (showDeleteButton) {
-                                actionsHtml += `<button class="btn btn-danger btn-sm delete-transaction-btn mr-1"
-                                        data-transaction-id="${transaction.id}"
-                                        data-transaction-type="${accountType}"
-                                        title="Delete Transaction">
-                                    <i class="feather icon-trash-2"></i>
-                                </button>`;
-                            }
-                            if (showEditButton) {
-                                actionsHtml += `<button class="btn btn-primary btn-sm edit-transaction-btn mr-1"
-                                        data-transaction-id="${transaction.id}"
-                                        data-transaction-type="${accountType}"
-                                        data-amount="${Math.abs(amount).toFixed(3)}"
-                                        data-transaction-date="${dateField || ''}"
-                                        data-description="${transaction.description || ''}"
-                                        data-currency="${transaction.currency || ''}"
-                                        data-remarks="${transaction.remarks || ''}"
-                                        data-receipt="${transaction.receipt || ''}"
-                                        data-type="${transaction.type || transaction.transaction_type || ''}"
-                                        title="Edit Transaction">
-                                    <i class="feather icon-edit"></i>
-                                </button>`;
-                            }
-                            if (showEditReceiptButton) {
-                                actionsHtml += `<button class="btn btn-info btn-sm edit-receipt-btn"
-                                        data-transaction-id="${transaction.id}"
-                                        data-transaction-type="${accountType}"
-                                        data-receipt="${transaction.receipt || ''}"
-                                        data-transaction-date="${dateField || ''}"
-                                        title="Edit Receipt">
-                                    <i class="feather icon-file-text"></i>
-                                </button>`;
-                            }
-                            actionsHtml += '</td>';
-                        } else {
-                            actionsHtml = `<td class="text-center">
-                                    <span class="text-muted"><?= __('no_actions') ?></span>
-                            </td>`;
-                        }
-
-                        const actionsCell = actionsHtml;
-                        
-                                        if (accountType === 'main') {
-                            // Main account row format
-                            const creditAmount = transaction.type === 'credit' || transaction.transaction_type === 'credit' ? 
-                                `${currencySymbol}${formattedAmount}` : '-';
-                            const debitAmount = transaction.type === 'debit' || transaction.transaction_type === 'debit' ? 
-                                `${currencySymbol}${formattedAmount}` : '-';
-                            
-                            row.innerHTML = `
-                                <td>${rowNumber++}</td>
-                                <td>${formattedDate}</td>
-                                <td style="max-width: 300px; white-space: pre-wrap; word-break: break-word;">${transaction.description || '-'}</td>
-                                <td>${transaction.receipt || '-'}</td>
-                                <td class="text-danger">${debitAmount}</td>
-                                <td class="text-success">${creditAmount}</td>
-                                <td>${transaction.balance || '-'}</td>
-                                <td>${transaction.currency || '-'}</td>
-                                
-                                ${actionsCell}
-                            `;
-                                        } else if (accountType === 'supplier') {
-                // Supplier row format
-                let referenceText = transaction.reference_name || transaction.reference_id || '-';
-                            // Format transaction_of with proper capitalization and spacing
-                            let transactionOf = transaction.transaction_of || '-';
-                            transactionOf = transactionOf.split('_')
-                                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                                .join(' ');
-
-                            const creditAmount = transaction.type === 'Credit' || transaction.transaction_type === 'Credit' ? 
-                                `${currencySymbol}${formattedAmount}` : '-';
-                            const debitAmount = transaction.type === 'Debit' || transaction.transaction_type === 'Debit' ? 
-                                `${currencySymbol}${formattedAmount}` : '-';
-                            
-                            // Determine status badge color
-                            let statusBadgeClass = 'secondary';
-                            
-                            
-                            if (transaction.status) {
-                                const status = transaction.status.toUpperCase();
-                                if (status === 'COMPLETED') statusBadgeClass = 'success';
-                                else if (status === 'PENDING') statusBadgeClass = 'warning';
-                                else if (status === 'CANCELLED' || status === 'FAILED') statusBadgeClass = 'danger';
-                                else if (status === 'PROCESSING') statusBadgeClass = 'info';
-                            }
-                            
-                            row.innerHTML = `
-                                <td>${rowNumber++}</td>
-                                <td>${formattedDate}</td>
-                                <td style="max-width: 300px; white-space: pre-wrap; word-break: break-word;">${transaction.remarks || '-'}</td>
-                                <td>${transaction.receipt || '-'}</td>
-                                <td>${transactionOf}</td>
-                                <td>${referenceText}</td>
-                                <td class="text-danger">${debitAmount}</td>
-                                <td class="text-success">${creditAmount}</td>
-                                <td>${currencySymbol}${parseFloat(transaction.balance || 0)}</td>
-                                
-                                
-                                
-                                ${actionsCell}
-                            `;
-                                } else if (accountType === 'client') {
-                        // Client row format
-                        let referenceText = transaction.reference_name || transaction.reference_id || '-';
-                        // Format transaction_of with proper capitalization and spacing
-                        let transactionOf = transaction.transaction_of || '-';
-                        transactionOf = transactionOf.split('_')
-                            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                            .join(' ');
-                        
-                        const creditAmount = transaction.type === 'credit' || transaction.transaction_type === 'Credit' ? 
-                            `${currencySymbol}${formattedAmount}` : '-';
-                        const debitAmount = transaction.type === 'debit' || transaction.transaction_type === 'Debit' ? 
-                            `${currencySymbol}${formattedAmount}` : '-';
-                        
-                        // Determine status badge color
-                        let statusBadgeClass = 'secondary';
-                        if (transaction.status) {
-                            const status = transaction.status.toUpperCase();
-                            if (status === 'COMPLETED') statusBadgeClass = 'success';
-                            else if (status === 'PENDING') statusBadgeClass = 'warning';
-                            else if (status === 'CANCELLED' || status === 'FAILED') statusBadgeClass = 'danger';
-                            else if (status === 'PROCESSING') statusBadgeClass = 'info';
-                        }
-                        
-                        row.innerHTML = `
-                            <td>${rowNumber++}</td>
-                            <td>${formattedDate}</td>
-                            <td style="max-width: 300px; white-space: pre-wrap; word-break: break-word;">${transaction.description || '-'}</td>
-                            <td>${transaction.receipt || transaction.receipt_number || '-'}</td>
-                            <td>${transactionOf}</td>
-                            <td>${referenceText}</td>
-                            <td class="text-danger">${debitAmount}</td>
-                            <td class="text-success">${creditAmount}</td>
-                            <td>${transaction.balance || '-'}</td>
-                            <td>${transaction.currency || '-'}</td>
-                            ${actionsCell}
-                        `;
-                    }
-                        
-                        tableBody.appendChild(row);
-                    });
-                    
-                    // Render pagination controls if pagination data is available
-                    if (pagination && pagination.total_pages > 1) {
-                        let paginationListId = '';
-                        let paginationContainerId = '';
-                        
-                        if (accountType === 'main') {
-                            paginationListId = 'mainTransactionsPaginationList';
-                            paginationContainerId = 'transactionsPagination';
-                        } else if (accountType === 'supplier') {
-                            paginationListId = 'supplierTransactionsPaginationList';
-                            paginationContainerId = 'supplierTransactionsPagination';
-                        } else if (accountType === 'client') {
-                            paginationListId = 'clientTransactionsPaginationList';
-                            paginationContainerId = 'clientTransactionsPagination';
-                        }
-                        
-                        const paginationList = document.getElementById(paginationListId);
-                        const paginationContainer = document.getElementById(paginationContainerId);
-                        
-                        if (paginationList && paginationContainer) {
-                            paginationList.innerHTML = '';
-                            
-                            // Previous button
-                            if (pagination.current_page > 1) {
-                                const prevLi = document.createElement('li');
-                                prevLi.className = 'page-item';
-                                prevLi.innerHTML = `<a class="page-link" href="javascript:void(0);" onclick="loadTransactionsPage('${accountType}', ${accountId}, '${accountName}', ${pagination.current_page - 1})">Previous</a>`;
-                                paginationList.appendChild(prevLi);
-                            }
-                            
-                            // Page numbers (show first, last, and pages around current)
-                            let startPage = Math.max(1, pagination.current_page - 2);
-                            let endPage = Math.min(pagination.total_pages, pagination.current_page + 2);
-                            
-                            if (startPage > 1) {
-                                const firstLi = document.createElement('li');
-                                firstLi.className = 'page-item';
-                                firstLi.innerHTML = `<a class="page-link" href="javascript:void(0);" onclick="loadTransactionsPage('${accountType}', ${accountId}, '${accountName}', 1)">1</a>`;
-                                paginationList.appendChild(firstLi);
-                                
-                                if (startPage > 2) {
-                                    const dotsLi = document.createElement('li');
-                                    dotsLi.className = 'page-item disabled';
-                                    dotsLi.innerHTML = `<span class="page-link">...</span>`;
-                                    paginationList.appendChild(dotsLi);
-                                }
-                            }
-                            
-                            for (let page = startPage; page <= endPage; page++) {
-                                const li = document.createElement('li');
-                                li.className = `page-item ${page === pagination.current_page ? 'active' : ''}`;
-                                li.innerHTML = `<a class="page-link" href="javascript:void(0);" onclick="loadTransactionsPage('${accountType}', ${accountId}, '${accountName}', ${page})">${page}</a>`;
-                                paginationList.appendChild(li);
-                            }
-                            
-                            if (endPage < pagination.total_pages) {
-                                if (endPage < pagination.total_pages - 1) {
-                                    const dotsLi = document.createElement('li');
-                                    dotsLi.className = 'page-item disabled';
-                                    dotsLi.innerHTML = `<span class="page-link">...</span>`;
-                                    paginationList.appendChild(dotsLi);
-                                }
-                                
-                                const lastLi = document.createElement('li');
-                                lastLi.className = 'page-item';
-                                lastLi.innerHTML = `<a class="page-link" href="javascript:void(0);" onclick="loadTransactionsPage('${accountType}', ${accountId}, '${accountName}', ${pagination.total_pages})">${pagination.total_pages}</a>`;
-                                paginationList.appendChild(lastLi);
-                            }
-                            
-                            // Next button
-                            if (pagination.current_page < pagination.total_pages) {
-                                const nextLi = document.createElement('li');
-                                nextLi.className = 'page-item';
-                                nextLi.innerHTML = `<a class="page-link" href="javascript:void(0);" onclick="loadTransactionsPage('${accountType}', ${accountId}, '${accountName}', ${pagination.current_page + 1})">Next</a>`;
-                                paginationList.appendChild(nextLi);
-                            }
-                            
-                            // Show pagination container
-                            paginationContainer.classList.remove('d-none');
-                        }
-                    } else {
-                        // Hide pagination if only one page
-                        let paginationContainerId = '';
-                        if (accountType === 'main') {
-                            paginationContainerId = 'transactionsPagination';
-                        } else if (accountType === 'supplier') {
-                            paginationContainerId = 'supplierTransactionsPagination';
-                        } else if (accountType === 'client') {
-                            paginationContainerId = 'clientTransactionsPagination';
-                        }
-                        const paginationContainer = document.getElementById(paginationContainerId);
-                        if (paginationContainer) {
-                            paginationContainer.classList.add('d-none');
-                        }
-                    }
-                    
-                    // Add event listeners to delete buttons
-                    attachDeleteButtonListeners();
-
-                    // Add event listeners for edit buttons (only for main account fund transactions)
-                    document.querySelectorAll('.edit-transaction-btn').forEach(button => {
-                        // Clone the button to remove all event listeners
-                        const newButton = button.cloneNode(true);
-                        button.parentNode.replaceChild(newButton, button);
-
-                        // Add click event listener to the new button
-                        newButton.addEventListener('click', function(e) {
-                            e.stopPropagation();
-
-                            // Get transaction data from data attributes
-                            const transactionId = this.dataset.transactionId;
-                            const transactionType = this.dataset.transactionType;
-                            const amount = this.dataset.amount;
-                            const transactionDate = this.dataset.transactionDate;
-                            const description = this.dataset.description;
-                            const remarks = this.dataset.remarks;
-                            const receipt = this.dataset.receipt;
-                            const type = this.dataset.type;
-                            const currency = this.dataset.currency;
-
-                            // Populate the edit form
-                            const editTransactionId = document.getElementById('editTransactionId');
-                            const editTransactionType = document.getElementById('editTransactionType');
-                            const originalAmount = document.getElementById('originalAmount');
-                            const originalType = document.getElementById('originalType');
-                            const editTransactionDate = document.getElementById('editTransactionDate');
-                            const editTransactionAmount = document.getElementById('editTransactionAmount');
-                            const editTransactionTypeSelect = document.getElementById('editTransactionTypeSelect');
-                            const editTransactionCurrency = document.getElementById('editTransactionCurrency');
-                            const editTransactionDescription = document.getElementById('editTransactionDescription');
-                            const editTransactionReceipt = document.getElementById('editTransactionReceipt');
-
-                            if (editTransactionId && editTransactionType && originalAmount && originalType &&
-                                editTransactionDate && editTransactionAmount && editTransactionTypeSelect &&
-                                editTransactionCurrency && editTransactionDescription && editTransactionReceipt) {
-
-                                editTransactionId.value = transactionId;
-                                editTransactionType.value = transactionType;
-                                originalAmount.value = amount;
-                                originalType.value = type;
-
-                                // Format date for datetime-local input
-                                if (transactionDate) {
-                                    const date = new Date(transactionDate);
-                                    const formattedDate = date.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:MM
-                                    editTransactionDate.value = formattedDate;
-                                }
-
-                                editTransactionAmount.value = amount;
-                                editTransactionTypeSelect.value = type.toLowerCase();
-
-                                // For main accounts, use description
-                                editTransactionCurrency.value = currency;
-                                editTransactionDescription.value = description;
-
-                                editTransactionReceipt.value = receipt;
-
-                                // Hide the current transaction history modal
-                                $('#transactionHistoryModal').modal('hide');
-
-                                // Show the edit modal after a short delay
-                                setTimeout(() => {
-                                    const editModal = new bootstrap.Modal(document.getElementById('editTransactionModal'));
-                                    editModal.show();
-                                }, 500);
-                            }
-                        });
-                    });
-
-                    // Add event listeners for edit receipt buttons (main accounts only)
-                    document.querySelectorAll('.edit-receipt-btn').forEach(button => {
-                        // Clone the button to remove all event listeners
-                        const newButton = button.cloneNode(true);
-                        button.parentNode.replaceChild(newButton, button);
-
-                        // Add click event listener to the new button
-                        newButton.addEventListener('click', function(e) {
-                            e.stopPropagation();
-
-                            // Get transaction data from data attributes
-                            const transactionId = this.dataset.transactionId;
-                            const transactionType = this.dataset.transactionType;
-                            const receipt = this.dataset.receipt;
-                            const transactionDate = this.dataset.transactionDate;
-
-                            // Populate the edit receipt form
-                            const editReceiptTransactionId = document.getElementById('editReceiptTransactionId');
-                            const editReceiptTransactionType = document.getElementById('editReceiptTransactionType');
-                            const editReceiptNumber = document.getElementById('editReceiptNumber');
-
-                            if (editReceiptTransactionId && editReceiptTransactionType && editReceiptNumber) {
-                                editReceiptTransactionId.value = transactionId;
-                                editReceiptTransactionType.value = transactionType;
-                                editReceiptNumber.value = receipt;
-
-                                // Hide the current transaction history modal
-                                $('#transactionHistoryModal').modal('hide');
-
-                                // Show the edit receipt modal after a short delay
-                                setTimeout(() => {
-                                    const editReceiptModal = new bootstrap.Modal(document.getElementById('editReceiptModal'));
-                                    editReceiptModal.show();
-                                }, 500);
-                            }
-                        });
-                    });
-                }
-            })
-            .catch(error => {
-                showErrorToast('error_fetching_transactions: ' + error);
-                loader.classList.add('d-none');
-                noTransactionsMessage.classList.remove('d-none');
-                noTransactionsMessage.innerHTML = `
-                    <i class="feather icon-alert-circle text-danger mb-2" style="font-size: 2rem;"></i>
-                    <p class="text-danger">error_loading_transactions: ${error.message}</p>
-                `;
-            });
-    }
-    
-    // Move the delete button event listeners to a separate function to avoid duplication
-    function attachDeleteButtonListeners() {
-        // First, remove any existing event listeners to prevent duplicates
-        document.querySelectorAll('.delete-transaction-btn').forEach(button => {
-            // Clone the button to remove all event listeners
-            const newButton = button.cloneNode(true);
-            button.parentNode.replaceChild(newButton, button);
-        });
-        
-        // Now add the event listeners to the fresh buttons
-         document.querySelectorAll('.delete-transaction-btn').forEach(button => {
-             button.addEventListener('click', function(e) {
-                 // Prevent event bubbling
-                 e.stopPropagation();
-                 
-                 const transactionId = this.dataset.transactionId;
-                 const transactionType = this.dataset.transactionType;
-                 
-                 // Set values in hidden form
-                 document.getElementById('deleteTransactionId').value = transactionId;
-                 document.getElementById('deleteTransactionType').value = transactionType;
-                 
-                 // Hide the current transaction history modal
-                 if (transactionType === 'main') {
-                     $('#transactionHistoryModal').modal('hide');
-                 } else if (transactionType === 'supplier') {
-                     $('#supplierTransactionHistoryModal').modal('hide');
-                 } else if (transactionType === 'client') {
-                     $('#clientTransactionHistoryModal').modal('hide');
-                 }
-                 
-                 // Delete transaction directly without confirmation
-                 setTimeout(() => {
-                     deleteTransaction(transactionId, transactionType);
-                 }, 300);
-             });
-         });
-         
-        }
-        
-        // DOMContentLoaded event handlers
-        document.addEventListener('DOMContentLoaded', function() {
-        // Handle View Transactions button clicks
-        document.querySelectorAll('.view-transactions-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const accountId = this.dataset.accountId;
-            const accountName = this.dataset.accountName;
-            loadTransactions('main', accountId, accountName);
-        });
-        });
-
-        // Handle Supplier Transactions button clicks
-        document.querySelectorAll('.view-supplier-transactions-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const supplierId = this.dataset.supplierId;
-            const supplierName = this.dataset.supplierName;
-            loadTransactions('supplier', supplierId, supplierName);
-        });
-        });
-
-        // Handle Client Transactions button clicks
-        document.querySelectorAll('.view-client-transactions-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const clientId = this.dataset.clientId;
-            const clientName = this.dataset.clientName;
-            loadTransactions('client', clientId, clientName);
-        });
-        });
-        });
-
-        // Add event listener for the save edit button (only for main account fund transactions)
-if (document.getElementById('saveEditTransactionBtn')) {
-document.getElementById('saveEditTransactionBtn').addEventListener('click', function() {
-    // Get form data
-    const form = document.getElementById('editTransactionForm');
-    const formData = new FormData(form);
-
-    // Show loading state
-    this.disabled = true;
-    this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> saving...';
-
-    // Get CSRF token and add to formData
-     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-     formData.append('csrf_token', csrfToken);
-
-    // Send AJAX request to update the transaction
-     fetch('../api/accounts/update_transaction.php', {
-         method: 'POST',
-         body: formData
-     })
-    .then(response => response.json())
-    .then(data => {
-        // Reset button state
-        this.disabled = false;
-        this.innerHTML = 'save_changes';
-
-        if (data.success) {
-            // Close the modal
-            $('#editTransactionModal').modal('hide');
-
-            // Show success message
-            showSuccessToast('transaction_updated_successfully');
-            showSuccessToast('balances_have_been_recalculated');
-
-            // Reload the transactions to show updated data
-            const accountType = document.getElementById('editTransactionType').value;
-            const accountId = data.account_id;
-            const accountName = data.account_name;
-
-            // Reload transactions
-            loadTransactions(accountType, accountId, accountName);
-        } else {
-            // Show error message
-            showErrorToast('error: ' + data.message);
-        }
-    })
-    .catch(error => {
-        showErrorToast('error_updating_transaction: ' + error);
-        this.disabled = false;
-        this.innerHTML = 'save_changes';
-        showErrorToast('an_error_occurred_while_updating_the_transaction');
-        showErrorToast('please_try_again');
-    });
-});
+function txnCurrencySymbol(currency) {
+    const map = { USD: '$', AFS: '؋', EUR: '€', DARHAM: 'AED' };
+    return map[currency] || '';
 }
 
-// Add event listener for the save edit receipt button (main accounts only)
-if (document.getElementById('saveEditReceiptBtn')) {
-document.getElementById('saveEditReceiptBtn').addEventListener('click', function() {
-    // Get form data
-    const transactionId = document.getElementById('editReceiptTransactionId').value;
-    const transactionType = document.getElementById('editReceiptTransactionType').value;
-    const receipt = document.getElementById('editReceiptNumber').value;
+function txnCurrencyBadge(currency) {
+    const key = currency === 'DARHAM' ? 'AED' : (currency || 'OTHER');
+    const valid = ['USD', 'AFS', 'EUR', 'AED'];
+    const cls = valid.includes(key) ? `txn-badge-${key}` : 'txn-badge-OTHER';
+    return `<span class="txn-badge ${cls}">${key || '—'}</span>`;
+}
 
-    // Validate receipt number
-    if (!receipt.trim()) {
-        showErrorToast('please_enter_a_receipt_number');
+function txnFormatDate(dateField) {
+    if (!dateField) return '—';
+    return new Date(dateField).toLocaleString();
+}
+
+function txnFormatOf(raw) {
+    if (!raw || raw === '-') return '—';
+    return raw.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+// ── Row builders ────────────────────────────────────────────────────────────
+
+function txnBuildActionsCell(transaction, accountType, amount, dateField) {
+    let showDelete = false;
+    let showEdit   = false;
+    let showReceipt = false;
+    let showPrintReceipt = false;
+
+    if (accountType === 'main') {
+        const tof = (transaction.transaction_of || '').toLowerCase();
+        showDelete  = isUserAdmin && ['fund', 'transfer', 'supplier_bonus'].includes(tof);
+        showEdit    = tof === 'fund';
+        showReceipt = true;
+        showPrintReceipt = false;
+    } else if (accountType === 'supplier') {
+        const tof = (transaction.transaction_of || '').toLowerCase();
+        showDelete = isUserAdmin && ['supplier_bonus', 'fund', 'fund_withdrawal'].includes(tof);
+        showReceipt = true;
+        showPrintReceipt = false;
+    } else if (accountType === 'client') {
+        const tof = (transaction.transaction_of || '').toLowerCase();
+        showDelete = isUserAdmin && tof === 'fund';
+        showReceipt = true;
+        showPrintReceipt = true;
+    }
+
+    if (!showDelete && !showEdit && !showReceipt) {
+        return `<td class="txn-td-num"><span class="txn-empty" style="font-size:12px">—</span></td>`;
+    }
+
+    const abs  = Math.abs(amount).toFixed(3);
+    const type = transaction.type || transaction.transaction_type || '';
+
+    let html = `<td><div class="txn-actions">`;
+
+    if (showEdit) {
+        html += `<button class="txn-btn txn-btn-edit edit-transaction-btn"
+            data-transaction-id="${transaction.id}"
+            data-transaction-type="${accountType}"
+            data-amount="${abs}"
+            data-transaction-date="${dateField || ''}"
+            data-description="${transaction.description || ''}"
+            data-currency="${transaction.currency || ''}"
+            data-remarks="${transaction.remarks || ''}"
+            data-receipt="${transaction.receipt || ''}"
+            data-type="${type}"
+            title="Edit transaction">
+            <i class="feather icon-edit-2"></i>
+        </button>`;
+    }
+
+    if (showReceipt) {
+        html += `<button class="txn-btn txn-btn-receipt edit-receipt-btn"
+            data-transaction-id="${transaction.id}"
+            data-transaction-type="${accountType}"
+            data-receipt="${transaction.receipt || ''}"
+            data-transaction-date="${dateField || ''}"
+            title="Edit receipt">
+            <i class="feather icon-file-text"></i>
+        </button>`;
+    }
+    
+    if (showPrintReceipt) {
+        html += `<button class="txn-btn txn-btn-print print-receipt-btn"
+            data-transaction-id="${transaction.id}"
+            data-transaction-type="${accountType}"
+            title="Print receipt">
+            <i class="feather icon-printer"></i>
+        </button>`;
+    }
+
+    if (showDelete) {
+        html += `<button class="txn-btn txn-btn-del delete-transaction-btn"
+            data-transaction-id="${transaction.id}"
+            data-transaction-type="${accountType}"
+            title="Delete transaction">
+            <i class="feather icon-trash-2"></i>
+        </button>`;
+    }
+
+    html += `</div></td>`;
+    return html;
+}
+
+function txnBuildRow(transaction, accountType, rowNumber) {
+    const dateField     = transaction.transaction_date || transaction.created_at;
+    const formattedDate = txnFormatDate(dateField);
+    const amount        = parseFloat(transaction.amount || 0);
+    const absFormatted  = Math.abs(amount).toFixed(3);
+    const sym           = txnCurrencySymbol(transaction.currency);
+    const badge         = txnCurrencyBadge(transaction.currency);
+    const actionsCell   = txnBuildActionsCell(transaction, accountType, amount, dateField);
+
+    const isCredit = (v) => v && v.toLowerCase() === 'credit';
+    const isDebit  = (v) => v && v.toLowerCase() === 'debit';
+    const typeRaw  = transaction.type || transaction.transaction_type || '';
+
+    const creditVal = isCredit(typeRaw) ? `<span class="txn-credit">${sym}${absFormatted}</span>` : `<span class="txn-empty">—</span>`;
+    const debitVal  = isDebit(typeRaw)  ? `<span class="txn-debit">${sym}${absFormatted}</span>`  : `<span class="txn-empty">—</span>`;
+
+    const row = document.createElement('tr');
+
+    if (accountType === 'main') {
+        const bal = transaction.balance != null ? `${sym}${parseFloat(transaction.balance).toFixed(3)}` : '—';
+        row.innerHTML = `
+            <td class="txn-td-rn">${rowNumber}</td>
+            <td class="txn-td-date">${formattedDate}</td>
+            <td class="txn-td-desc" style="word-wrap:break-word;white-space:normal;max-width:250px">${transaction.description || '—'}</td>
+            <td class="txn-td-muted">${transaction.receipt || '—'}</td>
+            <td class="txn-td-muted" style="word-wrap:break-word;white-space:normal;max-width:200px">${transaction.reference_name || transaction.reference_id || '—'}</td>
+            <td class="txn-td-num">${debitVal}</td>
+            <td class="txn-td-num">${creditVal}</td>
+            <td class="txn-td-num txn-balance">${bal}</td>
+            <td>${badge}</td>
+            ${actionsCell}
+        `;
+
+    } else if (accountType === 'supplier') {
+        const bal = transaction.balance != null ? `${sym}${parseFloat(transaction.balance).toFixed(3)}` : '—';
+        // Supplier uses Credit/Debit (capital)
+        const sCreditVal = isCredit(typeRaw) ? `<span class="txn-credit">${sym}${absFormatted}</span>` : `<span class="txn-empty">—</span>`;
+        const sDebitVal  = isDebit(typeRaw)  ? `<span class="txn-debit">${sym}${absFormatted}</span>`  : `<span class="txn-empty">—</span>`;
+
+        row.innerHTML = `
+            <td class="txn-td-rn">${rowNumber}</td>
+            <td class="txn-td-date">${formattedDate}</td>
+            <td class="txn-td-desc" style="word-wrap:break-word;white-space:normal;max-width:250px">${transaction.remarks || '—'}</td>
+            <td class="txn-td-muted">${transaction.receipt || '—'}</td>
+            <td class="txn-td-muted">${txnFormatOf(transaction.transaction_of)}</td>
+            <td class="txn-td-muted" style="word-wrap:break-word;white-space:normal;max-width:200px">${transaction.reference_name || transaction.reference_id || '—'}</td>
+            <td class="txn-td-num">${sDebitVal}</td>
+            <td class="txn-td-num">${sCreditVal}</td>
+            <td class="txn-td-num txn-balance">${bal}</td>
+            ${actionsCell}
+        `;
+
+    } else if (accountType === 'client') {
+        const bal = transaction.balance || '—';
+        row.innerHTML = `
+            <td class="txn-td-rn">${rowNumber}</td>
+            <td class="txn-td-date">${formattedDate}</td>
+            <td class="txn-td-desc" style="word-wrap:break-word;white-space:normal;max-width:250px">${transaction.description || '—'}</td>
+            <td class="txn-td-muted">${transaction.receipt || transaction.receipt_number || '—'}</td>
+            <td class="txn-td-muted">${txnFormatOf(transaction.transaction_of)}</td>
+            <td class="txn-td-muted" style="word-wrap:break-word;white-space:normal;max-width:200px">${transaction.reference_name || transaction.reference_id || '—'}</td>
+            <td class="txn-td-num">${debitVal}</td>
+            <td class="txn-td-num">${creditVal}</td>
+            <td class="txn-td-num txn-balance">${bal}</td>
+            <td>${badge}</td>
+            ${actionsCell}
+        `;
+    }
+
+    return row;
+}
+
+// ── Pagination builder ──────────────────────────────────────────────────────
+
+function txnBuildPagination(accountType, accountId, accountName, pagination, listId, containerId, totalCount) {
+    const list      = document.getElementById(listId);
+    const container = document.getElementById(containerId);
+    if (!list || !container) return;
+
+    if (!pagination || pagination.total_pages <= 1) {
+        container.classList.add('d-none');
         return;
     }
 
-    // Show loading state
-    this.disabled = true;
-    this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> saving...';
+    const cur   = pagination.current_page;
+    const total = pagination.total_pages;
+    const perPage = pagination.per_page || 20;
+    const from  = (cur - 1) * perPage + 1;
+    const to    = Math.min(cur * perPage, totalCount || pagination.total_records || '?');
 
-    // Get CSRF token
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    // Build inner pagination list (Bootstrap)
+    list.innerHTML = '';
 
-    // Send AJAX request to update the receipt
-    fetch('../api/accounts/update_receipt.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            transaction_id: transactionId,
-            transaction_type: transactionType,
-            receipt: receipt,
-            csrf_token: csrfToken
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        // Reset button state
-        this.disabled = false;
-        this.innerHTML = '<i class="feather icon-save mr-1"></i>Save Receipt';
+    const addLi = (label, page, active = false, disabled = false) => {
+        const li = document.createElement('li');
+        li.className = `page-item${active ? ' active' : ''}${disabled ? ' disabled' : ''}`;
+        li.innerHTML = disabled
+            ? `<span class="page-link">${label}</span>`
+            : `<a class="page-link" href="javascript:void(0);"
+                onclick="loadTransactionsPage('${accountType}',${accountId},'${accountName}',${page})">${label}</a>`;
+        list.appendChild(li);
+    };
 
-        if (data.success) {
-            // Close the modal
-            $('#editReceiptModal').modal('hide');
+    if (cur > 1) addLi('‹', cur - 1);
 
-            // Show success message
-            showSuccessToast('receipt_updated_successfully');
+    let start = Math.max(1, cur - 2);
+    let end   = Math.min(total, cur + 2);
 
-            // Reload the transactions to show updated data
-            const accountId = data.account_id;
-            const accountName = data.account_name;
+    if (start > 1) { addLi('1', 1); if (start > 2) addLi('…', 0, false, true); }
+    for (let p = start; p <= end; p++) addLi(p, p, p === cur);
+    if (end < total) { if (end < total - 1) addLi('…', 0, false, true); addLi(total, total); }
 
-            // Reload transactions
-            loadTransactions('main', accountId, accountName);
-        } else {
-            // Show error message
-            showErrorToast('error: ' + data.message);
-        }
-    })
-    .catch(error => {
-        showErrorToast('error_updating_receipt: ' + error);
-        this.disabled = false;
-        this.innerHTML = '<i class="feather icon-save mr-1"></i>Save Receipt';
-        showErrorToast('an_error_occurred_while_updating_the_receipt');
-        showErrorToast('please_try_again');
-    });
-});
+    if (cur < total) addLi('›', cur + 1);
+
+    // Info text (injected before the <ul> if a sibling element exists)
+    const infoEl = container.querySelector('.txn-page-info');
+    if (infoEl) infoEl.textContent = `Showing ${from}–${to} of ${pagination.total_records || totalCount || '?'}`;
+
+    container.classList.remove('d-none');
 }
 
-// Function to delete transaction directly
-function deleteTransaction(transactionId, transactionType) {
-    // Determine which endpoint to use based on transaction type
-    let endpoint = '';
-    switch(transactionType) {
-        case 'main':
-            endpoint = '../api/accounts/delete_main_account_transaction.php';
-            break;
-        case 'supplier':
-            endpoint = '../api/accounts/delete_supplier_transaction.php';
-            break;
-        case 'client':
-            endpoint = '../api/accounts/delete_client_transaction.php';
-            break;
-        default:
-            showErrorToast('invalid_transaction_type');
-            return;
+// ── IDs / elements map ──────────────────────────────────────────────────────
+
+const TXN_CONFIG = {
+    main: {
+        tableBody:          'transactionsTableBody',
+        loader:             'transactionsLoader',
+        noMsg:              'noTransactionsMessage',
+        nameDisplay:        'accountNameDisplay',
+        idField:            'mainAccountTransactionId',
+        modal:              'transactionHistoryModal',
+        paginationList:     'mainTransactionsPaginationList',
+        paginationContainer:'transactionsPagination',
+        endpoint:           (id) => `../api/accounts/get_main_account_transactions.php?account_id=${id}`,
+        filters: () => ({
+            currency: document.getElementById('mainAccountCurrencyFilter')?.value,
+            receipt:  document.getElementById('receiptSearch')?.value,
+            dateRange:document.getElementById('dateRangeFilter')?.value,
+        }),
+    },
+    supplier: {
+        tableBody:          'supplierTransactionsTableBody',
+        loader:             'supplierTransactionsLoader',
+        noMsg:              'noSupplierTransactionsMessage',
+        nameDisplay:        'supplierNameDisplay',
+        idField:            'supplierTransactionId',
+        modal:              'supplierTransactionHistoryModal',
+        paginationList:     'supplierTransactionsPaginationList',
+        paginationContainer:'supplierTransactionsPagination',
+        endpoint:           (id) => `../api/accounts/get_supplier_transactions_main.php?supplier_id=${id}`,
+        filters: () => ({
+            receipt:  document.getElementById('supplierReceiptSearch')?.value,
+            dateRange:document.getElementById('supplierDateRangeFilter')?.value,
+        }),
+    },
+    client: {
+        tableBody:          'clientTransactionsTableBody',
+        loader:             'clientTransactionsLoader',
+        noMsg:              'noClientTransactionsMessage',
+        nameDisplay:        'clientNameDisplay',
+        idField:            'clientTransactionId',
+        modal:              'clientTransactionHistoryModal',
+        paginationList:     'clientTransactionsPaginationList',
+        paginationContainer:'clientTransactionsPagination',
+        endpoint:           (id) => `../api/accounts/get_client_transactions.php?client_id=${id}`,
+        filters: () => ({
+            currency: document.getElementById('clientCurrencyFilter')?.value,
+            receipt:  document.getElementById('clientReceiptSearch')?.value,
+            dateRange:document.getElementById('clientDateRangeFilter')?.value,
+        }),
+    },
+};
+
+function txnBuildEndpoint(base, filters, page) {
+    let url = base;
+    const { currency, receipt, dateRange } = filters;
+    if (currency && currency !== 'all') url += '&currency=' + encodeURIComponent(currency);
+    if (receipt)   url += '&receipt='   + encodeURIComponent(receipt);
+    if (dateRange) {
+        const parts = dateRange.split(' - ');
+        if (parts.length === 2)
+            url += '&startDate=' + encodeURIComponent(parts[0].trim()) + '&endDate=' + encodeURIComponent(parts[1].trim());
     }
-    
-    // Send AJAX request to delete the transaction
-    fetch(endpoint, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            transaction_id: transactionId,
-            transaction_type: transactionType,
-            csrf_token: document.querySelector('meta[name="csrf-token"]')?.content || window.csrfToken
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Show success message
-            showSuccessToast('transaction_deleted_successfully and balances have been recalculated');
-            
-            // Reload the entire page instead of just the transactions
-            location.reload();
-        } else {
-            // Show error message
-            showErrorToast('error: ' + data.message);
-        }
-    })
-    .catch(error => {
-        showErrorToast('error_deleting_transaction: ' + error);
-        showErrorToast('an_error_occurred_while_deleting_the_transaction and please try again');
-    });
+    if (page) url += '&page=' + page;
+    return url;
 }
 
-// Function to load transactions for a specific page
-function loadTransactionsPage(accountType, accountId, accountName, page) {
-    // Store the current page in a data attribute for pagination control
-    let tableBody, loader, modal;
-    
-    // Set the appropriate elements based on account type
-    if (accountType === 'main') {
-        tableBody = document.getElementById('transactionsTableBody');
-        loader = document.getElementById('transactionsLoader');
-        modal = new bootstrap.Modal(document.getElementById('transactionHistoryModal'));
-    } else if (accountType === 'supplier') {
-        tableBody = document.getElementById('supplierTransactionsTableBody');
-        loader = document.getElementById('supplierTransactionsLoader');
-        modal = new bootstrap.Modal(document.getElementById('supplierTransactionHistoryModal'));
-    } else if (accountType === 'client') {
-        tableBody = document.getElementById('clientTransactionsTableBody');
-        loader = document.getElementById('clientTransactionsLoader');
-        modal = new bootstrap.Modal(document.getElementById('clientTransactionHistoryModal'));
+// ── Core loader ─────────────────────────────────────────────────────────────
+
+function loadTransactions(accountType, accountId, accountName, page) {
+    const cfg = TXN_CONFIG[accountType];
+    if (!cfg) return;
+
+    const tableBody = document.getElementById(cfg.tableBody);
+    const loader    = document.getElementById(cfg.loader);
+    const noMsg     = document.getElementById(cfg.noMsg);
+
+    // Store account id for filter reuse
+    let idField = document.getElementById(cfg.idField);
+    if (!idField) {
+        idField = document.createElement('input');
+        idField.type = 'hidden';
+        idField.id   = cfg.idField;
+        document.body.appendChild(idField);
     }
-    
-    // Show loader
+    idField.value = accountId;
+
+    document.getElementById(cfg.nameDisplay).textContent = accountName;
+
+    // Reset UI
     loader.classList.remove('d-none');
+    noMsg.classList.add('d-none');
     tableBody.innerHTML = '';
-    
-    // Determine endpoint based on account type with filter parameters
-    let endpoint;
-    if (accountType === 'main') {
-        endpoint = '../api/accounts/get_main_account_transactions.php?account_id=' + accountId + '&page=' + page;
-        // Add filters if available
-        const currency = document.getElementById('mainAccountCurrencyFilter')?.value;
-        const receipt = document.getElementById('receiptSearch')?.value;
-        const dateRange = document.getElementById('dateRangeFilter')?.value;
-        if (currency && currency !== 'all') endpoint += '&currency=' + encodeURIComponent(currency);
-        if (receipt) endpoint += '&receipt=' + encodeURIComponent(receipt);
-        if (dateRange) {
-            const dates = dateRange.split(' - ');
-            if (dates.length === 2) {
-                endpoint += '&startDate=' + encodeURIComponent(dates[0].trim()) + '&endDate=' + encodeURIComponent(dates[1].trim());
-            }
-        }
-    } else if (accountType === 'supplier') {
-        endpoint = '../api/accounts/get_supplier_transactions_main.php?supplier_id=' + accountId + '&page=' + page;
-        // Add filters if available
-        const receipt = document.getElementById('supplierReceiptSearch')?.value;
-        const dateRange = document.getElementById('supplierDateRangeFilter')?.value;
-        if (receipt) endpoint += '&receipt=' + encodeURIComponent(receipt);
-        if (dateRange) {
-            const dates = dateRange.split(' - ');
-            if (dates.length === 2) {
-                endpoint += '&startDate=' + encodeURIComponent(dates[0].trim()) + '&endDate=' + encodeURIComponent(dates[1].trim());
-            }
-        }
-    } else if (accountType === 'client') {
-        endpoint = '../api/accounts/get_client_transactions.php?client_id=' + accountId + '&page=' + page;
-        // Add filters if available
-        const currency = document.getElementById('clientCurrencyFilter')?.value;
-        const receipt = document.getElementById('clientReceiptSearch')?.value;
-        const dateRange = document.getElementById('clientDateRangeFilter')?.value;
-        if (currency && currency !== 'all') endpoint += '&currency=' + encodeURIComponent(currency);
-        if (receipt) endpoint += '&receipt=' + encodeURIComponent(receipt);
-        if (dateRange) {
-            const dates = dateRange.split(' - ');
-            if (dates.length === 2) {
-                endpoint += '&startDate=' + encodeURIComponent(dates[0].trim()) + '&endDate=' + encodeURIComponent(dates[1].trim());
-            }
-        }
-    }
-    
-    // Fetch transactions from the server
+
+    // Open modal
+    const modal = new bootstrap.Modal(document.getElementById(cfg.modal));
+    modal.show();
+
+    // Build URL
+    const base     = cfg.endpoint(accountId);
+    const filters  = cfg.filters();
+    const endpoint = txnBuildEndpoint(base, filters, page);
+
     fetch(endpoint)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('HTTP error, status = ' + response.status);
-            }
-            return response.json();
-        })
+        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
         .then(data => {
-            // Hide loader
             loader.classList.add('d-none');
-            
-            // Handle both old format (array) and new format (object with data and pagination)
-            let transactions = Array.isArray(data) ? data : (data && data.data) ? data.data : [];
-            let pagination = (data && data.pagination) ? data.pagination : null;
-            
-            if (transactions.length === 0) {
-                // Show no transactions message
-                let noTransactionsMessage;
-                if (accountType === 'main') {
-                    noTransactionsMessage = document.getElementById('noTransactionsMessage');
-                } else if (accountType === 'supplier') {
-                    noTransactionsMessage = document.getElementById('noSupplierTransactionsMessage');
-                } else if (accountType === 'client') {
-                    noTransactionsMessage = document.getElementById('noClientTransactionsMessage');
-                }
-                if (noTransactionsMessage) {
-                    noTransactionsMessage.classList.remove('d-none');
-                }
-            } else {
-                // Initialize row counter
-                let rowNumber = 1;
-                
-                // Populate table with transactions (same logic as loadTransactions)
-                transactions.forEach(transaction => {
-                    const row = document.createElement('tr');
-                    
-                    // Format the date (handle both transaction_date and created_at fields)
-                    const dateField = transaction.transaction_date || transaction.created_at;
-                    const date = dateField ? new Date(dateField) : new Date();
-                    const formattedDate = date.toLocaleString();
-                    
-                    // Format the amount with proper sign
-                    const amount = parseFloat(transaction.amount || 0);
-                    const amountClass = transaction.type === 'credit' || transaction.transaction_type === 'credit' ? 'text-success' : 'text-danger';
-                    const formattedAmount = Math.abs(amount).toFixed(3);
-                    
-                    // Get transaction sign for display
-                    const amountSign = transaction.type === 'credit' || transaction.transaction_type === 'credit' ? '+' : '-';
-                    
-                    // Get currency symbol
-                    let currencySymbol = '';
-                    if (transaction.currency === 'USD') currencySymbol = '$';
-                    else if (transaction.currency === 'AFS') currencySymbol = '؋';
-                    else if (transaction.currency === 'EUR') currencySymbol = '€';
-                    else if (transaction.currency === 'DARHAM') currencySymbol = 'AED';
-                    
-                    // Create row HTML based on account type
-                    if (accountType === 'main') {
-                        const creditAmount = transaction.type === 'credit' || transaction.transaction_type === 'credit' ? 
-                            `${currencySymbol}${formattedAmount}` : '-';
-                        const debitAmount = transaction.type === 'debit' || transaction.transaction_type === 'debit' ? 
-                            `${currencySymbol}${formattedAmount}` : '-';
-                        
-                        row.innerHTML = `
-                            <td>${rowNumber++}</td>
-                            <td>${formattedDate}</td>
-                            <td style="max-width: 300px; white-space: pre-wrap; word-break: break-word;">${transaction.description || '-'}</td>
-                            <td>${transaction.receipt || '-'}</td>
-                            <td class="text-danger">${debitAmount}</td>
-                            <td class="text-success">${creditAmount}</td>
-                            <td>${transaction.balance || '-'}</td>
-                            <td>${transaction.currency || '-'}</td>
-                            <td class="text-center"><span class="text-muted">No Actions</span></td>
-                        `;
-                    }
-                    
-                    tableBody.appendChild(row);
-                });
-                
-                // Re-render pagination controls
-                if (pagination && pagination.total_pages > 1) {
-                    let paginationListId = '';
-                    let paginationContainerId = '';
-                    
-                    if (accountType === 'main') {
-                        paginationListId = 'mainTransactionsPaginationList';
-                        paginationContainerId = 'transactionsPagination';
-                    } else if (accountType === 'supplier') {
-                        paginationListId = 'supplierTransactionsPaginationList';
-                        paginationContainerId = 'supplierTransactionsPagination';
-                    } else if (accountType === 'client') {
-                        paginationListId = 'clientTransactionsPaginationList';
-                        paginationContainerId = 'clientTransactionsPagination';
-                    }
-                    
-                    const paginationList = document.getElementById(paginationListId);
-                    const paginationContainer = document.getElementById(paginationContainerId);
-                    
-                    if (paginationList && paginationContainer) {
-                        paginationList.innerHTML = '';
-                        
-                        // Previous button
-                        if (pagination.current_page > 1) {
-                            const prevLi = document.createElement('li');
-                            prevLi.className = 'page-item';
-                            prevLi.innerHTML = `<a class="page-link" href="javascript:void(0);" onclick="loadTransactionsPage('${accountType}', ${accountId}, '${accountName}', ${pagination.current_page - 1})">Previous</a>`;
-                            paginationList.appendChild(prevLi);
-                        }
-                        
-                        // Page numbers
-                        let startPage = Math.max(1, pagination.current_page - 2);
-                        let endPage = Math.min(pagination.total_pages, pagination.current_page + 2);
-                        
-                        if (startPage > 1) {
-                            const firstLi = document.createElement('li');
-                            firstLi.className = 'page-item';
-                            firstLi.innerHTML = `<a class="page-link" href="javascript:void(0);" onclick="loadTransactionsPage('${accountType}', ${accountId}, '${accountName}', 1)">1</a>`;
-                            paginationList.appendChild(firstLi);
-                            
-                            if (startPage > 2) {
-                                const dotsLi = document.createElement('li');
-                                dotsLi.className = 'page-item disabled';
-                                dotsLi.innerHTML = `<span class="page-link">...</span>`;
-                                paginationList.appendChild(dotsLi);
-                            }
-                        }
-                        
-                        for (let p = startPage; p <= endPage; p++) {
-                            const li = document.createElement('li');
-                            li.className = `page-item ${p === pagination.current_page ? 'active' : ''}`;
-                            li.innerHTML = `<a class="page-link" href="javascript:void(0);" onclick="loadTransactionsPage('${accountType}', ${accountId}, '${accountName}', ${p})">${p}</a>`;
-                            paginationList.appendChild(li);
-                        }
-                        
-                        if (endPage < pagination.total_pages) {
-                            if (endPage < pagination.total_pages - 1) {
-                                const dotsLi = document.createElement('li');
-                                dotsLi.className = 'page-item disabled';
-                                dotsLi.innerHTML = `<span class="page-link">...</span>`;
-                                paginationList.appendChild(dotsLi);
-                            }
-                            
-                            const lastLi = document.createElement('li');
-                            lastLi.className = 'page-item';
-                            lastLi.innerHTML = `<a class="page-link" href="javascript:void(0);" onclick="loadTransactionsPage('${accountType}', ${accountId}, '${accountName}', ${pagination.total_pages})">${pagination.total_pages}</a>`;
-                            paginationList.appendChild(lastLi);
-                        }
-                        
-                        // Next button
-                        if (pagination.current_page < pagination.total_pages) {
-                            const nextLi = document.createElement('li');
-                            nextLi.className = 'page-item';
-                            nextLi.innerHTML = `<a class="page-link" href="javascript:void(0);" onclick="loadTransactionsPage('${accountType}', ${accountId}, '${accountName}', ${pagination.current_page + 1})">Next</a>`;
-                            paginationList.appendChild(nextLi);
-                        }
-                        
-                        // Show pagination container
-                        paginationContainer.classList.remove('d-none');
-                    }
-                }
+
+            const transactions = Array.isArray(data) ? data : (data?.data ?? []);
+            const pagination   = data?.pagination ?? null;
+
+            if (!transactions.length) {
+                noMsg.classList.remove('d-none');
+                noMsg.innerHTML = `
+                    <i class="feather icon-inbox" style="font-size:2rem;color:#ced4da;display:block;margin-bottom:8px"></i>
+                    <span>No transactions found</span>`;
+                return;
             }
+
+            let rowNumber = 1;
+            transactions.forEach(t => {
+                tableBody.appendChild(txnBuildRow(t, accountType, rowNumber++));
+            });
+
+            txnBuildPagination(
+                accountType, accountId, accountName,
+                pagination,
+                cfg.paginationList,
+                cfg.paginationContainer,
+                transactions.length
+            );
+
+            attachDeleteButtonListeners();
+            attachEditButtonListeners();
+            attachEditReceiptButtonListeners();
+            attachPrintReceiptButtonListeners();
         })
-        .catch(error => {
+        .catch(err => {
             loader.classList.add('d-none');
-            let noTransactionsMessage;
-            if (accountType === 'main') {
-                noTransactionsMessage = document.getElementById('noTransactionsMessage');
-            } else if (accountType === 'supplier') {
-                noTransactionsMessage = document.getElementById('noSupplierTransactionsMessage');
-            } else if (accountType === 'client') {
-                noTransactionsMessage = document.getElementById('noClientTransactionsMessage');
-            }
-            if (noTransactionsMessage) {
-                noTransactionsMessage.classList.remove('d-none');
-                noTransactionsMessage.innerHTML = `
-                    <i class="feather icon-alert-circle text-danger mb-2" style="font-size: 2rem;"></i>
-                    <p class="text-danger">Error loading transactions: ${error.message}</p>
-                `;
-            }
+            noMsg.classList.remove('d-none');
+            noMsg.innerHTML = `
+                <i class="feather icon-alert-circle text-danger" style="font-size:2rem;display:block;margin-bottom:8px"></i>
+                <span class="text-danger">Error loading transactions: ${err.message}</span>`;
+            showErrorToast('error_fetching_transactions: ' + err);
         });
 }
 
-     // Fix for modal stacking issues
-     $(document).on('show.bs.modal', '.modal', function () {
-         const zIndex = 1040 + (10 * $('.modal:visible').length);
-         $(this).css('z-index', zIndex);
-         setTimeout(function() {
-             $('.modal-backdrop').not('.modal-stack').css('z-index', zIndex - 1).addClass('modal-stack');
-         }, 0);
-     });
-     
+// Alias used by pagination links
+function loadTransactionsPage(accountType, accountId, accountName, page) {
+    loadTransactions(accountType, accountId, accountName, page);
+}
+
+// ── Event listeners ─────────────────────────────────────────────────────────
+
+function attachDeleteButtonListeners() {
+    document.querySelectorAll('.delete-transaction-btn').forEach(btn => {
+        const fresh = btn.cloneNode(true);
+        btn.parentNode.replaceChild(fresh, btn);
+        fresh.addEventListener('click', function (e) {
+            e.stopPropagation();
+            const id   = this.dataset.transactionId;
+            const type = this.dataset.transactionType;
+            document.getElementById('deleteTransactionId').value   = id;
+            document.getElementById('deleteTransactionType').value = type;
+            const modalId = type === 'main'     ? 'transactionHistoryModal'
+                          : type === 'supplier' ? 'supplierTransactionHistoryModal'
+                          :                       'clientTransactionHistoryModal';
+            $(`#${modalId}`).modal('hide');
+            setTimeout(() => deleteTransaction(id, type), 300);
+        });
+    });
+}
+
+function attachEditButtonListeners() {
+    document.querySelectorAll('.edit-transaction-btn').forEach(btn => {
+        const fresh = btn.cloneNode(true);
+        btn.parentNode.replaceChild(fresh, btn);
+        fresh.addEventListener('click', function (e) {
+            e.stopPropagation();
+            const d = this.dataset;
+            const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+            set('editTransactionId',         d.transactionId);
+            set('editTransactionType',       d.transactionType);
+            set('originalAmount',            d.amount);
+            set('originalType',              d.type);
+            set('editTransactionAmount',     d.amount);
+            set('editTransactionCurrency',   d.currency);
+            set('editTransactionDescription',d.description);
+            set('editTransactionReceipt',    d.receipt);
+            const typeSelect = document.getElementById('editTransactionTypeSelect');
+            if (typeSelect) typeSelect.value = d.type.toLowerCase();
+            if (d.transactionDate) {
+                const el = document.getElementById('editTransactionDate');
+                if (el) el.value = new Date(d.transactionDate).toISOString().slice(0, 16);
+            }
+            $('#transactionHistoryModal').modal('hide');
+            setTimeout(() => new bootstrap.Modal(document.getElementById('editTransactionModal')).show(), 500);
+        });
+    });
+}
+
+function attachEditReceiptButtonListeners() {
+    document.querySelectorAll('.edit-receipt-btn').forEach(btn => {
+        const fresh = btn.cloneNode(true);
+        btn.parentNode.replaceChild(fresh, btn);
+        fresh.addEventListener('click', function (e) {
+            e.stopPropagation();
+            const d = this.dataset;
+            const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+            set('editReceiptTransactionId',   d.transactionId);
+            set('editReceiptTransactionType', d.transactionType);
+            set('editReceiptNumber',          d.receipt);
+            $('#transactionHistoryModal').modal('hide');
+            setTimeout(() => new bootstrap.Modal(document.getElementById('editReceiptModal')).show(), 500);
+        });
+    });
+}
+
+function attachPrintReceiptButtonListeners() {
+    document.querySelectorAll('.print-receipt-btn').forEach(btn => {
+        const fresh = btn.cloneNode(true);
+        btn.parentNode.replaceChild(fresh, btn);
+        fresh.addEventListener('click', function (e) {
+            e.stopPropagation();
+            const transactionId = this.dataset.transactionId;
+            const transactionType = this.dataset.transactionType;
+            
+            let printUrl = '';
+            if (transactionType === 'main') {
+                printUrl = `../api/ticket/print_receipt.php?id=${transactionId}`;
+            } else if (transactionType === 'supplier') {
+                printUrl = `../api/accounts/print_fund_receipt.php?id=${transactionId}&type=supplier`;
+            } else if (transactionType === 'client') {
+                printUrl = `../api/accounts/print_fund_receipt.php?id=${transactionId}&type=client`;
+            }
+            
+            if (printUrl) {
+                window.open(printUrl, '_blank', 'width=1000,height=800');
+            }
+        });
+    });
+}
+
+// ── Delete + save handlers ──────────────────────────────────────────────────
+
+function deleteTransaction(transactionId, transactionType) {
+    const endpoints = {
+        main:     '../api/accounts/delete_main_account_transaction.php',
+        supplier: '../api/accounts/delete_supplier_transaction.php',
+        client:   '../api/accounts/delete_client_transaction.php',
+    };
+    const endpoint = endpoints[transactionType];
+    if (!endpoint) { showErrorToast('invalid_transaction_type'); return; }
+
+    fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            transaction_id:   transactionId,
+            transaction_type: transactionType,
+            csrf_token: document.querySelector('meta[name="csrf-token"]')?.content || window.csrfToken,
+        }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showSuccessToast('transaction_deleted_successfully');
+            location.reload();
+        } else {
+            showErrorToast('error: ' + data.message);
+        }
+    })
+    .catch(err => showErrorToast('error_deleting_transaction: ' + err));
+}
+
+// ── DOMContentLoaded ────────────────────────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', function () {
+
+    document.querySelectorAll('.view-transactions-btn').forEach(btn =>
+        btn.addEventListener('click', function () {
+            loadTransactions('main', this.dataset.accountId, this.dataset.accountName);
+        })
+    );
+
+    document.querySelectorAll('.view-supplier-transactions-btn').forEach(btn =>
+        btn.addEventListener('click', function () {
+            loadTransactions('supplier', this.dataset.supplierId, this.dataset.supplierName);
+        })
+    );
+
+    document.querySelectorAll('.view-client-transactions-btn').forEach(btn =>
+        btn.addEventListener('click', function () {
+            loadTransactions('client', this.dataset.clientId, this.dataset.clientName);
+        })
+    );
+
+    // Save edit transaction
+    document.getElementById('saveEditTransactionBtn')?.addEventListener('click', function () {
+        const form     = document.getElementById('editTransactionForm');
+        const formData = new FormData(form);
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        formData.append('csrf_token', csrfToken);
+
+        this.disabled   = true;
+        this.innerHTML  = '<span class="spinner-border spinner-border-sm"></span> Saving…';
+
+        fetch('../api/accounts/update_transaction.php', { method: 'POST', body: formData })
+            .then(r => r.json())
+            .then(data => {
+                this.disabled  = false;
+                this.innerHTML = 'Save changes';
+                if (data.success) {
+                    $('#editTransactionModal').modal('hide');
+                    showSuccessToast('transaction_updated_successfully');
+                    loadTransactions(
+                        document.getElementById('editTransactionType').value,
+                        data.account_id,
+                        data.account_name
+                    );
+                } else {
+                    showErrorToast('error: ' + data.message);
+                }
+            })
+            .catch(err => {
+                this.disabled  = false;
+                this.innerHTML = 'Save changes';
+                showErrorToast('error_updating_transaction: ' + err);
+            });
+    });
+
+    // Save edit receipt
+    document.getElementById('saveEditReceiptBtn')?.addEventListener('click', function () {
+        const id      = document.getElementById('editReceiptTransactionId').value;
+        const type    = document.getElementById('editReceiptTransactionType').value;
+        const receipt = document.getElementById('editReceiptNumber').value.trim();
+
+        if (!receipt) { showErrorToast('please_enter_a_receipt_number'); return; }
+
+        this.disabled  = true;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving…';
+
+        fetch('../api/accounts/update_receipt.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                transaction_id:   id,
+                transaction_type: type,
+                receipt,
+                csrf_token: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+            }),
+        })
+        .then(r => r.json())
+        .then(data => {
+             this.disabled  = false;
+             this.innerHTML = '<i class="feather icon-save mr-1"></i>Save Receipt';
+             if (data.success) {
+                 showSuccessToast('receipt_updated_successfully');
+                 setTimeout(() => {
+                     const modal = document.getElementById('editReceiptModal');
+                     if (modal) {
+                         const bootstrapModal = bootstrap.Modal.getInstance(modal);
+                         if (bootstrapModal) {
+                             bootstrapModal.hide();
+                         } else {
+                             $('#editReceiptModal').modal('hide');
+                         }
+                     }
+                     loadTransactions(type, data.account_id, data.account_name);
+                 }, 300);
+             } else {
+                 showErrorToast('error: ' + data.message);
+             }
+         })
+        .catch(err => {
+            this.disabled  = false;
+            this.innerHTML = '<i class="feather icon-save mr-1"></i>Save Receipt';
+            showErrorToast('error_updating_receipt: ' + err);
+        });
+    });
+
+    // Modal z-index stacking fix
+    $(document).on('show.bs.modal', '.modal', function () {
+        const zIndex = 1040 + (10 * $('.modal:visible').length);
+        $(this).css('z-index', zIndex);
+        setTimeout(() => {
+            $('.modal-backdrop').not('.modal-stack').css('z-index', zIndex - 1).addClass('modal-stack');
+        }, 0);
+    });
+});

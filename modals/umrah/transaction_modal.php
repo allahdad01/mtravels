@@ -191,15 +191,13 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div class="col-md-6">
-        <div class="form-group" style="display: none;">
-            <label for="transactionExchangeRate">
-                <i class="feather icon-refresh-cw mr-1"></i><?= __('exchange_rate') ?>
-            </label>
-            <input type="number" class="form-control" id="transactionExchangeRate"
-                   name="exchange_rate" step="0.01" min="0.01" placeholder="Enter exchange rate">
-        </div>
-    </div>
+                                <div class="form-group" id="exchangeRateField" style="display: none;">
+                                    <label id="exchangeRateLabel" for="transactionExchangeRate">
+                                        <i class="feather icon-refresh-cw mr-1"></i><?= __('exchange_rate') ?>
+                                    </label>
+                                    <input type="number" class="form-control" id="transactionExchangeRate"
+                                           name="exchange_rate" step="0.01" placeholder="0.00">
+                                </div>
                                 <div class="form-group">
                                     <label for="paymentDescription">
                                         <i class="feather icon-file-text mr-1"></i><?= __('description') ?>

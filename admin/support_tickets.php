@@ -467,9 +467,6 @@ require_once '../includes/header.php';
 </style>
 
 <div class="pcoded-main-container">
-    <div class="pcoded-wrapper">
-        <div class="pcoded-content">
-            <div class="pcoded-inner-content">
                 <div class="main-body">
                     <div class="page-wrapper">
                         <div class="st-shell">
@@ -649,9 +646,6 @@ require_once '../includes/header.php';
                         </div><!-- /st-shell -->
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
 </div>
 
 <script src="../assets/js/vendor-all.min.js"></script>

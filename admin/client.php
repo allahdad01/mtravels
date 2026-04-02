@@ -728,9 +728,6 @@ tbody tr:hover .action-row { opacity: 1; }
 <body>
 
 <div class="pcoded-main-container">
-  <div class="pcoded-wrapper">
-    <div class="pcoded-content">
-      <div class="pcoded-inner-content">
         <div class="main-body">
           <div class="page-wrapper">
             <div class="main-content">
@@ -858,9 +855,6 @@ tbody tr:hover .action-row { opacity: 1; }
             </div><!-- /main-content -->
           </div><!-- /page-wrapper -->
         </div><!-- /main-body -->
-      </div><!-- /pcoded-inner-content -->
-    </div><!-- /pcoded-content -->
-  </div><!-- /pcoded-wrapper -->
 </div><!-- /pcoded-main-container -->
 
 <?php include '../modals/client/add_client.php'; ?>

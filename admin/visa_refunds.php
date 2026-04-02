@@ -57,14 +57,16 @@ $totalRecords = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
 $totalPages   = ceil($totalRecords / $recordsPerPage);
 
 /* MAIN REFUNDS QUERY */
-$refundsQuery = "SELECT r.*, v.applicant_name, v.passport_number, v.country, v.currency, u.name as created_by, m.name as account_name
+$refundsQuery = "SELECT r.*, v.applicant_name, v.passport_number, v.country, v.currency, v.sold_to, c.client_type, u.name as created_by, m.name as account_name
                 FROM visa_refunds r
                 LEFT JOIN visa_applications v ON r.visa_id = v.id
+                LEFT JOIN clients c ON v.sold_to = c.id
                 LEFT JOIN users u ON r.processed_by = u.id
                 LEFT JOIN main_account_transactions t ON r.transaction_id = t.id
                 LEFT JOIN main_account m ON t.main_account_id = m.id
                 $searchCondition
                 AND (v.id IS NULL OR v.branch_id = ?)
+                AND (c.id IS NULL OR c.branch_id = ?)
                 AND (u.id IS NULL OR u.branch_id = ?)
                 AND (t.id IS NULL OR t.branch_id = ?)
                 AND (m.id IS NULL OR m.branch_id = ?)
@@ -73,6 +75,7 @@ $refundsQuery = "SELECT r.*, v.applicant_name, v.passport_number, v.country, v.c
 
 $paramsWithLimit   = $params;
 $paramsWithLimit[] = $branch_id;
+$paramsWithLimit[] = $branch_id; // clients branch_id
 $paramsWithLimit[] = $branch_id;
 $paramsWithLimit[] = $branch_id;
 $paramsWithLimit[] = $branch_id;
@@ -740,12 +743,12 @@ function getRefundStatusDotColor($status) {
                                     </div>
 
                                     <div class="visa-card__actions">
-                                        <!-- Process -->
-                                        <?php if ($refund['processed'] == 0 && $canEdit): ?>
-                                        <button class="vc-btn vc-btn--success" onclick="processRefundTransaction(<?= $refund['id'] ?>, '<?= htmlspecialchars($refund['applicant_name']) ?>')">
-                                            <i class="feather icon-check"></i> <?= __('process') ?>
-                                        </button>
-                                        <?php endif; ?>
+                                         <!-- Process -->
+                                         <?php if ($refund['processed'] == 0 && $canEdit && strtolower($refund['client_type'] ?? 'regular') !== 'regular'): ?>
+                                         <button class="vc-btn vc-btn--success" onclick="processRefundTransaction(<?= $refund['id'] ?>, '<?= htmlspecialchars($refund['applicant_name']) ?>')">
+                                             <i class="feather icon-check"></i> <?= __('process') ?>
+                                         </button>
+                                         <?php endif; ?>
 
                                         <!-- Print Agreement -->
                                         <button class="vc-btn" onclick="printRefundAgreement(<?= $refund['id'] ?>)">

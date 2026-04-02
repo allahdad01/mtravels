@@ -179,27 +179,27 @@
                                 </div>
 
                                 <!-- Exchange Rate Section -->
-                                <div class="row mb-3">
-                                    <div class="col-12">
-                                        <div class="form-group" id="exchangeRateField" style="display: none;">
-                                            <label for="transactionExchangeRate" class="font-weight-bold">
-                                                <i class="feather icon-refresh-cw mr-1"></i>
-                                                <?= __('exchange_rate') ?> <span class="text-danger">*</span>
-                                            </label>
-                                            <div class="input-group">
-                                                <div class="input-group-prepend">
-                                                    <span class="input-group-text"><i class="feather icon-trending-up"></i></span>
-                                                </div>
-                                                <input type="number" class="form-control form-control-lg" id="transactionExchangeRate"
-                                                    name="exchange_rate" step="0.01" placeholder="Enter exchange rate" required>
-                                            </div>
-                                            <small class="form-text text-muted">
-                                                <i class="feather icon-info mr-1"></i>
-                                                <?= __('required_when_payment_currency_differs_from_weight_currency') ?>
-                                            </small>
-                                        </div>
-                                    </div>
-                                </div>
+                                 <div class="row mb-3">
+                                     <div class="col-12">
+                                         <div class="form-group" id="exchangeRateField" style="display: none;">
+                                             <label id="exchangeRateLabel" for="transactionExchangeRate" class="font-weight-bold">
+                                                 <i class="feather icon-refresh-cw mr-1"></i>
+                                                 <?= __('exchange_rate') ?> <span class="text-danger">*</span>
+                                             </label>
+                                             <div class="input-group">
+                                                 <div class="input-group-prepend">
+                                                     <span class="input-group-text"><i class="feather icon-trending-up"></i></span>
+                                                 </div>
+                                                 <input type="number" class="form-control form-control-lg" id="transactionExchangeRate"
+                                                     name="exchange_rate" step="0.01" placeholder="0.00" required>
+                                             </div>
+                                             <small class="form-text text-muted d-block mt-1">
+                                                 Enter how many <span id="exchangeRateTarget"></span> equals 1 <span id="exchangeRateBase"></span>
+                                                 <span id="exchangeRateExample" class="d-block mt-1" style="color: #666;"></span>
+                                             </small>
+                                         </div>
+                                     </div>
+                                 </div>
 
                                 <div class="row">
                                     <div class="col-md-6">

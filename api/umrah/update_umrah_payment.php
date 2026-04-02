@@ -87,19 +87,20 @@ $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_PO
         $transactionTo = $transaction['transaction_to'] ?? 'Internal Account';
 
         // Get umrah booking details
-        $stmt = $pdo->prepare("SELECT currency as booking_currency, sold_price FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bindParam(1, $umrahId, PDO::PARAM_INT);
-        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-        $stmt->execute();
-        $booking = $stmt->fetch(PDO::FETCH_ASSOC);
+         $stmt = $pdo->prepare("SELECT currency as booking_currency, sold_price, sold_to FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?");
+         $stmt->bindParam(1, $umrahId, PDO::PARAM_INT);
+         $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+         $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+         $stmt->execute();
+         $booking = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$booking) {
-            throw new Exception("Umrah booking not found");
-        }
+         if (!$booking) {
+             throw new Exception("Umrah booking not found");
+         }
 
-        $booking_currency = $booking['booking_currency'];
-        $sold_price = $booking['sold_price'];
+         $booking_currency = $booking['booking_currency'];
+         $sold_price = $booking['sold_price'];
+         $client_id = $booking['sold_to'];
 
         // Store old values for activity log
         $oldValues = json_encode([
@@ -281,17 +282,17 @@ $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_PO
                     }
                 }
             } else {
-                // Handle bank/supplier transaction
-                // Get supplier ID from umrah booking's supplier_id field
-                $bookingStmt = $pdo->prepare("SELECT supplier FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?");
-                $bookingStmt->bindParam(1, $umrahId, PDO::PARAM_INT);
-                $bookingStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-                $bookingStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-                $bookingStmt->execute();
-                $booking = $bookingStmt->fetch(PDO::FETCH_ASSOC);
+                 // Handle bank/supplier transaction
+                 // Get supplier ID from umrah_booking_services
+                 $bookingStmt = $pdo->prepare("SELECT supplier_id FROM umrah_booking_services WHERE booking_id = ? AND service_type IN ('all', 'visa') AND tenant_id = ? AND branch_id = ? LIMIT 1");
+                 $bookingStmt->bindParam(1, $umrahId, PDO::PARAM_INT);
+                 $bookingStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                 $bookingStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+                 $bookingStmt->execute();
+                 $booking = $bookingStmt->fetch(PDO::FETCH_ASSOC);
 
-                if ($booking) {
-                    $supplierId = $booking['supplier'];
+                 if ($booking) {
+                     $supplierId = $booking['supplier_id'];
 
                     // Check for existing supplier transaction
                     $supplierTxStmt = $pdo->prepare("SELECT id, amount, balance FROM supplier_transactions
@@ -380,28 +381,110 @@ $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_PO
                         }
 
                         // Update supplier balance
-                        $stmt = $pdo->prepare("UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                        $stmt->bindParam(1, $supplierTxAdjustment, PDO::PARAM_STR);
-                        $stmt->bindParam(2, $supplierId, PDO::PARAM_INT);
-                        $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-                        $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
+                         $stmt = $pdo->prepare("UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                         $stmt->bindParam(1, $supplierTxAdjustment, PDO::PARAM_STR);
+                         $stmt->bindParam(2, $supplierId, PDO::PARAM_INT);
+                         $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                         $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
 
-                        if (!$stmt->execute()) {
-                            throw new PDOException("Failed to update supplier balance");
+                         if (!$stmt->execute()) {
+                             throw new PDOException("Failed to update supplier balance");
+                         }
+
+                         // Update client balance if client type is regular
+                         if ($client_id > 0) {
+                             // Check client type
+                             $stmt_check_client_type = $pdo->prepare("SELECT client_type FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                             $stmt_check_client_type->bindParam(1, $client_id, PDO::PARAM_INT);
+                             $stmt_check_client_type->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                             $stmt_check_client_type->bindParam(3, $branch_id, PDO::PARAM_INT);
+                             $stmt_check_client_type->execute();
+                             $client_type_result = $stmt_check_client_type->fetch(PDO::FETCH_ASSOC);
+                             
+                             if ($client_type_result && $client_type_result['client_type'] === 'regular') {
+                                 // Get client transaction details
+                                 $stmt_get_client_tx = $pdo->prepare("SELECT id, amount, currency, balance FROM client_transactions WHERE reference_id = ? AND transaction_of = 'umrah_transaction' AND tenant_id = ? AND branch_id = ?");
+                                 $stmt_get_client_tx->bindParam(1, $transactionId, PDO::PARAM_INT);
+                                 $stmt_get_client_tx->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                                 $stmt_get_client_tx->bindParam(3, $branch_id, PDO::PARAM_INT);
+                                 $stmt_get_client_tx->execute();
+                                 $client_tx = $stmt_get_client_tx->fetch(PDO::FETCH_ASSOC);
+                                 
+                                 if ($client_tx) {
+                                     $originalClientAmount = $client_tx['amount'];
+                                     $tx_currency = $client_tx['currency'] ?? 'USD';
+
+                                     // Calculate client adjustment same way as supplier
+                                     $clientAdjustment = $newAmount - $originalClientAmount;
+
+                                 // Get balance field based on currency
+                                 $balance_column = ($tx_currency === 'USD') ? 'usd_balance' : 'afs_balance';
+
+                                 // Update client balance
+                                 $update_query = ($tx_currency === 'USD')
+                                     ? "UPDATE clients SET usd_balance = usd_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?"
+                                     : "UPDATE clients SET afs_balance = afs_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+                                 $stmt_update_client = $pdo->prepare($update_query);
+                                 $stmt_update_client->bindParam(1, $clientAdjustment, PDO::PARAM_STR);
+                                 $stmt_update_client->bindParam(2, $client_id, PDO::PARAM_INT);
+                                 $stmt_update_client->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                                 $stmt_update_client->bindParam(4, $branch_id, PDO::PARAM_INT);
+                                 if (!$stmt_update_client->execute()) {
+                                     throw new PDOException('Failed to update client balance');
+                                 }
+
+                                 // Update client transaction
+                                 $stmt_update_client_tx = $pdo->prepare("UPDATE client_transactions
+                                     SET amount = ?, balance = balance + ?
+                                     WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                                 $stmt_update_client_tx->bindParam(1, $newAmount, PDO::PARAM_STR);
+                                 $stmt_update_client_tx->bindParam(2, $clientAdjustment, PDO::PARAM_STR);
+                                 $stmt_update_client_tx->bindParam(3, $client_tx['id'], PDO::PARAM_INT);
+                                 $stmt_update_client_tx->bindParam(4, $tenant_id, PDO::PARAM_INT);
+                                 $stmt_update_client_tx->bindParam(5, $branch_id, PDO::PARAM_INT);
+                                 if (!$stmt_update_client_tx->execute()) {
+                                     throw new PDOException("Failed to update client transaction");
+                                 }
+
+                                 // Update subsequent client transactions' balances
+                                 $stmt_update_subsequent_client = $pdo->prepare("
+                                     UPDATE client_transactions
+                                     SET balance = balance + ?
+                                     WHERE client_id = ? AND currency = ?
+                                     AND id > ?
+                                     AND tenant_id = ? AND branch_id = ?
+                                 ");
+                                 $stmt_update_subsequent_client->bindParam(1, $clientAdjustment, PDO::PARAM_STR);
+                                 $stmt_update_subsequent_client->bindParam(2, $client_id, PDO::PARAM_INT);
+                                 $stmt_update_subsequent_client->bindParam(3, $tx_currency, PDO::PARAM_STR);
+                                 $stmt_update_subsequent_client->bindParam(4, $client_tx['id'], PDO::PARAM_INT);
+                                 $stmt_update_subsequent_client->bindParam(5, $tenant_id, PDO::PARAM_INT);
+                                 $stmt_update_subsequent_client->bindParam(6, $branch_id, PDO::PARAM_INT);
+                                 if (!$stmt_update_subsequent_client->execute()) {
+                                     throw new PDOException("Failed to update subsequent client transaction balances");
+                                 }
+                                 }
+                                 }
+                                 }
+                                 } else {
+                         // If no supplier transaction exists, inform admin to approve notification
+                         throw new Exception("No supplier transaction found. Please approve the related notification first.");
                         }
-                    } else {
-                        // If no supplier transaction exists, inform admin to approve notification
-                        throw new Exception("No supplier transaction found. Please approve the related notification first.");
-                    }
-                } else {
-                    throw new Exception("Umrah booking not found");
-                }
-            }
+                        } else {
+                        throw new Exception("Umrah booking not found");
+                        }
+                        }
 
             // Update family totals
             $updateFamilyQuery = "UPDATE families f
                                  SET f.total_paid = (
                                      SELECT SUM(paid) FROM umrah_bookings
+                                     WHERE family_id = (
+                                         SELECT family_id FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?
+                                     )
+                                 ),
+                                 f.total_paid_to_bank = (
+                                     SELECT SUM(received_bank_payment) FROM umrah_bookings
                                      WHERE family_id = (
                                          SELECT family_id FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?
                                      )
@@ -416,13 +499,18 @@ $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_PO
                                      SELECT family_id FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?
                                  )";
             $updateFamilyStmt = $pdo->prepare($updateFamilyQuery);
-            $updateFamilyStmt->bindParam(1, $umrahId, PDO::PARAM_INT);
-            $updateFamilyStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-            $updateFamilyStmt->bindParam(3, $umrahId, PDO::PARAM_INT);
-            $updateFamilyStmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
-            $updateFamilyStmt->bindParam(5, $umrahId, PDO::PARAM_INT);
-            $updateFamilyStmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
-            $updateFamilyStmt->bindParam(7, $branch_id, PDO::PARAM_INT);
+            $updateFamilyStmt->bindParam(1, $umrahId,    PDO::PARAM_INT);
+            $updateFamilyStmt->bindParam(2, $tenant_id,  PDO::PARAM_INT);
+            $updateFamilyStmt->bindParam(3, $branch_id,  PDO::PARAM_INT);
+            $updateFamilyStmt->bindParam(4, $umrahId,    PDO::PARAM_INT);
+            $updateFamilyStmt->bindParam(5, $tenant_id,  PDO::PARAM_INT);
+            $updateFamilyStmt->bindParam(6, $branch_id,  PDO::PARAM_INT);
+            $updateFamilyStmt->bindParam(7, $umrahId,    PDO::PARAM_INT);
+            $updateFamilyStmt->bindParam(8, $tenant_id,  PDO::PARAM_INT);
+            $updateFamilyStmt->bindParam(9, $branch_id,  PDO::PARAM_INT);
+            $updateFamilyStmt->bindParam(10, $umrahId,    PDO::PARAM_INT);
+            $updateFamilyStmt->bindParam(11, $tenant_id,  PDO::PARAM_INT);
+            $updateFamilyStmt->bindParam(12, $branch_id,  PDO::PARAM_INT);
 
             if (!$updateFamilyStmt->execute()) {
                 throw new PDOException("Failed to update family totals");

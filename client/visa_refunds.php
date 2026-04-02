@@ -64,9 +64,9 @@ try {
             SUM(CASE WHEN vr.processed = 0 THEN vr.refund_amount ELSE 0 END)      AS pending_amount
         FROM visa_refunds vr
         JOIN visa_applications va ON vr.visa_id = va.id
-        WHERE va.sold_to = ? AND vr.tenant_id = ?
+        WHERE va.sold_to = ? AND vr.tenant_id = ? AND va.tenant_id = ?
     ");
-    $statsStmt->execute([$client_id, $tenant_id]);
+    $statsStmt->execute([$client_id, $tenant_id, $tenant_id]);
     $stats = $statsStmt->fetch(PDO::FETCH_ASSOC) ?: $stats;
 } catch (PDOException $e) {
     error_log("Visa refunds stats error: " . $e->getMessage());
@@ -89,14 +89,14 @@ try {
             vr.currency,
             vr.processed,
             vr.reason,
-            vr.created_at
+            vr.refund_date AS created_at
         FROM visa_refunds vr
         JOIN visa_applications va ON vr.visa_id = va.id
-        WHERE va.sold_to = ? AND vr.tenant_id = ?
-        ORDER BY vr.created_at DESC
+        WHERE va.sold_to = ? AND vr.tenant_id = ? AND va.tenant_id = ?
+        ORDER BY vr.refund_date DESC
         LIMIT ? OFFSET ?
     ");
-    $stmt->execute([$client_id, $tenant_id, $per_page, $offset]);
+    $stmt->execute([$client_id, $tenant_id, $tenant_id, $per_page, $offset]);
     $refunds = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     error_log("Visa refunds fetch error: " . $e->getMessage());
@@ -695,7 +695,7 @@ function visaTypeIcon(string $type): string {
 
                                 <!-- Action -->
                                 <td style="text-align:center;">
-                                    <a href="visa_refund_detail.php?id=<?= urlencode($refund['id']) ?>"
+                                    <a href="visa_detail.php?id=<?= urlencode($refund['visa_application_id']) ?>"
                                        class="btn-view" title="View Details">
                                         <i class="feather icon-eye"></i>
                                     </a>

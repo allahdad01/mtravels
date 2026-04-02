@@ -51,23 +51,23 @@
                                     </div>
                                 </div>
                 
-                                <div class="table-responsive rounded">
-                                    <table class="table table-hover table-striped mb-0" id="supplierTransactionsTable">
-                                        <thead class="bg-light">
-                                            <tr>
-                                                <th>#</th>
-                                                <th><?= __('date') ?></th>
-                                                <th><?= __('remarks') ?></th>
-                                                <th><?= __('receipt') ?></th>
-                                                <th><?= __('category') ?></th>
-                                                <th><?= __('reference') ?></th>
-                                                <th><?= __('debit') ?></th>
-                                                <th><?= __('credit') ?></th>
-                                                <th><?= __('balance') ?></th>                               
-                                                <th class="text-center"><?= __('actions') ?></th>
+                                <div class="table-responsive rounded" style="max-height: 650px; overflow-y: auto; overflow-x: auto; border: 1px solid #ddd; border-radius: 4px;">
+                                    <table class="table table-sm table-hover table-striped mb-0" id="supplierTransactionsTable" style="min-width: 100%; font-size: 0.75rem;">
+                                        <thead class="bg-light" style="position: sticky; top: 0; z-index: 10;">
+                                            <tr style="font-size: 0.7rem; padding: 2px;">
+                                                <th style="white-space: nowrap; padding: 4px 2px;">#</th>
+                                                <th style="white-space: nowrap; min-width: 120px; padding: 4px 2px;"><?= __('date') ?></th>
+                                                <th style="min-width: 200px; padding: 4px 2px;"><?= __('description') ?></th>
+                                                <th style="white-space: nowrap; min-width: 100px; padding: 4px 2px;"><?= __('receipt') ?></th>
+                                                <th style="white-space: nowrap; min-width: 110px; padding: 4px 2px;"><?= __('category') ?></th>
+                                                <th style="min-width: 150px; padding: 4px 2px;"><?= __('reference') ?></th>
+                                                <th style="white-space: nowrap; min-width: 90px; padding: 4px 2px;"><?= __('debit') ?></th>
+                                                <th style="white-space: nowrap; min-width: 90px; padding: 4px 2px;"><?= __('credit') ?></th>
+                                                <th style="white-space: nowrap; min-width: 100px; padding: 4px 2px;"><?= __('balance') ?></th>                               
+                                                <th class="text-center" style="white-space: nowrap; min-width: 80px; padding: 4px 2px;"><?= __('actions') ?></th>
                                             </tr>
                                         </thead>
-                                        <tbody id="supplierTransactionsTableBody">
+                                        <tbody id="supplierTransactionsTableBody" style="font-size: 0.75rem;">
                                             <!-- Transactions will be loaded here -->
                                         </tbody>
                                     </table>

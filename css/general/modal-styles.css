@@ -6,6 +6,71 @@
     --modal-transition: all 0.3s ease-in-out;
 }
 
+/* Z-index fixes for nested modals - ensure stacking order */
+.modal {
+    z-index: 1040;
+}
+
+.modal.show {
+    z-index: 1050;
+}
+
+.modal-backdrop {
+    z-index: 1030;
+}
+
+.modal-backdrop.show {
+    z-index: 1040;
+}
+
+/* Ensure transactionModal appears above familyTransactionModal */
+#transactionModal {
+    z-index: 1052;
+}
+
+#transactionModal.show {
+    z-index: 1062;
+}
+
+#transactionModal + .modal-backdrop {
+    z-index: 1051;
+}
+
+#transactionModal + .modal-backdrop.show {
+    z-index: 1061;
+}
+
+/* Child modal z-index hierarchy */
+#editTransactionModal,
+#refundModal,
+#memberDetailsModal,
+#memberDocumentsModal,
+#editMemberModal,
+#bankReciptModal,
+#umrahPresidencyModal,
+#dateChangeModal,
+#cancellationReapplyModal,
+#editFamilyModal,
+#groupTicketModal,
+#idCardModal {
+    z-index: 1052;
+}
+
+#editTransactionModal.show,
+#refundModal.show,
+#memberDetailsModal.show,
+#memberDocumentsModal.show,
+#editMemberModal.show,
+#bankReciptModal.show,
+#umrahPresidencyModal.show,
+#dateChangeModal.show,
+#cancellationReapplyModal.show,
+#editFamilyModal.show,
+#groupTicketModal.show,
+#idCardModal.show {
+    z-index: 1062;
+}
+
 .modal-content {
     border: none;
     border-radius: var(--modal-border-radius);

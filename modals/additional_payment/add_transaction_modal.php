@@ -146,10 +146,9 @@
                                 
                                 <div class="form-group" id="exchange_rate_group" style="display: none;">
                                     <label for="exchange_rate">
-                                            <i class="feather icon-refresh-cw mr-1"></i><?= __('exchange_rate') ?>
+                                        <i class="feather icon-refresh-cw mr-1"></i><?= __('exchange_rate') ?>
                                     </label>
-                                    <input type="number" class="form-control" id="exchange_rate" name="exchange_rate" step="0.0001" min="0.0001">
-                                    <small class="form-text text-muted"><?= __('enter_the_exchange_rate_from_transaction_currency_to_payment_currency') ?></small>
+                                    <input type="number" class="form-control" id="exchange_rate" name="exchange_rate" step="0.01" placeholder="0.00">
                                 </div>
                                 
                                 <div class="form-group">

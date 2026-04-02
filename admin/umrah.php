@@ -424,6 +424,24 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
 
                                         <!-- Financial Summary -->
                                         <div class="financial-summary">
+                                            <?php 
+                                                // Check if any family member has regular client type
+                                                $hasRegularClient = false;
+                                                $checkClientTypeStmt = $pdo->prepare("
+                                                    SELECT COUNT(*) as regular_count 
+                                                    FROM umrah_bookings ub
+                                                    JOIN clients c ON ub.sold_to = c.id
+                                                    WHERE ub.family_id = ? AND c.client_type = 'regular' 
+                                                    AND ub.tenant_id = ? AND ub.branch_id = ?
+                                                ");
+                                                $checkClientTypeStmt->bindParam(1, $familyId, PDO::PARAM_INT);
+                                                $checkClientTypeStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                                                $checkClientTypeStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+                                                $checkClientTypeStmt->execute();
+                                                $clientTypeResult = $checkClientTypeStmt->fetch(PDO::FETCH_ASSOC);
+                                                $hasRegularClient = $clientTypeResult && $clientTypeResult['regular_count'] > 0;
+                                            ?>
+                                            <?php if (!$hasRegularClient): ?>
                                             <div class="financial-header">
                                                 <span><?= __('payment_status') ?></span>
                                                 <span class="percentage"><?= number_format($paymentPercentage, 1) ?>%</span>
@@ -431,24 +449,35 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                                             <div class="progress-bar-container">
                                                 <div class="progress-bar-fill" style="width: <?= $paymentPercentage ?>%"></div>
                                             </div>
+                                            <?php endif; ?>
                                             <div class="financial-details">
                                                 <div class="financial-item">
                                                     <span class="label"><?= __('total_price') ?></span>
                                                     <span class="value"><?= htmlspecialchars($row['total_price'] ?? '0') ?></span>
                                                 </div>
+                                                <?php if (!$hasRegularClient): ?>
                                                 <div class="financial-item success">
                                                     <span class="label"><?= __('paid') ?></span>
                                                     <span class="value"><?= htmlspecialchars($row['total_paid'] ?? '0') ?></span>
                                                 </div>
+                                                <?php endif; ?>
                                                 <div class="financial-item warning">
                                                     <span class="label"><?= __('bank') ?></span>
                                                     <span class="value"><?= htmlspecialchars($row['total_paid_to_bank'] ?? '0') ?></span>
                                                 </div>
+                                                <?php if (!$hasRegularClient): ?>
                                                 <div class="financial-item danger">
                                                     <span class="label"><?= __('due') ?></span>
                                                     <span class="value"><?= htmlspecialchars($row['total_due'] ?? '0') ?></span>
                                                 </div>
+                                                <?php endif; ?>
                                             </div>
+                                            <?php if ($hasRegularClient): ?>
+                                            <div class="alert alert-info mt-3" style="margin: 10px 0 0 0; padding: 8px 12px; font-size: 12px;">
+                                                <i class="fas fa-info-circle"></i>
+                                                <strong><?= __('note') ?>:</strong> <?= __('add_only_bank_transaction_for_outsider_client') ?>
+                                            </div>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
 

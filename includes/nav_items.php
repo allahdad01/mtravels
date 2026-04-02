@@ -384,6 +384,16 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 </li>
 <?php endif; ?>
 
+<!-- ── Finance Tracker (Finance Admin Only) ────────────────────────── -->
+<?php if ($user['role'] === 'finance'): ?>
+<li class="nav-item <?= navActive('finance_tracker.php') ?>">
+    <a href="finance_tracker.php" class="nav-link">
+        <span class="pcoded-micon"><i class="fas fa-chart-line"></i></span>
+        <span class="pcoded-mtext">Finance Wallet</span>
+    </a>
+</li>
+<?php endif; ?>
+
 <!-- ── Reports ────────────────────────────────────────────────────────── -->
 <?php if (staffCanSeeMenu($user['role'])): ?>
 <li class="nav-item <?= navActive('report.php') ?>">

@@ -43,13 +43,14 @@ $offset   = ($page - 1) * $per_page;
 try {
     $statsStmt = $pdo->prepare("
         SELECT
-            COUNT(*)        AS total_refunds,
-            SUM(sold)       AS total_refunded,
-            MAX(sold)       AS largest_refund,
-            MIN(sold)       AS smallest_refund,
-            AVG(sold)       AS avg_refund
-        FROM ticket_bookings
-        WHERE sold_to = ? AND tenant_id = ? AND status = 'Refunded'
+            COUNT(rt.id)                    AS total_refunds,
+            SUM(rt.refund_to_passenger)     AS total_refunded,
+            MAX(rt.refund_to_passenger)     AS largest_refund,
+            MIN(rt.refund_to_passenger)     AS smallest_refund,
+            AVG(rt.refund_to_passenger)     AS avg_refund
+        FROM refunded_tickets rt
+        JOIN ticket_bookings tb ON rt.ticket_id = tb.id
+        WHERE tb.sold_to = ? AND rt.tenant_id = ?
     ");
     $statsStmt->execute([$client_id, $tenant_id]);
     $stats = $statsStmt->fetch(PDO::FETCH_ASSOC);
@@ -71,19 +72,21 @@ $refunds = [];
 try {
     $stmt = $pdo->prepare("
         SELECT
-            id,
-            pnr             AS original_pnr,
-            passenger_name,
-            origin,
-            destination,
-            airline,
-            sold            AS refund_amount,
-            status,
-            description     AS reason,
-            created_at
-        FROM ticket_bookings
-        WHERE sold_to = ? AND tenant_id = ? AND status = 'Refunded'
-        ORDER BY created_at DESC
+            rt.id,
+            rt.ticket_id,
+            tb.pnr              AS original_pnr,
+            tb.passenger_name,
+            tb.origin,
+            tb.destination,
+            tb.airline,
+            rt.refund_to_passenger  AS refund_amount,
+            rt.status,
+            rt.remarks          AS reason,
+            rt.created_at
+        FROM refunded_tickets rt
+        JOIN ticket_bookings tb ON rt.ticket_id = tb.id
+        WHERE tb.sold_to = ? AND rt.tenant_id = ?
+        ORDER BY rt.created_at DESC
         LIMIT ? OFFSET ?
     ");
     $stmt->execute([$client_id, $tenant_id, $per_page, $offset]);
@@ -557,7 +560,7 @@ try {
 
                                 <!-- Action -->
                                 <td style="text-align:center;">
-                                    <a href="ticket_refund_detail.php?id=<?= urlencode($refund['id']) ?>"
+                                    <a href="ticket_detail.php?id=<?= urlencode($refund['ticket_id']) ?>"
                                        class="btn-view" title="View Details">
                                         <i class="feather icon-eye"></i>
                                     </a>

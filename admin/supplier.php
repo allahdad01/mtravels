@@ -541,9 +541,6 @@ td.num {
 
 <!-- pcoded wrapper -->
 <div class="pcoded-main-container">
-  <div class="pcoded-wrapper">
-    <div class="pcoded-content">
-      <div class="pcoded-inner-content">
         <div class="main-body">
           <div class="page-wrapper">
             <div class="main-content">
@@ -678,9 +675,6 @@ td.num {
             </div><!-- /main-content -->
           </div><!-- /page-wrapper -->
         </div><!-- /main-body -->
-      </div><!-- /pcoded-inner-content -->
-    </div><!-- /pcoded-content -->
-  </div><!-- /pcoded-wrapper -->
 </div><!-- /pcoded-main-container -->
 
 <!-- Toast -->
