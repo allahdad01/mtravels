@@ -143,7 +143,7 @@ class WhatsAppManager {
                            s.name as supplier_name
                     FROM ticket_bookings tb
                     LEFT JOIN clients c ON tb.sold_to = c.id
-                    LEFT JOIN suppliers s ON tb.supplier_id = s.id
+                    LEFT JOIN suppliers s ON tb.supplier = s.id
                     WHERE tb.id = ? AND tb.tenant_id = ?
                 ");
                 break;

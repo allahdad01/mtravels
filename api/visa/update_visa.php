@@ -70,14 +70,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
          }
 
          // Calculate differences
-         $soldDifference = $sold - $originalData['sold'];
-         $baseDifference = $base - $originalData['base'];
+         $soldDifference = $originalData['sold'] - $sold;
+         $baseDifference = $originalData['base'] - $base;
          $sold_to = intval($sold_to);
          $supplier = intval($supplier);
          $originalClient = intval($originalData['sold_to']);
          $originalSupplier = intval($originalData['supplier']);
          $originalCurrency = $originalData['currency'];
          $visaStatus = $originalData['status'];
+
+         // Get old client type to determine processing behavior
+         $oldClientType = 'regular'; // default
+         if ($originalClient > 0) {
+            $getOldClientTypeQuery = "SELECT client_type FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+            $stmtGetOldClientType = $pdo->prepare($getOldClientTypeQuery);
+            $stmtGetOldClientType->bindParam(1, $originalClient, PDO::PARAM_INT);
+            $stmtGetOldClientType->bindParam(2, $tenant_id, PDO::PARAM_INT);
+            $stmtGetOldClientType->bindParam(3, $branch_id, PDO::PARAM_INT);
+            $stmtGetOldClientType->execute();
+            $oldClientTypeResult = $stmtGetOldClientType->fetch(PDO::FETCH_ASSOC);
+            if ($oldClientTypeResult) {
+                $oldClientType = $oldClientTypeResult['client_type'];
+            }
+         }
+
+         // Get new client type to determine processing behavior
+         $newClientType = 'regular'; // default
+         if ($sold_to > 0) {
+            $getClientTypeQuery = "SELECT client_type FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+            $stmtGetClientType = $pdo->prepare($getClientTypeQuery);
+            $stmtGetClientType->bindParam(1, $sold_to, PDO::PARAM_INT);
+            $stmtGetClientType->bindParam(2, $tenant_id, PDO::PARAM_INT);
+            $stmtGetClientType->bindParam(3, $branch_id, PDO::PARAM_INT);
+            $stmtGetClientType->execute();
+            $clientTypeResult = $stmtGetClientType->fetch(PDO::FETCH_ASSOC);
+            if ($clientTypeResult) {
+                $newClientType = $clientTypeResult['client_type'];
+            }
+         }
 
          // Only process client and supplier calculations if visa is approved
          if ($visaStatus === 'Approved') {
@@ -319,16 +349,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                  if ($oldClientData) {
                      // If client changed
                      if ($sold_to != $originalClient) {
-                         // Update old client balance - ADDING back the original sold amount
-                         // This INCREASES the client balance (client owes less)
-                         $balanceField = strtolower($originalCurrency) === 'usd' ? 'usd_balance' : 'afs_balance';
-                         $updateOldClientQuery = "UPDATE clients SET $balanceField = $balanceField + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                         $stmtUpdateOldClient = $pdo->prepare($updateOldClientQuery);
-                         $stmtUpdateOldClient->bindParam(1, $originalData['sold'], PDO::PARAM_STR);
-                         $stmtUpdateOldClient->bindParam(2, $originalClient, PDO::PARAM_INT);
-                         $stmtUpdateOldClient->bindParam(3, $tenant_id, PDO::PARAM_INT);
-                         $stmtUpdateOldClient->bindParam(4, $branch_id, PDO::PARAM_INT);
-                         $stmtUpdateOldClient->execute();
+                         // Only update old client balance if client is regular
+                         if ($oldClientType === 'regular') {
+                             // Update old client balance - ADDING back the original sold amount
+                             // This INCREASES the client balance (client owes less)
+                             $balanceField = strtolower($originalCurrency) === 'usd' ? 'usd_balance' : 'afs_balance';
+                             $updateOldClientQuery = "UPDATE clients SET $balanceField = $balanceField + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+                             $stmtUpdateOldClient = $pdo->prepare($updateOldClientQuery);
+                             $stmtUpdateOldClient->bindParam(1, $originalData['sold'], PDO::PARAM_STR);
+                             $stmtUpdateOldClient->bindParam(2, $originalClient, PDO::PARAM_INT);
+                             $stmtUpdateOldClient->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                             $stmtUpdateOldClient->bindParam(4, $branch_id, PDO::PARAM_INT);
+                             $stmtUpdateOldClient->execute();
+                         }
 
                          // Check if transaction record exists for old client
                          $checkOldClientTransactionQuery = "SELECT id FROM client_transactions WHERE client_id = ? AND reference_id = ? AND transaction_of = 'visa_sale' AND tenant_id = ? AND branch_id = ? LIMIT 1";
@@ -400,17 +433,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                  if ($clientData) {
                      // If client changed
                      if ($sold_to != $originalClient) {
-                         // Update new client balance - DEDUCTING the new sold amount
-                         // This DECREASES the client balance (client owes more)
-                         $balanceField = strtolower($currency) === 'usd' ? 'usd_balance' : 'afs_balance';
-                         $updateClientQuery = "UPDATE clients SET $balanceField = $balanceField - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                         $stmtUpdateClient = $pdo->prepare($updateClientQuery);
-                         $stmtUpdateClient->bindParam(1, $sold, PDO::PARAM_STR);
-                         $stmtUpdateClient->bindParam(2, $sold_to, PDO::PARAM_INT);
-                         $stmtUpdateClient->bindParam(3, $tenant_id, PDO::PARAM_INT);
-                         $stmtUpdateClient->bindParam(4, $branch_id, PDO::PARAM_INT);
-                         $stmtUpdateClient->execute();
-
                          // Get current client balance for transaction record
                          $getBalanceQuery = "SELECT $balanceField FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                          $stmtGetBalance = $pdo->prepare($getBalanceQuery);
@@ -419,8 +441,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                          $stmtGetBalance->bindParam(3, $branch_id, PDO::PARAM_INT);
                          $stmtGetBalance->execute();
                          $balanceResult = $stmtGetBalance->fetch(PDO::FETCH_ASSOC);
-
-                         // Create new transaction record for new client
+                         $currentBalance = $balanceResult[$balanceField];
+                         $newBalance = $currentBalance - $sold;
+                         
+                         // Only update client balance if client is regular
+                         if ($newClientType === 'regular') {
+                             // Update new client balance - DEDUCTING the new sold amount
+                             // This DECREASES the client balance (client owes more)
+                             $updateClientQuery = "UPDATE clients SET $balanceField = $balanceField - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+                             $stmtUpdateClient = $pdo->prepare($updateClientQuery);
+                             $stmtUpdateClient->bindParam(1, $sold, PDO::PARAM_STR);
+                             $stmtUpdateClient->bindParam(2, $sold_to, PDO::PARAM_INT);
+                             $stmtUpdateClient->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                             $stmtUpdateClient->bindParam(4, $branch_id, PDO::PARAM_INT);
+                             $stmtUpdateClient->execute();
+                         }
+                         
+                         // Create new transaction record for new client (for both regular and agency clients)
                          $insertClientTransactionQuery = "INSERT INTO client_transactions (client_id, reference_id, type, amount, currency, balance, description, transaction_of, tenant_id, branch_id) VALUES (?, ?, 'debit', ?, ?, ?, ?, 'visa_sale', ?, ?)";
                          $stmtInsertClientTransaction = $pdo->prepare($insertClientTransactionQuery);
                          $description = "Sale for visa: $applicant_name (Passport: $passport_number)";
@@ -448,26 +485,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                          $currentBalanceResult = $stmtGetCurrentBalance->fetch(PDO::FETCH_ASSOC);
                          $currentBalance = $currentBalanceResult[$balanceField];
 
-                         // Calculate new balance
-                         $newBalance = 0;
-                         if ($soldDifference > 0) {
-                             // Sold price decreased, client owes less, balance increases
-                             $updateClientQuery = "UPDATE clients SET $balanceField = $balanceField + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                             $newBalance = $currentBalance + $soldDifference;
-                         } else {
-                             // Sold price increased, client owes more, balance decreases
-                             $updateClientQuery = "UPDATE clients SET $balanceField = $balanceField - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                             // Make the difference positive for the query
-                             $soldDifference = abs($soldDifference);
-                             $newBalance = $currentBalance - $soldDifference;
-                         }
+                         // Only update client balance if client is regular
+                         if ($newClientType === 'regular') {
+                             // Calculate new balance
+                             $newBalance = 0;
+                             if ($soldDifference > 0) {
+                                 // Sold price decreased, client owes less, balance increases
+                                 $updateClientQuery = "UPDATE clients SET $balanceField = $balanceField + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+                                 $newBalance = $currentBalance + $soldDifference;
+                             } else {
+                                 // Sold price increased, client owes more, balance decreases
+                                 $updateClientQuery = "UPDATE clients SET $balanceField = $balanceField - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+                                 // Make the difference positive for the query
+                                 $soldDifference = abs($soldDifference);
+                                 $newBalance = $currentBalance - $soldDifference;
+                             }
 
-                         $stmtUpdateClient = $pdo->prepare($updateClientQuery);
-                         $stmtUpdateClient->bindParam(1, $soldDifference, PDO::PARAM_STR);
-                         $stmtUpdateClient->bindParam(2, $sold_to, PDO::PARAM_INT);
-                         $stmtUpdateClient->bindParam(3, $tenant_id, PDO::PARAM_INT);
-                         $stmtUpdateClient->bindParam(4, $branch_id, PDO::PARAM_INT);
-                         $stmtUpdateClient->execute();
+                             $stmtUpdateClient = $pdo->prepare($updateClientQuery);
+                             $stmtUpdateClient->bindParam(1, $soldDifference, PDO::PARAM_STR);
+                             $stmtUpdateClient->bindParam(2, $sold_to, PDO::PARAM_INT);
+                             $stmtUpdateClient->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                             $stmtUpdateClient->bindParam(4, $branch_id, PDO::PARAM_INT);
+                             $stmtUpdateClient->execute();
+                         }
 
                          // Check if transaction record exists for this client
                          $checkClientTransactionQuery = "SELECT id, created_at, balance, amount FROM client_transactions WHERE client_id = ? AND reference_id = ? AND transaction_of = 'visa_sale' AND tenant_id = ? AND branch_id = ? LIMIT 1";

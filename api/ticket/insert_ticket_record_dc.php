@@ -49,7 +49,7 @@ $ticketId = isset($_POST['ticketId']) ? DbSecurity::validateInput($_POST['ticket
 
 if (
     isset($_POST['ticketId'], $_POST['status'], $_POST['base'], $_POST['sold'], 
-          $_POST['supplier_penalty'], $_POST['service_penalty'], $_POST['departureDate'],$_POST['description'])
+          $_POST['supplier_penalty'], $_POST['service_penalty'], $_POST['description'])
 ) {
     // Capture POST data
     $ticketId = $_POST['ticketId'];
@@ -58,7 +58,7 @@ if (
     $sold = floatval($_POST['sold']);
     $supplierPenalty = floatval($_POST['supplier_penalty']);
     $servicePenalty = floatval($_POST['service_penalty']);
-    $newDepartureDate = $_POST['departureDate'];
+    $newDepartureDate = isset($_POST['departureDate']) && !empty($_POST['departureDate']) ? $_POST['departureDate'] : null;
     $description = $_POST['description'];
 
     // Retrieve ticket data (ticket booking and supplier info)
@@ -142,7 +142,9 @@ if (
             $insertDateChangeStmt->bindParam(14, $ticketData['airline'], PDO::PARAM_STR);
             $insertDateChangeStmt->bindParam(15, $ticketData['gender'], PDO::PARAM_STR);
             $insertDateChangeStmt->bindParam(16, $ticketData['issue_date'], PDO::PARAM_STR);
-            $insertDateChangeStmt->bindParam(17, $newDepartureDate, PDO::PARAM_STR);
+            // Use existing departure_date if not provided (when only return_date is being changed)
+            $departureDate = $newDepartureDate ?? $ticketData['departure_date'];
+            $insertDateChangeStmt->bindParam(17, $departureDate, PDO::PARAM_STR);
             $insertDateChangeStmt->bindParam(18, $returnDate, $returnDate === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
             $insertDateChangeStmt->bindParam(19, $dateType, PDO::PARAM_STR);
             $insertDateChangeStmt->bindParam(20, $currency, PDO::PARAM_STR);

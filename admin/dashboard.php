@@ -881,7 +881,7 @@ $selected_date = InputValidator::getDate($_GET['departure_date'] ?? '', 'Y-m-d',
               <div id="ntab-unread">
               <?php
               try {
-                $nq="SELECT n.*,CASE WHEN n.transaction_type='visa' THEN va.applicant_name WHEN n.transaction_type='supplier' THEN s.name WHEN n.transaction_type='umrah' THEN ub.name ELSE NULL END AS related_name,CASE WHEN n.transaction_type='visa' THEN va.base WHEN n.transaction_type='supplier' THEN st.amount WHEN n.transaction_type='umrah' THEN ub.sold_price ELSE 0 END AS transaction_amount,CASE WHEN n.transaction_type='visa' THEN va.currency WHEN n.transaction_type='supplier' THEN s.currency ELSE NULL END AS transaction_currency FROM notifications n LEFT JOIN visa_applications va ON n.transaction_id=va.id AND n.transaction_type='visa' LEFT JOIN umrah_bookings ub ON n.transaction_id=ub.booking_id AND n.transaction_type='umrah' LEFT JOIN supplier_transactions st ON n.transaction_id=st.id AND n.transaction_type='supplier' LEFT JOIN suppliers s ON st.supplier_id=s.id OR va.supplier=s.id WHERE n.status='unread' AND n.tenant_id=? ORDER BY n.created_at DESC";
+                $nq="SELECT n.*,CASE WHEN n.transaction_type='visa' THEN va.applicant_name WHEN n.transaction_type='supplier' THEN s.name WHEN n.transaction_type='umrah' THEN ub.name ELSE NULL END AS related_name,CASE WHEN n.transaction_type='visa' THEN va.base WHEN n.transaction_type='supplier' THEN st.amount WHEN n.transaction_type='umrah' THEN ub.sold_price ELSE 0 END AS transaction_amount,CASE WHEN n.transaction_type='visa' THEN va.currency WHEN n.transaction_type='supplier' THEN s.currency ELSE NULL END AS transaction_currency,CASE WHEN n.transaction_type='umrah' THEN ut.transaction_to ELSE NULL END AS umrah_transaction_to FROM notifications n LEFT JOIN visa_applications va ON n.transaction_id=va.id AND n.transaction_type='visa' LEFT JOIN umrah_bookings ub ON n.transaction_id=ub.booking_id AND n.transaction_type='umrah' LEFT JOIN umrah_transactions ut ON n.transaction_id=ut.id AND n.transaction_type='umrah' LEFT JOIN supplier_transactions st ON n.transaction_id=st.id AND n.transaction_type='supplier' LEFT JOIN suppliers s ON st.supplier_id=s.id OR va.supplier=s.id WHERE n.status='unread' AND n.tenant_id=? ORDER BY n.created_at DESC";
                 $ns=$pdo->prepare($nq);$ns->execute([$tenant_id]);
                 if($ns->rowCount()>0) displayModernNotifications($ns,'unread');
                 else echo '<div class="d-empty"><i class="fas fa-bell-slash"></i>'.__('no_unread_notifications_available').'</div>';
@@ -896,13 +896,13 @@ $selected_date = InputValidator::getDate($_GET['departure_date'] ?? '', 'Y-m-d',
               </div>
               <div id="readNotificationsBody">
                 <?php
-                try {
-                  $rq="SELECT n.*,CASE WHEN n.transaction_type='visa' THEN va.applicant_name WHEN n.transaction_type='supplier' THEN s.name WHEN n.transaction_type='umrah' THEN ub.name ELSE NULL END AS related_name,CASE WHEN n.transaction_type='visa' THEN va.base WHEN n.transaction_type='supplier' THEN st.amount WHEN n.transaction_type='umrah' THEN ub.sold_price ELSE 0 END AS transaction_amount,CASE WHEN n.transaction_type='visa' THEN va.currency WHEN n.transaction_type='supplier' THEN s.currency ELSE NULL END AS transaction_currency FROM notifications n LEFT JOIN visa_applications va ON n.transaction_id=va.id AND n.transaction_type='visa' LEFT JOIN umrah_bookings ub ON n.transaction_id=ub.booking_id AND n.transaction_type='umrah' LEFT JOIN supplier_transactions st ON n.transaction_id=st.id AND n.transaction_type='supplier' LEFT JOIN suppliers s ON st.supplier_id=s.id OR va.supplier=s.id WHERE n.status='read' AND DATE(n.created_at)=? AND n.tenant_id=? ORDER BY n.created_at DESC";
-                  $rs=$pdo->prepare($rq);$rs->execute([date('Y-m-d'),$tenant_id]);
-                  if($rs->rowCount()>0) displayModernNotifications($rs,'read');
-                  else echo '<div class="d-empty"><i class="fas fa-inbox"></i>'.__('no_read_notifications_for_selected_date').'</div>';
-                } catch(PDOException $e){error_log($e->getMessage());}
-                ?>
+                  try {
+                    $rq="SELECT n.*,CASE WHEN n.transaction_type='visa' THEN va.applicant_name WHEN n.transaction_type='supplier' THEN s.name WHEN n.transaction_type='umrah' THEN ub.name ELSE NULL END AS related_name,CASE WHEN n.transaction_type='visa' THEN va.base WHEN n.transaction_type='supplier' THEN st.amount WHEN n.transaction_type='umrah' THEN ub.sold_price ELSE 0 END AS transaction_amount,CASE WHEN n.transaction_type='visa' THEN va.currency WHEN n.transaction_type='supplier' THEN s.currency ELSE NULL END AS transaction_currency,CASE WHEN n.transaction_type='umrah' THEN ut.transaction_to ELSE NULL END AS umrah_transaction_to FROM notifications n LEFT JOIN visa_applications va ON n.transaction_id=va.id AND n.transaction_type='visa' LEFT JOIN umrah_bookings ub ON n.transaction_id=ub.booking_id AND n.transaction_type='umrah' LEFT JOIN umrah_transactions ut ON n.transaction_id=ut.id AND n.transaction_type='umrah' LEFT JOIN supplier_transactions st ON n.transaction_id=st.id AND n.transaction_type='supplier' LEFT JOIN suppliers s ON st.supplier_id=s.id OR va.supplier=s.id WHERE n.status='read' AND DATE(n.created_at)=? AND n.tenant_id=? ORDER BY n.created_at DESC";
+                    $rs=$pdo->prepare($rq);$rs->execute([date('Y-m-d'),$tenant_id]);
+                    if($rs->rowCount()>0) displayModernNotifications($rs,'read');
+                    else echo '<div class="d-empty"><i class="fas fa-inbox"></i>'.__('no_read_notifications_for_selected_date').'</div>';
+                  } catch(PDOException $e){error_log($e->getMessage());}
+                  ?>
                 </div>
                 </div>
                 </div>
@@ -1017,58 +1017,61 @@ $selected_date = InputValidator::getDate($_GET['departure_date'] ?? '', 'Y-m-d',
 <?php
 // ─── displayModernNotifications() ────────────────────────────────────────────
 function displayModernNotifications($stmt, $status) {
-    $byDate=[];
-    while($row=$stmt->fetch(PDO::FETCH_ASSOC)){
-        $date=date('Y-m-d',strtotime($row['created_at']));
-        $byDate[$date][]=$row;
-    }
-    foreach($byDate as $date=>$rows){
-        $lbl=($date===date('Y-m-d'))?__('today'):(($date===date('Y-m-d',strtotime('-1 day')))?__('yesterday'):date('l, F j, Y',strtotime($date)));
-        echo '<div class="tl-date-group"><div class="tl-date-hdr">'.$lbl.'</div>';
-        foreach($rows as $row){
-            $id=htmlspecialchars($row['id']);
-            $msg=htmlspecialchars($row['message']);
-            $name=htmlspecialchars($row['related_name']??'');
-            $amt=$row['transaction_amount']??0;
-            $cur=htmlspecialchars($row['transaction_currency']??'');
-            $type=htmlspecialchars($row['transaction_type']??'');
-            $time=date('g:i A',strtotime($row['created_at']));
-            $sym=($cur==='USD')?'$':($cur==='AFS'?'؋':($cur==='EUR'?'€':''));
-            $dotClass='tld-default';$icon='fa-bell';$iconPrefix='fas';
-             switch($type){
-                 case 'visa':    $dotClass='tld-visa';    $icon='fa-passport';$iconPrefix='fas';break;
-                 case 'supplier':$dotClass='tld-supplier';$icon='fa-truck';$iconPrefix='fas';break;
-                 case 'umrah':   $dotClass='tld-umrah';   $icon='icon-map-pin';$iconPrefix='feather';break;
-                 case 'ticket':  $dotClass='tld-ticket';  $icon='fa-ticket-alt';$iconPrefix='fas';break;
-                 case 'refund':  $dotClass='tld-refund';  $icon='fa-undo-alt';$iconPrefix='fas';break;
-                 case 'expense':case 'expense_update':case 'expense_delete':$dotClass='tld-expense';$icon='fa-receipt';$iconPrefix='fas';break;
-                 case 'hotel':   $dotClass='tld-hotel';   $icon='fa-hotel';$iconPrefix='fas';break;
-                 case 'deposit_sarafi':case 'hawala_sarafi':case 'withdrawal_sarafi':$dotClass='tld-sarafi';$icon='fa-exchange-alt';$iconPrefix='fas';break;
+     $byDate=[];
+     while($row=$stmt->fetch(PDO::FETCH_ASSOC)){
+         $date=date('Y-m-d',strtotime($row['created_at']));
+         $byDate[$date][]=$row;
+     }
+     foreach($byDate as $date=>$rows){
+         $lbl=($date===date('Y-m-d'))?__('today'):(($date===date('Y-m-d',strtotime('-1 day')))?__('yesterday'):date('l, F j, Y',strtotime($date)));
+         echo '<div class="tl-date-group"><div class="tl-date-hdr">'.$lbl.'</div>';
+         foreach($rows as $row){
+             $id=htmlspecialchars($row['id']);
+             $msg=htmlspecialchars($row['message']);
+             $name=htmlspecialchars($row['related_name']??'');
+             $amt=$row['transaction_amount']??0;
+             $cur=htmlspecialchars($row['transaction_currency']??'');
+             $type=htmlspecialchars($row['transaction_type']??'');
+             $umrahTransactionTo=htmlspecialchars($row['umrah_transaction_to']??'');
+             $time=date('g:i A',strtotime($row['created_at']));
+             $sym=($cur==='USD')?'$':($cur==='AFS'?'؋':($cur==='EUR'?'€':''));
+             $dotClass='tld-default';$icon='fa-bell';$iconPrefix='fas';
+              switch($type){
+                  case 'visa':    $dotClass='tld-visa';    $icon='fa-passport';$iconPrefix='fas';break;
+                  case 'supplier':$dotClass='tld-supplier';$icon='fa-truck';$iconPrefix='fas';break;
+                  case 'umrah':   $dotClass='tld-umrah';   $icon='icon-map-pin';$iconPrefix='feather';break;
+                  case 'ticket':  $dotClass='tld-ticket';  $icon='fa-ticket-alt';$iconPrefix='fas';break;
+                  case 'refund':  $dotClass='tld-refund';  $icon='fa-undo-alt';$iconPrefix='fas';break;
+                  case 'expense':case 'expense_update':case 'expense_delete':$dotClass='tld-expense';$icon='fa-receipt';$iconPrefix='fas';break;
+                  case 'hotel':   $dotClass='tld-hotel';   $icon='fa-hotel';$iconPrefix='fas';break;
+                  case 'deposit_sarafi':case 'hawala_sarafi':case 'withdrawal_sarafi':$dotClass='tld-sarafi';$icon='fa-exchange-alt';$iconPrefix='fas';break;
+              }
+              // Check if notification contains "deleted" in the message
+              $isDeleted = stripos($msg, 'deleted') !== false;
+              // For umrah transactions with transaction_to='Bank', hide the "Received" button
+              $isBankTransaction = $type === 'umrah' && $umrahTransactionTo === 'Bank';
+              $readOnly=in_array($type,['deposit_sarafi','hawala_sarafi','withdrawal_sarafi','supplier_fund','client_fund','expense','expense_update','expense_delete','refund','ticket_refund']) || $isDeleted || $isBankTransaction;
+              echo '<div class="tl-item notification-'.htmlspecialchars($status).'" data-id="'.$id.'">';
+              echo '<div class="tl-dot '.$dotClass.($status==='unread'?' unread':'').'"><i class="'.$iconPrefix.' '.$icon.'"></i></div>';
+             echo '<div class="tl-body">';
+             echo '<div class="tl-top"><span class="tl-type">'.$type.'</span><span class="tl-time">'.$time.'</span></div>';
+             echo '<div class="tl-msg">'.$msg.'</div>';
+             if($name||$amt){
+                 echo '<div class="tl-meta">';
+                 if($name) echo '<span class="tl-chip"><i class="fas fa-user"></i>'.$name.'</span>';
+                 if($amt)  echo '<span class="tl-chip"><i class="fas fa-credit-card"></i>'.$sym.number_format((float)$amt,2).'</span>';
+                 echo '</div>';
              }
-             // Check if notification contains "deleted" in the message
-             $isDeleted = stripos($msg, 'deleted') !== false;
-             $readOnly=in_array($type,['deposit_sarafi','hawala_sarafi','withdrawal_sarafi','supplier_fund','client_fund','expense','expense_update','expense_delete','refund','ticket_refund']) || $isDeleted;
-             echo '<div class="tl-item notification-'.htmlspecialchars($status).'" data-id="'.$id.'">';
-             echo '<div class="tl-dot '.$dotClass.($status==='unread'?' unread':'').'"><i class="'.$iconPrefix.' '.$icon.'"></i></div>';
-            echo '<div class="tl-body">';
-            echo '<div class="tl-top"><span class="tl-type">'.$type.'</span><span class="tl-time">'.$time.'</span></div>';
-            echo '<div class="tl-msg">'.$msg.'</div>';
-            if($name||$amt){
-                echo '<div class="tl-meta">';
-                if($name) echo '<span class="tl-chip"><i class="fas fa-user"></i>'.$name.'</span>';
-                if($amt)  echo '<span class="tl-chip"><i class="fas fa-credit-card"></i>'.$sym.number_format((float)$amt,2).'</span>';
-                echo '</div>';
-            }
-            if($status==='unread'){
-                echo '<div class="tl-actions">';
-                if(!$readOnly) echo '<button class="tl-btn tl-btn-receive approve-button" data-id="'.$id.'" data-amount="'.$amt.'" data-currency="'.$cur.'" data-type="'.$type.'"><i class="fas fa-check"></i>'.htmlspecialchars(__('received')).'</button>';
-                echo '<button class="tl-btn tl-btn-read read-button" data-id="'.$id.'"><i class="fas fa-eye"></i>'.htmlspecialchars(__('mark_as_read')).'</button>';
-                echo '</div>';
-            }
-            echo '</div></div>';
-        }
-        echo '</div>';
-    }
+             if($status==='unread'){
+                 echo '<div class="tl-actions">';
+                 if(!$readOnly) echo '<button class="tl-btn tl-btn-receive approve-button" data-id="'.$id.'" data-amount="'.$amt.'" data-currency="'.$cur.'" data-type="'.$type.'"><i class="fas fa-check"></i>'.htmlspecialchars(__('received')).'</button>';
+                 echo '<button class="tl-btn tl-btn-read read-button" data-id="'.$id.'"><i class="fas fa-eye"></i>'.htmlspecialchars(__('mark_as_read')).'</button>';
+                 echo '</div>';
+             }
+             echo '</div></div>';
+         }
+         echo '</div>';
+     }
 }
 ?>
 
