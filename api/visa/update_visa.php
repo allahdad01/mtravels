@@ -150,7 +150,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                      if ($oldSupplierTransactionExists) {
                          // Get transaction details before deleting
-                         $getOldSupplierTransactionQuery = "SELECT id, created_at, balance, amount FROM supplier_transactions WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'visa_sale' AND tenant_id = ? AND branch_id = ? LIMIT 1";
+                         $getOldSupplierTransactionQuery = "SELECT id, transaction_date, balance, amount FROM supplier_transactions WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'visa_sale' AND tenant_id = ? AND branch_id = ? LIMIT 1";
                          $stmtGetOldSupplierTransaction = $pdo->prepare($getOldSupplierTransactionQuery);
                          $stmtGetOldSupplierTransaction->bindParam(1, $originalSupplier, PDO::PARAM_INT);
                          $stmtGetOldSupplierTransaction->bindParam(2, $id, PDO::PARAM_INT);
@@ -166,7 +166,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                        SET balance = balance + ?
                                                        WHERE supplier_id = ?
                                                        AND id > ?
-                                                       AND currency = ?
                                                        AND id != ? AND tenant_id = ? AND branch_id = ?";
                              $stmtUpdateSubsequent = $pdo->prepare($updateSubsequentQuery);
                              $transactionAmount = abs($oldSupplierTransactionData['amount']); // Make sure it's positive
@@ -218,31 +217,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                          $stmtUpdateSupplier->execute();
 
                          // Create new transaction record for new supplier
-                         $insertSupplierTransactionQuery = "INSERT INTO supplier_transactions (supplier_id, reference_id, type, amount, currency, balance, description, transaction_of, tenant_id, branch_id) VALUES (?, ?, 'debit', ?, ?, ?, ?, 'visa_sale', ?, ?)";
+                         $insertSupplierTransactionQuery = "INSERT INTO supplier_transactions (supplier_id, reference_id, type, amount, balance, remarks, transaction_of, tenant_id, branch_id) VALUES (?, ?, 'debit', ?, ?, ?, ?, 'visa_sale', ?, ?)";
                          $stmtInsertSupplierTransaction = $pdo->prepare($insertSupplierTransactionQuery);
                          $description = "Sale for visa: $applicant_name (Passport: $passport_number)";
                          $newBalance = $supplierData['balance'] - $base;
                          $stmtInsertSupplierTransaction->bindParam(1, $supplier, PDO::PARAM_INT);
                          $stmtInsertSupplierTransaction->bindParam(2, $id, PDO::PARAM_INT);
                          $stmtInsertSupplierTransaction->bindParam(3, $base, PDO::PARAM_STR);
-                         $stmtInsertSupplierTransaction->bindParam(4, $currency, PDO::PARAM_STR);
-                         $stmtInsertSupplierTransaction->bindParam(5, $newBalance, PDO::PARAM_STR);
-                         $stmtInsertSupplierTransaction->bindParam(6, $description, PDO::PARAM_STR);
-                         $stmtInsertSupplierTransaction->bindParam(7, $tenant_id, PDO::PARAM_INT);
-                         $stmtInsertSupplierTransaction->bindParam(8, $branch_id, PDO::PARAM_INT);
+                         $stmtInsertSupplierTransaction->bindParam(4, $newBalance, PDO::PARAM_STR);
+                         $stmtInsertSupplierTransaction->bindParam(5, $description, PDO::PARAM_STR);
+                         $stmtInsertSupplierTransaction->bindParam(6, $tenant_id, PDO::PARAM_INT);
+                         $stmtInsertSupplierTransaction->bindParam(7, $branch_id, PDO::PARAM_INT);
                          $stmtInsertSupplierTransaction->execute();
                      }
                      // Same supplier but base amount changed
                      else if ($baseDifference != 0) {
                          // Update supplier balance based on base difference
-                         if ($baseDifference > 0) {
+                         // Note: $baseDifference = original_base - new_base
+                         // If negative: base increased, deduct more from supplier
+                         // If positive: base decreased, add back to supplier
+                         if ($baseDifference < 0) {
                              // Base amount increased, deduct more from supplier
                              $updateSupplierQuery = "UPDATE suppliers SET balance = balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                             $balanceChange = $baseDifference;
+                             $balanceChange = abs($baseDifference);
                          } else {
                              // Base amount decreased, add back to supplier
                              $updateSupplierQuery = "UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                             $balanceChange = abs($baseDifference);
+                             $balanceChange = $baseDifference;
                          }
 
                          $stmtUpdateSupplier = $pdo->prepare($updateSupplierQuery);
@@ -253,7 +254,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                          $stmtUpdateSupplier->execute();
 
                          // Check if transaction record exists for this supplier
-                         $checkSupplierTransactionQuery = "SELECT id, created_at, balance, amount FROM supplier_transactions WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'visa_sale' AND tenant_id = ? AND branch_id = ? LIMIT 1";
+                         $checkSupplierTransactionQuery = "SELECT id, transaction_date, balance, amount FROM supplier_transactions WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'visa_sale' AND tenant_id = ? AND branch_id = ? LIMIT 1";
                          $stmtCheckSupplierTransaction = $pdo->prepare($checkSupplierTransactionQuery);
                          $stmtCheckSupplierTransaction->bindParam(1, $supplier, PDO::PARAM_INT);
                          $stmtCheckSupplierTransaction->bindParam(2, $id, PDO::PARAM_INT);
@@ -265,7 +266,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                          if ($transactionRow) {
                              $transactionId = $transactionRow['id'];
-                             $transactionDate = $transactionRow['created_at'];
+                             $transactionDate = $transactionRow['transaction_date'];
                              $currentTransactionBalance = $transactionRow['balance'];
                              $currentTransactionAmount = abs($transactionRow['amount']); // Ensure positive value
 
@@ -288,7 +289,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                              $stmtUpdateSupplierAmount->execute();
 
                              // Update existing transaction record with adjusted balance
-                             $updateSupplierTransactionQuery = "UPDATE supplier_transactions SET balance = ?, description = CONCAT('Updated: ', description) WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+                             $updateSupplierTransactionQuery = "UPDATE supplier_transactions SET balance = ?, remarks = CONCAT('Updated: ', remarks) WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                              $stmtUpdateSupplierTransaction = $pdo->prepare($updateSupplierTransactionQuery);
                              $stmtUpdateSupplierTransaction->bindParam(1, $newTransactionBalance, PDO::PARAM_STR);
                              $stmtUpdateSupplierTransaction->bindParam(2, $transactionId, PDO::PARAM_INT);
@@ -305,7 +306,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                            SET balance = balance - ?
                                                            WHERE supplier_id = ?
                                                            AND id > ?
-                                                           AND currency = ?
                                                            AND id != ? AND tenant_id = ? AND branch_id = ?";
                              } else {
                                  // Amount decreased, increase subsequent balances
@@ -313,7 +313,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                            SET balance = balance + ?
                                                            WHERE supplier_id = ?
                                                            AND id > ?
-                                                           AND currency = ?
                                                            AND id != ? AND tenant_id = ? AND branch_id = ?";
                              }
 
@@ -322,10 +321,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                              $stmtUpdateSubsequent->bindParam(1, $absAmountDifference, PDO::PARAM_STR);
                              $stmtUpdateSubsequent->bindParam(2, $supplier, PDO::PARAM_INT);
                              $stmtUpdateSubsequent->bindParam(3, $transactionId, PDO::PARAM_INT);
-                             $stmtUpdateSubsequent->bindParam(4, $originalCurrency, PDO::PARAM_STR);
-                             $stmtUpdateSubsequent->bindParam(5, $transactionId, PDO::PARAM_INT);
-                             $stmtUpdateSubsequent->bindParam(6, $tenant_id, PDO::PARAM_INT);
-                             $stmtUpdateSubsequent->bindParam(7, $branch_id, PDO::PARAM_INT);
+                             $stmtUpdateSubsequent->bindParam(4, $transactionId, PDO::PARAM_INT);
+                             $stmtUpdateSubsequent->bindParam(5, $tenant_id, PDO::PARAM_INT);
+                             $stmtUpdateSubsequent->bindParam(6, $branch_id, PDO::PARAM_INT);
                              $stmtUpdateSubsequent->execute();
                          }
                      }
