@@ -405,6 +405,12 @@ const transactionManager = {
             return false;
         }
 
+        // CSRF Token Refresh: Get fresh token from meta tag before submission
+        const metaCsrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        if (metaCsrfToken) {
+            formData.set('csrf_token', metaCsrfToken);
+        }
+
         // Combine date and time
         const date = formData.get('payment_date');
         const time = formData.get('payment_time') || '00:00:00';
@@ -514,6 +520,12 @@ const transactionManager = {
         if (!formData.get('transaction_id') || !formData.get('booking_id')) {
             showToast('Error: Missing required information', 'error');
             return;
+        }
+
+        // CSRF Token Refresh: Get fresh token from meta tag before submission
+        const metaCsrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        if (metaCsrfToken) {
+            formData.set('csrf_token', metaCsrfToken);
         }
 
         // Combine date and time

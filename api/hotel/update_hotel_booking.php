@@ -124,79 +124,87 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 $oldSupplierIsExternal = (strtolower(trim($oldSupplierType)) === 'external');
                 
-                // If supplier changed and old supplier was external
-                if ($_POST['supplier_id'] != $originalSupplier && $oldSupplierIsExternal) {
-                    // Get all transactions for the old supplier related to this ticket
-                    $getOldSupplierTransactionsQuery = "SELECT * FROM supplier_transactions
-                                                        WHERE supplier_id = ?
-                                                        AND reference_id = ?
-                                                        AND transaction_of = 'hotel'
-                                                        AND tenant_id = ?
-                                                        AND branch_id = ?
-                                                        ORDER BY transaction_date ASC";
-                    $stmtGetOldSupplierTransactions = $pdo->prepare($getOldSupplierTransactionsQuery);
-                    $stmtGetOldSupplierTransactions->execute([$originalSupplier, $booking_id, $tenant_id, $branch_id]);
-                    $oldSupplierTransactions = $stmtGetOldSupplierTransactions->fetchAll(PDO::FETCH_ASSOC);
-
-                    // Calculate total amount from old supplier transactions
-                    $totalAmount = 0;
-                    foreach ($oldSupplierTransactions as $transaction) {
-                        $totalAmount += $transaction['amount'];
-                    }
-
-                    // Get the transaction we're transferring to get its date
-                    $getTransferTransactionQuery = "SELECT transaction_date FROM supplier_transactions
-                                                   WHERE supplier_id = ?
-                                                   AND reference_id = ?
-                                                   AND transaction_of = 'hotel'
-                                                   AND tenant_id = ?
-                                                   AND branch_id = ?
-                                                   LIMIT 1";
-                    $stmtGetTransferTransaction = $pdo->prepare($getTransferTransactionQuery);
-                    $stmtGetTransferTransaction->execute([$originalSupplier, $booking_id, $tenant_id, $branch_id]);
-                    $transferData = $stmtGetTransferTransaction->fetch(PDO::FETCH_ASSOC);
-                    $transferDate = $transferData['transaction_date'] ?? null;
-
-                    // Update old supplier balance - ADDING back the amount since we're removing the ticket
-                     // Example: If balance was -5000 and removing amount 200, new balance becomes -4800 (supplier owes less)
-                     $updateOldSupplierQuery = "UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                     $stmtUpdateOldSupplier = $pdo->prepare($updateOldSupplierQuery);
-                     $stmtUpdateOldSupplier->execute([$totalAmount, $originalSupplier, $tenant_id, $branch_id]);
-
-                     // Update subsequent transactions for old supplier - ADDING back the amount
-                     // But only for transactions that occurred after this specific transaction
-                     $updateOldSupplierSubsequentQuery = "UPDATE supplier_transactions
-                                                          SET balance = balance + ?
-                                                          WHERE supplier_id = ?
-                                                          AND branch_id = ?
-                                                          AND id > (
-                                                              SELECT id
-                                                              FROM supplier_transactions
-                                                              WHERE supplier_id = ?
-                                                              AND reference_id = ?
-                                                              AND transaction_of = 'hotel'
-                                                              AND tenant_id = ?
-                                                              AND branch_id = ?
-                                                              LIMIT 1
-                                                          )
-                                                          ORDER BY transaction_date ASC, id ASC";
-                     $stmtUpdateOldSupplierSubsequent = $pdo->prepare($updateOldSupplierSubsequentQuery);
-                     $stmtUpdateOldSupplierSubsequent->execute([$totalAmount, $originalSupplier, $branch_id, $originalSupplier, $booking_id, $tenant_id, $branch_id]);
-
+                // If supplier changed
+                 if ($_POST['supplier_id'] != $originalSupplier) {
                      // Check if new supplier is external
                      $supplierQuery = "SELECT * FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                      $stmtSupplier = $pdo->prepare($supplierQuery);
                      $stmtSupplier->execute([$_POST['supplier_id'], $tenant_id, $branch_id]);
                      $supplierData = $stmtSupplier->fetch(PDO::FETCH_ASSOC);
+                     
+                     $supplierType = isset($supplierData['supplier_type']) ? $supplierData['supplier_type'] : '';
+                     if (!$supplierType) {
+                         $supplierType = isset($supplierData['type']) ? $supplierData['type'] : '';
+                     }
+                     $newSupplierIsExternal = (strtolower(trim($supplierType)) === 'external');
+                     
+                     // If old supplier was EXTERNAL
+                     if ($oldSupplierIsExternal) {
+                         // Get all transactions for the old supplier related to this ticket
+                         $getOldSupplierTransactionsQuery = "SELECT * FROM supplier_transactions
+                                                             WHERE supplier_id = ?
+                                                             AND reference_id = ?
+                                                             AND transaction_of = 'hotel'
+                                                             AND tenant_id = ?
+                                                             AND branch_id = ?
+                                                             ORDER BY transaction_date ASC";
+                         $stmtGetOldSupplierTransactions = $pdo->prepare($getOldSupplierTransactionsQuery);
+                         $stmtGetOldSupplierTransactions->execute([$originalSupplier, $booking_id, $tenant_id, $branch_id]);
+                         $oldSupplierTransactions = $stmtGetOldSupplierTransactions->fetchAll(PDO::FETCH_ASSOC);
 
-                    $supplierType = isset($supplierData['supplier_type']) ? $supplierData['supplier_type'] : '';
-                    if (!$supplierType) {
-                        $supplierType = isset($supplierData['type']) ? $supplierData['type'] : '';
-                    }
-                    $isExternal = (strtolower(trim($supplierType)) === 'external');
+                         // Calculate total amount from old supplier transactions
+                         $totalAmount = 0;
+                         foreach ($oldSupplierTransactions as $transaction) {
+                             $totalAmount += $transaction['amount'];
+                         }
 
-                    // Only update balances if new supplier is external
-                     if ($isExternal) {
+                         // Update old supplier balance - ADDING back the amount since we're removing the ticket
+                         $updateOldSupplierQuery = "UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+                         $stmtUpdateOldSupplier = $pdo->prepare($updateOldSupplierQuery);
+                         $stmtUpdateOldSupplier->execute([$totalAmount, $originalSupplier, $tenant_id, $branch_id]);
+
+                         // Update subsequent transactions for old supplier - ADDING back the amount
+                         $updateOldSupplierSubsequentQuery = "UPDATE supplier_transactions
+                                                              SET balance = balance + ?
+                                                              WHERE supplier_id = ?
+                                                              AND branch_id = ?
+                                                              AND id > (
+                                                                  SELECT id
+                                                                  FROM supplier_transactions
+                                                                  WHERE supplier_id = ?
+                                                                  AND reference_id = ?
+                                                                  AND transaction_of = 'hotel'
+                                                                  AND tenant_id = ?
+                                                                  AND branch_id = ?
+                                                                  LIMIT 1
+                                                              )
+                                                              ORDER BY transaction_date ASC, id ASC";
+                         $stmtUpdateOldSupplierSubsequent = $pdo->prepare($updateOldSupplierSubsequentQuery);
+                         $stmtUpdateOldSupplierSubsequent->execute([$totalAmount, $originalSupplier, $branch_id, $originalSupplier, $booking_id, $tenant_id, $branch_id]);
+                         
+                         // Delete old supplier transactions
+                         $deleteOldTransactionsQuery = "DELETE FROM supplier_transactions
+                                                        WHERE supplier_id = ?
+                                                        AND reference_id = ?
+                                                        AND transaction_of = 'hotel'
+                                                        AND tenant_id = ?
+                                                        AND branch_id = ?";
+                         $stmtDeleteOldTransactions = $pdo->prepare($deleteOldTransactionsQuery);
+                         $stmtDeleteOldTransactions->execute([$originalSupplier, $booking_id, $tenant_id, $branch_id]);
+                     } else {
+                         // Old supplier was NON-EXTERNAL: just delete the transaction
+                         $deleteOldTransactionsQuery = "DELETE FROM supplier_transactions
+                                                        WHERE supplier_id = ?
+                                                        AND reference_id = ?
+                                                        AND transaction_of = 'hotel'
+                                                        AND tenant_id = ?
+                                                        AND branch_id = ?";
+                         $stmtDeleteOldTransactions = $pdo->prepare($deleteOldTransactionsQuery);
+                         $stmtDeleteOldTransactions->execute([$originalSupplier, $booking_id, $tenant_id, $branch_id]);
+                     }
+                     
+                     // If new supplier is EXTERNAL
+                     if ($newSupplierIsExternal) {
                          // Get current balance of new supplier
                          $getCurrentSupplierBalanceQuery = "SELECT balance FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                          $stmtGetCurrentSupplierBalance = $pdo->prepare($getCurrentSupplierBalanceQuery);
@@ -205,133 +213,101 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                          $currentSupplierBalance = $balanceData['balance'] ?? 0;
 
                          // Update new supplier balance - SUBTRACTING the amount since we're adding a ticket
-                         // Example: If balance was -4800 and adding amount 200, new balance becomes -5000 (supplier owes more)
                          $newBalance = $currentSupplierBalance - $base_amount;
                          $updateSupplierQuery = "UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                          $stmtUpdateSupplier = $pdo->prepare($updateSupplierQuery);
                          $stmtUpdateSupplier->execute([$newBalance, $_POST['supplier_id'], $tenant_id, $branch_id]);
 
-                         // Delete old supplier transactions and create new ones for the new supplier
-                         $deleteOldTransactionsQuery = "DELETE FROM supplier_transactions
+                         // Create new transaction record for the new external supplier
+                         $insertSupplierTransactionQuery = "INSERT INTO supplier_transactions (supplier_id, reference_id, transaction_type, amount, balance, remarks, transaction_of, transaction_date, tenant_id, branch_id)
+                                                            VALUES (?, ?, 'debit', ?, ?, ?, 'hotel', NOW(), ?, ?)";
+                         $stmtInsertSupplierTransaction = $pdo->prepare($insertSupplierTransactionQuery);
+                         $description = "Purchase for hotel booking: {$_POST['first_name']} {$_POST['last_name']} (Check-in: {$_POST['check_in_date']}) (Transferred from supplier {$originalSupplier})";
+                         $stmtInsertSupplierTransaction->execute([$_POST['supplier_id'], $booking_id, $base_amount, $newBalance, $description, $tenant_id, $branch_id]);
+                     } else {
+                         // New supplier is NON-EXTERNAL: just insert the transaction
+                         $insertSupplierTransactionQuery = "INSERT INTO supplier_transactions (supplier_id, reference_id, transaction_type, amount, balance, remarks, transaction_of, transaction_date, tenant_id, branch_id)
+                                                            VALUES (?, ?, 'debit', ?, ?, ?, 'hotel', NOW(), ?, ?)";
+                         $stmtInsertSupplierTransaction = $pdo->prepare($insertSupplierTransactionQuery);
+                         $description = "Purchase for hotel booking: {$_POST['first_name']} {$_POST['last_name']} (Check-in: {$_POST['check_in_date']})";
+                         $stmtInsertSupplierTransaction->execute([$_POST['supplier_id'], $booking_id, $base_amount, 0, $description, $tenant_id, $branch_id]);
+                     }
+                 }
+                // Handle case where supplier remains the same but price changes
+                else if ($_POST['supplier_id'] == $originalSupplier && $priceDifference != 0 && $oldSupplierIsExternal) {
+                    // Get current supplier balance
+                     $getCurrentSupplierBalanceQuery = "SELECT balance FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+                     $stmtGetCurrentSupplierBalance = $pdo->prepare($getCurrentSupplierBalanceQuery);
+                     $stmtGetCurrentSupplierBalance->execute([$_POST['supplier_id'], $tenant_id, $branch_id]);
+                     $balData = $stmtGetCurrentSupplierBalance->fetch(PDO::FETCH_ASSOC);
+                     $currentSupplierBalance = $balData['balance'] ?? 0;
+
+                     // Update supplier balance based on price difference
+                     // If priceDifference is positive: base decreased, add to balance (supplier gets money back)
+                     // If priceDifference is negative: base increased, subtract from balance (supplier pays more)
+                     $newBalance = $currentSupplierBalance + $priceDifference;
+                     $updateSupplierQuery = "UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+                     $stmtUpdateSupplier = $pdo->prepare($updateSupplierQuery);
+                     $stmtUpdateSupplier->execute([$newBalance, $_POST['supplier_id'], $tenant_id, $branch_id]);
+
+                     // Check if transaction record exists for this supplier
+                     $checkSupplierTransactionQuery = "SELECT id, transaction_date, balance, amount FROM supplier_transactions
                                                        WHERE supplier_id = ?
                                                        AND reference_id = ?
                                                        AND transaction_of = 'hotel'
                                                        AND tenant_id = ?
-                                                       AND branch_id = ?";
-                         $stmtDeleteOldTransactions = $pdo->prepare($deleteOldTransactionsQuery);
-                         $stmtDeleteOldTransactions->execute([$originalSupplier, $booking_id, $tenant_id, $branch_id]);
+                                                       AND branch_id = ?
+                                                       LIMIT 1";
+                     $stmtCheckSupplierTransaction = $pdo->prepare($checkSupplierTransactionQuery);
+                     $stmtCheckSupplierTransaction->execute([$_POST['supplier_id'], $booking_id, $tenant_id, $branch_id]);
+                     $supplierTransactionResult = $stmtCheckSupplierTransaction->fetchAll(PDO::FETCH_ASSOC);
 
-                         // Create new transaction record for the new supplier
+                     if (!empty($supplierTransactionResult)) {
+                         $transactionRow = $supplierTransactionResult[0];
+                         $transactionId = $transactionRow['id'];
+                         $transactionDate = $transactionRow['transaction_date'];
+                         $currentTransactionAmount = $transactionRow['amount'];
+
+                         // Get the current transaction's date and balance
+                         $getCurrentTransactionQuery = "SELECT transaction_date, balance FROM supplier_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ? LIMIT 1";
+                         $stmtGetCurrentTransaction = $pdo->prepare($getCurrentTransactionQuery);
+                         $stmtGetCurrentTransaction->execute([$transactionId, $tenant_id, $branch_id]);
+                         $currentTransactionData = $stmtGetCurrentTransaction->fetch(PDO::FETCH_ASSOC);
+                         $currentTransactionDate = $currentTransactionData['transaction_date'];
+                         $currentTransactionBalance = $currentTransactionData['balance'];
+
+                         // Calculate the new transaction balance by applying the price difference
+                         $newTransactionBalance = $currentTransactionBalance + $priceDifference;
+
+                         // Update existing transaction record with new amount and balance
+                         $updateSupplierTransactionQuery = "UPDATE supplier_transactions
+                                                           SET amount = ?,
+                                                               balance = ?,
+                                                               remarks = CONCAT('Updated: ', remarks)
+                                                           WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+                         $stmtUpdateSupplierTransaction = $pdo->prepare($updateSupplierTransactionQuery);
+                         $stmtUpdateSupplierTransaction->execute([$base_amount, $newTransactionBalance, $transactionId, $tenant_id, $branch_id]);
+
+                         // Update all subsequent transactions' balances
+                         $updateSubsequentQuery = "UPDATE supplier_transactions
+                                                   SET balance = balance + ?
+                                                   WHERE supplier_id = ?
+                                                   AND branch_id = ?
+                                                   AND id > ?
+                                                   AND tenant_id = ?
+                                                   ORDER BY transaction_date ASC";
+
+                         $stmtUpdateSubsequent = $pdo->prepare($updateSubsequentQuery);
+                         $stmtUpdateSubsequent->execute([$priceDifference, $_POST['supplier_id'], $branch_id, $transactionId, $tenant_id]);
+                     } else {
+                         // For a new transaction record, the balance should equal the current supplier balance
+                         // Create new transaction record
                          $insertSupplierTransactionQuery = "INSERT INTO supplier_transactions (supplier_id, reference_id, transaction_type, amount, balance, remarks, transaction_of, transaction_date, tenant_id, branch_id)
                                                            VALUES (?, ?, 'debit', ?, ?, ?, 'hotel', NOW(), ?, ?)";
                          $stmtInsertSupplierTransaction = $pdo->prepare($insertSupplierTransactionQuery);
-                         $description = "Purchase for hotel booking: {$_POST['first_name']} {$_POST['last_name']} (Check-in: {$_POST['check_in_date']}) (Transferred from supplier {$originalSupplier})";
+                         $description = "Purchase for hotel booking: {$_POST['first_name']} {$_POST['last_name']} (Check-in: {$_POST['check_in_date']})";
                          $stmtInsertSupplierTransaction->execute([$_POST['supplier_id'], $booking_id, $base_amount, $newBalance, $description, $tenant_id, $branch_id]);
-                        $stmtInsertSupplierTransaction->close();
-                        }
-   
-                        // Delete old supplier transactions regardless of type
-                        $deleteOldTransactionsQuery = "DELETE FROM supplier_transactions
-                                                      WHERE supplier_id = ?
-                                                      AND reference_id = ?
-                                                      AND transaction_of = 'hotel'
-                                                      AND tenant_id = ?
-                                                      AND branch_id = ?";
-                        $stmtDeleteOldTransactions = $conn->prepare($deleteOldTransactionsQuery);
-                        $stmtDeleteOldTransactions->bind_param('iiii', $originalSupplier, $booking_id, $tenant_id, $branch_id);
-                        $stmtDeleteOldTransactions->execute();
-                        $stmtDeleteOldTransactions->close();
-                    }
-                // Handle case where supplier remains the same but price changes
-                else if ($_POST['supplier_id'] == $originalSupplier && $priceDifference != 0 && $oldSupplierIsExternal) {
-                    // Get current supplier balance
-                    $getCurrentSupplierBalanceQuery = "SELECT balance FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                    $stmtGetCurrentSupplierBalance = $conn->prepare($getCurrentSupplierBalanceQuery);
-                    $stmtGetCurrentSupplierBalance->bind_param('iii', $_POST['supplier_id'], $tenant_id, $branch_id);
-                    $stmtGetCurrentSupplierBalance->execute();
-                    $stmtGetCurrentSupplierBalance->bind_result($currentSupplierBalance);
-                    $stmtGetCurrentSupplierBalance->fetch();
-                    $stmtGetCurrentSupplierBalance->close();
-
-                    // Update supplier balance based on price difference
-                    // If priceDifference is positive: base decreased, add to balance (supplier gets money back)
-                    // If priceDifference is negative: base increased, subtract from balance (supplier pays more)
-                    $newBalance = $currentSupplierBalance + $priceDifference;
-                    $updateSupplierQuery = "UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                    $stmtUpdateSupplier = $conn->prepare($updateSupplierQuery);
-                    $stmtUpdateSupplier->bind_param('diii', $newBalance, $_POST['supplier_id'], $tenant_id, $branch_id);
-                    $stmtUpdateSupplier->execute();
-                    $stmtUpdateSupplier->close();
-
-                    // Check if transaction record exists for this supplier
-                    $checkSupplierTransactionQuery = "SELECT id, transaction_date, balance, amount FROM supplier_transactions
-                                                      WHERE supplier_id = ?
-                                                      AND reference_id = ?
-                                                      AND transaction_of = 'hotel'
-                                                      AND tenant_id = ?
-                                                      AND branch_id = ?
-                                                      LIMIT 1";
-                    $stmtCheckSupplierTransaction = $conn->prepare($checkSupplierTransactionQuery);
-                    $stmtCheckSupplierTransaction->bind_param('iiii', $_POST['supplier_id'], $booking_id, $tenant_id, $branch_id);
-                    $stmtCheckSupplierTransaction->execute();
-                    $supplierTransactionResult = $stmtCheckSupplierTransaction->get_result();
-
-                    if ($supplierTransactionResult->num_rows > 0) {
-                        $transactionRow = $supplierTransactionResult->fetch_assoc();
-                        $transactionId = $transactionRow['id'];
-                        $transactionDate = $transactionRow['transaction_date'];
-                        $currentTransactionAmount = $transactionRow['amount'];
-
-                        // Get the current transaction's date and balance
-                        $getCurrentTransactionQuery = "SELECT transaction_date, balance FROM supplier_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ? LIMIT 1";
-                        $stmtGetCurrentTransaction = $conn->prepare($getCurrentTransactionQuery);
-                        $stmtGetCurrentTransaction->bind_param('iii', $transactionId, $tenant_id, $branch_id);
-                        $stmtGetCurrentTransaction->execute();
-                        $currentTransactionResult = $stmtGetCurrentTransaction->get_result();
-                        $currentTransactionData = $currentTransactionResult->fetch_assoc();
-                        $currentTransactionDate = $currentTransactionData['transaction_date'];
-                        $currentTransactionBalance = $currentTransactionData['balance'];
-                        $stmtGetCurrentTransaction->close();
-
-                        // Calculate the new transaction balance by applying the price difference
-                        $newTransactionBalance = $currentTransactionBalance + $priceDifference;
-
-                        // Update existing transaction record with new amount and balance
-                        $updateSupplierTransactionQuery = "UPDATE supplier_transactions
-                                                          SET amount = ?,
-                                                              balance = ?,
-                                                              remarks = CONCAT('Updated: ', remarks)
-                                                          WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                        $stmtUpdateSupplierTransaction = $conn->prepare($updateSupplierTransactionQuery);
-                        $stmtUpdateSupplierTransaction->bind_param('ddiii', $base_amount, $newTransactionBalance, $transactionId, $tenant_id, $branch_id);
-                        $stmtUpdateSupplierTransaction->execute();
-                        $stmtUpdateSupplierTransaction->close();
-
-                        // Update all subsequent transactions' balances
-                        $updateSubsequentQuery = "UPDATE supplier_transactions
-                                                  SET balance = balance + ?
-                                                  WHERE supplier_id = ?
-                                                  AND branch_id = ?
-                                                  AND id > ?
-                                                  AND tenant_id = ?
-                                                  ORDER BY transaction_date ASC";
-
-                        $stmtUpdateSubsequent = $conn->prepare($updateSubsequentQuery);
-                        $stmtUpdateSubsequent->bind_param('diiii', $priceDifference, $_POST['supplier_id'], $branch_id, $transactionId, $tenant_id);
-                        $stmtUpdateSubsequent->execute();
-                        $stmtUpdateSubsequent->close();
-                    } else {
-                        // For a new transaction record, the balance should equal the current supplier balance
-                        // Create new transaction record
-                        $insertSupplierTransactionQuery = "INSERT INTO supplier_transactions (supplier_id, reference_id, transaction_type, amount, balance, remarks, transaction_of, transaction_date, tenant_id, branch_id)
-                                                          VALUES (?, ?, 'debit', ?, ?, ?, 'hotel', NOW(), ?, ?)";
-                        $stmtInsertSupplierTransaction = $conn->prepare($insertSupplierTransactionQuery);
-                        $description = "Purchase for hotel booking: {$_POST['first_name']} {$_POST['last_name']} (Check-in: {$_POST['check_in_date']})";
-                        $stmtInsertSupplierTransaction->bind_param('iiddssii', $_POST['supplier_id'], $booking_id, $base_amount, $newBalance, $description, $tenant_id, $branch_id);
-                        $stmtInsertSupplierTransaction->execute();
-                        $stmtInsertSupplierTransaction->close();
-                    }
-                    $stmtCheckSupplierTransaction->close();
+                     }
                 }
             }
         }
@@ -459,10 +435,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                                AND currency = 'AFS'
                                                               AND tenant_id = ?
                                                               ORDER BY created_at ASC, id ASC";
-                        $stmtUpdateOldClientAfsSubsequent = $conn->prepare($updateOldClientAfsSubsequentQuery);
-                        $stmtUpdateOldClientAfsSubsequent->bind_param('diiiiii', $totalAfsAmount, $originalClient, $branch_id, $originalClient, $booking_id, $branch_id, $tenant_id);
-                        $stmtUpdateOldClientAfsSubsequent->execute();
-                        $stmtUpdateOldClientAfsSubsequent->close();
+                        $stmtUpdateOldClientAfsSubsequent = $pdo->prepare($updateOldClientAfsSubsequentQuery);
+                        $stmtUpdateOldClientAfsSubsequent->execute([$totalAfsAmount, $originalClient, $branch_id, $originalClient, $booking_id, $branch_id, $tenant_id]);
                     }
 
                     }

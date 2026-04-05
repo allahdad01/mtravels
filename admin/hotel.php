@@ -40,6 +40,8 @@ $paginationPattern = empty($search)
 ?>
 
 <?php include '../includes/header.php'; ?>
+<!-- CSRF Token Meta Tag for dynamic form updates -->
+<meta name="csrf-token" content="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
 
 <link rel="stylesheet" href="../css/general/modal-styles.css">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
@@ -228,7 +230,7 @@ $paginationPattern = empty($search)
 /* ── Column Headers ──────────────────────────────────────── */
 .hb-list-header {
     display: grid;
-    grid-template-columns: 6px 52px 1fr 190px 210px 150px 155px 140px;
+    grid-template-columns: 6px 52px 1fr 160px 180px 120px 140px 200px;
     align-items: center;
     padding: 0 0 8px;
 }
@@ -256,13 +258,13 @@ $paginationPattern = empty($search)
 /* ── Booking Row ─────────────────────────────────────────── */
 .hb-row {
     display: grid;
-    grid-template-columns: 6px 52px 1fr 190px 210px 150px 155px 140px;
+    grid-template-columns: 6px 52px 1fr 160px 180px 120px 140px 200px;
     align-items: center;
     background: var(--hb-surface);
     border-radius: var(--hb-radius);
     border: 1px solid var(--hb-border);
     box-shadow: var(--hb-shadow);
-    overflow: visible;
+    overflow: visible !important;
     transition: box-shadow .25s, transform .25s;
     animation: hbFadeUp .35s ease both;
     min-height: 88px;
@@ -510,14 +512,15 @@ $paginationPattern = empty($search)
 
 /* ── Actions Cell ────────────────────────────────────────── */
 .hb-actions-cell {
-    padding: 14px 14px 14px 12px;
+    padding: 14px 12px;
     display: flex;
     align-items: center;
-    justify-content: flex-end;
-    gap: 6px;
+    justify-content: center;
+    gap: 8px;
     border-left: 1px solid var(--hb-border);
     flex-wrap: wrap;
     min-width: 0;
+    overflow: visible;
 }
 .hb-btn-icon {
     width: 34px;
@@ -542,7 +545,10 @@ $paginationPattern = empty($search)
 .hb-btn-icon.hb-edit:hover  { background: var(--hb-amber-lt); }
 .hb-btn-icon.hb-trans  { color: var(--hb-green); }
 .hb-btn-icon.hb-trans:hover { background: var(--hb-green-lt); }
-.hb-btn-icon.hb-more:hover  { background: #f3f4f6; color: var(--hb-text-1); }
+.hb-btn-icon.hb-refund  { color: var(--hb-green); }
+.hb-btn-icon.hb-refund:hover  { background: var(--hb-green-lt); }
+.hb-btn-icon.hb-delete  { color: var(--hb-red); }
+.hb-btn-icon.hb-delete:hover  { background: var(--hb-red-lt); }
 
 /* Tooltip */
 .hb-btn-icon[data-tip]::after {
@@ -563,42 +569,6 @@ $paginationPattern = empty($search)
     z-index: 200;
 }
 .hb-btn-icon[data-tip]:hover::after { opacity: 1; }
-
-/* ── Dropdown ────────────────────────────────────────────── */
-.hb-dropdown-wrap { position: relative; }
-.hb-dropdown-menu {
-    position: absolute;
-    right: 0;
-    top: calc(100% + 6px);
-    background: var(--hb-surface);
-    border: 1px solid var(--hb-border);
-    border-radius: 10px;
-    box-shadow: 0 8px 24px rgba(0,0,0,.12);
-    min-width: 168px;
-    z-index: 150;
-    display: none;
-    overflow: hidden;
-}
-.hb-dropdown-menu.open { display: block; }
-.hb-dropdown-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
-    font-size: .8rem;
-    color: var(--hb-text-2);
-    cursor: pointer;
-    transition: background .15s;
-    border: none;
-    background: none;
-    width: 100%;
-    text-align: left;
-    font-family: inherit;
-}
-.hb-dropdown-item:hover { background: #f9fafb; }
-.hb-dropdown-item.hb-danger { color: var(--hb-red); }
-.hb-dropdown-item.hb-danger:hover { background: var(--hb-red-lt); }
-.hb-dropdown-item .feather { width: 14px; font-size: .8rem; flex-shrink: 0; }
 
 /* ── Empty State ─────────────────────────────────────────── */
 .hb-empty {
@@ -952,49 +922,43 @@ $paginationPattern = empty($search)
                                         </div>
 
                                         <!-- Actions -->
-                                        <div class="hb-actions-cell">
-                                            <button class="hb-btn-icon hb-view"
-                                                    data-tip="<?= __('view_details') ?>"
-                                                    onclick="viewBooking(<?= $booking['id'] ?>)">
-                                                <i class="feather icon-eye"></i>
-                                            </button>
+                                         <div class="hb-actions-cell">
+                                             <button class="hb-btn-icon hb-view"
+                                                     data-tip="<?= __('view_details') ?>"
+                                                     onclick="viewBooking(<?= $booking['id'] ?>)">
+                                                 <i class="feather icon-eye"></i>
+                                             </button>
 
-                                            <?php if ($canEdit && !$isCancelled): ?>
-                                            <button class="hb-btn-icon hb-edit"
-                                                    data-tip="<?= __('edit_booking') ?>"
-                                                    onclick="editBooking(<?= $booking['id'] ?>)">
-                                                <i class="feather icon-edit-2"></i>
-                                            </button>
-                                            <?php endif; ?>
+                                             <?php if ($canEdit && !$isCancelled): ?>
+                                             <button class="hb-btn-icon hb-edit"
+                                                     data-tip="<?= __('edit_booking') ?>"
+                                                     onclick="editBooking(<?= $booking['id'] ?>)">
+                                                 <i class="feather icon-edit-2"></i>
+                                             </button>
+                                             <?php endif; ?>
 
-                                            <?php if ($isAgencyClient && $canEdit): ?>
-                                            <button class="hb-btn-icon hb-trans"
-                                                    data-tip="<?= __('manage_transactions') ?>"
-                                                    onclick="manageTransactions(<?= $booking['id'] ?>)">
-                                                <i class="fas fa-dollar-sign"></i>
-                                            </button>
-                                            <?php endif; ?>
+                                             <?php if ($isAgencyClient && $canEdit): ?>
+                                             <button class="hb-btn-icon hb-trans"
+                                                     data-tip="<?= __('manage_transactions') ?>"
+                                                     onclick="manageTransactions(<?= $booking['id'] ?>)">
+                                                 <i class="fas fa-dollar-sign"></i>
+                                             </button>
+                                             <?php endif; ?>
 
-                                            <div class="hb-dropdown-wrap">
-                                                <button class="hb-btn-icon hb-more"
-                                                        data-tip="More"
-                                                        onclick="toggleHbDropdown(this)">
-                                                    <i class="feather icon-more-vertical"></i>
-                                                </button>
-                                                <div class="hb-dropdown-menu">
-                                                    <button class="hb-dropdown-item"
-                                                            onclick="openRefundModal(<?= $booking['id'] ?>, <?= $booking['sold_amount'] ?>, <?= $booking['profit'] ?>, '<?= $booking['currency'] ?>')">
-                                                        <i class="feather icon-refresh-ccw"></i><?= __('process_refund') ?>
-                                                    </button>
-                                                    <?php if ($canEdit): ?>
-                                                    <button class="hb-dropdown-item hb-danger"
-                                                            onclick="deleteBooking(<?= $booking['id'] ?>)">
-                                                        <i class="feather icon-trash-2"></i><?= __('delete_booking') ?>
-                                                    </button>
-                                                    <?php endif; ?>
-                                                </div>
-                                            </div>
-                                        </div>
+                                             <button class="hb-btn-icon hb-refund"
+                                                     data-tip="<?= __('process_refund') ?>"
+                                                     onclick="openRefundModal(<?= $booking['id'] ?>, <?= $booking['sold_amount'] ?>, <?= $booking['profit'] ?>, '<?= $booking['currency'] ?>')">
+                                                 <i class="feather icon-refresh-ccw"></i>
+                                             </button>
+
+                                             <?php if ($canEdit): ?>
+                                             <button class="hb-btn-icon hb-delete"
+                                                     data-tip="<?= __('delete_booking') ?>"
+                                                     onclick="deleteBooking(<?= $booking['id'] ?>)">
+                                                 <i class="feather icon-trash-2"></i>
+                                             </button>
+                                             <?php endif; ?>
+                                         </div>
 
                                     </div><!-- /.hb-row -->
                                 <?php endforeach; ?>
@@ -1072,20 +1036,6 @@ $paginationPattern = empty($search)
 
 
 <script>
-function toggleHbDropdown(btn) {
-    const menu = btn.nextElementSibling;
-    document.querySelectorAll('.hb-dropdown-menu').forEach(m => {
-        if (m !== menu) m.classList.remove('open');
-    });
-    menu.classList.toggle('open');
-}
-
-document.addEventListener('click', function(e) {
-    if (!e.target.closest('.hb-dropdown-wrap')) {
-        document.querySelectorAll('.hb-dropdown-menu').forEach(m => m.classList.remove('open'));
-    }
-});
-
 // Filter tabs — client-side show/hide by data-status
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.hb-filter-tab').forEach(tab => {
