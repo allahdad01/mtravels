@@ -86,15 +86,23 @@ try {
             $stmt->execute();
 
             // Update supplier transaction amount and balance
+            // Calculate the difference between new base price and current transaction amount
+            $amountDifference = $basePrice - $supplierTransaction['amount'];
+            
+            // For supplier transactions, subsequent balances should:
+            // - Increase (add) when amount decreases
+            // - Decrease (subtract) when amount increases
+            $balanceAdjustment = -$amountDifference;
+            
             $stmt = $pdo->prepare("
                 UPDATE supplier_transactions
                 SET amount = ?,
-                    balance = ?,
+                    balance = balance + ?,
                     remarks = CONCAT('Updated: ', remarks)
                 WHERE id = ? AND tenant_id = ? AND branch_id = ?
             ");
             $stmt->bindParam(1, $basePrice, PDO::PARAM_STR);
-            $stmt->bindParam(2, $newBalance, PDO::PARAM_STR);
+            $stmt->bindParam(2, $balanceAdjustment, PDO::PARAM_STR);
             $stmt->bindParam(3, $supplierTransaction['id'], PDO::PARAM_INT);
             $stmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
             $stmt->bindParam(5, $branch_id, PDO::PARAM_INT);
@@ -105,13 +113,12 @@ try {
                 UPDATE supplier_transactions
                 SET balance = balance + ?
                 WHERE supplier_id = ?
-                AND transaction_date > ?
+                AND id > ?
                 AND id != ? AND tenant_id = ? AND branch_id = ?
-                ORDER BY transaction_date ASC
             ");
             $stmt->bindParam(1, $basePriceDifference, PDO::PARAM_STR);
             $stmt->bindParam(2, $oldWeight['supplier'], PDO::PARAM_INT);
-            $stmt->bindParam(3, $supplierTransaction['transaction_date'], PDO::PARAM_STR);
+            $stmt->bindParam(3, $supplierTransaction['id'], PDO::PARAM_STR);
             $stmt->bindParam(4, $supplierTransaction['id'], PDO::PARAM_INT);
             $stmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
             $stmt->bindParam(6, $branch_id, PDO::PARAM_INT);
@@ -121,8 +128,8 @@ try {
             $newBalance = $oldWeight['supplier_balance'] - $basePrice;
             $stmt = $pdo->prepare("
                 INSERT INTO supplier_transactions
-                (supplier_id, reference_id, transaction_type, amount, balance, remarks, status, transaction_date, transaction_of, tenant_id, branch_id)
-                VALUES (?, ?, 'Debit', ?, ?, ?, 'Borrowed', NOW(), 'weight_sale', ?, ?)
+                (supplier_id, reference_id, transaction_type, amount, balance, remarks, transaction_date, transaction_of, tenant_id, branch_id)
+                VALUES (?, ?, 'Debit', ?, ?, ?, NOW(), 'weight_sale', ?, ?)
             ");
             $description = "Base amount for weight transaction: {$weight}kg for passenger {$oldWeight['passenger_name']} (PNR: {$oldWeight['pnr']})";
             $stmt->bindParam(1, $oldWeight['supplier'], PDO::PARAM_INT);
@@ -203,14 +210,13 @@ try {
                 UPDATE client_transactions
                 SET balance = balance + ?
                 WHERE client_id = ?
-                AND created_at > ?
+                AND id > ?
                 AND currency = ?
                 AND id != ? AND tenant_id = ? And branch_id = ?
-                ORDER BY created_at ASC
             ");
             $stmt->bindParam(1, $balanceAdjustment, PDO::PARAM_STR);
             $stmt->bindParam(2, $oldWeight['sold_to'], PDO::PARAM_INT);
-            $stmt->bindParam(3, $clientTransaction['created_at'], PDO::PARAM_STR);
+            $stmt->bindParam(3, $clientTransaction['id'], PDO::PARAM_STR);
             $stmt->bindParam(4, $oldWeight['currency'], PDO::PARAM_STR);
             $stmt->bindParam(5, $clientTransaction['id'], PDO::PARAM_INT);
             $stmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
@@ -225,7 +231,7 @@ try {
             $stmt = $pdo->prepare("
                 INSERT INTO client_transactions
                 (client_id, type, transaction_of, reference_id, amount, balance, currency, description, created_at, tenant_id, branch_id)
-                VALUES (?, 'Debit', 'weight_sale', ?, ?, ?, ?, ?, NOW(), ?, ?)
+                VALUES (?, 'debit', 'weight_sale', ?, ?, ?, ?, ?, NOW(), ?, ?)
             ");
             $description = "Weight transaction: {$weight}kg at {$soldPrice} {$oldWeight['currency']} for passenger {$oldWeight['passenger_name']} (PNR: {$oldWeight['pnr']})";
             $stmt->bindParam(1, $oldWeight['sold_to'], PDO::PARAM_INT);

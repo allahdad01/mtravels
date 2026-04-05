@@ -122,8 +122,8 @@ try {
     $insertRefundStmt = $pdo->prepare("INSERT INTO refunded_tickets
         (tenant_id, supplier, sold_to, paid_to, ticket_id, title, passenger_name, pnr, origin, destination, phone, airline, gender,
         issue_date, departure_date, currency, base, sold, supplier_penalty, service_penalty, refund_to_passenger,
-        status, remarks, created_at, updated_at, calculation_method, created_by, branch_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?, ?)");
+        remarks, created_at, updated_at, calculation_method, created_by, branch_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?, ?)");
     $insertRefundStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
     $insertRefundStmt->bindParam(2, $supplierId, PDO::PARAM_INT);
     $insertRefundStmt->bindParam(3, $soldToId, PDO::PARAM_INT);
@@ -145,11 +145,10 @@ try {
     $insertRefundStmt->bindParam(19, $supplierPenalty, PDO::PARAM_STR);
     $insertRefundStmt->bindParam(20, $servicePenalty, PDO::PARAM_STR);
     $insertRefundStmt->bindParam(21, $refundToPassenger, PDO::PARAM_STR);
-    $insertRefundStmt->bindParam(22, $status, PDO::PARAM_STR);
-    $insertRefundStmt->bindParam(23, $description, PDO::PARAM_STR);
-    $insertRefundStmt->bindParam(24, $calculationMethod, PDO::PARAM_STR);
-    $insertRefundStmt->bindParam(25, $user_id, PDO::PARAM_INT);
-    $insertRefundStmt->bindParam(26, $branch_id, PDO::PARAM_INT);
+    $insertRefundStmt->bindParam(22, $description, PDO::PARAM_STR);
+    $insertRefundStmt->bindParam(23, $calculationMethod, PDO::PARAM_STR);
+    $insertRefundStmt->bindParam(24, $user_id, PDO::PARAM_INT);
+    $insertRefundStmt->bindParam(25, $branch_id, PDO::PARAM_INT);
     if (!$insertRefundStmt->execute()) {
         throw new Exception("Failed to insert refund record");
     }
