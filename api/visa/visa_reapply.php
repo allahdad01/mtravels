@@ -148,7 +148,7 @@ try {
                 throw new PDOException("Supplier balance restoration failed: " . $e->getMessage());
             }
         }
-        $supplierQuery->close();
+        $supplierQuery = null;
     }
 
     // 2. Restore client balance for regular clients (reverse the cancellation)
@@ -230,7 +230,7 @@ try {
                 throw new PDOException("Client balance restoration failed: " . $e->getMessage());
             }
         }
-        $clientQuery->close();
+        $clientQuery = null;
         }
         } // End of: if ($originalWasApproved)
 
@@ -267,7 +267,7 @@ try {
         $stmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
         $stmt->bindParam(8, $branch_id, PDO::PARAM_INT);
         $stmt->execute();
-        $stmt->close();
+        $stmt = null;
     } catch (PDOException $e) {
         // Don't fail the entire operation for activity log failure
         error_log("Activity log failed: " . $e->getMessage());

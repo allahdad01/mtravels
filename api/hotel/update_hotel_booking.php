@@ -338,6 +338,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         // Handle client changes or sold price differences
         if ($_POST['sold_to'] != $originalClient || $soldDifference != 0) {
+            // Initialize old client flag
+            $oldClientIsRegular = false;
+            
             // Check if original client exists and is regular
             if ($originalClient > 0) {
                 $oldClientQuery = "SELECT * FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?";
@@ -351,8 +354,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                  }
                  $oldClientIsRegular = (strtolower(trim($oldClientType)) === 'regular');
                  
-                 // If client changed and old client was regular
-                 if ($_POST['sold_to'] != $originalClient && $oldClientIsRegular) {
+                 // If client changed
+                 if ($_POST['sold_to'] != $originalClient) {
+                     // Initialize amounts based on currency
+                     $totalUsdAmount = 0;
+                     $totalAfsAmount = 0;
+                     $earliestTransactionDate = null;
+                     $oldClientTransactions = [];
+                     
+                     // If old client is NOT regular, use the current sold_amount
+                     if (!$oldClientIsRegular && $sold_amount > 0) {
+                         if (strtolower($_POST['currency']) === 'usd') {
+                             $totalUsdAmount = $sold_amount;
+                         } else {
+                             $totalAfsAmount = $sold_amount;
+                         }
+                     }
+                     
+                     // Handle old client only if it was regular
+                     if ($oldClientIsRegular) {
                      // Get all transactions for the old client related to this ticket
                      $getOldClientTransactionsQuery = "SELECT * FROM client_transactions
                                                       WHERE client_id = ?
@@ -366,7 +386,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                      $oldClientTransactions = $stmtGetOldClientTransactions->fetchAll(PDO::FETCH_ASSOC);
 
                     // Get the earliest transaction date for this ticket
-                    $earliestTransactionDate = null;
                     if (!empty($oldClientTransactions)) {
                         $earliestTransactionDate = $oldClientTransactions[0]['created_at'];
                     }
@@ -385,8 +404,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                      $transferTransactionDate = $transferData['created_at'] ?? null;
 
                     // Calculate total amounts for USD and AFS
-                    $totalUsdAmount = 0;
-                    $totalAfsAmount = 0;
                     foreach ($oldClientTransactions as $transaction) {
                         if (strtolower($transaction['currency']) === 'usd') {
                             $totalUsdAmount += $transaction['amount'];
@@ -448,20 +465,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $stmtUpdateOldClientAfsSubsequent->close();
                     }
 
+                    }
+                    
+                    // Always delete old client transactions when client changes
+                    $deleteOldClientTransactionsQuery = "DELETE FROM client_transactions
+                                                        WHERE client_id = ?
+                                                        AND reference_id = ?
+                                                        AND transaction_of = 'hotel'
+                                                        AND tenant_id = ?
+                                                        AND branch_id = ?";
+                    $stmtDeleteOldClientTransactions = $pdo->prepare($deleteOldClientTransactionsQuery);
+                    $stmtDeleteOldClientTransactions->execute([$originalClient, $booking_id, $tenant_id, $branch_id]);
+                    
                     // Check if new client is regular
-                     $newClientQuery = "SELECT * FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                     $stmtNewClient = $pdo->prepare($newClientQuery);
-                     $stmtNewClient->execute([$_POST['sold_to'], $tenant_id, $branch_id]);
-                     $newClientData = $stmtNewClient->fetch(PDO::FETCH_ASSOC);
+                    $newClientQuery = "SELECT * FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+                    $stmtNewClient = $pdo->prepare($newClientQuery);
+                    $stmtNewClient->execute([$_POST['sold_to'], $tenant_id, $branch_id]);
+                    $newClientData = $stmtNewClient->fetch(PDO::FETCH_ASSOC);
 
-                     $newClientType = isset($newClientData['client_type']) ? $newClientData['client_type'] : '';
-                     if (!$newClientType) {
-                         $newClientType = isset($newClientData['type']) ? $newClientData['type'] : '';
-                     }
-                     $newClientIsRegular = (strtolower(trim($newClientType)) === 'regular');
+                    $newClientType = isset($newClientData['client_type']) ? $newClientData['client_type'] : '';
+                    if (!$newClientType) {
+                        $newClientType = isset($newClientData['type']) ? $newClientData['type'] : '';
+                    }
+                    $newClientIsRegular = (strtolower(trim($newClientType)) === 'regular');
 
-                     // Only update balances if new client is regular
-                     if ($newClientIsRegular) {
+                    // Only update balances if new client is regular
+                    if ($newClientIsRegular) {
                          // Get current balances of new client
                          $newClientUsdBalance = 0;
                          $newClientAfsBalance = 0;
@@ -490,6 +519,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $stmtUpdateNewClientUsd = $pdo->prepare($updateNewClientUsdQuery);
                             $stmtUpdateNewClientUsd->execute([$ClientUsdBalance, $_POST['sold_to'], $tenant_id, $branch_id]);
 
+                            // Insert transaction for USD amount when new client is regular
+                            $insertClientTransactionUsdQuery = "INSERT INTO client_transactions (client_id, reference_id, type, amount, currency, balance, description, transaction_of, tenant_id, branch_id) VALUES (?, ?, 'debit', ?, 'USD', ?, ?, 'hotel', ?, ?)";
+                            $stmtInsertClientTransactionUsd = $pdo->prepare($insertClientTransactionUsdQuery);
+                            $descriptionUsd = "Sale for hotel booking: {$_POST['first_name']} {$_POST['last_name']} (Check-in: {$_POST['check_in_date']}) (Transferred from client {$originalClient})";
+                            $stmtInsertClientTransactionUsd->execute([$_POST['sold_to'], $booking_id, $totalUsdAmount, $ClientUsdBalance, $descriptionUsd, $tenant_id, $branch_id]);
+
                             // Update subsequent USD transactions for new client
                              if ($earliestTransactionDate) {
                                  $updateNewClientUsdSubsequentQuery = "UPDATE client_transactions
@@ -516,6 +551,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                              $stmtUpdateNewClientAfs = $pdo->prepare($updateNewClientAfsQuery);
                              $stmtUpdateNewClientAfs->execute([$totalAfsAmount, $_POST['sold_to'], $tenant_id, $branch_id]);
 
+                             // Insert transaction for AFS amount when new client is regular
+                             $insertClientTransactionAfsQuery = "INSERT INTO client_transactions (client_id, reference_id, type, amount, currency, balance, description, transaction_of, tenant_id, branch_id) VALUES (?, ?, 'debit', ?, 'AFS', ?, ?, 'hotel', ?, ?)";
+                             $stmtInsertClientTransactionAfs = $pdo->prepare($insertClientTransactionAfsQuery);
+                             $descriptionAfs = "Sale for hotel booking: {$_POST['first_name']} {$_POST['last_name']} (Check-in: {$_POST['check_in_date']}) (Transferred from client {$originalClient})";
+                             $newAfsBalance = $newClientAfsBalance - $totalAfsAmount;
+                             $stmtInsertClientTransactionAfs->execute([$_POST['sold_to'], $booking_id, $totalAfsAmount, $newAfsBalance, $descriptionAfs, $tenant_id, $branch_id]);
+
                              // Update subsequent AFS transactions for new client
                              if ($earliestTransactionDate) {
                                  $updateNewClientAfsSubsequentQuery = "UPDATE client_transactions
@@ -535,49 +577,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                  $stmtUpdateNewClientAfsSubsequent->execute([$totalAfsAmount, $_POST['sold_to'], $branch_id, $_POST['sold_to'], $booking_id, $branch_id, $tenant_id]);
                              }
                             }
-                    }
+                        }
 
-                    // Delete old client transactions and create new ones for the new client
-                     $deleteOldClientTransactionsQuery = "DELETE FROM client_transactions
-                                                         WHERE client_id = ?
-                                                         AND reference_id = ?
-                                                         AND transaction_of = 'hotel'
-                                                         AND tenant_id = ?
-                                                         AND branch_id = ?";
-                     $stmtDeleteOldClientTransactions = $pdo->prepare($deleteOldClientTransactionsQuery);
-                     $stmtDeleteOldClientTransactions->execute([$originalClient, $booking_id, $tenant_id, $branch_id]);
+                        // Insert new transactions for the new client ONLY if new client is NOT regular
+                     // (Regular clients are handled separately below)
+                     if (!$newClientIsRegular) {
+                         // Since we have USD and AFS amounts, we need to insert separate transactions
+                         if ($totalUsdAmount > 0) {
+                             $insertClientTransactionUsdQuery = "INSERT INTO client_transactions (client_id, reference_id, type, amount, currency, balance, description, transaction_of, tenant_id, branch_id) VALUES (?, ?, 'debit', ?, 'USD', ?, ?, 'hotel', ?, ?)";
+                             $stmtInsertClientTransactionUsd = $pdo->prepare($insertClientTransactionUsdQuery);
+                             $descriptionUsd = "Sale for hotel booking: {$_POST['first_name']} {$_POST['last_name']} (Check-in: {$_POST['check_in_date']}) (Transferred from client {$originalClient})";
+                             // Need to get the current balance for USD
+                             $getUsdBalanceQuery = "SELECT usd_balance FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+                             $stmtGetUsdBalance = $pdo->prepare($getUsdBalanceQuery);
+                             $stmtGetUsdBalance->execute([$_POST['sold_to'], $tenant_id, $branch_id]);
+                             $usdBalData = $stmtGetUsdBalance->fetch(PDO::FETCH_ASSOC);
+                             $currentUsdBalance = $usdBalData['usd_balance'] ?? 0;
+                             $stmtInsertClientTransactionUsd->execute([$_POST['sold_to'], $booking_id, $totalUsdAmount, $currentUsdBalance, $descriptionUsd, $tenant_id, $branch_id]);
+                         }
 
-                    // Insert new transactions for the new client
-                     // Since we have USD and AFS amounts, we need to insert separate transactions
-                     if ($totalUsdAmount > 0) {
-                         $insertClientTransactionUsdQuery = "INSERT INTO client_transactions (client_id, reference_id, type, amount, currency, balance, description, transaction_of, tenant_id, branch_id) VALUES (?, ?, 'debit', ?, 'USD', ?, ?, 'hotel', ?, ?)";
-                         $stmtInsertClientTransactionUsd = $pdo->prepare($insertClientTransactionUsdQuery);
-                         $descriptionUsd = "Sale for hotel booking: {$_POST['first_name']} {$_POST['last_name']} (Check-in: {$_POST['check_in_date']}) (Transferred from client {$originalClient})";
-                         // Need to get the current balance for USD
-                         $getUsdBalanceQuery = "SELECT usd_balance FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                         $stmtGetUsdBalance = $pdo->prepare($getUsdBalanceQuery);
-                         $stmtGetUsdBalance->execute([$_POST['sold_to'], $tenant_id, $branch_id]);
-                         $usdBalData = $stmtGetUsdBalance->fetch(PDO::FETCH_ASSOC);
-                         $currentUsdBalance = $usdBalData['usd_balance'] ?? 0;
-                         $stmtInsertClientTransactionUsd->execute([$_POST['sold_to'], $booking_id, $totalUsdAmount, $currentUsdBalance, $descriptionUsd, $tenant_id, $branch_id]);
-                     }
-
-                     if ($totalAfsAmount > 0) {
-                         $insertClientTransactionAfsQuery = "INSERT INTO client_transactions (client_id, reference_id, type, amount, currency, balance, description, transaction_of, tenant_id, branch_id) VALUES (?, ?, 'debit', ?, 'AFS', ?, ?, 'hotel', ?, ?)";
-                         $stmtInsertClientTransactionAfs = $pdo->prepare($insertClientTransactionAfsQuery);
-                         $descriptionAfs = "Sale for hotel booking: {$_POST['first_name']} {$_POST['last_name']} (Check-in: {$_POST['check_in_date']}) (Transferred from client {$originalClient})";
-                         // Need to get the current balance for AFS
-                         $getAfsBalanceQuery = "SELECT afs_balance FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                         $stmtGetAfsBalance = $pdo->prepare($getAfsBalanceQuery);
-                         $stmtGetAfsBalance->execute([$_POST['sold_to'], $tenant_id, $branch_id]);
-                         $afsBalData = $stmtGetAfsBalance->fetch(PDO::FETCH_ASSOC);
-                         $currentAfsBalance = $afsBalData['afs_balance'] ?? 0;
-                         $stmtInsertClientTransactionAfs->execute([$_POST['sold_to'], $booking_id, $totalAfsAmount, $currentAfsBalance, $descriptionAfs, $tenant_id, $branch_id]);
-                     }
-                }
-            }
-            
-            // Check if new client exists and is regular
+                         if ($totalAfsAmount > 0) {
+                             $insertClientTransactionAfsQuery = "INSERT INTO client_transactions (client_id, reference_id, type, amount, currency, balance, description, transaction_of, tenant_id, branch_id) VALUES (?, ?, 'debit', ?, 'AFS', ?, ?, 'hotel', ?, ?)";
+                             $stmtInsertClientTransactionAfs = $pdo->prepare($insertClientTransactionAfsQuery);
+                             $descriptionAfs = "Sale for hotel booking: {$_POST['first_name']} {$_POST['last_name']} (Check-in: {$_POST['check_in_date']}) (Transferred from client {$originalClient})";
+                             // Need to get the current balance for AFS
+                             $getAfsBalanceQuery = "SELECT afs_balance FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+                             $stmtGetAfsBalance = $pdo->prepare($getAfsBalanceQuery);
+                             $stmtGetAfsBalance->execute([$_POST['sold_to'], $tenant_id, $branch_id]);
+                             $afsBalData = $stmtGetAfsBalance->fetch(PDO::FETCH_ASSOC);
+                             $currentAfsBalance = $afsBalData['afs_balance'] ?? 0;
+                             $stmtInsertClientTransactionAfs->execute([$_POST['sold_to'], $booking_id, $totalAfsAmount, $currentAfsBalance, $descriptionAfs, $tenant_id, $branch_id]);
+                         }
+                         }
+                         }
+                         }
+                         
+                         // Check if new client exists and is regular
              if ($_POST['sold_to'] > 0) {
                  $clientQuery = "SELECT * FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                  $stmtClient = $pdo->prepare($clientQuery);
@@ -591,30 +626,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                  $isRegular = (strtolower(trim($clientType)) === 'regular');
                  
                  if ($isRegular) {
-                     // If client changed
-                     if ($_POST['sold_to'] != $originalClient) {
-                         // Update new client balance - SUBTRACTING the new sold amount
-                         // This DECREASES the balance (client owes more)
-                         $balanceField = strtolower($_POST['currency']) === 'usd' ? 'usd_balance' : 'afs_balance';
-                         $updateClientQuery = "UPDATE clients SET $balanceField = $balanceField - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                         $stmtUpdateClient = $pdo->prepare($updateClientQuery);
-                         $stmtUpdateClient->execute([$sold_amount, $_POST['sold_to'], $tenant_id, $branch_id]);
-
-                         // Get current client balance for the transaction record
-                         $getCurrentBalanceQuery = "SELECT $balanceField FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                         $stmtGetCurrentBalance = $pdo->prepare($getCurrentBalanceQuery);
-                         $stmtGetCurrentBalance->execute([$_POST['sold_to'], $tenant_id, $branch_id]);
-                         $balData = $stmtGetCurrentBalance->fetch(PDO::FETCH_ASSOC);
-                         $currentBalance = $balData[$balanceField] ?? 0;
-
-                         // Create new transaction record for new client
-                         $insertClientTransactionQuery = "INSERT INTO client_transactions (client_id, reference_id, type, amount, currency, balance, description, transaction_of, tenant_id, branch_id) VALUES (?, ?, 'debit', ?, ?, ?, ?, 'hotel', ?, ?)";
-                         $stmtInsertClientTransaction = $pdo->prepare($insertClientTransactionQuery);
-                         $description = "Sale for hotel booking: {$_POST['first_name']} {$_POST['last_name']} (Check-in: {$_POST['check_in_date']})";
-                         $stmtInsertClientTransaction->execute([$_POST['sold_to'], $booking_id, $sold_amount, $_POST['currency'], $currentBalance, $description, $tenant_id, $branch_id]);
-                    }
-                    // Same client but sold price changed
-                     else if ($soldDifference != 0) {
+                      // Only handle client changes here if old client was NOT regular (and new client IS regular)
+                      // If old client WAS regular, balance and transactions already handled in the block above
+                      if ($_POST['sold_to'] != $originalClient && !$oldClientIsRegular) {
+                          // This is already handled in the client change section above, skip it here
+                     }
+                     // Same client but sold price changed
+                      if ($_POST['sold_to'] == $originalClient && $soldDifference != 0) {
                          $balanceField = strtolower($_POST['currency']) === 'usd' ? 'usd_balance' : 'afs_balance';
 
                          // Get current client balance before update

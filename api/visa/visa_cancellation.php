@@ -36,7 +36,7 @@ $current_status = isset($input['current_status']) ? $input['current_status'] : '
 
 try {
     // Start transaction
-    $pdo->begin_transaction();
+    $pdo->beginTransaction();
 
     // Check if visa exists and belongs to current tenant
     $check_query = "SELECT supplier, sold_to, id, status, applicant_name, base, sold, profit, currency, tenant_id
@@ -52,7 +52,7 @@ try {
     if (!$visa) {
         throw new PDOException('Visa not found or access denied');
     }
-    $stmt->close();
+    $stmt = null;
 
     // Check if visa is already cancelled/rejected
     if (in_array(strtolower($visa['status']), ['cancelled', 'rejected', 'withdrawn'])) {
@@ -87,7 +87,7 @@ try {
     $stmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
     $stmt->bindParam(8, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
-    $stmt->close();
+    $stmt = null;
 
     // Update visa status and set profit to 0 (like refund logic)
     $update_query = "UPDATE visa_applications
@@ -110,7 +110,7 @@ try {
         throw new PDOException('Failed to update visa status');
     }
 
-    $stmt->close();
+    $stmt = null;
 
     // Only reverse balances if visa was approved (had transactions)
     // Pending visas that are cancelled never had transactions, so nothing to reverse
@@ -183,7 +183,7 @@ try {
                 throw new PDOException("Supplier balance reversal failed: " . $e->getMessage());
             }
         }
-        $supplierQuery->close();
+        $supplierQuery = null;
     }
 
     // Handle client balance reversal for regular clients
@@ -267,7 +267,7 @@ try {
                 throw new PDOException("Client balance reversal failed: " . $e->getMessage());
             }
         }
-        $clientQuery->close();
+        $clientQuery = null;
         }
         } // End of: if ($visaWasApproved)
 
