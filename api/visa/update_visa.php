@@ -125,68 +125,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                  $oldSupplierType = isset($oldSupplierData['supplier_type']) ? $oldSupplierData['supplier_type'] : '';
 
-                 // If supplier changed and old supplier was external
-                 if ($supplier != $originalSupplier && $oldSupplierType === 'External') {
-                     // Update old supplier balance - ADDING back the original base amount
-                     // This INCREASES the supplier balance (supplier gets their money back)
-                     $updateOldSupplierQuery = "UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                     $stmtUpdateOldSupplier = $pdo->prepare($updateOldSupplierQuery);
-                     $stmtUpdateOldSupplier->bindParam(1, $originalData['base'], PDO::PARAM_STR);
-                     $stmtUpdateOldSupplier->bindParam(2, $originalSupplier, PDO::PARAM_INT);
-                     $stmtUpdateOldSupplier->bindParam(3, $tenant_id, PDO::PARAM_INT);
-                     $stmtUpdateOldSupplier->bindParam(4, $branch_id, PDO::PARAM_INT);
-                     $stmtUpdateOldSupplier->execute();
+                 // If supplier changed
+                 if ($supplier != $originalSupplier) {
+                     if ($oldSupplierType === 'External') {
+                         // Update old supplier balance - ADDING back the original base amount
+                         // This INCREASES the supplier balance (supplier gets their money back)
+                         $updateOldSupplierQuery = "UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+                         $stmtUpdateOldSupplier = $pdo->prepare($updateOldSupplierQuery);
+                         $stmtUpdateOldSupplier->bindParam(1, $originalData['base'], PDO::PARAM_STR);
+                         $stmtUpdateOldSupplier->bindParam(2, $originalSupplier, PDO::PARAM_INT);
+                         $stmtUpdateOldSupplier->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                         $stmtUpdateOldSupplier->bindParam(4, $branch_id, PDO::PARAM_INT);
+                         $stmtUpdateOldSupplier->execute();
 
-                     // Check if transaction record exists for old supplier
-                     $checkOldSupplierTransactionQuery = "SELECT id FROM supplier_transactions WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'visa_sale' AND tenant_id = ? AND branch_id = ? LIMIT 1";
-                     $stmtCheckOldSupplierTransaction = $pdo->prepare($checkOldSupplierTransactionQuery);
-                     $stmtCheckOldSupplierTransaction->bindParam(1, $originalSupplier, PDO::PARAM_INT);
-                     $stmtCheckOldSupplierTransaction->bindParam(2, $id, PDO::PARAM_INT);
-                     $stmtCheckOldSupplierTransaction->bindParam(3, $tenant_id, PDO::PARAM_INT);
-                     $stmtCheckOldSupplierTransaction->bindParam(4, $branch_id, PDO::PARAM_INT);
-                     $stmtCheckOldSupplierTransaction->execute();
-                     $oldSupplierTransactionResult = $stmtCheckOldSupplierTransaction->fetch(PDO::FETCH_ASSOC);
-                     $oldSupplierTransactionExists = !empty($oldSupplierTransactionResult);
+                         // Check if transaction record exists for old supplier
+                         $checkOldSupplierTransactionQuery = "SELECT id FROM supplier_transactions WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'visa_sale' AND tenant_id = ? AND branch_id = ? LIMIT 1";
+                         $stmtCheckOldSupplierTransaction = $pdo->prepare($checkOldSupplierTransactionQuery);
+                         $stmtCheckOldSupplierTransaction->bindParam(1, $originalSupplier, PDO::PARAM_INT);
+                         $stmtCheckOldSupplierTransaction->bindParam(2, $id, PDO::PARAM_INT);
+                         $stmtCheckOldSupplierTransaction->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                         $stmtCheckOldSupplierTransaction->bindParam(4, $branch_id, PDO::PARAM_INT);
+                         $stmtCheckOldSupplierTransaction->execute();
+                         $oldSupplierTransactionResult = $stmtCheckOldSupplierTransaction->fetch(PDO::FETCH_ASSOC);
+                         $oldSupplierTransactionExists = !empty($oldSupplierTransactionResult);
 
-                     if ($oldSupplierTransactionExists) {
-                         // Get transaction details before deleting
-                         $getOldSupplierTransactionQuery = "SELECT id, transaction_date, balance, amount FROM supplier_transactions WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'visa_sale' AND tenant_id = ? AND branch_id = ? LIMIT 1";
-                         $stmtGetOldSupplierTransaction = $pdo->prepare($getOldSupplierTransactionQuery);
-                         $stmtGetOldSupplierTransaction->bindParam(1, $originalSupplier, PDO::PARAM_INT);
-                         $stmtGetOldSupplierTransaction->bindParam(2, $id, PDO::PARAM_INT);
-                         $stmtGetOldSupplierTransaction->bindParam(3, $tenant_id, PDO::PARAM_INT);
-                         $stmtGetOldSupplierTransaction->bindParam(4, $branch_id, PDO::PARAM_INT);
-                         $stmtGetOldSupplierTransaction->execute();
-                         $oldSupplierTransactionData = $stmtGetOldSupplierTransaction->fetch(PDO::FETCH_ASSOC);
+                         if ($oldSupplierTransactionExists) {
+                             // Get transaction details before deleting
+                             $getOldSupplierTransactionQuery = "SELECT id, transaction_date, balance, amount FROM supplier_transactions WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'visa_sale' AND tenant_id = ? AND branch_id = ? LIMIT 1";
+                             $stmtGetOldSupplierTransaction = $pdo->prepare($getOldSupplierTransactionQuery);
+                             $stmtGetOldSupplierTransaction->bindParam(1, $originalSupplier, PDO::PARAM_INT);
+                             $stmtGetOldSupplierTransaction->bindParam(2, $id, PDO::PARAM_INT);
+                             $stmtGetOldSupplierTransaction->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                             $stmtGetOldSupplierTransaction->bindParam(4, $branch_id, PDO::PARAM_INT);
+                             $stmtGetOldSupplierTransaction->execute();
+                             $oldSupplierTransactionData = $stmtGetOldSupplierTransaction->fetch(PDO::FETCH_ASSOC);
 
-                         if ($oldSupplierTransactionData) {
-                             // Update all subsequent transactions' balances
-                             // Since we're removing a debit transaction, we need to decrease subsequent balances
-                             $updateSubsequentQuery = "UPDATE supplier_transactions
-                                                       SET balance = balance + ?
-                                                       WHERE supplier_id = ?
-                                                       AND id > ?
-                                                       AND id != ? AND tenant_id = ? AND branch_id = ?";
-                             $stmtUpdateSubsequent = $pdo->prepare($updateSubsequentQuery);
-                             $transactionAmount = abs($oldSupplierTransactionData['amount']); // Make sure it's positive
-                             $stmtUpdateSubsequent->bindParam(1, $transactionAmount, PDO::PARAM_STR);
-                             $stmtUpdateSubsequent->bindParam(2, $originalSupplier, PDO::PARAM_INT);
-                             $stmtUpdateSubsequent->bindParam(3, $oldSupplierTransactionData['id'], PDO::PARAM_INT);
-                             $stmtUpdateSubsequent->bindParam(4, $originalCurrency, PDO::PARAM_STR);
-                             $stmtUpdateSubsequent->bindParam(5, $oldSupplierTransactionData['id'], PDO::PARAM_INT);
-                             $stmtUpdateSubsequent->bindParam(6, $tenant_id, PDO::PARAM_INT);
-                             $stmtUpdateSubsequent->bindParam(7, $branch_id, PDO::PARAM_INT);
-                             $stmtUpdateSubsequent->execute();
+                             if ($oldSupplierTransactionData) {
+                                 // Update all subsequent transactions' balances
+                                 // Since we're removing a debit transaction, we need to decrease subsequent balances
+                                 $updateSubsequentQuery = "UPDATE supplier_transactions
+                                                           SET balance = balance + ?
+                                                           WHERE supplier_id = ?
+                                                           AND id > ?
+                                                           AND id != ? AND tenant_id = ? AND branch_id = ?";
+                                 $stmtUpdateSubsequent = $pdo->prepare($updateSubsequentQuery);
+                                 $transactionAmount = abs($oldSupplierTransactionData['amount']); // Make sure it's positive
+                                 $stmtUpdateSubsequent->bindParam(1, $transactionAmount, PDO::PARAM_STR);
+                                 $stmtUpdateSubsequent->bindParam(2, $originalSupplier, PDO::PARAM_INT);
+                                 $stmtUpdateSubsequent->bindParam(3, $oldSupplierTransactionData['id'], PDO::PARAM_INT);
+                                 $stmtUpdateSubsequent->bindParam(4, $oldSupplierTransactionData['id'], PDO::PARAM_INT);
+                                 $stmtUpdateSubsequent->bindParam(5, $tenant_id, PDO::PARAM_INT);
+                                 $stmtUpdateSubsequent->bindParam(6, $branch_id, PDO::PARAM_INT);
+                                 $stmtUpdateSubsequent->execute();
+                             }
+
+                             // Delete the transaction record
+                             $updateOldSupplierTransactionQuery = "DELETE FROM supplier_transactions WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'visa_sale' AND tenant_id = ? AND branch_id = ?";
+                             $stmtUpdateOldSupplierTransaction = $pdo->prepare($updateOldSupplierTransactionQuery);
+                             $stmtUpdateOldSupplierTransaction->bindParam(1, $originalSupplier, PDO::PARAM_INT);
+                             $stmtUpdateOldSupplierTransaction->bindParam(2, $id, PDO::PARAM_INT);
+                             $stmtUpdateOldSupplierTransaction->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                             $stmtUpdateOldSupplierTransaction->bindParam(4, $branch_id, PDO::PARAM_INT);
+                             $stmtUpdateOldSupplierTransaction->execute();
                          }
-
-                         // Delete the transaction record
-                         $updateOldSupplierTransactionQuery = "DELETE FROM supplier_transactions WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'visa_sale' AND tenant_id = ? AND branch_id = ?";
-                         $stmtUpdateOldSupplierTransaction = $pdo->prepare($updateOldSupplierTransactionQuery);
-                         $stmtUpdateOldSupplierTransaction->bindParam(1, $originalSupplier, PDO::PARAM_INT);
-                         $stmtUpdateOldSupplierTransaction->bindParam(2, $id, PDO::PARAM_INT);
-                         $stmtUpdateOldSupplierTransaction->bindParam(3, $tenant_id, PDO::PARAM_INT);
-                         $stmtUpdateOldSupplierTransaction->bindParam(4, $branch_id, PDO::PARAM_INT);
-                         $stmtUpdateOldSupplierTransaction->execute();
+                     } else if ($oldSupplierType === 'Internal') {
+                         // For internal suppliers, simply delete the transaction
+                         $deleteOldInternalTransactionQuery = "DELETE FROM supplier_transactions WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'visa_sale' AND tenant_id = ? AND branch_id = ?";
+                         $stmtDeleteOldInternalTransaction = $pdo->prepare($deleteOldInternalTransactionQuery);
+                         $stmtDeleteOldInternalTransaction->bindParam(1, $originalSupplier, PDO::PARAM_INT);
+                         $stmtDeleteOldInternalTransaction->bindParam(2, $id, PDO::PARAM_INT);
+                         $stmtDeleteOldInternalTransaction->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                         $stmtDeleteOldInternalTransaction->bindParam(4, $branch_id, PDO::PARAM_INT);
+                         $stmtDeleteOldInternalTransaction->execute();
                      }
                  }
              }
@@ -217,7 +227,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                          $stmtUpdateSupplier->execute();
 
                          // Create new transaction record for new supplier
-                         $insertSupplierTransactionQuery = "INSERT INTO supplier_transactions (supplier_id, reference_id, type, amount, balance, remarks, transaction_of, tenant_id, branch_id) VALUES (?, ?, 'debit', ?, ?, ?, ?, 'visa_sale', ?, ?)";
+                         $insertSupplierTransactionQuery = "INSERT INTO supplier_transactions (supplier_id, reference_id, transaction_type, amount, balance, remarks, transaction_of, tenant_id, branch_id) VALUES (?, ?, 'Debit', ?, ?, ?, 'visa_sale', ?, ?)";
                          $stmtInsertSupplierTransaction = $pdo->prepare($insertSupplierTransactionQuery);
                          $description = "Sale for visa: $applicant_name (Passport: $passport_number)";
                          $newBalance = $supplierData['balance'] - $base;
@@ -325,13 +335,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                              $stmtUpdateSubsequent->bindParam(5, $tenant_id, PDO::PARAM_INT);
                              $stmtUpdateSubsequent->bindParam(6, $branch_id, PDO::PARAM_INT);
                              $stmtUpdateSubsequent->execute();
-                         }
-                     }
-                 }
-             }
-         }
+                             }
+                             }
+                             }
+                             // For internal suppliers, only insert transaction record
+                             else if ($supplierType === 'Internal') {
+                             // If supplier changed or base amount changed
+                             if ($supplier != $originalSupplier || $baseDifference != 0) {
+                             // Check if transaction record exists for this supplier
+                             $checkSupplierTransactionQuery = "SELECT id FROM supplier_transactions WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'visa_sale' AND tenant_id = ? AND branch_id = ? LIMIT 1";
+                             $stmtCheckSupplierTransaction = $pdo->prepare($checkSupplierTransactionQuery);
+                             $stmtCheckSupplierTransaction->bindParam(1, $supplier, PDO::PARAM_INT);
+                             $stmtCheckSupplierTransaction->bindParam(2, $id, PDO::PARAM_INT);
+                             $stmtCheckSupplierTransaction->bindParam(3, $tenant_id, PDO::PARAM_INT);
+                             $stmtCheckSupplierTransaction->bindParam(4, $branch_id, PDO::PARAM_INT);
+                             $stmtCheckSupplierTransaction->execute();
+                             $supplierTransactionResult = $stmtCheckSupplierTransaction->fetch(PDO::FETCH_ASSOC);
+                             
+                             if (!$supplierTransactionResult) {
+                             // Transaction doesn't exist, create new one
+                             $insertSupplierTransactionQuery = "INSERT INTO supplier_transactions (supplier_id, reference_id, transaction_type, amount, balance, remarks, transaction_of, tenant_id, branch_id) VALUES (?, ?, 'Debit', ?, ?, ?, 'visa_sale', ?, ?)";
+                             $stmtInsertSupplierTransaction = $pdo->prepare($insertSupplierTransactionQuery);
+                             $description = "Sale for visa: $applicant_name (Passport: $passport_number)";
+                             $stmtInsertSupplierTransaction->bindParam(1, $supplier, PDO::PARAM_INT);
+                             $stmtInsertSupplierTransaction->bindParam(2, $id, PDO::PARAM_INT);
+                             $stmtInsertSupplierTransaction->bindParam(3, $base, PDO::PARAM_STR);
+                             $stmtInsertSupplierTransaction->bindParam(4, $base, PDO::PARAM_STR); // Balance same as amount for internal
+                             $stmtInsertSupplierTransaction->bindParam(5, $description, PDO::PARAM_STR);
+                             $stmtInsertSupplierTransaction->bindParam(6, $tenant_id, PDO::PARAM_INT);
+                             $stmtInsertSupplierTransaction->bindParam(7, $branch_id, PDO::PARAM_INT);
+                             $stmtInsertSupplierTransaction->execute();
+                             } else {
+                             // Transaction exists, update the amount
+                             $updateSupplierAmountQuery = "UPDATE supplier_transactions SET amount = ? WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'visa_sale' AND tenant_id = ? AND branch_id = ?";
+                             $stmtUpdateSupplierAmount = $pdo->prepare($updateSupplierAmountQuery);
+                             $negativeAmount = -1 * abs($base);
+                             $stmtUpdateSupplierAmount->bindParam(1, $negativeAmount, PDO::PARAM_STR);
+                             $stmtUpdateSupplierAmount->bindParam(2, $supplier, PDO::PARAM_INT);
+                             $stmtUpdateSupplierAmount->bindParam(3, $id, PDO::PARAM_INT);
+                             $stmtUpdateSupplierAmount->bindParam(4, $tenant_id, PDO::PARAM_INT);
+                             $stmtUpdateSupplierAmount->bindParam(5, $branch_id, PDO::PARAM_INT);
+                             $stmtUpdateSupplierAmount->execute();
+                             }
+                             }
+                             }
+                             }
+                             }
 
-         // Handle client changes or sold amount differences
+                             // Handle client changes or sold amount differences
          if ($sold_to != $originalClient || $soldDifference != 0) {
              // Check if original client exists
              if ($originalClient > 0) {

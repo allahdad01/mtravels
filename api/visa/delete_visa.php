@@ -87,7 +87,7 @@ try {
             // Adjust Client Balance with Correct Reversal Logic
             $clientBalanceField = ($currency == 'USD') ? 'usd_balance' : 'afs_balance';
 
-            // Reverse logic: If original was 'credit', subtract; if 'debit', add.
+            // Reverse logic: If original was 'debit' (charge), subtract; if 'credit' (payment), add.
             $adjustClientBalance = $pdo->prepare("
                 UPDATE clients
                 SET $clientBalanceField = $clientBalanceField " . ($transaction['type'] == 'credit' ? '-' : '+') . " ?
@@ -96,8 +96,8 @@ try {
             $adjustClientBalance->execute([$amount, $client_id, $tenant_id, $branch_id]);
 
             // Update all subsequent transactions' running balances
-            // If the deleted transaction was a credit, we need to subtract that amount from all later transactions
-            // If it was a debit, we need to add that amount to all later transactions
+            // If the deleted transaction was a debit (charge), we need to subtract that amount from all later transactions
+            // If it was a credit (payment), we need to add that amount to all later transactions
             $updateSubsequentBalances = $pdo->prepare("
                 UPDATE client_transactions
                 SET balance = balance " . ($transaction['type'] == 'credit' ? '-' : '+') . " ?
