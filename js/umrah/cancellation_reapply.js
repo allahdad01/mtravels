@@ -276,7 +276,7 @@ function bulkReapplySelected() {
     }
     
     // Process re-apply for selected members
-    processBulkAction(selectedMembers, 'reapply', 'active');
+    processBulkAction(selectedMembers, 'reapply', 'pending');
 }
 
 // Process bulk action
@@ -303,13 +303,13 @@ function processBulkAction(selectedMembers, action, newStatus) {
                 
                 if (result.success) {
                      Swal.fire({
-                         icon: 'success',
-                         title: 'Success',
-                         text: result.message || `Successfully ${action}ed ${selectedMembers.length} member${selectedMembers.length > 1 ? 's' : ''}`,
-                         confirmButtonText: 'OK'
-                     }).then(() => {
-                         refreshFamiliesTable();
-                     });
+                          icon: 'success',
+                          title: 'Success',
+                          text: result.message || `Successfully ${action}ed ${selectedMembers.length} member${selectedMembers.length > 1 ? 's' : ''}`,
+                          confirmButtonText: 'OK'
+                      }).then(() => {
+                          location.reload();
+                      });
                 } else {
                     showToast('error', result.message || `Failed to process bulk ${action}`);
                     }

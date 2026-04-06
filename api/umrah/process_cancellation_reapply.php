@@ -1,6 +1,7 @@
 <?php
 // Include necessary files
 require_once('../../includes/db.php');
+require_once('../../admin/security.php');
 
 // Enforce authentication
 enforce_auth();
@@ -98,7 +99,7 @@ try {
     } else {
         // Re-apply: Recalculate profit (sold - base = profit)
         $new_profit = $sold_price - $base_price;
-        $new_status = 'active';
+        $new_status = 'pending';
         $action_description = "Booking re-applied - profit recalculated";
     }
 

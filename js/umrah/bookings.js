@@ -147,17 +147,20 @@ function submitCreateFamilyForm() {
     }).then(response => response.json())
       .then(data => {
           if(data.success) {
-                alert("Family created successfully");
-              location.reload();
+                showToast('success', 'Family created successfully');
+                document.getElementById("createFamilyForm").reset();
+                document.getElementById("createFamilyModal").style.display = "none";
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
           } else {
-              alert("error_creating_family");
+              showToast('error', data.error || "error_creating_family");
               submitBtn.disabled = false;
               submitBtn.innerHTML = originalHtml;
           }
       })
       .catch(error => {
-
-          alert("An error occurred while creating the family");
+          showToast('error', "An error occurred while creating the family");
           submitBtn.disabled = false;
           submitBtn.innerHTML = originalHtml;
       });

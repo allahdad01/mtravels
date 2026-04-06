@@ -59,7 +59,7 @@ $stmt->execute();
 $suppliers = $stmt->fetchAll();
 
 // Fetch clients for dropdown
-$clientsQuery = "SELECT * FROM clients WHERE status = 'active' AND tenant_id = ? AND branch_id = ?";
+$clientsQuery = "SELECT * FROM clients WHERE status = 'active' AND client_type = 'regular' AND tenant_id = ? AND branch_id = ?";
 $stmt = $pdo->prepare($clientsQuery);
 $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
 $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);

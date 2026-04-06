@@ -174,16 +174,10 @@ try {
     // Begin transaction
     $pdo->beginTransaction();
     
-    // Get tenant_id and branch_id - you might need to adjust this logic based on your system
-    $tenant_id = 1; // Default value
-    $branch_id = 1; // Default value
 
-    if (isset($_SESSION['tenant_id'])) {
         $tenant_id = $_SESSION['tenant_id'];
-    }
-    if (isset($_SESSION['branch_id'])) {
         $branch_id = $_SESSION['branch_id'];
-    }
+    
     
     // First, get the current booking data to calculate balance adjustments
     $stmtCurrentData = $pdo->prepare("
@@ -574,10 +568,30 @@ try {
                     ");
                     $deleteOldClientTransactionStmt->execute([$oldClientTransaction['id'], $tenant_id, $branch_id]);
                 }
+            } else {
+                // Old client is not regular (agency) - just delete the transaction without updating subsequent ones
+                $checkOldClientTransactionStmt = $pdo->prepare("
+                    SELECT id
+                    FROM client_transactions
+                    WHERE client_id = ? AND reference_id = ? and transaction_of = 'umrah' AND tenant_id = ? AND branch_id = ?
+                    LIMIT 1
+                ");
+                $checkOldClientTransactionStmt->execute([$currentData['sold_to'], $booking_id, $tenant_id, $branch_id]);
+                $oldClientTransaction = $checkOldClientTransactionStmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($oldClientTransaction) {
+                    // Delete old transaction
+                    $deleteOldClientTransactionStmt = $pdo->prepare("
+                        DELETE FROM client_transactions
+                        WHERE id = ? AND tenant_id = ? AND branch_id = ?
+                    ");
+                    $deleteOldClientTransactionStmt->execute([$oldClientTransaction['id'], $tenant_id, $branch_id]);
+                }
             }
 
             // Add transaction to new client
             if ($isRegularClient) {
+                // For regular clients: update balance and create transaction
                 if ($clientCurrency == 'USD') {
                     $updateNewClientStmt = $pdo->prepare("UPDATE clients SET usd_balance = usd_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                 } else {
@@ -586,6 +600,30 @@ try {
                 $updateNewClientStmt->execute([$totalSoldPrice, $soldTo, $tenant_id, $branch_id]);
 
                 // Get updated balance
+                $getNewBalanceStmt = $pdo->prepare("
+                    SELECT " . ($clientCurrency == 'USD' ? 'usd_balance' : 'afs_balance') . " as current_balance
+                    FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?
+                ");
+                $getNewBalanceStmt->execute([$soldTo, $tenant_id, $branch_id]);
+                $newBalance = $getNewBalanceStmt->fetchColumn();
+
+                // Create new transaction
+                $insertNewClientTransactionStmt = $pdo->prepare("
+                    INSERT INTO client_transactions (client_id, reference_id, type, amount, currency, description, balance, transaction_of, receipt, tenant_id, branch_id)
+                    VALUES (?, ?, 'debit', ?, ?, ?, ?, 'umrah', NULL, ?, ?)
+                ");
+                $insertNewClientTransactionStmt->execute([
+                    $soldTo,
+                    $booking_id,
+                    $totalSoldPrice,
+                    $clientCurrency,
+                    "Sale for member: $name (Passport: $passport_number)",
+                    $newBalance,
+                    $tenant_id,
+                    $branch_id
+                ]);
+            } else {
+                // For non-regular clients: only create transaction (no balance update)
                 $getNewBalanceStmt = $pdo->prepare("
                     SELECT " . ($clientCurrency == 'USD' ? 'usd_balance' : 'afs_balance') . " as current_balance
                     FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?

@@ -46,7 +46,7 @@
                        document.getElementById("createFamilyForm").reset();
                        document.getElementById("createFamilyModal").style.display = "none";
                        setTimeout(() => {
-                           refreshFamiliesTable();
+                        location.reload();
                        }, 1000);
                    } else {
                        showToast('error', data.message || 'Error creating family');

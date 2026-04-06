@@ -468,7 +468,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ");
             $stmt_update_subsequent->bindParam(1, $payment_amount, PDO::PARAM_STR);
             $stmt_update_subsequent->bindParam(2, $currency, PDO::PARAM_STR);
-            $stmt_update_subsequent->bindParam(3, $$date_result['id'], PDO::PARAM_INT);
+            $stmt_update_subsequent->bindParam(3, $date_result['id'], PDO::PARAM_INT);
             $stmt_update_subsequent->bindParam(4, $tenant_id, PDO::PARAM_INT);
             $stmt_update_subsequent->bindParam(5, $branch_id, PDO::PARAM_INT);
 

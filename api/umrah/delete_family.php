@@ -55,11 +55,23 @@ try {
     foreach ($members_result as $member) {
         $booking_id = $member['booking_id'];
         $client_id = $member['sold_to'];
-        $supplier_id = $member['supplier'];
         $currency = $member['currency'];
         $client_type = $member['client_type'];
         $mainAccountId = $member['paid_to'];
         $isActiveStatus = ($member['status'] === 'active');
+
+        // Fetch supplier_id from umrah_booking_services (multi-supplier support)
+        $stmt_fetch_supplier = $pdo->prepare("
+            SELECT supplier_id FROM umrah_booking_services 
+            WHERE booking_id = ? AND tenant_id = ? AND branch_id = ? 
+            LIMIT 1
+        ");
+        $stmt_fetch_supplier->bindParam(1, $booking_id, PDO::PARAM_INT);
+        $stmt_fetch_supplier->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt_fetch_supplier->bindParam(3, $branch_id, PDO::PARAM_INT);
+        $stmt_fetch_supplier->execute();
+        $supplier_result = $stmt_fetch_supplier->fetch(PDO::FETCH_ASSOC);
+        $supplier_id = $supplier_result ? intval($supplier_result['supplier_id']) : 0;
 
         // ==================== Handle client transactions ====================
         $clientTransactions = "SELECT id, amount, type, created_at FROM client_transactions
