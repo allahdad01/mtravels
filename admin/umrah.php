@@ -624,10 +624,12 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
 
 <!-- Document Upload Script -->
+ 
+<script src="../js/umrah/family_transaction_manager.js"></script>
+<script src="../js/umrah/transaction_manager.js"></script>
 <script src="../js/member-document-upload.js"></script>
 <script src="../js/umrah/refresh-families.js"></script>
 
-<script src="../js/umrah/transaction_manager.js"></script>
 <script src="../js/umrah/approve_booking.js"></script>
 <script src="../js/umrah/refund.js?v=1"></script>
 <script src="../js/umrah/cancellation_reapply.js"></script>
@@ -645,7 +647,6 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
 <script src="../js/umrah/edit_member.js"></script>
 <script src="../js/umrah/family_cancellation.js"></script>
 <script src="../js/umrah/view_member_details.js"></script>
-<script src="../js/umrah/family_transaction_manager.js"></script>
 <script src="../js/umrah/umrah-forms.js"></script>
 <script src="../js/umrah/flight_details.js"></script>
 <script src="../js/umrah/bookings.js"></script>

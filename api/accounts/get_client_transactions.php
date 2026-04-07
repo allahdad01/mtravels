@@ -121,7 +121,8 @@ $query = "SELECT ct.*,
           LEFT JOIN hotel_refunds hr ON ct.reference_id = hr.id AND ct.transaction_of = 'hotel_refund' AND hr.tenant_id = ? AND hr.branch_id = ?
           LEFT JOIN hotel_bookings hr_book ON hr.booking_id = hr_book.id AND ct.transaction_of = 'hotel_refund' AND hr_book.tenant_id = ? AND hr_book.branch_id = ?
           LEFT JOIN users usr ON usr.id = ct.reference_id AND ct.transaction_of = 'fund' AND usr.tenant_id = ? AND usr.branch_id = ?
-          LEFT JOIN jv_payments jv ON jv.id = ct.reference_id AND ct.transaction_of = 'jv_payment' AND jv.tenant_id = ? AND jv.branch_id = ?
+          LEFT JOIN jv_transactions jvt ON jvt.id = ct.reference_id AND ct.transaction_of = 'jv_payment' AND jvt.tenant_id = ? AND jvt.branch_id = ?
+          LEFT JOIN jv_payments jv ON jv.id = jvt.jv_payment_id AND ct.transaction_of = 'jv_payment' AND jv.tenant_id = ? AND jv.branch_id = ?
           LEFT JOIN additional_payments ap ON ap.id = ct.reference_id AND ct.transaction_of = 'additional_payment' AND ap.tenant_id = ? AND ap.branch_id = ?
           WHERE " . $whereClause . "
           ORDER BY ct.id DESC
@@ -135,7 +136,7 @@ try {
 
     // Prepare parameters array with tenant/branch from joins
      $joinParams = [];
-     for ($i = 0; $i < 18; $i++) {
+     for ($i = 0; $i < 19; $i++) {
          $joinParams[] = $tenant_id;
          $joinParams[] = $branch_id;
      }

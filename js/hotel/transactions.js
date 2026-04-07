@@ -19,12 +19,12 @@ const transactionManager = {
     // Generate dynamic exchange rate example
     getExchangeRateExample: function(baseCurrency, targetCurrency) {
         const examples = {
-            'USD-AFS': 'Example: If 1 USD = 88 AFS, enter 88',
+            'USD-AFS': 'Example: If 1 USD = 65 AFS, enter 65',
             'USD-EUR': 'Example: If 1 USD = 0.95 EUR, enter 0.95',
             'USD-AED': 'Example: If 1 USD = 3.67 AED, enter 3.67',
-            'AFS-USD': 'Example: If 1 AFS = 0.0114 USD, enter 0.0114',
-            'AFS-EUR': 'Example: If 1 AFS = 0.0108 EUR, enter 0.0108',
-            'AFS-AED': 'Example: If 1 AFS = 0.0417 AED, enter 0.0417',
+            'AFS-USD': 'Example: If 1 USD = 65 AFS, enter 65',
+            'AFS-EUR': 'Example: If 1 EUR = 72 EUR, enter 72',
+            'AFS-AED': 'Example: If 1 AED = 17.50 AED, enter 17.50',
             'EUR-USD': 'Example: If 1 EUR = 1.05 USD, enter 1.05',
             'EUR-AFS': 'Example: If 1 EUR = 92.5 AFS, enter 92.5',
             'EUR-AED': 'Example: If 1 EUR = 3.86 AED, enter 3.86',

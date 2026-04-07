@@ -105,6 +105,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_creditor'])) {
             $description = "Initial credit balance for creditor: $name";
             $tranasction_of = 'creditor';
 
+            // Create creditor transaction record with type 'credit'
+            $reference_number = ''; // No reference number for initial transaction
+            $stmt = $pdo->prepare("INSERT INTO creditor_transactions (creditor_id, amount, currency, transaction_type, description, payment_date, reference_number, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, NOW(), ?, ?, ?)");
+            $stmt->bindParam(1, $creditor_id, PDO::PARAM_INT);
+            $stmt->bindParam(2, $balance, PDO::PARAM_STR);
+            $stmt->bindParam(3, $currency, PDO::PARAM_STR);
+            $stmt->bindParam(4, $transaction_type, PDO::PARAM_STR);
+            $stmt->bindParam(5, $description, PDO::PARAM_STR);
+            $stmt->bindParam(6, $reference_number, PDO::PARAM_STR);
+            $stmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
+            $stmt->bindParam(8, $branch_id, PDO::PARAM_INT);
+            $stmt->execute();
+            $creditor_transaction_id = $pdo->lastInsertId();
+            
+            // Create main account transaction record
             $stmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, amount, balance, currency, type, description, transaction_of, reference_id, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             $stmt->bindParam(1, $main_account_id, PDO::PARAM_INT);
             $stmt->bindParam(2, $balance, PDO::PARAM_STR);
@@ -113,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_creditor'])) {
             $stmt->bindParam(5, $transaction_type, PDO::PARAM_STR);
             $stmt->bindParam(6, $description, PDO::PARAM_STR);
             $stmt->bindParam(7, $tranasction_of, PDO::PARAM_STR);
-            $stmt->bindParam(8, $creditor_id, PDO::PARAM_INT);
+            $stmt->bindParam(8, $creditor_transaction_id, PDO::PARAM_INT);
             $stmt->bindParam(9, $tenant_id, PDO::PARAM_INT);
             $stmt->bindParam(10, $branch_id, PDO::PARAM_INT);
             $stmt->execute();
@@ -359,72 +374,91 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_transaction'])
         }
 
         // Use main account transaction's amount and currency for all main account updates
-        $main_amount = $main_transaction['amount'];
-        $main_currency = $main_transaction['currency'];
+         $main_amount = $main_transaction['amount'];
+         $main_currency = $main_transaction['currency'];
+         
+         // Check if this is a credit or debit transaction
+         $is_credit = $transaction['transaction_type'] === 'credit';
+         
+         // For credit transactions, we need to SUBTRACT from subsequent balances
+         // For debit transactions, we need to ADD to subsequent balances
+         $balance_adjustment = $is_credit ? $main_amount * -1 : $main_amount;
 
-        // Update balances of all subsequent transactions
-        $updateSubsequentStmt = $pdo->prepare("
-            UPDATE main_account_transactions
-            SET balance = balance + ?
-            WHERE main_account_id = ?
-            AND currency = ?
-            AND id > ?
-            AND id != ?
-            AND tenant_id = ?
-            AND branch_id = ?
-        ");
-        $updateSubsequentStmt->bindParam(1, $main_amount, PDO::PARAM_STR);
-        $updateSubsequentStmt->bindParam(2, $main_transaction['main_account_id'], PDO::PARAM_INT);
-        $updateSubsequentStmt->bindParam(3, $main_currency, PDO::PARAM_STR);
-        $updateSubsequentStmt->bindParam(4, $main_transaction['id'], PDO::PARAM_INT);
-        $updateSubsequentStmt->bindParam(5, $main_transaction['id'], PDO::PARAM_INT);
-        $updateSubsequentStmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
-        $updateSubsequentStmt->bindParam(7, $branch_id, PDO::PARAM_INT);
-        $updateSubsequentStmt->execute();
-        
-        // Get creditor information
-        $stmt = $pdo->prepare("SELECT balance FROM creditors WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bindParam(1, $creditor_id, PDO::PARAM_INT);
-        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-        $stmt->execute();
-        $creditor = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        // Update creditor balance (add amount back)
-        $new_balance = $creditor['balance'] + $transaction['amount'];
-        $stmt = $pdo->prepare("UPDATE creditors SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bindParam(1, $new_balance, PDO::PARAM_STR);
-        $stmt->bindParam(2, $creditor_id, PDO::PARAM_INT);
-        $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-        $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
-        $stmt->execute();
+         // Update balances of all subsequent transactions
+         $updateSubsequentStmt = $pdo->prepare("
+             UPDATE main_account_transactions
+             SET balance = balance + ?
+             WHERE main_account_id = ?
+             AND currency = ?
+             AND id > ?
+             AND id != ?
+             AND tenant_id = ?
+             AND branch_id = ?
+         ");
+         $updateSubsequentStmt->bindParam(1, $balance_adjustment, PDO::PARAM_STR);
+         $updateSubsequentStmt->bindParam(2, $main_transaction['main_account_id'], PDO::PARAM_INT);
+         $updateSubsequentStmt->bindParam(3, $main_currency, PDO::PARAM_STR);
+         $updateSubsequentStmt->bindParam(4, $main_transaction['id'], PDO::PARAM_INT);
+         $updateSubsequentStmt->bindParam(5, $main_transaction['id'], PDO::PARAM_INT);
+         $updateSubsequentStmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
+         $updateSubsequentStmt->bindParam(7, $branch_id, PDO::PARAM_INT);
+         $updateSubsequentStmt->execute();
+         
+         // Get creditor information
+         $stmt = $pdo->prepare("SELECT balance FROM creditors WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+         $stmt->bindParam(1, $creditor_id, PDO::PARAM_INT);
+         $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+         $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+         $stmt->execute();
+         $creditor = $stmt->fetch(PDO::FETCH_ASSOC);
+         
+         // Update creditor balance
+         // For credit: subtract the amount (reverse the credit)
+         // For debit: add the amount back (reverse the debit)
+         if ($is_credit) {
+             $new_balance = $creditor['balance'] - $transaction['amount'];
+         } else {
+             $new_balance = $creditor['balance'] + $transaction['amount'];
+         }
+         $stmt = $pdo->prepare("UPDATE creditors SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+         $stmt->bindParam(1, $new_balance, PDO::PARAM_STR);
+         $stmt->bindParam(2, $creditor_id, PDO::PARAM_INT);
+         $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+         $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
+         $stmt->execute();
         
         // Get main account info and update the correct currency balance
-        $balance_column = strtolower($main_currency) . '_balance';
-        if ($main_currency == 'DARHAM') {
-            $balance_column = 'darham_balance';
-        } elseif ($main_currency == 'EUR') {
-            $balance_column = 'euro_balance';
-        } elseif ($main_currency == 'USD') {
-            $balance_column = 'usd_balance';
-        } elseif ($main_currency == 'AFS') {
-            $balance_column = 'afs_balance';
-        }
-        
-        // Get current main account balance
-        $stmt = $pdo->prepare("SELECT $balance_column FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $stmt->bindParam(1, $main_transaction['main_account_id'], PDO::PARAM_INT);
-        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-        $stmt->execute();
-        $main_account = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$main_account) {
-            throw new Exception(__("main_account_not_found"));
-        }
-        
-        // Update main account balance (add main transaction amount back)
-        $new_main_balance = $main_account[$balance_column] + $main_amount;
+         $balance_column = strtolower($main_currency) . '_balance';
+         if ($main_currency == 'DARHAM') {
+             $balance_column = 'darham_balance';
+         } elseif ($main_currency == 'EUR') {
+             $balance_column = 'euro_balance';
+         } elseif ($main_currency == 'USD') {
+             $balance_column = 'usd_balance';
+         } elseif ($main_currency == 'AFS') {
+             $balance_column = 'afs_balance';
+         }
+         
+         // Get current main account balance
+         $stmt = $pdo->prepare("SELECT $balance_column FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+         $stmt->bindParam(1, $main_transaction['main_account_id'], PDO::PARAM_INT);
+         $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+         $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+         $stmt->execute();
+         $main_account = $stmt->fetch(PDO::FETCH_ASSOC);
+         
+         if (!$main_account) {
+             throw new Exception(__("main_account_not_found"));
+         }
+         
+         // Update main account balance
+         // For credit: subtract the amount (reverse the credit)
+         // For debit: add the amount back (reverse the debit)
+         if ($is_credit) {
+             $new_main_balance = $main_account[$balance_column] - $main_amount;
+         } else {
+             $new_main_balance = $main_account[$balance_column] + $main_amount;
+         }
         $stmt = $pdo->prepare("UPDATE main_account SET $balance_column = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
         $stmt->bindParam(1, $new_main_balance, PDO::PARAM_STR);
         $stmt->bindParam(2, $main_transaction['main_account_id'], PDO::PARAM_INT);
@@ -596,6 +630,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_creditor'])) {
     try {
         $pdo->beginTransaction();
         
+        // Get the initial creditor transaction to check the main account
+        $stmt = $pdo->prepare("SELECT mt.id as initial_transaction_id, mt.main_account_id
+                              FROM main_account_transactions mt
+                              WHERE mt.transaction_of = 'creditor'
+                              AND mt.reference_id = ?
+                              AND mt.type = 'credit'
+                              AND mt.tenant_id = ?
+                              AND mt.branch_id = ?
+                              ORDER BY mt.created_at ASC LIMIT 1");
+        $stmt->bindParam(1, $creditor_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+        $stmt->execute();
+        $initial_transaction_check = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // Check if there are any OTHER transactions in this main account besides the initial creditor transaction
+        if ($initial_transaction_check) {
+            $stmt = $pdo->prepare("SELECT COUNT(*) as transaction_count
+                                  FROM main_account_transactions mt
+                                  WHERE mt.main_account_id = ?
+                                  AND mt.id != ?
+                                  AND mt.tenant_id = ?
+                                  AND mt.branch_id = ?");
+            $stmt->bindParam(1, $initial_transaction_check['main_account_id'], PDO::PARAM_INT);
+            $stmt->bindParam(2, $initial_transaction_check['initial_transaction_id'], PDO::PARAM_INT);
+            $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+            $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($result['transaction_count'] > 0) {
+                $pdo->rollBack();
+                $_SESSION['error_message'] = "Cannot delete creditor. Please delete all main account transactions first, then try deleting the creditor.";
+                header('Location: ' . $redirect_url);
+                exit();
+            }
+        }
+        
         // Check if creditor has any main account transactions
         $stmt = $pdo->prepare("SELECT mt.*, ma.id as main_account_id
                               FROM main_account_transactions mt
@@ -738,103 +810,4 @@ $name = isset($_POST['name']) ? DbSecurity::validateInput($_POST['name'], 'strin
 // Validate add_creditor
 $add_creditor = isset($_POST['add_creditor']) ? DbSecurity::validateInput($_POST['add_creditor'], 'string', ['maxlength' => 255]) : null;
 
-// Add the delete creditor handler at the end of the file
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_creditor'])) {
-    $creditor_id = $_POST['creditor_id'];
-    $creditor_balance = $_POST['creditor_balance'];
-    $creditor_currency = $_POST['creditor_currency'];
-    
-    try {
-        $pdo->beginTransaction();
-        
-        // Check if creditor has any main account transactions
-        $stmt = $pdo->prepare("SELECT mt.*, ma.id as main_account_id
-                              FROM main_account_transactions mt
-                              JOIN main_account ma ON mt.main_account_id = ma.id
-                              WHERE mt.transaction_of = 'creditor'
-                              AND mt.reference_id = ?
-                              AND mt.type = 'credit'
-                              AND mt.tenant_id = ?
-                              AND mt.branch_id = ?
-                              ORDER BY mt.created_at ASC LIMIT 1");
-        $stmt->bindParam(1, $creditor_id, PDO::PARAM_INT);
-        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-        $stmt->execute();
-        $initial_transaction = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($initial_transaction) {
-            // Get main account balance column based on currency
-            $balance_column = strtolower($creditor_currency) . '_balance';
-            if ($creditor_currency == 'DARHAM') {
-                $balance_column = 'darham_balance';
-            } elseif ($creditor_currency == 'EUR') {
-                $balance_column = 'euro_balance';
-            } elseif ($creditor_currency == 'USD') {
-                $balance_column = 'usd_balance';
-            } elseif ($creditor_currency == 'AFS') {
-                $balance_column = 'afs_balance';
-            }
-
-            // Update all subsequent transaction balances to remove the creditor's balance
-            $stmt = $pdo->prepare("
-                UPDATE main_account_transactions
-                SET balance = balance - ?
-                WHERE main_account_id = ?
-                AND currency = ?
-                AND id > ?
-                AND id != ?
-                AND tenant_id = ?
-                AND branch_id = ?
-            ");
-            $stmt->bindParam(1, $creditor_balance, PDO::PARAM_STR);
-            $stmt->bindParam(2, $initial_transaction['main_account_id'], PDO::PARAM_INT);
-            $stmt->bindParam(3, $creditor_currency, PDO::PARAM_STR);
-            $stmt->bindParam(4, $initial_transaction['id'], PDO::PARAM_INT);
-            $stmt->bindParam(5, $initial_transaction['id'], PDO::PARAM_INT);
-            $stmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
-            $stmt->bindParam(7, $branch_id, PDO::PARAM_INT);
-            $stmt->execute();
-
-            // Update main account balance
-            $stmt = $pdo->prepare("UPDATE main_account SET $balance_column = $balance_column - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-            $stmt->bindParam(1, $creditor_balance, PDO::PARAM_STR);
-            $stmt->bindParam(2, $initial_transaction['main_account_id'], PDO::PARAM_INT);
-            $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-            $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
-            $stmt->execute();
-
-            // Delete all transactions related to this creditor
-             $stmt = $pdo->prepare("DELETE FROM main_account_transactions WHERE transaction_of = 'creditor' AND reference_id = ? AND tenant_id = ? AND branch_id = ?");
-             $stmt->bindParam(1, $creditor_id, PDO::PARAM_INT);
-             $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-             $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-             $stmt->execute();
-            }
-
-            // Delete all creditor transactions first
-            $stmt = $pdo->prepare("DELETE FROM creditor_transactions WHERE creditor_id = ? AND tenant_id = ? AND branch_id = ?");
-            $stmt->bindParam(1, $creditor_id, PDO::PARAM_INT);
-            $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-            $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-            $stmt->execute();
-
-            // Delete the creditor
-            $stmt = $pdo->prepare("DELETE FROM creditors WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-            $stmt->bindParam(1, $creditor_id, PDO::PARAM_INT);
-            $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-            $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-            $stmt->execute();
-
-            $pdo->commit();
-            $_SESSION['success_message'] = __("creditor_deleted_successfully");
-            header('Location: ' . $redirect_url);
-            exit();
-            } catch (Exception $e) {
-            $pdo->rollBack();
-            $_SESSION['error_message'] = __("error_deleting_creditor") . ": " . $e->getMessage();
-            header('Location: ' . $redirect_url);
-            exit();
-            }
-            }
-            ?>
+?>

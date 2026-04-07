@@ -1000,11 +1000,46 @@ $edit_creditor = isset($_POST['edit_creditor']) ? DbSecurity::validateInput($_PO
 
 // Add Edit Transaction Modals for each transaction
 foreach ($creditors as $creditor): 
-    // Fetch transactions for this creditor
-    $transStmt = $pdo->prepare("SELECT * FROM creditor_transactions WHERE creditor_id = ? AND tenant_id = ? AND branch_id = ? ORDER BY payment_date DESC");
+    // Fetch both main account initial transaction and creditor transactions for this creditor
+    $transStmt = $pdo->prepare("
+        SELECT 
+            'initial' as type,
+            mt.id,
+            mt.created_at as payment_date,
+            mt.amount,
+            mt.currency,
+            mt.description,
+            NULL as reference_number
+        FROM main_account_transactions mt
+        WHERE mt.transaction_of = 'creditor'
+        AND mt.reference_id = ?
+        AND mt.type = 'credit'
+        AND mt.tenant_id = ?
+        AND mt.branch_id = ?
+        
+        UNION ALL
+        
+        SELECT 
+            'payment' as type,
+            ct.id,
+            ct.payment_date,
+            ct.amount,
+            ct.currency,
+            ct.description,
+            ct.reference_number
+        FROM creditor_transactions ct
+        WHERE ct.creditor_id = ?
+        AND ct.tenant_id = ?
+        AND ct.branch_id = ?
+        
+        ORDER BY payment_date DESC
+    ");
     $transStmt->bindParam(1, $creditor['id'], PDO::PARAM_INT);
     $transStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
     $transStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+    $transStmt->bindParam(4, $creditor['id'], PDO::PARAM_INT);
+    $transStmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
+    $transStmt->bindParam(6, $branch_id, PDO::PARAM_INT);
     $transStmt->execute();
     $transResult = $transStmt->fetchAll();
     
@@ -1015,64 +1050,105 @@ foreach ($creditors as $creditor):
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title"><?= __("edit_transaction") ?></h5>
+                    <h5 class="modal-title">
+                        <?php if ($transaction['type'] === 'initial'): ?>
+                            <?= __("view_initial_transaction") ?>
+                        <?php else: ?>
+                            <?= __("edit_transaction") ?>
+                        <?php endif; ?>
+                    </h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
                 <div class="modal-body">
-                    <form id="editTransactionForm_<?php echo $transaction['id']; ?>" class="edit-transaction-form">
-                        <input type="hidden" name="transaction_id" value="<?php echo $transaction['id']; ?>">
-                        <input type="hidden" name="creditor_id" value="<?php echo $creditor['id']; ?>">
-                        <input type="hidden" name="original_amount" value="<?php echo $transaction['amount']; ?>">
-                        <input type="hidden" name="original_currency" value="<?php echo $transaction['currency']; ?>">
-                        
-                        <div class="form-group">
-                            <label><?= __("amount") ?> *</label>
-                            <input type="number" class="form-control" name="payment_amount" value="<?php echo $transaction['amount']; ?>" step="0.01" required>
+                    <?php if ($transaction['type'] === 'initial'): ?>
+                        <!-- Initial Transaction Display -->
+                        <div class="alert alert-info">
+                            <i class="feather icon-info mr-2"></i>
+                            This is the initial credit transaction created when the creditor was added.
                         </div>
                         <div class="form-group">
-                            <label><?= __("payment_date_and_time") ?> *</label>
-                            <div class="row">
-                                <div class="col-md-7">
-                                    <?php 
-                                    // Ensure we get the proper date
-                                    $datetime = new DateTime($transaction['created_at']);
-                                    $formattedDate = $datetime->format('d/m/Y');
-                                    ?>
-                                    <input type="text" class="form-control" name="payment_date" 
-                                           placeholder="DD/MM/YYYY" value="<?php echo $formattedDate; ?>" required>
-                                    <small class="form-text text-muted"><?= __("format") ?>: DD/MM/YYYY</small>
-                                </div>
-                                <div class="col-md-5">
-                                    <?php 
-                                    // Get the time part
-                                    $formattedTime = $datetime->format('H:i:s');
-                                    ?>
-                                    <input type="text" class="form-control" name="payment_time" 
-                                           placeholder="HH:MM:SS" value="<?php echo $formattedTime; ?>" required>
-                                    <small class="form-text text-muted"><?= __("format") ?>: HH:MM:SS</small>
-                                </div>
-                            </div>
+                            <label><?= __("amount") ?></label>
+                            <input type="text" class="form-control" value="<?php echo $transaction['amount']; ?>" disabled>
                         </div>
                         <div class="form-group">
-                            <label><?= __("reference_number") ?></label>
-                            <input type="text" class="form-control" name="reference_number" value="<?php echo htmlspecialchars($transaction['reference_number'] ?? ''); ?>">
+                            <label><?= __("currency") ?></label>
+                            <input type="text" class="form-control" value="<?php echo $transaction['currency']; ?>" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label><?= __("created_date") ?></label>
+                            <input type="text" class="form-control" value="<?php echo (new DateTime($transaction['payment_date']))->format('d/m/Y H:i:s'); ?>" disabled>
                         </div>
                         <div class="form-group">
                             <label><?= __("description") ?></label>
-                            <textarea class="form-control" name="payment_description" rows="3"><?php echo htmlspecialchars($transaction['description'] ?? ''); ?></textarea>
+                            <textarea class="form-control" rows="3" disabled><?php echo htmlspecialchars($transaction['description'] ?? ''); ?></textarea>
                         </div>
-                        
-                        <div class="alert alert-warning">
-                            <i class="feather icon-alert-triangle mr-2"></i>
-                            <?= __("warning") ?>: <?= __("editing_a_transaction_will_recalculate_balances") ?>
-                        </div>
-                    </form>
+                    <?php else: ?>
+                        <!-- Payment Transaction Edit -->
+                        <form id="editTransactionForm_<?php echo $transaction['id']; ?>" class="edit-transaction-form">
+                            <input type="hidden" name="transaction_id" value="<?php echo $transaction['id']; ?>">
+                            <input type="hidden" name="creditor_id" value="<?php echo $creditor['id']; ?>">
+                            <input type="hidden" name="original_amount" value="<?php echo $transaction['amount']; ?>">
+                            <input type="hidden" name="original_currency" value="<?php echo $transaction['currency']; ?>">
+                            
+                            <div class="form-group">
+                                <label><?= __("amount") ?> *</label>
+                                <input type="number" class="form-control" name="payment_amount" value="<?php echo $transaction['amount']; ?>" step="0.01" required>
+                            </div>
+                            <div class="form-group">
+                                <label><?= __("payment_date_and_time") ?> *</label>
+                                <div class="row">
+                                    <div class="col-md-7">
+                                        <?php 
+                                        // Ensure we get the proper date
+                                        $datetime = new DateTime($transaction['payment_date']);
+                                        $formattedDate = $datetime->format('d/m/Y');
+                                        ?>
+                                        <input type="text" class="form-control" name="payment_date" 
+                                               placeholder="DD/MM/YYYY" value="<?php echo $formattedDate; ?>" required>
+                                        <small class="form-text text-muted"><?= __("format") ?>: DD/MM/YYYY</small>
+                                    </div>
+                                    <div class="col-md-5">
+                                        <?php 
+                                        // Get the time part
+                                        $formattedTime = $datetime->format('H:i:s');
+                                        ?>
+                                        <input type="text" class="form-control" name="payment_time" 
+                                               placeholder="HH:MM:SS" value="<?php echo $formattedTime; ?>" required>
+                                        <small class="form-text text-muted"><?= __("format") ?>: HH:MM:SS</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label><?= __("reference_number") ?></label>
+                                <input type="text" class="form-control" name="reference_number" value="<?php echo htmlspecialchars($transaction['reference_number'] ?? ''); ?>">
+                            </div>
+                            <div class="form-group">
+                                <label><?= __("description") ?></label>
+                                <textarea class="form-control" name="payment_description" rows="3"><?php echo htmlspecialchars($transaction['description'] ?? ''); ?></textarea>
+                            </div>
+                            
+                            <div class="alert alert-warning">
+                                <i class="feather icon-alert-triangle mr-2"></i>
+                                <?= __("warning") ?>: <?= __("editing_a_transaction_will_recalculate_balances") ?>
+                            </div>
+                        </form>
+                    <?php endif; ?>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __("cancel") ?></button>
-                    <button type="button" class="btn btn-primary" onclick="updateCreditorTransaction(<?php echo $transaction['id']; ?>)"><?= __("save_changes") ?></button>
+                    <?php if ($transaction['type'] === 'initial'): ?>
+                        <form method="POST" style="display:inline;" onsubmit="return confirm('Are you sure? This will delete the initial creditor transaction.');">
+                            <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
+                            <input type="hidden" name="delete_initial_transaction" value="1">
+                            <input type="hidden" name="transaction_id" value="<?php echo $transaction['id']; ?>">
+                            <input type="hidden" name="creditor_id" value="<?php echo $creditor['id']; ?>">
+                            <button type="submit" class="btn btn-danger"><?= __("delete_initial_transaction") ?></button>
+                        </form>
+                    <?php else: ?>
+                        <button type="button" class="btn btn-primary" onclick="updateCreditorTransaction(<?php echo $transaction['id']; ?>)"><?= __("save_changes") ?></button>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

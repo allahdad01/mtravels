@@ -18,8 +18,7 @@ $branch_id = $_SESSION['branch_id'];
 $period = $_POST['period'];
 $filteredDate = isset($_POST['filtered_date']) ? $_POST['filtered_date'] : null;
 
-// Log input parameters for debugging
-error_log("get_profit_sources.php - Input parameters: period=$period, filteredDate=$filteredDate");
+
 
 // Set up date condition based on period and filtered date
 if ($period === 'daily') {
@@ -34,11 +33,11 @@ if ($period === 'daily') {
         $month = date('m');
     }
     $dateCondition = "MONTH(created_at) = :month AND YEAR(created_at) = :year";
-    $params = [':month' => $month, ':year' => $year];
+    $params = [':month' => (int)$month, ':year' => (int)$year];
 } elseif ($period === 'yearly') {
     $year = $filteredDate ?: date('Y');
     $dateCondition = "YEAR(created_at) = :year";
-    $params = [':year' => $year];
+    $params = [':year' => (int)$year];
 } else {
     echo json_encode(['status' => 'error', 'message' => 'Invalid period']);
     exit();
@@ -69,7 +68,8 @@ try {
 
         try {
             $stmt = $pdo->prepare($query);
-            $stmt->execute(array_merge([':tenant_id' => $tenant_id, ':branch_id' => $branch_id], $params));
+            $executeParams = $params + [':tenant_id' => $tenant_id, ':branch_id' => $branch_id];
+            $stmt->execute($executeParams);
             $profit = $stmt->fetch(PDO::FETCH_ASSOC);
 
             $results[] = [
@@ -92,17 +92,25 @@ try {
     }
 
     // Ticket Weights
-    $weightDateCondition = str_replace("created_at", "ticket_weights.created_at", $dateCondition);
+    if ($period === 'daily') {
+        $weightDateCondition = "DATE(ticket_weights.created_at) = :date";
+    } elseif ($period === 'monthly') {
+        $weightDateCondition = "MONTH(ticket_weights.created_at) = :month AND YEAR(ticket_weights.created_at) = :year";
+    } else {
+        $weightDateCondition = "YEAR(ticket_weights.created_at) = :year";
+    }
+    
     $weightQuery = "SELECT
         COALESCE(SUM(CASE WHEN tb.currency='USD' THEN ticket_weights.profit ELSE 0 END),0) AS usd,
         COALESCE(SUM(CASE WHEN tb.currency='AFS' THEN ticket_weights.profit ELSE 0 END),0) AS afs
     FROM ticket_weights
-    LEFT JOIN ticket_bookings tb ON ticket_weights.ticket_id = tb.id AND tb.tenant_id = :tenant_id AND tb.branch_id = :branch_id
+    LEFT JOIN ticket_bookings tb ON ticket_weights.ticket_id = tb.id
     WHERE ticket_weights.tenant_id = :tenant_id AND ticket_weights.branch_id = :branch_id AND $weightDateCondition";
 
     try {
         $stmt = $pdo->prepare($weightQuery);
-        $stmt->execute(array_merge([':tenant_id' => $tenant_id, ':branch_id' => $branch_id], $params));
+        $executeParams = $params + [':tenant_id' => $tenant_id, ':branch_id' => $branch_id];
+        $stmt->execute($executeParams);
         $weightProfit = $stmt->fetch(PDO::FETCH_ASSOC);
 
         $results[] = [
@@ -124,7 +132,14 @@ try {
     }
 
     // Refunded Tickets
-    $refundDateCondition = str_replace("created_at", "rt.created_at", $dateCondition);
+    if ($period === 'daily') {
+        $refundDateCondition = "DATE(rt.created_at) = :date";
+    } elseif ($period === 'monthly') {
+        $refundDateCondition = "MONTH(rt.created_at) = :month AND YEAR(rt.created_at) = :year";
+    } else {
+        $refundDateCondition = "YEAR(rt.created_at) = :year";
+    }
+    
     $refundQuery = "SELECT
         COALESCE(SUM(CASE WHEN rt.currency='USD' THEN
             (CASE WHEN rt.calculation_method='base' THEN rt.service_penalty
@@ -135,12 +150,13 @@ try {
                   WHEN rt.calculation_method='sold' THEN (rt.service_penalty - IFNULL(tb.profit,0))
                   ELSE rt.service_penalty END) ELSE 0 END),0) AS afs
     FROM refunded_tickets rt
-    LEFT JOIN ticket_bookings tb ON rt.ticket_id = tb.id AND tb.tenant_id = :tenant_id AND tb.branch_id = :branch_id
+    LEFT JOIN ticket_bookings tb ON rt.ticket_id = tb.id
     WHERE rt.tenant_id = :tenant_id AND rt.branch_id = :branch_id AND $refundDateCondition";
 
     try {
         $stmt = $pdo->prepare($refundQuery);
-        $stmt->execute(array_merge([':tenant_id' => $tenant_id, ':branch_id' => $branch_id], $params));
+        $executeParams = $params + [':tenant_id' => $tenant_id, ':branch_id' => $branch_id];
+        $stmt->execute($executeParams);
         $refundProfit = $stmt->fetch(PDO::FETCH_ASSOC);
 
         $results[] = [
@@ -162,17 +178,25 @@ try {
     }
 
     // Date Change Tickets
-    $dateChangeDateCondition = str_replace("created_at", "dt.created_at", $dateCondition);
+    if ($period === 'daily') {
+        $dateChangeDateCondition = "DATE(dt.created_at) = :date";
+    } elseif ($period === 'monthly') {
+        $dateChangeDateCondition = "MONTH(dt.created_at) = :month AND YEAR(dt.created_at) = :year";
+    } else {
+        $dateChangeDateCondition = "YEAR(dt.created_at) = :year";
+    }
+    
     $dateChangeQuery = "SELECT
         COALESCE(SUM(CASE WHEN dt.currency='USD' THEN dt.service_penalty ELSE 0 END),0) AS usd,
         COALESCE(SUM(CASE WHEN dt.currency='AFS' THEN dt.service_penalty ELSE 0 END),0) AS afs
     FROM date_change_tickets dt
-    LEFT JOIN ticket_bookings tb ON dt.ticket_id = tb.id AND tb.tenant_id = :tenant_id AND tb.branch_id = :branch_id
+    LEFT JOIN ticket_bookings tb ON dt.ticket_id = tb.id
     WHERE dt.tenant_id = :tenant_id AND dt.branch_id = :branch_id AND $dateChangeDateCondition";
 
     try {
         $stmt = $pdo->prepare($dateChangeQuery);
-        $stmt->execute(array_merge([':tenant_id' => $tenant_id, ':branch_id' => $branch_id], $params));
+        $executeParams = $params + [':tenant_id' => $tenant_id, ':branch_id' => $branch_id];
+        $stmt->execute($executeParams);
         $dateChangeProfit = $stmt->fetch(PDO::FETCH_ASSOC);
 
         $results[] = [

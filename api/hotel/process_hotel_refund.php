@@ -166,8 +166,8 @@ try {
     } else {
         // Record supplier transaction without balance for non-External suppliers
         $insertSupplierTransactionStmt = $pdo->prepare("INSERT INTO supplier_transactions
-            (transaction_date, supplier_id, reference_id, amount, transaction_type, remarks, transaction_of, tenant_id, branch_id)
-            VALUES (NOW(), ?, ?, ?, 'credit', ?, 'hotel_refund', ?, ?)");
+            (transaction_date, supplier_id, reference_id, amount, transaction_type, remarks, transaction_of, tenant_id, branch_id, balance)
+            VALUES (NOW(), ?, ?, ?, 'credit', ?, 'hotel_refund', ?, ?, 0)");
         $supplierRemarks = "Refund for hotel booking #$booking_id - " . $reason;
         $insertSupplierTransactionStmt->bindParam(1, $booking['supplier_id'], PDO::PARAM_INT);
         $insertSupplierTransactionStmt->bindParam(2, $refund_id, PDO::PARAM_INT);
@@ -242,8 +242,8 @@ try {
     } else {
         // Record client transaction without balance for non-regular clients
         $clientTransactionQuery = "INSERT INTO client_transactions
-            (client_id, type, amount, currency, description, transaction_of, reference_id, created_at, tenant_id, branch_id)
-            VALUES (?, 'Credit', ?, ?, ?, 'hotel_refund', ?, NOW(), ?, ?)";
+            (client_id, type, amount, currency, description, transaction_of, reference_id, created_at, tenant_id, branch_id, balance)
+            VALUES (?, 'Credit', ?, ?, ?, 'hotel_refund', ?, NOW(), ?, ?, 0)";
         $stmt = $pdo->prepare($clientTransactionQuery);
         $clientTransactionDescription = "Refund for hotel booking #$booking_id - $reason";
         $stmt->bindParam(1, $booking['sold_to'], PDO::PARAM_INT);

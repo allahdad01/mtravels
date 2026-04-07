@@ -118,7 +118,8 @@ $query = "SELECT st.*,
           LEFT JOIN users usr ON usr.id = st.reference_id AND st.transaction_of = 'fund'
           LEFT JOIN users usr_bonus ON usr_bonus.id = st.reference_id AND st.transaction_of = 'supplier_bonus'
           LEFT JOIN users usr_withdrawal ON usr_withdrawal.id = st.reference_id AND st.transaction_of = 'fund_withdrawal'
-          LEFT JOIN jv_payments jv ON jv.id = st.reference_id AND st.transaction_of = 'jv_payment'
+          LEFT JOIN jv_transactions jvt ON jvt.id = st.reference_id AND st.transaction_of = 'jv_payment'
+          LEFT JOIN jv_payments jv ON jv.id = jvt.jv_payment_id AND st.transaction_of = 'jv_payment'
           LEFT JOIN additional_payments ap ON ap.id = st.reference_id AND st.transaction_of = 'additional_payment'
           WHERE " . $whereClause . "
           ORDER BY st.id DESC
