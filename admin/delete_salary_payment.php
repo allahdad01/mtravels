@@ -37,6 +37,15 @@ try {
         throw new Exception('Payment not found');
     }
 
+    // Get the transaction ID for this payment
+    $getTransactionStmt = $pdo->prepare("
+        SELECT id FROM main_account_transactions
+        WHERE transaction_of = 'salary_payment' AND reference_id = ? AND tenant_id = ? AND branch_id = ?
+    ");
+    $getTransactionStmt->execute([$payment_id, $tenant_id, $branch_id]);
+    $transaction = $getTransactionStmt->fetch(PDO::FETCH_ASSOC);
+    $transaction_id = $transaction ? $transaction['id'] : null;
+
     // Determine which balance to update based on currency
     $balanceColumn = strtoupper($payment['currency']) === 'USD' ? 'usd_balance' : 'afs_balance';
 
@@ -46,14 +55,14 @@ try {
         SET balance = balance + ?
         WHERE main_account_id = ?
         AND currency = ?
-        AND created_at > ?
+        AND id > ?
         AND tenant_id = ? AND branch_id = ?
     ");
     $updateSubsequentResult = $updateSubsequentStmt->execute([
         $amount,
         $main_account_id,
         $payment['currency'],
-        $payment['payment_date'],
+        $transaction_id,
         $tenant_id,
         $branch_id
     ]);

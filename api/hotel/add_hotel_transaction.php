@@ -47,7 +47,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->beginTransaction();
 
         // Get current balance with error handling
-        $balanceField = $currency === 'USD' ? 'usd_balance' : 'afs_balance';
+        $balanceField = match($currency) {
+            'USD' => 'usd_balance',
+            'AFS' => 'afs_balance',
+            'EURO' => 'euro_balance',
+            'DARHAM' => 'darham_balance',
+            default => throw new Exception("Unsupported currency: $currency")
+        };
         $stmt = $pdo->prepare("
             SELECT $balanceField as current_balance 
             FROM main_account 

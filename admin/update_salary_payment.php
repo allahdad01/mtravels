@@ -155,15 +155,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         // Update the transaction
         $updateTransactionSql = "UPDATE main_account_transactions
-                               SET amount = ?, description = ?, created_at = ?
+                               SET amount = ?, description = ?
                                WHERE id = ? AND tenant_id = ? AND branch_id = ?";
         $updateTransactionStmt = $pdo->prepare($updateTransactionSql);
         $updateTransactionStmt->bindParam(1, $newAmount, PDO::PARAM_STR);
         $updateTransactionStmt->bindParam(2, $newDescription, PDO::PARAM_STR);
-        $updateTransactionStmt->bindParam(3, $newDate, PDO::PARAM_STR);
-        $updateTransactionStmt->bindParam(4, $transactionId, PDO::PARAM_INT);
-        $updateTransactionStmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
-        $updateTransactionStmt->bindParam(6, $branch_id, PDO::PARAM_INT);
+        $updateTransactionStmt->bindParam(3, $transactionId, PDO::PARAM_INT);
+        $updateTransactionStmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
+        $updateTransactionStmt->bindParam(5, $branch_id, PDO::PARAM_INT);
 
         if (!$updateTransactionStmt->execute()) {
             throw new Exception("Failed to update transaction: " . $updateTransactionStmt->errorInfo()[2]);

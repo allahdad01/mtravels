@@ -72,18 +72,7 @@ try {
     $stmt->execute();
     $servicesResult = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    if (empty($servicesResult)) {
-        // Fallback to old single-supplier logic if no services found
-        $services = array(array(
-            'supplier_id' => $booking['supplier'],
-            'base_price' => floatval($booking['price']),
-            'sold_price' => floatval($booking['sold_price']),
-            'profit' => floatval($booking['profit']),
-            'currency' => $booking['currency']
-        ));
-    } else {
-        $services = $servicesResult;
-    }
+    $services = $servicesResult;
 
     // Calculate totals from services
     $totalBasePrice = array_sum(array_column($services, 'base_price'));
@@ -163,11 +152,11 @@ try {
         $supplier_name = $supplierResult['name'];
         $supplier_type = $supplierResult['supplier_type'];
 
+        // Calculate refund amount for this service
+        $supplierRefundAmount = $service_base_price;
+
         // Handle supplier balance and transaction for External suppliers
         if ($supplier_type === 'External') {
-            // Convert refund amount if currencies differ (simplified - assuming same currency for now)
-            $supplierRefundAmount = $service_base_price;
-
             // Update supplier balance
             $newSupplierBalance = $current_balance + $supplierRefundAmount;
             $updateSupplierStmt = $pdo->prepare("UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
@@ -194,8 +183,8 @@ try {
         } else {
             // Record supplier transaction without balance for non-External suppliers
             $insertSupplierTransactionStmt = $pdo->prepare("INSERT INTO supplier_transactions
-                (transaction_date, supplier_id, reference_id, amount, transaction_type, remarks, transaction_of, tenant_id, branch_id)
-                VALUES (NOW(), ?, ?, ?, 'credit', ?, 'umrah_refund', ?, ?)");
+                (transaction_date, supplier_id, reference_id, amount, transaction_type, remarks, transaction_of, tenant_id, branch_id, balance)
+                VALUES (NOW(), ?, ?, ?, 'credit', ?, 'umrah_refund', ?, ?, 0)");
             $supplierRemarks = "Refund for umrah booking #$booking_id - " . $reason;
             $insertSupplierTransactionStmt->bindParam(1, $supplier_id, PDO::PARAM_INT);
             $insertSupplierTransactionStmt->bindParam(2, $refund_id, PDO::PARAM_INT);
@@ -270,8 +259,8 @@ try {
     } else {
         // Record client transaction without balance for non-regular clients
         $clientTransactionQuery = "INSERT INTO client_transactions
-            (client_id, type, amount, currency, description, transaction_of, reference_id, created_at, tenant_id, branch_id)
-            VALUES (?, 'Credit', ?, ?, ?, 'umrah_refund', ?, NOW(), ?, ?)";
+            (client_id, type, amount, currency, description, transaction_of, reference_id, created_at, tenant_id, branch_id, balance)
+            VALUES (?, 'Credit', ?, ?, ?, 'umrah_refund', ?, NOW(), ?, ?, 0)";
         $stmt = $pdo->prepare($clientTransactionQuery);
         $clientTransactionDescription = "Refund for umrah booking #$booking_id - $reason";
         $stmt->bindParam(1, $booking['sold_to'], PDO::PARAM_INT);

@@ -60,28 +60,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Begin transaction
         $pdo->beginTransaction();
 
-        // Initialize newBalance
-        $newBalance = 0;
-
-        // Only deduct from main account if client is an agency
-        if ($refund['client_type'] === 'agency') {
-            // Get current balance
-            $balanceField = $currency === 'USD' ? 'usd_balance' : 'afs_balance';
-            $stmt = $pdo->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ? And branch_id = ?");
-            $stmt->execute([$main_account_id, $tenant_id, $branch_id]);
-            $balanceResult = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if (!$balanceResult) {
-                throw new Exception("Main account not found");
-            }
-            
-            // Calculate new balance (deducting for agency)
-            $newBalance = $balanceResult['current_balance'] - $amount;
-
-            // Update main account balance
-            $stmt = $pdo->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
-            $stmt->execute([$newBalance, $main_account_id, $tenant_id, $branch_id]);
+        // Get current balance
+        $balanceField = match($currency) {
+            'USD' => 'usd_balance',
+            'AFS' => 'afs_balance',
+            'EURO' => 'euro_balance',
+            'DARHAM' => 'darham_balance',
+            default => throw new Exception("Unsupported currency: $currency")
+        };
+        $stmt = $pdo->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ? And branch_id = ?");
+        $stmt->execute([$main_account_id, $tenant_id, $branch_id]);
+        $balanceResult = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$balanceResult) {
+            throw new Exception("Main account not found");
         }
+        
+        // Calculate new balance (deducting)
+        $newBalance = $balanceResult['current_balance'] - $amount;
+
+        // Update main account balance
+        $stmt = $pdo->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
+        $stmt->execute([$newBalance, $main_account_id, $tenant_id, $branch_id]);
 
         // For refunds, amount should be negative in transaction record
         $transactionAmount = abs($amount);

@@ -19,20 +19,25 @@ const transactionManager = {
     // Generate dynamic exchange rate example
     getExchangeRateExample: function(baseCurrency, targetCurrency) {
         const examples = {
-            'USD-AFS': 'Example: If 1 USD = 65 AFS, enter 65',
-            'USD-EUR': 'Example: If 1 USD = 0.95 EUR, enter 0.95',
-            'USD-AED': 'Example: If 1 USD = 3.67 AED, enter 3.67',
-            'AFS-USD': 'Example: If 1 USD = 65 AFS, enter 65',
-            'AFS-EUR': 'Example: If 1 EUR = 72 EUR, enter 72',
-            'AFS-AED': 'Example: If 1 AED = 17.50 AED, enter 17.50',
-            'EUR-USD': 'Example: If 1 EUR = 1.05 USD, enter 1.05',
-            'EUR-AFS': 'Example: If 1 EUR = 92.5 AFS, enter 92.5',
-            'EUR-AED': 'Example: If 1 EUR = 3.86 AED, enter 3.86',
-            'AED-USD': 'Example: If 1 AED = 0.27 USD, enter 0.27',
-            'AED-AFS': 'Example: If 1 AED = 23.99 AFS, enter 23.99',
-            'AED-EUR': 'Example: If 1 AED = 0.26 EUR, enter 0.26'
+        // USD pairs - show "1 USD = X" format
+        'USD-AFS': 'Example: 1 USD = 88 AFS, enter 88',
+        'USD-EUR': 'Example: 1 USD = 0.95 EUR, enter 0.95',
+        'USD-AED': 'Example: 1 USD = 3.67 AED, enter 3.67',
+        'AFS-USD': 'Example: 1 USD = 88 AFS, enter 88',
+        'EUR-USD': 'Example: 1 USD = 0.95 EUR, enter 0.95',
+        'AED-USD': 'Example: 1 USD = 3.67 AED, enter 3.67',
+        
+        // EUR pairs - show "1 EUR = X" format
+        'EUR-AFS': 'Example: 1 EUR = 92.5 AFS, enter 92.5',
+        'AFS-EUR': 'Example: 1 EUR = 92.5 AFS, enter 92.5',
+        'EUR-AED': 'Example: 1 EUR = 3.86 AED, enter 3.86',
+        'AED-EUR': 'Example: 1 EUR = 3.86 AED, enter 3.86',
+        
+        // AED pairs - show "1 AED = X" format
+        'AED-AFS': 'Example: 1 AED = 23.99 AFS, enter 23.99',
+        'AFS-AED': 'Example: 1 AED = 23.99 AFS, enter 23.99'
         };
-        const key = `${baseCurrency}-${targetCurrency}`;
+        const key = `${targetCurrency}-${baseCurrency}`;
         return examples[key] || 'Enter the exchange rate';
     },
 
@@ -86,13 +91,34 @@ const transactionManager = {
             const baseDisplay = transactionManager.getCurrencyDisplay(window.bookingCurrency);
             const targetDisplay = transactionManager.getCurrencyDisplay(selectedCurrency);
             
-            // Update label with proper exchange rate direction
-            const label = `<i class="feather icon-refresh-cw mr-1"></i>${baseDisplay} to ${targetDisplay} Exchange Rate`;
+            // Determine anchor currency (USD, EUR, AED, or AFS)
+            let anchorCurrency = window.bookingCurrency;
+            const currencies = [selectedCurrency, window.bookingCurrency];
+            if (currencies.includes('USD')) {
+                anchorCurrency = 'USD';
+            } else if (currencies.includes('EUR')) {
+                anchorCurrency = 'EUR';
+            } else if (currencies.includes('AED')) {
+                anchorCurrency = 'AED';
+            } else if (currencies.includes('AFS')) {
+                anchorCurrency = 'AFS';
+            }
+            
+            const anchorDisplay = transactionManager.getCurrencyDisplay(anchorCurrency);
+            const otherDisplay = anchorCurrency === window.bookingCurrency ? targetDisplay : baseDisplay;
+            
+            // Update label to match example rule: "1 ANCHOR = OTHER"
+            const label = `<i class="feather icon-refresh-cw mr-1"></i>${anchorDisplay} to ${otherDisplay} Exchange Rate`;
             $('#exchangeRateLabel').html(label);
             
-            // Update helper text
-            $('#exchangeRateBase').text(baseDisplay);
-            $('#exchangeRateTarget').text(targetDisplay);
+            // Update helper text to match anchor currency concept
+            // Always show "1 ANCHOR = X OTHER, enter X"
+            $('#exchangeRateBase').text(anchorDisplay);
+            $('#exchangeRateTarget').text(otherDisplay);
+            
+            // Update the instruction text dynamically
+            const instructionText = `Enter how many ${otherDisplay} equals 1 ${anchorDisplay}`;
+            $('#exchangeRateInstruction').text(instructionText);
             
             // Update example based on currency pair
             const example = transactionManager.getExchangeRateExample(baseDisplay, targetDisplay);
@@ -115,13 +141,34 @@ const transactionManager = {
             const baseDisplay = transactionManager.getCurrencyDisplay(window.bookingCurrency);
             const targetDisplay = transactionManager.getCurrencyDisplay(selectedCurrency);
             
-            // Update label with proper exchange rate direction
-            const label = `<i class="feather icon-refresh-cw mr-1"></i>${baseDisplay} to ${targetDisplay} Exchange Rate`;
+            // Determine anchor currency (USD, EUR, AED, or AFS)
+            let anchorCurrency = window.bookingCurrency;
+            const currencies = [selectedCurrency, window.bookingCurrency];
+            if (currencies.includes('USD')) {
+                anchorCurrency = 'USD';
+            } else if (currencies.includes('EUR')) {
+                anchorCurrency = 'EUR';
+            } else if (currencies.includes('AED')) {
+                anchorCurrency = 'AED';
+            } else if (currencies.includes('AFS')) {
+                anchorCurrency = 'AFS';
+            }
+            
+            const anchorDisplay = transactionManager.getCurrencyDisplay(anchorCurrency);
+            const otherDisplay = anchorCurrency === window.bookingCurrency ? targetDisplay : baseDisplay;
+            
+            // Update label to match example rule: "1 ANCHOR = OTHER"
+            const label = `<i class="feather icon-refresh-cw mr-1"></i>${anchorDisplay} to ${otherDisplay} Exchange Rate`;
             $('#editExchangeRateLabel').html(label);
             
-            // Update helper text
-            $('#editExchangeRateBase').text(baseDisplay);
-            $('#editExchangeRateTarget').text(targetDisplay);
+            // Update helper text to match anchor currency concept
+            // Always show "1 ANCHOR = X OTHER, enter X"
+            $('#editExchangeRateBase').text(anchorDisplay);
+            $('#editExchangeRateTarget').text(otherDisplay);
+            
+            // Update the instruction text dynamically
+            const instructionText = `Enter how many ${otherDisplay} equals 1 ${anchorDisplay}`;
+            $('#editExchangeRateInstruction').text(instructionText);
             
             // Update example based on currency pair
             const example = transactionManager.getExchangeRateExample(baseDisplay, targetDisplay);

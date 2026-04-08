@@ -76,7 +76,7 @@ try {
     // Update balances of all subsequent transactions
     $updateSubsequentStmt = $pdo->prepare("
         UPDATE main_account_transactions
-        SET balance = balance - ?
+        SET balance = balance + ?
         WHERE main_account_id = ?
         AND currency = ?
         AND id > ?
