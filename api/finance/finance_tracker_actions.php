@@ -88,7 +88,7 @@ try {
             break;
 
         case 'get_balances':
-            // Get USD balance
+            // Get USD balance (all-time)
             $usdStmt = $pdo->prepare("
                 SELECT 
                     COALESCE(SUM(CASE 
@@ -102,7 +102,7 @@ try {
             $usdStmt->execute([$branch_id, $tenant_id]);
             $usd_balance = $usdStmt->fetchColumn();
 
-            // Get AFS balance
+            // Get AFS balance (all-time)
             $afsStmt = $pdo->prepare("
                 SELECT 
                     COALESCE(SUM(CASE 
@@ -115,6 +115,40 @@ try {
             ");
             $afsStmt->execute([$branch_id, $tenant_id]);
             $afs_balance = $afsStmt->fetchColumn();
+
+            // Get all-time income and expense totals
+            $allTimeStmt = $pdo->prepare("
+                SELECT 
+                    type,
+                    currency,
+                    COALESCE(SUM(amount), 0) AS total
+                FROM finance_tracker
+                WHERE branch_id = ? AND tenant_id = ?
+                GROUP BY type, currency
+            ");
+            $allTimeStmt->execute([$branch_id, $tenant_id]);
+            $all_time_data = $allTimeStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $total_income_usd = 0;
+            $total_income_afs = 0;
+            $total_expense_usd = 0;
+            $total_expense_afs = 0;
+
+            foreach ($all_time_data as $row) {
+                if ($row['type'] === 'income') {
+                    if ($row['currency'] === 'usd') {
+                        $total_income_usd = floatval($row['total']);
+                    } else {
+                        $total_income_afs = floatval($row['total']);
+                    }
+                } else {
+                    if ($row['currency'] === 'usd') {
+                        $total_expense_usd = floatval($row['total']);
+                    } else {
+                        $total_expense_afs = floatval($row['total']);
+                    }
+                }
+            }
 
             // Get today's income and expense
             $todayStmt = $pdo->prepare("
@@ -155,6 +189,10 @@ try {
                 'success' => true,
                 'usd_balance' => floatval($usd_balance),
                 'afs_balance' => floatval($afs_balance),
+                'total_income_usd' => $total_income_usd,
+                'total_income_afs' => $total_income_afs,
+                'total_expense_usd' => $total_expense_usd,
+                'total_expense_afs' => $total_expense_afs,
                 'today_income_usd' => $today_income_usd,
                 'today_income_afs' => $today_income_afs,
                 'today_expense_usd' => $today_expense_usd,

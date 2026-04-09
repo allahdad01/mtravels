@@ -200,7 +200,7 @@ const transactionManager = {
             tbody.empty();
 
             if (!Array.isArray(transactions) || transactions.length === 0) {
-                tbody.html('<tr><td colspan="6" class="text-center">no_transactions_found</td></tr>');
+                tbody.html('<tr><td colspan="6" class="text-center">No transactions found</td></tr>');
                 $('#exchangeRateDisplay').text('No exchange rates found');
                 $('#exchangedAmount').text('No conversions available');
                 return;
@@ -307,7 +307,7 @@ const transactionManager = {
         },
         error: function(xhr, status, error) {
 
-            $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
+            $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">Error loading transactions</td></tr>');
             $('#exchangeRateDisplay').text('Error loading exchange rates');
             $('#exchangedAmount').text('Error calculating amounts');
         }

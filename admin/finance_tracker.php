@@ -22,7 +22,7 @@ include '../includes/header.php';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finance Tracker</title>
-    <link href="../assets/css/bootstrap.min.css" rel="stylesheet">
+    <link href="../assets/plugins/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -63,7 +63,10 @@ include '../includes/header.php';
         }
 
         /* ── Layout ── */
-        .page { max-width: 1140px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+        .page { max-width: 1400px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+        .currency-split { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+        .currency-section { display: flex; flex-direction: column; gap: 1.5rem; }
+        .currency-section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); padding: 0 0 0.5rem 0; border-bottom: 2px solid var(--border); }
 
         /* ── Topbar ── */
         .topbar {
@@ -99,34 +102,34 @@ include '../includes/header.php';
         .alert-bar.danger  { display: block; background: var(--red-bg);   color: var(--red-text);   border-left-color: var(--red); }
 
         /* ── Metric cards ── */
-        .cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 1.75rem; }
+        .cards { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 1.25rem; }
         .card {
-            background: var(--bg-surface);
-            border-radius: var(--radius-lg);
-            border: 1px solid var(--border);
-            padding: 1.1rem 1.2rem 1rem;
-            box-shadow: var(--shadow-sm);
-            position: relative;
-            overflow: hidden;
+             background: var(--bg-surface);
+             border-radius: var(--radius-lg);
+             border: 1px solid var(--border);
+             padding: 0.75rem 0.9rem 0.65rem;
+             box-shadow: var(--shadow-sm);
+             position: relative;
+             overflow: hidden;
         }
         .card::before {
-            content: '';
-            position: absolute;
-            inset: 0 auto 0 0;
-            width: 3px;
-            border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+             content: '';
+             position: absolute;
+             inset: 0 auto 0 0;
+             width: 3px;
+             border-radius: var(--radius-lg) 0 0 var(--radius-lg);
         }
         .card.blue::before   { background: var(--blue); }
         .card.amber::before  { background: var(--amber); }
         .card.green::before  { background: var(--green); }
         .card.red::before    { background: var(--red); }
 
-        .card-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-        .card-value { font-size: 22px; font-weight: 700; color: var(--text-primary); line-height: 1.1; }
-        .card-sub   { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+        .card-label { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
+        .card-value { font-size: 18px; font-weight: 700; color: var(--text-primary); line-height: 1.1; }
+        .card-sub   { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 
         /* ── Action bar ── */
-        .action-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 1.75rem; flex-wrap: wrap; }
+        .action-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 1.25rem; flex-wrap: wrap; }
         .spacer { flex: 1; }
 
         .btn {
@@ -147,6 +150,7 @@ include '../includes/header.php';
             box-shadow: var(--shadow-sm);
         }
         .btn:hover { background: var(--bg-muted); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
         .btn svg { width: 13px; height: 13px; flex-shrink: 0; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
         .btn-green  { background: var(--green);  color: #fff; border-color: var(--green);  }
@@ -200,12 +204,14 @@ include '../includes/header.php';
             border-radius: 20px;
             text-transform: capitalize;
         }
-        .pill.income  { background: var(--green-bg); color: var(--green-text); }
-        .pill.expense { background: var(--red-bg);   color: var(--red-text); }
+        .pill.income    { background: var(--green-bg);  color: var(--green-text); }
+        .pill.expense   { background: var(--red-bg);    color: var(--red-text); }
+        .pill.exchange  { background: #f3e8ff;          color: #7e22ce; }
 
         .t-amount { font-size: 14px; font-weight: 600; }
-        .t-amount.income  { color: var(--green); }
-        .t-amount.expense { color: var(--red); }
+        .t-amount.income    { color: var(--green); }
+        .t-amount.expense   { color: var(--red); }
+        .t-amount.exchange  { color: #7e22ce; }
 
         .t-actions { display: flex; gap: 4px; }
         .icon-btn {
@@ -223,28 +229,51 @@ include '../includes/header.php';
         .empty-state { padding: 2.5rem 1rem; text-align: center; font-size: 13px; color: var(--text-hint); }
 
         /* ── Modals ── */
+        /*
+         * KEY FIX: Modals use position:fixed but pcoded-wrapper applies CSS transform
+         * for its sidebar animation, which creates a new stacking context and breaks
+         * fixed positioning. By moving modals outside .pcoded-main-container and
+         * appending them to <body> directly, fixed positioning works correctly.
+         * The overlay is appended to body via JS to guarantee escape from any
+         * transformed ancestor.
+         */
         .overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(15,23,42,0.35);
-            backdrop-filter: blur(2px);
-            z-index: 200;
-            align-items: center;
-            justify-content: center;
-            padding: 1rem;
+             display: none !important;
+             position: fixed;
+             top: 0;
+             left: 0;
+             width: 100vw;
+             height: 100vh;
+             background: rgba(15,23,42,0.45);
+             backdrop-filter: blur(2px);
+             -webkit-backdrop-filter: blur(2px);
+             z-index: 99999;
+             align-items: center;
+             justify-content: center;
+             padding: 1rem;
+             overflow-y: auto;
         }
-        .overlay.open { display: flex; }
+        .overlay.open {
+             display: flex !important;
+        }
 
         .modal {
-            background: var(--bg-surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 1.5rem;
-            width: 440px;
-            max-width: 100%;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.18);
-            animation: modalIn 0.2s ease-out;
+             background: var(--bg-surface) !important;
+             border: 1px solid var(--border) !important;
+             border-radius: var(--radius-lg);
+             padding: 1.5rem;
+             width: 440px;
+             max-width: 100%;
+             box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+             animation: modalIn 0.2s ease-out;
+             position: relative;
+             margin: auto;
+             flex-shrink: 0;
+             z-index: 100000;
+             min-height: auto;
+             display: block !important;
+             visibility: visible !important;
+             opacity: 1 !important;
         }
         @keyframes modalIn {
             from { opacity: 0; transform: translateY(10px) scale(0.98); }
@@ -319,8 +348,15 @@ include '../includes/header.php';
         .exchange-preview strong { color: var(--text-primary); }
 
         /* ── Responsive ── */
+        @media (max-width: 1400px) {
+            .cards { grid-template-columns: repeat(3, 1fr); }
+        }
+        @media (max-width: 1100px) {
+            .cards { grid-template-columns: repeat(2, 1fr); }
+        }
         @media (max-width: 900px) {
             .cards { grid-template-columns: repeat(2, 1fr); }
+            .currency-split { grid-template-columns: 1fr; }
         }
         @media (max-width: 680px) {
             .t-head, .t-row { grid-template-columns: 100px 80px 110px 56px; }
@@ -335,86 +371,177 @@ include '../includes/header.php';
     </style>
 </head>
 <body>
-    <!-- [ Main Content ] start -->
 <div class="pcoded-main-container">
     <div class="pcoded-wrapper">
-<div class="page">
+        <div class="page">
 
-    <!-- Topbar -->
-    <div class="topbar">
-        <div>
-            <div class="topbar-title">Finance tracker</div>
-            <div class="topbar-sub">Income &amp; expense management</div>
-        </div>
-        <span class="role-badge">Finance Admin</span>
+            <!-- Topbar -->
+            <div class="topbar">
+                <div>
+                    <div class="topbar-title">Finance tracker</div>
+                    <div class="topbar-sub">Income &amp; expense management</div>
+                </div>
+                <span class="role-badge">Finance Admin</span>
+            </div>
+
+            <!-- Alert -->
+            <div id="alertBar" class="alert-bar"></div>
+
+            <div class="currency-split">
+                <!-- LEFT: AFN -->
+                <div class="currency-section">
+                    <div class="currency-section-title">🇦🇫 Afghan Afghani (AFN)</div>
+
+                    <div class="cards">
+                         <div class="card green">
+                             <div class="card-label">Total Income</div>
+                             <div class="card-value" id="totalIncomeAfs">&#x60B;0.00</div>
+                             <div class="card-sub">All time</div>
+                         </div>
+                         <div class="card red">
+                             <div class="card-label">Total Spent</div>
+                             <div class="card-value" id="totalExpenseAfs">&#x60B;0.00</div>
+                             <div class="card-sub">All time</div>
+                         </div>
+                         <div class="card amber">
+                             <div class="card-label">Remaining Balance</div>
+                             <div class="card-value" id="afsBalance">&#x60B;0.00</div>
+                             <div class="card-sub">After all expenses</div>
+                         </div>
+                         <div class="card blue">
+                             <div class="card-label">Today Income</div>
+                             <div class="card-value" id="todayIncomeAfs">&#x60B;0.00</div>
+                             <div class="card-sub">Today only</div>
+                         </div>
+                         <div class="card red">
+                             <div class="card-label">Today Spent</div>
+                             <div class="card-value" id="todayExpenseAfs">&#x60B;0.00</div>
+                             <div class="card-sub">Today only</div>
+                         </div>
+                     </div>
+
+                    <div class="action-bar">
+                        <button class="btn btn-green" onclick="showAddModal('income', 'afs')">
+                            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            Add Income
+                        </button>
+                        <button class="btn btn-red" onclick="showAddModal('expense', 'afs')">
+                            <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            Add Expense
+                        </button>
+                    </div>
+
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                        <div class="section-label" style="margin: 0;">AFN Transactions</div>
+                        <div style="display: flex; gap: 6px;">
+                            <button class="btn filter-btn filter-all afs-filter" onclick="filterTransactions('afs', 'all')" style="font-size: 12px; padding: 5px 10px; background: var(--blue); color: white; border-color: var(--blue);">All</button>
+                            <button class="btn filter-btn afs-filter" onclick="filterTransactions('afs', 'income')" style="font-size: 12px; padding: 5px 10px;">Income</button>
+                            <button class="btn filter-btn afs-filter" onclick="filterTransactions('afs', 'expense')" style="font-size: 12px; padding: 5px 10px;">Expense</button>
+                            <button class="btn filter-btn afs-filter" onclick="filterTransactions('afs', 'exchange')" style="font-size: 12px; padding: 5px 10px;">Exchange</button>
+                        </div>
+                    </div>
+                    <div class="table-wrap">
+                         <div class="t-head">
+                             <span>Date</span>
+                             <span>Type</span>
+                             <span>Amount</span>
+                             <span class="col-desc">Description</span>
+                             <span></span>
+                         </div>
+                         <div id="txRowsAfs"></div>
+                     </div>
+                </div>
+
+                <!-- RIGHT: USD -->
+                <div class="currency-section">
+                    <div class="currency-section-title">🇺🇸 United States Dollar (USD)</div>
+
+                    <div class="cards">
+                         <div class="card green">
+                             <div class="card-label">Total Income</div>
+                             <div class="card-value" id="totalIncomeUsd">$0.00</div>
+                             <div class="card-sub">All time</div>
+                         </div>
+                         <div class="card red">
+                             <div class="card-label">Total Spent</div>
+                             <div class="card-value" id="totalExpenseUsd">$0.00</div>
+                             <div class="card-sub">All time</div>
+                         </div>
+                         <div class="card blue">
+                             <div class="card-label">Remaining Balance</div>
+                             <div class="card-value" id="usdBalance">$0.00</div>
+                             <div class="card-sub">After all expenses</div>
+                         </div>
+                         <div class="card amber">
+                             <div class="card-label">Today Income</div>
+                             <div class="card-value" id="todayIncomeUsd">$0.00</div>
+                             <div class="card-sub">Today only</div>
+                         </div>
+                         <div class="card red">
+                             <div class="card-label">Today Spent</div>
+                             <div class="card-value" id="todayExpenseUsd">$0.00</div>
+                             <div class="card-sub">Today only</div>
+                         </div>
+                     </div>
+
+                    <div class="action-bar">
+                        <button class="btn btn-green" onclick="showAddModal('income', 'usd')">
+                            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            Add Income
+                        </button>
+                        <button class="btn btn-red" onclick="showAddModal('expense', 'usd')">
+                            <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            Add Expense
+                        </button>
+                        <button class="btn btn-blue" onclick="showExchangeModal()">
+                            <svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                            Exchange
+                        </button>
+                        <span class="spacer"></span>
+                        <button class="btn btn-ghost-danger" onclick="showClearModal()">
+                            <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                            Clear all
+                        </button>
+                    </div>
+
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                        <div class="section-label" style="margin: 0;">USD Transactions</div>
+                        <div style="display: flex; gap: 6px;">
+                            <button class="btn filter-btn filter-all usd-filter" onclick="filterTransactions('usd', 'all')" style="font-size: 12px; padding: 5px 10px; background: var(--blue); color: white; border-color: var(--blue);">All</button>
+                            <button class="btn filter-btn usd-filter" onclick="filterTransactions('usd', 'income')" style="font-size: 12px; padding: 5px 10px;">Income</button>
+                            <button class="btn filter-btn usd-filter" onclick="filterTransactions('usd', 'expense')" style="font-size: 12px; padding: 5px 10px;">Expense</button>
+                            <button class="btn filter-btn usd-filter" onclick="filterTransactions('usd', 'exchange')" style="font-size: 12px; padding: 5px 10px;">Exchange</button>
+                        </div>
+                    </div>
+                    <div class="table-wrap">
+                         <div class="t-head">
+                             <span>Date</span>
+                             <span>Type</span>
+                             <span>Amount</span>
+                             <span class="col-desc">Description</span>
+                             <span></span>
+                         </div>
+                         <div id="txRowsUsd"></div>
+                     </div>
+                </div>
+            </div>
+
+        </div><!-- /page -->
     </div>
-
-    <!-- Alert -->
-    <div id="alertBar" class="alert-bar"></div>
-
-    <!-- Metric cards -->
-    <div class="cards">
-        <div class="card blue">
-            <div class="card-label">USD Balance</div>
-            <div class="card-value" id="usdBalance">$0.00</div>
-        </div>
-        <div class="card amber">
-            <div class="card-label">AFN Balance</div>
-            <div class="card-value" id="afsBalance">&#x60B;0.00</div>
-        </div>
-        <div class="card green">
-            <div class="card-label">Today's income</div>
-            <div class="card-value" id="todayIncomeUsd">$0.00</div>
-            <div class="card-sub" id="todayIncomeAfs">&#x60B;0.00 AFN</div>
-        </div>
-        <div class="card red">
-            <div class="card-label">Today's expenses</div>
-            <div class="card-value" id="todayExpenseUsd">$0.00</div>
-            <div class="card-sub" id="todayExpenseAfs">&#x60B;0.00 AFN</div>
-        </div>
-    </div>
-
-    <!-- Action bar -->
-    <div class="action-bar">
-        <button class="btn btn-green" onclick="showAddModal('income')">
-            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Add income
-        </button>
-        <button class="btn btn-red" onclick="showAddModal('expense')">
-            <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Add expense
-        </button>
-        <button class="btn btn-amber" onclick="showExchangeModal()">
-            <svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-            Exchange
-        </button>
-        <button class="btn" onclick="loadAll()">
-            <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            Refresh
-        </button>
-        <span class="spacer"></span>
-        <button class="btn btn-ghost-danger" onclick="showClearModal()">
-            <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-            Clear all
-        </button>
-    </div>
-
-    <!-- Transactions -->
-    <div class="section-label">Recent transactions</div>
-    <div class="table-wrap">
-        <div class="t-head">
-            <span>Date</span>
-            <span>Type</span>
-            <span>Amount</span>
-            <span class="col-desc">Description</span>
-            <span></span>
-        </div>
-        <div id="txRows"></div>
-    </div>
-
-</div><!-- /page -->
 </div>
-</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     MODALS — intentionally placed directly before </body>,
+     OUTSIDE .pcoded-main-container.
+
+     WHY: pcoded.min.js applies CSS `transform` to .pcoded-wrapper
+     for its sidebar slide animation. Any CSS transform/filter/
+     will-change on an ancestor creates a new containing block for
+     `position: fixed`, causing fixed children to be clipped or
+     positioned relative to that element instead of the viewport.
+     Moving modals here guarantees they are direct children of
+     <body> with no transformed ancestor.
+═══════════════════════════════════════════════════════════════════ -->
 
 <!-- ══ Add / Edit Transaction Modal ══ -->
 <div class="overlay" id="txModal">
@@ -447,12 +574,11 @@ include '../includes/header.php';
             <textarea id="txDesc" rows="2" placeholder="Optional note..."></textarea>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-blue" onclick="saveTransaction()">Save transaction</button>
+            <button class="btn btn-blue" onclick="saveTransaction(event)">Save transaction</button>
             <button class="btn" onclick="closeModal('txModal')">Cancel</button>
         </div>
     </div>
 </div>
-
 
 <!-- ══ Exchange Modal ══ -->
 <div class="overlay" id="exModal">
@@ -495,12 +621,11 @@ include '../includes/header.php';
             Converting <strong id="exFromVal">—</strong> &rarr; <strong id="exToVal">—</strong>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-amber" onclick="performExchange()">Exchange now</button>
+            <button class="btn btn-blue" onclick="performExchange(event)">Exchange now</button>
             <button class="btn" onclick="closeModal('exModal')">Cancel</button>
         </div>
     </div>
 </div>
-
 
 <!-- ══ Clear All Modal ══ -->
 <div class="overlay" id="clearModal">
@@ -517,12 +642,11 @@ include '../includes/header.php';
             <input type="text" id="clearConfirm" placeholder="CLEAR ALL" oninput="toggleClearBtn()">
         </div>
         <div class="modal-footer">
-            <button class="btn btn-red" id="clearBtn" disabled onclick="confirmClear()" style="opacity:0.45">Clear all data</button>
+            <button class="btn btn-red" id="clearBtn" disabled onclick="confirmClear(event)" style="opacity:0.45">Clear all data</button>
             <button class="btn" onclick="closeModal('clearModal')">Cancel</button>
         </div>
     </div>
 </div>
-
 
 <script>
     const BASE_URL   = '../api/finance/finance_tracker_actions.php';
@@ -546,38 +670,82 @@ include '../includes/header.php';
     }
 
     /* ── Modals ── */
-    function openModal(id)  { document.getElementById(id).classList.add('open'); }
-    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+    function openModal(id) {
+        const el = document.getElementById(id);
+        if (el) {
+            el.classList.add('open');
+            console.log('Opened modal:', id, 'Classes:', el.className);
+        } else {
+            console.error('Modal not found:', id);
+        }
+    }
+    function closeModal(id) {
+        const el = document.getElementById(id);
+        if (el) {
+            el.classList.remove('open');
+            console.log('Closed modal:', id);
+        }
+    }
 
+    // Close on backdrop click
     document.querySelectorAll('.overlay').forEach(el => {
-        el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+        el.addEventListener('click', function(e) {
+            if (e.target === this) closeModal(this.id);
+        });
+    });
+
+    // Close on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.overlay.open').forEach(el => closeModal(el.id));
+        }
     });
 
     /* ── Add / Edit modal ── */
-    function showAddModal(type) {
-        document.getElementById('txId').value    = '';
-        document.getElementById('txType').value  = type;
-        document.getElementById('txDate').value  = new Date().toISOString().split('T')[0];
-        document.getElementById('txAmount').value = '';
-        document.getElementById('txCurrency').value = 'usd';
-        document.getElementById('txDesc').value  = '';
+    function showAddModal(type, currency) {
+        document.getElementById('txId').value       = '';
+        document.getElementById('txType').value     = type;
+        document.getElementById('txDate').value     = new Date().toISOString().split('T')[0];
+        document.getElementById('txAmount').value   = '';
+        document.getElementById('txCurrency').value = currency || 'usd';
+        document.getElementById('txDesc').value     = '';
         document.getElementById('txModalTitle').textContent = type === 'income' ? 'Add income' : 'Add expense';
+        
+        // Reset button states
+        const saveBtn = document.querySelector('#txModal .btn-blue');
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = type === 'income' ? 'Add income' : 'Add expense';
+            saveBtn.style.opacity = '1';
+        }
+        
         openModal('txModal');
     }
 
     /* ── Exchange modal ── */
     function showExchangeModal() {
-        ['exAmount','exRate','exDesc'].forEach(id => document.getElementById(id).value = '');
+        ['exAmount', 'exRate', 'exDesc'].forEach(id => { document.getElementById(id).value = ''; });
         document.getElementById('exFrom').value = 'usd';
         document.getElementById('exTo').value   = 'afs';
         document.getElementById('exPreview').style.display = 'none';
+        
+        // Reset button states
+        const exBtn = document.querySelector('#exModal .btn-green');
+        if (exBtn) {
+            exBtn.disabled = false;
+            exBtn.textContent = 'Exchange';
+            exBtn.style.opacity = '1';
+        }
+        
         openModal('exModal');
     }
+
     function swapTo() {
         const from = document.getElementById('exFrom').value;
         document.getElementById('exTo').value = from === 'usd' ? 'afs' : 'usd';
         previewExchange();
     }
+
     function previewExchange() {
         const amt  = parseFloat(document.getElementById('exAmount').value) || 0;
         const rate = parseFloat(document.getElementById('exRate').value) || 0;
@@ -599,9 +767,12 @@ include '../includes/header.php';
     function showClearModal() {
         document.getElementById('clearConfirm').value = '';
         const btn = document.getElementById('clearBtn');
-        btn.disabled = true; btn.style.opacity = '0.45';
+        btn.disabled = true;
+        btn.textContent = 'Clear all data';
+        btn.style.opacity = '0.45';
         openModal('clearModal');
     }
+
     function toggleClearBtn() {
         const ok  = document.getElementById('clearConfirm').value === 'CLEAR ALL';
         const btn = document.getElementById('clearBtn');
@@ -614,8 +785,8 @@ include '../includes/header.php';
         const r = await fetch(url);
         return r.json();
     }
-    async function apiPost(fd) {
-        const r = await fetch(BASE_URL, { method: 'POST', body: fd });
+    async function apiPost(formData) {
+        const r = await fetch(BASE_URL, { method: 'POST', body: formData });
         return r.json();
     }
     function fd(...pairs) {
@@ -630,67 +801,159 @@ include '../includes/header.php';
         try {
             const d = await apiFetch(BASE_URL + '?action=get_balances');
             if (!d.success) return;
-            document.getElementById('usdBalance').textContent      = '$' + parseFloat(d.usd_balance).toFixed(2);
-            document.getElementById('afsBalance').textContent      = AFN + parseFloat(d.afs_balance).toFixed(2);
-            document.getElementById('todayIncomeUsd').textContent  = '$' + parseFloat(d.today_income_usd).toFixed(2);
-            document.getElementById('todayIncomeAfs').textContent  = AFN + parseFloat(d.today_income_afs).toFixed(2) + ' AFN';
-            document.getElementById('todayExpenseUsd').textContent = '$' + parseFloat(d.today_expense_usd).toFixed(2);
-            document.getElementById('todayExpenseAfs').textContent = AFN + parseFloat(d.today_expense_afs).toFixed(2) + ' AFN';
+            document.getElementById('usdBalance').textContent      = '$'  + parseFloat(d.usd_balance).toFixed(2);
+            document.getElementById('afsBalance').textContent      = AFN  + parseFloat(d.afs_balance).toFixed(2);
+            document.getElementById('totalIncomeUsd').textContent  = '$'  + parseFloat(d.total_income_usd).toFixed(2);
+            document.getElementById('totalIncomeAfs').textContent  = AFN  + parseFloat(d.total_income_afs).toFixed(2);
+            document.getElementById('totalExpenseUsd').textContent = '$'  + parseFloat(d.total_expense_usd).toFixed(2);
+            document.getElementById('totalExpenseAfs').textContent = AFN  + parseFloat(d.total_expense_afs).toFixed(2);
+            document.getElementById('todayIncomeUsd').textContent  = '$'  + parseFloat(d.today_income_usd).toFixed(2);
+            document.getElementById('todayIncomeAfs').textContent  = AFN  + parseFloat(d.today_income_afs).toFixed(2);
+            document.getElementById('todayExpenseUsd').textContent = '$'  + parseFloat(d.today_expense_usd).toFixed(2);
+            document.getElementById('todayExpenseAfs').textContent = AFN  + parseFloat(d.today_expense_afs).toFixed(2);
         } catch(e) { console.error('loadBalances', e); }
     }
 
+    /* ── Transaction storage and filtering ── */
+    let allTransactions = { usd: [], afs: [] };
+    let currentFilter = { usd: 'all', afs: 'all' };
+
     /* ── Load transactions ── */
     async function loadTransactions() {
-        const container = document.getElementById('txRows');
+        const usdContainer = document.getElementById('txRowsUsd');
+        const afsContainer = document.getElementById('txRowsAfs');
         try {
             const d = await apiFetch(BASE_URL + '?action=get_recent_transactions&limit=20');
             if (!d.success || !d.transactions.length) {
-                container.innerHTML = '<div class="empty-state">No transactions yet. Add income or an expense to get started.</div>';
+                usdContainer.innerHTML = '<div class="empty-state">No USD transactions yet.</div>';
+                afsContainer.innerHTML = '<div class="empty-state">No AFN transactions yet.</div>';
                 return;
             }
-            container.innerHTML = d.transactions.map(tx => {
-                const date = new Date(tx.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                const tc   = tx.type === 'income' ? 'income' : 'expense';
-                const sym  = tx.currency.toUpperCase() === 'USD' ? '$' : AFN;
-                const curr = tx.currency.toUpperCase() === 'USD' ? 'USD' : 'AFN';
-                return `<div class="t-row">
-                    <div class="t-date">${date}</div>
-                    <div><span class="pill ${tc}">${tx.type}</span></div>
-                    <div class="t-amount ${tc}">${sym}${parseFloat(tx.amount).toFixed(2)} <span style="font-size:11px;font-weight:500;opacity:.6">${curr}</span></div>
-                    <div class="t-desc col-desc">${tx.description || '—'}</div>
-                    <div class="t-actions">
-                        <button class="icon-btn" onclick="editTx(${tx.id})" title="Edit">
-                            <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        </button>
-                        <button class="icon-btn del" onclick="deleteTx(${tx.id})" title="Delete">
-                            <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-                        </button>
-                    </div>
-                </div>`;
-            }).join('');
-        } catch(e) { container.innerHTML = '<div class="empty-state">Error loading transactions.</div>'; }
+
+            // Store transactions by currency
+            allTransactions = { usd: [], afs: [] };
+            d.transactions.forEach(tx => {
+                if (tx.currency.toLowerCase() === 'usd') {
+                    allTransactions.usd.push(tx);
+                } else {
+                    allTransactions.afs.push(tx);
+                }
+            });
+
+            // Render with current filters
+            renderTransactions('usd', usdContainer);
+            renderTransactions('afs', afsContainer);
+        } catch(e) {
+            usdContainer.innerHTML = '<div class="empty-state">Error loading transactions.</div>';
+            afsContainer.innerHTML = '<div class="empty-state">Error loading transactions.</div>';
+        }
+    }
+
+    function renderTransactions(currency, container) {
+        let rows = [];
+        const transactions = allTransactions[currency] || [];
+        const filter = currentFilter[currency] || 'all';
+
+        transactions.forEach(tx => {
+            const isExchange = tx.description && tx.description.toLowerCase().startsWith('exchange:');
+            const txType = isExchange ? 'exchange' : tx.type;
+            
+            // Apply filter
+            if (filter !== 'all' && txType !== filter) return;
+            
+            const row = createTransactionRow(tx);
+            rows.push(row);
+        });
+
+        const currencyName = currency.toUpperCase();
+        container.innerHTML = rows.length ? rows.join('') : `<div class="empty-state">No ${filter} transactions yet.</div>`;
+    }
+
+    function filterTransactions(currency, type) {
+        currentFilter[currency] = type;
+        const container = currency === 'usd' ? document.getElementById('txRowsUsd') : document.getElementById('txRowsAfs');
+        renderTransactions(currency, container);
+
+        // Update button styles
+        const buttons = document.querySelectorAll(`.${currency}-filter`);
+        buttons.forEach(btn => {
+            btn.classList.remove('filter-all');
+            btn.style.background = '';
+            btn.style.color = '';
+            btn.style.borderColor = '';
+        });
+
+        const activeBtn = document.querySelector(`.${currency}-filter[onclick*="'${type}'"]`);
+        if (activeBtn) {
+            activeBtn.classList.add('filter-all');
+            activeBtn.style.background = 'var(--blue)';
+            activeBtn.style.color = 'white';
+            activeBtn.style.borderColor = 'var(--blue)';
+        }
+    }
+
+    function createTransactionRow(tx) {
+        const date        = new Date(tx.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const isExchange  = tx.description && tx.description.toLowerCase().startsWith('exchange:');
+        const displayType = isExchange ? 'exchange' : tx.type;
+        const displayLabel = isExchange ? 'Exchange' : tx.type;
+        const sym  = tx.currency.toUpperCase() === 'USD' ? '$' : AFN;
+        const curr = tx.currency.toUpperCase() === 'USD' ? 'USD' : 'AFN';
+        return `<div class="t-row">
+            <div class="t-date">${date}</div>
+            <div><span class="pill ${displayType}">${displayLabel}</span></div>
+            <div class="t-amount ${displayType}">${sym}${parseFloat(tx.amount).toFixed(2)} <span style="font-size:11px;font-weight:500;opacity:.6">${curr}</span></div>
+            <div class="t-desc col-desc">${tx.description || '—'}</div>
+            <div class="t-actions">
+                <button class="icon-btn" onclick="editTx(${tx.id})" title="Edit">
+                    <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="icon-btn del" onclick="deleteTx(${tx.id}, event)" title="Delete">
+                    <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                </button>
+            </div>
+        </div>`;
     }
 
     function loadAll() { loadBalances(); loadTransactions(); }
 
     /* ── Save transaction ── */
-    async function saveTransaction() {
-        const id   = document.getElementById('txId').value;
+    async function saveTransaction(e) {
+        const btn = e.target.closest('.btn');
+        if (btn.disabled) return;
+
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Processing...';
+
+        const id = document.getElementById('txId').value;
         const data = fd(
-            'action',                  id ? 'update_transaction' : 'add_transaction',
-            'transactionId',           id,
-            'type',                    document.getElementById('txType').value,
-            'transactionDate',         document.getElementById('txDate').value,
-            'transactionAmount',       document.getElementById('txAmount').value,
-            'transactionCurrency',     document.getElementById('txCurrency').value,
-            'transactionDescription',  document.getElementById('txDesc').value
+            'action',                 id ? 'update_transaction' : 'add_transaction',
+            'transactionId',          id,
+            'type',                   document.getElementById('txType').value,
+            'transactionDate',        document.getElementById('txDate').value,
+            'transactionAmount',      document.getElementById('txAmount').value,
+            'transactionCurrency',    document.getElementById('txCurrency').value,
+            'transactionDescription', document.getElementById('txDesc').value
         );
         if (id) data.append('id', id);
+
         try {
             const d = await apiPost(data);
-            if (d.success) { showAlert(d.message, 'success'); closeModal('txModal'); loadAll(); }
-            else showAlert(d.message, 'danger');
-        } catch(e) { showAlert('Error saving transaction.', 'danger'); }
+            if (d.success) {
+                showAlert(d.message, 'success');
+                closeModal('txModal');
+                loadAll();
+            } else {
+                showAlert(d.message, 'danger');
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        } catch(err) {
+            showAlert('Error saving transaction.', 'danger');
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
     }
 
     /* ── Edit transaction ── */
@@ -707,49 +970,104 @@ include '../includes/header.php';
             document.getElementById('txDesc').value     = tx.description || '';
             document.getElementById('txModalTitle').textContent = tx.type === 'income' ? 'Edit income' : 'Edit expense';
             openModal('txModal');
-        } catch(e) { showAlert('Error loading transaction.', 'danger'); }
+        } catch(err) { showAlert('Error loading transaction.', 'danger'); }
     }
 
     /* ── Delete transaction ── */
-    async function deleteTx(id) {
+    async function deleteTx(id, e) {
         if (!confirm('Delete this transaction?')) return;
+        const btn = e.target.closest('.icon-btn');
+        if (!btn || btn.disabled) return;
+        btn.disabled = true;
+        const originalHTML = btn.innerHTML;
+        btn.style.opacity = '0.6';
+
         try {
             const d = await apiPost(fd('action', 'delete_transaction', 'id', id));
-            if (d.success) { showAlert('Transaction deleted.', 'success'); loadAll(); }
-            else showAlert(d.message, 'danger');
-        } catch(e) { showAlert('Error deleting transaction.', 'danger'); }
+            if (d.success) {
+                showAlert('Transaction deleted.', 'success');
+                loadAll();
+            } else {
+                showAlert(d.message, 'danger');
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+                btn.style.opacity = '1';
+            }
+        } catch(err) {
+            showAlert('Error deleting transaction.', 'danger');
+            btn.disabled = false;
+            btn.innerHTML = originalHTML;
+            btn.style.opacity = '1';
+        }
     }
 
     /* ── Exchange ── */
-    async function performExchange() {
+    async function performExchange(e) {
+        const btn = e.target.closest('.btn');
+        if (btn.disabled) return;
+
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Processing...';
+
         try {
             const d = await apiPost(fd(
-                'action',              'exchange_currency',
+                'action',               'exchange_currency',
                 'exchangeFromCurrency', document.getElementById('exFrom').value,
                 'exchangeToCurrency',   document.getElementById('exTo').value,
                 'exchangeFromAmount',   document.getElementById('exAmount').value,
                 'exchangeRate',         document.getElementById('exRate').value,
                 'exchangeDescription',  document.getElementById('exDesc').value
             ));
-            if (d.success) { showAlert('Exchange recorded.', 'success'); closeModal('exModal'); loadAll(); }
-            else showAlert(d.message, 'danger');
-        } catch(e) { showAlert('Error performing exchange.', 'danger'); }
+            if (d.success) {
+                showAlert('Exchange recorded.', 'success');
+                closeModal('exModal');
+                loadAll();
+            } else {
+                showAlert(d.message, 'danger');
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        } catch(err) {
+            showAlert('Error performing exchange.', 'danger');
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
     }
 
     /* ── Clear all ── */
-    async function confirmClear() {
+    async function confirmClear(e) {
         if (!confirm('This will delete ALL data permanently. Are you absolutely sure?')) return;
+        const btn = e.target.closest('.btn');
+        if (btn.disabled) return;
+
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Processing...';
+
         try {
             const d = await apiPost(fd('action', 'clear_all', 'confirmation', 'CLEAR_ALL_FINANCE_DATA'));
-            if (d.success) { showAlert(`Cleared. ${d.deleted_count} records deleted.`, 'success'); closeModal('clearModal'); loadAll(); }
-            else showAlert(d.message, 'danger');
-        } catch(e) { showAlert('Error clearing data.', 'danger'); }
+            if (d.success) {
+                showAlert(`Cleared. ${d.deleted_count} records deleted.`, 'success');
+                closeModal('clearModal');
+                loadAll();
+            } else {
+                showAlert(d.message, 'danger');
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        } catch(err) {
+            showAlert('Error clearing data.', 'danger');
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
     }
 
     /* ── Init ── */
     loadAll();
     setInterval(loadBalances, 30000);
 </script>
+
 <script src="../assets/js/vendor-all.min.js"></script>
 <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
 <script src="../assets/js/pcoded.min.js"></script>

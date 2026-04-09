@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 function deleteTicket(id) {
-    if (confirm('are_you_sure_you_want_to_delete_this_ticket')) {
+    if (confirm('Are you sure you want to delete this ticket?')) {
         fetch('../api/ticket_reserve/delete_ticket_reserve.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -92,7 +92,7 @@ function deleteTicket(id) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('ticket_deleted_successfully');
+                alert('Ticket deleted successfully');
                 location.reload();
             } else {
                 alert('error: ' + data.message);

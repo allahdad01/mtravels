@@ -14,7 +14,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
 
     try {
         // Step 1: Fetch Refund Details
-        $query = "SELECT umr.*, um.sold_to, um.booking_id, um.supplier, um.price, um.sold_price, c.client_type
+        $query = "SELECT umr.*, um.sold_to, um.booking_id, um.price, um.sold_price, c.client_type
                   FROM umrah_refunds umr
                   JOIN umrah_bookings um ON umr.booking_id = um.booking_id
                   LEFT JOIN clients c ON um.sold_to = c.id
@@ -45,7 +45,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
         $profit = $refund['sold_price'] - $refund['price'];
 
         // Get all services for this booking (multi-supplier support)
-        $servicesQuery = "SELECT * FROM umrah_booking_services WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?";
+        $servicesQuery = "SELECT supplier_id, base_price, sold_price, profit FROM umrah_booking_services WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?";
         $stmt = $pdo->prepare($servicesQuery);
         $stmt->bindParam(1, $umrahId, PDO::PARAM_INT);
         $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
@@ -54,9 +54,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
         $servicesResult = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         if (empty($servicesResult)) {
-            // Fallback to old single-supplier logic if no services found
+            // Fallback if no services found - use booking totals
             $services = array(array(
-                'supplier_id' => $refund['supplier'] ?? null,
+                'supplier_id' => null,
                 'base_price' => floatval($refund['price'] ?? 0),
                 'sold_price' => floatval($refund['sold_price'] ?? 0),
                 'profit' => floatval($refund['sold_price'] ?? 0) - floatval($refund['price'] ?? 0)
@@ -282,7 +282,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
 
         // Step 5: Restore Booking Profit
         if ($refundType === 'full') {
-            $updateBookingQuery = "UPDATE umrah_bookings SET profit = ?, status = 'confirmed' WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?";
+            $updateBookingQuery = "UPDATE umrah_bookings SET profit = ?, status = 'active' WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?";
             $stmt = $pdo->prepare($updateBookingQuery);
             $stmt->bindParam(1, $profit, PDO::PARAM_STR);
             $stmt->bindParam(2, $umrahId, PDO::PARAM_INT);
@@ -338,8 +338,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
         echo json_encode(['success' => true, 'message' => 'Refund deleted successfully']);
 
     } catch (PDOException $e) {
-        // Rollback transaction on error
-        $pdo->rollback();
+        // Rollback transaction on error (only if transaction is active)
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         error_log("Error deleting umrah refund: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Error deleting refund: ' . $e->getMessage()]);
     }
