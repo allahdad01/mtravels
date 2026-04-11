@@ -25,8 +25,6 @@ $period = $_POST['period'];
 $filteredDate = $_POST['filtered_date'] ?? null;
 $type = $_POST['type'] ?? 'ticket';
 
-// Log input parameters
-error_log("get_ticket_details.php - Input parameters: period=$period, filteredDate=$filteredDate, type=$type");
 
 // Set up date condition
 $params = [
@@ -68,13 +66,11 @@ try {
     WHERE $dateCondition AND tb.tenant_id = :tenant_id AND tb.branch_id = :branch_id
     ORDER BY tb.created_at DESC";
 
-    error_log("Executing query: $query with params: " . json_encode($params));
 
     $stmt = $pdo->prepare($query);
     $stmt->execute($params); // Use named parameters only
     $tickets = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    error_log("Retrieved " . count($tickets) . " tickets");
 
     echo json_encode([
         'status' => 'success',
@@ -82,7 +78,6 @@ try {
     ]);
 
 } catch (PDOException $e) {
-    error_log("Error fetching ticket details: " . $e->getMessage());
     echo json_encode([
         'status' => 'error',
         'message' => 'Database error: ' . $e->getMessage()

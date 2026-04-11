@@ -84,8 +84,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['notification_id'])) {
 
         }
         elseif ($transaction_type === 'umrah') {
-            // Debug: Log the transaction ID
-            error_log("Processing Umrah transaction ID: " . $transaction_id);
 
             // Fetch Umrah transaction details with error checking
             $stmt_fetch_umrah = $pdo->prepare("

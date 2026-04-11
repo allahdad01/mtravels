@@ -438,7 +438,6 @@ function getTopPerformersByTicketProfit($month = null, $year = null, $tenant_id 
         $stmt->execute(array_merge([$tenant_id, $branch_id], $params));
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
-        error_log("Error getting top performers: " . $e->getMessage());
         return [];
     }
 }
@@ -462,7 +461,6 @@ function getClientsWithDebts() {
         $stmt->execute([$tenant_id, $branch_id]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
-        error_log("Error getting clients with debts: " . $e->getMessage());
         return [];
     }
 }

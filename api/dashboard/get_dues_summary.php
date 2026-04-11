@@ -125,8 +125,6 @@ try {
         }
         // Add other base currency conversions as needed...
         
-        // If no conversion found, log error and return 0
-        error_log("ERROR: No conversion found for $transCurrency to $baseCurrency with rate $transExchangeRate");
         return 0.0;
     }
 

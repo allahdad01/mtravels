@@ -23,8 +23,6 @@ if (!isset($_POST['period']) || empty($_POST['period'])) {
 $period = $_POST['period'];
 $filteredDate = $_POST['filtered_date'] ?? null;
 
-// Log input
-error_log("get_ticket_reservations_details.php - Input parameters: period=$period, filteredDate=$filteredDate");
 
 // Prepare parameters array with tenant_id
 $params = [
@@ -74,13 +72,10 @@ try {
     WHERE $dateCondition AND tr.tenant_id = :tenant_id AND tr.branch_id = :branch_id
     ORDER BY tr.created_at DESC";
 
-    error_log("Executing query: $query with params: " . json_encode($params));
-
     $stmt = $pdo->prepare($query);
     $stmt->execute($params); // named parameters only
     $reservations = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    error_log("Retrieved " . count($reservations) . " ticket reservations");
 
     echo json_encode([
         'status' => 'success',
@@ -88,7 +83,6 @@ try {
     ]);
 
 } catch (PDOException $e) {
-    error_log("Error fetching ticket reservation details: " . $e->getMessage());
     echo json_encode([
         'status' => 'error',
         'message' => 'Database error: ' . $e->getMessage()

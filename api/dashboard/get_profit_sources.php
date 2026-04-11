@@ -80,7 +80,6 @@ try {
                 'period' => $period
             ];
         } catch (PDOException $e) {
-            error_log("Error fetching profit for $table: " . $e->getMessage());
             $results[] = [
                 'source' => $source['source'],
                 'type' => $source['type'],
@@ -121,7 +120,6 @@ try {
             'period' => $period
         ];
     } catch (PDOException $e) {
-        error_log("Error fetching ticket weights profit: " . $e->getMessage());
         $results[] = [
             'source' => 'Ticket Weights',
             'type' => 'weight_sale',
@@ -167,7 +165,6 @@ try {
             'period' => $period
         ];
     } catch (PDOException $e) {
-        error_log("Error fetching refunded tickets profit: " . $e->getMessage());
         $results[] = [
             'source' => 'Refunded Tickets',
             'type' => 'refund',
@@ -207,7 +204,6 @@ try {
             'period' => $period
         ];
     } catch (PDOException $e) {
-        error_log("Error fetching date change tickets profit: " . $e->getMessage());
         $results[] = [
             'source' => 'Date Changed Tickets',
             'type' => 'datechange',
@@ -224,7 +220,6 @@ try {
     ]);
 
 } catch (PDOException $e) {
-    error_log("Error fetching profit sources: " . $e->getMessage());
     echo json_encode([
         'status' => 'error',
         'message' => 'Database error occurred: ' . $e->getMessage()

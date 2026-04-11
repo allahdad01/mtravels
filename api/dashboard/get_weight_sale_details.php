@@ -19,8 +19,6 @@ $period = $_POST['period'];
 $filteredDate = isset($_POST['filtered_date']) ? $_POST['filtered_date'] : null;
 $type = isset($_POST['type']) ? $_POST['type'] : 'weight_sale';
 
-// Log input parameters for debugging
-error_log("get_weight_sale_details.php - Input parameters: period=$period, filteredDate=$filteredDate, type=$type");
 
 // Set up date condition based on period and filtered date
 $params = [
@@ -80,12 +78,10 @@ try {
     WHERE $dateCondition AND tw.tenant_id = :tenant_id AND tw.branch_id = :branch_id
     ORDER BY tw.created_at DESC";
 
-    error_log("Executing query: $query with params: " . json_encode($params));
     $stmt = $pdo->prepare($query);
     $stmt->execute($params);
     $weights = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    error_log("Retrieved " . count($weights) . " ticket weights");
     
     // Return results as JSON
     echo json_encode([
@@ -95,7 +91,6 @@ try {
     
 } catch (PDOException $e) {
     $errorMessage = "Error fetching ticket weight details: " . $e->getMessage();
-    error_log($errorMessage);
     echo json_encode([
         'status' => 'error',
         'message' => 'Database error: ' . $e->getMessage()

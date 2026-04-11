@@ -150,7 +150,6 @@ function getFinancialWealthData($pdo, $period, $currency, $tenant_id, $branch_id
         
         return $result;
     } catch (PDOException $e) {
-        error_log("Error getting financial wealth data: " . $e->getMessage());
         return $result;
     }
 }

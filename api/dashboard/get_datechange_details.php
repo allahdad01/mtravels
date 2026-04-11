@@ -19,8 +19,6 @@ $type = isset($_POST['type']) ? $_POST['type'] : 'datechange';
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
-// Log input parameters for debugging
-error_log("get_datechange_details.php - Input parameters: period=$period, filteredDate=$filteredDate, type=$type");
 
 // Set up date condition based on period and filtered date
 $params = [
@@ -85,12 +83,10 @@ try {
     WHERE $dateCondition AND dt.tenant_id = :tenant_id AND dt.branch_id = :branch_id
     ORDER BY dt.created_at DESC";
 
-    error_log("Executing query: $query with params: " . json_encode($params));
     $stmt = $pdo->prepare($query);
     $stmt->execute($params);
     $dateChanges = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    error_log("Retrieved " . count($dateChanges) . " date change tickets");
     
     // Return results as JSON
     echo json_encode([
@@ -100,7 +96,6 @@ try {
     
 } catch (PDOException $e) {
     $errorMessage = "Error fetching date change ticket details: " . $e->getMessage();
-    error_log($errorMessage);
     echo json_encode([
         'status' => 'error',
         'message' => 'Database error: ' . $e->getMessage()

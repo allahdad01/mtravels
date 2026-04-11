@@ -23,8 +23,6 @@ if (!isset($_POST['period']) || empty($_POST['period'])) {
 $period = $_POST['period'];
 $filteredDate = $_POST['filtered_date'] ?? null;
 
-// Log input parameters
-error_log("get_refund_details.php - Input parameters: period=$period, filteredDate=$filteredDate");
 
 // Set up date condition
 $params = [
@@ -79,13 +77,11 @@ try {
     WHERE $dateCondition AND rt.tenant_id = :tenant_id AND rt.branch_id = :branch_id
     ORDER BY rt.created_at DESC";
 
-    error_log("Executing query: $query with params: " . json_encode($params));
 
     $stmt = $pdo->prepare($query);
     $stmt->execute($params); // Named parameters only
     $refunds = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    error_log("Retrieved " . count($refunds) . " refunded tickets");
 
     echo json_encode([
         'status' => 'success',
@@ -93,7 +89,6 @@ try {
     ]);
 
 } catch (PDOException $e) {
-    error_log("Error fetching refunded ticket details: " . $e->getMessage());
     echo json_encode([
         'status' => 'error',
         'message' => 'Database error: ' . $e->getMessage()

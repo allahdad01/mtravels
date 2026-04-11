@@ -71,13 +71,10 @@ try {
     WHERE $dateCondition AND va.tenant_id = :tenant_id AND va.branch_id = :branch_id
     ORDER BY va.created_at DESC";
 
-    error_log("Executing query: $query with params: " . json_encode($params));
 
     $stmt = $pdo->prepare($query);
     $stmt->execute($params); // use named parameters only
     $visas = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    error_log("Retrieved " . count($visas) . " visa applications");
 
     echo json_encode([
         'status' => 'success',
@@ -85,7 +82,6 @@ try {
     ]);
 
 } catch (PDOException $e) {
-    error_log("Error fetching visa details: " . $e->getMessage());
     echo json_encode([
         'status' => 'error',
         'message' => 'Database error: ' . $e->getMessage()

@@ -25,8 +25,6 @@ $period = $_POST['period'];
 $filteredDate = $_POST['filtered_date'] ?? null;
 $type = $_POST['type'] ?? 'hotel';
 
-// Log input parameters
-error_log("get_hotel_details.php - Input parameters: period=$period, filteredDate=$filteredDate, type=$type");
 
 // Set up date condition
 $params = [
@@ -75,13 +73,11 @@ try {
     WHERE $dateCondition AND hb.tenant_id = :tenant_id AND hb.branch_id = :branch_id
     ORDER BY hb.created_at DESC";
 
-    error_log("Executing query: $query with params: " . json_encode($params));
 
     $stmt = $pdo->prepare($query);
     $stmt->execute($params); // Use named parameters only
     $hotels = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    error_log("Retrieved " . count($hotels) . " hotel bookings");
 
     echo json_encode([
         'status' => 'success',
@@ -89,7 +85,6 @@ try {
     ]);
 
 } catch (PDOException $e) {
-    error_log("Error fetching hotel booking details: " . $e->getMessage());
     echo json_encode([
         'status' => 'error',
         'message' => 'Database error: ' . $e->getMessage()

@@ -85,7 +85,6 @@ try {
     ]);
 
 } catch (PDOException $e) {
-    error_log("Error fetching umrah booking details: " . $e->getMessage());
     echo json_encode([
         'status' => 'error',
         'message' => 'Database error: ' . $e->getMessage()

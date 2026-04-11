@@ -22,7 +22,6 @@ function getClientsWithLowBalance() {
         $stmt->execute([$tenant_id, $branch_id]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
-        error_log("Error getting clients with low balance: " . $e->getMessage());
         return [];
     }
 }

@@ -61,8 +61,6 @@ function convertAmountToBase($amount, $transCurrency, $baseCurrency, $transExcha
     }
     // Add other base currency conversions as needed...
 
-    // If no conversion found, log error and return 0
-    error_log("ERROR: No conversion found for $transCurrency to $baseCurrency with rate $transExchangeRate");
     return 0.0;
 }
 
@@ -262,16 +260,11 @@ try {
             }
         }
     }
-    
-    // Log successful access
-    error_log("Debtors data accessed: Type={$type}, User={$userId}, Count=" . count($debtors));
 
     // Success response
     echo json_encode($debtors);
 
 } catch (PDOException $e) {
-    // Log the error but don't expose details
-    error_log("Database error in get_debtors.php: " . $e->getMessage() . " - User: {$userId}");
     
     http_response_code(500);
     echo json_encode(['error' => 'A database error occurred. Please try again later.']);

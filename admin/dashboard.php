@@ -515,12 +515,12 @@ $selected_date = InputValidator::getDate($_GET['departure_date'] ?? '', 'Y-m-d',
              <?php if ($att_state === 'checked_in'): ?>
                <div class="att-widget-time">
                  <div class="att-widget-time-label"><?= __('working_time') ?></div>
-                 <div class="att-widget-time-value" id="workingTime"><?= intval(floor($att_working_minutes / 60)) ?>h <?= intval(round($att_working_minutes % 60)) ?>m</div>
+                 <div class="att-widget-time-value" id="workingTime"><?= (int)floor($att_working_minutes / 60) ?>h <?= (int)round($att_working_minutes % 60) ?>m</div>
                </div>
              <?php elseif ($att_state === 'completed'): ?>
                <div class="att-widget-time">
                  <div class="att-widget-time-label"><?= __('total_hours') ?></div>
-                 <div class="att-widget-time-value"><?= intval(floor($att_working_minutes / 60)) ?>h <?= intval(round($att_working_minutes % 60)) ?>m</div>
+                 <div class="att-widget-time-value"><?= (int)floor($att_working_minutes / 60) ?>h <?= (int)round($att_working_minutes % 60) ?>m</div>
                </div>
              <?php endif; ?>
              <button class="att-widget-action-btn" onclick="goToAttendance()" <?php if ($att_state === 'checked_in'): ?>style="background:rgba(244,63,94,.3);border-color:rgba(244,63,94,.5);"<?php endif; ?>>
@@ -563,7 +563,7 @@ $selected_date = InputValidator::getDate($_GET['departure_date'] ?? '', 'Y-m-d',
           <div class="d-alert-icon"><i class="fas fa-exclamation-triangle"></i></div>
           <div style="flex:1">
             <div class="d-alert-title">Low Supplier Balance Alert</div>
-            <div style="font-size:13px;color:rgba(255,255,255,.55);"><?= count($suppliersWithLowBalance) ?> supplier(s) need attention</div>
+            <div style="font-size:13px;color:rgba(0, 0, 0, 0.55);"><?= count($suppliersWithLowBalance) ?> supplier(s) need attention</div>
             <div class="d-alert-items">
               <?php foreach ($suppliersWithLowBalance as $sup):
                 $sym = ($sup['currency']==='USD')?'$':'؋'; ?>

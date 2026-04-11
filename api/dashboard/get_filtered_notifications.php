@@ -159,8 +159,6 @@ try {
     ]);
     
 } catch (PDOException $e) {
-    // Log error but don't expose details in response
-    error_log("Error in get_filtered_notifications.php: " . $e->getMessage());
     echo json_encode([
         'status' => 'error',
         'message' => 'Database error occurred'

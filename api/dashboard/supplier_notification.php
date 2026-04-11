@@ -22,7 +22,6 @@ function getSuppliersWithLowBalance() {
         $stmt->execute([$tenant_id, $branch_id]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
-        error_log("Error getting suppliers with low balance: " . $e->getMessage());
         return [];
     }
 }
