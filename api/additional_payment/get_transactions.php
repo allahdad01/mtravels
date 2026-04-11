@@ -31,7 +31,6 @@ try {
 
     echo json_encode($transactions);
 } catch (PDOException $e) {
-    error_log("Error fetching transactions: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
 }
 ?>

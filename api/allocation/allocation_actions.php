@@ -232,7 +232,6 @@ function createAllocation($pdo) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        error_log('Budget Allocation Error: ' . $e->getMessage());
         sendResponse(false, 'Database error: ' . $e->getMessage());
     }
 }
@@ -280,7 +279,6 @@ function updateAllocation($pdo) {
 
         sendResponse(true, 'Budget allocation updated successfully');
     } catch (PDOException $e) {
-        error_log('Update Allocation Error: ' . $e->getMessage());
         sendResponse(false, 'Database error: ' . $e->getMessage());
     }
 }
@@ -419,7 +417,6 @@ function deleteAllocation($pdo) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        error_log('Delete Allocation Error: ' . $e->getMessage());
         sendResponse(false, 'Database error: ' . $e->getMessage());
     }
 }
@@ -459,7 +456,6 @@ function getAllocations($pdo) {
         
         sendResponse(true, 'Allocations retrieved successfully', ['allocations' => $allocations]);
     } catch (PDOException $e) {
-        error_log('Get Allocations Error: ' . $e->getMessage());
         sendResponse(false, 'Database error: ' . $e->getMessage());
     }
 }
@@ -506,7 +502,6 @@ function getAllocationDetails($pdo) {
             'expenses' => $expenses
         ]);
     } catch (PDOException $e) {
-        error_log('Get Allocation Details Error: ' . $e->getMessage());
         sendResponse(false, 'Database error: ' . $e->getMessage());
     }
 }
@@ -671,7 +666,6 @@ function addFunds($pdo) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        error_log('Add Funds Error: ' . $e->getMessage());
         sendResponse(false, 'Database error: ' . $e->getMessage());
     }
 }
@@ -718,7 +712,6 @@ function getFundTransactions($pdo) {
             'transactions' => $transactions
         ]);
     } catch (PDOException $e) {
-        error_log('Get Fund Transactions Error: ' . $e->getMessage());
         sendResponse(false, 'Database error: ' . $e->getMessage());
     }
 }
@@ -887,7 +880,6 @@ function deleteFundTransaction($pdo) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        error_log('Delete Fund Transaction Error: ' . $e->getMessage());
         sendResponse(false, 'Database error: ' . $e->getMessage());
     }
 }
@@ -980,7 +972,6 @@ function filterAllocationsByMonth($pdo) {
             ]
         ]);
     } catch (PDOException $e) {
-        error_log('Filter Allocations Error: ' . $e->getMessage());
         sendResponse(false, 'Database error: ' . $e->getMessage());
     }
 }

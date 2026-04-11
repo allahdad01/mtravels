@@ -52,19 +52,6 @@ $remarks = isset($data['remarks']) ? $data['remarks'] : '';
 $receipt = isset($data['receipt_number']) ? strval($data['receipt_number']) : '';
 $mainAccountId = isset($data['main_account']) ? $data['main_account'] : null;
 
-// Debug information (remove in production)
-/*
-error_log("Data received: " . print_r($data, true));
-error_log("Client ID: $clientId");
-error_log("Selected Currency: $selectedCurrency");
-error_log("Total Amount: $totalAmount");
-error_log("USD Amount: $usdAmount");
-error_log("AFS Amount: $afsAmount");
-error_log("Exchange Rate: $exchangeRate");
-error_log("Receipt: $receipt");
-error_log("Main Account ID: $mainAccountId");
-*/
-
 // Validate receipt
 if (empty($receipt)) {
     http_response_code(400);

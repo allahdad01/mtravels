@@ -124,8 +124,6 @@ try {
         echo json_encode(['success' => false, 'message' => 'Failed to update main account']);
     }
 } catch (PDOException $e) {
-    // Log the error
-    error_log("Database Error: " . $e->getMessage());
     
     header('Content-Type: application/json');
     echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);

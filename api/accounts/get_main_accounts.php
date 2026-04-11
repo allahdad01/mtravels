@@ -25,7 +25,6 @@ try {
         'accounts' => $accounts
     ]);
 } catch (PDOException $e) {
-    error_log("Error in get_main_accounts.php: " . $e->getMessage());
     echo json_encode([
         'success' => false,
         'message' => 'Failed to fetch main accounts'

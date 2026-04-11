@@ -52,7 +52,6 @@ try {
     if ($result) {
         // Log status change to server logs instead
         $username = isset($_SESSION['name']) ? $_SESSION['name'] : 'User ID: ' . $_SESSION['user_id'];
-        error_log("Account status change: User $username changed account ID $accountId to status '$newStatus'");
         
         header('Content-Type: application/json');
         echo json_encode([
@@ -65,8 +64,6 @@ try {
         echo json_encode(['success' => false, 'message' => 'Failed to update account status']);
     }
 } catch (PDOException $e) {
-    // Log the error
-    error_log("Database Error: " . $e->getMessage());
     
     header('Content-Type: application/json');
     echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);

@@ -21,6 +21,5 @@ try {
     $accounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
     echo json_encode($accounts);
 } catch (PDOException $e) {
-    error_log("Error in fetch_main_accounts.php: " . $e->getMessage());
     echo json_encode([]);
 }

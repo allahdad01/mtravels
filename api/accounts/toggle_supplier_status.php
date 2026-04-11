@@ -50,7 +50,6 @@ try {
     if ($result) {
         // Log status change
         $username = isset($_SESSION['name']) ? $_SESSION['name'] : 'User ID: ' . $_SESSION['user_id'];
-        error_log("Supplier status change: User $username changed supplier ID $supplierId to status '$newStatus'");
         
         header('Content-Type: application/json');
         echo json_encode([
@@ -63,8 +62,6 @@ try {
         echo json_encode(['success' => false, 'message' => 'Failed to update supplier status']);
     }
 } catch (PDOException $e) {
-    // Log the error
-    error_log("Database Error: " . $e->getMessage());
     
     header('Content-Type: application/json');
     echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);

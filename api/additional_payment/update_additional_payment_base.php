@@ -21,8 +21,6 @@ if (!verify_csrf_token()) {
 require_once '../../includes/db.php';
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
-// Debug: Log the incoming request
-error_log("update_additional_payment_base.php called with POST data: " . json_encode($_POST));
 
 // Set the content type for all responses
 header('Content-Type: application/json');
@@ -31,20 +29,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         // Debug: Check if user is logged in and has proper role
         if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-            error_log("Unauthorized access attempt");
             echo json_encode(['success' => false, 'message' => 'Unauthorized access']);
             exit();
         }
         // Verify CSRF token is present and valid
         if (!isset($_POST['csrf_token'])) {
-            error_log("CSRF token missing in POST data for additional payment update - rejecting request");
             http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'Security validation failed: CSRF token missing']);
             exit();
         }
         
         if (!isset($_SESSION['csrf_token'])) {
-            error_log("No CSRF token found in session for user " . $_SESSION['user_id']);
             http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'Security validation failed: Session invalid']);
             exit();
@@ -52,16 +47,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         // Use hash_equals to prevent timing attacks
         if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
-            error_log("CSRF token validation failed for user " . $_SESSION['user_id'] . " - tokens do not match");
             http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'Security validation failed: Invalid CSRF token']);
             exit();
         }
-        
-        error_log("CSRF token validated successfully for user " . $_SESSION['user_id']);
-        
-        // Debug: Log that we're starting the process
-        error_log("Starting payment update process");
         
         // Validate required fields
         if (!isset($_POST['id']) || empty($_POST['id'])) {
@@ -83,12 +72,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $clientId = !empty($_POST['client_id']) ? intval($_POST['client_id']) : null;
         $isForClient = isset($_POST['is_for_client']) && $_POST['is_for_client'] == '1' ? 1 : 0;
 
-        // Debug: Log the parsed values
-        error_log("Parsed values: paymentId=$paymentId, baseAmount=$newBaseAmount, soldAmount=$newSoldAmount, profit=$newProfit, supplierId=" . ($supplierId ?? 'null') . ", clientId=" . ($clientId ?? 'null') . ", isFromSupplier=$isFromSupplier, isForClient=$isForClient");
-
         // Begin transaction
         $pdo->beginTransaction();
-        error_log("Transaction started");
 
         // Get the original payment details
         $stmt = $pdo->prepare("SELECT * FROM additional_payments WHERE id = ? AND tenant_id = ? And branch_id = ?");
@@ -99,17 +84,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $payment = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$payment) {
-            error_log("Payment not found for ID: $paymentId");
             throw new Exception("Payment not found");
         }
-        
-        error_log("Found payment: " . json_encode($payment));
 
         // Calculate the differences
          $baseAmountDifference = $newBaseAmount - $payment['base_amount'];
          $soldAmountDifference = $newSoldAmount - $payment['sold_amount'];
-         
-         error_log("Calculated differences: baseAmountDiff=$baseAmountDifference, soldAmountDiff=$soldAmountDifference");
 
          // Store original supplier and client for change detection
          $originalSupplier = $payment['supplier_id'];
@@ -117,7 +97,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
          // Handle supplier changes
          if ($isFromSupplier && $originalSupplier != $supplierId) {
-             error_log("Supplier changed from $originalSupplier to $supplierId");
              
              // If original supplier exists, adjust their balance
              if ($originalSupplier > 0) {
@@ -201,7 +180,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                      $stmtDeleteOldSupplierTransactions->bindParam(4, $branch_id, PDO::PARAM_INT);
                      $stmtDeleteOldSupplierTransactions->execute();
                      
-                     error_log("Adjusted old supplier balances");
                  }
              }
              
@@ -282,14 +260,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                      $stmtUpdateNewSubsequent->bindParam(7, $branch_id, PDO::PARAM_INT);
                      $stmtUpdateNewSubsequent->execute();
                      
-                     error_log("Created new supplier transactions");
                  }
              }
          }
 
          // Handle client changes
          if ($isForClient && $originalClient != $clientId) {
-             error_log("Client changed from $originalClient to $clientId");
              
              // If original client exists, adjust their balance
              if ($originalClient > 0) {
@@ -372,7 +348,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                       $stmtDeleteOldClientTransactions->bindParam(4, $branch_id, PDO::PARAM_INT);
                       $stmtDeleteOldClientTransactions->execute();
                       
-                      error_log("Adjusted old client balances");
                   }
              }
              
@@ -450,14 +425,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                          $stmtUpdateNewClientSubsequent->execute();
                      }
                      
-                     error_log("Created new client transactions");
                  }
              }
          }
 
          // If this is from a supplier, update supplier balance and subsequent transactions
          if ($isFromSupplier && $supplierId) {
-            error_log("Processing supplier updates for supplier ID: $supplierId");
             
             // Get supplier's current balance
             $stmt = $pdo->prepare("SELECT balance FROM suppliers WHERE id = ? AND tenant_id = ? And branch_id = ?");
@@ -471,7 +444,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $supplierBalanceDifference = -$baseAmountDifference; // Negative because we're paying the supplier
             $newSupplierBalance = $supplier['balance'] + $supplierBalanceDifference;
 
-            error_log("Supplier balance: current={$supplier['balance']}, diff=$supplierBalanceDifference, new=$newSupplierBalance");
 
             // Update supplier balance
             $updateSupplierStmt = $pdo->prepare("
@@ -484,7 +456,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $updateSupplierStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
             $updateSupplierStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
             $updateSupplierStmt->execute();
-            error_log("Updated supplier balance");
 
             // Get the current payment's creation date
             $stmt = $pdo->prepare("SELECT created_at FROM additional_payments WHERE id = ? AND tenant_id = ? And branch_id = ?");
@@ -511,7 +482,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $updateCurrentStmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
             $updateCurrentStmt->bindParam(6, $branch_id, PDO::PARAM_INT);
             $updateCurrentStmt->execute();
-            error_log("Updated supplier transaction");
 
             // Update subsequent supplier transactions' balances
             $updateSubsequentStmt = $pdo->prepare("
@@ -528,12 +498,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $updateSubsequentStmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
             $updateSubsequentStmt->bindParam(5, $branch_id, PDO::PARAM_INT);
             $updateSubsequentStmt->execute();
-            error_log("Updated subsequent supplier transactions");
         }
 
         // If this is for a client, update client balance and subsequent transactions
         if ($isForClient && $clientId) {
-            error_log("Processing client updates for client ID: $clientId");
             
             // Get client's current balances and type
             $stmt = $pdo->prepare("SELECT usd_balance, afs_balance, client_type FROM clients WHERE id = ? AND tenant_id = ? And branch_id = ?");
@@ -552,8 +520,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $currentBalance = $client[$balanceColumn];
                 $newClientBalance = $currentBalance - $clientBalanceDifference;
 
-                error_log("Client balance: current=$currentBalance, diff=$clientBalanceDifference, new=$newClientBalance, currency=$currency");
-
                 // Update client balance
                 $updateClientStmt = $pdo->prepare("
                     UPDATE clients
@@ -565,7 +531,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $updateClientStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
                 $updateClientStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
                 $updateClientStmt->execute();
-                error_log("Updated client balance");
 
                 // Get the current payment's creation date
                 $stmt = $pdo->prepare("SELECT created_at FROM additional_payments WHERE id = ? AND tenant_id = ? And branch_id = ?");
@@ -592,7 +557,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $updateCurrentStmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
                 $updateCurrentStmt->bindParam(6, $branch_id, PDO::PARAM_INT);
                 $updateCurrentStmt->execute();
-                error_log("Updated client transaction");
 
                 // Update subsequent client transactions' balances
                 $updateSubsequentStmt = $pdo->prepare("
@@ -611,12 +575,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $updateSubsequentStmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
                 $updateSubsequentStmt->bindParam(6, $branch_id, PDO::PARAM_INT);
                 $updateSubsequentStmt->execute();
-                error_log("Updated subsequent client transactions");
             }
         }
 
         // Update the payment record
-        error_log("Updating payment record");
         $updatePaymentStmt = $pdo->prepare("
             UPDATE additional_payments
             SET base_amount = ?, sold_amount = ?, profit = ?,
@@ -648,11 +610,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (!$result) {
             $errorInfo = $updatePaymentStmt->errorInfo();
-            error_log("Error updating payment: " . $errorInfo[2]);
             throw new Exception("Error updating payment: " . $errorInfo[2]);
         }
         
-        error_log("Payment record updated successfully");
 
         // Log activity if user is logged in
         if (isset($_SESSION['user_id'])) {
@@ -711,7 +671,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$logStmt->execute()) {
                 // Just log the error, don't affect the transaction success
                 $errorInfo = $logStmt->errorInfo();
-                error_log("Failed to insert activity log: " . $errorInfo[2]);
             } else {
                 error_log("Activity log created");
             }
@@ -719,7 +678,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Commit transaction
         $pdo->commit();
-        error_log("Transaction committed successfully");
         
         echo json_encode(['success' => true, 'message' => 'Payment updated successfully']);
 
@@ -736,11 +694,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             error_log("Transaction rolled back due to error");
         }
         
-        error_log("Error in update_additional_payment_base.php: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 } else {
-    error_log("Invalid request method: " . $_SERVER['REQUEST_METHOD']);
     echo json_encode(['success' => false, 'message' => 'Invalid request method']);
 }
 ?> 
