@@ -85,8 +85,8 @@ if ($today_attendance && $today_attendance['check_in_time']) {
         $checkout_time = new DateTime($today->format('Y-m-d') . ' ' . $attendance_settings['office_end_time']);
         $minutes_until_checkout = ($checkout_time->getTimestamp() - $now->getTimestamp()) / 60;
         
-        // Show widget only 30 minutes before checkout
-        $show_att_widget = ($minutes_until_checkout <= 30);
+        // Show widget when checked in or when 30 minutes before checkout
+        $show_att_widget = ($att_state === 'checked_in') || ($minutes_until_checkout <= 30);
     }
 }
 ?>
@@ -523,8 +523,9 @@ $selected_date = InputValidator::getDate($_GET['departure_date'] ?? '', 'Y-m-d',
                  <div class="att-widget-time-value"><?= intval(floor($att_working_minutes / 60)) ?>h <?= intval(round($att_working_minutes % 60)) ?>m</div>
                </div>
              <?php endif; ?>
-             <button class="att-widget-action-btn" onclick="goToAttendance()">
-               <i class="fas fa-clock"></i> <?= __('attendance') ?>
+             <button class="att-widget-action-btn" onclick="goToAttendance()" <?php if ($att_state === 'checked_in'): ?>style="background:rgba(244,63,94,.3);border-color:rgba(244,63,94,.5);"<?php endif; ?>>
+               <i class="fas <?php echo $att_state === 'checked_in' ? 'fa-sign-out-alt' : 'fa-clock'; ?>"></i> 
+               <?php echo $att_state === 'checked_in' ? (__('check_out') ?? 'Check Out') : __('attendance'); ?>
              </button>
            </div>
            </div>

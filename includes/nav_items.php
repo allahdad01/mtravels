@@ -376,11 +376,22 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 
 <!-- ── Expense Management ────────────────────────────────────────────── -->
 <?php if (staffCanSeeMenu($user['role'])): ?>
-<li class="nav-item <?= navActive('expense_management.php') ?>">
-    <a href="expense_management.php" class="nav-link">
+<li class="nav-item pcoded-hasmenu <?= navTrigger('expense_management.php', 'budget_allocations.php', 'global_budget_allocation.php') ?>">
+    <a href="javascript:" class="nav-link">
         <span class="pcoded-micon"><i class="fas fa-dollar-sign"></i></span>
         <span class="pcoded-mtext"><?= __('expense_management') ?></span>
     </a>
+    <ul class="pcoded-submenu">
+        <li class="<?= navActive('expense_management.php') ?>">
+            <a href="expense_management.php"><i class="feather icon-credit-card mr-2"></i><?= __('expense_management') ?></a>
+        </li>
+        <li class="<?= navActive('budget_allocations.php') ?>">
+            <a href="budget_allocations.php"><i class="feather icon-trending-up mr-2"></i>Budget Allocation</a>
+        </li>
+        <li class="<?= navActive('global_budget_allocation.php') ?>">
+            <a href="global_budget_allocation.php"><i class="feather icon-globe mr-2"></i>Global Budget Allocation</a>
+        </li>
+    </ul>
 </li>
 <?php endif; ?>
 
