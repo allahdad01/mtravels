@@ -140,8 +140,17 @@ foreach ($globalAllocations as $alloc) {
     $totals[$curr]['remaining']  += $alloc['remaining_amount'];
 }
 
-?>
+// Get unique currencies from current allocations for the add expense modal
+$stmt = $pdo->prepare("
+    SELECT DISTINCT currency FROM global_budget_allocations
+    WHERE tenant_id = ? AND branch_id = ?
+    ORDER BY currency ASC
+");
+$stmt->execute([$tenant_id, $branch_id]);
+$allocatedCurrencies = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$availableCurrencies = array_column($allocatedCurrencies, 'currency');
 
+?>
 
     <style>
         /* ── Reset & base ────────────────────────── */
@@ -472,9 +481,6 @@ foreach ($globalAllocations as $alloc) {
     </style>
 
 
-
-<?php include '../includes/header.php'; ?>
-
 <!-- Main Content -->
 <div class="pcoded-main-container">
     <div class="pcoded-wrapper">
@@ -708,14 +714,19 @@ foreach ($globalAllocations as $alloc) {
                         </div>
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label>Currency</label>
-                                <select class="form-control" id="expenseCurrency" name="expenseCurrency" required>
-                                    <option value="">Select currency</option>
-                                    <option value="USD">USD</option>
-                                    <option value="AFS">AFS</option>
-                                    <option value="EUR">EUR</option>
-                                    <option value="DARHAM">DARHAM</option>
-                                </select>
+                                 <label>Currency</label>
+                                 <select class="form-control" id="expenseCurrency" name="expenseCurrency" required>
+                                     <?php if (count($availableCurrencies) === 0): ?>
+                                         <option value="">No currencies allocated</option>
+                                     <?php elseif (count($availableCurrencies) === 1): ?>
+                                         <option value="<?= htmlspecialchars($availableCurrencies[0]) ?>" selected><?= htmlspecialchars($availableCurrencies[0]) ?></option>
+                                     <?php else: ?>
+                                         <option value="">Select currency</option>
+                                         <?php foreach ($availableCurrencies as $curr): ?>
+                                             <option value="<?= htmlspecialchars($curr) ?>"><?= htmlspecialchars($curr) ?></option>
+                                         <?php endforeach; ?>
+                                     <?php endif; ?>
+                                 </select>
                             </div>
                         </div>
                     </div>

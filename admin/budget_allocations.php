@@ -66,13 +66,6 @@ $stmt           = $pdo->prepare("SELECT COUNT(*) FROM budget_allocations WHERE a
 $stmt->execute([$prevStart, $prevEnd, $tenant_id, $branch_id]);
 $pendingCount   = $stmt->fetchColumn();
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Budget Allocations</title>
-<link rel="stylesheet" href="../assets/css/style.min.css">
 
 <style>
 /* ── Design tokens ─────────────────────────────────────────────────────────── */
@@ -467,8 +460,7 @@ body { background: var(--surface); }
     .ba-cards-grid { grid-template-columns: 1fr; }
 }
 </style>
-</head>
-<body>
+
 
 <?php include '../includes/header.php'; ?>
 
