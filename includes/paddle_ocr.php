@@ -77,7 +77,6 @@ function getTesseractPath() {
     // Check known paths
     foreach ($known_paths as $path) {
         if (file_exists($path) && is_executable($path)) {
-            error_log("Found Tesseract at: $path");
             return $path;
         }
     }
@@ -88,12 +87,9 @@ function getTesseractPath() {
     foreach ($path_env as $dir) {
         $potential_path = $dir . DIRECTORY_SEPARATOR . 'tesseract';
         if (file_exists($potential_path) && is_executable($potential_path)) {
-            error_log("Found Tesseract in PATH: $potential_path");
             return $potential_path;
         }
     }
-    
-    error_log("Tesseract not found in known locations");
     return null;
 }
 
@@ -124,7 +120,6 @@ function executeTesseractSafely($tesseract_path, $image_path) {
     );
     
     if (!is_resource($process)) {
-        error_log("Failed to execute Tesseract");
         return [
             'status' => 'error',
             'message' => 'Failed to execute OCR',
@@ -147,7 +142,6 @@ function executeTesseractSafely($tesseract_path, $image_path) {
     
     // Check if successful
     if ($return_code !== 0) {
-        error_log("Tesseract error (code $return_code): $error");
         // Cleanup
         @unlink($temp_output);
         @unlink($temp_output . '.txt');
@@ -176,8 +170,6 @@ function executeTesseractSafely($tesseract_path, $image_path) {
             'confidence_note' => 'Moderate accuracy - Tesseract'
         ];
     }
-    
-    error_log("Tesseract output file not created: $output_file");
     @unlink($temp_output);
     
     return [

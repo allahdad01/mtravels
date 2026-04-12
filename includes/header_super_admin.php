@@ -41,7 +41,6 @@ try {
     $stmt->execute([$_SESSION['user_id']]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    error_log("Database Error: " . $e->getMessage());
     $user = [];
 }
 
@@ -51,7 +50,6 @@ try {
     $settingStmt->execute();
     $settings = $settingStmt->fetchAll(PDO::FETCH_KEY_PAIR);
 } catch (PDOException $e) {
-    error_log("Settings Error: " . $e->getMessage());
     $settings = [
         'platform_name' => 'Platform',
         'platform_description' => 'Platform Description',

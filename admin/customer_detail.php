@@ -17,7 +17,6 @@ $branch_id = $_SESSION['branch_id'];
 // Check if user is logged in with proper role
 $allowed_roles = ['admin', 'finance'];
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    error_log("Unauthorized access attempt to dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
@@ -28,15 +27,11 @@ $customerId = InputValidator::getInt($_GET['id'] ?? '', 0, 1);
 // Build redirect URL with current query parameters
 $redirect_url = $_SERVER['PHP_SELF'] . '?id=' . $customerId;
 
-// Debug POST data
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    error_log('POST Data: ' . print_r($_POST, true));
-    error_log('FILES Data: ' . print_r($_FILES, true));
-}
+
 
 // Handle deposit submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_deposit'])) {
-    error_log('Processing deposit...');
+
     
     try {
         $customer_id = InputValidator::getInt($_POST['customer_id'] ?? '', 0, 1);
@@ -49,7 +44,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_deposit'])) {
         $notes = InputValidator::getString($_POST['notes'] ?? '', 500);
         $reference = InputValidator::getString($_POST['reference'] ?? '', 100);
 
-        error_log("Deposit data - Customer: $customer_id, Amount: $amount, Currency: $currency, Reference: $reference");
 
         $pdo->beginTransaction();
 
@@ -68,7 +62,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_deposit'])) {
         }
 
         $transaction_id = $pdo->lastInsertId();
-        error_log("Transaction created with ID: $transaction_id");
 
         // First check if wallet exists
         $stmt = $pdo->prepare("SELECT id FROM customer_wallets WHERE customer_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ?");
@@ -99,7 +92,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_deposit'])) {
             throw new Exception(__("error_updating_wallet"));
         }
 
-        error_log("Wallet updated successfully");
 
         // Handle receipt upload if provided
         if (isset($_FILES['receipt'])) {
@@ -115,7 +107,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_deposit'])) {
                 if (!$stmt->execute()) {
                     throw new Exception(__("error_updating_receipt_path"));
                 }
-                error_log("Receipt uploaded successfully: $receipt_filename");
             } else {
                 error_log("Receipt upload failed: " . $result['error']);
             }
@@ -123,10 +114,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_deposit'])) {
 
         $pdo->commit();
         $_SESSION['success_message'] = "Deposit processed successfully!";
-        error_log("Deposit completed successfully");
     } catch (Exception $e) {
         $pdo->rollBack();
-        error_log("Deposit error: " . $e->getMessage());
         $_SESSION['error_message'] = "Error processing deposit: " . $e->getMessage();
     }
     
@@ -192,7 +181,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_withdrawal'])) {
                 $stmt->bindParam(2, $transaction_id, PDO::PARAM_INT);
                 $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
                 $stmt->execute();
-                error_log("Withdrawal receipt uploaded: $receipt_filename");
             } else {
                 error_log("Withdrawal receipt upload failed: " . $result['error']);
             }

@@ -89,10 +89,8 @@ try {
         $response['message'] = 'Failed to fetch refund details';
     }
 } catch (PDOException $e) {
-    error_log("Database Error in get_umrah_refund_details.php: " . $e->getMessage());
     $response['message'] = 'Database error occurred: ' . $e->getMessage();
 } catch (Exception $e) {
-    error_log("General Error in get_umrah_refund_details.php: " . $e->getMessage());
     $response['message'] = 'An error occurred while processing your request';
 }
 

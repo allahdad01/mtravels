@@ -65,7 +65,6 @@ try {
     header('Location: ../system_expenses.php');
 
 } catch (Exception $e) {
-    error_log("Create category error: " . $e->getMessage());
     $_SESSION['error'] = 'Error: ' . $e->getMessage();
     header('Location: ../system_expenses.php');
 }

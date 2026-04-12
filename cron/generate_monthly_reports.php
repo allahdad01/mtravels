@@ -30,10 +30,6 @@ try {
     $stmt->execute();
     $tenants = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    if (empty($tenants)) {
-        error_log("No active tenants found for monthly report generation");
-        exit(1);
-    }
 
     $reports_sent = 0;
     $reports_failed = 0;
@@ -96,7 +92,6 @@ try {
                 $reports_failed++;
             }
         } catch (Exception $e) {
-            error_log("Error processing tenant {$tenant['id']}: " . $e->getMessage());
             echo "✗ Exception for tenant {$tenant['name']}: " . $e->getMessage() . "\n";
             $reports_failed++;
         }
@@ -110,7 +105,6 @@ try {
     exit($reports_failed > 0 ? 1 : 0);
 
 } catch (Exception $e) {
-    error_log("Fatal error in monthly report generation: " . $e->getMessage());
     echo "Fatal error: " . $e->getMessage() . "\n";
     exit(1);
 }

@@ -189,7 +189,6 @@ try {
     ]);
 
 } catch (PDOException $e) {
-    error_log("Get date change details error: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Failed to load request details']);
 }
 

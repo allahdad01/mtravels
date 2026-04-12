@@ -163,7 +163,6 @@ if ($method === 'POST') {
             exit;
             
         } catch (Exception $e) {
-            error_log("Group creation error: " . $e->getMessage());
             http_response_code(500);
             echo json_encode(['error' => 'Failed to create group']);
             exit;
@@ -379,7 +378,6 @@ if ($method === 'POST') {
             echo json_encode(['success' => true, 'image_url' => $imagePath]);
             exit;
         } catch (Exception $e) {
-            error_log("Group image upload error: " . $e->getMessage());
             http_response_code(500);
             echo json_encode(['error' => 'Failed to upload image']);
             exit;
@@ -414,7 +412,6 @@ if ($method === 'POST') {
             echo json_encode(['success' => true]);
             exit;
         } catch (Exception $e) {
-            error_log("Group deletion error: " . $e->getMessage());
             http_response_code(500);
             echo json_encode(['error' => 'Failed to delete group']);
             exit;

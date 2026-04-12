@@ -61,14 +61,12 @@ function enforce_client_auth() {
     
     // Verify user role is 'client'
     if ($_SESSION['role'] !== 'client') {
-        error_log("Unauthorized access attempt - User " . $_SESSION['user_id'] . " attempted client access with role: " . $_SESSION['role']);
         header('Location: ../login.php');
         exit();
     }
     
     // Check if tenant_id is set
     if (!isset($_SESSION['tenant_id'])) {
-        error_log("Missing tenant_id for client user: " . $_SESSION['user_id']);
         session_destroy();
         header('Location: ../login.php');
         exit();
@@ -94,7 +92,6 @@ function client_owns_record($table, $record_id, $pdo) {
         $stmt->execute([$record_id, $client_id, $tenant_id]);
         return $stmt->fetch(PDO::FETCH_ASSOC)['count'] > 0;
     } catch (PDOException $e) {
-        error_log("Error validating client ownership: " . $e->getMessage());
         return false;
     }
 }
@@ -134,12 +131,6 @@ function prevent_modifications() {
         $_SERVER['REQUEST_METHOD'] === 'PUT' || 
         $_SERVER['REQUEST_METHOD'] === 'DELETE' || 
         $_SERVER['REQUEST_METHOD'] === 'PATCH') {
-        
-        // Log suspicious activity
-        error_log("Modification attempt blocked for client " . $_SESSION['client_id'] . 
-                 " - Method: " . $_SERVER['REQUEST_METHOD'] . 
-                 " - Script: " . $script .
-                 " - IP: " . $_SERVER['REMOTE_ADDR']);
         
         http_response_code(403);
         die(json_encode(['error' => 'Modifications not allowed in client panel']));

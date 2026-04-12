@@ -147,7 +147,6 @@ try {
     }
 
 } catch (PDOException $e) {
-    error_log("Profile Update Error: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Database error occurred']);
 }
 ?>

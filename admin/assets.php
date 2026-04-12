@@ -24,7 +24,6 @@ $branch_id = $_SESSION['branch_id'];
 // Check if user is logged in with proper role
 $allowed_roles = ['admin', 'finance'];
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    error_log("Unauthorized access attempt to dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
@@ -75,7 +74,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_asset'])) {
         $result   = $uploader->upload('document', 'assets');
         if ($result['success']) {
             $document = $result['data']['filename'];
-            error_log("Asset document uploaded: {$result['data']['filename']} by user {$_SESSION['user_id']}");
         } else {
             $_SESSION['error_message'] = "Document upload failed: " . $result['error'];
             header('Location: ' . $redirect_url); exit();

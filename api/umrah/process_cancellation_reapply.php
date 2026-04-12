@@ -28,9 +28,6 @@ $sold_price = isset($_POST['sold_price']) ? floatval($_POST['sold_price']) : 0;
 $current_profit = isset($_POST['current_profit']) ? floatval($_POST['current_profit']) : 0;
 $reason = isset($_POST['reason']) ? $_POST['reason'] : '';
 
-// Debug logging
-error_log("Cancellation/Reapply Request: " . json_encode($_POST));
-
 // Validate required fields
 if (!$booking_id || !$action || empty($reason)) {
     echo json_encode([
@@ -247,8 +244,6 @@ try {
             'new_status' => $new_status
         ]
     ];
-
-    error_log("Cancellation/Reapply Success Response: " . json_encode($response));
     echo json_encode($response);
 
 } catch (Exception $e) {
@@ -267,7 +262,6 @@ try {
         ]
     ];
 
-    error_log("Cancellation/Reapply Error: " . json_encode($error_response));
     echo json_encode($error_response);
 }
 ?>

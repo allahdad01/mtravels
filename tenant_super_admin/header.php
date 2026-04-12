@@ -39,12 +39,6 @@ try {
     $stmt->execute([$_SESSION['user_id'], $tenant_id]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (!$user) {
-        error_log("User not found: " . $_SESSION['user_id']);
-        session_destroy();
-        header('Location: ../login.php');
-        exit();
-    }
 
 } catch (PDOException $e) {
     error_log("Database Error: " . $e->getMessage());

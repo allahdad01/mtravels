@@ -214,7 +214,6 @@ function createGlobalAllocation($pdo, $tenant_id, $branch_id) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        error_log('Global Budget Allocation Error: ' . $e->getMessage());
         sendResponse(false, 'Database error: ' . $e->getMessage());
     }
 }
@@ -311,7 +310,6 @@ function deleteGlobalAllocation($pdo, $tenant_id, $branch_id) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        error_log('Delete Global Allocation Error: ' . $e->getMessage());
         sendResponse(false, 'Database error: ' . $e->getMessage());
     }
 }
@@ -464,7 +462,6 @@ function addFundsGlobal($pdo, $tenant_id, $branch_id) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        error_log('Add Funds Global Error: ' . $e->getMessage());
         sendResponse(false, 'Database error: ' . $e->getMessage());
     }
 }
@@ -559,7 +556,6 @@ function addExpenseGlobal($pdo, $tenant_id, $branch_id) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        error_log('Add Expense Global Error: ' . $e->getMessage());
         sendResponse(false, 'Database error: ' . $e->getMessage());
     }
 }
@@ -587,7 +583,6 @@ function getGlobalExpenses($pdo, $tenant_id, $branch_id) {
 
         sendResponse(true, 'Global expenses retrieved successfully', ['expenses' => $expenses]);
     } catch (PDOException $e) {
-        error_log('Get Global Expenses Error: ' . $e->getMessage());
         sendResponse(false, 'Database error: ' . $e->getMessage());
     }
 }
@@ -656,7 +651,6 @@ function deleteGlobalExpense($pdo, $tenant_id, $branch_id) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        error_log('Delete Global Expense Error: ' . $e->getMessage());
         sendResponse(false, 'Database error: ' . $e->getMessage());
     }
 }
@@ -829,7 +823,6 @@ function deleteFundTransaction($pdo, $tenant_id, $branch_id) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        error_log('Delete Fund Transaction Error: ' . $e->getMessage());
         sendResponse(false, 'Database error: ' . $e->getMessage());
     }
 }
@@ -875,7 +868,6 @@ function getFundTransactions($pdo, $tenant_id, $branch_id) {
             'transactions' => $transactions
         ]);
     } catch (PDOException $e) {
-        error_log('Get Fund Transactions Error: ' . $e->getMessage());
         sendResponse(false, 'Database error: ' . $e->getMessage());
     }
 }

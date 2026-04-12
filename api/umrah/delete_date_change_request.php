@@ -201,9 +201,6 @@ try {
         $updateFamilyStmt->bindParam(13, $branch_id, PDO::PARAM_INT);
         $updateFamilyStmt->execute();
 
-        // Log the deletion
-        error_log("Date change request deleted - ID: $id, Booking: {$request['umrah_booking_id']}, Status: {$request['status']}, Deleted by: {$_SESSION['user_id']}");
-
         $message = $request['status'] === 'Completed'
             ? 'Date change request deleted and all associated changes reversed successfully'
             : 'Date change request deleted successfully';
@@ -220,7 +217,6 @@ try {
     }
 
 } catch (PDOException $e) {
-    error_log("Delete date change request error: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'An error occurred while deleting the date change request']);
 }
 ?>

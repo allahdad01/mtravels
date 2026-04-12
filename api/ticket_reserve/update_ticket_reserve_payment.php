@@ -25,9 +25,6 @@ header('Content-Type: application/json');
 
 // Check if the request is POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Debug logging
-    error_log("Update transaction request received");
-    error_log("POST data: " . print_r($_POST, true));
 
     // Get form data
     $transactionId = $_POST['transaction_id'] ?? 0;
@@ -161,12 +158,7 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
         $stmt->bindParam(5, $transactionId, PDO::PARAM_INT);
         $stmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
         $stmt->bindParam(7, $branch_id, PDO::PARAM_INT);
-
-        error_log("Executing update query with params: amount=$newAmount, description=$newDescription, date=$newDate, exchange_rate=$exchange_rate, id=$transactionId, tenant_id=$tenant_id");
-
         $stmt->execute();
-
-        error_log("Update query executed successfully. Affected rows: " . $stmt->rowCount());
 
         // Update main account balance if amount changed
         if ($amountDifference != 0 && $mainAccountId) {

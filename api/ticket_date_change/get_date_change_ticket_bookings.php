@@ -70,7 +70,6 @@ if (isset($_GET['id'])) {
         ]);
         
     } catch (PDOException $e) {
-        error_log("Error fetching date change ticket: " . $e->getMessage());
         echo json_encode([
             'success' => false,
             'message' => 'Error fetching ticket details: ' . $e->getMessage()

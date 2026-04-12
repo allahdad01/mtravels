@@ -92,7 +92,6 @@ try {
     $stmt->execute([$tenant_id, $per_page, $offset]);
     $refunds = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    error_log("Hotel refunds fetch error: " . $e->getMessage());
     $refunds = [];
 }
 

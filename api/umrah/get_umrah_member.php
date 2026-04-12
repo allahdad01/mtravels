@@ -75,10 +75,7 @@ try {
         echo json_encode(['success' => false, 'message' => 'Member not found']);
     }
 } catch (PDOException $e) {
-    // Log the error
-    error_log("Database Error in get_umrah_member.php: " . $e->getMessage());
-    
-    // Return error message
+   // Return error message
     header('Content-Type: application/json');
     echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
 }

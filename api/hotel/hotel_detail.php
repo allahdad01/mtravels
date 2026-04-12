@@ -46,8 +46,6 @@ if (!$hotelId) {
     if (!$hotelData) {
         $error = "Hotel not found";
     } else {
-        // Add debug output
-        error_log("Hotel data: " . print_r($hotelData, true));
         
         // Get main account transactions related to this booking
         $mainAccountTransQuery = "SELECT

@@ -37,7 +37,6 @@ try {
     }
 } catch (Exception $e) {
     ob_end_clean();
-    error_log("Approve Visa Init Error: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(["success" => false, "error" => "Initialization error: " . $e->getMessage()]);
     exit;
@@ -260,13 +259,11 @@ try {
 
 } catch (PDOException $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
-    error_log("Approve Visa PDO Error: " . $e->getMessage());
     ob_end_clean();
     http_response_code(500);
     echo json_encode(["success" => false, "error" => $e->getMessage()]);
 } catch (Exception $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
-    error_log("Approve Visa Error: " . $e->getMessage());
     ob_end_clean();
     http_response_code(500);
     echo json_encode(["success" => false, "error" => $e->getMessage()]);

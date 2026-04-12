@@ -20,7 +20,6 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['role'])) {
 // Only super_admin can access this endpoint
 // Tenant admins should use their own invoice generation with proper tenant isolation
 if ($_SESSION['role'] !== 'super_admin' || !is_null($_SESSION['tenant_id'])) {
-    error_log("Unauthorized PDF access attempt: User {$_SESSION['user_id']}, Role: {$_SESSION['role']}, Tenant ID: {$_SESSION['tenant_id']} - IP: {$_SERVER['REMOTE_ADDR']}");
     header('Location: ../access_denied.php');
     exit();
 }
@@ -38,7 +37,6 @@ if (!isset($_SESSION['csrf_token'])) {
 // Check for CSRF token on POST requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
-        error_log("CSRF token validation failed: User {$_SESSION['user_id']} - IP: {$_SERVER['REMOTE_ADDR']}");
         die('Invalid request - CSRF token validation failed');
     }
 }
@@ -67,13 +65,8 @@ if ($payment_id > 0) {
         $payment_record = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$payment_record) {
-            error_log("Payment not found: {$payment_id} - User: {$_SESSION['user_id']}");
             die('Payment record not found');
         }
-        
-        // SECURITY: Only super admins can access payments
-         // This endpoint is for super admin only
-         error_log("Payment invoice accessed by super admin: {$_SESSION['user_id']}, Payment: {$payment_id}");
         
         // Use payment record data
         $subscription_id = $payment_record['subscription_id'];
@@ -84,11 +77,7 @@ if ($payment_id > 0) {
         $transaction_id = $payment_record['transaction_id'];
         $receipt_number = $payment_record['receipt_number'];
         $notes = $payment_record['notes'];
-        
-        // Log PDF generation
-        error_log("PDF_GENERATED: User {$_SESSION['user_id']} generated invoice for payment {$payment_id}");
     } catch (PDOException $e) {
-        error_log("Error fetching payment: " . $e->getMessage());
         die("Error fetching payment");
     }
 } elseif (!$subscription_id || !$amount) {
@@ -132,7 +121,6 @@ try {
     $company_address = $settings['contact_address'] ?? 'Kabul, Afghanistan';
     $platform_logo = $settings['platform_logo'] ?? null;
 } catch (PDOException $e) {
-    error_log("Error fetching platform settings: " . $e->getMessage());
     // Fallback values
     $company_name = 'MTravels';
     $company_email = 'allahdadmuhammadi01@gmail.com';

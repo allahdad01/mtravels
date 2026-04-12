@@ -10,7 +10,6 @@ require_once '../includes/InputValidator.php';
 
 $allowed_roles = ['admin', 'finance'];
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    error_log("Unauthorized access attempt: " . ($_SESSION['user_id'] ?? 'unknown') . " - " . ($_SESSION['role'] ?? 'unknown') . " - " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }

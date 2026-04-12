@@ -18,7 +18,6 @@ if ($_POST) {
     // CSRF Protection - CRITICAL SECURITY
     if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || 
         $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-        error_log("CSRF attack detected on book-demo form from IP: " . $_SERVER['REMOTE_ADDR']);
         $_SESSION['demo_error'] = 'Security validation failed. Please try again.';
     } else {
         // Rate limit check - 5 requests per hour per IP
@@ -55,7 +54,6 @@ if ($_POST) {
                     // Clear form data
                     unset($_POST);
                 } catch (PDOException $e) {
-                    error_log("Demo request error: " . $e->getMessage());
                     $_SESSION['demo_error'] = 'There was an error submitting your request. Please try again.';
                 }
             }

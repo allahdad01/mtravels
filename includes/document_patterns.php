@@ -679,14 +679,12 @@ function extractTextViaPaddleOCR($imagePath) {
     try {
         // Check if image file exists
         if (!file_exists($imagePath)) {
-            error_log('Image file not found: ' . $imagePath);
             return '';
         }
         
         // Find Python executable
         $pythonExe = findPythonExecutable();
         if (!$pythonExe) {
-            error_log('Python not found on system');
             return '';
         }
         
@@ -794,7 +792,6 @@ PYTHON;
         
         // Check output messages
         $outputText = implode("\n", $output);
-        error_log('PaddleOCR Output: ' . $outputText);
         
         // Check if execution was successful
         if (strpos($outputText, 'SUCCESS') !== false) {
@@ -823,7 +820,6 @@ PYTHON;
         return '';
         
     } catch (Exception $e) {
-        error_log('PaddleOCR Exception: ' . $e->getMessage());
         return '';
     }
 }

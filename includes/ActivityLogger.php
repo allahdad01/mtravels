@@ -55,10 +55,6 @@ class ActivityLogger {
     public static function log($action, $user_id, $tenant_id, $details = [], $table = null, $record_id = null) {
         global $pdo;
         
-        if (!$pdo) {
-            error_log("ActivityLogger: PDO connection not available");
-            return false;
-        }
         
         try {
             $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
@@ -82,7 +78,6 @@ class ActivityLogger {
                 $user_agent
             ]);
         } catch (PDOException $e) {
-            error_log("ActivityLogger error: " . $e->getMessage());
             return false;
         }
     }
@@ -301,7 +296,6 @@ class ActivityLogger {
             
             return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         } catch (PDOException $e) {
-            error_log("ActivityLogger::getActivityLogs error: " . $e->getMessage());
             return [];
         }
     }
@@ -338,7 +332,6 @@ class ActivityLogger {
             $stmt->execute([(int)$tenant_id, $date_from]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         } catch (PDOException $e) {
-            error_log("ActivityLogger::getActivityStats error: " . $e->getMessage());
             return [];
         }
     }

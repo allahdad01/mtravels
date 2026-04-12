@@ -254,7 +254,6 @@ try {
     }
     
     http_response_code(400);
-    error_log("Save group ticket error: " . $e->getMessage());
     echo json_encode([
         'success' => false,
         'message' => $e->getMessage()

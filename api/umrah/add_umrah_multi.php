@@ -6,14 +6,12 @@
 
 // Catch all fatal errors
 set_error_handler(function($errno, $errstr, $errfile, $errline) {
-    error_log("PHP Error [$errno]: $errstr in $errfile:$errline");
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Server error: ' . $errstr]);
     exit;
 });
 
 set_exception_handler(function($e) {
-    error_log("Exception: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Server error: ' . $e->getMessage()]);
     exit;
@@ -269,7 +267,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     } catch (PDOException $e) {
         $pdo->rollBack();
-        error_log("Error adding members: " . $e->getMessage());
         echo json_encode([
             'success' => false,
             'message' => 'Database error: ' . $e->getMessage()

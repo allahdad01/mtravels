@@ -103,7 +103,6 @@ try {
     ]);
 
 } catch (PDOException $e) {
-    error_log("Error in get_weight_transactions.php: " . $e->getMessage());
     echo json_encode([
         'success' => false,
         'message' => $e->getMessage()

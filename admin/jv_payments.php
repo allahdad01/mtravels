@@ -16,7 +16,6 @@ enforce_auth(['admin', 'finance']);
 // Check if user is logged in with proper role
 $allowed_roles = ['admin', 'finance'];
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    error_log("Unauthorized access attempt to dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
@@ -68,7 +67,6 @@ try {
     $total_records = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
     $total_pages   = ceil($total_records / $items_per_page);
 } catch (PDOException $e) {
-    error_log("Error counting JV payments: " . $e->getMessage());
     $total_records = 0;
     $total_pages   = 1;
 }

@@ -182,7 +182,6 @@ try {
     }
 } catch (Exception $e) {
     $pdo->rollBack();
-    error_log("Error deleting salary payment: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Error deleting payment: ' . $e->getMessage()]);
 }
 ?> 

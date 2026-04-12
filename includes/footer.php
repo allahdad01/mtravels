@@ -30,7 +30,6 @@ if (!isset($platform_settings)) {
             }
             return $settings;
         } catch (PDOException $e) {
-            error_log("Error fetching platform settings: " . $e->getMessage());
             return [];
         }
     }

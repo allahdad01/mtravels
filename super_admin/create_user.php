@@ -27,7 +27,6 @@ if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_tok
 
 // Check if user is a super admin
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'super_admin' || !is_null($_SESSION['tenant_id'])) {
-    error_log("Unauthorized access attempt to create_user.php: " . ($_SESSION['user_id'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
@@ -117,7 +116,6 @@ if (empty($errors)) {
     $ip_address = $_SERVER['REMOTE_ADDR'];
     $stmt->execute([$_SESSION['user_id'], $user_id, $details, $ip_address]);
     
-    error_log("USER_CREATED: Admin {$_SESSION['user_id']} created user {$user_id} ({$email}) with role {$role}");
     header('Location: manage_users.php?success=user_created');
 } else {
     header('Location: manage_users.php?error=' . urlencode(implode(', ', $errors)));

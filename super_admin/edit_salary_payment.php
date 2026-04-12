@@ -20,7 +20,6 @@ $_SESSION['last_activity'] = time();
 
 // Check if user is a super admin
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'super_admin' || !is_null($_SESSION['tenant_id'])) {
-    error_log("Unauthorized access attempt to edit_salary_payment.php: " . ($_SESSION['user_id'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
@@ -73,7 +72,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_salary_payment
             $stmt->execute([$_SESSION['user_id'], $payment_id, $details, $_SERVER['REMOTE_ADDR']]);
         } catch (Exception $e) {
             $error = "Error updating salary payment: " . $e->getMessage();
-            error_log("Error updating salary payment: " . $e->getMessage());
         }
     }
 }

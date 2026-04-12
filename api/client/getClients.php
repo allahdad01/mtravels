@@ -16,6 +16,5 @@ try {
     $clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
     echo json_encode($clients);
 } catch (PDOException $e) {
-    error_log("Error in fetch_clients.php: " . $e->getMessage());
     echo json_encode([]);
 }

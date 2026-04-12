@@ -218,7 +218,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
         } catch (Exception $e) {
         // Rollback transaction on error
         $pdo->rollBack();
-        error_log("Error deleting hotel refund: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Error deleting refund: ' . $e->getMessage()]);
     }
 } else {

@@ -691,7 +691,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (Exception $ex) {
             // An exception means a transaction was already active, so roll it back
             $pdo->rollBack();
-            error_log("Transaction rolled back due to error");
         }
         
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);

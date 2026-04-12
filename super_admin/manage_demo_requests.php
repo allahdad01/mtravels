@@ -22,7 +22,6 @@ $_SESSION['last_activity'] = time();
 
 // Check if user is a super admin
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'super_admin' || !is_null($_SESSION['tenant_id'])) {
-    error_log("Unauthorized access attempt to manage_demo_requests.php: " . ($_SESSION['user_id'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
@@ -64,7 +63,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
         header('Location: manage_demo_requests.php?success=status_updated');
         exit();
     } catch (Exception $e) {
-        error_log("Error updating demo request status: " . $e->getMessage());
         header('Location: manage_demo_requests.php?error=update_failed');
         exit();
     }
@@ -92,7 +90,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_request'])) {
         header('Location: manage_demo_requests.php?success=request_deleted');
         exit();
     } catch (Exception $e) {
-        error_log("Error deleting demo request: " . $e->getMessage());
         header('Location: manage_demo_requests.php?error=delete_failed');
         exit();
     }

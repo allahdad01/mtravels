@@ -416,33 +416,32 @@ try {
                 $headers = ['ID', 'Creditor Name', 'Phone', 'Email', 'Address', 'Balance', 'Currency', 'Status', 'Paid Amount', 'Received Amount'];
                 break;
             
-            case 'debtor':
-                $query = "SELECT
-                         d.id,
-                         d.name as debtor_name,
-                         d.phone,
-                         d.email,
-                         d.address,
-                         d.balance,
-                         d.currency,
-                         d.status,
-                         (SELECT COALESCE(SUM(amount), 0)
-                          FROM debtor_transactions
-                          WHERE debtor_id = d.id
-                          AND transaction_type = 'debit'
-                          AND payment_date BETWEEN ? AND ? AND tenant_id = ? AND branch_id = ?) as paid_amount,
-                         (SELECT COALESCE(SUM(amount), 0)
-                          FROM debtor_transactions
-                          WHERE debtor_id = d.id
-                          AND transaction_type = 'credit'
-                          AND payment_date BETWEEN ? AND ? AND tenant_id = ? AND branch_id = ?) as received_amount
-                         FROM debtors d
-                         WHERE d.tenant_id = ? AND d.branch_id = ?
-                         ORDER BY d.name ASC";
-                 $params = [$startDate, $endDate, $tenant_id, $branch_id, $startDate, $endDate, $tenant_id, $branch_id, $tenant_id, $branch_id];
-                $headers = ['ID', 'Debtor Name', 'Phone', 'Email', 'Address', 'Balance', 'Currency', 'Status', 'Paid Amount', 'Received Amount'];
-                break;
-            
+                case 'debtor':
+                    $query = "SELECT 
+                            d.id, 
+                            d.name as debtor_name,
+                            d.phone,
+                            d.email,
+                            d.address,
+                            d.currency,
+                            d.created_at,
+                            d.balance as remaining_amount,
+                            (SELECT COALESCE(SUM(amount), 0) 
+                             FROM debtor_transactions 
+                             WHERE debtor_id = d.id 
+                             AND transaction_type = 'credit' 
+                             AND payment_date BETWEEN ? AND ?) as received_amount,
+                            d.balance + (SELECT COALESCE(SUM(amount), 0) 
+                             FROM debtor_transactions 
+                             WHERE debtor_id = d.id 
+                             AND transaction_type = 'credit' 
+                             AND payment_date BETWEEN ? AND ?) as balance
+                            FROM debtors d 
+                            WHERE d.status = 'active' AND d.tenant_id = ? AND d.branch_id = ?
+                            ORDER BY d.name ASC";
+                    $params = [$startDate, $endDate, $startDate, $endDate, $tenant_id, $branch_id];
+                    $headers = ['Date', 'Debtor Name', 'Phone', 'Email', 'Address', 'Balance', 'Received Amount', 'Remaining Amount'];
+                    break;
             case 'additional_payment':
                 $query = "SELECT
                     ap.id,
@@ -2644,7 +2643,6 @@ try {
             echo $pdf->Output('report.pdf', \Mpdf\Output\Destination::STRING_RETURN);
     
         } catch (\Exception $e) {
-            error_log('PDF Generation Error: ' . $e->getMessage());
             echo 'Error generating PDF: ' . $e->getMessage();
         }
     }

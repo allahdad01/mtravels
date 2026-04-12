@@ -230,10 +230,6 @@ try {
         $updateFamilyStmt->bindParam(12, $tenant_id, PDO::PARAM_INT);
         $updateFamilyStmt->bindParam(13, $branch_id, PDO::PARAM_INT);
         $updateFamilyStmt->execute();
-
-        // Log the processing
-        error_log("Date change request processed - ID: $id, Booking: {$request['umrah_booking_id']}, Supplier Penalty: {$request['supplier_penalty']}, Total Penalty: {$request['total_penalty']}, Processed by: {$_SESSION['user_id']}");
-
         echo json_encode([
             'success' => true,
             'message' => 'Date changes applied successfully to booking #' . $request['umrah_booking_id'] . ' with penalties processed'
@@ -246,7 +242,6 @@ try {
     }
 
 } catch (PDOException $e) {
-    error_log("Process date change request error: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'An error occurred while processing the date changes']);
 }
 ?>

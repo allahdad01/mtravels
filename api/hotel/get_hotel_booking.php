@@ -34,7 +34,6 @@ if (isset($_GET['id'])) {
             echo json_encode(['error' => 'Booking not found']);
         }
     } catch (PDOException $e) {
-        error_log("Error in get_hotel_booking.php: " . $e->getMessage());
         echo json_encode(['error' => 'Database error']);
     }
 } else {

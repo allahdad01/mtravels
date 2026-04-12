@@ -60,7 +60,6 @@ try {
     exit();
 
 } catch (Exception $e) {
-    error_log("Error deleting expense category: " . $e->getMessage());
     header('Location: manage_expense_categories.php?error=' . urlencode($e->getMessage()));
     exit();
 }

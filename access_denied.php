@@ -17,7 +17,6 @@ try {
     $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
     $agency_name = htmlspecialchars($settings['agency_name']);
 } catch (PDOException $e) {
-    error_log("Settings Error: " . $e->getMessage());
     $agency_name = 'Travel Agency';
 }
 

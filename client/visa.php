@@ -83,7 +83,6 @@ try {
     $stmt->execute([$client_id, $tenant_id, $per_page, $offset]);
     $visas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    error_log("Visas fetch error: " . $e->getMessage());
     $visas = [];
 }
 

@@ -25,6 +25,5 @@ try {
     
     echo json_encode(['success' => true, 'bookings' => $bookings]);
 } catch (Exception $e) {
-    error_log("Error fetching family bookings: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Failed to fetch family bookings']);
 } 

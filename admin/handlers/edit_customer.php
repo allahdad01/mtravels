@@ -14,13 +14,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
-// Debug logging
-error_log("Received POST data: " . print_r($_POST, true));
 
 // Validate required fields
 if (!isset($_POST['customer_id']) || !isset($_POST['name']) || !isset($_POST['phone'])) {
     echo json_encode(['success' => false, 'message' => 'Required fields are missing']);
-    error_log("Missing required fields in customer update: " . print_r($_POST, true));
     exit;
 }
 
@@ -30,12 +27,6 @@ $phone = trim($_POST['phone']);
 $email = trim($_POST['email'] ?? '');
 $address = trim($_POST['address'] ?? '');
 
-// Debug values
-error_log("Processing update for customer ID: $customer_id");
-error_log("Name: $name");
-error_log("Phone: $phone");
-error_log("Email: $email");
-error_log("Address: $address");
 
 try {
     // Check database connection
@@ -80,9 +71,6 @@ try {
         ':branch_id' => $branch_id
     ];
     
-    // Debug the query and parameters
-    error_log("Update Query: " . $updateQuery);
-    error_log("Parameters: " . print_r($params, true));
     
     $result = $stmt->execute($params);
     
@@ -117,7 +105,6 @@ try {
         $e->getMessage(),
         $e->getCode()
     );
-    error_log($errorMessage);
     
     // Check for specific error codes
     $message = match ($e->getCode()) {
@@ -139,7 +126,6 @@ try {
         $pdo->rollBack();
     }
     
-    error_log("General error: " . $e->getMessage());
     echo json_encode([
         'success' => false, 
         'message' => $e->getMessage(),

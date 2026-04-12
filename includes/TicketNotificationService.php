@@ -55,7 +55,6 @@ class TicketNotificationService {
             return true;
             
         } catch (Exception $e) {
-            error_log("Notify Ticket Created Error: " . $e->getMessage());
             return false;
         }
     }
@@ -102,7 +101,6 @@ class TicketNotificationService {
             return true;
             
         } catch (Exception $e) {
-            error_log("Notify Ticket Reply Error: " . $e->getMessage());
             return false;
         }
     }
@@ -138,7 +136,6 @@ class TicketNotificationService {
             return true;
             
         } catch (Exception $e) {
-            error_log("Notify Status Change Error: " . $e->getMessage());
             return false;
         }
     }
@@ -191,7 +188,6 @@ class TicketNotificationService {
             return true;
             
         } catch (Exception $e) {
-            error_log("Notify SLA Breach Error: " . $e->getMessage());
             return false;
         }
     }
@@ -289,7 +285,6 @@ Due Date: {$ticket['sla_due_at']}
             return mail($to, $subject, $body, $headers);
             
         } catch (Exception $e) {
-            error_log("Email Send Error: " . $e->getMessage());
             return false;
         }
     }
@@ -306,7 +301,6 @@ Due Date: {$ticket['sla_due_at']}
             return $stmt->execute([$ticketId, $userId, $type]);
             
         } catch (Exception $e) {
-            error_log("Record Notification Error: " . $e->getMessage());
             return false;
         }
     }

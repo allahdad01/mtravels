@@ -54,7 +54,6 @@ try {
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$user) {
-        error_log("auth_check: user not found – id={$user_id} tenant={$tenant_id}");
         session_destroy();
         header('Location: ../login.php');
         exit();
@@ -88,8 +87,6 @@ try {
     }
 
 } catch (PDOException $e) {
-    // Log the sanitised message – never expose DB details to the browser
-    error_log("auth_check DB error: " . $e->getMessage());
     // Hard-stop; the app cannot function without a DB connection
     http_response_code(503);
     exit('Service temporarily unavailable.');
@@ -98,11 +95,6 @@ try {
 // ── 4. Fail-closed feature guard ────────────────────────────────────────────
 // NOTE: If no active subscription is found the tenant gets NO features.
 // Remove this comment block once you're happy with the behaviour; do NOT
-// re-introduce a default "allow everything" fallback here – it's a security risk.
-if (empty($allowed_features)) {
-    // Optionally log so you notice tenants without active subscriptions
-    error_log("auth_check: tenant {$tenant_id} has no active subscription features.");
-}
 
 // ── 5. Profile image ─────────────────────────────────────────────────────────
 $profilePic = !empty($user['profile_pic'])

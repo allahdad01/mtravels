@@ -43,7 +43,6 @@ try {
     ]);
     
 } catch (Exception $e) {
-    error_log("Error in get_user.php: " . $e->getMessage());
     echo json_encode([
         'success' => false,
         'message' => $e->getMessage()

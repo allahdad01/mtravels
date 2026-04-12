@@ -98,8 +98,6 @@ try {
     ]);
     
 } catch (Exception $e) {
-    // Log the error
-    error_log("Error in get_family_members.php: " . $e->getMessage() . " - User: " . ($_SESSION['user_id'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     
     // Return error response
     echo json_encode([

@@ -39,7 +39,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || 
         $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
         // Log potential CSRF attack
-        error_log("CSRF attack detected: " . $_SERVER['REMOTE_ADDR']);
         die("Invalid request. Please try again.");
     }
     
@@ -135,7 +134,6 @@ try {
     $settingStmt->execute([$tenant_id]);
     $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    error_log("Settings Error: " . $e->getMessage());
     $settings = ['agency_name' => 'Default Name'];
 }
 ?>

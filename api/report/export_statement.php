@@ -1170,7 +1170,6 @@ try {
                 $pdf->Output($filename, 'D');  // D = download
                 exit();
             } catch (Exception $e) {
-                error_log('PDF Export Error: ' . $e->getMessage());
                 throw new Exception('Error generating PDF file: ' . $e->getMessage());
             }
             break;
@@ -1599,7 +1598,6 @@ try {
                     exit;
 
                 } catch (Exception $e) {
-                    error_log('Excel Export Error: ' . $e->getMessage());
                     throw new Exception('Error generating Excel file: ' . $e->getMessage());
                 }
                 break;
@@ -2055,7 +2053,6 @@ try {
                         exit();
         
                     } catch (Exception $e) {
-                        error_log('Word Export Error: ' . $e->getMessage());
                         throw new Exception('Error generating Word file: ' . $e->getMessage());
                     }
                     break;
@@ -2068,7 +2065,6 @@ try {
     while (ob_get_level()) {
         ob_end_clean();
     }
-    error_log('Statement Export Error: ' . $e->getMessage());
     header("Location: report.php?error=" . urlencode('Error generating statement: ' . $e->getMessage()));
     exit();
 }

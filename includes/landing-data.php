@@ -34,7 +34,6 @@ function fetchWithCache($pdo, $cacheKey, $sql, $params = [], $fetchOne = false) 
         
         return $result;
     } catch (PDOException $e) {
-        error_log("Database query failed: " . $e->getMessage());
         return $fetchOne ? null : [];
     }
 }
@@ -61,7 +60,6 @@ function getPlatformSettings($pdo) {
         setCachedData($cacheKey, $settings);
         return $settings;
     } catch (PDOException $e) {
-        error_log("Error fetching platform settings: " . $e->getMessage());
         return [];
     }
 }
@@ -84,7 +82,6 @@ function getPlans($pdo) {
         setCachedData($cacheKey, $plans);
         return $plans;
     } catch (PDOException $e) {
-        error_log("Error fetching plans: " . $e->getMessage());
         return [];
     }
 }
@@ -173,7 +170,6 @@ function getTestimonials($pdo, $tenant_id, $limit = null) {
         setCachedData($cacheKey, $testimonials);
         return $testimonials;
     } catch (PDOException $e) {
-        error_log("Error fetching testimonials: " . $e->getMessage());
         return [];
     }
 }
@@ -238,8 +234,6 @@ function fetchLandingPageData($pdo) {
         
         return $data;
     } catch (Exception $e) {
-        error_log("Error loading landing page data: " . $e->getMessage());
-        
         // Return fallback data structure
         return [
             'settings' => [],

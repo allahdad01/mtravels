@@ -238,7 +238,6 @@ function parseMRZLines($text) {
         return $data;
         
     } catch (Exception $e) {
-        error_log('MRZ parsing error: ' . $e->getMessage());
         return $data;
     }
 }

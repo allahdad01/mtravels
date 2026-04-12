@@ -76,7 +76,6 @@ class MessageEncryption {
                 'is_encrypted' => 1
             ];
         } catch (Exception $e) {
-            error_log('Encryption error: ' . $e->getMessage());
             $this->logAudit($tenantId, 'encrypt', null, null, $keyId ?? null, false, $e->getMessage());
             throw $e;
         }
@@ -131,7 +130,6 @@ class MessageEncryption {
             
             return $decrypted;
         } catch (Exception $e) {
-            error_log('Decryption error: ' . $e->getMessage());
             $this->logAudit($tenantId, 'decrypt', null, null, $keyId, false, $e->getMessage());
             throw $e;
         }
@@ -189,12 +187,8 @@ class MessageEncryption {
             // Store the actual key in a secure location (this is a simple implementation)
             // In production, use AWS KMS, HashiCorp Vault, or similar
             $this->storeKeySecurely($tenantId, $keyId, $newKey);
-            
-            error_log("New encryption key created for tenant $tenantId: key_id=$keyId");
-            
             return (int)$keyId;
         } catch (Exception $e) {
-            error_log('Key creation error: ' . $e->getMessage());
             throw $e;
         }
     }
@@ -271,14 +265,12 @@ class MessageEncryption {
         $keyFile = $keyDir . '/tenant_' . $tenantId . '_key_' . $keyId . '.key';
         
         if (!file_exists($keyFile)) {
-            error_log("Key file not found: $keyFile");
             return null;
         }
         
         $keyData = file_get_contents($keyFile);
         
         if ($keyData === false) {
-            error_log("Failed to read key file: $keyFile");
             return null;
         }
         
@@ -315,8 +307,6 @@ class MessageEncryption {
             );
             $stmt->execute([$tenantId, $oldKeyId, $newKeyId, $reencryptExisting ? 'pending' : 'completed']);
             
-            error_log("Key rotation initiated for tenant $tenantId: old_key=$oldKeyId, new_key=$newKeyId");
-            
             if ($reencryptExisting) {
                 // Queue background job to re-encrypt existing messages
                 // In production, use a job queue (Redis, RabbitMQ, etc.)
@@ -325,7 +315,6 @@ class MessageEncryption {
             
             return $newKeyId;
         } catch (Exception $e) {
-            error_log('Key rotation error: ' . $e->getMessage());
             throw $e;
         }
     }

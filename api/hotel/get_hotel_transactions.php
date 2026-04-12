@@ -57,7 +57,6 @@ if (isset($_GET['booking_id'])) {
         ]);
         
     } catch (PDOException $e) {
-        error_log("Error fetching hotel transactions: " . $e->getMessage());
         echo json_encode([
             'success' => false,
             'message' => 'Error fetching transactions: ' . $e->getMessage()

@@ -133,16 +133,12 @@ If you did not expect this email, please contact your system administrator.";
 
     $mail->send();
 
-    // Log successful test
-    error_log("SMTP test email sent successfully to: {$testEmail}");
-
     echo json_encode([
         'success' => true,
         'message' => 'Test email sent successfully to ' . $testEmail
     ]);
 
 } catch (Exception $e) {
-    error_log("SMTP test failed: " . $mail->ErrorInfo);
 
     echo json_encode([
         'success' => false,

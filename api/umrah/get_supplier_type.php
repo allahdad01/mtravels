@@ -68,7 +68,6 @@ try {
         'supplier_type' => $supplier_data['supplier_type']
     ]);
 } catch (PDOException $e) {
-    error_log("Error in get_supplier_type.php: " . $e->getMessage());
     echo json_encode([
         'success' => false,
         'message' => 'Failed to fetch supplier type'

@@ -24,7 +24,6 @@ try {
     echo json_encode($response);
 
 } catch (PDOException $e) {
-    error_log("Error fetching suppliers: " . $e->getMessage());
     echo json_encode([
         'suppliers' => [],
         'error' => 'Error fetching suppliers'

@@ -127,12 +127,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 sendNewTenantNotificationToAdmin($agent['name'], $agent['email'], $tenant_name, $tenant_email, $plan, $billing_cycle, $contact_person, $default_password);
 
                 $success = "Tenant <strong>" . htmlspecialchars($tenant_name) . "</strong> created on the <strong>" . ucfirst($plan) . "</strong> plan. Login credentials have been sent to <strong>" . htmlspecialchars($tenant_email) . "</strong>.";
-                error_log("TENANT_CREATED: Agent {$agent_id} ({$agent['name']}) created tenant {$tenant_id} ({$tenant_name}) plan {$plan}");
-
+                
             } catch (Exception $e) {
                 $pdo->rollBack();
                 $error = "Error creating tenant: " . $e->getMessage();
-                error_log("Error creating tenant: " . $e->getMessage());
             }
         }
     }

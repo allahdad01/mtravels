@@ -342,7 +342,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        error_log("Error deleting umrah refund: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Error deleting refund: ' . $e->getMessage()]);
     }
 } else {

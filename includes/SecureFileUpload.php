@@ -128,9 +128,6 @@ class SecureFileUpload {
         // Set proper file permissions (readable but not executable)
         chmod($target_path, 0644);
         
-        // Log successful upload
-        error_log("File uploaded: $unique_name by user " . ($_SESSION['user_id'] ?? 'unknown'));
-        
         return $this->success([
             'filename' => $unique_name,
             'original_name' => $original_name,
@@ -251,7 +248,6 @@ class SecureFileUpload {
      * @return array Response
      */
     private function error($message) {
-        error_log("File upload error: $message");
         return [
             'success' => false,
             'error' => $message

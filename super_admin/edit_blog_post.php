@@ -18,7 +18,6 @@ $_SESSION['last_activity'] = time();
 
 // Check if user is a super admin
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'super_admin' || !is_null($_SESSION['tenant_id'])) {
-    error_log("Unauthorized access attempt to edit_blog_post.php: " . ($_SESSION['user_id'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
@@ -44,7 +43,6 @@ if (!$blog_post) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Verify CSRF token
     if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
-        error_log("CSRF token mismatch in edit_blog_post.php: " . ($_SESSION['user_id'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
         header('Location: edit_blog_post.php?id=' . $post_id . '&error=csrf');
         exit();
     }
@@ -127,13 +125,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->execute([$title, $slug, $content, $excerpt, $featured_image, $author, $category, $status, $post_id]);
 
     if ($stmt->execute()) {
-        // Log the action
-        error_log("Blog post updated: ID=$post_id, Title=$title, Author=" . $_SESSION['user_id'] . ", IP=" . $_SERVER['REMOTE_ADDR']);
-
         header('Location: manage_blog_posts.php?success=updated');
         exit();
     } else {
-        error_log("Failed to update blog post: " . $stmt->error);
         header('Location: edit_blog_post.php?id=' . $post_id . '&error=update_failed');
         exit();
     }

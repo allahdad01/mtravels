@@ -72,10 +72,7 @@ try {
     // Calculate the adjustment (treat as regular transaction)
     $adjustmentAmount = -$storedAmount;
 
-    // Debug logging to track the calculations
-    error_log("Delete Transaction - ID: {$transaction_id}, Transaction Type: {$transaction['transaction_type']}, Amount: {$amount}, " .
-              "Stored Amount: {$storedAmount}, Adjustment: {$adjustmentAmount}");
-
+    
     // Determine which balance to update based on currency
     $balanceColumn = '';
     switch(strtoupper($transaction['currency'])) {
@@ -171,7 +168,6 @@ try {
     }
 } catch (Exception $e) {
     $pdo->rollBack();
-    error_log("Error deleting transaction: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Error deleting transaction: ' . $e->getMessage()]);
 }
 ?> 

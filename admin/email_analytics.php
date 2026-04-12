@@ -17,7 +17,6 @@ $_SESSION['last_activity'] = time();
 
 $allowed_roles = ['admin', 'finance', 'sales', 'umrah', 'staff'];
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    error_log("Unauthorized access attempt to email_analytics: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php'); exit();
 }
 if (!isset($_SESSION['csrf_token'])) { $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); }

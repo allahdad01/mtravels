@@ -4,7 +4,6 @@ session_start();
 
 $allowed_roles = ['admin', 'finance'];
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    error_log("Unauthorized access attempt to dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
@@ -52,7 +51,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 exit();
             } catch (Exception $e) {
                 $pdo->rollBack();
-                error_log("Salary update error: " . $e->getMessage());
                 $error_message = "Something went wrong. Please try again.";
             }
         }

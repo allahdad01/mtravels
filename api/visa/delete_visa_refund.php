@@ -291,7 +291,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
     } catch (PDOException $e) {
         // Rollback transaction on error
         $pdo->rollBack();
-        error_log("Error deleting visa refund: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => 'Error deleting refund: ' . $e->getMessage()]);
     }
 } else {

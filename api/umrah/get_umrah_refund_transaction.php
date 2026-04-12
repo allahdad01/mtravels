@@ -45,7 +45,6 @@ try {
         ]);
     }
 } catch (PDOException $e) {
-    error_log("Error fetching umrah refund transaction: " . $e->getMessage());
     echo json_encode([
         'success' => false,
         'message' => 'Error fetching transaction details'

@@ -267,8 +267,6 @@ if ($method === 'POST') {
             exit;
         }
     } catch (Exception $e) {
-        error_log('[VoiceAPI] Error: ' . $e->getMessage());
-        error_log('[VoiceAPI] Exception: ' . $e->getFile() . ':' . $e->getLine());
         http_response_code(500);
         echo json_encode([
             'error' => 'internal_error',

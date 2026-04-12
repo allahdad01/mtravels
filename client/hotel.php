@@ -86,7 +86,6 @@ try {
     $stmt->execute([$client_id, $tenant_id, $per_page, $offset]);
     $hotels = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    error_log("Hotels fetch error: " . $e->getMessage());
     $hotels = [];
 }
 

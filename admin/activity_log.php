@@ -127,7 +127,6 @@ try {
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$user) { session_destroy(); header('Location: ../login.php'); exit(); }
 } catch (PDOException $e) {
-    error_log("Database Error: " . $e->getMessage());
     $user = null;
 }
 ?>

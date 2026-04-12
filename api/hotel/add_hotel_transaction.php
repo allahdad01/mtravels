@@ -174,7 +174,6 @@ $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['bo
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        error_log("Error in add_hotel_transaction.php: " . $e->getMessage());
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 } else {

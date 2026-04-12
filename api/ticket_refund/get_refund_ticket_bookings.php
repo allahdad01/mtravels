@@ -52,7 +52,6 @@ try {
     }
     
 } catch (PDOException $e) {
-    error_log("Error in get_ticket_bookings.php: " . $e->getMessage());
     echo json_encode([
         'success' => false,
         'message' => 'An error occurred while fetching booking'

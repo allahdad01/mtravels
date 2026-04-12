@@ -109,7 +109,6 @@ if (isset($_GET['passport']) || isset($_GET['applicant'])) {
         $response['success'] = false;
         $response['message'] = 'An error occurred while searching for visas: ' . $e->getMessage();
         $response['debug'][] = "Error: " . $e->getMessage();
-        error_log("Error in search_visas.php: " . $e->getMessage());
     }
 } else {
     $response['message'] = 'Please provide search criteria.';

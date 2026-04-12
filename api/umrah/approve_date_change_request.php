@@ -93,9 +93,6 @@ try {
     // Commit transaction
     $pdo->commit();
 
-    // Log the approval
-    error_log("Date change request approved - ID: $id, Approved by: {$_SESSION['user_id']}");
-
     echo json_encode([
         'success' => true,
         'message' => 'Date change request approved successfully. Total penalty: $' . number_format($total_penalty, 2)
@@ -104,7 +101,6 @@ try {
 } catch (PDOException $e) {
     // Rollback transaction on error
     $pdo->rollBack();
-    error_log("Approve date change request error: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'An error occurred while approving the request']);
 }
 ?>

@@ -40,7 +40,6 @@ try {
     exit(json_encode($expense));
 
 } catch (Exception $e) {
-    error_log("Get expense error: " . $e->getMessage());
     // Never expose error details to client
     exit(json_encode(['success' => false, 'message' => 'An error occurred. Please try again.']));
 }

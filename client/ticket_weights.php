@@ -91,7 +91,6 @@ try {
     $stmt->execute([$client_id, $tenant_id, $per_page, $offset]);
     $weights = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    error_log("Ticket weights fetch error: " . $e->getMessage());
     $weights = [];
 }
 

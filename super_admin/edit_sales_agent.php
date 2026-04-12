@@ -20,7 +20,6 @@ $_SESSION['last_activity'] = time();
 
 // Check if user is a super admin
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'super_admin' || !is_null($_SESSION['tenant_id'])) {
-    error_log("Unauthorized access attempt to edit_sales_agent.php: " . ($_SESSION['user_id'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
@@ -142,10 +141,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
             $stmt->execute([$_SESSION['user_id'], $agent_id, $details, $_SERVER['REMOTE_ADDR']]);
 
-            error_log("SALES_AGENT_UPDATED: Admin {$_SESSION['user_id']} updated sales agent {$agent_id}");
             header('Location: manage_sales_agents.php?success=Sales+agent+updated+successfully');
         } catch (Exception $e) {
-            error_log("Error updating sales agent: " . $e->getMessage());
             header('Location: edit_sales_agent.php?id=' . $agent_id . '&error=Failed+to+update:+' . urlencode($e->getMessage()));
         }
     } else {

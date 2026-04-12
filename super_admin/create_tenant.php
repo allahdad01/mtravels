@@ -52,7 +52,6 @@ if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_tok
 
 // Check if user is a super admin
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'super_admin' || !is_null($_SESSION['tenant_id'])) {
-    error_log("Unauthorized access attempt to create_tenant.php: " . ($_SESSION['user_id'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
@@ -157,7 +156,6 @@ if (empty($errors)) {
     } catch (Exception $e) {
         // Rollback transaction on error
         $pdo->rollBack();
-        error_log("Error creating tenant: " . $e->getMessage());
         header('Location: manage_tenants.php?error=' . urlencode("Error creating tenant: " . $e->getMessage()));
     }
 } else {

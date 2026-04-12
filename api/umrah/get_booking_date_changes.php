@@ -39,7 +39,6 @@ try {
     ]);
 
 } catch (PDOException $e) {
-    error_log("Get booking date changes error: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Failed to load date change history']);
 }
 ?>

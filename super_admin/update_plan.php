@@ -26,7 +26,6 @@ if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_tok
 
 // Check if user is a super admin
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'super_admin' || !is_null($_SESSION['tenant_id'])) {
-    error_log("Unauthorized access attempt to update_plan.php: " . ($_SESSION['user_id'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
@@ -112,7 +111,6 @@ if (empty($errors)) {
 
         header('Location: manage_plans.php?success=plan_updated');
     } catch (Exception $e) {
-        error_log("Error updating plan: " . $e->getMessage());
         header('Location: manage_plans.php?error=database_error');
     }
 } else {

@@ -180,7 +180,6 @@ try {
     }
 } catch (Exception $e) {
     $pdo->rollBack();
-    error_log("Error deleting deposit transaction: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Error deleting deposit transaction: ' . $e->getMessage()]);
 }
 ?> 

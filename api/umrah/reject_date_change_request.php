@@ -63,9 +63,7 @@ try {
     $stmt->bindParam(5, $branch_id, PDO::PARAM_INT);
 
     if ($stmt->execute()) {
-        // Log the rejection
-        error_log("Date change request rejected - ID: $id, Rejected by: {$_SESSION['user_id']}, Reason: $rejection_reason");
-
+      
         echo json_encode([
             'success' => true,
             'message' => 'Date change request rejected successfully'
@@ -75,7 +73,6 @@ try {
     }
 
 } catch (PDOException $e) {
-    error_log("Reject date change request error: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'An error occurred while rejecting the request']);
 }
 ?>

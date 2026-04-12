@@ -59,7 +59,6 @@ try {
     exit();
 
 } catch (Exception $e) {
-    error_log("Error deleting system expense: " . $e->getMessage());
     header('Location: manage_system_expenses.php?error=' . urlencode($e->getMessage()));
     exit();
 }

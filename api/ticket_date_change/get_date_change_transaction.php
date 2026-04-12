@@ -76,7 +76,6 @@ try {
     ]);
     
 } catch (PDOException $e) {
-    error_log("Error in get_date_change_transaction.php: " . $e->getMessage());
     echo json_encode([
         'success' => false,
         'message' => 'An error occurred while fetching transaction: ' . $e->getMessage()

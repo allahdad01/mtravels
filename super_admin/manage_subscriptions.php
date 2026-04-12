@@ -22,7 +22,6 @@ $_SESSION['last_activity'] = time();
 
 // Check if user is a super admin
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'super_admin' || !is_null($_SESSION['tenant_id'])) {
-    error_log("Unauthorized access attempt to manage_subscriptions.php: " . ($_SESSION['user_id'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
@@ -52,7 +51,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_subscription' && isset($_
     try {
         $stmt->execute([$subscription_id]);
     } catch (PDOException $e) {
-        error_log("Database error in get_subscription: " . $e->getMessage());
         header('Content-Type: application/json');
         echo json_encode(['error' => 'Database error occurred']);
         exit();

@@ -155,17 +155,12 @@ If you did not expect this email, please contact your system administrator.";
 
     $mail->send();
 
-    // Log successful test
-    error_log("Tenant SMTP test email sent successfully to: {$testEmail} for tenant: {$tenantName}");
-
     echo json_encode([
         'success' => true,
         'message' => 'Test email sent successfully to ' . $testEmail
     ]);
 
 } catch (Exception $e) {
-    error_log("Tenant SMTP test failed for tenant {$tenant_id}: " . $mail->ErrorInfo);
-
     echo json_encode([
         'success' => false,
         'message' => 'Failed to send test email: ' . $mail->ErrorInfo

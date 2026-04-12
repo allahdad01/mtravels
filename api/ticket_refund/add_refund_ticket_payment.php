@@ -164,7 +164,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        error_log("Error in add_refund_ticket_payment.php: " . $e->getMessage());
         
         // Clean output buffer before sending JSON
         if (ob_get_level()) {

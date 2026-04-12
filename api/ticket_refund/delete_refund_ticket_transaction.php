@@ -147,7 +147,6 @@ try {
     }
 } catch (Exception $e) {
     $pdo->rollBack();
-    error_log("Error deleting transaction: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Error deleting transaction: ' . $e->getMessage()]);
 }
 ?> 

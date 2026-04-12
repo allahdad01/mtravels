@@ -53,7 +53,6 @@ try {
     echo json_encode(['success' => true, 'number' => $full_number]);
 
 } catch (Exception $e) {
-    error_log("Error generating maktob number: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Database error']);
 }
 ?>

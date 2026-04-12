@@ -29,7 +29,6 @@ class TemplateManager {
             
             return $default_content;
         } catch (Exception $e) {
-            error_log("Template fetch error: " . $e->getMessage());
             return $default_content;
         }
     }
@@ -66,7 +65,6 @@ class TemplateManager {
 
             return true;
         } catch (Exception $e) {
-            error_log("Template save error: " . $e->getMessage());
             return false;
         }
     }
@@ -85,7 +83,6 @@ class TemplateManager {
             $stmt->execute([$this->tenant_id, $template_name]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
-            error_log("Template fetch error: " . $e->getMessage());
             return [];
         }
     }
@@ -102,7 +99,6 @@ class TemplateManager {
             $stmt->execute([$this->tenant_id, $template_name, $language]);
             return true;
         } catch (Exception $e) {
-            error_log("Template delete error: " . $e->getMessage());
             return false;
         }
     }

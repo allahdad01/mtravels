@@ -126,7 +126,6 @@ if (isset($_GET['pnr']) || isset($_GET['passenger'])) {
         $response['success'] = false;
         $response['message'] = 'An error occurred while searching for tickets: ' . $e->getMessage();
         $response['debug'][] = "Error: " . $e->getMessage();
-        error_log("Error in search_tickets.php: " . $e->getMessage());
     }
 } else {
     $response['message'] = 'Please provide search criteria.';
@@ -145,8 +144,6 @@ $response_to_send = [
 // Add error handling for JSON encoding
 $json_response = json_encode($response_to_send, JSON_PRETTY_PRINT);
 if ($json_response === false) {
-    // Log JSON encoding error
-    error_log('JSON Encoding Error: ' . json_last_error_msg());
     // Fallback response
     $error_response = [
         'success' => false,

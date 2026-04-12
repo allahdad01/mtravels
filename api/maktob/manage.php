@@ -11,11 +11,6 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Set error reporting to not display errors (we'll handle them)
-error_reporting(E_ALL);
-ini_set('display_errors', 0); // Don't display errors, log them instead
-
-error_log("API: Starting maktob management endpoint");
 
 // Include security module
 require_once '../../admin/security.php';
@@ -28,17 +23,13 @@ require_once('../../includes/db.php');
 
 // Clear any buffered output from includes
 $buffered = ob_get_clean();
-if (!empty($buffered)) {
-    error_log("WARNING: Buffered output from includes: " . $buffered);
-}
+
 
 // Start fresh output buffering for the response
 ob_start();
 
 $tenant_id = $_SESSION['tenant_id'] ?? null;
 $branch_id = $_SESSION['branch_id'] ?? null;
-
-error_log("API: tenant_id=$tenant_id, branch_id=$branch_id");
 
 // Handle different request methods
 $method = $_SERVER['REQUEST_METHOD'];
@@ -61,7 +52,6 @@ try {
     }
 } catch (PDOException $e) {
     http_response_code(500);
-    error_log("PDO Error in maktob API: " . $e->getMessage());
     echo json_encode([
         'success' => false,
         'message' => 'Database Error: ' . $e->getMessage(),
@@ -69,7 +59,6 @@ try {
     ]);
 } catch (Exception $e) {
     http_response_code(500);
-    error_log("General Error in maktob API: " . $e->getMessage());
     echo json_encode([
         'success' => false,
         'message' => __('server_error') . ': ' . $e->getMessage()
@@ -119,14 +108,10 @@ function handlePostRequest() {
     $language = $_POST['language'] ?? 'english';
     $sender_id = $_SESSION['user_id'] ?? null;
 
-    error_log("=== MAKTOB CREATE REQUEST START ===");
-    error_log("POST Data received: " . json_encode($_POST));
-    error_log("Session tenant_id: $tenant_id, branch_id: $branch_id, user_id: $sender_id");
 
     // Validate required fields
     if (empty($company_name)) {
         http_response_code(400);
-        error_log("VALIDATION FAILED: company_name is empty");
         echo json_encode([
             'success' => false,
             'message' => __('please_enter_company'),
@@ -137,7 +122,6 @@ function handlePostRequest() {
 
     if (empty($subject)) {
         http_response_code(400);
-        error_log("VALIDATION FAILED: subject is empty");
         echo json_encode([
             'success' => false,
             'message' => __('all_fields_required'),
@@ -148,7 +132,6 @@ function handlePostRequest() {
 
     if (empty($content)) {
         http_response_code(400);
-        error_log("VALIDATION FAILED: content is empty");
         echo json_encode([
             'success' => false,
             'message' => __('all_fields_required'),
@@ -159,7 +142,6 @@ function handlePostRequest() {
 
     if (empty($maktob_number)) {
         http_response_code(400);
-        error_log("VALIDATION FAILED: maktob_number is empty");
         echo json_encode([
             'success' => false,
             'message' => __('all_fields_required'),
@@ -170,7 +152,6 @@ function handlePostRequest() {
 
     if (empty($maktob_date)) {
         http_response_code(400);
-        error_log("VALIDATION FAILED: maktob_date is empty");
         echo json_encode([
             'success' => false,
             'message' => __('all_fields_required'),
@@ -181,7 +162,6 @@ function handlePostRequest() {
 
     if (!$sender_id) {
         http_response_code(401);
-        error_log("VALIDATION FAILED: sender_id not found in session");
         echo json_encode([
             'success' => false,
             'message' => 'User session not found'
@@ -192,7 +172,6 @@ function handlePostRequest() {
     // Validate maktob_date format
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $maktob_date)) {
         http_response_code(400);
-        error_log("VALIDATION FAILED: Invalid maktob_date format: $maktob_date (expected YYYY-MM-DD)");
         echo json_encode([
             'success' => false,
             'message' => 'Invalid date format. Use YYYY-MM-DD',
@@ -201,18 +180,15 @@ function handlePostRequest() {
         return;
     }
 
-    error_log("All validations passed. Proceeding with INSERT");
 
     // Insert new maktob
     $query = "INSERT INTO maktobs (tenant_id, branch_id, subject, content, company_name, maktob_number, maktob_date, sender_id, status, language)
               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?)";
 
     try {
-        error_log("Preparing statement: $query");
         $stmt = $pdo->prepare($query);
         
         if (!$stmt) {
-            error_log("PREPARE ERROR: " . json_encode($pdo->errorInfo()));
             http_response_code(500);
             echo json_encode([
                 'success' => false,
@@ -222,7 +198,6 @@ function handlePostRequest() {
             return;
         }
 
-        error_log("Statement prepared successfully. Binding parameters...");
         $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
         $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
         $stmt->bindParam(3, $subject, PDO::PARAM_STR);
@@ -233,21 +208,9 @@ function handlePostRequest() {
         $stmt->bindParam(8, $sender_id, PDO::PARAM_INT);
         $stmt->bindParam(9, $language, PDO::PARAM_STR);
 
-        error_log("Parameters bound. Execution details:");
-        error_log("  tenant_id: $tenant_id (int)");
-        error_log("  branch_id: $branch_id (int)");
-        error_log("  subject: $subject");
-        error_log("  company_name: $company_name");
-        error_log("  maktob_number: $maktob_number");
-        error_log("  maktob_date: $maktob_date");
-        error_log("  sender_id: $sender_id (int)");
-        error_log("  language: $language");
-        error_log("  content length: " . strlen($content) . " chars");
-
-        error_log("Executing INSERT statement...");
+      
         if ($stmt->execute()) {
             $insert_id = $pdo->lastInsertId();
-            error_log("=== MAKTOB CREATE SUCCESS: ID=$insert_id ===");
 
             echo json_encode([
                 'success' => true,
@@ -257,11 +220,7 @@ function handlePostRequest() {
         } else {
             http_response_code(500);
             $errorInfo = $stmt->errorInfo();
-            error_log("=== MAKTOB EXECUTION FAILED ===");
-            error_log("SQLSTATE: " . $errorInfo[0]);
-            error_log("Driver Error Code: " . $errorInfo[1]);
-            error_log("Driver Error Message: " . $errorInfo[2]);
-            error_log("Full Error Info: " . json_encode($errorInfo));
+           
             
             echo json_encode([
                 'success' => false,
@@ -273,11 +232,7 @@ function handlePostRequest() {
         }
     } catch (PDOException $e) {
         http_response_code(500);
-        error_log("=== PDO EXCEPTION DURING INSERT ===");
-        error_log("Exception Code: " . $e->getCode());
-        error_log("Exception Message: " . $e->getMessage());
-        error_log("Stack Trace: " . $e->getTraceAsString());
-        
+       
         echo json_encode([
             'success' => false,
             'message' => __('error_creating_letter'),
@@ -286,7 +241,6 @@ function handlePostRequest() {
         ]);
     }
     
-    error_log("=== MAKTOB CREATE REQUEST END ===\n");
 }
 
 // Ensure clean output - clear any buffered content and output JSON properly

@@ -93,7 +93,6 @@ try {
     $stmt->execute([$client_id, $tenant_id, $per_page, $offset]);
     $changes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    error_log("Ticket date changes fetch error: " . $e->getMessage());
     $changes = [];
 }
 

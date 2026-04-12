@@ -110,7 +110,6 @@ try {
     $branches = $branchListStmt->fetchAll(PDO::FETCH_ASSOC);
 
 } catch (PDOException $e) {
-    error_log("Dashboard Error: " . $e->getMessage());
     $branchStats = ['total_branches' => 0];
     $userStats = ['total_users' => 0, 'admin_users' => 0, 'sales_users' => 0, 'finance_users' => 0, 'umrah_users' => 0];
     $recentActivities = [];

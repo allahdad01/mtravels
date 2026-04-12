@@ -39,7 +39,6 @@ if (!$absoluteUploadsDir) {
             throw new Exception('Failed to create uploads directory');
         }
     } catch (Exception $dirError) {
-        error_log('Directory Creation Error: ' . $dirError->getMessage());
 
         if ($isAjaxRequest) {
             echo json_encode([
@@ -56,7 +55,6 @@ if (!$absoluteUploadsDir) {
 // Ensure the directory is writable
 if (!is_writable($absoluteUploadsDir)) {
     $errorMessage = 'Uploads directory is not writable: ' . $absoluteUploadsDir;
-    error_log($errorMessage);
 
     if ($isAjaxRequest) {
         echo json_encode([
@@ -114,7 +112,6 @@ try {
         $settings = ['agency_name' => 'Travel Agency'];
     }
 } catch (Exception $e) {
-    error_log("Settings Error: " . $e->getMessage());
     $settings = ['agency_name' => 'Travel Agency'];
 }
 
@@ -126,7 +123,6 @@ try {
     $branchStmt->execute();
     $branch = $branchStmt->fetch(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
-    error_log("Branch Error: " . $e->getMessage());
     $branch = null;
 }
 

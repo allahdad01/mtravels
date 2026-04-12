@@ -56,7 +56,6 @@ try {
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$user) {
-        error_log("auth_check_sales_agent: user not found – id={$user_id}");
         session_destroy();
         header('Location: ../login.php');
         exit();
@@ -70,7 +69,6 @@ try {
     $sales_agent = $agentStmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
     if (!$sales_agent) {
-        error_log("auth_check_sales_agent: sales_agent record not found – user_id={$user_id}");
         session_destroy();
         header('Location: ../login.php');
         exit();
@@ -84,7 +82,6 @@ try {
         $settingStmt->execute();
         $settings = $settingStmt->fetchAll(PDO::FETCH_KEY_PAIR);
     } catch (PDOException $e) {
-        error_log("auth_check_sales_agent: platform_settings error – " . $e->getMessage());
         // Fallback to hardcoded defaults
         $settings = [
             'platform_name' => PLATFORM_NAME,
@@ -108,8 +105,6 @@ try {
     ];
 
 } catch (PDOException $e) {
-    // Log the sanitised message – never expose DB details to the browser
-    error_log("auth_check_sales_agent DB error: " . $e->getMessage());
     // Hard-stop; the app cannot function without a DB connection
     http_response_code(503);
     exit('Service temporarily unavailable.');

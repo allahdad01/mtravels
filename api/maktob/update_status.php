@@ -114,7 +114,6 @@ try {
     echo json_encode(['success' => true, 'message' => 'Maktob status updated successfully']);
 
 } catch (Exception $e) {
-    error_log("Error updating maktob status: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Database error']);
 }
 ?>

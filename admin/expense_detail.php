@@ -8,7 +8,6 @@ require_once 'security.php';
 enforce_auth();
 $allowed_roles = ['admin', 'finance'];
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    error_log("Unauthorized access: ".($_SESSION['user_id']??'?')." IP:".$_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php'); exit();
 }
 include '../includes/db.php';

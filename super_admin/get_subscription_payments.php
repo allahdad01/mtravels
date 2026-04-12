@@ -198,7 +198,6 @@ try {
 
 <?php
 } catch (Exception $e) {
-    error_log("Error in get_subscription_payments.php: " . $e->getMessage());
     echo '<div class="alert alert-danger">Error loading payment history: ' . htmlspecialchars($e->getMessage()) . '</div>';
 }
 ?>

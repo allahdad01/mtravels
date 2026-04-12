@@ -22,7 +22,6 @@ $_SESSION['last_activity'] = time();
 
 // Check if user is a super admin
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'super_admin' || !is_null($_SESSION['tenant_id'])) {
-    error_log("Unauthorized access attempt to super admin dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
@@ -67,7 +66,6 @@ function executeMysqldumpSafely($mysqldump, $host, $user, $pass, $database, $out
     $return_value = proc_close($process);
     
     if ($return_value !== 0) {
-        error_log("Mysqldump error: " . $stderr);
         throw new Exception("Backup command failed");
     }
     
@@ -143,7 +141,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['backup_database'])) {
                         break;
                     }
                 } catch (Exception $e) {
-                    error_log("Mysqldump error: " . $e->getMessage());
                     // Continue to next mysqldump path
                     continue;
                 }
@@ -192,7 +189,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['backup_database'])) {
                 foreach ($tables as $table) {
                     // SECURITY: Validate table name against allowed list
                     if (!in_array($table, $allowed_tables)) {
-                        error_log("WARNING: Invalid table name in backup - skipping table: {$table}");
                         continue;
                     }
                     
@@ -203,7 +199,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['backup_database'])) {
                         // Get table structure using prepared statement safety
                         $create_result = $pdo->query("SHOW CREATE TABLE {$table_identifier}");
                         if (!$create_result) {
-                            error_log("ERROR: Could not get structure for table {$table}");
                             continue;
                         }
                         
@@ -233,7 +228,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['backup_database'])) {
                         }
                         fwrite($fh, "\n");
                     } catch (PDOException $e) {
-                        error_log("ERROR: Failed to backup table {$table}: " . $e->getMessage());
                         // Continue with next table
                         continue;
                     }
@@ -244,8 +238,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['backup_database'])) {
                 
                 $dumpOk = true;
             } catch (PDOException $e) {
-                // Log detailed PDO connection error
-                error_log("PDO Backup Error: " . $e->getMessage());
                 throw new Exception("Database connection failed: " . $e->getMessage());
             }
         }
@@ -259,8 +251,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['backup_database'])) {
         header('Location: ' . $redirect_url);
         exit();
     } catch (Exception $e) {
-        // Log the full error for debugging
-        error_log("Backup Creation Error: " . $e->getMessage());
         
         $_SESSION['error_message'] = "Error creating backup: " . $e->getMessage();
         header('Location: ' . $redirect_url);
@@ -330,7 +320,6 @@ try {
     $settingStmt = $pdo->query("SELECT * FROM settings WHERE id = 1");
     $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    error_log("Database Error: " . $e->getMessage());
     $user = null;
     $settings = ['agency_name' => 'Default Name'];
 }

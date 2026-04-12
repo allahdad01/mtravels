@@ -174,7 +174,6 @@ try {
     exit;
 
 } catch (Exception $e) {
-    error_log("PDF Generation Error: " . $e->getMessage());
     die("Error generating PDF: " . $e->getMessage());
 }
 ?> 

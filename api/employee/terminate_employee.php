@@ -166,8 +166,6 @@ try {
         $pdo->rollBack();
     }
 
-    error_log("Error in terminate_employee.php: " . $e->getMessage());
-
     echo json_encode([
         'success' => false,
         'message' => $e->getMessage()

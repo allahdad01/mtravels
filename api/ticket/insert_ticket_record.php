@@ -42,7 +42,6 @@ $stmt->bindParam(1, $ticketId, PDO::PARAM_INT);
 $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
 $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
 if (!$stmt->execute()) {
-    error_log("Query execution failed");
     echo json_encode(['status' => 'error', 'message' => 'Failed to retrieve ticket data']);
     exit;
 }

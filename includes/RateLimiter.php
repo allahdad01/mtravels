@@ -163,7 +163,6 @@ class RateLimiter {
                 return true;
             }
         } catch (Exception $e) {
-            error_log("RateLimiter::isAllowed error: " . $e->getMessage());
             return true;
         }
     }
@@ -263,7 +262,6 @@ class RateLimiter {
 
             return true;
         } catch (Exception $e) {
-            error_log("RateLimiter::recordAction error: " . $e->getMessage());
             return false;
         }
     }
@@ -368,7 +366,6 @@ class RateLimiter {
                 'exceeded' => $remaining <= 0
             ];
         } catch (Exception $e) {
-            error_log("RateLimiter::getRemainingQuota error: " . $e->getMessage());
             return null;
         }
     }
@@ -630,7 +627,6 @@ class RateLimiter {
             $stmt->execute([$key, $startTime, $endTime]);
             return $stmt->fetchAll(PDO::FETCH_COLUMN);
         } catch (Exception $e) {
-            error_log("Database requests retrieval error: " . $e->getMessage());
             return [];
         }
     }
@@ -694,7 +690,6 @@ class RateLimiter {
             $stmt->execute($params);
             return $stmt->rowCount() > 0;
         } catch (Exception $e) {
-            error_log("RateLimiter::isIPBlocked error: " . $e->getMessage());
             return false;
         }
     }
@@ -738,7 +733,6 @@ class RateLimiter {
 
             return true;
         } catch (Exception $e) {
-            error_log("RateLimiter::blockIP error: " . $e->getMessage());
             return false;
         }
     }
@@ -763,7 +757,6 @@ class RateLimiter {
             $stmt->execute([$ipAddress, $tenantId]);
             return true;
         } catch (Exception $e) {
-            error_log("RateLimiter::unblockIP error: " . $e->getMessage());
             return false;
         }
     }
@@ -788,7 +781,6 @@ class RateLimiter {
             $stmt->execute([$userId, $tenantId, $limit]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         } catch (Exception $e) {
-            error_log("RateLimiter::getViolations error: " . $e->getMessage());
             return [];
         }
     }
@@ -830,7 +822,6 @@ class RateLimiter {
 
             return $violationDeleted + $limitsDeleted;
         } catch (Exception $e) {
-            error_log("RateLimiter::cleanup error: " . $e->getMessage());
             return 0;
         }
     }
@@ -858,7 +849,6 @@ class RateLimiter {
             $stmt->execute($params);
             return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         } catch (Exception $e) {
-            error_log("RateLimiter::getBlockedIPs error: " . $e->getMessage());
             return [];
         }
     }
@@ -881,7 +871,6 @@ class RateLimiter {
             $stmt->execute();
             return $stmt->rowCount();
         } catch (Exception $e) {
-            error_log("RateLimiter::cleanupExpiredBlocks error: " . $e->getMessage());
             return 0;
         }
     }

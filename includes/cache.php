@@ -23,8 +23,6 @@ class RedisCache {
             // Test connection
             $this->redis->ping();
         } catch (Exception $e) {
-            // Fallback to file-based caching if Redis is not available
-            error_log("Redis connection failed: " . $e->getMessage() . " - Falling back to file cache");
             $this->redis = null;
             $this->initializeFallbackCache();
         }
@@ -54,7 +52,6 @@ class RedisCache {
                 $data = $this->redis->get($key);
                 return $data ? unserialize($data) : false;
             } catch (Exception $e) {
-                error_log("Redis get error: " . $e->getMessage());
                 return $this->fallbackGet($key);
             }
         } else {
@@ -67,7 +64,6 @@ class RedisCache {
             try {
                 return $this->redis->setex($key, $ttl, serialize($data));
             } catch (Exception $e) {
-                error_log("Redis set error: " . $e->getMessage());
                 return $this->fallbackSet($key, $data);
             }
         } else {
@@ -80,7 +76,6 @@ class RedisCache {
             try {
                 return $this->redis->del([$key]);
             } catch (Exception $e) {
-                error_log("Redis delete error: " . $e->getMessage());
                 return $this->fallbackDelete($key);
             }
         } else {
@@ -93,7 +88,6 @@ class RedisCache {
             try {
                 return $this->redis->flushdb();
             } catch (Exception $e) {
-                error_log("Redis clear error: " . $e->getMessage());
                 return $this->fallbackClear();
             }
         } else {

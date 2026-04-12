@@ -74,7 +74,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             } catch (Exception $e) {
                 $error = 'Error creating ticket: ' . $e->getMessage();
-                error_log("Support Ticket Creation Error: " . $e->getMessage());
             }
         }
     }

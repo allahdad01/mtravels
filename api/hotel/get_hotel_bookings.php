@@ -40,7 +40,6 @@ try {
     }
     
 } catch (PDOException $e) {
-    error_log("Error in get_hotel_bookings.php: " . $e->getMessage());
     echo json_encode(['error' => 'Database error']);
 }
 ?> 

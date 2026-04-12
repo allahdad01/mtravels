@@ -14,7 +14,6 @@ enforce_auth();
 // Check if user is logged in with proper role
 $allowed_roles = ['admin', 'finance'];
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    error_log("Unauthorized access attempt to dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
@@ -37,8 +36,6 @@ require_once('../includes/SecureFileUpload.php');
 
 // Handle maktob submission directly
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    error_log("=== MAKTOB CREATE REQUEST FROM ADMIN ===");
-    error_log("Raw POST data: " . json_encode($_POST));
 
     $subject      = $_POST['subject']      ?? '';
     $content      = $_POST['content']      ?? '';

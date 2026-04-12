@@ -189,9 +189,6 @@ try {
     exit;
 
 } catch (Exception $e) {
-    // Log the detailed error
-    error_log("Error in get_salary_details.php: " . $e->getMessage());
-    
     // Return a more specific error message for debugging
     echo json_encode([
         'error' => 'Database error: ' . $e->getMessage(),

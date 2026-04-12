@@ -20,7 +20,6 @@ class TotpHelper {
      */
     public function generateSecret($userId, $userType, $username, $tenant_id = null, $branch_id = null) {
         try {
-            error_log("TOTP Debug: Starting generateSecret for user $userId ($userType)");
 
             // Get agency name from settings
             $agencyName = 'Travel Agency'; // Default fallback
@@ -39,24 +38,19 @@ class TotpHelper {
 
             // Create a new TOTP instance
             $totp = TOTP::create();
-            error_log("TOTP Debug: TOTP instance created");
 
             $totp->setLabel($username);
             $totp->setIssuer($agencyName);
-            error_log("TOTP Debug: Label and issuer set to: $agencyName");
             
             $secret = $totp->getSecret();
-            error_log("TOTP Debug: Secret generated: " . substr($secret, 0, 10) . "...");
             
             // Store the secret in the database
             try {
-                error_log("TOTP Debug: Preparing SQL statement");
                 $sql = "INSERT INTO totp_secrets (user_id, user_type, secret, tenant_id, branch_id)
                        VALUES (:user_id, :user_type, :secret, :tenant_id, :branch_id)
                        ON DUPLICATE KEY UPDATE secret = :secret, is_enabled = 0";
 
                 $stmt = $this->pdo->prepare($sql);
-                error_log("TOTP Debug: SQL statement prepared");
 
                 $params = [
                     ':user_id' => $userId,
@@ -65,16 +59,10 @@ class TotpHelper {
                     ':tenant_id' => $tenant_id,
                     ':branch_id' => $branch_id
                 ];
-                error_log("TOTP Debug: Parameters ready: user_id=$userId, user_type=$userType, tenant_id=$tenant_id, branch_id=$branch_id");
                 
                 $result = $stmt->execute($params);
-                error_log("TOTP Debug: SQL executed, result: " . ($result ? "true" : "false"));
-                
-                // Generate recovery codes
-                error_log("TOTP Debug: Generating recovery codes");
-                try {
+                    try {
                     $this->generateRecoveryCodes($userId, $userType, $tenant_id);
-                    error_log("TOTP Debug: Recovery codes generated");
                 } catch (Exception $e) {
                     // If recovery code generation fails, we still want to return the TOTP
                     error_log("TOTP Warning: Recovery code generation failed: " . $e->getMessage());
@@ -83,27 +71,20 @@ class TotpHelper {
                 
                 return $totp;
             } catch (PDOException $e) {
-                error_log("TOTP Secret Generation Error: " . $e->getMessage());
-                error_log("TOTP Debug: SQL: " . $sql);
-                error_log("TOTP Debug: Parameters: " . print_r($params, true));
                 
                 // Try alternative query without ON DUPLICATE KEY
                 try {
-                    error_log("TOTP Debug: Trying simpler query");
                     // Delete existing record first
                     $delete = $this->pdo->prepare("DELETE FROM totp_secrets WHERE user_id = ? AND user_type = ? AND tenant_id = ? AND branch_id = ?");
                     $delete->execute([$userId, $userType, $tenant_id, $branch_id]);
-                    error_log("TOTP Debug: Deleted existing records");
 
                     // Insert new record
                     $stmt = $this->pdo->prepare("INSERT INTO totp_secrets (user_id, user_type, secret, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?)");
                     $result = $stmt->execute([$userId, $userType, $secret, $tenant_id, $branch_id]);
-                    error_log("TOTP Debug: Simple insert executed, result: " . ($result ? "true" : "false"));
                     
                     // Generate recovery codes
                     try {
                         $this->generateRecoveryCodes($userId, $userType, $tenant_id);
-                        error_log("TOTP Debug: Recovery codes generated after fallback");
                     } catch (Exception $e) {
                         // Continue even if recovery code generation fails
                         error_log("TOTP Warning: Recovery code generation failed after fallback: " . $e->getMessage());
@@ -111,14 +92,10 @@ class TotpHelper {
                     
                     return $totp;
                 } catch (PDOException $e2) {
-                    error_log("TOTP Debug: Even simpler query failed: " . $e2->getMessage());
                     return false;
                 }
             }
         } catch (Exception $e) {
-            error_log("TOTP Overall Error: " . $e->getMessage());
-            error_log("TOTP Debug: Exception type: " . get_class($e));
-            error_log("TOTP Debug: Stack trace: " . $e->getTraceAsString());
             return false;
         }
     }
@@ -172,7 +149,6 @@ class TotpHelper {
 
             return false;
         } catch (PDOException $e) {
-            error_log("TOTP Verification Error: " . $e->getMessage());
             return false;
         }
     }
@@ -210,7 +186,6 @@ class TotpHelper {
 
             return true;
         } catch (PDOException $e) {
-            error_log("TOTP Enable Error: " . $e->getMessage());
             return false;
         }
     }
@@ -248,7 +223,6 @@ class TotpHelper {
 
             return true;
         } catch (PDOException $e) {
-            error_log("TOTP Disable Error: " . $e->getMessage());
             return false;
         }
     }
@@ -274,7 +248,6 @@ class TotpHelper {
 
             return ($result && $result['is_enabled'] == 1);
         } catch (PDOException $e) {
-            error_log("TOTP Status Check Error: " . $e->getMessage());
             return false;
         }
     }
@@ -298,7 +271,6 @@ class TotpHelper {
      */
     private function generateRecoveryCodes($userId, $userType, $tenant_id = null, $branch_id = null) {
         try {
-            error_log("TOTP Debug: Starting recovery code generation for user $userId ($userType)");
 
             // Delete existing unused recovery codes
             $deleteStmt = $this->pdo->prepare("
@@ -312,7 +284,6 @@ class TotpHelper {
                 ':tenant_id' => $tenant_id,
                 ':branch_id' => $branch_id
             ]);
-            error_log("TOTP Debug: Deleted existing recovery codes");
 
             // Generate 8 new recovery codes
             $insertStmt = $this->pdo->prepare("
@@ -333,18 +304,14 @@ class TotpHelper {
                     ]);
                     $inserted++;
                 } catch (Exception $e) {
-                    error_log("TOTP Warning: Failed to insert recovery code #$i: " . $e->getMessage());
                 }
             }
             
-            error_log("TOTP Debug: Generated $inserted recovery codes");
             return ($inserted > 0);
         } catch (PDOException $e) {
-            error_log("Recovery Code Generation Error: " . $e->getMessage());
             
             // Try with simpler query as fallback
             try {
-                error_log("TOTP Debug: Trying simpler recovery code insert");
                 // Delete existing codes
                 $delete = $this->pdo->prepare("DELETE FROM totp_recovery_codes WHERE user_id = ? AND user_type = ? AND is_used = 0 AND tenant_id = ? AND branch_id = ?");
                 $delete->execute([$userId, $userType, $tenant_id, $branch_id]);
@@ -363,10 +330,8 @@ class TotpHelper {
                     }
                 }
                 
-                error_log("TOTP Debug: Generated $inserted recovery codes with fallback method");
                 return ($inserted > 0);
             } catch (Exception $e2) {
-                error_log("TOTP Debug: Even simpler recovery code generation failed: " . $e2->getMessage());
                 return false;
             }
         }
@@ -410,7 +375,6 @@ class TotpHelper {
 
             return $stmt->fetchAll(PDO::FETCH_COLUMN);
         } catch (PDOException $e) {
-            error_log("Recovery Code Retrieval Error: " . $e->getMessage());
             return [];
         }
     }
@@ -457,7 +421,6 @@ class TotpHelper {
 
             return false;
         } catch (PDOException $e) {
-            error_log("Recovery Code Verification Error: " . $e->getMessage());
             return false;
         }
     }

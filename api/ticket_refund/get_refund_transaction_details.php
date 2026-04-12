@@ -64,7 +64,6 @@ try {
     ]);
     
 } catch (PDOException $e) {
-    error_log("Database Error in get_refund_transaction_details.php: " . $e->getMessage());
     echo json_encode([
         'success' => false,
         'message' => 'Database error: ' . $e->getMessage()

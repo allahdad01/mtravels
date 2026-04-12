@@ -27,7 +27,6 @@ if ($db_password === false) {
         define('DB_PASSWORD', '');
     } else {
         // Production environment - require password
-        error_log("CRITICAL: DB_PASSWORD environment variable not configured");
         die("ERROR: Database security not configured. Please set DB_PASSWORD environment variable.");
     }
 } else {
@@ -54,7 +53,6 @@ $conection_db = mysqli_connect(DB_SERVER, DB_USERNAME, DB_PASSWORD, DB_NAME);
  
 // Check connection
 if($conection_db === false){
-    error_log("Database connection failed: " . mysqli_connect_error());
     die("A database error occurred. Please try again later.");
 }
 
@@ -62,7 +60,6 @@ if($conection_db === false){
 function getSettings($conection_db) {
     global $tenant_id;
     if ($tenant_id === null) {
-        error_log("Tenant ID is not set");
         return null;
     }
     $sql = "SELECT * FROM settings WHERE tenant_id = ?";
@@ -81,7 +78,6 @@ function getSettings($conection_db) {
 function getSettingsPdo() {
     global $tenant_id;
     if ($tenant_id === null) {
-        error_log("Tenant ID is not set");
         return null;
     }
     try {
@@ -92,7 +88,6 @@ function getSettingsPdo() {
         $stmt->execute([$tenant_id]);
         return $stmt->fetch(PDO::FETCH_ASSOC);
     } catch(PDOException $e) {
-        error_log("Error in getSettingsPdo: " . $e->getMessage());
         return null;
     }
 }

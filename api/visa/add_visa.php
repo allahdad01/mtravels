@@ -30,11 +30,7 @@ if (!isset($_SESSION['name']) || empty($_SESSION['name'])) {
     exit;
 }
 require_once '../../includes/db.php';
-if (!$pdo) {
-    echo json_encode(['status' => 'error', 'message' => 'Database connection failed.']);
-    error_log("DB Error: PDO connection failed");
-    exit;
-}
+
 
 try {
      // Inputs & Validation
@@ -192,7 +188,6 @@ $supplier = DbSecurity::validateInput($_POST['supplier'], 'int', ['min' => 0]);
     echo json_encode(['status' => 'success', 'message' => 'Visa application created successfully. Please approve to process transactions.', 'visa_id' => $visaApplicationId]);
 } catch (PDOException $e) {
     $pdo->rollBack();
-    error_log("Transaction Error: " . $e->getMessage());
     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
 }
 ?>

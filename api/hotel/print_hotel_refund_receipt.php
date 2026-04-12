@@ -64,7 +64,6 @@ try {
         $settings = ['agency_name' => 'Travel Agency'];
     }
 } catch (Exception $e) {
-    error_log("Settings Error: " . $e->getMessage());
     $settings = ['agency_name' => 'Travel Agency'];
 }
 
@@ -76,7 +75,6 @@ try {
     $branchStmt->execute();
     $branch = $branchStmt->fetch(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
-    error_log("Branch Error: " . $e->getMessage());
     $branch = null;
 }
 ?>

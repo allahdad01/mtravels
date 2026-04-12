@@ -528,10 +528,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Rollback the transaction on error
         $pdo->rollBack();
 
-        // Log the error for debugging
-        error_log('Family Transaction Error: ' . $e->getMessage());
-        error_log('Stack trace: ' . $e->getTraceAsString());
-
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
 } else {

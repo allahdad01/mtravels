@@ -29,9 +29,6 @@ if ($row) {
     // Check if supplier is External (case-insensitive comparison)
     $isExternal = (strtolower(trim($row['supplier_type'])) === 'external');
 
-    // Debug information
-    error_log("Supplier Type: '" . $row['supplier_type'] . "', Is External: " . ($isExternal ? 'true' : 'false'));
-
     echo json_encode([
         'success' => true,
         'balance' => $row['balance'],

@@ -57,8 +57,6 @@ class DbSecurity {
             
             return $pdo;
         } catch (PDOException $e) {
-            // Log error but don't expose details
-            error_log("Database connection error: " . $e->getMessage());
             throw new Exception("Unable to connect to database. Please try again later.");
         }
     }
@@ -81,11 +79,6 @@ class DbSecurity {
             
             return $stmt;
         } catch (PDOException $e) {
-            // Log error with query and parameters
-            $logParams = self::sanitizeLogParams($params);
-            error_log("Database query error: " . $e->getMessage() . 
-                     " | Query: " . $query . 
-                     " | Params: " . json_encode($logParams));
             
             throw new Exception("Database operation failed. Please try again later.");
         }

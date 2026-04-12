@@ -191,7 +191,6 @@ try {
     // Rollback transaction on error
     $pdo->rollBack();
 
-    error_log("Error in save_weight_transaction.php: " . $e->getMessage());
     echo json_encode([
         'success' => false,
         'message' => $e->getMessage()

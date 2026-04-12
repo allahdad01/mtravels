@@ -58,7 +58,6 @@ if (isset($_GET['branch_id'])) {
             exit();
         }
     } catch (PDOException $e) {
-        error_log("Database Error in switch_branch.php: " . $e->getMessage());
         header('Location: dashboard.php?error=database_error');
         exit();
     }

@@ -34,7 +34,6 @@ try {
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$user) {
-        error_log("User not found: " . $_SESSION['user_id']); 
         session_destroy();
         header('Location: ../login.php');
         exit();
@@ -65,35 +64,6 @@ if ($tenant_id) {
     error_log("Tenant ID is empty or null");
 }
 
-// Temporary fix: If no features found, assign default features for testing
-if (empty($allowed_features)) {
-    error_log("No features found, using default feature set");
-    $allowed_features = [
-        "ticket_bookings",
-        "ticket_reservations", 
-        "refunded_tickets",
-        "date_change_tickets",
-        "ticket_weights",
-        "hotel_bookings",
-        "hotel_refunds",
-        "visa_applications",
-        "visa_refunds",
-        "visa_transactions", 
-        "inter_tenant_chat",
-        "umrah_bookings",
-        "umrah_refunds",
-        "debtors",
-        "creditors",
-        "sarafi",
-        "salary",
-        "additional_payments",
-        "jv_payments",
-        "manage_maktobs",
-        "assets",
-        "financial_statements",
-        "expense_management"
-    ];
-}
 
 // Helper function to check if a feature is allowed
 function hasFeature($feature, $allowed_features) {

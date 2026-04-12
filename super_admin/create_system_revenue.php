@@ -87,7 +87,6 @@ try {
     exit();
 
 } catch (Exception $e) {
-    error_log("Error creating system revenue: " . $e->getMessage());
     header('Location: manage_system_revenue.php?error=' . urlencode($e->getMessage()));
     exit();
 }

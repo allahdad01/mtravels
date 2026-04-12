@@ -127,9 +127,7 @@ function logRoleChange($admin_user_id, $target_user_id, $old_role, $new_role, $p
     // Use provided PDO or global
     $db = $pdo ?? ($GLOBALS['pdo'] ?? null);
     
-    // Log to error log
-    error_log("ROLE_CHANGE: Admin {$admin_user_id} changed user {$target_user_id}'s role from {$old_role} to {$new_role} - IP: {$_SERVER['REMOTE_ADDR']}");
-    
+   
     // Log to database if PDO available
     if ($db) {
         try {
@@ -153,7 +151,6 @@ function logRoleChange($admin_user_id, $target_user_id, $old_role, $new_role, $p
             
             return true;
         } catch (PDOException $e) {
-            error_log("Failed to log role change: " . $e->getMessage());
             return false;
         }
     }

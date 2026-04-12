@@ -101,11 +101,6 @@ function check_auth($allowed_roles = null) {
  */
 function enforce_auth($allowed_roles = null) {
     if (!check_auth($allowed_roles)) {
-        // Log unauthorized access attempt
-        error_log("Unauthorized access attempt to " . $_SERVER['PHP_SELF'] . 
-                 " - IP: " . $_SERVER['REMOTE_ADDR'] . 
-                 ", User ID: " . ($_SESSION['user_id'] ?? 'unknown') . 
-                 ", Role: " . ($_SESSION['role'] ?? 'none'));
         
         // Store the current URL for later redirect after login
         $_SESSION['redirect_after_login'] = $_SERVER['REQUEST_URI'];
@@ -140,19 +135,11 @@ function verify_csrf_token($token = null) {
     }
     
     if (!$token || !isset($_SESSION['csrf_token'])) {
-        // Log potential CSRF attack
-        error_log("CSRF attack detected - missing token in " . $_SERVER['PHP_SELF'] . 
-                 " - IP: " . $_SERVER['REMOTE_ADDR'] . 
-                 ", User ID: " . ($_SESSION['user_id'] ?? 'unknown'));
         return false;
     }
     
     // Use hash_equals() to prevent timing attacks
     if (!hash_equals($_SESSION['csrf_token'], $token)) {
-        // Log potential CSRF attack
-        error_log("CSRF attack detected - invalid token in " . $_SERVER['PHP_SELF'] . 
-                 " - IP: " . $_SERVER['REMOTE_ADDR'] . 
-                 ", User ID: " . ($_SESSION['user_id'] ?? 'unknown'));
         return false;
     }
     
@@ -244,8 +231,6 @@ function check_rate_limit($endpoint, $max_requests = 30, $window_seconds = 60) {
     
     // Check if over limit
     if ($rate_data['count'] > $max_requests) {
-        // Log the rate limit violation
-        error_log("Rate limit exceeded for $endpoint from IP: $client_ip (count: {$rate_data['count']})");
         return false;
     }
     
@@ -281,6 +266,5 @@ function security_log($message, $level = 'info') {
     $script = $_SERVER['PHP_SELF'];
     
     $log_message = date('Y-m-d H:i:s') . " [$level] $message - User: $user_id, IP: $ip, Script: $script";
-    error_log($log_message);
 }
 ?> 

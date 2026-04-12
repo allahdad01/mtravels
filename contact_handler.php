@@ -17,7 +17,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // CSRF Protection - CRITICAL SECURITY
     if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || 
         $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-        error_log("CSRF attack detected on contact form from IP: " . $_SERVER['REMOTE_ADDR']);
         $_SESSION['contact_error'] = 'Security validation failed. Please try again.';
         header('Location: index.php#contact');
         exit;
@@ -135,7 +134,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
         } catch (Exception $e) {
-            error_log("Contact form error: " . $e->getMessage());
             $_SESSION['contact_error'] = 'Sorry, there was an error processing your message. Please try again.';
         }
     } else {

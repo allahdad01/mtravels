@@ -108,7 +108,6 @@ if ($method === 'GET') {
         ]);
         
     } catch (Exception $e) {
-        error_log('Contact discovery search error: ' . $e->getMessage());
         ChatAudit::logAction($tenantId, 0, $currentUserId, 'contact_search', 0, [
             'query' => $query,
             'error' => $e->getMessage()
@@ -182,7 +181,6 @@ if ($method === 'GET') {
         ]);
         
     } catch (Exception $e) {
-        error_log('Bulk contact discovery error: ' . $e->getMessage());
         http_response_code(500);
         echo json_encode(['error' => 'search_failed']);
     }

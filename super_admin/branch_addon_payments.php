@@ -82,7 +82,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $error_message = $result['message'];
         }
     } catch (Exception $e) {
-        error_log("Payment recording error: " . $e->getMessage());
         // Never expose error details to client
         $error_message = "An error occurred while recording the payment. Please try again.";
     }

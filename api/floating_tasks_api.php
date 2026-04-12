@@ -70,8 +70,6 @@ try {
             exit();
     }
 } catch (Exception $e) {
-    error_log("Floating Tasks API Error: " . $e->getMessage());
-    error_log("Stack trace: " . $e->getTraceAsString());
     http_response_code(500);
     echo json_encode(['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
     exit();
@@ -110,7 +108,6 @@ function getTasks() {
         
         echo json_encode(['success' => true, 'tasks' => $formattedTasks]);
     } catch (PDOException $e) {
-        error_log("Get tasks error: " . $e->getMessage());
         http_response_code(500);
         echo json_encode(['error' => 'Failed to fetch tasks']);
     }
@@ -149,7 +146,6 @@ function addTask() {
             ]
         ]);
     } catch (PDOException $e) {
-        error_log("Add task error: " . $e->getMessage());
         http_response_code(500);
         echo json_encode(['error' => 'Failed to add task']);
     }
@@ -193,7 +189,6 @@ function updateTask() {
         
         echo json_encode(['success' => true]);
     } catch (PDOException $e) {
-        error_log("Update task error: " . $e->getMessage());
         http_response_code(500);
         echo json_encode(['error' => 'Failed to update task']);
     }
@@ -235,7 +230,6 @@ function deleteTask() {
         
         echo json_encode(['success' => true]);
     } catch (PDOException $e) {
-        error_log("Delete task error: " . $e->getMessage());
         http_response_code(500);
         echo json_encode(['error' => 'Failed to delete task']);
     }
@@ -253,7 +247,6 @@ function clearCompleted() {
         
         echo json_encode(['success' => true]);
     } catch (PDOException $e) {
-        error_log("Clear completed error: " . $e->getMessage());
         http_response_code(500);
         echo json_encode(['error' => 'Failed to clear completed tasks']);
     }

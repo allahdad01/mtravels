@@ -117,7 +117,6 @@ try {
     exit();
 
 } catch (Exception $e) {
-    error_log("Error updating system expense: " . $e->getMessage());
     header('Location: manage_system_expenses.php?error=' . urlencode($e->getMessage()));
     exit();
 }

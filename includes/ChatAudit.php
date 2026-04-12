@@ -217,7 +217,6 @@ class ChatAudit {
                 return $stmt->execute($values);
             }
         } catch (Exception $e) {
-            error_log("Audit log error: " . $e->getMessage());
             return false;
         }
 
@@ -289,7 +288,6 @@ class ChatAudit {
                 return $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
         } catch (Exception $e) {
-            error_log("Audit query error: " . $e->getMessage());
             return [];
         }
 
@@ -339,7 +337,6 @@ class ChatAudit {
                 return $result['count'] ?? 0;
             }
         } catch (Exception $e) {
-            error_log("Audit count error: " . $e->getMessage());
             return 0;
         }
 
@@ -411,7 +408,6 @@ class ChatAudit {
                 return $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
         } catch (Exception $e) {
-            error_log("Audit summary error: " . $e->getMessage());
             return [];
         }
 
@@ -441,7 +437,6 @@ class ChatAudit {
                 return $stmt->execute([$tenantId, $cutoffDate]);
             }
         } catch (Exception $e) {
-            error_log("Archive error: " . $e->getMessage());
             return false;
         }
 

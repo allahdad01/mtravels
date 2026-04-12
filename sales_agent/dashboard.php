@@ -25,7 +25,6 @@ if (!isset($_SESSION['csrf_token'])) {
 
 // Check if user is a sales agent
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'sales_agent' || !is_null($_SESSION['tenant_id'])) {
-    error_log("Unauthorized access attempt to sales_agent dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }

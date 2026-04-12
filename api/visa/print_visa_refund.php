@@ -50,7 +50,6 @@ try {
         $settings = ['agency_name' => 'Travel Agency'];
     }
 } catch (Exception $e) {
-    error_log("Settings Error: " . $e->getMessage());
     $settings = ['agency_name' => 'Travel Agency'];
 }
 
@@ -62,7 +61,6 @@ try {
     $branchStmt->execute();
     $branch = $branchStmt->fetch(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
-    error_log("Branch Error: " . $e->getMessage());
     $branch = null;
 }
 
@@ -70,7 +68,6 @@ try {
     require_once('visa_refund_agreement_template.php');
 
 } catch (Exception $e) {
-    error_log("Error generating refund agreement: " . $e->getMessage());
     echo json_encode([
         'success' => false,
         'message' => 'Error generating refund agreement: ' . $e->getMessage()

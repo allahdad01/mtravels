@@ -55,7 +55,6 @@ function getSafeUploadsDir($subfolder = '') {
     // Get absolute path to uploads directory
     $base = realpath(__DIR__ . '/../../uploads');
     if ($base === false) {
-        error_log("ERROR: Uploads directory not found or not accessible");
         return false;
     }
     
@@ -68,7 +67,6 @@ function getSafeUploadsDir($subfolder = '') {
     
     // Validate path is within uploads
     if (!validateUploadPath($requested, $base)) {
-        error_log("WARNING: Directory traversal attempt detected: {$subfolder}");
         return false;
     }
     
@@ -179,7 +177,6 @@ function isAllowedMimeType($file_path, $allowed_mimes = []) {
     // Use finfo for reliable MIME type detection
     $finfo = @finfo_open(FILEINFO_MIME_TYPE);
     if ($finfo === false) {
-        error_log("WARNING: finfo_open failed, using fallback MIME detection");
         return true; // Fail open if finfo not available
     }
     

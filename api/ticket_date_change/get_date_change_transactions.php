@@ -138,6 +138,5 @@ try {
     <?php
 } catch (PDOException $e) {
     echo '<div class="alert alert-danger">Error loading transactions: ' . htmlspecialchars($e->getMessage()) . '</div>';
-    error_log("Error in get_date_change_transactions.php: " . $e->getMessage());
 }
 ?>

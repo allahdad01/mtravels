@@ -834,8 +834,7 @@ try {
 
     // Debug - log data count for creditor and debtor reports
     if ($reportCategory == 'creditor' || $reportCategory == 'debtor') {
-        error_log("Report requested: " . $reportCategory);
-        error_log("Records found: " . count($data));
+
         
         // Check if any records exist in the respective table
         $checkTable = ($reportCategory == 'creditor') ? 'creditors' : 'debtors';
@@ -843,7 +842,6 @@ try {
         $checkStmt = $pdo->prepare($checkQuery);
         $checkStmt->execute();
         $totalRecords = $checkStmt->fetch(PDO::FETCH_ASSOC)['total'];
-        error_log("Total records in " . $checkTable . ": " . $totalRecords);
     }
 
     echo json_encode([

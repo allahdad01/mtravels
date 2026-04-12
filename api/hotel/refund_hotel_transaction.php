@@ -191,8 +191,6 @@ try {
         $pdo->rollBack();
     }
     
-    // Log the error
-    error_log("Error processing refund: " . $e->getMessage());
     
     // Return error response
     echo json_encode([

@@ -59,7 +59,6 @@ try {
     ]);
     
 } catch (Exception $e) {
-    error_log("Error in delete_document.php: " . $e->getMessage());
     echo json_encode([
         'success' => false,
         'message' => $e->getMessage()

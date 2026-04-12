@@ -91,7 +91,6 @@ try {
         $pdo->rollBack();
     }
     
-    error_log("Error in delete_user.php: " . $e->getMessage());
     
     // Format the error message to be more user-friendly
     $errorMessage = $e->getMessage();

@@ -33,7 +33,6 @@ if (isset($_GET["id"]) && !empty($_GET["id"])) {
         }
     } catch (PDOException $e) {
         echo "Oops! Something went wrong. Please try again later.";
-        error_log("Delete deduction error: " . $e->getMessage());
     }
 } else {
     // URL doesn't contain id parameter

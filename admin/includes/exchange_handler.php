@@ -5,8 +5,6 @@ function processCurrencyExchange($pdo, $data) {
     $tenant_id = $_SESSION['tenant_id'];
     $branch_id = $_SESSION['branch_id'];
     try {
-        // Debug log
-        error_log("Starting currency exchange process with data: " . json_encode($data));
         
         // Verify customer has sufficient balance
         $stmt = $pdo->prepare("SELECT balance FROM customer_wallets WHERE customer_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ?");
@@ -23,24 +21,19 @@ function processCurrencyExchange($pdo, $data) {
         
         // Calculate profit/loss using the provided rate
         $provided_rate = $data['rate'];
-        error_log("Using provided exchange rate: " . $provided_rate);
         
         // Try to get market rate for profit calculation, but don't fail if not found
         try {
             $market_rate = getCurrentMarketRate($pdo, $data['from_currency'], $data['to_currency']);
-            error_log("Market rate found: " . $market_rate);
             $market_amount = $data['from_amount'] * $market_rate;
             $profit_amount = $data['to_amount'] - $market_amount;
         } catch (Exception $e) {
-            error_log("Market rate not found, using provided rate for profit calculation");
             // If market rate is not available, assume provided rate is market rate (no profit)
             $market_rate = $provided_rate;
             $market_amount = $data['from_amount'] * $provided_rate;
             $profit_amount = 0;
         }
         
-        // Debug log
-        error_log("Market amount: " . $market_amount . ", Profit amount: " . $profit_amount);
         
         // Insert exchange transaction
         $stmt = $pdo->prepare("INSERT INTO sarafi_transactions (customer_id, amount, currency, type, notes, tenant_id, branch_id) VALUES (?, ?, ?, 'exchange', ?, ?, ?)");
@@ -108,7 +101,6 @@ function processCurrencyExchange($pdo, $data) {
         ];
         
     } catch (Exception $e) {
-        error_log("Error in processCurrencyExchange: " . $e->getMessage());
         
         return [
             'success' => false,
@@ -122,7 +114,6 @@ function getCurrentMarketRate($pdo, $from_currency, $to_currency) {
     $tenant_id = $_SESSION['tenant_id'];
     $branch_id = $_SESSION['branch_id'];
     
-    error_log("Getting market rate for {$from_currency} to {$to_currency}");
     
     // Try direct rate first
     $stmt = $pdo->prepare("
@@ -144,11 +135,9 @@ function getCurrentMarketRate($pdo, $from_currency, $to_currency) {
     $rate = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if ($rate) {
-        error_log("Found direct rate: " . $rate['rate']);
         return $rate['rate'];
     }
     
-    error_log("No direct rate found, trying inverse rate");
     
     // Try inverse rate
     $stmt = $pdo->prepare("
@@ -171,12 +160,9 @@ function getCurrentMarketRate($pdo, $from_currency, $to_currency) {
     
     if ($rate) {
         $inverse_rate = 1 / $rate['rate'];
-        error_log("Found inverse rate: " . $inverse_rate);
         return $inverse_rate;
     }
     
-    // If no rate found, try to calculate through USD
-    error_log("No direct or inverse rate found, trying through USD");
     
     if ($from_currency != 'USD' && $to_currency != 'USD') {
         try {
@@ -186,7 +172,6 @@ function getCurrentMarketRate($pdo, $from_currency, $to_currency) {
             $from_usd_rate = getCurrentMarketRate($pdo, 'USD', $to_currency);
             
             $calculated_rate = $to_usd_rate * $from_usd_rate;
-            error_log("Calculated rate through USD: " . $calculated_rate);
             return $calculated_rate;
             
         } catch (Exception $e) {
@@ -194,7 +179,6 @@ function getCurrentMarketRate($pdo, $from_currency, $to_currency) {
         }
     }
     
-    error_log("No exchange rate found for {$from_currency} to {$to_currency}");
     throw new Exception("Exchange rate not found for {$from_currency} to {$to_currency}");
 }
 
@@ -236,7 +220,6 @@ function updateExchangeRate($pdo, $from_currency, $to_currency, $rate, $tenant_i
             'message' => 'Exchange rate updated successfully'
         ];
     } catch (Exception $e) {
-        error_log("Error updating exchange rate: " . $e->getMessage());
         return [
             'success' => false,
             'message' => 'Error updating exchange rate: ' . $e->getMessage()
@@ -279,7 +262,6 @@ function getExchangeRateHistory($pdo, $from_currency, $to_currency, $tenant_id, 
             'history' => $history
         ];
     } catch (Exception $e) {
-        error_log("Error getting exchange rate history: " . $e->getMessage());
         return [
             'success' => false,
             'message' => 'Error getting exchange rate history: ' . $e->getMessage()
@@ -310,7 +292,6 @@ function calculatePotentialProfit($pdo, $from_amount, $from_currency, $to_curren
             'market_amount' => $market_amount
         ];
     } catch (Exception $e) {
-        error_log("Error calculating potential profit: " . $e->getMessage());
         return [
             'success' => false,
             'message' => $e->getMessage()

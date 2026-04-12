@@ -152,7 +152,6 @@ try {
 
 } catch (PDOException $e) {
     $pdo->rollBack();
-    error_log("Error in delete_weight_transaction.php: " . $e->getMessage());
     echo json_encode([
         'success' => false,
         'message' => $e->getMessage()

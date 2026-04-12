@@ -63,9 +63,7 @@ try {
     echo json_encode($transactions);
 
 } catch (PDOException $e) {
-    // Log error
-    error_log('Error fetching visa transactions: ' . $e->getMessage());
-
+   
     // Return empty array to avoid breaking the client-side code
     echo json_encode([]);
 }

@@ -77,7 +77,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $is_new = false;
 
     } catch (Exception $e) {
-        error_log("Error updating settings: " . $e->getMessage());
         $error_message = __('error_updating_settings');
     }
 }

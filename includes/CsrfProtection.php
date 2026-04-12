@@ -53,19 +53,16 @@ class CsrfProtection {
         
         // Token must be present
         if (!$token || !isset($_SESSION['csrf_token'])) {
-            error_log("CSRF validation failed: token missing");
             return false;
         }
         
         // Use constant-time comparison to prevent timing attacks
         if (!hash_equals($_SESSION['csrf_token'], $token)) {
-            error_log("CSRF validation failed: token mismatch from {$_SERVER['REMOTE_ADDR']}");
             return false;
         }
         
         // Check token age (optional: regenerate if older than 1 hour)
         if (isset($_SESSION['csrf_token_time']) && (time() - $_SESSION['csrf_token_time']) > 3600) {
-            error_log("CSRF token expired, regenerating");
             self::regenerateToken();
         }
         
@@ -85,7 +82,6 @@ class CsrfProtection {
     public static function validateRequest($required_method = 'POST') {
         // Check HTTP method
         if ($_SERVER['REQUEST_METHOD'] !== $required_method) {
-            error_log("Method mismatch: expected {$required_method}, got {$_SERVER['REQUEST_METHOD']}");
             return false;
         }
         

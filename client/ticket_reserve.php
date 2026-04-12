@@ -92,7 +92,6 @@ try {
     $stmt->execute([$client_id, $tenant_id, $per_page, $offset]);
     $reservations = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    error_log("Ticket reservations fetch error: " . $e->getMessage());
     $reservations = [];
 }
 

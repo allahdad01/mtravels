@@ -65,7 +65,6 @@ try {
         $pdo->rollBack();
     }
 
-    error_log("HR Report Generation Error: " . $e->getMessage());
 
     echo json_encode([
         'success' => false,
@@ -329,7 +328,6 @@ function generatePDFReport($data, $filepath) {
 
     } catch (Exception $e) {
         // Fallback to HTML file if PDF generation fails
-        error_log("PDF Generation Error: " . $e->getMessage());
         $html = generateHTMLReport($data);
         $html_filepath = str_replace('.pdf', '.html', $filepath);
         file_put_contents($html_filepath, $html);
@@ -392,7 +390,6 @@ function generateExcelReport($data, $filepath) {
 
     } catch (Exception $e) {
         // Fallback to CSV if Excel generation fails
-        error_log("Excel Generation Error: " . $e->getMessage());
         generateCSVReport($data, str_replace('.xlsx', '.csv', $filepath));
 
         // Create error note

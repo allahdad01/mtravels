@@ -12,7 +12,6 @@ try {
     $settingStmt = $pdo->query("SELECT `key`, `value` FROM platform_settings");
     $settings = $settingStmt->fetchAll(PDO::FETCH_KEY_PAIR);
 } catch (PDOException $e) {
-    error_log("Settings Error: " . $e->getMessage());
     $settings = [];
 }
 ?>

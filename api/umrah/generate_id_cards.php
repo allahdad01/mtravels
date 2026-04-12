@@ -66,7 +66,6 @@ try {
         $settings = ['agency_name' => 'Travel Agency'];
     }
 } catch (Exception $e) {
-    error_log("Settings Error: " . $e->getMessage());
     $settings = ['agency_name' => 'Travel Agency'];
 }
 
@@ -78,7 +77,6 @@ try {
     $branchStmt->execute();
     $branch = $branchStmt->fetch(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
-    error_log("Branch Error: " . $e->getMessage());
     $branch = null;
 }
 
@@ -98,11 +96,6 @@ if ($scriptPath === '.' || $scriptPath === '/') {
 }
 
 $baseUrl = $protocol . '://' . $host . rtrim($scriptPath, '/');
-
-// Debug logging
-error_log("ID Cards Base URL: {$baseUrl}");
-error_log("Script Name: " . $_SERVER['SCRIPT_NAME']);
-error_log("Script Path: {$scriptPath}");
 
 // Construct full image URLs
 $agencyLogoUrl = isset($settings['logo']) ? 
@@ -534,8 +527,6 @@ header('Content-Type: text/html; charset=UTF-8');
                         $photoUrl = $baseUrl . $storedPhotoPath;
                     }
                     
-                    // Log the constructed URL
-                    error_log("Photo URL for pilgrim {$pilgrim['booking_id']}: {$photoUrl}");
                 }
 
                 // Check if uploaded photo exists
@@ -562,9 +553,6 @@ header('Content-Type: text/html; charset=UTF-8');
                         }
                         $visaUrl = $baseUrl . $storedVisaPath;
                     }
-                    
-                    // Log the constructed URL
-                    error_log("Visa URL for pilgrim {$pilgrim['booking_id']}: {$visaUrl}");
                 }
 
                 // Format dates

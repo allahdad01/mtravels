@@ -804,7 +804,6 @@ try {
     
 } catch (PDOException $e) {
     $pdo->rollBack();
-    error_log("Database Error in update_umrah_member.php: " . $e->getMessage());
     header('Content-Type: application/json');
     echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
 }

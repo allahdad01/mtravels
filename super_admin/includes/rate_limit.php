@@ -150,8 +150,6 @@ function enforceRateLimit($key, $max_attempts, $time_window, $error_message = nu
             $error_message = "Too many requests. Please try again in {$retry_after} seconds.";
         }
         
-        // Log rate limit violation
-        error_log("RATE_LIMIT_EXCEEDED: Key={$key}, IP={$_SERVER['REMOTE_ADDR']}, User={$_SESSION['user_id'] ?? 'unknown'}");
         
         die(json_encode([
             'error' => 'Rate limit exceeded',

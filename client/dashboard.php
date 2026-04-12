@@ -37,7 +37,6 @@ try {
         exit();
     }
 } catch (PDOException $e) {
-    error_log("Client fetch error: " . $e->getMessage());
     $client = [];
 }
 

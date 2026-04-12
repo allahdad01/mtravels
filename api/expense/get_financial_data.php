@@ -301,9 +301,7 @@ try {
     ]);
 
 } catch(Exception $e) {
-    // Enhanced error logging
-    error_log("Dashboard API Error: " . $e->getMessage());
-    error_log("Stack trace: " . $e->getTraceAsString());
+
     
     echo json_encode([
         'success' => false,

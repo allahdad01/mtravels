@@ -37,7 +37,6 @@ class SLACalculator {
             
             return $dueDate->format('Y-m-d H:i:s');
         } catch (Exception $e) {
-            error_log("SLA Calculate Error: " . $e->getMessage());
             return null;
         }
     }
@@ -94,7 +93,6 @@ class SLACalculator {
             
             return $slaStatus;
         } catch (Exception $e) {
-            error_log("SLA Status Calculation Error: " . $e->getMessage());
             return null;
         }
     }
@@ -162,7 +160,6 @@ class SLACalculator {
             
             return ['success' => true, 'updated' => $updated];
         } catch (Exception $e) {
-            error_log("Update All SLA Error: " . $e->getMessage());
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
@@ -201,7 +198,6 @@ class SLACalculator {
             $stmt->execute($params);
             return $stmt->fetch(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
-            error_log("SLA Statistics Error: " . $e->getMessage());
             return null;
         }
     }

@@ -67,7 +67,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error_message = "Failed to generate report. Please try again.";
         }
     } catch (Exception $e) {
-        error_log("Report generation error: " . $e->getMessage());
         $error_message = "Error: " . $e->getMessage();
     }
     }

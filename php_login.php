@@ -118,7 +118,6 @@ Security Team";
     $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
     
     @mail($email, $subject, $message, $headers);
-    error_log("Security alert sent to $email for failed login attempts from $ip_address");
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -126,7 +125,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || 
         $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
         // Log potential CSRF attack
-        error_log("CSRF attack detected: " . $_SERVER['REMOTE_ADDR']);
         die("Invalid request. Please try again.");
     }
     
@@ -354,14 +352,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     $email_err = "No account found with that email.";
                                 }
                             } else {
-                                error_log("Database Execution Error: " . $stmt->error);
                                 echo "Oops! Something went wrong. Please try again later.";
                             }
                             $stmt->close();
                         }
                     }
                 } else {
-                    error_log("Database Execution Error: " . $stmt->error);
                     echo "Oops! Something went wrong. Please try again later.";
                 }
             }
@@ -387,9 +383,6 @@ function completeLogin() {
      // Bind session to user's IP address and browser (session hijacking prevention)
      $_SESSION['ip_address'] = $_SERVER['REMOTE_ADDR'];
      $_SESSION['user_agent'] = $_SERVER['HTTP_USER_AGENT'];
-     
-     // Log the login with security details
-     error_log("User {$_SESSION['user_id']} logged in from IP {$_SERVER['REMOTE_ADDR']} with role {$_SESSION['role']}");
     
     // Add client-specific data if available
     if (isset($_SESSION["pending_user_client_type"])) {

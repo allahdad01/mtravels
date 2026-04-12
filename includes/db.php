@@ -32,8 +32,6 @@ if (!isset($pdo) || $pdo === null) {
         $pdo->exec("SET SESSION default_storage_engine = InnoDB");
 
     } catch (PDOException $e) {
-        // Log the error but don't expose details to users
-        error_log("Database Connection Error: " . $e->getMessage());
         die("A database error occurred. Please try again later.");
     }
 }
@@ -54,7 +52,6 @@ function secure_query($pdo, $sql, $params = []) {
         $stmt->execute($params);
         return $stmt;
     } catch (PDOException $e) {
-        error_log("Query Error: " . $e->getMessage() . " - SQL: " . $sql);
         return false;
     }
 }

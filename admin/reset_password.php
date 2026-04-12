@@ -27,7 +27,6 @@ try {
     $settingStmt->execute([$tenant_id]);
     $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    error_log("Settings Error: " . $e->getMessage());
     $settings = ['agency_name' => 'Default Name'];
 }
 ?>

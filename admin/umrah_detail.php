@@ -7,7 +7,6 @@ $branch_id = $_SESSION['branch_id'];
 
 $allowed_roles = ['admin', 'finance', 'sales', 'umrah'];
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    error_log("Unauthorized access attempt: " . ($_SESSION['user_id'] ?? 'unknown') . " IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }

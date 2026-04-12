@@ -126,7 +126,6 @@ class SSLCertificateMonitor
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
-            error_log("SSL Monitor - Get domains error: " . $e->getMessage());
             return [];
         }
     }
@@ -163,7 +162,6 @@ class SSLCertificateMonitor
             return ['success' => true, 'id' => $this->pdo->lastInsertId()];
 
         } catch (Exception $e) {
-            error_log("SSL Monitor - Add domain error: " . $e->getMessage());
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
@@ -181,7 +179,6 @@ class SSLCertificateMonitor
             $stmt->execute([$domainId]);
             return $stmt->rowCount() > 0;
         } catch (Exception $e) {
-            error_log("SSL Monitor - Remove domain error: " . $e->getMessage());
             return false;
         }
     }
@@ -224,7 +221,6 @@ class SSLCertificateMonitor
             return true;
 
         } catch (Exception $e) {
-            error_log("SSL Monitor - Update status error: " . $e->getMessage());
             return false;
         }
     }
@@ -268,7 +264,6 @@ class SSLCertificateMonitor
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
-            error_log("SSL Monitor - Get attention needed error: " . $e->getMessage());
             return [];
         }
     }
@@ -322,7 +317,6 @@ class SSLCertificateMonitor
         global $pdo;
 
         if ($pdo === null) {
-            error_log("SSL Monitor - No database connection for email alerts");
             return;
         }
 

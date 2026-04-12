@@ -71,7 +71,6 @@ try {
     }
 } catch (PDOException $e) {
     $_SESSION['error_message'] = "Error deleting message: " . $e->getMessage();
-    error_log("Delete message error: " . $e->getMessage());
 }
 
 // Redirect back to the messages page

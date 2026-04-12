@@ -22,13 +22,11 @@ try {
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$user) {
-        error_log("User not found: " . $_SESSION['user_id']);
         session_destroy();
         header('Location: login.php');
         exit();
     }
 } catch (PDOException $e) {
-    error_log("Database Error: " . $e->getMessage());
     $user = null;
 }
 
@@ -38,7 +36,6 @@ try {
     $stmt->execute([$tenant_id, $_SESSION['branch_id']]);
     $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    error_log("Users Fetch Error: " . $e->getMessage());
     $users = []; // Ensure $users is always an array
 }
 

@@ -14,8 +14,7 @@ $branch_id = $_SESSION['branch_id'];
 $allowed_roles = ['admin', 'finance', 'sales', 'umrah'];
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
     // Log unauthorized access attempt
-    error_log("Unauthorized access attempt to dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
-    header('Location: ../login.php');
+     header('Location: ../login.php');
     exit();
 }
 // Database connection

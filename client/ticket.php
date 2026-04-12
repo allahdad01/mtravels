@@ -90,7 +90,6 @@ try {
     $stmt->execute([$client_id, $tenant_id, $per_page, $offset]);
     $tickets = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    error_log("Tickets fetch error: " . $e->getMessage());
     $tickets = [];
 }
 

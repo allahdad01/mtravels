@@ -19,7 +19,6 @@ try {
     $suppliers = $stmt->fetchAll(PDO::FETCH_ASSOC);
     echo json_encode($suppliers);
 } catch (PDOException $e) {
-    error_log("Error in fetch_suppliers.php: " . $e->getMessage());
     echo json_encode([]);
 }
 ?>

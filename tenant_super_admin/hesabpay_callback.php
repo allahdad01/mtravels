@@ -5,12 +5,6 @@
 require_once '../config.php';
 require_once '../includes/db.php';
 
-// Check if $pdo is available
-if (!isset($pdo) || !$pdo) {
-    error_log("Database connection failed in callback.");
-    http_response_code(500);
-    exit();
-}
 
 // Get callback data (assuming POST)
 $session_id = $_POST['session_id'] ?? '';
@@ -21,7 +15,6 @@ $transaction_id = $_POST['transaction_id'] ?? '';
 
 // Validate amount is numeric
 if (!empty($amount) && (!is_numeric($amount) || floatval($amount) <= 0)) {
-    error_log("Invalid amount in callback: " . json_encode($_POST));
     http_response_code(400);
     exit();
 }
@@ -29,13 +22,11 @@ $amount = !empty($amount) ? floatval($amount) : 0;
 
 // Verify the callback
 if (empty($session_id) || empty($status)) {
-    error_log("Invalid callback data: " . json_encode($_POST));
     http_response_code(400);
     exit();
 }
 
 try {
-     error_log("Hesabpay callback received: session_id=$session_id, status=$status, amount=$amount, transaction_id=$transaction_id");
 
      if ($status === 'success') {
          // Find the payment session with proper validation
@@ -55,7 +46,6 @@ try {
              $subscription = $sub_stmt->fetch(PDO::FETCH_ASSOC);
 
              if (!$subscription) {
-                 error_log("SECURITY: Subscription $subscription_id does not match tenant $session_tenant_id from payment session");
                  http_response_code(400);
                  echo json_encode(['status' => 'error', 'message' => 'Invalid subscription']);
                  exit;
@@ -71,7 +61,6 @@ try {
              $update_rows = $update_stmt->execute([$subscription_id, $session_tenant_id]);
 
              if ($update_stmt->rowCount() === 0) {
-                 error_log("SECURITY: Failed to update subscription $subscription_id for tenant $session_tenant_id");
                  http_response_code(400);
                  echo json_encode(['status' => 'error', 'message' => 'Update failed']);
                  exit;
@@ -82,15 +71,12 @@ try {
              $session_update->execute([$transaction_id, $session_id, $session_tenant_id]);
 
              if ($session_update->rowCount() === 0) {
-                 error_log("SECURITY: Failed to update payment session $session_id for tenant $session_tenant_id");
                  http_response_code(400);
                  echo json_encode(['status' => 'error', 'message' => 'Session update failed']);
                  exit;
              }
 
-             error_log("Payment processed successfully for subscription $subscription_id by tenant $session_tenant_id");
          } else {
-             error_log("Payment session not found: $session_id");
              http_response_code(400);
              echo json_encode(['status' => 'error', 'message' => 'Session not found']);
              exit;
@@ -113,12 +99,10 @@ try {
                  http_response_code(200);
                  echo json_encode(['status' => 'failed']);
              } else {
-                 error_log("SECURITY: Failed to update failed payment session $session_id");
                  http_response_code(400);
                  echo json_encode(['status' => 'error']);
              }
          } else {
-             error_log("Payment session not found for failed status update: $session_id");
              http_response_code(400);
              echo json_encode(['status' => 'error']);
          }
@@ -127,7 +111,6 @@ try {
          echo json_encode(['status' => 'unknown']);
      }
  } catch (PDOException $e) {
-     error_log("Error in callback: " . $e->getMessage());
      http_response_code(500);
      echo json_encode(['status' => 'error']);
  }

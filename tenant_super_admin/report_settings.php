@@ -85,7 +85,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $success_message = "Report settings saved successfully!";
     } catch (Exception $e) {
-        error_log("Report settings error: " . $e->getMessage());
         $error_message = "Error saving settings: " . $e->getMessage();
     }
     }

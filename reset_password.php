@@ -61,16 +61,13 @@ try {
     $settingStmt = $pdo->query("SELECT `key`, `value` FROM platform_settings");
     $settings = $settingStmt->fetchAll(PDO::FETCH_KEY_PAIR);
 } catch (PDOException $e) {
-    error_log("Settings Error: " . $e->getMessage());
     $settings = [];
 }
 
 // Validate token
 if (!empty($token)) {
     try {
-        // Log reset attempt
-        error_log("[SECURITY] Password reset page accessed from IP: {$_SERVER['REMOTE_ADDR']}, Token length: " . strlen($token));
-        
+         
         // Hash the token from URL
         $token_hash = hash('sha256', $token);
         
@@ -85,14 +82,11 @@ if (!empty($token)) {
         if ($reset_record) {
             $valid_token = true;
             $user_id = $reset_record['user_id'];
-            error_log("[SECURITY] Valid password reset token validated for user_id: {$user_id}");
         } else {
             $message = "Invalid or expired reset link. Please request a new one.";
             $message_type = 'error';
-            error_log("[SECURITY] Invalid/expired password reset token attempt from IP: {$_SERVER['REMOTE_ADDR']}");
         }
     } catch (PDOException $e) {
-        error_log("Error validating reset token: " . $e->getMessage());
         $message = "An error occurred. Please try again.";
         $message_type = 'error';
     }
@@ -129,7 +123,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $valid_token) {
         if (!empty($errors)) {
             $message = implode("<br>", $errors);
             $message_type = 'error';
-            error_log("[SECURITY] Password validation failed for user_id: {$user_id} - Errors: " . implode(", ", $errors));
         } else {
             try {
                 $password_hash = password_hash($password, PASSWORD_DEFAULT);
@@ -147,14 +140,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $valid_token) {
                     error_log("Warning: Could not invalidate sessions: " . $e->getMessage());
                 }
 
-                error_log("[SECURITY] Password successfully reset for user_id: {$user_id} from IP: {$_SERVER['REMOTE_ADDR']}");
                 $message = "Your password has been reset successfully. Redirecting to login...";
                 $message_type = 'success';
                 $reset_success = true;
                 $valid_token = false;
 
             } catch (PDOException $e) {
-                error_log("Error updating password: " . $e->getMessage());
                 $message = "An error occurred while resetting your password. Please try again.";
                 $message_type = 'error';
             }

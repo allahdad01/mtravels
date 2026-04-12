@@ -83,7 +83,6 @@ try {
     $stmt->execute([$client_id, $tenant_id, $per_page, $offset]);
     $umrahs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    error_log("Umrah bookings fetch error: " . $e->getMessage());
     $umrahs = [];
 }
 

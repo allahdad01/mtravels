@@ -54,7 +54,6 @@ try {
         
         if ($result['success']) {
             $profile_pic = $result['data']['filename'];
-            error_log("User profile picture uploaded: {$result['data']['filename']}");
         } else {
             throw new Exception(__('error_uploading_profile_picture') . ': ' . $result['error']);
         }
@@ -118,7 +117,6 @@ try {
                     ]);
                     
                     $uploadedDocs[] = $file_result['data']['filename'];
-                    error_log("User document uploaded: {$file_result['data']['filename']}");
                 }
             }
         }
@@ -145,7 +143,6 @@ try {
         }
     }
     
-    error_log("Error in save_user.php: " . $e->getMessage());
     echo json_encode([
         'success' => false, 
         'message' => $e->getMessage()

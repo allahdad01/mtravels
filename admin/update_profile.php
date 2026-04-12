@@ -95,9 +95,7 @@ try {
 
              $updates[] = "profile_pic = ?";
              $params[] = $result['data']['filename'];
-             error_log("Profile image uploaded securely: {$result['data']['filename']} for user {$user_id}");
          } else {
-             echo json_encode(['success' => false, 'message' => 'Failed to upload image: ' . $result['error']]);
              exit;
          }
      }
@@ -159,7 +157,6 @@ try {
     }
 
 } catch (PDOException $e) {
-    error_log("Profile Update Error: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Database error occurred']);
 }
 ?>

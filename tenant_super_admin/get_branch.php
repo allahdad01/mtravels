@@ -36,7 +36,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['id'])) {
             ]);
         }
     } catch (PDOException $e) {
-        error_log("Database error in get_branch.php: " . $e->getMessage());
         echo json_encode([
             'success' => false,
             'message' => 'Database error occurred'

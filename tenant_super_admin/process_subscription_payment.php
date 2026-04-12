@@ -53,7 +53,6 @@ try {
         die("Subscription not found.");
     }
 } catch (PDOException $e) {
-    error_log("Error fetching subscription: " . $e->getMessage());
     die("Error processing payment.");
 }
 
@@ -99,8 +98,6 @@ $request_payload = [
     'redirect_failure_url' => $redirect_failure_url
 ];
 
-// Debug log
-error_log("HesabPay API Request: " . json_encode($request_payload));
 
 // Initialize cURL
 $ch = curl_init($api_url);
@@ -121,13 +118,11 @@ curl_close($ch);
 
 // Check response
 if ($http_code !== 200) {
-    error_log("HesabPay API error: HTTP $http_code - " . $response);
     die("Payment initiation failed. Please try again.");
 }
 
 $response_data = json_decode($response, true);
 if (!$response_data || !isset($response_data['url'])) {
-    error_log("Invalid HesabPay response: " . $response);
     die("Payment initiation failed.");
 }
 

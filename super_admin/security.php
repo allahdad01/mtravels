@@ -98,11 +98,6 @@ function check_super_admin() {
  */
 function enforce_auth($allowed_roles = null) {
     if (!check_auth($allowed_roles)) {
-        // Log unauthorized access attempt
-        error_log("Unauthorized access attempt to " . $_SERVER['PHP_SELF'] . 
-                 " - IP: " . $_SERVER['REMOTE_ADDR'] . 
-                 ", User ID: " . ($_SESSION['user_id'] ?? 'unknown') . 
-                 ", Role: " . ($_SESSION['role'] ?? 'none'));
         
         // Store the current URL for later redirect after login
         $_SESSION['redirect_after_login'] = $_SERVER['REQUEST_URI'];
@@ -121,12 +116,6 @@ function enforce_auth($allowed_roles = null) {
  */
 function enforce_super_admin() {
     if (!check_super_admin()) {
-        // Log unauthorized access attempt
-        error_log("Unauthorized super admin access attempt to " . $_SERVER['PHP_SELF'] . 
-                 " - IP: " . $_SERVER['REMOTE_ADDR'] . 
-                 ", User ID: " . ($_SESSION['user_id'] ?? 'unknown') . 
-                 ", Role: " . ($_SESSION['role'] ?? 'none') . 
-                 ", Tenant ID: " . ($_SESSION['tenant_id'] ?? 'null'));
         
         http_response_code(403);
         header('Location: ../access_denied.php');
@@ -142,18 +131,11 @@ function enforce_super_admin() {
  */
 function verify_csrf_token() {
     if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token'])) {
-        // Log potential CSRF attack
-        error_log("CSRF attack detected in " . $_SERVER['PHP_SELF'] . 
-                 " - IP: " . $_SERVER['REMOTE_ADDR'] . 
-                 ", User ID: " . ($_SESSION['user_id'] ?? 'unknown'));
         return false;
     }
     
     // Use hash_equals for timing-safe comparison
     if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
-        error_log("CSRF attack detected in " . $_SERVER['PHP_SELF'] . 
-                 " - IP: " . $_SERVER['REMOTE_ADDR'] . 
-                 ", User ID: " . ($_SESSION['user_id'] ?? 'unknown'));
         return false;
     }
     return true;
@@ -317,7 +299,6 @@ function validate_input_length($input, $max_length = 1000) {
     }
     
     if (strlen($input) > $max_length) {
-        error_log("Input length exceeded limit: {$max_length} - Submitted: " . strlen($input) . " bytes - IP: {$_SERVER['REMOTE_ADDR']}");
         return null;
     }
     
@@ -352,7 +333,6 @@ function sanitize_search_input($input, $max_length = 255) {
     
     foreach ($suspicious_patterns as $pattern) {
         if (preg_match($pattern, $input)) {
-            error_log("Suspicious input detected: " . htmlspecialchars($input) . " - IP: {$_SERVER['REMOTE_ADDR']}");
             return null;
         }
     }

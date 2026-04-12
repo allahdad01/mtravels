@@ -29,7 +29,6 @@ function getPlatformSettings($pdo) {
         setCachedData($cache_key, $settings);
         return $settings;
     } catch (PDOException $e) {
-        error_log("Error fetching platform settings: " . $e->getMessage());
         return [];
     }
 }
@@ -58,7 +57,6 @@ function getBlogPosts($pdo, $limit = null) {
         setCachedData($cache_key, $blog_posts);
         return $blog_posts;
     } catch (PDOException $e) {
-        error_log("Error fetching blog posts: " . $e->getMessage());
         return [];
     }
 }

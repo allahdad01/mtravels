@@ -62,7 +62,6 @@ class SupportTicketManager {
             return ['success' => true, 'ticket_id' => $ticketId];
             
         } catch (Exception $e) {
-            error_log("Create Ticket Error: " . $e->getMessage());
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
@@ -118,7 +117,6 @@ class SupportTicketManager {
             $stmt->execute([$priority, $ticketId]);
             return true;
         } catch (Exception $e) {
-            error_log("Update Priority Error: " . $e->getMessage());
             return false;
         }
     }
@@ -157,7 +155,6 @@ class SupportTicketManager {
             return $stmt->fetch(PDO::FETCH_ASSOC);
             
         } catch (Exception $e) {
-            error_log("Get Ticket Error: " . $e->getMessage());
             return null;
         }
     }
@@ -181,7 +178,6 @@ class SupportTicketManager {
             return $stmt->fetch(PDO::FETCH_ASSOC);
             
         } catch (Exception $e) {
-            error_log("Get Ticket By Number Error: " . $e->getMessage());
             return null;
         }
     }
@@ -233,7 +229,6 @@ class SupportTicketManager {
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
             
         } catch (Exception $e) {
-            error_log("Get Tickets By Tenant Error: " . $e->getMessage());
             return [];
         }
     }
@@ -292,7 +287,6 @@ class SupportTicketManager {
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
             
         } catch (Exception $e) {
-            error_log("Get All Tickets Error: " . $e->getMessage());
             return [];
         }
     }
@@ -339,7 +333,6 @@ class SupportTicketManager {
             return ['success' => true];
             
         } catch (Exception $e) {
-            error_log("Update Status Error: " . $e->getMessage());
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
@@ -388,7 +381,6 @@ class SupportTicketManager {
             return ['success' => true, 'reply_id' => $replyId];
             
         } catch (Exception $e) {
-            error_log("Add Reply Error: " . $e->getMessage());
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
@@ -418,7 +410,6 @@ class SupportTicketManager {
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
             
         } catch (Exception $e) {
-            error_log("Get Replies Error: " . $e->getMessage());
             return [];
         }
     }
@@ -436,7 +427,6 @@ class SupportTicketManager {
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
             
         } catch (Exception $e) {
-            error_log("Get Categories Error: " . $e->getMessage());
             return [];
         }
     }
@@ -450,7 +440,6 @@ class SupportTicketManager {
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
             
         } catch (Exception $e) {
-            error_log("Get SLA Rules Error: " . $e->getMessage());
             return [];
         }
     }
@@ -484,7 +473,6 @@ class SupportTicketManager {
             return $stmt->fetch(PDO::FETCH_ASSOC);
             
         } catch (Exception $e) {
-            error_log("Get Statistics Error: " . $e->getMessage());
             return null;
         }
     }

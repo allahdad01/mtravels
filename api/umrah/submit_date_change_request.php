@@ -153,10 +153,6 @@ try {
 
     if ($stmt->execute()) {
         $request_id = $pdo->lastInsertId();
-
-        // Log the action
-        error_log("Date change request submitted - ID: $request_id, Booking: $booking_id, User: {$_SESSION['user_id']}");
-
         echo json_encode([
             'success' => true,
             'message' => 'Date change request submitted successfully. It will be reviewed by an administrator.',
@@ -167,7 +163,6 @@ try {
     }
 
 } catch (PDOException $e) {
-    error_log("Date change request error: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'An error occurred while processing the request']);
 }
 ?>

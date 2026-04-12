@@ -118,12 +118,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                      require_once '../includes/functions.php';
                      $email_sent = sendPaymentConfirmationEmail($tenant_id, $amount, $currency, $payment_date, $billing_cycle, $payment_id, $subscription_id);
                      if (!$email_sent) {
-                         error_log("Failed to send payment confirmation email for tenant: {$tenant_id}");
                          // Log for debugging
                          $stmt = $pdo->prepare("SELECT name, billing_email FROM tenants WHERE id = ?");
                          $stmt->execute([$tenant_id]);
                          $tenant_info = $stmt->fetch(PDO::FETCH_ASSOC);
-                         error_log("Tenant billing email status: " . json_encode($tenant_info));
                      }
                 } else {
                     $pdo->rollBack();
@@ -201,7 +199,6 @@ try {
     $stmt->execute();
     $all_subscriptions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    error_log("Error fetching subscriptions: " . $e->getMessage());
     $all_subscriptions = [];
 }
 
@@ -249,7 +246,6 @@ try {
      $stmt->execute();
      $all_recent_payments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-     error_log("Error fetching recent payments: " . $e->getMessage());
      $all_recent_payments = [];
 }
 

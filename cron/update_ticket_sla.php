@@ -13,11 +13,6 @@ require_once '../config.php';
 require_once '../includes/db.php';
 require_once '../includes/SLACalculator.php';
 
-if (!isset($pdo) || !$pdo) {
-    error_log("SLA update cron: Database connection failed");
-    exit(1);
-}
-
 echo "Starting support ticket SLA status update...\n";
 
 try {
@@ -35,7 +30,6 @@ try {
         logSLAUpdate($pdo, $result['updated']);
         
     } else {
-        error_log("SLA update failed: " . $result['error']);
         echo "Error: " . $result['error'] . "\n";
         exit(1);
     }
@@ -46,7 +40,6 @@ try {
     echo "SLA status check completed successfully\n";
     
 } catch (Exception $e) {
-    error_log("SLA update cron error: " . $e->getMessage());
     echo "Error: " . $e->getMessage() . "\n";
     exit(1);
 }

@@ -20,7 +20,6 @@ $_SESSION['last_activity'] = time();
 
 // Check super admin
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'super_admin' || !is_null($_SESSION['tenant_id'])) {
-    error_log("Unauthorized access to manage_system_revenue.php");
     header('Location: ../login.php');
     exit();
 }

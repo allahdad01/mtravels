@@ -110,7 +110,6 @@ function truncateText($text, $length = 100, $suffix = '...') {
 function logDebug($message, $level = 'info') {
     if (ENABLE_DEBUG_MODE) {
         $timestamp = date('Y-m-d H:i:s');
-        error_log("[$timestamp] [$level] $message");
     }
 }
 

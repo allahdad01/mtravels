@@ -82,9 +82,6 @@ try {
     ]);
 
 } catch (PDOException $e) {
-    // Log the error
-    error_log("Error firing/reinstating user: " . $e->getMessage());
-    
     // Return error response
     echo json_encode([
         'success' => false, 

@@ -54,8 +54,6 @@ try {
     ]);
 
 } catch (PDOException $e) {
-    // Log error (adjust this according to your logging system)
-    error_log('Error fetching visa details: ' . $e->getMessage());
 
     // Return error response
     echo json_encode([

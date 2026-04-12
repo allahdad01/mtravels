@@ -53,7 +53,6 @@ try {
     exit(json_encode(['success' => true, 'message' => 'Category deleted successfully']));
 
 } catch (Exception $e) {
-    error_log("Delete category error: " . $e->getMessage());
     exit(json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]));
 }
 ?>

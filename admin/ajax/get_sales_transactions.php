@@ -121,7 +121,6 @@ try {
     echo json_encode(['status' => 'success', 'data' => $transactions]);
     
 } catch (PDOException $e) {
-    error_log('Database error in get_sales_transactions.php: ' . $e->getMessage());
     echo json_encode(['status' => 'error', 'message' => 'An error occurred while fetching data. Please try again.']);
     exit;
 }

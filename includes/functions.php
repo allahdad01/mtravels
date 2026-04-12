@@ -7,7 +7,6 @@ function sendEmail($to, $subject, $body, $isHtml = true, $emailType = 'general',
     $smtpSettings = getTenantSMTPSettings($tenantId);
 
     if (empty($smtpSettings['smtp_host']) || empty($smtpSettings['smtp_username']) || empty($smtpSettings['smtp_password'])) {
-        error_log("SMTP settings not configured for tenant: " . ($tenantId ?? 'platform'));
         return false;
     }
 
@@ -94,7 +93,6 @@ function sendEmail($to, $subject, $body, $isHtml = true, $emailType = 'general',
 
         return true;
     } catch (Exception $e) {
-        error_log("Email sending failed: " . $mail->ErrorInfo);
         return false;
     }
 }
@@ -104,7 +102,6 @@ function recordEmailTracking($emailId, $recipientEmail, $emailType, $tenantId) {
     global $pdo, $branch_id;
 
     if ($pdo === null) {
-        error_log("No database connection available in recordEmailTracking");
         return false;
     }
 
@@ -119,7 +116,6 @@ function recordEmailTracking($emailId, $recipientEmail, $emailType, $tenantId) {
         $stmt->execute();
         return true;
     } catch (Exception $e) {
-        error_log("Error in recordEmailTracking: " . $e->getMessage());
         return false;
     }
 }
@@ -139,7 +135,6 @@ function getPlatformSettings() {
         global $pdo;
 
         if ($pdo === null) {
-            error_log("No database connection available in getPlatformSettings");
             return [];
         }
 
@@ -177,7 +172,6 @@ function getTenantSMTPSettings($tenantId = null) {
     global $pdo;
 
     if ($pdo === null) {
-        error_log("No database connection available in getTenantSMTPSettings");
         return [];
     }
 
@@ -627,7 +621,6 @@ function sendSalaryPaymentNotification($employeeEmail, $employeeName, $paymentId
     if (isset($tenant_id) && $tenant_id) {
         global $pdo;
         if ($pdo === null) {
-            error_log("No database connection available in sendSalaryPaymentNotification");
             return false;
         }
 
@@ -1061,7 +1054,6 @@ function sendTenantUserNotificationEmail($tenantId, $userName, $userEmail, $user
     global $pdo;
 
     if ($pdo === null) {
-        error_log("No database connection available in sendTenantUserNotificationEmail");
         return false;
     }
 
@@ -1072,7 +1064,6 @@ function sendTenantUserNotificationEmail($tenantId, $userName, $userEmail, $user
     $tenant = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$tenant) {
-        error_log("Tenant not found for user notification email: {$tenantId}");
         return false;
     }
 
@@ -1160,7 +1151,6 @@ function sendPaymentConfirmationEmail($tenantId, $amount, $currency, $paymentDat
     global $pdo;
 
     if ($pdo === null) {
-        error_log("No database connection available in sendPaymentConfirmationEmail");
         return false;
     }
 
@@ -1171,7 +1161,6 @@ function sendPaymentConfirmationEmail($tenantId, $amount, $currency, $paymentDat
     $tenant = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$tenant) {
-        error_log("Tenant not found for payment confirmation email: {$tenantId}");
         return false;
     }
 
@@ -1181,7 +1170,6 @@ function sendPaymentConfirmationEmail($tenantId, $amount, $currency, $paymentDat
 
     // Validate billing email
     if (empty($billingEmail)) {
-        error_log("No billing email configured for tenant: {$tenantId} ({$tenantName})");
         return false;
     }
 
@@ -1312,12 +1300,10 @@ function generateInvoicePDF($paymentId, $subscriptionId) {
             if (file_exists($pdf_path)) {
                 return $pdf_path;
             } else {
-                error_log("Invoice PDF file was not created at: {$pdf_path}");
                 return false;
             }
             
         } catch (Exception $e) {
-            error_log("Error generating invoice PDF: " . $e->getMessage());
             return false;
         }
     }
@@ -1716,7 +1702,6 @@ function sendTicketNotificationWithAttachment($email, $name, $subject, $body, $a
     $smtpSettings = getTenantSMTPSettings($tenant_id);
     
     if (empty($smtpSettings['smtp_host']) || empty($smtpSettings['smtp_username']) || empty($smtpSettings['smtp_password'])) {
-        error_log("SMTP settings not configured for tenant: " . ($tenant_id ?? 'platform'));
         return false;
     }
     
@@ -1782,7 +1767,6 @@ function sendTicketNotificationWithAttachment($email, $name, $subject, $body, $a
         
         return true;
     } catch (Exception $e) {
-        error_log("Email sending failed: " . $mail->ErrorInfo);
         return false;
         }
         }

@@ -49,7 +49,6 @@ try {
     }
 } catch (Exception $e) {
     $response['success'] = false;
-    error_log("Error fetching umrah details: " . $e->getMessage());
     $response['message'] = $e->getMessage();
 }
 

@@ -88,9 +88,6 @@ class Logger {
             
             return $result !== false;
         } catch (Exception $e) {
-            // Fallback to error_log if exception occurs
-            error_log('Logger error: ' . $e->getMessage());
-            error_log($logEntry);
             return false;
         }
     }

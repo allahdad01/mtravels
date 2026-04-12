@@ -63,11 +63,9 @@ try {
     ]);
 
 } catch (PDOException $e) {
-    error_log("Get date change requests PDO error: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 } catch (Exception $e) {
-    error_log("Get date change requests error: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }

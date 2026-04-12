@@ -58,44 +58,34 @@ try {
     $settingStmt = $pdo->query("SELECT `key`, `value` FROM platform_settings");
     $settings = $settingStmt->fetchAll(PDO::FETCH_KEY_PAIR);
 } catch (PDOException $e) {
-    error_log("Settings Error: " . $e->getMessage());
     $settings = [];
 }
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        error_log("=== FORGOT PASSWORD DEBUG START ===");
-        error_log("POST data received: " . json_encode($_POST));
         
         // Verify CSRF token
         if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
             $message = "Security token expired. Please try again.";
             $message_type = 'error';
-            error_log("CSRF token failed validation");
         } elseif (isset($_POST['action']) && $_POST['action'] === 'request') {
-            error_log("Processing password reset request");
             
             // Request password reset
             $email = isset($_POST['email']) ? trim($_POST['email']) : '';
-            error_log("Email input: " . $email);
 
             if (empty($email)) {
                 $message = "Please enter your email address.";
                 $message_type = 'error';
-                error_log("Email is empty");
             } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 $message = "Please enter a valid email address.";
                 $message_type = 'error';
-                error_log("Email validation failed: " . $email);
             } else {
-                error_log("Email validation passed");
                 
                 // Rate limiting: Check if too many reset requests from this IP
                 $rate_limit_check = false;
                 try {
                     $ip_address = $_SERVER['REMOTE_ADDR'];
-                    error_log("Checking rate limit for IP: $ip_address");
                     
                     // Check recent password reset requests from this IP
                     $stmt = $pdo->prepare("
@@ -106,7 +96,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $result = $stmt->fetch(PDO::FETCH_ASSOC);
                     
                     if ($result['count'] >= 5) {
-                        error_log("[SECURITY] Rate limit exceeded for IP: $ip_address (Count: {$result['count']})");
                         $rate_limit_check = true;
                     } else {
                         error_log("Rate limit check passed. Current count: {$result['count']}/5");
@@ -119,17 +108,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($rate_limit_check) {
                     $message = "Too many password reset requests. Please try again in 1 hour.";
                     $message_type = 'error';
-                    error_log("[SECURITY] Password reset blocked due to rate limiting from IP: {$_SERVER['REMOTE_ADDR']}");
                 } else {
                     // Check if user exists
                     try {
-                        error_log("Checking if user exists in database");
                         $stmt = $pdo->prepare("SELECT id, name, email FROM users WHERE email = ? AND fired != 1");
                         $stmt->execute([$email]);
                         $user = $stmt->fetch(PDO::FETCH_ASSOC);
-                        error_log("User query executed. Result: " . ($user ? "Found user ID " . $user['id'] : "No user found"));
                     } catch (Exception $e) {
-                        error_log("ERROR checking user: " . $e->getMessage());
                         $message = "An error occurred while processing your request.";
                         $message_type = 'error';
                         $user = null;
@@ -138,16 +123,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if ($user) {
                     try {
-                        error_log("User found, generating reset token");
                         
                         // Generate reset token
                         $reset_token = bin2hex(random_bytes(32));
                         $token_hash = hash('sha256', $reset_token);
-                        error_log("Token generated (hashed for storage)");
 
                         // Store reset token in database (HASHED)
                         try {
-                            error_log("Storing reset token hash in database");
                             // Calculate expiry in database to avoid timezone issues
                             $stmt = $pdo->prepare("
                                 INSERT INTO password_resets (user_id, token, token_expiry, created_at)
@@ -158,9 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 created_at = NOW()
                             ");
                             $stmt->execute([$user['id'], $token_hash]);
-                            error_log("Reset token hash stored successfully");
                         } catch (Exception $e) {
-                            error_log("ERROR storing token: " . $e->getMessage());
                             $message = "An error occurred while processing your request.";
                             $message_type = 'error';
                             throw $e;
@@ -168,15 +148,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         // Build reset link
                         try {
-                            error_log("Building reset link");
                             $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
-                            error_log("Protocol: " . $protocol);
-                            error_log("HTTP_HOST: " . (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'NOT SET'));
                             
                             $reset_link = $protocol . '://' . $_SERVER['HTTP_HOST'] . '/almoqadas/mtravels/reset_password.php?token=' . urlencode($reset_token);
-                            error_log("Reset link: " . $reset_link);
+                            
                         } catch (Exception $e) {
-                            error_log("ERROR building link: " . $e->getMessage());
                             $message = "An error occurred while processing your request.";
                             $message_type = 'error';
                             throw $e;
@@ -184,7 +160,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         // Prepare email
                         try {
-                            error_log("Preparing email body");
                             $subject = "Password Reset Request";
                             $body = "
                             <html>
@@ -202,9 +177,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </body>
                             </html>
                             ";
-                            error_log("Email body prepared");
                         } catch (Exception $e) {
-                            error_log("ERROR preparing email: " . $e->getMessage());
                             $message = "An error occurred while processing your request.";
                             $message_type = 'error';
                             throw $e;
@@ -212,27 +185,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         // Send email
                         try {
-                            error_log("Calling sendEmail function. To: " . $email . ", Type: password_reset, Name: " . $user['name']);
                             $emailResult = sendEmail($email, $subject, $body, true, 'password_reset', $user['name']);
-                            error_log("sendEmail returned: " . ($emailResult ? "true" : "false"));
+                        
                             
                             $message = "If an account with this email exists, you will receive a password reset link.";
                             $message_type = 'success';
                         } catch (Exception $e) {
-                            error_log("ERROR sending email: " . $e->getMessage());
                             $message = "If an account with this email exists, you will receive a password reset link.";
                             $message_type = 'success'; // Show same message for security
                         }
                         
                     } catch (Exception $e) {
-                        error_log("ERROR in user found block: " . $e->getMessage());
                         $message = "An error occurred while processing your request.";
                         $message_type = 'error';
                     }
                 } else {
-                    // Security: Don't reveal if email exists, but still log the attempt
-                    error_log("[SECURITY] Password reset requested for non-existent email: $email from IP: {$_SERVER['REMOTE_ADDR']}");
-                    // Log the rate limit anyway for security tracking
+                      // Log the rate limit anyway for security tracking
                     try {
                         $stmt = $pdo->prepare("
                             INSERT INTO password_reset_requests (ip_address, email, created_at) 
@@ -260,10 +228,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
         }
-        error_log("=== FORGOT PASSWORD DEBUG END ===");
     } catch (Exception $e) {
-        error_log("CRITICAL ERROR in forgot password: " . $e->getMessage());
-        error_log("Stack trace: " . $e->getTraceAsString());
         $message = "An error occurred: " . htmlspecialchars($e->getMessage());
         $message_type = 'error';
     }

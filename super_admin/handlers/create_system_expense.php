@@ -116,7 +116,6 @@ try {
     }
 
 } catch (Exception $e) {
-    error_log("Expense creation error: " . $e->getMessage());
     // Never expose error details to client
     exit(json_encode(['success' => false, 'message' => 'An error occurred. Please try again.']));
 }

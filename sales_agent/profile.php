@@ -63,7 +63,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
         
         if (count($attempts) >= 5) {
             $error = "Too many password change attempts. Please try again in 15 minutes.";
-            error_log("Password change rate limit exceeded for user {$_SESSION['user_id']}");
         } elseif (empty($current_password) || empty($new_password)) {
             $error = "Please provide all required fields.";
         } elseif (strlen($new_password) < 8) {
@@ -85,15 +84,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
                 // Log failed attempt
                 $attempts[] = $now;
                 $_SESSION[$rate_limit_key] = $attempts;
-                error_log("Failed password change attempt for user {$_SESSION['user_id']} from IP {$_SERVER['REMOTE_ADDR']}");
             } else {
                 // Password is correct, update it
                 $hashed = password_hash($new_password, PASSWORD_DEFAULT);
                 $stmt = $pdo->prepare("UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?");
                 $stmt->execute([$hashed, $_SESSION['user_id']]);
-                
-                // Log successful password change
-                error_log("Password changed for sales agent {$_SESSION['user_id']} from IP {$_SERVER['REMOTE_ADDR']}");
                 
                 // Clear rate limit attempts on successful change
                 unset($_SESSION[$rate_limit_key]);

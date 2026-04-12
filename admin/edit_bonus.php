@@ -6,7 +6,6 @@ $branch_id = $_SESSION['branch_id'];
 
 $allowed_roles = ['admin', 'finance'];
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    error_log("Unauthorized access attempt to dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
@@ -87,7 +86,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
         } catch (PDOException $e) {
             $error_message = "Oops! Something went wrong. Please try again later.";
-            error_log("Update bonus error: " . $e->getMessage());
         }
     }
 } else {
@@ -131,7 +129,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
         } catch (PDOException $e) {
             $error_message = "Oops! Something went wrong. Please try again later.";
-            error_log("Select bonus error: " . $e->getMessage());
         }
     } else {
         // URL doesn't contain id parameter. Redirect to error page

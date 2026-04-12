@@ -45,8 +45,6 @@ try {
     echo json_encode(['success' => true, 'data' => $data]);
     
 } catch (PDOException $e) {
-    // Log the error
-    error_log("Database Error: " . $e->getMessage());
     
     // Return error response
     header('Content-Type: application/json');

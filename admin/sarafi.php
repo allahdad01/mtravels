@@ -19,7 +19,6 @@ if (session_status() === PHP_SESSION_NONE) {
 // Check if user is logged in with proper role
 $allowed_roles = ['admin', 'finance'];
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    error_log("Unauthorized access attempt to dashboard: " . ($_SESSION['user_id'] ?? 'unknown') . " - Role: " . ($_SESSION['role'] ?? 'unknown') . " - IP: " . $_SERVER['REMOTE_ADDR']);
     header('Location: ../login.php');
     exit();
 }
@@ -144,10 +143,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_deposit'])) {
         $stmt->execute();
 
         if (isset($_FILES['receipt']) && $_FILES['receipt']['error'] === UPLOAD_ERR_OK) {
-            error_log("Receipt file detected for deposit: " . print_r($_FILES['receipt'], true));
             $uploader = new SecureFileUpload(10 * 1024 * 1024, '../uploads/');
             $result   = $uploader->upload('receipt', 'receipts');
-            error_log("Upload result: " . print_r($result, true));
             if ($result['success']) {
                 $stmt = $pdo->prepare("UPDATE sarafi_transactions SET receipt_path = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                 $stmt->bindParam(1, $result['data']['filename'], PDO::PARAM_STR);
@@ -155,7 +152,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_deposit'])) {
                 $stmt->bindParam(3, $tenant_id,                  PDO::PARAM_INT);
                 $stmt->bindParam(4, $branch_id,                  PDO::PARAM_INT);
                 $stmt->execute();
-                error_log("Receipt saved: " . $result['data']['filename']);
             } else {
                 error_log("Receipt upload failed: " . $result['error']);
             }
@@ -269,10 +265,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_withdrawal'])) {
         $stmt->execute();
 
         if (isset($_FILES['receipt']) && $_FILES['receipt']['error'] === UPLOAD_ERR_OK) {
-            error_log("Receipt file detected for withdrawal: " . print_r($_FILES['receipt'], true));
             $uploader = new SecureFileUpload(10 * 1024 * 1024, '../uploads/');
             $result   = $uploader->upload('receipt', 'receipts');
-            error_log("Upload result: " . print_r($result, true));
             if ($result['success']) {
                 $stmt = $pdo->prepare("UPDATE sarafi_transactions SET receipt_path = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                 $stmt->bindParam(1, $result['data']['filename'], PDO::PARAM_STR);
@@ -280,7 +274,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_withdrawal'])) {
                 $stmt->bindParam(3, $tenant_id,                  PDO::PARAM_INT);
                 $stmt->bindParam(4, $branch_id,                  PDO::PARAM_INT);
                 $stmt->execute();
-                error_log("Receipt saved: " . $result['data']['filename']);
             } else {
                 error_log("Receipt upload failed: " . $result['error']);
             }

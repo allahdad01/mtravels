@@ -49,13 +49,11 @@ class MonthlyReportGenerator {
             $excelPath = $this->generateExcelReportViaExistingScript($tenantId, $startDate, $endDate);
             
             if (!$excelPath) {
-                error_log("Failed to generate Excel report using existing script");
                 return false;
             }
             
             return $excelPath;
         } catch (Exception $e) {
-            error_log("Excel Report Generation Error: " . $e->getMessage());
             return false;
         }
     }
@@ -73,7 +71,6 @@ class MonthlyReportGenerator {
             $exportScriptPath = dirname(dirname(__FILE__)) . "/tenant_super_admin/export_comprehensive_report.php";
 
             if (!file_exists($exportScriptPath)) {
-                error_log("Export script not found at: $exportScriptPath");
                 return false;
             }
 
@@ -99,7 +96,6 @@ class MonthlyReportGenerator {
             $response = json_decode($output, true);
 
             if (!$response || !$response['success']) {
-                error_log("Excel generation failed: " . ($response['message'] ?? 'Unknown error'));
                 return false;
             }
 
@@ -107,7 +103,6 @@ class MonthlyReportGenerator {
             $fileContent = base64_decode($response['file']);
 
             if ($fileContent === false) {
-                error_log("Failed to decode base64 file content");
                 return false;
             }
 
@@ -115,13 +110,11 @@ class MonthlyReportGenerator {
             $filename = $this->tempDir . '/comprehensive_report_' . $tenantId . '_' . date('Y-m-d_His') . '.xlsx';
 
             if (file_put_contents($filename, $fileContent) === false) {
-                error_log("Failed to write Excel file to: $filename");
                 return false;
             }
 
             return $filename;
         } catch (Exception $e) {
-            error_log("Error generating Excel report via existing script: " . $e->getMessage());
             return false;
         }
     }
@@ -148,7 +141,6 @@ class MonthlyReportGenerator {
             // Fallback to default PHP mail
             return $this->sendEmailViaPhpMail($email, $name, $reportData, $excelPath, $pdfPath);
         } catch (Exception $e) {
-            error_log("Email sending error: " . $e->getMessage());
             return false;
         }
     }
@@ -216,7 +208,6 @@ class MonthlyReportGenerator {
             // Send email
             return $mail->send();
         } catch (Exception $e) {
-            error_log("SMTP Email sending error: " . $e->getMessage());
             // Fallback to PHP mail
             return $this->sendEmailViaPhpMail($email, $name, $reportData, $excelPath, $pdfPath);
         }
@@ -277,7 +268,6 @@ class MonthlyReportGenerator {
             
             return $result;
         } catch (Exception $e) {
-            error_log("PHP Mail sending error: " . $e->getMessage());
             return false;
         }
     }

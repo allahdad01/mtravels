@@ -731,8 +731,6 @@ try {
                 $currencies['DARHAM'] = floatval($row['darham_amount'] ?? 0);
             }
         } catch (PDOException $e) {
-            // Log error and continue with next source
-            error_log("Error processing income source $sourceName: " . $e->getMessage());
             continue;
         }
     }

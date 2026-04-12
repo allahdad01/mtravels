@@ -39,7 +39,6 @@ try {
         exit();
     }
 } catch (PDOException $e) {
-    error_log("Booking verification error: " . $e->getMessage());
     header('Location: ../umrah.php?error=database_error');
     exit();
 }

@@ -12,11 +12,6 @@
 require_once '../config.php';
 require_once '../includes/db.php';
 
-if (!isset($pdo) || !$pdo) {
-    error_log("Payment status check: Database connection failed");
-    exit(1);
-}
-
 echo "Starting payment status check...\n";
 
 try {
@@ -107,7 +102,6 @@ try {
     echo "Payment status check completed successfully\n";
 
 } catch (Exception $e) {
-    error_log("Payment status check error: " . $e->getMessage());
     echo "Error: " . $e->getMessage() . "\n";
     exit(1);
 }

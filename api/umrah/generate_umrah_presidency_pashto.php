@@ -54,7 +54,6 @@ try {
         $settingStmt->execute([$tenant_id]);
         $settings = $settingStmt->fetch(PDO::FETCH_ASSOC) ?: ['agency_name' => 'Travel Agency'];
     } catch (Exception $e) {
-        error_log("Settings Error: " . $e->getMessage());
         $settings = ['agency_name' => 'Travel Agency'];
     }
 
@@ -64,7 +63,6 @@ try {
         $branchStmt->execute([$branch_id, $tenant_id]);
         $branch = $branchStmt->fetch(PDO::FETCH_ASSOC);
     } catch (Exception $e) {
-        error_log("Branch Error: " . $e->getMessage());
         $branch = null;
     }
 
@@ -81,7 +79,6 @@ try {
 
     if (!$members) die('د دې کورنۍ لپاره کوم غړی نه پیدا شو.');
 } catch (PDOException $e) {
-    error_log("Database error: " . $e->getMessage());
     die("معلومات ترلاسه کولو کې خرابی.");
 }
 ?>

@@ -136,7 +136,6 @@ try {
     }
 
 } catch (Exception $e) {
-    error_log("Attendance processing error: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'An error occurred while processing attendance']);
 }
 ?>

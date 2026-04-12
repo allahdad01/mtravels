@@ -64,7 +64,6 @@ try {
     }
 
 } catch (Exception $e) {
-    error_log("Update expense error: " . $e->getMessage());
     exit(json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]));
 }
 ?>

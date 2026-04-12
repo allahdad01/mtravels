@@ -27,6 +27,5 @@ try {
         echo json_encode(['success' => false, 'message' => 'Customer not found']);
     }
 } catch (PDOException $e) {
-    error_log("Database Error: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Database error occurred']);
 } 

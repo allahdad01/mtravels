@@ -35,7 +35,6 @@ if (isset($_GET['ticket_id'])) {
         }
         
     } catch (PDOException $e) {
-        error_log("Error fetching ticket sale transactions: " . $e->getMessage());
         echo json_encode(['error' => 'Error fetching transactions']);
     }
 } else {

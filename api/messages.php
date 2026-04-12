@@ -143,7 +143,6 @@
 						: $tenantId;
 					$row['content'] = $encryptor->decrypt($row['encrypted_content'], $messageDecryptTenant, (int)$row['encryption_key_id']);
 				} catch (Exception $e) {
-					error_log('Message decryption failed for message ID ' . $row['id'] . ': ' . $e->getMessage());
 					$row['content'] = '[Encrypted message - decryption failed]';
 				}
 			} else if (empty($row['content']) && !empty($row['encrypted_content'])) {
@@ -154,7 +153,6 @@
 						: $tenantId;
 					$row['content'] = $encryptor->decrypt($row['encrypted_content'], $messageDecryptTenant, (int)$row['encryption_key_id']);
 				} catch (Exception $e) {
-					error_log('Fallback decryption failed for message ID ' . $row['id'] . ': ' . $e->getMessage());
 					$row['content'] = '[Unable to decrypt message]';
 				}
 			}
@@ -346,7 +344,6 @@
 						 VALUES (?, ?, ?, ?, ?, ?, ?, ?)', 
 						[$room, $currentUserId, $toUserId, $tenantId, $content, $encryptionData['encrypted_content'], $encryptionData['key_id'], 1]);
 				} catch (Exception $e) {
-					error_log('Message encryption failed: ' . $e->getMessage());
 					// Fallback: store in plaintext if encryption fails
 					$stmt = secure_query($pdo, 
 						'INSERT INTO chat_messages (room_id, from_user_id, to_user_id, tenant_id_from, content, is_encrypted) 
@@ -355,14 +352,12 @@
 				}
 			} else {
 				// Encryption columns don't exist - store as plaintext with tenant_id_from
-				error_log('Encryption columns missing - storing message as plaintext');
 				$stmt = secure_query($pdo, 
 					'INSERT INTO chat_messages (room_id, from_user_id, to_user_id, tenant_id_from, content) 
 					 VALUES (?, ?, ?, ?, ?)', 
 					[$room, $currentUserId, $toUserId, $tenantId, $content]);
 			}
 		} catch (Exception $e) {
-			error_log('Message save error: ' . $e->getMessage());
 			// Final fallback - try basic insert
 			try {
 				$stmt = secure_query($pdo, 
@@ -370,13 +365,11 @@
 					 VALUES (?, ?, ?, ?)', 
 					[$room, $currentUserId, $toUserId, $content]);
 			} catch (Exception $e2) {
-				error_log('All message save attempts failed: ' . $e2->getMessage());
 				$stmt = null;
 			}
 		}
 		
 		if (!$stmt) { 
-			error_log('Message insert failed - SQL statement returned false');
 			http_response_code(500); 
 			echo json_encode(['error' => 'save_failed', 'details' => 'Database insert failed']); 
 			exit; 
@@ -384,7 +377,6 @@
 		
 		$id = $pdo->lastInsertId();
 		if (!$id) {
-			error_log('Message insert - no ID returned from database');
 			http_response_code(500);
 			echo json_encode(['error' => 'save_failed', 'details' => 'No ID returned']);
 			exit;

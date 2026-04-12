@@ -815,7 +815,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        error_log("Error updating booking: " . $e->getMessage());
         $response['message'] = 'Database error: ' . $e->getMessage();
     }
 } else {

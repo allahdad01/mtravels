@@ -23,7 +23,6 @@ class EnvLoader {
         // Check if .env exists
         if (!file_exists($envFile)) {
             self::$errors[] = "Missing .env file. Copy .env.example to .env and configure it.";
-            error_log("CRITICAL: .env file not found at: $envFile");
             return false;
         }
         

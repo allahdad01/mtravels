@@ -50,10 +50,6 @@ if ($paymentId <= 0) {
     exit();
 }
 
-// Enable error logging
-$log_errors = true;
-$error_log = [];
-
 // Begin transaction
 $pdo->beginTransaction();
 
@@ -73,10 +69,9 @@ try {
     $jvTrans = $jvTransStmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$jvTrans) {
-        if ($log_errors) $error_log[] = "No JV transaction found for payment ID {$paymentId}";
+        // No JV transaction found
     } else {
         $jvTransactionId = $jvTrans['id'];
-        if ($log_errors) $error_log[] = "Found JV transaction ID: {$jvTransactionId} for payment ID {$paymentId}";
     }
     
     // Verify this is a client-supplier payment or handle all payment types
@@ -92,7 +87,7 @@ try {
         $client = $clientStmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$client) {
-            if ($log_errors) $error_log[] = "Client ID {$clientId} not found";
+            // Client not found
         }
         
         // Get supplier current balance, currency and name
@@ -101,7 +96,7 @@ try {
         $supplier = $supplierStmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$supplier) {
-            if ($log_errors) $error_log[] = "Supplier ID {$supplierId} not found";
+            // Supplier not found
         }
         
         // Calculate amounts for reversal
@@ -167,8 +162,6 @@ try {
                 $deleteClientTransQuery = "DELETE FROM client_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                 $deleteClientTransStmt = $pdo->prepare($deleteClientTransQuery);
                 $deleteClientTransStmt->execute([$clientTransId, $tenant_id, $branch_id]);
-                
-                if ($log_errors) $error_log[] = "Client transaction ID {$clientTransId} deleted successfully";
             } else {
                 // Try a broader search if the specific search failed
                 $altClientTransQuery = "SELECT id, description FROM client_transactions
@@ -177,15 +170,6 @@ try {
                 $altClientTransStmt = $pdo->prepare($altClientTransQuery);
                 $altClientTransStmt->execute([$clientId, $tenant_id, $branch_id]);
                 $altClientResults = $altClientTransStmt->fetchAll(PDO::FETCH_ASSOC);
-                
-                if ($log_errors) {
-                    $error_log[] = "Failed to find client transaction for JV transaction ID {$jvTransactionId}";
-                    $error_log[] = "Alternative search found " . count($altClientResults) . " potential client transactions";
-                    foreach ($altClientResults as $index => $result) {
-                        $error_log[] = "Potential client transaction {$index}: ID {$result['id']} - Description: " . 
-                            (isset($result['description']) ? substr($result['description'], 0, 50) . "..." : "None");
-                    }
-                }
             }
         } else {
             // Fallback to searching by description (legacy method)
@@ -233,11 +217,9 @@ try {
                 $deleteClientTransQuery = "DELETE FROM client_transactions WHERE id = ? And tenant_id = ? And branch_id = ?";
                 $deleteClientTransStmt = $pdo->prepare($deleteClientTransQuery);
                 $deleteClientTransStmt->execute([$clientTransId, $tenant_id, $branch_id]);
-                
-                if ($log_errors) $error_log[] = "Client transaction ID {$clientTransId} deleted successfully using legacy method";
-            } else {
-                if ($log_errors) $error_log[] = "Failed to find any client transaction for this JV payment";
-            }
+                } else {
+                // No client transaction found
+                }
         }
         
         // 2. UPDATE SUPPLIER TRANSACTIONS
@@ -286,8 +268,6 @@ try {
                 $deleteSupplierTransQuery = "DELETE FROM supplier_transactions WHERE id = ? And tenant_id = ? And branch_id = ?";
                 $deleteSupplierTransStmt = $pdo->prepare($deleteSupplierTransQuery);
                 $deleteSupplierTransStmt->execute([$supplierTransId, $tenant_id, $branch_id]);
-                
-                if ($log_errors) $error_log[] = "Supplier transaction ID {$supplierTransId} deleted successfully";
             } else {
                 // Try a broader search if the specific search failed
                 $altSupplierTransQuery = "SELECT id, remarks FROM supplier_transactions
@@ -296,15 +276,6 @@ try {
                 $altSupplierTransStmt = $pdo->prepare($altSupplierTransQuery);
                 $altSupplierTransStmt->execute([$supplierId, $tenant_id, $branch_id]);
                 $altSupplierResults = $altSupplierTransStmt->fetchAll(PDO::FETCH_ASSOC);
-                
-                if ($log_errors) {
-                    $error_log[] = "Failed to find supplier transaction for JV transaction ID {$jvTransactionId}";
-                    $error_log[] = "Alternative search found " . count($altSupplierResults) . " potential supplier transactions";
-                    foreach ($altSupplierResults as $index => $result) {
-                        $error_log[] = "Potential supplier transaction {$index}: ID {$result['id']} - Remarks: " . 
-                            (isset($result['remarks']) ? substr($result['remarks'], 0, 50) . "..." : "None");
-                    }
-                }
             }
         } else {
             // Fallback to searching by remarks (legacy method)
@@ -351,11 +322,9 @@ try {
                 $deleteSupplierTransQuery = "DELETE FROM supplier_transactions WHERE id = ? And tenant_id = ? And branch_id = ?";
                 $deleteSupplierTransStmt = $pdo->prepare($deleteSupplierTransQuery);
                 $deleteSupplierTransStmt->execute([$supplierTransId, $tenant_id, $branch_id]);
-                
-                if ($log_errors) $error_log[] = "Supplier transaction ID {$supplierTransId} deleted successfully using legacy method";
-            } else {
-                if ($log_errors) $error_log[] = "Failed to find any supplier transaction for this JV payment";
-            }
+                } else {
+                // No supplier transaction found
+                }
         }
         
         // 3. ADJUST MAIN BALANCES
@@ -365,18 +334,14 @@ try {
                 $newUsdBalance = $client['usd_balance'] - $payment['total_amount'];
                 
                 // Update client balance
-                $updateClientStmt = $pdo->prepare("UPDATE clients SET usd_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                $updateClientStmt->execute([$newUsdBalance, $clientId, $tenant_id, $branch_id]);
-                
-                if ($log_errors) $error_log[] = "Updated client USD balance to {$newUsdBalance}";
+                 $updateClientStmt = $pdo->prepare("UPDATE clients SET usd_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                 $updateClientStmt->execute([$newUsdBalance, $clientId, $tenant_id, $branch_id]);
             } else {
                 $newAfsBalance = $client['afs_balance'] - $payment['total_amount'];
                 
                 // Update client balance
                 $updateClientStmt = $pdo->prepare("UPDATE clients SET afs_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                 $updateClientStmt->execute([$newAfsBalance, $clientId, $tenant_id, $branch_id]);
-                
-                if ($log_errors) $error_log[] = "Updated client AFS balance to {$newAfsBalance}";
             }
         }
         
@@ -387,8 +352,6 @@ try {
             // Update supplier balance
             $updateSupplierStmt = $pdo->prepare("UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
             $updateSupplierStmt->execute([$newSupplierBalance, $supplierId, $tenant_id, $branch_id]);
-            
-            if ($log_errors) $error_log[] = "Updated supplier balance to {$newSupplierBalance}";
         }
         
         // 4. RECORD DELETION AUDIT TRAIL
@@ -424,9 +387,6 @@ try {
         $deleteJvTransQuery = "DELETE FROM jv_transactions WHERE jv_payment_id = ? AND tenant_id = ? AND branch_id = ?";
         $deleteJvTransStmt = $pdo->prepare($deleteJvTransQuery);
         $deleteJvTransStmt->execute([$paymentId, $tenant_id, $branch_id]);
-        
-        $jvTransCount = $deleteJvTransStmt->rowCount();
-        if ($log_errors) $error_log[] = "Deleted {$jvTransCount} JV transactions associated with payment ID {$paymentId}";
     }
     
     // Delete the JV payment
@@ -438,30 +398,15 @@ try {
         $pdo->commit();
     }
     
-    // Log any errors for debugging
-    if ($log_errors && !empty($error_log)) {
-        $logMessage = "JV Payment Deletion Log for ID {$paymentId}:\n" . implode("\n", $error_log);
-        error_log($logMessage);
-    }
-    
     $_SESSION['success_message'] = "JV Payment deleted successfully!";
 } catch (Exception $e) {
-    // If there was an error, rollback any active transaction
-    if ($pdo->inTransaction()) {
-        $pdo->rollBack();
-    }
-    
-    // Log any collected errors along with the main exception
-    if ($log_errors && !empty($error_log)) {
-        $logMessage = "JV Payment Deletion Failed for ID {$paymentId}:\n" . implode("\n", $error_log);
-        $logMessage .= "\nException: " . $e->getMessage();
-        error_log($logMessage);
-    } else {
-        error_log("Error deleting JV payment: " . $e->getMessage());
-    }
-    
-    $_SESSION['error_message'] = "Error deleting JV payment: " . $e->getMessage();
-}
+     // If there was an error, rollback any active transaction
+     if ($pdo->inTransaction()) {
+         $pdo->rollBack();
+     }
+     
+     $_SESSION['error_message'] = "Error deleting JV payment: " . $e->getMessage();
+ }
 
 header('Location: jv_payments.php');
 exit();
