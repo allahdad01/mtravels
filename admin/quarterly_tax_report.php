@@ -726,6 +726,25 @@ $expense_categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
          container.innerHTML = html + '<div class="text-center text-muted"><i class="feather icon-loader"></i> Loading expenses...</div>';
 
+         // Currency symbol map
+         const currencySymbols = {
+             'USD': '$',
+             'AFS': '؋',
+             'AFN': '؋',
+             'EUR': '€',
+             'GBP': '£',
+             'JPY': '¥',
+             'INR': '₹',
+             'AED': 'د.إ',
+             'SAR': 'ر.س',
+             'QAR': 'ق.ر',
+             'KWD': 'د.ك',
+             'BHD': 'د.ب',
+             'OMR': 'ر.ع.',
+             'PKR': '₨',
+             'TRY': '₺'
+         };
+
          // Fetch expenses for all selected categories
          Promise.all(categories.map(category => {
              return fetch('handlers/quarterly_tax_handler.php?action=get_expenses', {
@@ -762,6 +781,7 @@ $expense_categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
              `;
 
              let totalAmount = 0;
+             let totalCurrency = 'USD'; // default
 
              results.forEach(result => {
                  const category = result.category;
@@ -773,7 +793,7 @@ $expense_categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
                              <h6 class="mb-3">
                                  <i class="feather icon-folder me-2"></i>
                                  <strong>${category}</strong>
-                                 <span class="badge bg-info ms-2">${expenses.length} ${expenses.length === 1 ? 'item' : 'items'}</span>
+                                 <span class="bg-info ms-2">${expenses.length} ${expenses.length === 1 ? 'item' : 'items'}</span>
                              </h6>
                  `;
 
@@ -799,16 +819,21 @@ $expense_categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
                      `;
 
                      let categoryAmount = 0;
+                     let expenseCurrency = 'USD'; // default
 
                      expenses.forEach((expense, idx) => {
                          const amount = parseFloat(expense.total_amount || 0);
+                         expenseCurrency = expense.currency || 'USD';
+                         totalCurrency = expenseCurrency; // Track currency for total
                          categoryAmount += amount;
+                         
+                         const currencySymbol = currencySymbols[expenseCurrency] || expenseCurrency;
                          
                          html += `
                              <tr>
                                  <td></td>
                                  <td><strong>${expense.category}</strong></td>
-                                 <td style="text-align: right;">$${amount.toFixed(2)}</td>
+                                 <td style="text-align: right;">${currencySymbol}${amount.toFixed(2)}</td>
                                  <td style="text-align: center;">
                                      <input type="checkbox" class="form-check-input expense-item-checkbox" 
                                             data-category="${category}" data-amount="${amount}" checked>
@@ -818,12 +843,13 @@ $expense_categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
                      });
 
                      totalAmount += categoryAmount;
+                     const currencySymbol = currencySymbols[expenseCurrency] || expenseCurrency;
 
                      html += `
                              </tbody>
                          </table>
                          <div style="text-align: right; padding: 10px 0; border-top: 1px solid #dee2e6;">
-                             <strong>Category Total:</strong> $${categoryAmount.toFixed(2)}
+                             <strong>Category Total:</strong> ${currencySymbol}${categoryAmount.toFixed(2)}
                          </div>
                      `;
                  }
@@ -834,9 +860,10 @@ $expense_categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
                  `;
              });
 
+             const totalCurrencySymbol = currencySymbols[totalCurrency] || totalCurrency;
              html += `
                  <div style="background: #f0f0f0; padding: 15px; border-radius: 8px; margin-top: 20px;">
-                     <h6><strong>Total Selected Expenses:</strong> $<span id="totalExpensesAmount">${totalAmount.toFixed(2)}</span></h6>
+                     <h6><strong>Total Selected Expenses:</strong> ${totalCurrencySymbol}<span id="totalExpensesAmount">${totalAmount.toFixed(2)}</span></h6>
                  </div>
                  
                  <div style="margin-top: 20px;">
@@ -1245,8 +1272,8 @@ $expense_categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <td>${ticket.issue_date}</td>
                     <td>${ticket.full_name}</td>
                     <td><small>${ticket.sector}</small></td>
-                    <td><span class="badge ${typeBadgeClass}">${typeLabel}</span></td>
-                    <td><span class="badge bg-secondary">${ticket.details.status}</span></td>
+                    <td><span class="${typeBadgeClass}">${typeLabel}</span></td>
+                    <td><span class="bg-secondary">${ticket.details.status}</span></td>
                     <td><code>${ticket.details.pnr}</code></td>
                     <td class="text-end">$${parseFloat(ticket.details.base_price).toFixed(2)}</td>
                     <td class="text-end fw-bold">$${parseFloat(soldPrice).toFixed(2)}</td>
@@ -1809,8 +1836,8 @@ $expense_categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 html += `<tr>
                 <td><strong>${report.quarter}</strong></td>
                 <td>${report.year}</td>
-                <td><span class="badge bg-primary">${supplierCount} supplier(s)</span></td>
-                <td><span class="badge bg-warning">${expenseCount} category(ies)</span></td>
+                <td><span class="bg-primary">${supplierCount} supplier(s)</span></td>
+                <td><span class="bg-warning">${expenseCount} category(ies)</span></td>
                 <td>${createdAt}</td>
                 <td>
                     <button class="btn btn-sm btn-info" onclick="viewGeneralReport(${report.id})">

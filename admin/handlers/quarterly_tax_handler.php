@@ -218,7 +218,7 @@ function getExpenses() {
     $branch_id = $_SESSION['branch_id'] ?? null;
 
     try {
-        $query = "SELECT e.id, e.date, e.description, e.amount as total_amount, ec.name as category
+        $query = "SELECT e.id, e.date, e.description, e.amount as total_amount, e.currency, ec.name as category
                   FROM expenses e
                   JOIN expense_categories ec ON e.category_id = ec.id
                   WHERE e.tenant_id = ? AND e.branch_id = ?";
