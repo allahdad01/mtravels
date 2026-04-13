@@ -407,11 +407,21 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 
 <!-- ── Reports ────────────────────────────────────────────────────────── -->
 <?php if (staffCanSeeMenu($user['role'])): ?>
-<li class="nav-item <?= navActive('report.php') ?>">
-    <a href="report.php" class="nav-link">
+<li class="nav-item pcoded-hasmenu <?= navTrigger('report.php', 'quarterly_tax_report.php') ?>">
+    <a href="javascript:" class="nav-link">
         <span class="pcoded-micon"><i class="feather icon-file"></i></span>
         <span class="pcoded-mtext"><?= __('reports') ?></span>
     </a>
+    <ul class="pcoded-submenu">
+        <li class="<?= navActive('report.php') ?>">
+            <a href="report.php"><?= __('reports') ?></a>
+        </li>
+        <?php if ($user['role'] === 'admin'): ?>
+        <li class="<?= navActive('quarterly_tax_report.php') ?>">
+            <a href="quarterly_tax_report.php"><i class="feather icon-calendar mr-2"></i>Quarterly Tax Report</a>
+        </li>
+        <?php endif; ?>
+    </ul>
 </li>
 <?php endif; ?>
 
