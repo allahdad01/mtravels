@@ -410,6 +410,30 @@ window.editBooking = function(id) {
                                         $('#editBookingForm [name="exchangeRate"]').val(booking.exchange_rate);
                                         $('#editBookingForm #remarks').val(booking.remarks);
 
+                                        // Add event listener for supplier change in edit modal
+                                        $('#editBookingForm #supplier_id').off('change').on('change', function() {
+                                            const supplierId = $(this).val();
+                                            if (supplierId) {
+                                                $.ajax({
+                                                    url: '../api/hotel/fetch_supplier_by_id.php',
+                                                    type: 'GET',
+                                                    data: { id: supplierId },
+                                                    dataType: 'json',
+                                                    success: function(supplier) {
+                                                        if (supplier && supplier.currency) {
+                                                            $('#editBookingForm #edit_currency').val(supplier.currency);
+                                                        }
+                                                    },
+                                                    error: function() {
+                                                        console.error('Error fetching supplier currency');
+                                                    }
+                                                });
+                                            } else {
+                                                // Reset currency if no supplier selected
+                                                $('#editBookingForm #edit_currency').val('');
+                                            }
+                                        });
+
                                         $('#editBookingModal').modal('show');
                                     },
                                     error: function() {

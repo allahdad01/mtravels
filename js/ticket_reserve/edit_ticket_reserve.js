@@ -120,6 +120,27 @@
         });
 }
 
+// Function to fetch and set supplier currency for ticket reserve
+function fetchEditSupplierCurrency(supplierId) {
+    if (supplierId) {
+        fetch(`../api/ticket/get_supplier_currency.php?supplier_id=${supplierId}`)
+            .then(response => response.json())
+            .then(data => {
+                const currInput = document.getElementById('editCurr');
+                if (data.currency) {
+                    currInput.value = data.currency;
+                } else {
+                    currInput.value = '';
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching currency:', error);
+            });
+    } else {
+        document.getElementById('editCurr').value = '';
+    }
+}
+
 // Add event listeners to update balances in real-time when editing base and sold prices
 document.addEventListener('DOMContentLoaded', function() {
     const editBaseInput = document.getElementById('editBase');
@@ -128,6 +149,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const editDiscountInput = document.getElementById('editDiscount');
     const editProInput = document.getElementById('editPro');
     const editTicketModal = document.getElementById('editTicketModal');
+    const editSupplierSelect = document.getElementById('editSupplier');
     
     // Skip initialization if elements are not present on the page
     if (!editBaseInput || !editSoldInput || !editTripTypeSelect) {
@@ -149,6 +171,14 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Show/hide return fields based on trip type
             toggleReturnFields();
+        });
+    }
+    
+    // Handle supplier change to fetch and update currency
+    if (editSupplierSelect) {
+        editSupplierSelect.addEventListener('change', function() {
+            const supplierId = this.value;
+            fetchEditSupplierCurrency(supplierId);
         });
     }
     
