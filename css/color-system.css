@@ -1,0 +1,133 @@
+/* ===================================
+   CENTRAL COLOR SYSTEM
+   Modern Cyan/Blue Palette
+   Defines all colors in one place
+   =================================== */
+
+:root {
+    /* ===== PRIMARY BRAND COLORS (Cyan/Blue Base) ===== */
+    /* Main accent colors - use these as primary UI elements */
+    --color-cyan-bright: #08fdd1;      /* Bright cyan - Primary accent, backgrounds */
+    --color-blue-primary: #0d6cf5;     /* Deep blue - Primary button, links */
+    --color-blue-sky: #1699f9;         /* Sky blue - Secondary element */
+    --color-cyan-aqua: #04d0e7;        /* Aqua cyan - Tertiary element */
+    --color-cyan-mint: #06ecd1;        /* Mint cyan - Hover states, badges */
+    
+    /* ===== GRADIENT COMBINATIONS ===== */
+    /* Use these for visual hierarchy and premium feel */
+    --gradient-blue-cyan: linear-gradient(45deg, #0d6cf5, #08fdd1);      /* Blue → Cyan */
+    --gradient-sky-aqua: linear-gradient(45deg, #1699f9, #04d0e7);       /* Sky → Aqua */
+    --gradient-mint-blue: linear-gradient(45deg, #06ecd1, #0d6cf5);      /* Mint → Blue */
+    --gradient-cyan-sky: linear-gradient(45deg, #08fdd1, #1699f9);       /* Cyan → Sky */
+    
+    /* ===== PRIMARY COLOR PALETTE ===== */
+    /* Darker shades for depth and contrast */
+    --color-primary: #0d6cf5;
+    --color-primary-dark: #0a4fa8;     /* For hover states */
+    --color-primary-light: #3f8cff;    /* For disabled/inactive states */
+    --color-primary-lighter: #e6f2ff;  /* For backgrounds */
+    
+    /* ===== SECONDARY COLOR PALETTE ===== */
+    /* Cyan/Mint family */
+    --color-secondary: #08fdd1;
+    --color-secondary-dark: #06c4a6;   /* For hover states */
+    --color-secondary-light: #4bfde5;  /* For variations */
+    --color-secondary-lighter: #e0fdf9; /* For backgrounds */
+    
+    /* ===== ACCENT COLORS ===== */
+    /* Supporting accent colors */
+    --color-accent-blue: #1699f9;
+    --color-accent-aqua: #04d0e7;
+    --color-accent-mint: #06ecd1;
+    
+    /* ===== STATUS COLORS (Override with modern palette) ===== */
+    --color-success: #10b981;          /* Green for success states */
+    --color-danger: #ef4444;           /* Red for errors/delete */
+    --color-warning: #f59e0b;          /* Amber for warnings */
+    --color-info: #06b6d4;             /* Cyan for info messages */
+    
+    /* ===== NEUTRAL/GRAY PALETTE ===== */
+    --color-text-primary: #1a1a1a;     /* Main text */
+    --color-text-secondary: #6c757d;   /* Secondary text */
+    --color-text-muted: #adb5bd;       /* Muted text */
+    --color-text-light: #e9ecef;       /* Very light text */
+    
+    --color-border: #dee2e6;
+    --color-border-light: #e9ecef;
+    --color-border-dark: #adb5bd;
+    
+    --color-bg-light: #f8f9fa;         /* Light background */
+    --color-bg-lighter: #ffffff;       /* White background */
+    --color-bg-dark: #f1f5f9;          /* Slightly darker bg */
+    --color-bg-panel: #f8f9fb;         /* Panel/card background */
+    
+    /* ===== SEMANTIC COLOR ALIASES ===== */
+    /* Use these for semantic meaning */
+    --color-link: var(--color-blue-primary);
+    --color-link-hover: var(--color-blue-sky);
+    --color-link-visited: var(--color-cyan-aqua);
+    
+    --color-focus: var(--color-cyan-bright);
+    --color-focus-ring: rgba(8, 253, 209, 0.2);
+    
+    /* ===== DARK MODE VARIANTS (For future use) ===== */
+    --color-bg-dark-primary: #0f1419;
+    --color-bg-dark-secondary: #1a2332;
+    --color-text-dark-primary: #ffffff;
+    --color-text-dark-secondary: #b0b8c1;
+}
+
+/* ===================================
+   COLOR UTILITY CLASSES
+   Quick access to palette colors
+   =================================== */
+
+/* Text Colors */
+.text-cyan { color: var(--color-cyan-bright); }
+.text-cyan-dark { color: var(--color-cyan-aqua); }
+.text-blue-primary { color: var(--color-blue-primary); }
+.text-blue-sky { color: var(--color-blue-sky); }
+
+/* Background Colors */
+.bg-cyan { background-color: var(--color-cyan-bright); }
+.bg-cyan-dark { background-color: var(--color-cyan-aqua); }
+.bg-blue-primary { background-color: var(--color-blue-primary); }
+.bg-blue-sky { background-color: var(--color-blue-sky); }
+
+/* Border Colors */
+.border-cyan { border-color: var(--color-cyan-bright); }
+.border-blue-primary { border-color: var(--color-blue-primary); }
+.border-blue-sky { border-color: var(--color-blue-sky); }
+
+/* Gradient Classes */
+.gradient-blue-cyan {
+    background: var(--gradient-blue-cyan);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.bg-gradient-blue-cyan { background: var(--gradient-blue-cyan); }
+.bg-gradient-sky-aqua { background: var(--gradient-sky-aqua); }
+.bg-gradient-mint-blue { background: var(--gradient-mint-blue); }
+.bg-gradient-cyan-sky { background: var(--gradient-cyan-sky); }
+
+/* ===================================
+   COLOR SWATCHES (Development Reference)
+   =================================== */
+
+.color-swatch {
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    margin-right: 8px;
+    vertical-align: middle;
+    border: 1px solid #ddd;
+}
+
+.swatch-cyan-bright { background-color: var(--color-cyan-bright); }
+.swatch-blue-primary { background-color: var(--color-blue-primary); }
+.swatch-blue-sky { background-color: var(--color-blue-sky); }
+.swatch-cyan-aqua { background-color: var(--color-cyan-aqua); }
+.swatch-cyan-mint { background-color: var(--color-cyan-mint); }

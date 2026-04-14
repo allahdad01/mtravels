@@ -692,6 +692,22 @@ body { background: var(--bg) !important; }
                                                    value="<?= htmlspecialchars($settings_map['smtp_from_name'] ?? '') ?>"
                                                    placeholder="Your Platform Name">
                                         </div>
+                                        <div class="form-group">
+                                            <label class="form-label">&nbsp;</label>
+                                            <div class="form-check">
+                                                <input type="checkbox" 
+                                                       class="form-check-input" 
+                                                       id="smtp_enabled" 
+                                                       name="smtp_enabled" 
+                                                       value="1"
+                                                       <?= !empty($settings_map['smtp_enabled']) ? 'checked' : '' ?>>
+                                                <label class="form-check-label" for="smtp_enabled">
+                                                    <strong>Enable SMTP Email</strong>
+                                                    <br>
+                                                    <small class="text-muted">Check to enable email sending via configured SMTP server</small>
+                                                </label>
+                                            </div>
+                                        </div>
                                     </div>
                                     <!-- Test Email Section -->
                                     <div class="form-grid" style="margin-top:16px">

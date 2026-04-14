@@ -253,6 +253,24 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
                     </div>
                 </div>
 
+                <div class="form-row" style="margin-top: 15px;">
+                    <div class="form-group col-md-12">
+                        <div class="custom-control custom-switch">
+                            <input type="checkbox" 
+                                   class="custom-control-input" 
+                                   id="smtp_enabled" 
+                                   name="smtp_enabled" 
+                                   value="1"
+                                   <?= (!empty($settings['smtp_enabled']) ? 'checked' : '') ?>>
+                            <label class="custom-control-label" for="smtp_enabled">
+                                <i class="feather icon-mail"></i><?php echo __('smtp_enabled'); ?>
+                                <br>
+                                <small style="color: #999;"><?php echo __('enable_to_send_emails'); ?></small>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
                 <hr class="form-divider">
 
                 <!-- Test email -->

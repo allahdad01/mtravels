@@ -5615,6 +5615,8 @@ return [
 'smtp_password' => 'SMTP Password',
 'from_email' => 'From Email',
 'from_name' => 'From Name',
+'smtp_enabled' => 'Enable SMTP Email',
+'enable_to_send_emails' => 'Enable to send transactional emails (invoices, confirmations, password resets, etc.)',
 'test_email_address' => 'Test Email Address',
 'send_test_email' => 'Send Test Email',
 'whatsapp_automation_settings' => 'WhatsApp Automation Settings',

@@ -6,6 +6,12 @@ function sendEmail($to, $subject, $body, $isHtml = true, $emailType = 'general',
     // Get SMTP settings - tenant-specific or platform fallback
     $smtpSettings = getTenantSMTPSettings($tenantId);
 
+    // Check if SMTP email sending is enabled
+    if (empty($smtpSettings['smtp_enabled'])) {
+        error_log("[SMTP DISABLED] Email not sent to {$to}. Subject: {$subject}");
+        return false;
+    }
+
     if (empty($smtpSettings['smtp_host']) || empty($smtpSettings['smtp_username']) || empty($smtpSettings['smtp_password'])) {
         return false;
     }

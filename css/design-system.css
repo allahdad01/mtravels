@@ -3,29 +3,32 @@
    UI/UX Polish & Consistency
    =================================== */
 
+/* Import centralized color system */
+@import url('./color-system.css');
+
 :root {
-    /* Primary Colors */
-    --color-primary: #4099ff;
-    --color-primary-dark: #2563eb;
-    --color-primary-light: #60b5ff;
-    --color-secondary: #2ed8b6;
-    --color-secondary-dark: #1abc9c;
+    /* Primary Colors - from Central Color System */
+    --color-primary: var(--color-blue-primary);
+    --color-primary-dark: var(--color-primary-dark);
+    --color-primary-light: var(--color-primary-light);
+    --color-secondary: var(--color-cyan-bright);
+    --color-secondary-dark: var(--color-secondary-dark);
     
-    /* Status Colors */
-    --color-success: #28a745;
-    --color-danger: #dc3545;
-    --color-warning: #ffc107;
-    --color-info: #17a2b8;
+    /* Status Colors - Using modern palette */
+    --color-success: #10b981;
+    --color-danger: #ef4444;
+    --color-warning: #f59e0b;
+    --color-info: var(--color-cyan-aqua);
     --color-light: #f8f9fa;
     --color-dark: #343a40;
     
-    /* Neutral Colors */
-    --color-text-primary: #1a1a1a;
-    --color-text-secondary: #6c757d;
-    --color-text-muted: #adb5bd;
-    --color-border: #dee2e6;
-    --color-bg-light: #f8f9fa;
-    --color-bg-lighter: #ffffff;
+    /* Neutral Colors - from Central Color System */
+    --color-text-primary: var(--color-text-primary);
+    --color-text-secondary: var(--color-text-secondary);
+    --color-text-muted: var(--color-text-muted);
+    --color-border: var(--color-border);
+    --color-bg-light: var(--color-bg-light);
+    --color-bg-lighter: var(--color-bg-lighter);
     
     /* Shadows - Elevation System */
     --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);

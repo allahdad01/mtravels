@@ -5056,6 +5056,8 @@ return [
 'smtp_password' => 'د SMTP پټنوم',
 'from_email' => 'د لېږونکي برېښنالیک',
 'from_name' => 'د لېږونکي نوم',
+'smtp_enabled' => 'د SMTP برېښنالیک فعال کړئ',
+'enable_to_send_emails' => 'د تراکنشن برېښنالیکونو (صورتحساب، تصدیق، پاس ورد بازنشانی، او غیره) لیږلو لپاره فعال کړئ',
 'test_email_address' => 'د ازمایښتي برېښنالیک پته',
 'send_test_email' => 'ازمایښتي برېښنالیک ولېږئ',
 'whatsapp_automation_settings' => 'د واټساپ اتومات تنظیمات',

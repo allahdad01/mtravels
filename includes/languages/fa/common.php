@@ -5183,6 +5183,8 @@ return [
 'smtp_password' => 'رمز عبور SMTP',
 'from_email' => 'ایمیل ارسال‌کننده',
 'from_name' => 'نام ارسال‌کننده',
+'smtp_enabled' => 'فعال‌سازی ایمیل SMTP',
+'enable_to_send_emails' => 'برای ارسال ایمیل‌های تراکنشی (صورتحساب، تایید، بازنشانی رمز ورود، و غیره) فعال کنید',
 'test_email_address' => 'آدرس ایمیل آزمایشی',
 'send_test_email' => 'ارسال ایمیل آزمایشی',
 'whatsapp_automation_settings' => 'تنظیمات اتومات واتساپ',

@@ -56,6 +56,7 @@ $smtp_username = $_POST['smtp_username'] ?? '';
 $smtp_password = $_POST['smtp_password'] ?? '';
 $smtp_from_email = $_POST['smtp_from_email'] ?? '';
 $smtp_from_name = $_POST['smtp_from_name'] ?? '';
+$smtp_enabled = isset($_POST['smtp_enabled']) && $_POST['smtp_enabled'] === '1' ? 1 : 0;
 
 // Handle file uploads
 $platform_logo = $_FILES['platform_logo'] ?? null;
@@ -222,6 +223,7 @@ if (empty($errors)) {
         ['key' => 'smtp_password', 'value' => $smtp_password, 'type' => 'string', 'description' => 'SMTP authentication password'],
         ['key' => 'smtp_from_email', 'value' => $smtp_from_email, 'type' => 'string', 'description' => 'Email address to send from'],
         ['key' => 'smtp_from_name', 'value' => $smtp_from_name, 'type' => 'string', 'description' => 'Name to display in sent emails'],
+        ['key' => 'smtp_enabled', 'value' => $smtp_enabled, 'type' => 'integer', 'description' => 'Enable/Disable SMTP email sending'],
     ];
 
     // Handle file uploads - only add to settings if new files were uploaded
@@ -265,7 +267,8 @@ if (empty($errors)) {
         'smtp_encryption' => $smtp_encryption,
         'smtp_username' => $smtp_username,
         'smtp_from_email' => $smtp_from_email,
-        'smtp_from_name' => $smtp_from_name
+        'smtp_from_name' => $smtp_from_name,
+        'smtp_enabled' => $smtp_enabled
     ]);
     $ip_address = $_SERVER['REMOTE_ADDR'];
     $stmt->execute([$user_id, $details, $ip_address]);

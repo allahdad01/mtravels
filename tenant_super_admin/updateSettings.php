@@ -34,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $smtp_password = $_POST['smtp_password'] ?? '';
     $smtp_from_email = $_POST['smtp_from_email'] ?? '';
     $smtp_from_name = $_POST['smtp_from_name'] ?? '';
+    $smtp_enabled = isset($_POST['smtp_enabled']) && $_POST['smtp_enabled'] === '1' ? 1 : 0;
 
     // Validate required fields
     if (empty($agency_name) || empty($title) || empty($phone) || empty($email) || empty($address)) {
@@ -42,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Get current settings for activity log
-    $getCurrentSettingsQuery = "SELECT agency_name, title, phone, email, address, logo, smtp_host, smtp_port, smtp_encryption, smtp_username, smtp_from_email, smtp_from_name FROM settings WHERE id = ? AND tenant_id = ?";
+    $getCurrentSettingsQuery = "SELECT agency_name, title, phone, email, address, logo, smtp_host, smtp_port, smtp_encryption, smtp_username, smtp_from_email, smtp_from_name, smtp_enabled FROM settings WHERE id = ? AND tenant_id = ?";
     $getCurrentSettingsStmt = $pdo->prepare($getCurrentSettingsQuery);
     $getCurrentSettingsStmt->execute([$id, $tenant_id]);
     $oldSettings = $getCurrentSettingsStmt->fetch(PDO::FETCH_ASSOC);
@@ -71,13 +72,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $query = "
         UPDATE settings SET
             agency_name = ?, title = ?, phone = ?, email = ?, address = ?, logo = ?,
-            smtp_host = ?, smtp_port = ?, smtp_encryption = ?, smtp_username = ?, smtp_password = ?, smtp_from_email = ?, smtp_from_name = ?
+            smtp_host = ?, smtp_port = ?, smtp_encryption = ?, smtp_username = ?, smtp_password = ?, smtp_from_email = ?, smtp_from_name = ?, smtp_enabled = ?
         WHERE id = ? AND tenant_id = ?
     ";
 
     $stmt = $pdo->prepare($query);
     $stmt->execute([$agency_name, $title, $phone, $email, $address, $logo_path,
-                     $smtp_host, $smtp_port, $smtp_encryption, $smtp_username, $smtp_password, $smtp_from_email, $smtp_from_name,
+                     $smtp_host, $smtp_port, $smtp_encryption, $smtp_username, $smtp_password, $smtp_from_email, $smtp_from_name, $smtp_enabled,
                      $id, $tenant_id]);
 
     if ($stmt->rowCount() > 0) {
@@ -100,7 +101,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'smtp_encryption' => $oldSettings['smtp_encryption'] ?? '',
             'smtp_username' => $oldSettings['smtp_username'] ?? '',
             'smtp_from_email' => $oldSettings['smtp_from_email'] ?? '',
-            'smtp_from_name' => $oldSettings['smtp_from_name'] ?? ''
+            'smtp_from_name' => $oldSettings['smtp_from_name'] ?? '',
+            'smtp_enabled' => $oldSettings['smtp_enabled'] ?? 0
         ]);
 
         // Create new values JSON
@@ -117,7 +119,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'smtp_encryption' => $smtp_encryption,
             'smtp_username' => $smtp_username,
             'smtp_from_email' => $smtp_from_email,
-            'smtp_from_name' => $smtp_from_name
+            'smtp_from_name' => $smtp_from_name,
+            'smtp_enabled' => $smtp_enabled
         ]);
         
         // Insert activity log

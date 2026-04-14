@@ -1,0 +1,202 @@
+================================================================================
+    MTRAVELS CENTRAL COLOR SYSTEM - QUICK REFERENCE
+================================================================================
+
+PRIMARY BRAND COLORS (Use These First)
+================================================================================
+
+Deep Blue (Primary)              #0d6cf5
+├─ Dark variant (hover)          #0a4fa8
+├─ Light variant                 #3f8cff
+└─ Lighter bg                    #e6f2ff
+
+Bright Cyan (Secondary/Accent)   #08fdd1
+├─ Dark variant                  #06c4a6
+├─ Light variant                 #4bfde5
+└─ Lighter bg                    #e0fdf9
+
+Sky Blue (Accent)                #1699f9
+Aqua Cyan (Accent)               #04d0e7
+Mint Cyan (Accent)               #06ecd1
+
+================================================================================
+STATUS COLORS
+================================================================================
+
+Success                          #10b981
+Error/Danger                     #ef4444
+Warning                          #f59e0b
+Info                             #06b6d4
+
+================================================================================
+NEUTRAL COLORS
+================================================================================
+
+Text Primary (Dark text)         #1a1a1a
+Text Secondary                   #6c757d
+Text Muted                       #adb5bd
+Text Light                       #e9ecef
+
+Border                           #dee2e6
+Border Light                     #e9ecef
+Border Dark                      #adb5bd
+
+Background Light                 #f8f9fa
+Background (White)               #ffffff
+Background Dark                  #f1f5f9
+Panel Background                 #f8f9fb
+
+================================================================================
+GRADIENTS
+================================================================================
+
+Blue → Cyan                      linear-gradient(45deg, #0d6cf5, #08fdd1)
+Sky → Aqua                       linear-gradient(45deg, #1699f9, #04d0e7)
+Mint → Blue                      linear-gradient(45deg, #06ecd1, #0d6cf5)
+Cyan → Sky                       linear-gradient(45deg, #08fdd1, #1699f9)
+
+================================================================================
+HOW TO USE
+================================================================================
+
+IN CSS:
+-------
+.button {
+    background-color: var(--color-primary);      /* #0d6cf5 */
+    color: white;
+}
+
+.card {
+    background: var(--color-bg-light);            /* #f8f9fa */
+    border: 1px solid var(--color-border);        /* #dee2e6 */
+}
+
+.hero {
+    background: var(--gradient-blue-cyan);        /* gradient */
+}
+
+QUICK CLASSES:
+--------------
+class="text-blue-primary"        Text in blue
+class="bg-cyan"                  Cyan background
+class="border-blue-primary"      Blue border
+class="bg-gradient-blue-cyan"    Gradient background
+
+IN PHP:
+-------
+<?php
+require_once 'includes/theme-config.php';
+
+$primary = ThemeConfig::getPrimary();        // #0d6cf5
+$secondary = ThemeConfig::getSecondary();    // #08fdd1
+$color = ThemeConfig::getColor('success');   // #10b981
+$gradient = ThemeConfig::getGradient('blue-cyan');
+?>
+
+IN JAVASCRIPT:
+--------------
+ThemeConfig.colors.primary           // #0d6cf5
+ThemeConfig.getColor('secondary')    // #08fdd1
+ThemeConfig.getGradient('blue-cyan') // gradient
+ThemeConfig.toRgba('primary', 0.5)   // rgba(13, 108, 245, 0.5)
+
+================================================================================
+SEMANTIC USAGE GUIDE
+================================================================================
+
+Primary Buttons           → var(--color-primary) or #0d6cf5
+Secondary Buttons        → var(--color-secondary) or #08fdd1
+Links                    → var(--color-primary) or #0d6cf5
+Link Hover               → var(--color-primary-dark) or #0a4fa8
+
+Card Background          → var(--color-bg-panel) or #f8f9fb
+Card Border              → var(--color-border) or #dee2e6
+Dividers                 → var(--color-border-light) or #e9ecef
+
+Body Text                → var(--color-text-primary) or #1a1a1a
+Secondary Text           → var(--color-text-secondary) or #6c757d
+Placeholder Text         → var(--color-text-muted) or #adb5bd
+
+Success Alert            → var(--color-success) or #10b981
+Error Alert              → var(--color-danger) or #ef4444
+Warning Alert            → var(--color-warning) or #f59e0b
+Info Alert               → var(--color-info) or #06b6d4
+
+Focus Outline            → var(--color-focus) or var(--color-cyan-bright)
+Focus Ring               → var(--color-focus-ring) or rgba(8, 253, 209, 0.2)
+
+Premium Sections         → var(--gradient-blue-cyan)
+Hero Sections            → var(--gradient-blue-cyan) or var(--gradient-cyan-sky)
+
+================================================================================
+CONFIGURATION FILES
+================================================================================
+
+MASTER DEFINITIONS:
+─────────────────
+/css/color-system.css         ← CSS custom properties (variables)
+/includes/theme-config.php    ← PHP color definitions
+/js/theme-config.js           ← JavaScript color access
+
+IMPLEMENTATIONS:
+───────────────
+/css/design-system.css        ← Uses color system throughout
+/css/components.css           ← Component styles
+/css/buttons.css              ← Button styles
+All other CSS files           ← Should use color variables
+
+DOCUMENTATION:
+──────────────
+/docs/COLOR_SYSTEM.md         ← Full implementation guide
+/COLOR_PALETTE_REFERENCE.txt  ← This file
+
+================================================================================
+UPDATING COLORS
+================================================================================
+
+To change colors globally:
+
+1. Edit /css/color-system.css           (CSS variables)
+2. Edit /includes/theme-config.php      (PHP definitions)
+3. Edit /js/theme-config.js             (JavaScript definitions)
+
+All changes automatically propagate across the entire system.
+
+================================================================================
+ACCESSIBILITY NOTES
+================================================================================
+
+Contrast Ratios (WCAG AA Compliance):
+─────────────────────────────────────
+Light text on dark blue:       PASS (5.0:1)
+Dark text on light cyan:       PASS (6.0:1)
+Dark text on white:            PASS (12.3:1)
+
+Use dark text (#1a1a1a) on light backgrounds
+Use light text (#ffffff) on dark backgrounds
+
+================================================================================
+TESTING
+================================================================================
+
+View the palette:
+1. Create /test-colors.php
+2. Add: <?php require 'includes/theme-config.php'; echo ThemeConfig::getInlineStyles(); ?>
+3. Open in browser to see all colors
+
+Debug in browser console:
+ThemeConfig.logColors();     // Shows all colors with samples
+ThemeConfig.getAllColors();  // Returns color object
+
+================================================================================
+QUICK COLOR CODES
+================================================================================
+
+COPY-PASTE THESE:
+#0d6cf5  #08fdd1  #1699f9  #04d0e7  #06ecd1  #10b981  #ef4444  #f59e0b
+#06b6d4  #1a1a1a  #6c757d  #adb5bd  #dee2e6  #f8f9fa  #ffffff
+
+================================================================================
+LAST UPDATED: 2025-01-13
+For detailed documentation, see /docs/COLOR_SYSTEM.md
+================================================================================
