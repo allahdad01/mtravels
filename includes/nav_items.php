@@ -60,9 +60,6 @@ if (!function_exists('navTrigger')) {
         <li class="<?= navActive('chat.php') ?>">
             <a href="../chat.php"><i class="feather icon-users"></i> <?= __('chat') ?></a>
         </li>
-        <li class="<?= navActive('send_messages.php') ?>">
-            <a href="send_messages.php"><i class="feather icon-message-circle"></i> <?= __('send_messages') ?></a>
-        </li>
         <li class="<?= navActive('chat_settings.php') ?>">
             <a href="chat_settings.php"><i class="feather icon-settings"></i> Chat Settings</a>
         </li>
