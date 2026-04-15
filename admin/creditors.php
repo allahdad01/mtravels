@@ -516,15 +516,34 @@ try {
                                                             <span><?= __('print') ?></span>
                                                         </a>
                                                         <button class="cc-btn cc-btn-info" data-toggle="modal" data-target="#editCreditorModal_<?php echo h($creditor['id']); ?>" title="<?= __('edit_creditor') ?>" data-bs-toggle="tooltip" data-placement="top">
-                                                            <i class="fas fa-edit"></i>
-                                                            <span><?= __('edit') ?></span>
-                                                        </button>
-                                                        <?php if ($isAdmin): ?>
-                                                        <button class="cc-btn cc-btn-danger" data-toggle="modal" data-target="#deleteCreditorModal_<?php echo h($creditor['id']); ?>" title="<?= __('delete_creditor') ?>" data-bs-toggle="tooltip" data-placement="top">
-                                                            <i class="fas fa-trash"></i>
-                                                            <span><?= __('delete') ?></span>
-                                                        </button>
-                                                        <?php endif; ?>
+                                                             <i class="fas fa-edit"></i>
+                                                             <span><?= __('edit') ?></span>
+                                                         </button>
+                                                         <?php if ($creditor['status'] === 'active'): ?>
+                                                         <form method="POST" style="display:inline;">
+                                                             <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
+                                                             <input type="hidden" name="creditor_id" value="<?php echo h($creditor['id']); ?>">
+                                                             <button type="submit" name="deactivate_creditor" value="1" class="cc-btn cc-btn-warning" title="<?= __('deactivate_creditor') ?>" data-bs-toggle="tooltip" data-placement="top" onclick="return confirm('<?= __('are_you_sure_you_want_to_deactivate_this_creditor') ?>');">
+                                                                 <i class="fas fa-ban"></i>
+                                                                 <span><?= __('deactivate') ?></span>
+                                                             </button>
+                                                         </form>
+                                                         <?php else: ?>
+                                                         <form method="POST" style="display:inline;">
+                                                             <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
+                                                             <input type="hidden" name="creditor_id" value="<?php echo h($creditor['id']); ?>">
+                                                             <button type="submit" name="activate_creditor" value="1" class="cc-btn cc-btn-info" title="<?= __('activate_creditor') ?>" data-bs-toggle="tooltip" data-placement="top">
+                                                                 <i class="fas fa-check-circle"></i>
+                                                                 <span><?= __('activate') ?></span>
+                                                             </button>
+                                                         </form>
+                                                         <?php endif; ?>
+                                                         <?php if ($isAdmin): ?>
+                                                         <button class="cc-btn cc-btn-danger" data-toggle="modal" data-target="#deleteCreditorModal_<?php echo h($creditor['id']); ?>" title="<?= __('delete_creditor') ?>" data-bs-toggle="tooltip" data-placement="top">
+                                                             <i class="fas fa-trash"></i>
+                                                             <span><?= __('delete') ?></span>
+                                                         </button>
+                                                         <?php endif; ?>
                                                     </div>
                                                 </div>
                                                 <?php endforeach; ?>

@@ -401,6 +401,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pay'])) {
         $_SESSION['error_message'] = "Error processing payment: " . $e->getMessage();
         header('Location: ' . $redirect_url);
         exit();
-    }
-}
-?>
+        }
+        }
+
+        // Handle deactivate debtor
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deactivate_debtor'])) {
+        $debtor_id = isset($_POST['debtor_id']) ? intval($_POST['debtor_id']) : null;
+        
+        if (!$debtor_id) {
+        $_SESSION['error_message'] = __("invalid_debtor");
+        header('Location: ' . $redirect_url);
+        exit();
+        }
+        
+        try {
+        $stmt = $pdo->prepare("UPDATE debtors SET status = 'inactive' WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $debtor_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+        $stmt->execute();
+        
+        $_SESSION['success_message'] = __("debtor_deactivated_successfully");
+        header('Location: ' . $redirect_url);
+        exit();
+        } catch (Exception $e) {
+        $_SESSION['error_message'] = __("error_deactivating_debtor") . ": " . $e->getMessage();
+        header('Location: ' . $redirect_url);
+        exit();
+        }
+        }
+
+        // Handle activate debtor
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['activate_debtor'])) {
+        $debtor_id = isset($_POST['debtor_id']) ? intval($_POST['debtor_id']) : null;
+        
+        if (!$debtor_id) {
+        $_SESSION['error_message'] = __("invalid_debtor");
+        header('Location: ' . $redirect_url);
+        exit();
+        }
+        
+        try {
+        $stmt = $pdo->prepare("UPDATE debtors SET status = 'active' WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $debtor_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+        $stmt->execute();
+        
+        $_SESSION['success_message'] = __("debtor_activated_successfully");
+        header('Location: ' . $redirect_url);
+        exit();
+        } catch (Exception $e) {
+        $_SESSION['error_message'] = __("error_activating_debtor") . ": " . $e->getMessage();
+        header('Location: ' . $redirect_url);
+        exit();
+        }
+        }
+
+        ?>

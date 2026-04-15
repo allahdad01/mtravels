@@ -390,9 +390,30 @@ try {
                                                                      <button class="dc-btn dc-btn-info" data-toggle="modal" data-target="#editDebtorModal<?php echo h($debtor['id']); ?>" title="<?= __('edit_debtor') ?>" data-bs-toggle="tooltip" data-placement="top">
                                                                         <i class="fas fa-edit"></i>
                                                                         <span><?= __('edit') ?></span>
-                                                                    </button>
-                                                                    <?php if ($isAdmin): ?>
-                                                                    <button class="dc-btn dc-btn-danger" onclick="if(confirm('<?= __('are_you_sure') ?>')){ document.querySelector('form.delete-form-<?php echo h($debtor['id']); ?>').submit(); }" title="<?= __('delete_debtor') ?>" data-bs-toggle="tooltip" data-placement="top">
+                                                                     </button>
+                                                                     <?php if ($debtor['status'] === 'active'): ?>
+                                                                     <form method="POST" style="display:inline;">
+                                                                          <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
+                                                                          <input type="hidden" name="debtor_id" value="<?php echo h($debtor['id']); ?>">
+                                                                          <input type="hidden" name="action" value="deactivate_debtor">
+                                                                          <button type="submit" class="dc-btn dc-btn-warning" title="<?= __('deactivate_debtor') ?>" data-bs-toggle="tooltip" data-placement="top" onclick="return confirm('<?= __('are_you_sure_you_want_to_deactivate_this_debtor') ?>');">
+                                                                              <i class="fas fa-ban"></i>
+                                                                              <span><?= __('deactivate') ?></span>
+                                                                          </button>
+                                                                      </form>
+                                                                     <?php else: ?>
+                                                                     <form method="POST" style="display:inline;">
+                                                                          <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
+                                                                          <input type="hidden" name="debtor_id" value="<?php echo h($debtor['id']); ?>">
+                                                                          <input type="hidden" name="action" value="activate_debtor">
+                                                                          <button type="submit" class="dc-btn dc-btn-info" title="<?= __('activate_debtor') ?>" data-bs-toggle="tooltip" data-placement="top">
+                                                                              <i class="fas fa-check-circle"></i>
+                                                                              <span><?= __('activate') ?></span>
+                                                                          </button>
+                                                                      </form>
+                                                                     <?php endif; ?>
+                                                                     <?php if ($isAdmin): ?>
+                                                                     <button class="dc-btn dc-btn-danger" onclick="if(confirm('<?= __('are_you_sure') ?>')){ document.querySelector('form.delete-form-<?php echo h($debtor['id']); ?>').submit(); }" title="<?= __('delete_debtor') ?>" data-bs-toggle="tooltip" data-placement="top">
                                                                          <i class="fas fa-trash"></i>
                                                                          <span><?= __('delete') ?></span>
                                                                      </button>

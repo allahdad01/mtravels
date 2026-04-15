@@ -810,4 +810,58 @@ $name = isset($_POST['name']) ? DbSecurity::validateInput($_POST['name'], 'strin
 // Validate add_creditor
 $add_creditor = isset($_POST['add_creditor']) ? DbSecurity::validateInput($_POST['add_creditor'], 'string', ['maxlength' => 255]) : null;
 
+// Handle deactivate creditor
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deactivate_creditor'])) {
+    $creditor_id = isset($_POST['creditor_id']) ? intval($_POST['creditor_id']) : null;
+    
+    if (!$creditor_id) {
+        $_SESSION['error_message'] = __("invalid_creditor");
+        header('Location: ' . $redirect_url);
+        exit();
+    }
+    
+    try {
+        $stmt = $pdo->prepare("UPDATE creditors SET status = 'inactive' WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $creditor_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+        $stmt->execute();
+        
+        $_SESSION['success_message'] = __("creditor_deactivated_successfully");
+        header('Location: ' . $redirect_url);
+        exit();
+    } catch (Exception $e) {
+        $_SESSION['error_message'] = __("error_deactivating_creditor") . ": " . $e->getMessage();
+        header('Location: ' . $redirect_url);
+        exit();
+    }
+}
+
+// Handle activate creditor
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['activate_creditor'])) {
+    $creditor_id = isset($_POST['creditor_id']) ? intval($_POST['creditor_id']) : null;
+    
+    if (!$creditor_id) {
+        $_SESSION['error_message'] = __("invalid_creditor");
+        header('Location: ' . $redirect_url);
+        exit();
+    }
+    
+    try {
+        $stmt = $pdo->prepare("UPDATE creditors SET status = 'active' WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->bindParam(1, $creditor_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+        $stmt->execute();
+        
+        $_SESSION['success_message'] = __("creditor_activated_successfully");
+        header('Location: ' . $redirect_url);
+        exit();
+    } catch (Exception $e) {
+        $_SESSION['error_message'] = __("error_activating_creditor") . ": " . $e->getMessage();
+        header('Location: ' . $redirect_url);
+        exit();
+    }
+}
+
 ?>

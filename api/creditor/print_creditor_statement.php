@@ -74,15 +74,19 @@ $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // For creditors: debit = payment made to creditor, credit = amount owed added
 $total_paid = 0;
-$initial_balance = $creditor['balance']; // start from stored balance
+$initial_balance = 0;
 
+// Calculate totals: credit = initial balance added, debit = payments made
 foreach ($transactions as $transaction) {
-    if ($transaction['transaction_type'] == 'debit') {
-        $total_paid += $transaction['amount'];
-    } else {
+    if ($transaction['transaction_type'] === 'credit') {
+        // Credit transactions add to initial balance
         $initial_balance += $transaction['amount'];
+    } elseif ($transaction['transaction_type'] === 'debit') {
+        // Debit transactions are payments made
+        $total_paid += $transaction['amount'];
     }
 }
+
 
 function getCurrencySymbol($currency) {
     switch ($currency) {
