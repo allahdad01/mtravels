@@ -957,10 +957,8 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
         </div>
     </div>
 </div>
-
+<?php include '../includes/admin_footer.php'; ?>
 <!-- ALL MODALS — completely untouched -->
-<?php include '../modals/accounts/add_main_account_modal.php'; ?>
-<?php include '../modals/accounts/edit_main_account_modal.php'; ?>
 <?php include '../modals/accounts/fund_supplier_modal.php'; ?>
 <?php include '../modals/accounts/withdraw_supplier_modal.php'; ?>
 <?php include '../modals/accounts/bonus_supplier_modal.php'; ?>
@@ -972,6 +970,8 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
 <?php include '../modals/accounts/remarks_modal.php'; ?>
 <?php include '../modals/accounts/edit_transaction_modal.php'; ?>
 <?php include '../modals/accounts/edit_receipt_modal.php'; ?>
+<?php include '../modals/accounts/edit_main_account_modal.php'; ?>
+<?php include '../modals/accounts/add_main_account_modal.php'; ?>
 
 <!-- Hidden form for transaction deletion — untouched -->
 <form id="deleteTransactionForm" class="d-none">
@@ -1181,6 +1181,6 @@ $(document).ready(function() {
 });
 </script>
 
-<?php include '../includes/admin_footer.php'; ?>
+
 </body>
 </html>

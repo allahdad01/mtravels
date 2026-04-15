@@ -53,7 +53,7 @@
                                         <div class="input-group-prepend">
                                             <span class="input-group-text bg-light"><i class="feather icon-dollar-sign"></i></span>
                                         </div>
-                                            <select class="form-control" id="editTransactionCurrency" name="currency" required>
+                                            <select class="form-control" id="editTransactionCurrency" name="currency" required disabled>
                                                 <option value="USD"><?= __('usd') ?> ($)</option>
                                                 <option value="AFS"><?= __('afs') ?> (؋)</option>
                                                 <option value="EUR"><?= __('eur') ?> (€)</option>
@@ -70,7 +70,7 @@
                                 <div class="input-group-prepend">
                                     <span class="input-group-text bg-light"><i class="feather icon-repeat"></i></span>
                                 </div>
-                                <select class="form-control" id="editTransactionTypeSelect" name="type" required>
+                                <select class="form-control" id="editTransactionTypeSelect" name="type" required disabled>
                                     <option value="credit"><?= __('credit') ?> (<?= __('add_funds') ?>)</option>
                                     <option value="debit"><?= __('debit') ?> (<?= __('remove_funds') ?>)</option>
                                 </select>
