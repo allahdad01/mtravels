@@ -232,7 +232,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
             <i class="feather icon-repeat stat-icon"></i>
         </div>
         <div class="stat-card darham">
-            <div class="stat-label">Total Darham</div>
+            <div class="stat-label">Total AED</div>
             <div class="stat-value">Ø¯.Ø¥ <?= number_format($summary['total_darham'] ?? 0, 2) ?></div>
             <i class="feather icon-package stat-icon"></i>
         </div>
@@ -394,7 +394,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                 <div class="ms-cell"><div class="ms-label">USD</div><div class="ms-val usd-c" id="usd-balance">â€”</div></div>
                 <div class="ms-cell"><div class="ms-label">AFS</div><div class="ms-val afs-c" id="afs-balance">â€”</div></div>
                 <div class="ms-cell"><div class="ms-label">Euro</div><div class="ms-val euro-c" id="euro-balance">â€”</div></div>
-                <div class="ms-cell"><div class="ms-label">Darham</div><div class="ms-val darham-c" id="darham-balance">â€”</div></div>
+                <div class="ms-cell"><div class="ms-label">AED</div><div class="ms-val darham-c" id="darham-balance">â€”</div></div>
             </div>
             <div class="modal-body">
                 <div class="modal-tabs">

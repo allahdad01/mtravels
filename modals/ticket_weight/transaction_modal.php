@@ -119,7 +119,7 @@
                         <div class="col-md-3" id="darhamSection" style="display: none;">
                             <div class="card border-success">
                                 <div class="card-body text-center p-3">
-                                    <h6 class="card-title text-success mb-2">DARHAM</h6>
+                                    <h6 class="card-title text-success mb-2">AED</h6>
                                     <div class="mb-2">
                                         <small class="text-muted d-block"><?= __('paid') ?>:</small>
                                         <strong id="paidAmountDARHAM" class="text-success">DARHAM 0.00</strong>
@@ -172,7 +172,7 @@
                                                 <option value="USD">USD - US Dollar</option>
                                                 <option value="AFS">AFS - Afghan Afghani</option>
                                                 <option value="EUR">EUR - Euro</option>
-                                                <option value="DARHAM">DARHAM - UAE Darham</option>
+                                                <option value="DARHAM">DARHAM - AED</option>
                                             </select>
                                         </div>
                                     </div>

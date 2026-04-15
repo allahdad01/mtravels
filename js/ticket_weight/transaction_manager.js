@@ -241,7 +241,8 @@ function loadTransactions(weightId) {
                         if (hasCurrency[cur]) {
                             const paid = transactions.filter(t => t.currency === cur)
                                                      .reduce((a,b) => a + parseFloat(b.amount), 0);
-                            $(`#paidAmount${cur}`).text(`${cur} ${paid.toFixed(2)}`);
+                            const displayCur = getCurrencyDisplay(cur);
+                            $(`#paidAmount${cur}`).text(`${displayCur} ${paid.toFixed(2)}`);
 
                             let remaining = 0;
                             if (cur === baseCurrency) {
@@ -254,7 +255,7 @@ function loadTransactions(weightId) {
                                 remaining = 'N/A';
                             }
 
-                            $(`#remainingAmount${cur}`).text(`${cur} ${typeof remaining==='number'?remaining.toFixed(2):remaining}`);
+                            $(`#remainingAmount${cur}`).text(`${displayCur} ${typeof remaining==='number'?remaining.toFixed(2):remaining}`);
                         }
                     });
 
@@ -620,8 +621,8 @@ const remaining = convert(remainingInBase, baseCurrency, curr);
 const sectionId = `#${curr.toLowerCase()}Section`;
 if (paid > 0 || remaining > 0) $(sectionId).show();
 
-$(`#paidAmount${curr}`).text(`${curr} ${paid.toFixed(2)}`);
-$(`#remainingAmount${curr}`).text(`${curr} ${remaining.toFixed(2)}`);
+$(`#paidAmount${curr}`).text(`${getCurrencyDisplay(curr)} ${paid.toFixed(2)}`);
+$(`#remainingAmount${curr}`).text(`${getCurrencyDisplay(curr)} ${remaining.toFixed(2)}`);
 });
 }
 

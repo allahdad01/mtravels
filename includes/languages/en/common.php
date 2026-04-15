@@ -359,8 +359,8 @@ return [
     'add_account' => 'Add Account',
     'account' => 'Account',
     'euro_balance' => 'Euro Balance',
-    'darham_balance' => 'Dirham Balance',
-    'darham' => 'Dirham',
+    'darham_balance' => 'AED Balance',
+    'darham' => 'AED',
     'fund' => 'Fund',
     'last_updated' => 'Last Updated',
     'view_transactions' => 'View Transactions',
@@ -788,7 +788,7 @@ return [
     'usd' => 'USD',
     'eur' => 'EUR',
     'afs' => 'AFS',
-    'darham' => 'DARHAM',
+    'darham' => 'AED',
 
     // Customer Detail Page
     'customer_information' => 'Customer Information',

@@ -78,31 +78,6 @@
                         </select>
                     </div>
                     </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                    <div class="mb-3">
-                        <label for="usd_balance" class="form-label"><?= __('usd_balance') ?></label>
-                                <div class="input-group">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text bg-light"><i class="fas fa-dollar-sign"></i></span>
-                                    </div>
-                                    <input type="number" id="usd_balance" name="usd_balance" class="form-control" step="0.01" placeholder="<?= __('enter_usd_balance') ?>" required>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                    <div class="mb-3">
-                        <label for="afs_balance" class="form-label"><?= __('afs_balance') ?></label>
-                                <div class="input-group">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text bg-light"><i class="fas fa-money-bill-wave"></i></span>
-                                    </div>
-                                    <input type="number" id="afs_balance" name="afs_balance" class="form-control" step="0.01" placeholder="<?= __('enter_afs_balance') ?>" required>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">
                         <i class="feather icon-x mr-1"></i><?= __('cancel') ?>

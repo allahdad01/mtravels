@@ -915,7 +915,7 @@ table.ap-table { width:100%;border-collapse:collapse; }
             <label class="ap-label"><?= __('currency') ?></label>
             <select class="ap-select" name="currency">
               <option value="USD">USD</option><option value="EUR">EUR</option>
-              <option value="AFS">AFS</option><option value="DARHAM">DARHAM</option>
+              <option value="AFS">AFS</option><option value="DARHAM">AED</option>
               <option value="PKR">PKR</option><option value="INR">INR</option>
             </select>
           </div>

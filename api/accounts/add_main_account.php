@@ -14,12 +14,6 @@ require_once '../../includes/db.php';
 // Validate status
 $status = isset($_POST['status']) ? DbSecurity::validateInput($_POST['status'], 'string', ['maxlength' => 255]) : null;
 
-// Validate afs_balance
-$afs_balance = isset($_POST['afs_balance']) ? DbSecurity::validateInput($_POST['afs_balance'], 'float', ['min' => 0]) : null;
-
-// Validate usd_balance
-$usd_balance = isset($_POST['usd_balance']) ? DbSecurity::validateInput($_POST['usd_balance'], 'float', ['min' => 0]) : null;
-
 // Validate bank_name
 $bank_name = isset($_POST['bank_name']) ? DbSecurity::validateInput($_POST['bank_name'], 'string', ['maxlength' => 255]) : null;
 
@@ -45,13 +39,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $bankAccountNumber = ($accountType === 'bank') ? $_POST['bank_account_usd_number'] : null;
     $bankAccountAfsNumber = ($accountType === 'bank') ? $_POST['bank_account_afs_number'] : null;
     $bankName = ($accountType === 'bank') ? $_POST['bank_name'] : null;
-    $usdBalance = $_POST['usd_balance'];
-    $afsBalance = $_POST['afs_balance'];
     $status = isset($_POST['status']) ? $_POST['status'] : 'active';
 
     // Updated query to include tenant_id and branch_id
-    $query = "INSERT INTO main_account (name, account_type, bank_account_number, bank_account_afs_number, bank_name, usd_balance, afs_balance, last_updated, status, tenant_id, branch_id)
-              VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?)";
+    $query = "INSERT INTO main_account (name, account_type, bank_account_number, bank_account_afs_number, bank_name, last_updated, status, tenant_id, branch_id)
+              VALUES (?, ?, ?, ?, ?, NOW(), ?, ?, ?)";
 
     $stmt = $pdo->prepare($query);
     // Updated bindParam to include tenant_id and branch_id
@@ -60,11 +52,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->bindParam(3, $bankAccountNumber, PDO::PARAM_STR);
     $stmt->bindParam(4, $bankAccountAfsNumber, PDO::PARAM_STR);
     $stmt->bindParam(5, $bankName, PDO::PARAM_STR);
-    $stmt->bindParam(6, $usdBalance, PDO::PARAM_STR);
-    $stmt->bindParam(7, $afsBalance, PDO::PARAM_STR);
-    $stmt->bindParam(8, $status, PDO::PARAM_STR);
-    $stmt->bindParam(9, $tenant_id, PDO::PARAM_INT);
-    $stmt->bindParam(10, $branch_id, PDO::PARAM_INT);
+    $stmt->bindParam(6, $status, PDO::PARAM_STR);
+    $stmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(8, $branch_id, PDO::PARAM_INT);
 
     if ($stmt->execute()) {
         // Get the insert ID
@@ -77,8 +67,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'account_type' => $accountType,
             'bank_account_number' => $bankAccountNumber,
             'bank_name' => $bankName,
-            'usd_balance' => $usdBalance,
-            'afs_balance' => $afsBalance,
             'status' => $status,
             'tenant_id' => $tenant_id,
             'branch_id' => $branch_id
