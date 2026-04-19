@@ -1,5 +1,6 @@
 <?php
-
+// Start output buffering to prevent "headers already sent" errors
+ob_start();
 
 // Start the session if not already started
 if (session_status() === PHP_SESSION_NONE) {
@@ -48,7 +49,10 @@ function checkSessionValid() {
     
     // Regenerate session ID periodically to prevent session fixation
     if (!isset($_SESSION["last_regeneration"]) || (time() - $_SESSION["last_regeneration"] > 300)) {
-        session_regenerate_id(true);
+        // Only regenerate if headers haven't been sent yet
+        if (!headers_sent()) {
+            session_regenerate_id(true);
+        }
         $_SESSION["last_regeneration"] = time();
     }
     

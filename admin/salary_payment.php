@@ -661,7 +661,7 @@ textarea.field-control{height:auto;padding:10px 12px;resize:vertical}
                     </div>
                     <div class="field-group" style="margin-bottom:0">
                         <label class="field-label">Payment Type</label>
-                        <select class="field-control" id="edit_payment_type" name="payment_type">
+                        <select class="field-control" id="edit_payment_type" name="payment_type" disabled>
                             <option value="regular">Regular Salary</option>
                             <option value="bonus">Bonus</option>
                             <option value="advance">Advance</option>

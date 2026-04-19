@@ -14,7 +14,7 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)
 require_once "../includes/db.php";
 
 // Define variables and initialize with empty values
-$user_id = $amount = $description = $bonus_date = $type = "";
+$bonus_user_id = $amount = $description = $bonus_date = $type = "";
 $user_id_err = $amount_err = $description_err = $bonus_date_err = "";
 $success_message = $error_message = "";
 
@@ -27,7 +27,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (empty($_POST["user_id"])) {
         $user_id_err = "Please select an employee.";
     } else {
-        $user_id = $_POST["user_id"];
+        $bonus_user_id = $_POST["user_id"];
     }
     
     // Validate amount
@@ -67,7 +67,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $stmt = $pdo->prepare($sql);
 
             // Bind parameters
-            $stmt->bindParam(1, $user_id, PDO::PARAM_INT);
+            $stmt->bindParam(1, $bonus_user_id, PDO::PARAM_INT);
             $stmt->bindParam(2, $amount, PDO::PARAM_STR);
             $stmt->bindParam(3, $description, PDO::PARAM_STR);
             $stmt->bindParam(4, $bonus_date, PDO::PARAM_STR);
@@ -113,7 +113,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $row = $result[0];
 
                     // Retrieve individual field value
-                    $user_id = $row["user_id"];
+                    $bonus_user_id = $row["user_id"];
                     $amount = $row["amount"];
                     $description = $row["description"];
                     $bonus_date = $row["bonus_date"];
@@ -437,7 +437,7 @@ body {
                                 <select class="field-control <?php echo (!empty($user_id_err)) ? 'is-invalid' : ''; ?>" name="user_id">
                                     <option value=""><?= __('select_employee') ?></option>
                                     <?php foreach ($users_with_salary as $emp): ?>
-                                    <option value="<?= $emp['id'] ?>" <?php echo ($user_id == $emp['id']) ? 'selected' : ''; ?>><?= $emp['name'] ?></option>
+                                    <option value="<?= $emp['id'] ?>" <?php echo ($bonus_user_id == $emp['id']) ? 'selected' : ''; ?>><?= $emp['name'] ?></option>
                                     <?php endforeach; ?>
                                 </select>
                                 <?php if (!empty($user_id_err)): ?>

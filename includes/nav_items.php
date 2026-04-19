@@ -179,9 +179,6 @@ if (!function_exists('navTrigger')) {
                 <a href="attendance_settings.php"><i class="feather icon-settings mr-2"></i><?= __('attendance_settings') ?></a>
             </li>
             <?php endif; ?>
-            <li class="<?= navActive('hr_reports.php') ?>">
-                <a href="hr_reports.php"><?= __('hr_reports') ?></a>
-            </li>
         </ul>
     </li>
     <?php else: ?>

@@ -137,10 +137,6 @@ include '../includes/header.php';
                                             <i class="feather icon-user-plus"></i>
                                             <?php echo __('add_employee'); ?>
                                         </a>
-                                        <a href="hr_reports.php" class="hr-hero-btn secondary">
-                                            <i class="feather icon-download"></i>
-                                            <?php echo __('hr_reports'); ?>
-                                        </a>
                                     </div>
                                 </div>
                                 <div class="hr-hero-shape"></div>
