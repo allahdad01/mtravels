@@ -200,10 +200,17 @@ class InputValidator {
             return $default;
         }
         
-        // Allow: digits, +, -, (), spaces | 10-20 chars
-        $pattern = '/^[\d\+\-\(\)\s]{10,20}$/';
+        $value = trim($value);
         
-        return self::getPattern(trim($value), $pattern, $default);
+        // If empty, return default (allows optional phone)
+        if (empty($value)) {
+            return $default;
+        }
+        
+        // Allow: digits, +, -, (), spaces | 5-20 chars (min 5 to allow flexibility)
+        $pattern = '/^[\d\+\-\(\)\s]{5,20}$/';
+        
+        return self::getPattern($value, $pattern, $default);
     }
     
     /**

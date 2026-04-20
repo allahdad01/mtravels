@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $password = $_POST['password'] ?? '';
         $role = InputValidator::getEnum(
             $_POST['role'] ?? '',
-            ['admin', 'staff', 'manager', 'supervisor'],
+            ['admin', 'staff', 'sales', 'umrah', 'finance'],
             ''
         );
         $hire_date = InputValidator::getDate($_POST['hire_date'] ?? '', 'Y-m-d', '');
@@ -675,8 +675,8 @@ include '../includes/header.php';
                             </div>
                             <div class="ae-form-group">
                               <label for="password"><?php echo __('password'); ?> <span class="ae-required">*</span></label>
-                              <input type="password" class="form-control" id="password" name="password"
-                                required minlength="6">
+                               <input type="password" class="form-control" id="password" name="password"
+                                 required minlength="12">
                               <span class="ae-hint"><?php echo __('password_min_length'); ?></span>
                             </div>
                           </div>

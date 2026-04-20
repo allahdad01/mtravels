@@ -61,6 +61,9 @@ function initials(string $name): string {
 $page_title = $user_id ? __('manage_employee') : __('employee_management');
 include '../includes/header.php';
 ?>
+<script>
+window.csrfToken = '<?php echo $_SESSION['csrf_token']; ?>';
+</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap');
 
@@ -775,7 +778,6 @@ include '../includes/header.php';
         </div>
 
         <!-- ═══ TOOLBAR ═══ -->
-        <?php if (!$user_id): ?>
         <div class="em-toolbar">
           <form method="GET" id="filterForm">
             <div class="em-toolbar-card">
@@ -822,7 +824,6 @@ include '../includes/header.php';
             </div>
           </form>
         </div>
-        <?php endif; ?>
 
         <!-- ═══ LIST ═══ -->
         <div class="em-list-wrap">
