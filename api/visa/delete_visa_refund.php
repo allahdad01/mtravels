@@ -258,7 +258,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
         // Step 5: Update Visa Application Profit
         if ($refund['refund_type'] === 'full') {
             // For full refund, restore the original profit
-            $updateVisaQuery = "UPDATE visa_applications SET profit = ?, status = 'Pending' WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+            $updateVisaQuery = "UPDATE visa_applications SET profit = ?, status = 'Approved' WHERE id = ? AND tenant_id = ? AND branch_id = ?";
             $stmt = $pdo->prepare($updateVisaQuery);
             $stmt->bindParam(1, $profit, PDO::PARAM_STR);
             $stmt->bindParam(2, $visaId, PDO::PARAM_INT);
@@ -267,7 +267,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
             $stmt->execute();
         } else {
             // For partial refund, add back the refunded amount to profit
-            $updateVisaQuery = "UPDATE visa_applications SET profit = ?, status = 'Pending' WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+            $updateVisaQuery = "UPDATE visa_applications SET profit = ?, status = 'Approved' WHERE id = ? AND tenant_id = ? AND branch_id = ?";
             $stmt = $pdo->prepare($updateVisaQuery);
             $stmt->bindParam(1, $profit, PDO::PARAM_STR);
             $stmt->bindParam(2, $visaId, PDO::PARAM_INT);

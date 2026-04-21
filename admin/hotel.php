@@ -247,6 +247,19 @@ $paginationPattern = empty($search)
 .hb-list-header .lh-price { text-align: right; }
 .hb-list-header .lh-actions { padding-right: 16px; }
 
+/* ── Payment Status Colors ───────────────────────────────── */
+.hb-row.status-paid    { --hb-payment-color: #7aaa62; }
+.hb-row.status-partial { --hb-payment-color: #d4a574; }
+.hb-row.status-unpaid  { --hb-payment-color: #e07a7a; }
+.hb-row.status-neutral { --hb-payment-color: #6b8fb3; }
+
+.hb-row.status-paid .hb-accent-bar,
+.hb-row.status-partial .hb-accent-bar,
+.hb-row.status-unpaid .hb-accent-bar,
+.hb-row.status-neutral .hb-accent-bar {
+    background: var(--hb-payment-color) !important;
+}
+
 /* ── List Wrapper ────────────────────────────────────────── */
 .hb-list {
     display: flex;
@@ -824,10 +837,65 @@ $paginationPattern = empty($search)
                                         'cancelled' => 'background:#f9fafb; color:#9ca3af;',
                                         default     => 'background:#eff3ff; color:#1a56db;',
                                     };
+
+                                    // Calculate payment status
+                                    $isAgencyClient = false;
+                                    $soldTo = $booking['client_name'] ?? '';
+                                    $clientStmt = $pdo->prepare("SELECT client_type FROM clients WHERE name = ? AND tenant_id = ? AND branch_id = ?");
+                                    $clientStmt->bindParam(1, $soldTo, PDO::PARAM_STR);
+                                    $clientStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                                    $clientStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+                                    $clientStmt->execute();
+                                    $clientRow = $clientStmt->fetch(PDO::FETCH_ASSOC);
+                                    if ($clientRow) {
+                                        $isAgencyClient = ($clientRow['client_type'] === 'agency');
+                                    }
+
+                                    $paymentStatus = 'neutral';
+                                    $totalPaidInBase = 0;
+                                    $baseCurrency = $booking['currency'];
+                                    $soldAmount = floatval($booking['sold_amount']);
+                                    $bookingId = $booking['id'];
+
+                                    if ($isAgencyClient) {
+                                        $transactionStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE
+                                            transaction_of = 'hotel'
+                                            AND reference_id = ? AND tenant_id = ? AND branch_id = ?");
+                                        $transactionStmt->bindParam(1, $bookingId, PDO::PARAM_INT);
+                                        $transactionStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                                        $transactionStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+                                        $transactionStmt->execute();
+                                        $transactions = $transactionStmt->fetchAll(PDO::FETCH_ASSOC);
+
+                                        if ($transactions && count($transactions) > 0) {
+                                            foreach ($transactions as $transaction) {
+                                                $amount = floatval($transaction['amount']);
+                                                $transCurrency = $transaction['currency'];
+                                                $transExchangeRate = isset($transaction['exchange_rate']) && $transaction['exchange_rate'] > 0
+                                                    ? floatval($transaction['exchange_rate']) : 1.0;
+
+                                                if ($transCurrency === $baseCurrency) {
+                                                    $convertedAmount = $amount;
+                                                } else {
+                                                    if ($baseCurrency === 'AFS') {
+                                                        $convertedAmount = $amount * $transExchangeRate;
+                                                    } else {
+                                                        $convertedAmount = $amount / $transExchangeRate;
+                                                    }
+                                                }
+                                                $totalPaidInBase += $convertedAmount;
+                                            }
+                                        }
+
+                                        if ($totalPaidInBase <= 0)               $paymentStatus = 'unpaid';
+                                        elseif ($totalPaidInBase < $soldAmount)  $paymentStatus = 'partial';
+                                        else                                      $paymentStatus = 'paid';
+                                    }
                                     ?>
-                                    <div class="hb-row<?= $isCancelled ? ' hb-row-cancelled' : '' ?>" 
+                                    <div class="hb-row<?= $isCancelled ? ' hb-row-cancelled' : '' ?> status-<?= $paymentStatus ?>" 
                                          data-booking-id="<?= $booking['id'] ?>"
                                          data-status="<?= htmlspecialchars($status) ?>"
+                                         data-payment-status="<?= htmlspecialchars($paymentStatus) ?>"
                                          style="animation-delay: <?= $i * 0.04 ?>s">
 
                                         <!-- Accent Bar -->

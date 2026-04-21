@@ -291,7 +291,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
             $stmt->execute();
         } else {
 
-            $updateBookingQuery = "UPDATE umrah_bookings SET profit = ? WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?";
+            $updateBookingQuery = "UPDATE umrah_bookings SET profit = ?, status = 'active' WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?";
             $stmt = $pdo->prepare($updateBookingQuery);
             $stmt->bindParam(1, $profit, PDO::PARAM_STR);
             $stmt->bindParam(2, $umrahId, PDO::PARAM_INT);
