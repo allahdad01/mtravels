@@ -104,7 +104,7 @@ $total_pages = ceil($total_records / $items_per_page);
 // Get all additional payments with pagination
 $paymentsQuery = "SELECT ap.*, u.name as created_by_name, ma.name as main_account_name,
                   s.name as supplier_name, s.id as supplier_id,
-                  c.name as client_name, c.id as client_id
+                  c.name as client_name, c.id as client_id, c.client_type as client_type
                   FROM additional_payments ap
                   LEFT JOIN users u ON ap.created_by = u.id
                   LEFT JOIN main_account ma ON ap.main_account_id = ma.id
@@ -263,6 +263,7 @@ $payments = $stmt->fetchAll();
 .ap-status-partial  { background: var(--ap-amber-soft); color: var(--ap-amber); }
 .ap-status-unpaid   { background: var(--ap-red-soft);   color: var(--ap-red); }
 .ap-status-overpaid { background: var(--ap-sky-soft);   color: var(--ap-sky); }
+.ap-status-neutral  { background: #e8eff6; color: #6b8fb3; }
 
 /* ── Financial cell ── */
 .ap-fin-row {
@@ -691,10 +692,12 @@ $payments = $stmt->fetchAll();
                                                         <?php foreach ($payments as $payment): ?>
                                                         <?php
                                                             // ── Compute totalPaidInBase ──
-                                                            $baseCurrency    = $payment['currency'];
-                                                            $soldAmount      = floatval($payment['sold_amount']);
-                                                            $paymentId       = $payment['id'];
-                                                            $totalPaidInBase = 0.0;
+                                                            $isAgencyClient    = ($payment['client_type'] ?? '') === 'agency';
+                                                            $canAddTransaction = empty($payment['client_id']) || $isAgencyClient;
+                                                            $baseCurrency      = $payment['currency'];
+                                                            $soldAmount        = floatval($payment['sold_amount']);
+                                                            $paymentId         = $payment['id'];
+                                                            $totalPaidInBase   = 0.0;
 
                                                             $transactionStmt = $pdo->prepare("
                                                                 SELECT * FROM main_account_transactions
@@ -704,12 +707,17 @@ $payments = $stmt->fetchAll();
                                                             $transactionStmt->execute([$paymentId, $tenant_id, $branch_id]);
                                                             $transactions = $transactionStmt->fetchAll();
 
-                                                            $txnCount    = count($transactions);
-                                                            $usdToAfs    = 70;
-                                                            $usdToEur    = 0.9;
-                                                            $usdToDarham = 3.61;
+                                                            $txnCount        = count($transactions);
+                                                            $usdToAfs        = 70;
+                                                            $usdToEur        = 0.9;
+                                                            $usdToDarham     = 3.61;
+                                                            $badgeClass      = 'ap-status-neutral';
+                                                            $badgeIcon       = 'fas fa-minus-circle';
+                                                            $badgeLabel      = 'N/A';
+                                                            $paymentProgress = 0;
+                                                            $fillClass       = 'ap-fill-none';
 
-                                                            if ($txnCount > 0) {
+                                                            if ($canAddTransaction && $txnCount > 0) {
                                                                 foreach ($transactions as $t) {
                                                                     $er = isset($t['exchange_rate']) && $t['exchange_rate'] > 0 ? floatval($t['exchange_rate']) : null;
                                                                     if ($er) {
@@ -740,35 +748,36 @@ $payments = $stmt->fetchAll();
                                                             }
 
                                                             // ── Status badge ──
-                                                            if ($totalPaidInBase <= 0) {
-                                                                $badgeClass = 'ap-status-unpaid';
-                                                                $badgeIcon  = 'fas fa-times-circle';
-                                                                $badgeLabel = 'Unpaid';
-                                                            } elseif ($totalPaidInBase < ($soldAmount - 0.01)) {
-                                                                $badgeClass = 'ap-status-partial';
-                                                                $badgeIcon  = 'fas fa-adjust';
-                                                                $badgeLabel = 'Partial';
-                                                            } elseif (abs($totalPaidInBase - $soldAmount) < 0.01) {
-                                                                $badgeClass = 'ap-status-paid';
-                                                                $badgeIcon  = 'fas fa-check-circle';
-                                                                $badgeLabel = 'Paid';
-                                                            } else {
-                                                                $badgeClass = 'ap-status-overpaid';
-                                                                $badgeIcon  = 'fas fa-arrow-circle-up';
-                                                                $badgeLabel = 'Overpaid';
-                                                            }
+                                                            if ($canAddTransaction) {
+                                                                if ($totalPaidInBase <= 0) {
+                                                                    $badgeClass = 'ap-status-unpaid';
+                                                                    $badgeIcon  = 'fas fa-times-circle';
+                                                                    $badgeLabel = 'Unpaid';
+                                                                } elseif ($totalPaidInBase < ($soldAmount - 0.01)) {
+                                                                    $badgeClass = 'ap-status-partial';
+                                                                    $badgeIcon  = 'fas fa-adjust';
+                                                                    $badgeLabel = 'Partial';
+                                                                } elseif (abs($totalPaidInBase - $soldAmount) < 0.01) {
+                                                                    $badgeClass = 'ap-status-paid';
+                                                                    $badgeIcon  = 'fas fa-check-circle';
+                                                                    $badgeLabel = 'Paid';
+                                                                } else {
+                                                                    $badgeClass = 'ap-status-overpaid';
+                                                                    $badgeIcon  = 'fas fa-arrow-circle-up';
+                                                                    $badgeLabel = 'Overpaid';
+                                                                }
 
-                                                            // Progress fill class
-                                                            $paymentProgress = $soldAmount > 0 ? min(100, round(($totalPaidInBase / $soldAmount) * 100)) : 0;
+                                                                $paymentProgress = $soldAmount > 0 ? min(100, round(($totalPaidInBase / $soldAmount) * 100)) : 0;
 
-                                                            if ($totalPaidInBase <= 0) {
-                                                                $fillClass = 'ap-fill-none';
-                                                            } elseif (abs($totalPaidInBase - $soldAmount) < 0.01) {
-                                                                $fillClass = 'ap-fill-full';
-                                                            } elseif ($totalPaidInBase > $soldAmount) {
-                                                                $fillClass = 'ap-fill-over';
-                                                            } else {
-                                                                $fillClass = '';
+                                                                if ($totalPaidInBase <= 0) {
+                                                                    $fillClass = 'ap-fill-none';
+                                                                } elseif (abs($totalPaidInBase - $soldAmount) < 0.01) {
+                                                                    $fillClass = 'ap-fill-full';
+                                                                } elseif ($totalPaidInBase > $soldAmount) {
+                                                                    $fillClass = 'ap-fill-over';
+                                                                } else {
+                                                                    $fillClass = '';
+                                                                }
                                                             }
                                                         ?>
 
@@ -840,6 +849,7 @@ $payments = $stmt->fetchAll();
 
                                                                 <!-- Actions -->
                                                                 <div class="ap-cell ap-cell-actions">
+                                                                    <?php if ($canAddTransaction): ?>
                                                                     <button class="ap-action-btn ap-btn-txn add-transaction"
                                                                             data-id="<?= $payment['id'] ?>"
                                                                             data-payment-type="<?= htmlspecialchars($payment['payment_type']) ?>"
@@ -856,6 +866,7 @@ $payments = $stmt->fetchAll();
                                                                             <span class="ap-txn-badge"><?= $txnCount ?></span>
                                                                         <?php endif; ?>
                                                                     </button>
+                                                                    <?php endif; ?>
 
                                                                     <button class="ap-action-btn ap-btn-edit edit-payment"
                                                                             data-id="<?= $payment['id'] ?>"
@@ -881,6 +892,7 @@ $payments = $stmt->fetchAll();
 
                                                             </div><!-- /.ap-pcard-top -->
 
+                                                            <?php if ($canAddTransaction): ?>
                                                             <!-- Progress strip -->
                                                             <div class="ap-progress-strip">
                                                                 <span class="ap-prog-label">Progress</span>
@@ -892,6 +904,7 @@ $payments = $stmt->fetchAll();
                                                                 </span>
                                                                 <span class="ap-prog-pct"><?= $paymentProgress ?>%</span>
                                                             </div>
+                                                            <?php endif; ?>
 
                                                         </div><!-- /.ap-pcard -->
                                                         <?php endforeach; ?>

@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $file_path = null;
     $pdf_path  = null;
 
-    if (isset($_FILES['pdf_file'])) {
+    if (isset($_FILES['pdf_file']) && $_FILES['pdf_file']['error'] !== UPLOAD_ERR_NO_FILE) {
         $uploader = new SecureFileUpload(10 * 1024 * 1024, 'uploads/');
         $result = $uploader->upload('pdf_file', 'maktobs');
         if ($result['success']) {
@@ -59,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    if (isset($_FILES['attachment'])) {
+    if (isset($_FILES['attachment']) && $_FILES['attachment']['error'] !== UPLOAD_ERR_NO_FILE) {
         $uploader = new SecureFileUpload(10 * 1024 * 1024, 'uploads/');
         $result = $uploader->upload('attachment', 'maktobs');
         if ($result['success']) {

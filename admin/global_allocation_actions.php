@@ -238,11 +238,31 @@ function deleteGlobalAllocation($pdo, $tenant_id, $branch_id) {
              return;
          }
 
+        $allocatedAmount = (float) $allocation['allocated_amount'];
+        $remainingAmount = (float) $allocation['remaining_amount'];
+
+        if (abs($allocatedAmount - $remainingAmount) > 0.00001) {
+            sendResponse(false, 'This allocation has used funds. Delete its related expenses first.');
+            return;
+        }
+
+        $transactionStmt = $pdo->prepare("
+            SELECT id, main_account_id, amount, currency, type, created_at
+            FROM main_account_transactions
+            WHERE reference_id = ?
+            AND transaction_of = 'global_budget_allocation'
+            AND tenant_id = ?
+            AND branch_id = ?
+            ORDER BY created_at ASC, id ASC
+        ");
+        $transactionStmt->execute([$allocationId, $tenant_id, $branch_id]);
+        $allocationTransactions = $transactionStmt->fetchAll(PDO::FETCH_ASSOC);
+
         // Begin transaction
         $pdo->beginTransaction();
 
         // Return remaining amount back to main account
-        if ($allocation['remaining_amount'] > 0) {
+        if ($remainingAmount > 0) {
             // Determine which balance column to update based on currency
             $balanceColumn = 'usd_balance'; // Default
             if ($allocation['currency'] == 'AFS') {
@@ -259,25 +279,54 @@ function deleteGlobalAllocation($pdo, $tenant_id, $branch_id) {
                  WHERE id = ? AND tenant_id = ? AND branch_id = ?
              ");
              $updateAccountStmt->execute([
-                 $allocation['remaining_amount'],
+                 $remainingAmount,
                  $allocation['main_account_id'],
                  $tenant_id,
                  $branch_id
              ]);
+        }
 
-            // Get updated balance for transaction record
-            $balanceStmt = $pdo->prepare("SELECT $balanceColumn FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-            $balanceStmt->execute([$allocation['main_account_id'], $tenant_id, $branch_id]);
-            $updatedBalance = $balanceStmt->fetchColumn();
+        foreach ($allocationTransactions as $transaction) {
+            $balanceAdjustment = $transaction['type'] === 'debit'
+                ? (float) $transaction['amount']
+                : -(float) $transaction['amount'];
 
-            // Delete the associated transaction
-             $deleteStmt = $pdo->prepare("DELETE FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'global_budget_allocation' AND tenant_id = ? AND branch_id = ?");
-             $deleteStmt->execute([$allocationId, $tenant_id, $branch_id]);
-            }
+            $updateSubsequentStmt = $pdo->prepare("
+                UPDATE main_account_transactions
+                SET balance = balance + ?
+                WHERE main_account_id = ?
+                AND currency = ?
+                AND (
+                    created_at > ?
+                    OR (created_at = ? AND id > ?)
+                )
+                AND tenant_id = ?
+                AND branch_id = ?
+            ");
+            $updateSubsequentStmt->execute([
+                $balanceAdjustment,
+                $transaction['main_account_id'],
+                $transaction['currency'],
+                $transaction['created_at'],
+                $transaction['created_at'],
+                $transaction['id'],
+                $tenant_id,
+                $branch_id
+            ]);
+        }
 
-            // Delete allocation
-            $deleteStmt = $pdo->prepare("DELETE FROM global_budget_allocations WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-            $deleteStmt->execute([$allocationId, $tenant_id, $branch_id]);
+        $deleteTransactionStmt = $pdo->prepare("
+            DELETE FROM main_account_transactions
+            WHERE reference_id = ?
+            AND transaction_of = 'global_budget_allocation'
+            AND tenant_id = ?
+            AND branch_id = ?
+        ");
+        $deleteTransactionStmt->execute([$allocationId, $tenant_id, $branch_id]);
+
+        // Delete allocation
+        $deleteStmt = $pdo->prepare("DELETE FROM global_budget_allocations WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $deleteStmt->execute([$allocationId, $tenant_id, $branch_id]);
 
         // Commit transaction
         $pdo->commit();

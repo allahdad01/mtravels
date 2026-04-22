@@ -1055,7 +1055,7 @@ $(document).ready(function () {
 
     /* ── Delete allocation ───────────────────── */
     $(document).on('click', '.delete-global-allocation', function () {
-        if (!confirm('Are you sure you want to delete this allocation? Any remaining funds will be returned to the main account.')) return;
+        if (!confirm('Are you sure you want to delete this allocation? Only unused allocations can be deleted. If this allocation already has expenses, delete those expenses first. Any remaining funds will be returned to the main account.')) return;
         var $btn = $(this), id = $btn.data('id');
         btnLoading($btn, 'Deleting...');
         $.ajax({
