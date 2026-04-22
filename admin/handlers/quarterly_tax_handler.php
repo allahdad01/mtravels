@@ -367,53 +367,46 @@ function generateSupplierReport() {
             }
         } else {
             // Generate random data based on profit range
-            // Fetch some actual tickets to use as template
-            $query = "SELECT 
-                        issue_date,
-                        CONCAT(title, ' ', passenger_name) as full_name,
-                        CONCAT(origin, ' - ', destination, IF(trip_type='round_trip', ' - ', ''), IF(trip_type='round_trip', return_origin, '')) as sector,
-                        status,
-                        pnr,
-                        price as base_price
-                      FROM ticket_bookings
-                      WHERE tenant_id = ? AND branch_id = ? AND supplier = ?";
-            
-            $params = [$tenant_id, $branch_id, $supplier_id];
+            // Use real records from the selected service type as the template,
+            // and randomize only the profit/sold price values.
+            $templates = fetchTicketsByType($pdo, $tenant_id, $branch_id, $supplier_id, $report_type, $from_date, $to_date);
 
-            if ($from_date && $to_date) {
-                $query .= " AND DATE(issue_date) BETWEEN ? AND ?";
-                $params[] = $from_date;
-                $params[] = $to_date;
+            if ($report_type !== 'all') {
+                $templates = array_values(array_filter($templates, function ($template) use ($report_type) {
+                    return ($template['ticket_type'] ?? null) === $report_type;
+                }));
             }
 
-            $query .= " ORDER BY RAND() LIMIT ?";
-            $params[] = $item_count;
+            if (empty($templates)) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'No existing ' . ($report_type === 'all' ? 'records' : $report_type . ' records') . ' found for this supplier in the selected period'
+                ]);
+                return;
+            }
 
-            $stmt = $pdo->prepare($query);
-            $stmt->execute($params);
-            $templates = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            // If not enough actual tickets, fill with generated ones
+            shuffle($templates);
+            $templateCount = count($templates);
             $randomData = [];
-            $statuses = ['Booked', 'Paid', 'Date Changed'];
 
             for ($i = 0; $i < $item_count; $i++) {
-                $template = $templates[$i] ?? null;
+                $template = $templates[$i % $templateCount];
                 
                 $randomProfit = rand($profit_min, $profit_max);
-                $basePrice = $template ? (float)$template['base_price'] : rand(20000, 80000);
+                $basePrice = isset($template['base_price']) ? (float)$template['base_price'] : 0;
                 $soldPrice = $basePrice + $randomProfit;
 
                 $randomData[] = [
-                    'issue_date' => $template ? $template['issue_date'] : date('Y-m-d'),
-                    'full_name' => $template ? $template['full_name'] : "Mr. Generated Passenger " . ($i + 1),
-                    'sector' => $template ? $template['sector'] : "Random Origin - Random Destination",
+                    'issue_date' => $template['issue_date'],
+                    'full_name' => $template['full_name'],
+                    'sector' => $template['sector'],
                     'details' => [
-                        'status' => $template ? $template['status'] : $statuses[array_rand($statuses)],
-                        'pnr' => $template ? $template['pnr'] : 'GEN' . strtoupper(bin2hex(random_bytes(3))),
+                        'status' => $template['status'],
+                        'pnr' => $template['pnr'],
                         'base_price' => $basePrice,
                         'sold_price' => $soldPrice,
-                        'profit' => $randomProfit
+                        'profit' => $randomProfit,
+                        'ticket_type' => $template['ticket_type'] ?? $report_type
                     ]
                 ];
             }
@@ -716,7 +709,7 @@ function fetchTicketsByType($pdo, $tenant_id, $branch_id, $supplier_id, $report_
                     'umrah' as ticket_type
                   FROM umrah_bookings ub
                   JOIN umrah_booking_services ubs ON ub.booking_id = ubs.booking_id
-                  WHERE ub.tenant_id = ? AND ub.branch_id = ? AND ubs.supplier_id = ? AND ub.status IN ('active', 'pending')";
+                  WHERE ub.tenant_id = ? AND ub.branch_id = ? AND ubs.supplier_id = ? AND ub.status IN ('active')";
         
         $params = [$tenant_id, $branch_id, $supplier_id];
         if ($from_date && $to_date) {
