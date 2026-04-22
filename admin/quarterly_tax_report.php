@@ -639,6 +639,7 @@ $expense_categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
     let supplierReportData = {};
     let generalReportData = {};
     let tempExpenses = [];  // Store temporary expenses added during report generation
+    let supplierReportLoadPromise = Promise.resolve();
 
     // Quarter button handlers
     function setupQuarterButtons() {
@@ -1093,7 +1094,9 @@ $expense_categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
             const data = {
                 id: supplier.id,
                 name: supplier.name,
-                dataType: dataType
+                dataType: dataType,
+                exportData: null,
+                exportError: null
             };
 
             if (dataType === 'random') {
@@ -1124,10 +1127,13 @@ $expense_categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
     function displaySupplierReportPreview() {
         const preview = document.getElementById('supplierReportPreview');
         const content = document.getElementById('supplierReportContent');
+        const reportType = document.querySelector('input[name="reportType"]:checked').value;
 
         let periodDisplay = supplierReportData.quarterStart && supplierReportData.quarterEnd 
             ? `${supplierReportData.quarterStart} to ${supplierReportData.quarterEnd}`
             : (supplierReportData.quarter && supplierReportData.year ? `${supplierReportData.quarter} ${supplierReportData.year}` : 'Custom Period');
+
+        supplierReportData.reportType = reportType;
 
         let html = `
             <div class="alert alert-info mb-3">
@@ -1135,8 +1141,10 @@ $expense_categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
         `;
 
-        // Fetch actual ticket data for each supplier
         supplierReportData.suppliers.forEach(supplier => {
+            supplier.exportData = null;
+            supplier.exportError = null;
+
             html += `
                 <div class="supplier-section mb-4">
                     <h6 class="mb-3">
@@ -1150,9 +1158,12 @@ $expense_categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <div id="supplier-${supplier.id}-data" style="display:none;"></div>
                 </div>
             `;
+        });
 
-            // Fetch data via AJAX
-            const reportType = document.querySelector('input[name="reportType"]:checked').value;
+        content.innerHTML = html;
+        preview.style.display = 'block';
+
+        const fetchPromises = supplierReportData.suppliers.map(supplier => {
             const payload = {
                 action: 'generate_supplier_report',
                 tenant_id: PHP_TENANT_ID,
@@ -1167,9 +1178,6 @@ $expense_categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 report_type: reportType,
                 exchangeRate: supplierReportData.exchangeRate
             };
-            
-            // Store report type in the data object for export
-            supplierReportData.reportType = reportType;
 
             // Only add profit parameters for random data
             if (supplier.dataType === 'random') {
@@ -1178,7 +1186,7 @@ $expense_categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 payload.item_count = supplier.itemCount || 5;
             }
 
-            fetch('handlers/quarterly_tax_handler.php', {
+            return fetch('handlers/quarterly_tax_handler.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -1187,21 +1195,26 @@ $expense_categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
             })
             .then(res => res.json())
             .then(response => {
-                if (response.success && response.data) {
+                if (response.success && Array.isArray(response.data)) {
+                    supplier.exportData = response.data;
+                    supplier.exportError = null;
                     displaySupplierTickets(supplier.id, response.data);
                 } else {
+                    supplier.exportData = [];
+                    supplier.exportError = response.message || null;
                     document.getElementById(`supplier-${supplier.id}-loading`).innerHTML = 
                         '<div class="alert alert-warning">No data found for this supplier.</div>';
                 }
             })
             .catch(error => {
+                supplier.exportData = null;
+                supplier.exportError = error.message;
                 document.getElementById(`supplier-${supplier.id}-loading`).innerHTML = 
                     '<div class="alert alert-danger">Error loading data: ' + error.message + '</div>';
             });
         });
 
-        content.innerHTML = html;
-        preview.style.display = 'block';
+        supplierReportLoadPromise = Promise.allSettled(fetchPromises);
     }
 
     function displaySupplierTickets(supplierId, tickets) {
@@ -1638,8 +1651,22 @@ $expense_categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
         serverExport('general', 'pdf');
     });
 
-    function serverExport(reportType, format) {
+    async function serverExport(reportType, format) {
         const data = reportType === 'supplier' ? supplierReportData : generalReportData;
+
+        if (reportType === 'supplier') {
+            await supplierReportLoadPromise;
+
+            const failedSuppliers = (supplierReportData.suppliers || []).filter(supplier => supplier.exportData === null);
+            if (failedSuppliers.length > 0) {
+                Swal.fire(
+                    'Error',
+                    'Some supplier data is still unavailable for export: ' + failedSuppliers.map(supplier => supplier.name).join(', '),
+                    'error'
+                );
+                return;
+            }
+        }
         
         fetch('handlers/quarterly_tax_export.php?report_type=' + reportType + '&format=' + format, {
             method: 'POST',

@@ -356,39 +356,8 @@ function generateSupplierReport() {
             if (empty($formattedData)) {
                 echo json_encode(['success' => false, 'message' => 'No tickets found for this supplier in the selected period']);
             } else {
-                // Save the report to database (only one per quarter/year/supplier/branch)
                 try {
-                    $reportData = json_encode([
-                        'supplier_id' => $supplier_id,
-                        'supplier_name' => $supplier_name,
-                        'quarter' => $quarter,
-                        'year' => $year,
-                        'service_type' => $report_type,
-                        'exchange_rate' => $exchange_rate,
-                        'data' => $formattedData,
-                        'generated_at' => date('Y-m-d H:i:s')
-                    ]);
-                    
-                    $saveQuery = "INSERT INTO tax_reports (tenant_id, supplier_id, quarter, year, report_type, report_data, branch_id, created_by, created_at, updated_at)
-                                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
-                                  ON DUPLICATE KEY UPDATE report_data=?, updated_at=NOW()";
-                    
-                    error_log("Saving report: tenant=$tenant_id, supplier=$supplier_id, quarter=$quarter, year=$year, service_type=$report_type, branch=$branch_id, user=$_SESSION[user_id]");
-                    
-                    $saveStmt = $pdo->prepare($saveQuery);
-                    $result = $saveStmt->execute([
-                        $tenant_id,
-                        $supplier_id,
-                        $quarter,
-                        $year,
-                        'supplier',  // Always use 'supplier' as the report_type
-                        $reportData,
-                        $branch_id,
-                        $_SESSION['user_id'],  // Store the user who created this report
-                        $reportData
-                    ]);
-                    
-                    error_log("Report saved successfully, rows affected: " . $saveStmt->rowCount());
+                    saveSupplierReportRecord($tenant_id, $supplier_id, $supplier_name, $quarter, $year, $from_date, $to_date, $data_type, $report_type, $exchange_rate, $formattedData, $branch_id);
                 } catch (PDOException $e) {
                     // Log the error but don't fail - still return the report
                     error_log('Failed to save tax report: ' . $e->getMessage());
@@ -449,12 +418,58 @@ function generateSupplierReport() {
                 ];
             }
 
+            try {
+                saveSupplierReportRecord($tenant_id, $supplier_id, $supplier_name, $quarter, $year, $from_date, $to_date, $data_type, $report_type, $exchange_rate, $randomData, $branch_id);
+            } catch (PDOException $e) {
+                // Log the error but don't fail - still return the report
+                error_log('Failed to save tax report: ' . $e->getMessage());
+            }
+
             echo json_encode(['success' => true, 'data' => $randomData]);
         }
     } catch (PDOException $e) {
         http_response_code(500);
         echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
     }
+}
+
+function saveSupplierReportRecord($tenant_id, $supplier_id, $supplier_name, $quarter, $year, $date_from, $date_to, $data_type, $report_type, $exchange_rate, $report_rows, $branch_id) {
+    global $pdo;
+
+    $reportData = json_encode([
+        'supplier_id' => $supplier_id,
+        'supplier_name' => $supplier_name,
+        'quarter' => $quarter,
+        'year' => $year,
+        'quarterStart' => $date_from,
+        'quarterEnd' => $date_to,
+        'data_type' => $data_type,
+        'service_type' => $report_type,
+        'exchange_rate' => $exchange_rate,
+        'data' => $report_rows,
+        'generated_at' => date('Y-m-d H:i:s')
+    ]);
+
+    $saveQuery = "INSERT INTO tax_reports (tenant_id, supplier_id, quarter, year, report_type, report_data, branch_id, created_by, created_at, updated_at)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                  ON DUPLICATE KEY UPDATE report_data=?, updated_at=NOW()";
+
+    error_log("Saving report: tenant=$tenant_id, supplier=$supplier_id, quarter=$quarter, year=$year, data_type=$data_type, service_type=$report_type, branch=$branch_id, user=$_SESSION[user_id]");
+
+    $saveStmt = $pdo->prepare($saveQuery);
+    $saveStmt->execute([
+        $tenant_id,
+        $supplier_id,
+        $quarter,
+        $year,
+        'supplier',
+        $reportData,
+        $branch_id,
+        $_SESSION['user_id'],
+        $reportData
+    ]);
+
+    error_log("Report saved successfully, rows affected: " . $saveStmt->rowCount());
 }
 
 /**

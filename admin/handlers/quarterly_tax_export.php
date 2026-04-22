@@ -180,7 +180,7 @@ function exportSavedReport($pdo, $tenant_id, $branch_id, $report_id, $report_typ
             'quarterStart' => $reportData['quarterStart'] ?? null,
             'quarterEnd'   => $reportData['quarterEnd']   ?? null,
             'exchangeRate' => $reportData['exchange_rate'] ?? 1,
-            'reportType'   => 'ticket',
+            'reportType'   => $reportData['service_type'] ?? 'ticket',
         ];
         exportSupplierReport($pdo, $tenant_id, $branch_id, $format, $reconstructedData);
     } elseif ($report_type === 'general') {
@@ -195,6 +195,28 @@ function exportSavedReport($pdo, $tenant_id, $branch_id, $report_id, $report_typ
         ];
         exportGeneralReport($pdo, $tenant_id, $branch_id, $format, $reconstructedData);
     }
+}
+
+function normalizeSupplierTicketsForExport(array $tickets): array {
+    $normalizedTickets = [];
+
+    foreach ($tickets as $ticket) {
+        $details = $ticket['details'] ?? [];
+
+        $normalizedTickets[] = [
+            'issue_date' => $ticket['issue_date'] ?? '',
+            'full_name' => $ticket['full_name'] ?? '',
+            'sector' => $ticket['sector'] ?? '',
+            'status' => $details['status'] ?? ($ticket['status'] ?? ''),
+            'pnr' => $details['pnr'] ?? ($ticket['pnr'] ?? ''),
+            'base_price' => (float)($details['base_price'] ?? ($ticket['base_price'] ?? 0)),
+            'sold_price' => (float)($details['sold_price'] ?? ($ticket['sold_price'] ?? 0)),
+            'profit' => (float)($details['profit'] ?? ($ticket['profit'] ?? 0)),
+            'ticket_type' => $details['ticket_type'] ?? ($ticket['ticket_type'] ?? 'ticket'),
+        ];
+    }
+
+    return $normalizedTickets;
 }
 
 // ─── exportSupplierReport ──────────────────────────────────────────────────────
@@ -239,8 +261,14 @@ function exportSupplierReport($pdo, $tenant_id, $branch_id, $format, $data = nul
     foreach ($suppliers as $supplier) {
         $supplierName = $supplier['name'] ?? 'Unknown';
         $supplierId   = (int)$supplier['id'];
+        $exportData   = $supplier['exportData'] ?? ($supplier['data']['data'] ?? null);
 
-        $tickets = fetchTicketsByTypeForExport($pdo, $tenant_id, $branch_id, $supplierId, $reportType, $date_from, $date_to);
+        if (is_array($exportData)) {
+            $tickets = normalizeSupplierTicketsForExport($exportData);
+        } else {
+            $tickets = fetchTicketsByTypeForExport($pdo, $tenant_id, $branch_id, $supplierId, $reportType, $date_from, $date_to);
+        }
+
         usort($tickets, fn($a, $b) => strtotime($b['issue_date']) - strtotime($a['issue_date']));
 
         // ── Supplier section title ──────────────────────────────────────────
