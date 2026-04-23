@@ -87,9 +87,13 @@ class ExcelImportHandler {
                     $data[] = (string) $cellValue;
                 }
 
+                if ($this->shouldSkipImportRow($data)) {
+                    continue;
+                }
+
                 // Map columns to database fields
                 $bookingData = [
-                    'pnr' => $data[0] ?? '',
+                    'pnr' => trim($data[0] ?? ''),
                     'title' => $data[1] ?? '',
                     'passenger_name' => $data[2] ?? '',
                     'phone' => empty($data[3]) ? null : $data[3],
@@ -108,8 +112,7 @@ class ExcelImportHandler {
                     'sold_to_name' => $data[16] ?? '',
                     'paid_to_name' => $data[17] ?? '',
                     'status' => $data[18] ?? 'Booked',
-                    'description' => $data[19] ?? '',
-                    'receipt' => $data[20] ?? ''
+                    'description' => $data[19] ?? ''
                 ];
 
                 $this->insertTicketBooking($bookingData);
@@ -128,17 +131,15 @@ class ExcelImportHandler {
 
         for ($row = 2; $row <= $highestRow; $row++) {
             try {
-                $data = $worksheet->rangeToArray('A' . $row . ':' . Coordinate::stringFromColumnIndex($highestColumnIndex) . $row, null, true, true)[0];
+                $data = $worksheet->rangeToArray('A' . $row . ':' . Coordinate::stringFromColumnIndex($highestColumnIndex) . $row, null, true, true, false)[0];
                 $data = array_map('strval', $data);
 
-                // Skip empty rows
-                if (empty(array_filter($data))) continue;
-
-                // Skip if PNR is empty
-                if (empty($data[0] ?? '')) continue;
+                if ($this->shouldSkipImportRow($data)) {
+                    continue;
+                }
 
                 $refundData = [
-                    'pnr' => $data[0] ?? '',
+                    'pnr' => trim($data[0] ?? ''),
                     'title' => $data[1] ?? '',
                     'passenger_name' => $data[2] ?? '',
                     'phone' => empty($data[3]) ? null : $data[3],
@@ -184,14 +185,12 @@ class ExcelImportHandler {
                     $data[] = (string) $cellValue;
                 }
 
-                // Skip empty rows
-                if (empty(array_filter($data))) continue;
-
-                // Skip if PNR is empty
-                if (empty($data[0] ?? '')) continue;
+                if ($this->shouldSkipImportRow($data)) {
+                    continue;
+                }
 
                 $dateChangeData = [
-                    'pnr' => $data[0] ?? '',
+                    'pnr' => trim($data[0] ?? ''),
                     'title' => $data[1] ?? '',
                     'passenger_name' => $data[2] ?? '',
                     'phone' => empty($data[3]) ? null : $data[3],
@@ -278,8 +277,12 @@ class ExcelImportHandler {
                     $data[] = (string) $cellValue;
                 }
 
+                if ($this->shouldSkipImportRow($data)) {
+                    continue;
+                }
+
                 $reservationData = [
-                    'pnr' => $data[0] ?? '',
+                    'pnr' => trim($data[0] ?? ''),
                     'title' => $data[1] ?? '',
                     'passenger_name' => $data[2] ?? '',
                     // Normalize phone so it is never NULL in strict mode
@@ -298,9 +301,7 @@ class ExcelImportHandler {
                     'supplier_name' => $data[15] ?? '',
                     'sold_to_name' => $data[16] ?? '',
                     'paid_to_name' => $data[17] ?? '',
-                    // Column 18 is used as receipt in the DB schema
-                    'receipt' => $data[18] ?? '',
-                    'status' => 'Reserved',
+                    'status' => $data[18] ?? 'Reserved',
                     'description' => $data[19] ?? ''
                 ];
                 
@@ -457,6 +458,10 @@ if (empty(array_filter($data))) continue;
                     $data[] = (string) $cellValue;
                 }
 
+                if ($this->shouldSkipImportRow($data)) {
+                    continue;
+                }
+
                 $umrahData = [
                     'name' => $data[0] ?? '',
                     'passport_number' => $data[1] ?? '',
@@ -513,10 +518,10 @@ if (empty(array_filter($data))) continue;
             INSERT INTO ticket_bookings (
                 tenant_id, branch_id, supplier, sold_to, paid_to, pnr, title, passenger_name,
                 phone, gender, origin, destination, trip_type, airline, issue_date,
-                departure_date, currency, price, sold, profit, status, description, receipt,
+                departure_date, currency, price, sold, profit, status, description,
                 created_by, created_at, updated_at, imported
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), 1
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), 1
             )
         ");
 
@@ -526,7 +531,7 @@ if (empty(array_filter($data))) continue;
             $data['origin'], $data['destination'], $data['trip_type'], $data['airline'],
             $data['issue_date'], $data['departure_date'], $data['currency'],
             $data['price'], $data['sold'], $data['profit'], $data['status'],
-            $data['description'], $data['receipt'], $userId
+            $data['description'], $userId
         ]);
     }
 
@@ -562,7 +567,7 @@ if (empty(array_filter($data))) continue;
                 currency, sold, base, supplier_penalty, service_penalty, refund_to_passenger,
                 status, remarks, calculation_method, created_by, created_at, updated_at, imported
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), 1
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), 1
             )
         ");
 
@@ -602,9 +607,10 @@ if (empty(array_filter($data))) continue;
             INSERT INTO date_change_tickets (
                 tenant_id, branch_id, ticket_id, supplier, sold_to, paid_to, pnr, title, passenger_name,
                 phone, gender, origin, destination, airline, issue_date, departure_date,
-                currency, sold, base, supplier_penalty, service_penalty, created_by, imported
+                currency, sold, base, supplier_penalty, service_penalty, status, remarks,
+                created_by, imported
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1
             )
         ");
 
@@ -613,7 +619,8 @@ if (empty(array_filter($data))) continue;
             $data['title'], $data['passenger_name'], $data['phone'], $data['gender'],
             $data['origin'], $data['destination'], $data['airline'], $data['issue_date'],
             $data['departure_date'], $data['currency'], $data['sold'], $data['base'],
-            $data['supplier_penalty'], $data['service_penalty'], $userId
+            $data['supplier_penalty'], $data['service_penalty'], $data['status'], $data['remarks'],
+            $userId
         ]);
     }
 
@@ -657,8 +664,6 @@ if (empty(array_filter($data))) continue;
     private function insertTicketReservation($data) {
         // Ensure phone is not null/undefined (STRICT mode safety)
         $data['phone'] = isset($data['phone']) && $data['phone'] !== null ? (string) $data['phone'] : '';
-        // Ensure receipt is always provided (NOT NULL column in strict mode)
-        $data['receipt'] = $data['receipt'] ?? '';
 
         // Get or create supplier
         $supplierId = $this->getOrCreateSupplier($data['supplier_name']);
@@ -676,10 +681,10 @@ if (empty(array_filter($data))) continue;
             INSERT INTO ticket_reservations (
                 tenant_id, branch_id, supplier, sold_to, paid_to, pnr, title, passenger_name,
                 phone, gender, origin, destination, trip_type, airline, issue_date,
-                departure_date, currency, price, sold, profit, status, receipt,
+                departure_date, currency, price, sold, profit, status,
                 description, created_by, imported
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1
             )
         ");
 
@@ -689,7 +694,7 @@ if (empty(array_filter($data))) continue;
             $data['origin'], $data['destination'], $data['trip_type'], $data['airline'],
             $data['issue_date'], $data['departure_date'], $data['currency'],
             $data['price'], $data['sold'], $data['profit'], $data['status'],
-            $data['receipt'], $data['description'], $userId
+            $data['description'], $userId
         ]);
     }
 
@@ -815,9 +820,9 @@ if (empty(array_filter($data))) continue;
                 relation, dob, gender, passport_number, passport_expiry, id_type, flight_date,
                 return_date, duration, room_type, price, sold_price, discount, profit,
                 received_bank_payment, bank_receipt_number, paid, due, currency, created_by,
-                created_at, updated_at, remarks, status, imported
+                remarks, status, imported
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?, 1
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1
             )
         ");
 
@@ -867,7 +872,7 @@ if (empty(array_filter($data))) continue;
                     tenant_id, branch_id, booking_id, service_type, supplier_id,
                     base_price, sold_price, profit, currency, created_at, updated_at
                 ) VALUES (
-                    ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW()
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW()
                 )
             ");
 
@@ -899,8 +904,8 @@ if (empty(array_filter($data))) continue;
 
         // Create new supplier
         $insertStmt = $this->pdo->prepare("
-            INSERT INTO suppliers (tenant_id, branch_id, name, currency, created_at, updated_at)
-            VALUES (?, ?, 'USD', NOW(), NOW())
+            INSERT INTO suppliers (tenant_id, branch_id, name, phone, currency, created_at, updated_at)
+            VALUES (?, ?, ?, '', 'USD', NOW(), NOW())
         ");
         $insertStmt->execute([$this->tenantId, $this->branchId, $name]);
         return $this->pdo->lastInsertId();
@@ -925,6 +930,7 @@ if (empty(array_filter($data))) continue;
             $slugName = 'client';
         }
         $placeholderEmail = $slugName . '+' . uniqid('', true) . '@import.local';
+        $placeholderPasswordHash = password_hash(uniqid('import-client-', true), PASSWORD_DEFAULT);
 
         $insertStmt = $this->pdo->prepare("
             INSERT INTO clients (
@@ -932,10 +938,10 @@ if (empty(array_filter($data))) continue;
                 usd_balance, afs_balance, address, status, client_type,
                 totp_enabled, created_at, updated_at
             ) VALUES (
-                ?, '', ?, ?, '', NULL, 0.000, 0.000, '', 'active', 'regular', 0, NOW(), NOW()
+                ?, ?, '', ?, ?, ?, '', 0.000, 0.000, '', 'active', 'regular', 0, NOW(), NOW()
             )
         ");
-        $insertStmt->execute([$this->tenantId, $this->branchId, $name, $placeholderEmail]);
+        $insertStmt->execute([$this->tenantId, $this->branchId, $name, $placeholderEmail, $placeholderPasswordHash]);
         return $this->pdo->lastInsertId();
     }
 
@@ -952,8 +958,12 @@ if (empty(array_filter($data))) continue;
 
         // Create new main account
         $insertStmt = $this->pdo->prepare("
-            INSERT INTO main_account (tenant_id, branch_id, name, usd_balance, afs_balance, euro_balance, darham_balance, created_at, updated_at)
-            VALUES (?, ?, 0, 0, 0, 0, NOW(), NOW())
+            INSERT INTO main_account (
+                tenant_id, branch_id, name, account_type, usd_balance, afs_balance,
+                euro_balance, darham_balance, last_updated, status
+            ) VALUES (
+                ?, ?, ?, 'internal', 0, 0, 0, 0, NOW(), 'active'
+            )
         ");
         $insertStmt->execute([$this->tenantId, $this->branchId, $name]);
         return $this->pdo->lastInsertId();
@@ -972,12 +982,27 @@ if (empty(array_filter($data))) continue;
 
         // Create new family
         $insertStmt = $this->pdo->prepare("
-            INSERT INTO families (tenant_id, branch_id, head_of_family, created_by, created_at, updated_at)
-            VALUES (?, ?, ?, NOW(), NOW())
+            INSERT INTO families (tenant_id, branch_id, head_of_family, province, district, created_by, created_at, updated_at)
+            VALUES (?, ?, ?, '', '', ?, NOW(), NOW())
         ");
         $userId = $this->getImportUserId();
         $insertStmt->execute([$this->tenantId, $this->branchId, $headOfFamily, $userId]);
         return $this->pdo->lastInsertId();
+    }
+
+    private function shouldSkipImportRow(array $data) {
+        $trimmedData = array_map(static function ($value) {
+            return trim((string) $value);
+        }, $data);
+
+        if (empty(array_filter($trimmedData, static function ($value) {
+            return $value !== '';
+        }))) {
+            return true;
+        }
+
+        $firstCell = strtoupper($trimmedData[0] ?? '');
+        return strpos($firstCell, 'NOTES') === 0 || strpos($firstCell, '- ') === 0;
     }
 
     private function getImportUserId() {

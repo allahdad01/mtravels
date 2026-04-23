@@ -147,7 +147,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 if ($totpHelper->verifyRecoveryCode(
                     $_SESSION["pending_user_id"], 
                     $_SESSION["pending_user_type"], 
-                    $totp_code
+                    $totp_code,
+                    $_SESSION["pending_user_tenant_id"] ?? null,
+                    $_SESSION["pending_user_branch_id"] ?? null
                 )) {
                     // Recovery code is valid, complete login
                     completeLogin();
@@ -159,7 +161,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 if ($totpHelper->verifyCode(
                     $_SESSION["pending_user_id"], 
                     $_SESSION["pending_user_type"], 
-                    $totp_code
+                    $totp_code,
+                    $_SESSION["pending_user_tenant_id"] ?? null,
+                    $_SESSION["pending_user_branch_id"] ?? null
                 )) {
                     // TOTP code is valid, complete login
                     completeLogin();

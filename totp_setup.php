@@ -24,6 +24,7 @@ $verification_phase = false;
 $qr_code = "";
 $recovery_codes = [];
 $tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'] ?? null;
 // Check if user already has TOTP enabled
 $user_id = $_SESSION["user_id"];
 $user_type = $_SESSION["user_type"];
@@ -31,7 +32,7 @@ $username = $_SESSION["name"];
 
 
 // Check if TOTP is already enabled
-$totp_enabled = $totpHelper->isTotpEnabled($user_id, $user_type, $tenant_id);
+$totp_enabled = $totpHelper->isTotpEnabled($user_id, $user_type, $tenant_id, $branch_id);
 
 // Process form submission
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -48,7 +49,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // SETUP: Generate new TOTP secret
     if (isset($_POST["action"]) && $_POST["action"] == "setup") {
         // Generate a new TOTP instance
-        $totp = $totpHelper->generateSecret($user_id, $user_type, $username, $tenant_id);
+        $totp = $totpHelper->generateSecret($user_id, $user_type, $username, $tenant_id, $branch_id);
         
         if ($totp) {
             // Store in session for verification
@@ -59,7 +60,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $qr_code = $totpHelper->generateQrCode($totp->getProvisioningUri());
             
             // Get recovery codes
-            $recovery_codes = $totpHelper->getRecoveryCodes($user_id, $user_type, $tenant_id);
+            $recovery_codes = $totpHelper->getRecoveryCodes($user_id, $user_type, $tenant_id, $branch_id);
         } else {
             $error_msg = "Failed to generate TOTP secret. Please try again.";
         }
@@ -72,9 +73,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $error_msg = "Please enter the verification code.";
         } else {
             // Verify the code
-            if ($totpHelper->verifyCode($user_id, $user_type, $totp_code, $tenant_id)) {
+            if ($totpHelper->verifyCode($user_id, $user_type, $totp_code, $tenant_id, $branch_id)) {
                 // Enable TOTP for the user
-                if ($totpHelper->enableTotp($user_id, $user_type, $tenant_id)) {
+                if ($totpHelper->enableTotp($user_id, $user_type, $tenant_id, $branch_id)) {
                     $success_msg = "Two-factor authentication has been enabled for your account.";
                     $totp_enabled = true;
                     // Clear verification phase
@@ -91,7 +92,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 if (isset($_SESSION["pending_totp"])) {
                     $qr_code = $totpHelper->generateQrCode($_SESSION["pending_totp"]);
                     // Get recovery codes
-                    $recovery_codes = $totpHelper->getRecoveryCodes($user_id, $user_type, $tenant_id);
+                    $recovery_codes = $totpHelper->getRecoveryCodes($user_id, $user_type, $tenant_id, $branch_id);
                 }
             }
         }
@@ -115,7 +116,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             
             if ($result && password_verify($password, $result[$password_field])) {
                 // Disable TOTP
-                if ($totpHelper->disableTotp($user_id, $user_type, $tenant_id)) {
+                if ($totpHelper->disableTotp($user_id, $user_type, $tenant_id, $branch_id)) {
                     $success_msg = "Two-factor authentication has been disabled for your account.";
                     $totp_enabled = false;
                 } else {

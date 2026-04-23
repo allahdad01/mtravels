@@ -134,7 +134,7 @@ try {
             SELECT tb.id, tb.currency, tb.sold
             FROM ticket_bookings tb
             JOIN clients c ON tb.sold_to = c.id
-            WHERE c.client_type = 'agency' AND tb.tenant_id = :tenant_id AND tb.branch_id = :branch_id
+            WHERE c.client_type = 'agency' AND tb.tenant_id = :tenant_id AND tb.branch_id = :branch_id AND tb.imported = '0'
         ";
         $stmt = $pdo->prepare($ticketQuery);
         $stmt->execute(['tenant_id' => $tenant_id, 'branch_id' => $branch_id]);

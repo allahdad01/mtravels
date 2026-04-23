@@ -9,10 +9,72 @@ use Endroid\QrCode\Writer\PngWriter;
 class TotpHelper {
     private $pdo;
     private $mysqli;
+    private $tableColumns = [];
     
     public function __construct($pdo, $mysqli) {
         $this->pdo = $pdo;
         $this->mysqli = $mysqli ?? null;
+    }
+
+    private function getTableColumns($table) {
+        if (!isset($this->tableColumns[$table])) {
+            $stmt = $this->pdo->query("SHOW COLUMNS FROM {$table}");
+            $this->tableColumns[$table] = array_flip(array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'Field'));
+        }
+
+        return $this->tableColumns[$table];
+    }
+
+    private function hasTableColumn($table, $column) {
+        $columns = $this->getTableColumns($table);
+
+        return isset($columns[$column]);
+    }
+
+    private function appendScopeConditions($table, &$sql, array &$params, $tenant_id = null) {
+        if ($this->hasTableColumn($table, 'tenant_id')) {
+            if ($tenant_id === null) {
+                $sql .= ' AND tenant_id IS NULL';
+            } else {
+                $sql .= ' AND tenant_id = :tenant_id';
+                $params[':tenant_id'] = $tenant_id;
+            }
+        }
+    }
+
+    private function buildScopedInsertData($table, array $data, $tenant_id = null, $branch_id = null) {
+        if ($this->hasTableColumn($table, 'tenant_id')) {
+            $data['tenant_id'] = $tenant_id;
+        }
+
+        if ($this->hasTableColumn($table, 'branch_id')) {
+            $data['branch_id'] = $branch_id;
+        }
+
+        return $data;
+    }
+
+    private function insertRow($table, array $data) {
+        $columns = array_keys($data);
+        $placeholders = array_map(function ($column) {
+            return ':' . $column;
+        }, $columns);
+
+        $sql = sprintf(
+            'INSERT INTO %s (%s) VALUES (%s)',
+            $table,
+            implode(', ', $columns),
+            implode(', ', $placeholders)
+        );
+
+        $params = [];
+        foreach ($data as $column => $value) {
+            $params[':' . $column] = $value;
+        }
+
+        $stmt = $this->pdo->prepare($sql);
+
+        return $stmt->execute($params);
     }
     
     /**
@@ -46,23 +108,43 @@ class TotpHelper {
             
             // Store the secret in the database
             try {
-                $sql = "INSERT INTO totp_secrets (user_id, user_type, secret, tenant_id, branch_id)
-                       VALUES (:user_id, :user_type, :secret, :tenant_id, :branch_id)
-                       ON DUPLICATE KEY UPDATE secret = :secret, is_enabled = 0";
+                $sql = "UPDATE totp_secrets SET secret = :secret, is_enabled = 0";
+                $params = [
+                    ':secret' => $secret,
+                ];
+
+                if ($this->hasTableColumn('totp_secrets', 'branch_id')) {
+                    $sql .= ', branch_id = :branch_id';
+                    $params[':branch_id'] = $branch_id;
+                }
+
+                $sql .= " WHERE user_id = :user_id AND user_type = :user_type";
+                $params[':user_id'] = $userId;
+                $params[':user_type'] = $userType;
+
+                $this->appendScopeConditions('totp_secrets', $sql, $params, $tenant_id);
 
                 $stmt = $this->pdo->prepare($sql);
+                $stmt->execute($params);
 
-                $params = [
-                    ':user_id' => $userId,
-                    ':user_type' => $userType,
-                    ':secret' => $secret,
-                    ':tenant_id' => $tenant_id,
-                    ':branch_id' => $branch_id
-                ];
-                
-                $result = $stmt->execute($params);
-                    try {
-                    $this->generateRecoveryCodes($userId, $userType, $tenant_id);
+                if ($stmt->rowCount() === 0) {
+                    $this->insertRow(
+                        'totp_secrets',
+                        $this->buildScopedInsertData(
+                            'totp_secrets',
+                            [
+                                'user_id' => $userId,
+                                'user_type' => $userType,
+                                'secret' => $secret,
+                            ],
+                            $tenant_id,
+                            $branch_id
+                        )
+                    );
+                }
+
+                try {
+                    $this->generateRecoveryCodes($userId, $userType, $tenant_id, $branch_id);
                 } catch (Exception $e) {
                     // If recovery code generation fails, we still want to return the TOTP
                     error_log("TOTP Warning: Recovery code generation failed: " . $e->getMessage());
@@ -75,16 +157,33 @@ class TotpHelper {
                 // Try alternative query without ON DUPLICATE KEY
                 try {
                     // Delete existing record first
-                    $delete = $this->pdo->prepare("DELETE FROM totp_secrets WHERE user_id = ? AND user_type = ? AND tenant_id = ? AND branch_id = ?");
-                    $delete->execute([$userId, $userType, $tenant_id, $branch_id]);
+                    $deleteSql = "DELETE FROM totp_secrets WHERE user_id = :user_id AND user_type = :user_type";
+                    $deleteParams = [
+                        ':user_id' => $userId,
+                        ':user_type' => $userType,
+                    ];
+                    $this->appendScopeConditions('totp_secrets', $deleteSql, $deleteParams, $tenant_id);
+                    $delete = $this->pdo->prepare($deleteSql);
+                    $delete->execute($deleteParams);
 
                     // Insert new record
-                    $stmt = $this->pdo->prepare("INSERT INTO totp_secrets (user_id, user_type, secret, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?)");
-                    $result = $stmt->execute([$userId, $userType, $secret, $tenant_id, $branch_id]);
+                    $this->insertRow(
+                        'totp_secrets',
+                        $this->buildScopedInsertData(
+                            'totp_secrets',
+                            [
+                                'user_id' => $userId,
+                                'user_type' => $userType,
+                                'secret' => $secret,
+                            ],
+                            $tenant_id,
+                            $branch_id
+                        )
+                    );
                     
                     // Generate recovery codes
                     try {
-                        $this->generateRecoveryCodes($userId, $userType, $tenant_id);
+                        $this->generateRecoveryCodes($userId, $userType, $tenant_id, $branch_id);
                     } catch (Exception $e) {
                         // Continue even if recovery code generation fails
                         error_log("TOTP Warning: Recovery code generation failed after fallback: " . $e->getMessage());
@@ -105,17 +204,15 @@ class TotpHelper {
      */
     public function verifyCode($userId, $userType, $code, $tenant_id = null, $branch_id = null) {
         try {
-            $stmt = $this->pdo->prepare("
-                SELECT secret FROM totp_secrets
-                WHERE user_id = :user_id AND user_type = :user_type AND tenant_id = :tenant_id AND branch_id = :branch_id
-            ");
-
-            $stmt->execute([
+            $sql = "SELECT secret FROM totp_secrets WHERE user_id = :user_id AND user_type = :user_type";
+            $params = [
                 ':user_id' => $userId,
                 ':user_type' => $userType,
-                ':tenant_id' => $tenant_id,
-                ':branch_id' => $branch_id
-            ]);
+            ];
+            $this->appendScopeConditions('totp_secrets', $sql, $params, $tenant_id);
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
 
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -131,18 +228,15 @@ class TotpHelper {
             // Verify the code (allowing a 30-second window on either side)
             if ($totp->verify($code, null, 1)) {
                 // Update last used timestamp
-                $updateStmt = $this->pdo->prepare("
-                    UPDATE totp_secrets
-                    SET last_used = NOW()
-                    WHERE user_id = :user_id AND user_type = :user_type AND tenant_id = :tenant_id AND branch_id = :branch_id
-                ");
-
-                $updateStmt->execute([
+                $updateSql = "UPDATE totp_secrets SET last_used = NOW() WHERE user_id = :user_id AND user_type = :user_type";
+                $updateParams = [
                     ':user_id' => $userId,
                     ':user_type' => $userType,
-                    ':tenant_id' => $tenant_id,
-                    ':branch_id' => $branch_id
-                ]);
+                ];
+                $this->appendScopeConditions('totp_secrets', $updateSql, $updateParams, $tenant_id);
+
+                $updateStmt = $this->pdo->prepare($updateSql);
+                $updateStmt->execute($updateParams);
 
                 return true;
             }
@@ -159,18 +253,15 @@ class TotpHelper {
     public function enableTotp($userId, $userType, $tenant_id = null, $branch_id = null) {
         try {
             // Update the TOTP secrets table
-            $stmt = $this->pdo->prepare("
-                UPDATE totp_secrets
-                SET is_enabled = 1
-                WHERE user_id = :user_id AND user_type = :user_type AND tenant_id = :tenant_id AND branch_id = :branch_id
-            ");
-
-            $stmt->execute([
+            $sql = "UPDATE totp_secrets SET is_enabled = 1 WHERE user_id = :user_id AND user_type = :user_type";
+            $params = [
                 ':user_id' => $userId,
                 ':user_type' => $userType,
-                ':tenant_id' => $tenant_id,
-                ':branch_id' => $branch_id
-            ]);
+            ];
+            $this->appendScopeConditions('totp_secrets', $sql, $params, $tenant_id);
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
 
             // Update the user table
             $table = ($userType == 'staff') ? 'users' : 'clients';
@@ -196,18 +287,15 @@ class TotpHelper {
     public function disableTotp($userId, $userType, $tenant_id = null, $branch_id = null) {
         try {
             // Update the TOTP secrets table
-            $stmt = $this->pdo->prepare("
-                UPDATE totp_secrets
-                SET is_enabled = 0
-                WHERE user_id = :user_id AND user_type = :user_type AND tenant_id = :tenant_id AND branch_id = :branch_id
-            ");
-
-            $stmt->execute([
+            $sql = "UPDATE totp_secrets SET is_enabled = 0 WHERE user_id = :user_id AND user_type = :user_type";
+            $params = [
                 ':user_id' => $userId,
                 ':user_type' => $userType,
-                ':tenant_id' => $tenant_id,
-                ':branch_id' => $branch_id
-            ]);
+            ];
+            $this->appendScopeConditions('totp_secrets', $sql, $params, $tenant_id);
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
 
             // Update the user table
             $table = ($userType == 'staff') ? 'users' : 'clients';
@@ -232,17 +320,15 @@ class TotpHelper {
      */
     public function isTotpEnabled($userId, $userType, $tenant_id = null, $branch_id = null) {
         try {
-            $stmt = $this->pdo->prepare("
-                SELECT is_enabled FROM totp_secrets
-                WHERE user_id = :user_id AND user_type = :user_type AND tenant_id = :tenant_id AND branch_id = :branch_id
-            ");
-
-            $stmt->execute([
+            $sql = "SELECT is_enabled FROM totp_secrets WHERE user_id = :user_id AND user_type = :user_type";
+            $params = [
                 ':user_id' => $userId,
                 ':user_type' => $userType,
-                ':tenant_id' => $tenant_id,
-                ':branch_id' => $branch_id
-            ]);
+            ];
+            $this->appendScopeConditions('totp_secrets', $sql, $params, $tenant_id);
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
 
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -273,35 +359,34 @@ class TotpHelper {
         try {
 
             // Delete existing unused recovery codes
-            $deleteStmt = $this->pdo->prepare("
-                DELETE FROM totp_recovery_codes
-                WHERE user_id = :user_id AND user_type = :user_type AND is_used = 0 AND tenant_id = :tenant_id AND branch_id = :branch_id
-            ");
-
-            $deleteStmt->execute([
+            $deleteSql = "DELETE FROM totp_recovery_codes WHERE user_id = :user_id AND user_type = :user_type AND is_used = 0";
+            $deleteParams = [
                 ':user_id' => $userId,
                 ':user_type' => $userType,
-                ':tenant_id' => $tenant_id,
-                ':branch_id' => $branch_id
-            ]);
+            ];
+            $this->appendScopeConditions('totp_recovery_codes', $deleteSql, $deleteParams, $tenant_id);
+
+            $deleteStmt = $this->pdo->prepare($deleteSql);
+            $deleteStmt->execute($deleteParams);
 
             // Generate 8 new recovery codes
-            $insertStmt = $this->pdo->prepare("
-                INSERT INTO totp_recovery_codes (user_id, user_type, recovery_code, tenant_id, branch_id)
-                VALUES (:user_id, :user_type, :code, :tenant_id, :branch_id)
-            ");
-            
             $inserted = 0;
             for ($i = 0; $i < 8; $i++) {
                 try {
                     $code = $this->generateRandomCode();
-                    $insertStmt->execute([
-                        ':user_id' => $userId,
-                        ':user_type' => $userType,
-                        ':code' => $code,
-                        ':tenant_id' => $tenant_id,
-                        ':branch_id' => $branch_id
-                    ]);
+                    $this->insertRow(
+                        'totp_recovery_codes',
+                        $this->buildScopedInsertData(
+                            'totp_recovery_codes',
+                            [
+                                'user_id' => $userId,
+                                'user_type' => $userType,
+                                'recovery_code' => $code,
+                            ],
+                            $tenant_id,
+                            $branch_id
+                        )
+                    );
                     $inserted++;
                 } catch (Exception $e) {
                 }
@@ -313,17 +398,32 @@ class TotpHelper {
             // Try with simpler query as fallback
             try {
                 // Delete existing codes
-                $delete = $this->pdo->prepare("DELETE FROM totp_recovery_codes WHERE user_id = ? AND user_type = ? AND is_used = 0 AND tenant_id = ? AND branch_id = ?");
-                $delete->execute([$userId, $userType, $tenant_id, $branch_id]);
-
-                // Use simpler insert
-                $insertStmt = $this->pdo->prepare("INSERT INTO totp_recovery_codes (user_id, user_type, recovery_code, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?)");
+                $deleteSql = "DELETE FROM totp_recovery_codes WHERE user_id = :user_id AND user_type = :user_type AND is_used = 0";
+                $deleteParams = [
+                    ':user_id' => $userId,
+                    ':user_type' => $userType,
+                ];
+                $this->appendScopeConditions('totp_recovery_codes', $deleteSql, $deleteParams, $tenant_id);
+                $delete = $this->pdo->prepare($deleteSql);
+                $delete->execute($deleteParams);
 
                 $inserted = 0;
                 for ($i = 0; $i < 8; $i++) {
                     try {
                         $code = $this->generateRandomCode();
-                        $insertStmt->execute([$userId, $userType, $code, $tenant_id, $branch_id]);
+                        $this->insertRow(
+                            'totp_recovery_codes',
+                            $this->buildScopedInsertData(
+                                'totp_recovery_codes',
+                                [
+                                    'user_id' => $userId,
+                                    'user_type' => $userType,
+                                    'recovery_code' => $code,
+                                ],
+                                $tenant_id,
+                                $branch_id
+                            )
+                        );
                         $inserted++;
                     } catch (Exception $e) {
                         error_log("TOTP Warning: Failed to insert recovery code #$i in fallback: " . $e->getMessage());
@@ -361,17 +461,15 @@ class TotpHelper {
      */
     public function getRecoveryCodes($userId, $userType, $tenant_id = null, $branch_id = null) {
         try {
-            $stmt = $this->pdo->prepare("
-                SELECT recovery_code FROM totp_recovery_codes
-                WHERE user_id = :user_id AND user_type = :user_type AND is_used = 0 AND tenant_id = :tenant_id AND branch_id = :branch_id
-            ");
-
-            $stmt->execute([
+            $sql = "SELECT recovery_code FROM totp_recovery_codes WHERE user_id = :user_id AND user_type = :user_type AND is_used = 0";
+            $params = [
                 ':user_id' => $userId,
                 ':user_type' => $userType,
-                ':tenant_id' => $tenant_id,
-                ':branch_id' => $branch_id
-            ]);
+            ];
+            $this->appendScopeConditions('totp_recovery_codes', $sql, $params, $tenant_id);
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
 
             return $stmt->fetchAll(PDO::FETCH_COLUMN);
         } catch (PDOException $e) {
@@ -384,23 +482,16 @@ class TotpHelper {
      */
     public function verifyRecoveryCode($userId, $userType, $code, $tenant_id = null, $branch_id = null) {
         try {
-            $stmt = $this->pdo->prepare("
-                SELECT id FROM totp_recovery_codes
-                WHERE user_id = :user_id
-                AND user_type = :user_type
-                AND recovery_code = :code
-                AND is_used = 0
-                AND tenant_id = :tenant_id
-                AND branch_id = :branch_id
-            ");
-
-            $stmt->execute([
+            $sql = "SELECT id FROM totp_recovery_codes WHERE user_id = :user_id AND user_type = :user_type AND recovery_code = :code AND is_used = 0";
+            $params = [
                 ':user_id' => $userId,
                 ':user_type' => $userType,
                 ':code' => $code,
-                ':tenant_id' => $tenant_id,
-                ':branch_id' => $branch_id
-            ]);
+            ];
+            $this->appendScopeConditions('totp_recovery_codes', $sql, $params, $tenant_id);
+
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
 
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
