@@ -226,16 +226,19 @@ class ChatAPI {
     /**
      * Upload a file
      */
-    async uploadFile(file, contactId = null) {
+    async uploadFile(file, contactId = null, options = {}) {
         if (!file) {
             throw new Error('File is required');
         }
+
+        const { peerType = 'user' } = options;
 
         try {
             const formData = new FormData();
             formData.append('file', file);
             if (contactId) {
                 formData.append('to_user_id', contactId);
+                formData.append('to_user_type', peerType);
             }
             // Add CSRF token
             formData.append('csrf_token', window.csrfToken || '');

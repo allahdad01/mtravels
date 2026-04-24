@@ -11,7 +11,25 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $currentUserId = (int)$_SESSION['user_id'];
+$sessionRole = $_SESSION['role'] ?? 'user';
+$currentUserType = $sessionRole === 'client' ? 'client' : 'user';
 $method = $_SERVER['REQUEST_METHOD'];
+
+function room_from_users($a, $b, $typeA = 'user', $typeB = 'user') {
+    $pairs = [
+        ['id' => $a, 'type' => $typeA],
+        ['id' => $b, 'type' => $typeB]
+    ];
+
+    usort($pairs, function($x, $y) {
+        return $x['id'] - $y['id'];
+    });
+
+    $t1 = substr($pairs[0]['type'], 0, 1);
+    $t2 = substr($pairs[1]['type'], 0, 1);
+
+    return 'msg-' . $t1 . $pairs[0]['id'] . '-' . $t2 . $pairs[1]['id'];
+}
 
 if ($method !== 'POST') {
     http_response_code(405);
@@ -51,9 +69,16 @@ if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
 
 $file = $_FILES['file'];
 $toUserId = isset($_POST['to_user_id']) ? (int)$_POST['to_user_id'] : 0;
+$toUserType = isset($_POST['to_user_type']) ? trim($_POST['to_user_type']) : 'user';
 if ($toUserId <= 0) {
     http_response_code(400);
     echo json_encode(['error' => 'invalid_peer']);
+    exit;
+}
+
+if (!in_array($toUserType, ['user', 'client'], true)) {
+    http_response_code(400);
+    echo json_encode(['error' => 'invalid_peer_type']);
     exit;
 }
 
@@ -80,8 +105,16 @@ if (!in_array($mimeType, array_map('trim', $allowedMimePrefixes), true)) {
 }
 
 // Verify peer and tenant/branch peering
-$peerStmt = secure_query($pdo, 'SELECT tenant_id, branch_id FROM users WHERE id = ?', [$toUserId]);
-$peer = $peerStmt ? $peerStmt->fetch(PDO::FETCH_ASSOC) : null;
+if ($toUserType === 'client') {
+    $peerStmt = secure_query($pdo, 'SELECT tenant_id, branch_id, status as role FROM clients WHERE id = ?', [$toUserId]);
+    $peer = $peerStmt ? $peerStmt->fetch(PDO::FETCH_ASSOC) : null;
+} else {
+    $peerStmt = secure_query($pdo, 'SELECT tenant_id, branch_id, role, deleted_at, fired FROM users WHERE id = ?', [$toUserId]);
+    $peer = $peerStmt ? $peerStmt->fetch(PDO::FETCH_ASSOC) : null;
+    if ($peer && ($peer['deleted_at'] !== null || $peer['fired'])) {
+        $peer = null;
+    }
+}
 if (!$peer) {
     http_response_code(404);
     echo json_encode(['error' => 'peer_not_found']);
@@ -139,16 +172,16 @@ if (!move_uploaded_file($file['tmp_name'], $filePath)) {
     exit;
 }
 
-// Generate room_id
-$ids = [$currentUserId, $toUserId];
-sort($ids, SORT_NUMERIC);
-$room = 'u-' . $ids[0] . '-' . $ids[1];
+// Generate room_id using the same format as direct chat messages
+$room = room_from_users($currentUserId, $toUserId, $currentUserType, $toUserType);
 
 // Save file metadata to chat_messages
 $content = json_encode([
     'type' => 'file',
+    'filename' => $file['name'],
     'name' => $file['name'],
     'size' => $file['size'],
+    'mimetype' => $mimeType,
     'mimeType' => $mimeType,
     'filePath' => $fileName
 ]);

@@ -189,6 +189,9 @@ function setupListeners(manager, ui, api, voiceUI) {
         
         manager.currentGroupId = groupId;
         manager.currentType = 'group';
+        manager.currentContactId = null;
+        manager.currentContactUserType = null;
+        manager.currentRoomId = null;
         
         const group = manager.groups.find(g => g.id === groupId);
         

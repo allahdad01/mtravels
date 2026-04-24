@@ -196,6 +196,8 @@ class ChatManager {
         this.currentContactId = contactId;
         this.currentContactUserType = userType;
         this.currentRoomId = contact.room_id;
+        this.currentType = 'contact';
+        this.currentGroupId = null;
         
         // Clear unread for this contact
         this.unread.set(contact.room_id, 0);

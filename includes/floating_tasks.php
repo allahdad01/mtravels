@@ -7,7 +7,20 @@
 // Get current user session
 $user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
 $tenant_id = isset($_SESSION['tenant_id']) ? $_SESSION['tenant_id'] : 1;
+
+// Ensure CSRF token exists and expose to JavaScript
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+$csrf_token = $_SESSION['csrf_token'];
 ?>
+
+<!-- Expose CSRF token to JavaScript for floating tasks API -->
+<script>
+    if (!window.csrfToken) {
+        window.csrfToken = <?= json_encode($csrf_token) ?>;
+    }
+</script>
 
 <!-- Floating Tasks Widget HTML -->
 <div id="floatingTasksWidget" class="floating-tasks-widget minimized">
@@ -595,9 +608,17 @@ $tenant_id = isset($_SESSION['tenant_id']) ? $_SESSION['tenant_id'] : 1;
         async loadTasks() {
             try {
                 const response = await fetch(`${this.apiBaseUrl}?action=get`);
-                if (!response.ok) throw new Error('Failed to load tasks');
+                let data = null;
+                try {
+                    data = await response.json();
+                } catch (e) {
+                    // Ignore parse failures and fall back to generic message below.
+                }
+
+                if (!response.ok) {
+                    throw new Error(data?.details || data?.error || 'Failed to load tasks');
+                }
                 
-                const data = await response.json();
                 if (data.success) {
                     this.tasks = data.tasks;
                     this.renderTasks();
@@ -685,9 +706,17 @@ $tenant_id = isset($_SESSION['tenant_id']) ? $_SESSION['tenant_id'] : 1;
                     body: JSON.stringify(body)
                 });
 
-                if (!response.ok) throw new Error('Failed to add task');
+                let data = null;
+                try {
+                    data = await response.json();
+                } catch (e) {
+                    // Ignore parse failures and fall back to generic message below.
+                }
+
+                if (!response.ok) {
+                    throw new Error(data?.details || data?.error || 'Failed to add task');
+                }
                 
-                const data = await response.json();
                 if (data.success) {
                     this.tasks.push(data.task);
                     this.renderTasks();
@@ -720,9 +749,17 @@ $tenant_id = isset($_SESSION['tenant_id']) ? $_SESSION['tenant_id'] : 1;
                     body: JSON.stringify(body)
                 });
 
-                if (!response.ok) throw new Error('Failed to delete task');
+                let data = null;
+                try {
+                    data = await response.json();
+                } catch (e) {
+                    // Ignore parse failures and fall back to generic message below.
+                }
+
+                if (!response.ok) {
+                    throw new Error(data?.details || data?.error || 'Failed to delete task');
+                }
                 
-                const data = await response.json();
                 if (data.success) {
                     this.tasks = this.tasks.filter(t => t.id !== id);
                     this.renderTasks();
@@ -758,9 +795,17 @@ $tenant_id = isset($_SESSION['tenant_id']) ? $_SESSION['tenant_id'] : 1;
                     body: JSON.stringify(body)
                 });
 
-                if (!response.ok) throw new Error('Failed to update task');
+                let data = null;
+                try {
+                    data = await response.json();
+                } catch (e) {
+                    // Ignore parse failures and fall back to generic message below.
+                }
+
+                if (!response.ok) {
+                    throw new Error(data?.details || data?.error || 'Failed to update task');
+                }
                 
-                const data = await response.json();
                 if (data.success) {
                     task.completed = !task.completed;
                     this.renderTasks();
@@ -796,9 +841,17 @@ $tenant_id = isset($_SESSION['tenant_id']) ? $_SESSION['tenant_id'] : 1;
                     body: JSON.stringify(body)
                 });
 
-                if (!response.ok) throw new Error('Failed to clear completed tasks');
+                let data = null;
+                try {
+                    data = await response.json();
+                } catch (e) {
+                    // Ignore parse failures and fall back to generic message below.
+                }
+
+                if (!response.ok) {
+                    throw new Error(data?.details || data?.error || 'Failed to clear completed tasks');
+                }
                 
-                const data = await response.json();
                 if (data.success) {
                     this.tasks = this.tasks.filter(t => !t.completed);
                     this.renderTasks();
@@ -814,12 +867,14 @@ $tenant_id = isset($_SESSION['tenant_id']) ? $_SESSION['tenant_id'] : 1;
         }
 
         toggleMinimize() {
+            this.widget.style.display = '';
             this.widget.classList.toggle('minimized');
             this.toggle.style.display = this.widget.classList.contains('minimized') ? 'block' : 'none';
         }
 
         closeWidget() {
-            this.widget.style.display = 'none';
+            this.widget.style.display = '';
+            this.widget.classList.add('minimized');
             this.toggle.style.display = 'block';
         }
 

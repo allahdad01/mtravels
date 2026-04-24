@@ -1529,12 +1529,14 @@ class ChatUI {
             });
 
             // Upload file
-            api.uploadFile(file, contact.id)
+            api.uploadFile(file, contact.id, { peerType: contact.user_type || 'user' })
                 .then(async response => {
                     if (response && response.ok) {
                         // Reload messages to show the uploaded file
                         try {
-                            const messagesResponse = await api.getMessages(contact.id);
+                            const messagesResponse = await api.getMessages(contact.id, {
+                                peerType: contact.user_type || 'user'
+                            });
                             if (messagesResponse.messages) {
                                 const formatted = messagesResponse.messages.map(m => {
                                     const isOutgoing = m.from_user_id === window.ALQ_USER_ID;
@@ -1549,6 +1551,9 @@ class ChatUI {
                                         text: m.content,
                                         type: isOutgoing ? 'outgoing' : 'incoming',
                                         status: status,
+                                        messageType: m.message_type || 'text',
+                                        duration: m.duration || 0,
+                                        url: m.url,
                                         time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                                     };
                                 });

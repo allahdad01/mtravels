@@ -28,7 +28,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verify_csrf_token()) {
 $user_id = $_SESSION['user_id'];
 $tenant_id = $_SESSION['tenant_id'] ?? null;
 $branch_id = $_SESSION['branch_id'] ?? null;
-$user_type = $_SESSION['role'] ?? 'user'; // 'admin', 'client', 'sales_agent', etc.
+$session_role = $_SESSION['role'] ?? 'user';
+$user_type = $session_role === 'client' ? 'client' : 'user';
 
 // Sales agents may not have tenant_id (they work across tenants)
 // Allow null values for sales agents
@@ -45,6 +46,91 @@ $action = $_GET['action'] ?? $_POST['action'] ?? null;
 if (!$action) {
     $json = json_decode(file_get_contents('php://input'), true);
     $action = $json['action'] ?? null;
+}
+
+function floatingTasksTableExists() {
+    global $pdo;
+
+    static $exists = null;
+
+    if ($exists !== null) {
+        return $exists;
+    }
+
+    $checkStmt = $pdo->query("SHOW TABLES LIKE 'floating_tasks'");
+    $exists = $checkStmt && $checkStmt->rowCount() > 0;
+
+    return $exists;
+}
+
+function floatingTasksHasColumn($columnName) {
+    global $pdo;
+
+    static $columnCache = [];
+
+    if (array_key_exists($columnName, $columnCache)) {
+        return $columnCache[$columnName];
+    }
+
+    $stmt = $pdo->prepare("
+        SELECT 1
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'floating_tasks'
+          AND COLUMN_NAME = ?
+        LIMIT 1
+    ");
+    $stmt->execute([$columnName]);
+    $columnCache[$columnName] = $stmt->fetch(PDO::FETCH_ASSOC) !== false;
+
+    return $columnCache[$columnName];
+}
+
+function requireFloatingTasksTable() {
+    if (floatingTasksTableExists()) {
+        return;
+    }
+
+    http_response_code(503);
+    echo json_encode(['error' => 'Database table not initialized. Please run migrations.']);
+    exit();
+}
+
+function buildFloatingTasksScope(&$params) {
+    global $user_id, $tenant_id, $branch_id, $user_type;
+
+    $conditions = ['user_id = ?'];
+    $params[] = $user_id;
+
+    if (floatingTasksHasColumn('user_type')) {
+        $conditions[] = 'user_type = ?';
+        $params[] = $user_type;
+    }
+
+    $conditions[] = 'tenant_id = ?';
+    $params[] = $tenant_id;
+    $conditions[] = 'branch_id = ?';
+    $params[] = $branch_id;
+
+    return implode(' AND ', $conditions);
+}
+
+function respondWithPdoError($message, PDOException $e, array $context = []) {
+    http_response_code(500);
+
+    $payload = [
+        'error' => $message,
+        'details' => $e->getMessage(),
+        'sql_state' => $e->getCode(),
+    ];
+
+    if (!empty($context)) {
+        $payload['context'] = $context;
+    }
+
+    error_log('Floating tasks API error: ' . json_encode($payload));
+    echo json_encode($payload);
+    exit();
 }
 
 try {
@@ -79,21 +165,18 @@ function getTasks() {
     global $pdo, $user_id, $tenant_id, $branch_id, $user_type;
 
     try {
-        // Check if table exists first
-        $checkStmt = $pdo->query("SHOW TABLES LIKE 'floating_tasks'");
-        if ($checkStmt->rowCount() === 0) {
-            http_response_code(503);
-            echo json_encode(['error' => 'Database table not initialized. Please run migrations.']);
-            exit();
-        }
+        requireFloatingTasksTable();
+
+        $params = [];
+        $scope = buildFloatingTasksScope($params);
         
         $stmt = $pdo->prepare("
             SELECT id, task_text, completed, created_at
             FROM floating_tasks
-            WHERE user_id = ? AND user_type = ? AND tenant_id = ? AND branch_id = ?
+            WHERE $scope
             ORDER BY created_at DESC
         ");
-        $stmt->execute([$user_id, $user_type, $tenant_id, $branch_id]);
+        $stmt->execute($params);
         $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Format response
@@ -108,13 +191,19 @@ function getTasks() {
         
         echo json_encode(['success' => true, 'tasks' => $formattedTasks]);
     } catch (PDOException $e) {
-        http_response_code(500);
-        echo json_encode(['error' => 'Failed to fetch tasks']);
+        respondWithPdoError('Failed to fetch tasks', $e, [
+            'user_id' => $user_id,
+            'user_type' => $user_type,
+            'tenant_id' => $tenant_id,
+            'branch_id' => $branch_id,
+        ]);
     }
 }
 
 function addTask() {
     global $pdo, $user_id, $tenant_id, $branch_id, $user_type;
+
+    requireFloatingTasksTable();
 
     // Parse JSON body first, then fall back to POST
     $json = json_decode(file_get_contents('php://input'), true);
@@ -128,11 +217,19 @@ function addTask() {
     }
 
     try {
-        $stmt = $pdo->prepare("
-            INSERT INTO floating_tasks (user_id, user_type, tenant_id, branch_id, task_text, completed, created_at)
-            VALUES (?, ?, ?, ?, ?, 0, NOW())
-        ");
-        $stmt->execute([$user_id, $user_type, $tenant_id, $branch_id, $text]);
+        if (floatingTasksHasColumn('user_type')) {
+            $stmt = $pdo->prepare("
+                INSERT INTO floating_tasks (user_id, user_type, tenant_id, branch_id, task_text, completed, created_at)
+                VALUES (?, ?, ?, ?, ?, 0, NOW())
+            ");
+            $stmt->execute([$user_id, $user_type, $tenant_id, $branch_id, $text]);
+        } else {
+            $stmt = $pdo->prepare("
+                INSERT INTO floating_tasks (user_id, tenant_id, branch_id, task_text, completed, created_at)
+                VALUES (?, ?, ?, ?, 0, NOW())
+            ");
+            $stmt->execute([$user_id, $tenant_id, $branch_id, $text]);
+        }
         
         $taskId = $pdo->lastInsertId();
         
@@ -146,13 +243,20 @@ function addTask() {
             ]
         ]);
     } catch (PDOException $e) {
-        http_response_code(500);
-        echo json_encode(['error' => 'Failed to add task']);
+        respondWithPdoError('Failed to add task', $e, [
+            'user_id' => $user_id,
+            'user_type' => $user_type,
+            'tenant_id' => $tenant_id,
+            'branch_id' => $branch_id,
+            'text_length' => strlen($text),
+        ]);
     }
 }
 
 function updateTask() {
     global $pdo, $user_id, $tenant_id, $branch_id, $user_type;
+
+    requireFloatingTasksTable();
 
     // Parse JSON body first, then fall back to POST
     $json = json_decode(file_get_contents('php://input'), true);
@@ -167,12 +271,15 @@ function updateTask() {
     }
 
     try {
+        $params = [$id];
+        $scope = buildFloatingTasksScope($params);
+
         // Verify ownership
         $stmt = $pdo->prepare("
             SELECT id FROM floating_tasks
-            WHERE id = ? AND user_id = ? AND user_type = ? AND tenant_id = ? AND branch_id = ?
+            WHERE id = ? AND $scope
         ");
-        $stmt->execute([$id, $user_id, $user_type, $tenant_id, $branch_id]);
+        $stmt->execute($params);
 
         if (!$stmt->fetch()) {
             http_response_code(403);
@@ -180,22 +287,32 @@ function updateTask() {
             exit();
         }
 
+        $params = [$completed ? 1 : 0, $id];
+        $scope = buildFloatingTasksScope($params);
+
         $stmt = $pdo->prepare("
             UPDATE floating_tasks
             SET completed = ?
-            WHERE id = ? AND user_id = ? AND user_type = ? AND tenant_id = ? AND branch_id = ?
+            WHERE id = ? AND $scope
         ");
-        $stmt->execute([$completed ? 1 : 0, $id, $user_id, $user_type, $tenant_id, $branch_id]);
+        $stmt->execute($params);
         
         echo json_encode(['success' => true]);
     } catch (PDOException $e) {
-        http_response_code(500);
-        echo json_encode(['error' => 'Failed to update task']);
+        respondWithPdoError('Failed to update task', $e, [
+            'task_id' => $id,
+            'user_id' => $user_id,
+            'user_type' => $user_type,
+            'tenant_id' => $tenant_id,
+            'branch_id' => $branch_id,
+        ]);
     }
 }
 
 function deleteTask() {
     global $pdo, $user_id, $tenant_id, $branch_id, $user_type;
+
+    requireFloatingTasksTable();
 
     // Parse JSON body first, then fall back to POST
     $json = json_decode(file_get_contents('php://input'), true);
@@ -209,12 +326,15 @@ function deleteTask() {
     }
 
     try {
+        $params = [$id];
+        $scope = buildFloatingTasksScope($params);
+
         // Verify ownership
         $stmt = $pdo->prepare("
             SELECT id FROM floating_tasks
-            WHERE id = ? AND user_id = ? AND user_type = ? AND tenant_id = ? AND branch_id = ?
+            WHERE id = ? AND $scope
         ");
-        $stmt->execute([$id, $user_id, $user_type, $tenant_id, $branch_id]);
+        $stmt->execute($params);
 
         if (!$stmt->fetch()) {
             http_response_code(403);
@@ -222,33 +342,50 @@ function deleteTask() {
             exit();
         }
 
+        $params = [$id];
+        $scope = buildFloatingTasksScope($params);
+
         $stmt = $pdo->prepare("
             DELETE FROM floating_tasks
-            WHERE id = ? AND user_id = ? AND user_type = ? AND tenant_id = ? AND branch_id = ?
+            WHERE id = ? AND $scope
         ");
-        $stmt->execute([$id, $user_id, $user_type, $tenant_id, $branch_id]);
+        $stmt->execute($params);
         
         echo json_encode(['success' => true]);
     } catch (PDOException $e) {
-        http_response_code(500);
-        echo json_encode(['error' => 'Failed to delete task']);
+        respondWithPdoError('Failed to delete task', $e, [
+            'task_id' => $id,
+            'user_id' => $user_id,
+            'user_type' => $user_type,
+            'tenant_id' => $tenant_id,
+            'branch_id' => $branch_id,
+        ]);
     }
 }
 
 function clearCompleted() {
     global $pdo, $user_id, $tenant_id, $branch_id, $user_type;
 
+    requireFloatingTasksTable();
+
     try {
+        $params = [];
+        $scope = buildFloatingTasksScope($params);
+
         $stmt = $pdo->prepare("
             DELETE FROM floating_tasks
-            WHERE user_id = ? AND user_type = ? AND tenant_id = ? AND branch_id = ? AND completed = 1
+            WHERE $scope AND completed = 1
         ");
-        $stmt->execute([$user_id, $user_type, $tenant_id, $branch_id]);
+        $stmt->execute($params);
         
         echo json_encode(['success' => true]);
     } catch (PDOException $e) {
-        http_response_code(500);
-        echo json_encode(['error' => 'Failed to clear completed tasks']);
+        respondWithPdoError('Failed to clear completed tasks', $e, [
+            'user_id' => $user_id,
+            'user_type' => $user_type,
+            'tenant_id' => $tenant_id,
+            'branch_id' => $branch_id,
+        ]);
     }
 }
 ?>
