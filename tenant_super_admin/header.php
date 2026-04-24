@@ -1486,16 +1486,16 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                         <span class="pcoded-mtext">Request Branch</span>
                     </a>
                 </li>
-                <li data-username="request_user_addon" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'request_user_addon.php' ? 'active' : ''; ?>">
-                    <a href="request_user_addon.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-package"></i></span>
-                        <span class="pcoded-mtext">Request Users</span>
-                    </a>
-                </li>
                 <li data-username="users" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'users.php' ? 'active' : ''; ?>">
                     <a href="users.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-user-plus"></i></span>
                         <span class="pcoded-mtext">Users</span>
+                    </a>
+                </li>
+                <li data-username="request_user_addon" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'request_user_addon.php' ? 'active' : ''; ?>">
+                    <a href="request_user_addon.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-package"></i></span>
+                        <span class="pcoded-mtext">Request Users</span>
                     </a>
                 </li>
                 <?php if (hasFeature('attendance', $allowed_features)): ?>
