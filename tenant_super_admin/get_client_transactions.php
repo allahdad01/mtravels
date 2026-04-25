@@ -1,6 +1,9 @@
 <?php
+// Start session if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 include '../includes/db.php';
-include '../includes/conn.php';
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -29,10 +32,8 @@ $offset = ($page - 1) * $results_per_page;
 
 // Get transactions
 $query = "SELECT
-    ct.*,
-    u.name as created_by_name
+    ct.*
 FROM client_transactions ct
-LEFT JOIN users u ON ct.created_by = u.id
 WHERE ct.client_id = ? AND ct.tenant_id = ?
 ORDER BY ct.created_at DESC
 LIMIT ? OFFSET ?";
@@ -121,7 +122,7 @@ $total_pages = ceil($total_transactions / $results_per_page);
                         <?php endif; ?>
                     </td>
                     <td>
-                        <?= htmlspecialchars($transaction['created_by_name'] ?: 'System') ?>
+                        System
                     </td>
                 </tr>
                 <?php endforeach; ?>

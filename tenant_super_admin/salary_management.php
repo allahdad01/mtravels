@@ -452,7 +452,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 
 <!-- Payment History Modal -->
 <div class="modal fade" id="paymentsModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header pay-header">
                 <h5 class="modal-title"><i class="feather icon-credit-card" style="margin-right:8px;"></i>Payment History —  <span id="employee-name-header"></span></h5>

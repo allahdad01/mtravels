@@ -4,7 +4,6 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 include '../includes/db.php';
-include '../includes/conn.php';
 // Get tenant and user info
 $tenant_id = $_SESSION['tenant_id'];
 $user_id = $_SESSION['user_id'];

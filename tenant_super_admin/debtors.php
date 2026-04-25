@@ -463,7 +463,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 
 <!-- Transactions Modal -->
 <div class="modal fade" id="transactionsModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header txn-header">
                 <h5 class="modal-title"><i class="feather icon-activity" style="margin-right:8px;"></i>Transaction History —  <span id="debtor-name-header"></span></h5>

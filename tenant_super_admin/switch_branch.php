@@ -18,7 +18,6 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'tenant_super_admin') {
 
 // Include database connection
 require_once('../includes/db.php');
-include '../includes/conn.php';
 
 $tenant_id = $_SESSION['tenant_id'];
 $user_id = $_SESSION['user_id'];
