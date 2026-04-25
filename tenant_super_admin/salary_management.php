@@ -397,13 +397,13 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
             <div class="modal-summary">
                 <div class="ms-cell">
                     <div class="ms-label">Base Salary</div>
-                    <div class="ms-val salary" id="modal-base-salary">â€”</div>
-                    <div class="ms-sub" id="modal-salary-currency">â€”</div>
+                    <div class="ms-val salary" id="modal-base-salary">— </div>
+                    <div class="ms-sub" id="modal-salary-currency">— </div>
                 </div>
                 <div class="ms-cell">
                     <div class="ms-label">Total Paid</div>
-                    <div class="ms-val indigo" id="modal-total-paid">â€”</div>
-                    <div class="ms-sub" id="modal-payment-count">â€”</div>
+                    <div class="ms-val indigo" id="modal-total-paid">— </div>
+                    <div class="ms-sub" id="modal-payment-count">— </div>
                 </div>
             </div>
 
@@ -417,17 +417,17 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                         <div class="detail-section">
                             <div class="ds-title">Employee Information</div>
-                            <div class="ds-row"><span class="ds-key">Full Name</span><span class="ds-val" id="emp-name">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Email</span><span class="ds-val" id="emp-email" style="font-size:12px;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Phone</span><span class="ds-val" id="emp-phone" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="emp-branch">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Full Name</span><span class="ds-val" id="emp-name">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Email</span><span class="ds-val" id="emp-email" style="font-size:12px;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Phone</span><span class="ds-val" id="emp-phone" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="emp-branch">— </span></div>
                         </div>
                         <div class="detail-section">
                             <div class="ds-title">Salary Details</div>
-                            <div class="ds-row"><span class="ds-key">Base Salary</span><span class="ds-val green" id="sal-amount" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Currency</span><span class="ds-val" id="sal-currency" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Payment Day</span><span class="ds-val indigo" id="sal-pay-day" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Status</span><span class="ds-val" id="sal-status">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Base Salary</span><span class="ds-val green" id="sal-amount" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Currency</span><span class="ds-val" id="sal-currency" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Payment Day</span><span class="ds-val indigo" id="sal-pay-day" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Status</span><span class="ds-val" id="sal-status">— </span></div>
                         </div>
                     </div>
                 </div>
@@ -435,10 +435,10 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                 <div class="modal-pane" id="pane-employment">
                     <div class="detail-section">
                         <div class="ds-title">Employment Information</div>
-                        <div class="ds-row"><span class="ds-key">Hire Date</span><span class="ds-val" id="emp-hire-date" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                        <div class="ds-row"><span class="ds-key">Employment Status</span><span class="ds-val" id="emp-status">â€”</span></div>
-                        <div class="ds-row"><span class="ds-key">Total Payments</span><span class="ds-val indigo" id="emp-pay-count" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                        <div class="ds-row"><span class="ds-key">Total Amount Paid</span><span class="ds-val green" id="emp-total-paid" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
+                        <div class="ds-row"><span class="ds-key">Hire Date</span><span class="ds-val" id="emp-hire-date" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                        <div class="ds-row"><span class="ds-key">Employment Status</span><span class="ds-val" id="emp-status">— </span></div>
+                        <div class="ds-row"><span class="ds-key">Total Payments</span><span class="ds-val indigo" id="emp-pay-count" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                        <div class="ds-row"><span class="ds-key">Total Amount Paid</span><span class="ds-val green" id="emp-total-paid" style="font-family:'JetBrains Mono',monospace;">— </span></div>
                     </div>
                 </div>
             </div>
@@ -455,7 +455,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
     <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header pay-header">
-                <h5 class="modal-title"><i class="feather icon-credit-card" style="margin-right:8px;"></i>Payment History â€” <span id="employee-name-header"></span></h5>
+                <h5 class="modal-title"><i class="feather icon-credit-card" style="margin-right:8px;"></i>Payment History —  <span id="employee-name-header"></span></h5>
                 <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <div class="modal-body" style="padding:0;">
@@ -498,17 +498,17 @@ document.querySelectorAll('.view-details').forEach(btn => {
         const s = JSON.parse(this.getAttribute('data-salary'));
 
         document.getElementById('modal-base-salary').textContent  = '$' + parseFloat(s.base_salary || 0).toFixed(2);
-        document.getElementById('modal-salary-currency').textContent = s.currency || 'â€”';
+        document.getElementById('modal-salary-currency').textContent = s.currency || '— ';
         document.getElementById('modal-total-paid').textContent   = '$' + parseFloat(s.total_paid || 0).toFixed(2);
         document.getElementById('modal-payment-count').textContent = s.payment_count + ' payments made';
 
-        document.getElementById('emp-name').textContent   = s.employee_name  || 'â€”';
+        document.getElementById('emp-name').textContent   = s.employee_name  || '— ';
         document.getElementById('emp-email').textContent  = s.employee_email || 'N/A';
         document.getElementById('emp-phone').textContent  = s.employee_phone || 'N/A';
         document.getElementById('emp-branch').textContent = s.branch_name    || 'N/A';
 
         document.getElementById('sal-amount').textContent   = '$' + parseFloat(s.base_salary || 0).toFixed(2);
-        document.getElementById('sal-currency').textContent = s.currency || 'â€”';
+        document.getElementById('sal-currency').textContent = s.currency || '— ';
         document.getElementById('sal-pay-day').textContent  = 'Day ' + s.payment_day;
         document.getElementById('sal-status').textContent   = (s.status||'').charAt(0).toUpperCase() + (s.status||'').slice(1);
 

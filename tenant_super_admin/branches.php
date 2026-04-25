@@ -373,7 +373,7 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
             <div class="plan-stat">
                 <div class="ps-icon ps-amber"><i class="feather icon-plus-circle"></i></div>
                 <div class="ps-label">Add-ons</div>
-                <div class="ps-value ps-amber"><span class="ps-value-c"><?= $additional_branches > 0 ? '+' . $additional_branches : 'â€”' ?></span></div>
+                <div class="ps-value ps-amber"><span class="ps-value-c"><?= $additional_branches > 0 ? '+' . $additional_branches : '— ' ?></span></div>
             </div>
         </div>
         <div class="usage-bar-wrap">
@@ -448,7 +448,7 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
                                 <?php endif; ?>
                             </div>
                             <?php else: ?>
-                                <span style="color:var(--border);font-style:italic;font-size:13px;">â€”</span>
+                                <span style="color:var(--border);font-style:italic;font-size:13px;">— </span>
                             <?php endif; ?>
                         </td>
                         <td class="td-date"><?= date('M d, Y', strtotime($branch['created_at'])) ?></td>

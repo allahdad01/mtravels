@@ -377,7 +377,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                             <?php endif; ?>
                         </td>
                         <td class="td-phone">
-                            <?= $user['phone'] ? '<a href="tel:'.htmlspecialchars($user['phone']).'" style="color:var(--text-sub);text-decoration:none;"><i class="feather icon-phone" style="margin-right:3px;"></i>'.htmlspecialchars($user['phone']).'</a>' : '<span style="color:var(--border);">â€”</span>' ?>
+                            <?= $user['phone'] ? '<a href="tel:'.htmlspecialchars($user['phone']).'" style="color:var(--text-sub);text-decoration:none;"><i class="feather icon-phone" style="margin-right:3px;"></i>'.htmlspecialchars($user['phone']).'</a>' : '<span style="color:var(--border);">— </span>' ?>
                         </td>
                         <td class="td-date"><?= date('M d, Y', strtotime($user['created_at'])) ?></td>
                         <td>

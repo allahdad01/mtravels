@@ -59,7 +59,7 @@ function actStyle($action) {
 <!DOCTYPE html>
 <html lang="<?= get_current_lang() ?>" dir="<?= get_lang_dir() ?>">
 <head>
-    <title><?= __('user_profile') ?> â€” <?= htmlspecialchars($settings['agency_name']??'') ?></title>
+    <title><?= __('user_profile') ?> —  <?= htmlspecialchars($settings['agency_name']??'') ?></title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=0,minimal-ui">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -289,7 +289,7 @@ textarea.form-input{resize:vertical;min-height:80px}
                 <div class="activity-item">
                     <div class="act-dot <?= $s['cls'] ?>"><i class="feather icon-<?= $s['icon'] ?>"></i></div>
                     <div class="act-body">
-                        <strong><?= ucfirst(htmlspecialchars($act['action'])) ?> â€” <?= htmlspecialchars($act['table_name']??'system') ?></strong>
+                        <strong><?= ucfirst(htmlspecialchars($act['action'])) ?> —  <?= htmlspecialchars($act['table_name']??'system') ?></strong>
                         <span><?= date('M d, Y  H:i', strtotime($act['created_at'])) ?></span>
                     </div>
                 </div>

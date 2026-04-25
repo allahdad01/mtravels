@@ -33,10 +33,8 @@ $offset = ($page - 1) * $results_per_page;
 
 // Get transactions
 $query = "SELECT
-    st.*,
-    u.name as created_by_name
+    st.*
 FROM supplier_transactions st
-LEFT JOIN users u ON st.created_by = u.id
 WHERE st.supplier_id = ? AND st.tenant_id = ?
 ORDER BY st.transaction_date DESC
 LIMIT ? OFFSET ?";
@@ -125,7 +123,7 @@ $total_pages = ceil($total_transactions / $results_per_page);
                         <?php endif; ?>
                     </td>
                     <td>
-                        <?= htmlspecialchars($transaction['created_by_name'] ?: 'System') ?>
+                        System
                     </td>
                 </tr>
                 <?php endforeach; ?>

@@ -65,7 +65,7 @@ $to   = min($page * $results_per_page, $total_weights);
 *,*::before,*::after{box-sizing:border-box}
 body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important;background:var(--surface)!important;color:var(--text-main)!important}
 
-/* Header â€” sky blue â†’ indigo for weights/luggage */
+/* Header —  sky blue â†’ indigo for weights/luggage */
 .dash-header{background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);border-radius:var(--radius);padding:24px 28px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 8px 32px rgba(14,165,233,0.22);position:relative;overflow:hidden}
 .dash-header::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat}
 .dash-header h4{font-size:22px;font-weight:800;color:#fff;margin:0 0 4px;letter-spacing:-0.4px;position:relative}
@@ -186,7 +186,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 <div class="pcoded-main-container">
 <div class="pcoded-content">
 
-    <!-- Header â€” sky blue â†’ indigo for luggage/weight context -->
+    <!-- Header —  sky blue â†’ indigo for luggage/weight context -->
     <div class="dash-header">
         <div>
             <h4><i class="feather icon-package" style="margin-right:8px;"></i>Ticket Weights</h4>
@@ -335,9 +335,9 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 
             <!-- Summary strip -->
             <div class="modal-summary">
-                <div class="ms-cell"><div class="ms-label">Weight</div><div class="ms-val sky" id="weight-amount">â€”</div></div>
-                <div class="ms-cell"><div class="ms-label">Sold Price</div><div class="ms-val indigo" id="sold-price">â€”</div></div>
-                <div class="ms-cell"><div class="ms-label">Profit</div><div class="ms-val green" id="profit">â€”</div></div>
+                <div class="ms-cell"><div class="ms-label">Weight</div><div class="ms-val sky" id="weight-amount">— </div></div>
+                <div class="ms-cell"><div class="ms-label">Sold Price</div><div class="ms-val indigo" id="sold-price">— </div></div>
+                <div class="ms-cell"><div class="ms-label">Profit</div><div class="ms-val green" id="profit">— </div></div>
             </div>
 
             <div class="modal-body">
@@ -351,21 +351,21 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                         <div class="detail-section">
                             <div class="ds-title">Passenger Information</div>
-                            <div class="ds-row"><span class="ds-key">Passenger</span><span class="ds-val" id="passenger-name">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">PNR</span><span class="ds-val" id="pnr" style="font-family:'JetBrains Mono',monospace;color:var(--blue);">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Airline</span><span class="ds-val" id="airline">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Route</span><span class="ds-val" id="route">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="branch-name">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Created By</span><span class="ds-val" id="created-by">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Passenger</span><span class="ds-val" id="passenger-name">— </span></div>
+                            <div class="ds-row"><span class="ds-key">PNR</span><span class="ds-val" id="pnr" style="font-family:'JetBrains Mono',monospace;color:var(--blue);">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Airline</span><span class="ds-val" id="airline">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Route</span><span class="ds-val" id="route">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="branch-name">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Created By</span><span class="ds-val" id="created-by">— </span></div>
                         </div>
                         <div class="detail-section">
                             <div class="ds-title">Weight & Pricing</div>
-                            <div class="ds-row"><span class="ds-key">Weight</span><span class="ds-val sky" id="weight-detail" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Base Price</span><span class="ds-val" id="base-price" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Sold Price</span><span class="ds-val" id="sold-price-detail" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Profit</span><span class="ds-val green" id="profit-detail" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Currency</span><span class="ds-val" id="currency">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Created At</span><span class="ds-val" id="created-at">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Weight</span><span class="ds-val sky" id="weight-detail" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Base Price</span><span class="ds-val" id="base-price" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Sold Price</span><span class="ds-val" id="sold-price-detail" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Profit</span><span class="ds-val green" id="profit-detail" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Currency</span><span class="ds-val" id="currency">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Created At</span><span class="ds-val" id="created-at">— </span></div>
                         </div>
                     </div>
                 </div>
@@ -374,12 +374,12 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                 <div class="modal-pane" id="pane-weight">
                     <div class="detail-section">
                         <div class="ds-title">Additional Information</div>
-                        <div class="ds-row"><span class="ds-key">Ticket ID</span><span class="ds-val" id="ticket-id" style="font-family:'JetBrains Mono',monospace;color:var(--blue);">â€”</span></div>
-                        <div class="ds-row"><span class="ds-key">Imported</span><span class="ds-val" id="imported">â€”</span></div>
+                        <div class="ds-row"><span class="ds-key">Ticket ID</span><span class="ds-val" id="ticket-id" style="font-family:'JetBrains Mono',monospace;color:var(--blue);">— </span></div>
+                        <div class="ds-row"><span class="ds-key">Imported</span><span class="ds-val" id="imported">— </span></div>
                     </div>
                     <div class="detail-section">
                         <div class="ds-title">Remarks</div>
-                        <p id="remarks" style="font-size:14px;color:var(--text-main);margin:0;line-height:1.7;">â€”</p>
+                        <p id="remarks" style="font-size:14px;color:var(--text-main);margin:0;line-height:1.7;">— </p>
                     </div>
                 </div>
             </div>
@@ -429,7 +429,7 @@ document.querySelectorAll('.view-details').forEach(btn => {
         profEl.className = 'ms-val ' + (prof >= 0 ? 'green' : 'red');
 
         document.getElementById('passenger-name').textContent = (w.title||'') + ' ' + (w.passenger_name||'');
-        document.getElementById('pnr').textContent            = w.pnr || 'â€”';
+        document.getElementById('pnr').textContent            = w.pnr || '— ';
         document.getElementById('airline').textContent        = w.airline || 'N/A';
         document.getElementById('route').textContent          = (w.origin||'') + ' â†’ ' + (w.destination||'');
         document.getElementById('branch-name').textContent    = w.branch_name || 'No Branch';

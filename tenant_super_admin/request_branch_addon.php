@@ -288,9 +288,9 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
                                 <div style="margin-bottom:18px;">
                                     <label class="form-label"><i class="feather icon-calendar" style="margin-right:5px;"></i>Billing Cycle</label>
                                     <select class="form-input" id="billing_cycle" name="billing_cycle" onchange="updateCost()">
-                                        <option value="monthly">Monthly â€” <?= number_format($pricing['monthly'], 2) ?> <?= $currency ?>/branch</option>
-                                        <option value="quarterly">Quarterly â€” <?= number_format($pricing['quarterly'], 2) ?> <?= $currency ?>/branch</option>
-                                        <option value="yearly">Yearly â€” <?= number_format($pricing['yearly'], 2) ?> <?= $currency ?>/branch</option>
+                                        <option value="monthly">Monthly —  <?= number_format($pricing['monthly'], 2) ?> <?= $currency ?>/branch</option>
+                                        <option value="quarterly">Quarterly —  <?= number_format($pricing['quarterly'], 2) ?> <?= $currency ?>/branch</option>
+                                        <option value="yearly">Yearly —  <?= number_format($pricing['yearly'], 2) ?> <?= $currency ?>/branch</option>
                                     </select>
                                 </div>
                             </div>
@@ -376,7 +376,7 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
                                 <td class="td-money"><?= number_format($addon['total_addon_cost'], 2) ?> <?= htmlspecialchars($addon['currency']) ?></td>
                                 <td class="td-cycle"><?= ucfirst($addon['billing_cycle']) ?></td>
                                 <td><span class="status-pill sp-active"><i class="feather icon-check"></i><?= ucfirst($addon['status']) ?></span></td>
-                                <td class="td-date"><?= $addon['next_renewal_date'] ? date('M d, Y', strtotime($addon['next_renewal_date'])) : 'â€”' ?></td>
+                                <td class="td-date"><?= $addon['next_renewal_date'] ? date('M d, Y', strtotime($addon['next_renewal_date'])) : '— ' ?></td>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -434,7 +434,7 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
                                     <?= date('M d, Y', strtotime($payment['period_end'])) ?>
                                 </td>
                                 <td><span class="status-pill <?= $sp ?>"><?= ucfirst($payment['status']) ?></span></td>
-                                <td class="td-date"><?= $payment['payment_date'] ? date('M d, Y', strtotime($payment['payment_date'])) : 'â€”' ?></td>
+                                <td class="td-date"><?= $payment['payment_date'] ? date('M d, Y', strtotime($payment['payment_date'])) : '— ' ?></td>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -492,7 +492,7 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
                     </div>
                     <div class="stat-row">
                         <div class="sr-label"><i class="feather icon-plus-circle"></i>Add-ons</div>
-                        <div class="sr-val sv-amber"><?= $additional_branches > 0 ? '+' . intval($additional_branches) : 'â€”' ?></div>
+                        <div class="sr-val sv-amber"><?= $additional_branches > 0 ? '+' . intval($additional_branches) : '— ' ?></div>
                     </div>
                     <div class="stat-row">
                         <div class="sr-label"><i class="feather icon-maximize"></i>Max Allowed</div>

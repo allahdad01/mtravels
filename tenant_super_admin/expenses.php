@@ -73,7 +73,7 @@ $to   = min($page * $results_per_page, $total_expenses);
 *,*::before,*::after{box-sizing:border-box}
 body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important;background:var(--surface)!important;color:var(--text-main)!important}
 
-/* Header â€” rose â†’ orange for expenses/spending */
+/* Header —  rose â†’ orange for expenses/spending */
 .dash-header{background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);border-radius:var(--radius);padding:24px 28px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 8px 32px rgba(190,18,60,0.25);position:relative;overflow:hidden}
 .dash-header::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.06'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat}
 .dash-header h4{font-size:22px;font-weight:800;color:#fff;margin:0 0 4px;letter-spacing:-0.4px;position:relative}
@@ -372,13 +372,13 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
             <div class="modal-summary">
                 <div class="ms-cell">
                     <div class="ms-label">Expense Amount</div>
-                    <div class="ms-val rose" id="modal-amount">â€”</div>
-                    <div class="ms-sub" id="modal-currency">â€”</div>
+                    <div class="ms-val rose" id="modal-amount">— </div>
+                    <div class="ms-sub" id="modal-currency">— </div>
                 </div>
                 <div class="ms-cell">
                     <div class="ms-label">Expense Date</div>
-                    <div class="ms-val orange" id="modal-date" style="font-size:18px;">â€”</div>
-                    <div class="ms-sub" id="modal-created">â€”</div>
+                    <div class="ms-val orange" id="modal-date" style="font-size:18px;">— </div>
+                    <div class="ms-sub" id="modal-created">— </div>
                 </div>
             </div>
 
@@ -392,17 +392,17 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                         <div class="detail-section">
                             <div class="ds-title">Expense Information</div>
-                            <div class="ds-row"><span class="ds-key">Description</span><span class="ds-val" id="exp-description">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Category</span><span class="ds-val rose" id="exp-category">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="exp-branch">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Created By</span><span class="ds-val" id="exp-created-by">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Description</span><span class="ds-val" id="exp-description">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Category</span><span class="ds-val rose" id="exp-category">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="exp-branch">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Created By</span><span class="ds-val" id="exp-created-by">— </span></div>
                         </div>
                         <div class="detail-section">
                             <div class="ds-title">Financial Details</div>
-                            <div class="ds-row"><span class="ds-key">Amount</span><span class="ds-val orange" id="exp-amount-detail" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Currency</span><span class="ds-val" id="exp-currency-detail" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Main Account</span><span class="ds-val" id="exp-main-account">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Receipt No.</span><span class="ds-val" id="exp-receipt" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Amount</span><span class="ds-val orange" id="exp-amount-detail" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Currency</span><span class="ds-val" id="exp-currency-detail" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Main Account</span><span class="ds-val" id="exp-main-account">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Receipt No.</span><span class="ds-val" id="exp-receipt" style="font-family:'JetBrains Mono',monospace;">— </span></div>
                         </div>
                     </div>
                 </div>
@@ -410,10 +410,10 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                 <div class="modal-pane" id="pane-additional">
                     <div class="detail-section">
                         <div class="ds-title">Additional Information</div>
-                        <div class="ds-row"><span class="ds-key">Expense ID</span><span class="ds-val" id="exp-id" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                        <div class="ds-row"><span class="ds-key">Created At</span><span class="ds-val" id="exp-created-at" style="font-family:'JetBrains Mono',monospace;font-size:11px;">â€”</span></div>
-                        <div class="ds-row"><span class="ds-key">Updated At</span><span class="ds-val" id="exp-updated-at" style="font-family:'JetBrains Mono',monospace;font-size:11px;">â€”</span></div>
-                        <div class="ds-row"><span class="ds-key">Receipt File</span><span class="ds-val" id="exp-receipt-file">â€”</span></div>
+                        <div class="ds-row"><span class="ds-key">Expense ID</span><span class="ds-val" id="exp-id" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                        <div class="ds-row"><span class="ds-key">Created At</span><span class="ds-val" id="exp-created-at" style="font-family:'JetBrains Mono',monospace;font-size:11px;">— </span></div>
+                        <div class="ds-row"><span class="ds-key">Updated At</span><span class="ds-val" id="exp-updated-at" style="font-family:'JetBrains Mono',monospace;font-size:11px;">— </span></div>
+                        <div class="ds-row"><span class="ds-key">Receipt File</span><span class="ds-val" id="exp-receipt-file">— </span></div>
                     </div>
                 </div>
             </div>
@@ -452,23 +452,23 @@ document.querySelectorAll('.view-details').forEach(btn => {
         const amt  = parseFloat(e.amount || 0).toFixed(2);
 
         document.getElementById('modal-amount').textContent   = curr + amt;
-        document.getElementById('modal-currency').textContent = e.currency || 'â€”';
-        document.getElementById('modal-date').textContent     = e.date ? new Date(e.date).toLocaleDateString() : 'â€”';
-        document.getElementById('modal-created').textContent  = e.created_at ? 'Created ' + new Date(e.created_at).toLocaleString() : 'â€”';
+        document.getElementById('modal-currency').textContent = e.currency || '— ';
+        document.getElementById('modal-date').textContent     = e.date ? new Date(e.date).toLocaleDateString() : '— ';
+        document.getElementById('modal-created').textContent  = e.created_at ? 'Created ' + new Date(e.created_at).toLocaleString() : '— ';
 
-        document.getElementById('exp-description').textContent  = e.description    || 'â€”';
+        document.getElementById('exp-description').textContent  = e.description    || '— ';
         document.getElementById('exp-category').textContent     = e.category_name  || 'Uncategorized';
-        document.getElementById('exp-branch').textContent       = e.branch_name    || 'â€”';
-        document.getElementById('exp-created-by').textContent   = e.created_by_name || 'â€”';
+        document.getElementById('exp-branch').textContent       = e.branch_name    || '— ';
+        document.getElementById('exp-created-by').textContent   = e.created_by_name || '— ';
 
         document.getElementById('exp-amount-detail').textContent  = curr + amt;
-        document.getElementById('exp-currency-detail').textContent = e.currency || 'â€”';
-        document.getElementById('exp-main-account').textContent   = e.main_account_name || 'â€”';
-        document.getElementById('exp-receipt').textContent        = e.receipt || 'â€”';
+        document.getElementById('exp-currency-detail').textContent = e.currency || '— ';
+        document.getElementById('exp-main-account').textContent   = e.main_account_name || '— ';
+        document.getElementById('exp-receipt').textContent        = e.receipt || '— ';
 
-        document.getElementById('exp-id').textContent          = e.id || 'â€”';
-        document.getElementById('exp-created-at').textContent  = e.created_at ? new Date(e.created_at).toLocaleString() : 'â€”';
-        document.getElementById('exp-updated-at').textContent  = e.updated_at ? new Date(e.updated_at).toLocaleString() : 'â€”';
+        document.getElementById('exp-id').textContent          = e.id || '— ';
+        document.getElementById('exp-created-at').textContent  = e.created_at ? new Date(e.created_at).toLocaleString() : '— ';
+        document.getElementById('exp-updated-at').textContent  = e.updated_at ? new Date(e.updated_at).toLocaleString() : '— ';
         document.getElementById('exp-receipt-file').textContent = e.receipt_file || 'No file attached';
 
         switchTab('summary', document.querySelector('.modal-tab'));

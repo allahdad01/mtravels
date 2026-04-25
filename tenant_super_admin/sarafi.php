@@ -238,7 +238,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
     <!-- Header -->
     <div class="dash-header">
         <div>
-            <h4><i class="feather icon-refresh-cw" style="margin-right:8px;"></i>Sarafi â€” Money Exchange</h4>
+            <h4><i class="feather icon-refresh-cw" style="margin-right:8px;"></i>Sarafi —  Money Exchange</h4>
             <p>View and manage all money exchange transactions</p>
         </div>
     </div>
@@ -374,7 +374,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                         <span class="branch-pill"><i class="feather icon-git-branch"></i><?= htmlspecialchars($txn['branch_name'] ?? 'N/A') ?></span>
                     </td>
                     <td>
-                        <span class="status-pill <?= $stCls ?>"><?= ucfirst(htmlspecialchars($txn['status'] ?? 'â€”')) ?></span>
+                        <span class="status-pill <?= $stCls ?>"><?= ucfirst(htmlspecialchars($txn['status'] ?? '— ')) ?></span>
                         <div class="txn-date"><?= date('d/m/Y', strtotime($txn['created_at'])) ?> <?= date('H:i', strtotime($txn['created_at'])) ?></div>
                     </td>
                 </tr>
@@ -424,13 +424,13 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
             <div class="modal-summary">
                 <div class="ms-cell">
                     <div class="ms-label">Transaction Amount</div>
-                    <div class="ms-val teal" id="modal-amount">â€”</div>
-                    <div class="ms-sub" id="modal-type">â€”</div>
+                    <div class="ms-val teal" id="modal-amount">— </div>
+                    <div class="ms-sub" id="modal-type">— </div>
                 </div>
                 <div class="ms-cell">
                     <div class="ms-label">Status</div>
-                    <div class="ms-val green" id="modal-status">â€”</div>
-                    <div class="ms-sub" id="modal-date">â€”</div>
+                    <div class="ms-val green" id="modal-status">— </div>
+                    <div class="ms-sub" id="modal-date">— </div>
                 </div>
             </div>
 
@@ -444,16 +444,16 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                         <div class="detail-section">
                             <div class="ds-title">Customer Information</div>
-                            <div class="ds-row"><span class="ds-key">Customer</span><span class="ds-val" id="cust-name">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Phone</span><span class="ds-val" id="cust-phone" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="txn-branch">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Customer</span><span class="ds-val" id="cust-name">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Phone</span><span class="ds-val" id="cust-phone" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="txn-branch">— </span></div>
                         </div>
                         <div class="detail-section">
                             <div class="ds-title">Transaction Details</div>
-                            <div class="ds-row"><span class="ds-key">Type</span><span class="ds-val teal" id="txn-type">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Amount</span><span class="ds-val green" id="txn-amount" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Currency</span><span class="ds-val" id="txn-currency" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Reference</span><span class="ds-val" id="txn-ref" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Type</span><span class="ds-val teal" id="txn-type">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Amount</span><span class="ds-val green" id="txn-amount" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Currency</span><span class="ds-val" id="txn-currency" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Reference</span><span class="ds-val" id="txn-ref" style="font-family:'JetBrains Mono',monospace;">— </span></div>
                         </div>
                     </div>
                 </div>
@@ -461,14 +461,14 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                 <div class="modal-pane" id="pane-notes">
                     <div class="detail-section">
                         <div class="ds-title">Additional Information</div>
-                        <div class="ds-row"><span class="ds-key">Transaction ID</span><span class="ds-val" id="txn-id" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                        <div class="ds-row"><span class="ds-key">Status</span><span class="ds-val" id="txn-status-detail">â€”</span></div>
-                        <div class="ds-row"><span class="ds-key">Created At</span><span class="ds-val" id="txn-created" style="font-family:'JetBrains Mono',monospace;font-size:11px;">â€”</span></div>
-                        <div class="ds-row"><span class="ds-key">Updated At</span><span class="ds-val" id="txn-updated" style="font-family:'JetBrains Mono',monospace;font-size:11px;">â€”</span></div>
+                        <div class="ds-row"><span class="ds-key">Transaction ID</span><span class="ds-val" id="txn-id" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                        <div class="ds-row"><span class="ds-key">Status</span><span class="ds-val" id="txn-status-detail">— </span></div>
+                        <div class="ds-row"><span class="ds-key">Created At</span><span class="ds-val" id="txn-created" style="font-family:'JetBrains Mono',monospace;font-size:11px;">— </span></div>
+                        <div class="ds-row"><span class="ds-key">Updated At</span><span class="ds-val" id="txn-updated" style="font-family:'JetBrains Mono',monospace;font-size:11px;">— </span></div>
                     </div>
                     <div class="detail-section">
                         <div class="ds-title">Notes</div>
-                        <div class="notes-box" id="txn-notes">â€”</div>
+                        <div class="notes-box" id="txn-notes">— </div>
                     </div>
                 </div>
             </div>
@@ -511,7 +511,7 @@ document.querySelectorAll('.view-details').forEach(btn => {
         document.getElementById('modal-amount').textContent = curr + amt;
         document.getElementById('modal-type').textContent   = type;
         document.getElementById('modal-status').textContent = stat;
-        document.getElementById('modal-date').textContent   = t.created_at ? new Date(t.created_at).toLocaleDateString() : 'â€”';
+        document.getElementById('modal-date').textContent   = t.created_at ? new Date(t.created_at).toLocaleDateString() : '— ';
 
         document.getElementById('cust-name').textContent  = t.customer_name  || 'Unknown';
         document.getElementById('cust-phone').textContent = t.customer_phone || 'N/A';
@@ -519,13 +519,13 @@ document.querySelectorAll('.view-details').forEach(btn => {
 
         document.getElementById('txn-type').textContent     = type;
         document.getElementById('txn-amount').textContent   = curr + amt;
-        document.getElementById('txn-currency').textContent = t.currency || 'â€”';
+        document.getElementById('txn-currency').textContent = t.currency || '— ';
         document.getElementById('txn-ref').textContent      = t.reference_number || 'N/A';
 
-        document.getElementById('txn-id').textContent          = t.id || 'â€”';
+        document.getElementById('txn-id').textContent          = t.id || '— ';
         document.getElementById('txn-status-detail').textContent = stat;
-        document.getElementById('txn-created').textContent    = t.created_at ? new Date(t.created_at).toLocaleString() : 'â€”';
-        document.getElementById('txn-updated').textContent    = t.updated_at ? new Date(t.updated_at).toLocaleString() : 'â€”';
+        document.getElementById('txn-created').textContent    = t.created_at ? new Date(t.created_at).toLocaleString() : '— ';
+        document.getElementById('txn-updated').textContent    = t.updated_at ? new Date(t.updated_at).toLocaleString() : '— ';
         document.getElementById('txn-notes').textContent      = t.notes || 'No notes available.';
 
         switchTab('summary', document.querySelector('.modal-tab'));

@@ -63,7 +63,7 @@ $to   = min($page * $results_per_page, $total_applications);
 *,*::before,*::after{box-sizing:border-box}
 body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important;background:var(--surface)!important;color:var(--text-main)!important}
 
-/* Header â€” violet â†’ pink for visa/official documents */
+/* Header —  violet â†’ pink for visa/official documents */
 .dash-header{background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);border-radius:var(--radius);padding:24px 28px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 8px 32px rgba(124,58,237,0.22);position:relative;overflow:hidden}
 .dash-header::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat}
 .dash-header h4{font-size:22px;font-weight:800;color:#fff;margin:0 0 4px;letter-spacing:-0.4px;position:relative}
@@ -197,7 +197,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 <div class="pcoded-main-container">
 <div class="pcoded-content">
 
-    <!-- Header â€” violet â†’ pink for official documents/visas -->
+    <!-- Header —  violet â†’ pink for official documents/visas -->
     <div class="dash-header">
         <div>
             <h4><i class="feather icon-globe" style="margin-right:8px;"></i>Visa Applications</h4>
@@ -299,7 +299,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     <td>
                         <div class="app-date applied">
                             <i class="feather icon-send"></i>
-                            <?= htmlspecialchars($app['applied_date'] ?: 'â€”') ?>
+                            <?= htmlspecialchars($app['applied_date'] ?: '— ') ?>
                         </div>
                         <?php if (!empty($app['issued_date'])): ?>
                         <div class="app-date issued">
@@ -361,9 +361,9 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 
             <!-- Financial summary strip -->
             <div class="modal-summary">
-                <div class="ms-cell"><div class="ms-label">Sold Amount</div><div class="ms-val violet" id="sold-amount">â€”</div></div>
-                <div class="ms-cell"><div class="ms-label">Base Amount</div><div class="ms-val pink" id="base-amount">â€”</div></div>
-                <div class="ms-cell"><div class="ms-label">Profit</div><div class="ms-val green" id="profit">â€”</div></div>
+                <div class="ms-cell"><div class="ms-label">Sold Amount</div><div class="ms-val violet" id="sold-amount">— </div></div>
+                <div class="ms-cell"><div class="ms-label">Base Amount</div><div class="ms-val pink" id="base-amount">— </div></div>
+                <div class="ms-cell"><div class="ms-label">Profit</div><div class="ms-val green" id="profit">— </div></div>
             </div>
 
             <div class="modal-body">
@@ -377,21 +377,21 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                         <div class="detail-section">
                             <div class="ds-title">Applicant Information</div>
-                            <div class="ds-row"><span class="ds-key">Full Name</span><span class="ds-val" id="applicant-name">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Passport No.</span><span class="ds-val violet" id="passport-number" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Gender</span><span class="ds-val" id="gender">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Phone</span><span class="ds-val" id="phone" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="branch-name">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Created By</span><span class="ds-val" id="created-by">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Full Name</span><span class="ds-val" id="applicant-name">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Passport No.</span><span class="ds-val violet" id="passport-number" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Gender</span><span class="ds-val" id="gender">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Phone</span><span class="ds-val" id="phone" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="branch-name">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Created By</span><span class="ds-val" id="created-by">— </span></div>
                         </div>
                         <div class="detail-section">
                             <div class="ds-title">Visa Information</div>
-                            <div class="ds-row"><span class="ds-key">Country</span><span class="ds-val" id="country">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Visa Type</span><span class="ds-val" id="visa-type">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Applied Date</span><span class="ds-val" id="applied-date" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Issued Date</span><span class="ds-val green" id="issued-date" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Supplier</span><span class="ds-val" id="supplier-name">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Status</span><span class="ds-val" id="application-status">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Country</span><span class="ds-val" id="country">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Visa Type</span><span class="ds-val" id="visa-type">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Applied Date</span><span class="ds-val" id="applied-date" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Issued Date</span><span class="ds-val green" id="issued-date" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Supplier</span><span class="ds-val" id="supplier-name">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Status</span><span class="ds-val" id="application-status">— </span></div>
                         </div>
                     </div>
                 </div>
@@ -400,13 +400,13 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                 <div class="modal-pane" id="pane-application">
                     <div class="detail-section">
                         <div class="ds-title">Processing Information</div>
-                        <div class="ds-row"><span class="ds-key">Receive Date</span><span class="ds-val" id="receive-date" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                        <div class="ds-row"><span class="ds-key">Sold To</span><span class="ds-val" id="sold-to">â€”</span></div>
-                        <div class="ds-row"><span class="ds-key">Currency</span><span class="ds-val" id="currency" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
+                        <div class="ds-row"><span class="ds-key">Receive Date</span><span class="ds-val" id="receive-date" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                        <div class="ds-row"><span class="ds-key">Sold To</span><span class="ds-val" id="sold-to">— </span></div>
+                        <div class="ds-row"><span class="ds-key">Currency</span><span class="ds-val" id="currency" style="font-family:'JetBrains Mono',monospace;">— </span></div>
                     </div>
                     <div class="detail-section">
                         <div class="ds-title">Remarks</div>
-                        <p id="remarks" style="font-size:14px;color:var(--text-main);margin:0;line-height:1.7;">â€”</p>
+                        <p id="remarks" style="font-size:14px;color:var(--text-main);margin:0;line-height:1.7;">— </p>
                     </div>
                 </div>
             </div>
@@ -453,7 +453,7 @@ document.querySelectorAll('.view-details').forEach(btn => {
         document.getElementById('profit').className        = 'ms-val ' + (prof >= 0 ? 'green' : 'red');
 
         document.getElementById('applicant-name').textContent  = [(d.title||''), (d.applicant_name||'')].filter(Boolean).join(' ');
-        document.getElementById('passport-number').textContent = d.passport_number || 'â€”';
+        document.getElementById('passport-number').textContent = d.passport_number || '— ';
         document.getElementById('gender').textContent          = d.gender || 'N/A';
         document.getElementById('phone').textContent           = d.phone  || 'N/A';
         document.getElementById('branch-name').textContent     = d.branch_name || 'No Branch';

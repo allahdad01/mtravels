@@ -354,7 +354,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                         <span class="branch-pill"><i class="feather icon-git-branch"></i><?= htmlspecialchars($deb['branch_name'] ?? 'N/A') ?></span>
                     </td>
                     <td>
-                        <span class="status-pill <?= $stCls ?>"><?= ucfirst(htmlspecialchars($deb['status'] ?? 'â€”')) ?></span>
+                        <span class="status-pill <?= $stCls ?>"><?= ucfirst(htmlspecialchars($deb['status'] ?? '— ')) ?></span>
                     </td>
                     <td>
                         <div class="date-val"><?= date('d/m/Y', strtotime($deb['created_at'])) ?></div>
@@ -407,13 +407,13 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
             <div class="modal-summary">
                 <div class="ms-cell">
                     <div class="ms-label">Current Balance</div>
-                    <div class="ms-val" id="modal-balance">â€”</div>
-                    <div class="ms-sub" id="modal-balance-dir">â€”</div>
+                    <div class="ms-val" id="modal-balance">— </div>
+                    <div class="ms-sub" id="modal-balance-dir">— </div>
                 </div>
                 <div class="ms-cell">
                     <div class="ms-label">Transactions</div>
-                    <div class="ms-val orange" id="modal-txn-count">â€”</div>
-                    <div class="ms-sub" id="modal-created">â€”</div>
+                    <div class="ms-val orange" id="modal-txn-count">— </div>
+                    <div class="ms-sub" id="modal-created">— </div>
                 </div>
             </div>
 
@@ -427,17 +427,17 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                         <div class="detail-section">
                             <div class="ds-title">Debtor Information</div>
-                            <div class="ds-row"><span class="ds-key">Name</span><span class="ds-val" id="deb-name">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Status</span><span class="ds-val" id="deb-status">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="deb-branch">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Main Account</span><span class="ds-val" id="deb-account">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Name</span><span class="ds-val" id="deb-name">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Status</span><span class="ds-val" id="deb-status">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="deb-branch">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Main Account</span><span class="ds-val" id="deb-account">— </span></div>
                         </div>
                         <div class="detail-section">
                             <div class="ds-title">Financial Summary</div>
-                            <div class="ds-row"><span class="ds-key">Original Balance</span><span class="ds-val orange" id="deb-orig-bal" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Current Balance</span><span class="ds-val" id="deb-cur-bal" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Currency</span><span class="ds-val" id="deb-currency" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Transactions</span><span class="ds-val orange" id="deb-txn-count" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Original Balance</span><span class="ds-val orange" id="deb-orig-bal" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Current Balance</span><span class="ds-val" id="deb-cur-bal" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Currency</span><span class="ds-val" id="deb-currency" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Transactions</span><span class="ds-val orange" id="deb-txn-count" style="font-family:'JetBrains Mono',monospace;">— </span></div>
                         </div>
                     </div>
                 </div>
@@ -445,11 +445,11 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                 <div class="modal-pane" id="pane-contact">
                     <div class="detail-section">
                         <div class="ds-title">Contact Information</div>
-                        <div class="ds-row"><span class="ds-key">Email</span><span class="ds-val" id="deb-email" style="font-size:12px;">â€”</span></div>
-                        <div class="ds-row"><span class="ds-key">Phone</span><span class="ds-val" id="deb-phone" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                        <div class="ds-row"><span class="ds-key">Address</span><span class="ds-val" id="deb-address">â€”</span></div>
-                        <div class="ds-row"><span class="ds-key">Debtor ID</span><span class="ds-val" id="deb-id" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                        <div class="ds-row"><span class="ds-key">Created At</span><span class="ds-val" id="deb-created" style="font-family:'JetBrains Mono',monospace;font-size:11px;">â€”</span></div>
+                        <div class="ds-row"><span class="ds-key">Email</span><span class="ds-val" id="deb-email" style="font-size:12px;">— </span></div>
+                        <div class="ds-row"><span class="ds-key">Phone</span><span class="ds-val" id="deb-phone" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                        <div class="ds-row"><span class="ds-key">Address</span><span class="ds-val" id="deb-address">— </span></div>
+                        <div class="ds-row"><span class="ds-key">Debtor ID</span><span class="ds-val" id="deb-id" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                        <div class="ds-row"><span class="ds-key">Created At</span><span class="ds-val" id="deb-created" style="font-family:'JetBrains Mono',monospace;font-size:11px;">— </span></div>
                     </div>
                 </div>
             </div>
@@ -466,7 +466,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
     <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header txn-header">
-                <h5 class="modal-title"><i class="feather icon-activity" style="margin-right:8px;"></i>Transaction History â€” <span id="debtor-name-header"></span></h5>
+                <h5 class="modal-title"><i class="feather icon-activity" style="margin-right:8px;"></i>Transaction History —  <span id="debtor-name-header"></span></h5>
                 <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <div class="modal-body" style="padding:0;">
@@ -516,9 +516,9 @@ document.querySelectorAll('.view-details').forEach(btn => {
         mBal.className   = 'ms-val ' + (pos ? 'pos' : 'neg');
         document.getElementById('modal-balance-dir').textContent = pos ? 'Owed to us' : 'We owe';
         document.getElementById('modal-txn-count').textContent   = d.transaction_count + ' transactions';
-        document.getElementById('modal-created').textContent     = d.created_at ? new Date(d.created_at).toLocaleDateString() : 'â€”';
+        document.getElementById('modal-created').textContent     = d.created_at ? new Date(d.created_at).toLocaleDateString() : '— ';
 
-        document.getElementById('deb-name').textContent    = d.name || 'â€”';
+        document.getElementById('deb-name').textContent    = d.name || '— ';
         document.getElementById('deb-status').textContent  = (d.status||'').charAt(0).toUpperCase() + (d.status||'').slice(1);
         document.getElementById('deb-branch').textContent  = d.branch_name || 'N/A';
         document.getElementById('deb-account').textContent = d.main_account_name || 'N/A';
@@ -527,14 +527,14 @@ document.querySelectorAll('.view-details').forEach(btn => {
         const curEl = document.getElementById('deb-cur-bal');
         curEl.textContent  = balFmt;
         curEl.className    = 'ds-val ' + (pos ? 'pos' : 'neg');
-        document.getElementById('deb-currency').textContent  = d.currency || 'â€”';
+        document.getElementById('deb-currency').textContent  = d.currency || '— ';
         document.getElementById('deb-txn-count').textContent = d.transaction_count;
 
         document.getElementById('deb-email').textContent   = d.email   || 'N/A';
         document.getElementById('deb-phone').textContent   = d.phone   || 'N/A';
         document.getElementById('deb-address').textContent = d.address || 'N/A';
-        document.getElementById('deb-id').textContent      = d.id      || 'â€”';
-        document.getElementById('deb-created').textContent = d.created_at ? new Date(d.created_at).toLocaleString() : 'â€”';
+        document.getElementById('deb-id').textContent      = d.id      || '— ';
+        document.getElementById('deb-created').textContent = d.created_at ? new Date(d.created_at).toLocaleString() : '— ';
 
         switchTab('summary', document.querySelector('.modal-tab'));
         $('#detailsModal').modal('show');

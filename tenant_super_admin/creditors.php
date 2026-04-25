@@ -132,7 +132,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 .cred-contact:last-child{margin-bottom:0}
 .cred-contact i{font-size:11px}
 
-/* Balance cell â€” creditor balance direction is inverse of debtor */
+/* Balance cell —  creditor balance direction is inverse of debtor */
 .bal-val{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:800;margin-bottom:3px}
 .bal-val.owe {color:#dc2626}  /* we owe them */
 .bal-val.due {color:#059669}  /* owed to us  */
@@ -350,7 +350,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                         <span class="branch-pill"><i class="feather icon-git-branch"></i><?= htmlspecialchars($cred['branch_name'] ?? 'N/A') ?></span>
                     </td>
                     <td>
-                        <span class="status-pill <?= $stCls ?>"><?= ucfirst(htmlspecialchars($cred['status'] ?? 'â€”')) ?></span>
+                        <span class="status-pill <?= $stCls ?>"><?= ucfirst(htmlspecialchars($cred['status'] ?? '— ')) ?></span>
                     </td>
                     <td>
                         <div class="date-val"><?= date('d/m/Y', strtotime($cred['created_at'])) ?></div>
@@ -403,13 +403,13 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
             <div class="modal-summary">
                 <div class="ms-cell">
                     <div class="ms-label">Current Balance</div>
-                    <div class="ms-val" id="modal-balance">â€”</div>
-                    <div class="ms-sub" id="modal-balance-dir">â€”</div>
+                    <div class="ms-val" id="modal-balance">— </div>
+                    <div class="ms-sub" id="modal-balance-dir">— </div>
                 </div>
                 <div class="ms-cell">
                     <div class="ms-label">Transactions</div>
-                    <div class="ms-val purple" id="modal-txn-count">â€”</div>
-                    <div class="ms-sub" id="modal-created">â€”</div>
+                    <div class="ms-val purple" id="modal-txn-count">— </div>
+                    <div class="ms-sub" id="modal-created">— </div>
                 </div>
             </div>
 
@@ -423,16 +423,16 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                         <div class="detail-section">
                             <div class="ds-title">Creditor Information</div>
-                            <div class="ds-row"><span class="ds-key">Name</span><span class="ds-val" id="cred-name">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Status</span><span class="ds-val" id="cred-status">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="cred-branch">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Name</span><span class="ds-val" id="cred-name">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Status</span><span class="ds-val" id="cred-status">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="cred-branch">— </span></div>
                         </div>
                         <div class="detail-section">
                             <div class="ds-title">Financial Summary</div>
-                            <div class="ds-row"><span class="ds-key">Original Balance</span><span class="ds-val purple" id="cred-orig-bal" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Current Balance</span><span class="ds-val" id="cred-cur-bal" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Currency</span><span class="ds-val" id="cred-currency" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Transactions</span><span class="ds-val indigo" id="cred-txn-count" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Original Balance</span><span class="ds-val purple" id="cred-orig-bal" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Current Balance</span><span class="ds-val" id="cred-cur-bal" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Currency</span><span class="ds-val" id="cred-currency" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Transactions</span><span class="ds-val indigo" id="cred-txn-count" style="font-family:'JetBrains Mono',monospace;">— </span></div>
                         </div>
                     </div>
                 </div>
@@ -440,11 +440,11 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                 <div class="modal-pane" id="pane-contact">
                     <div class="detail-section">
                         <div class="ds-title">Contact Information</div>
-                        <div class="ds-row"><span class="ds-key">Email</span><span class="ds-val" id="cred-email" style="font-size:12px;">â€”</span></div>
-                        <div class="ds-row"><span class="ds-key">Phone</span><span class="ds-val" id="cred-phone" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                        <div class="ds-row"><span class="ds-key">Address</span><span class="ds-val" id="cred-address">â€”</span></div>
-                        <div class="ds-row"><span class="ds-key">Creditor ID</span><span class="ds-val" id="cred-id" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                        <div class="ds-row"><span class="ds-key">Created At</span><span class="ds-val" id="cred-created" style="font-family:'JetBrains Mono',monospace;font-size:11px;">â€”</span></div>
+                        <div class="ds-row"><span class="ds-key">Email</span><span class="ds-val" id="cred-email" style="font-size:12px;">— </span></div>
+                        <div class="ds-row"><span class="ds-key">Phone</span><span class="ds-val" id="cred-phone" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                        <div class="ds-row"><span class="ds-key">Address</span><span class="ds-val" id="cred-address">— </span></div>
+                        <div class="ds-row"><span class="ds-key">Creditor ID</span><span class="ds-val" id="cred-id" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                        <div class="ds-row"><span class="ds-key">Created At</span><span class="ds-val" id="cred-created" style="font-family:'JetBrains Mono',monospace;font-size:11px;">— </span></div>
                     </div>
                 </div>
             </div>
@@ -461,7 +461,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
     <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header txn-header">
-                <h5 class="modal-title"><i class="feather icon-activity" style="margin-right:8px;"></i>Transaction History â€” <span id="creditor-name-header"></span></h5>
+                <h5 class="modal-title"><i class="feather icon-activity" style="margin-right:8px;"></i>Transaction History —  <span id="creditor-name-header"></span></h5>
                 <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <div class="modal-body" style="padding:0;">
@@ -512,9 +512,9 @@ document.querySelectorAll('.view-details').forEach(btn => {
         mBal.className   = 'ms-val ' + (weOwe ? 'owe' : 'due');
         document.getElementById('modal-balance-dir').textContent = balDir;
         document.getElementById('modal-txn-count').textContent  = c.transaction_count + ' transactions';
-        document.getElementById('modal-created').textContent    = c.created_at ? new Date(c.created_at).toLocaleDateString() : 'â€”';
+        document.getElementById('modal-created').textContent    = c.created_at ? new Date(c.created_at).toLocaleDateString() : '— ';
 
-        document.getElementById('cred-name').textContent   = c.name || 'â€”';
+        document.getElementById('cred-name').textContent   = c.name || '— ';
         document.getElementById('cred-status').textContent = (c.status||'').charAt(0).toUpperCase() + (c.status||'').slice(1);
         document.getElementById('cred-branch').textContent = c.branch_name || 'N/A';
 
@@ -522,14 +522,14 @@ document.querySelectorAll('.view-details').forEach(btn => {
         const curEl = document.getElementById('cred-cur-bal');
         curEl.textContent = balFmt;
         curEl.className   = 'ds-val ' + (weOwe ? 'owe' : 'due');
-        document.getElementById('cred-currency').textContent  = c.currency || 'â€”';
+        document.getElementById('cred-currency').textContent  = c.currency || '— ';
         document.getElementById('cred-txn-count').textContent = c.transaction_count;
 
         document.getElementById('cred-email').textContent   = c.email   || 'N/A';
         document.getElementById('cred-phone').textContent   = c.phone   || 'N/A';
         document.getElementById('cred-address').textContent = c.address || 'N/A';
-        document.getElementById('cred-id').textContent      = c.id      || 'â€”';
-        document.getElementById('cred-created').textContent = c.created_at ? new Date(c.created_at).toLocaleString() : 'â€”';
+        document.getElementById('cred-id').textContent      = c.id      || '— ';
+        document.getElementById('cred-created').textContent = c.created_at ? new Date(c.created_at).toLocaleString() : '— ';
 
         switchTab('summary', document.querySelector('.modal-tab'));
         $('#detailsModal').modal('show');

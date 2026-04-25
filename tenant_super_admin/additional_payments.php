@@ -396,18 +396,18 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
             <div class="modal-summary">
                 <div class="ms-cell">
                     <div class="ms-label">Sold Amount</div>
-                    <div class="ms-val sold" id="modal-sold">â€”</div>
-                    <div class="ms-sub" id="modal-currency">â€”</div>
+                    <div class="ms-val sold" id="modal-sold">— </div>
+                    <div class="ms-sub" id="modal-currency">— </div>
                 </div>
                 <div class="ms-cell">
                     <div class="ms-label">Base Amount</div>
-                    <div class="ms-val base" id="modal-base">â€”</div>
+                    <div class="ms-val base" id="modal-base">— </div>
                     <div class="ms-sub">Cost</div>
                 </div>
                 <div class="ms-cell">
                     <div class="ms-label">Profit</div>
-                    <div class="ms-val" id="modal-profit">â€”</div>
-                    <div class="ms-sub" id="modal-profit-dir">â€”</div>
+                    <div class="ms-val" id="modal-profit">— </div>
+                    <div class="ms-sub" id="modal-profit-dir">— </div>
                 </div>
             </div>
 
@@ -421,18 +421,18 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                         <div class="detail-section">
                             <div class="ds-title">Payment Information</div>
-                            <div class="ds-row"><span class="ds-key">Payment Type</span><span class="ds-val cyan" id="pay-type">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Description</span><span class="ds-val" id="pay-desc">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="pay-branch">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Created By</span><span class="ds-val" id="pay-created-by">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Created At</span><span class="ds-val" id="pay-created-at" style="font-family:'JetBrains Mono',monospace;font-size:11px;">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Payment Type</span><span class="ds-val cyan" id="pay-type">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Description</span><span class="ds-val" id="pay-desc">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="pay-branch">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Created By</span><span class="ds-val" id="pay-created-by">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Created At</span><span class="ds-val" id="pay-created-at" style="font-family:'JetBrains Mono',monospace;font-size:11px;">— </span></div>
                         </div>
                         <div class="detail-section">
                             <div class="ds-title">Client / Supplier Details</div>
-                            <div class="ds-row"><span class="ds-key">Client</span><span class="ds-val" id="pay-client">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Supplier</span><span class="ds-val" id="pay-supplier">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Main Account</span><span class="ds-val" id="pay-main-account">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Receipt</span><span class="ds-val" id="pay-receipt" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Client</span><span class="ds-val" id="pay-client">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Supplier</span><span class="ds-val" id="pay-supplier">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Main Account</span><span class="ds-val" id="pay-main-account">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Receipt</span><span class="ds-val" id="pay-receipt" style="font-family:'JetBrains Mono',monospace;">— </span></div>
                         </div>
                     </div>
                 </div>
@@ -440,11 +440,11 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                 <div class="modal-pane" id="pane-financial">
                     <div class="detail-section">
                         <div class="ds-title">Financial Breakdown</div>
-                        <div class="ds-row"><span class="ds-key">Base Amount</span><span class="ds-val cyan" id="fin-base" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                        <div class="ds-row"><span class="ds-key">Sold Amount</span><span class="ds-val blue" id="fin-sold" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                        <div class="ds-row"><span class="ds-key">Profit</span><span class="ds-val" id="fin-profit" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                        <div class="ds-row"><span class="ds-key">Currency</span><span class="ds-val" id="fin-currency" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                        <div class="ds-row"><span class="ds-key">Payment ID</span><span class="ds-val" id="fin-id" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
+                        <div class="ds-row"><span class="ds-key">Base Amount</span><span class="ds-val cyan" id="fin-base" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                        <div class="ds-row"><span class="ds-key">Sold Amount</span><span class="ds-val blue" id="fin-sold" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                        <div class="ds-row"><span class="ds-key">Profit</span><span class="ds-val" id="fin-profit" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                        <div class="ds-row"><span class="ds-key">Currency</span><span class="ds-val" id="fin-currency" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                        <div class="ds-row"><span class="ds-key">Payment ID</span><span class="ds-val" id="fin-id" style="font-family:'JetBrains Mono',monospace;">— </span></div>
                     </div>
                 </div>
             </div>
@@ -483,7 +483,7 @@ document.querySelectorAll('.view-details').forEach(btn => {
         const prof = parseFloat(p.profit || 0);
 
         document.getElementById('modal-sold').textContent     = curr + sold.toFixed(2);
-        document.getElementById('modal-currency').textContent = p.currency || 'â€”';
+        document.getElementById('modal-currency').textContent = p.currency || '— ';
         document.getElementById('modal-base').textContent     = curr + base.toFixed(2);
 
         const profEl = document.getElementById('modal-profit');
@@ -491,11 +491,11 @@ document.querySelectorAll('.view-details').forEach(btn => {
         profEl.className = 'ms-val ' + (prof >= 0 ? 'ppos' : 'pneg');
         document.getElementById('modal-profit-dir').textContent = prof >= 0 ? 'Net gain' : 'Net loss';
 
-        document.getElementById('pay-type').textContent       = p.payment_type || 'â€”';
-        document.getElementById('pay-desc').textContent       = p.description  || 'â€”';
-        document.getElementById('pay-branch').textContent     = p.branch_name  || 'â€”';
+        document.getElementById('pay-type').textContent       = p.payment_type || '— ';
+        document.getElementById('pay-desc').textContent       = p.description  || '— ';
+        document.getElementById('pay-branch').textContent     = p.branch_name  || '— ';
         document.getElementById('pay-created-by').textContent = p.created_by_name || 'Unknown';
-        document.getElementById('pay-created-at').textContent = p.created_at ? new Date(p.created_at).toLocaleString() : 'â€”';
+        document.getElementById('pay-created-at').textContent = p.created_at ? new Date(p.created_at).toLocaleString() : '— ';
 
         document.getElementById('pay-client').textContent      = p.client_name       || 'N/A';
         document.getElementById('pay-supplier').textContent    = p.supplier_name     || 'N/A';
@@ -507,8 +507,8 @@ document.querySelectorAll('.view-details').forEach(btn => {
         const finProf = document.getElementById('fin-profit');
         finProf.textContent = (prof >= 0 ? '+$' : '-$') + Math.abs(prof).toFixed(2);
         finProf.className = 'ds-val ' + (prof >= 0 ? 'green' : 'red');
-        document.getElementById('fin-currency').textContent = p.currency || 'â€”';
-        document.getElementById('fin-id').textContent       = p.id || 'â€”';
+        document.getElementById('fin-currency').textContent = p.currency || '— ';
+        document.getElementById('fin-id').textContent       = p.id || '— ';
 
         switchTab('summary', document.querySelector('.modal-tab'));
         $('#detailsModal').modal('show');

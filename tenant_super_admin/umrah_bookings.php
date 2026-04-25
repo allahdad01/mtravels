@@ -75,7 +75,7 @@ include 'header.php';
 *,*::before,*::after{box-sizing:border-box}
 body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important;background:var(--surface)!important;color:var(--text-main)!important}
 
-/* Header â€” warm gold â†’ deep amber for Umrah/pilgrimage */
+/* Header —  warm gold â†’ deep amber for Umrah/pilgrimage */
 .dash-header{background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);border-radius:var(--radius);padding:24px 28px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 8px 32px rgba(217,119,6,0.25);position:relative;overflow:hidden}
 .dash-header::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.06'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat}
 .dash-header h4{font-size:22px;font-weight:800;color:#fff;margin:0 0 4px;letter-spacing:-0.4px;position:relative}
@@ -209,7 +209,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 <div class="pcoded-main-container">
 <div class="pcoded-content">
 
-    <!-- Header â€” warm gold â†’ deep amber for Umrah pilgrimage -->
+    <!-- Header —  warm gold â†’ deep amber for Umrah pilgrimage -->
     <div class="dash-header">
         <div>
             <h4><i class="feather icon-map-pin" style="margin-right:8px;"></i><?php echo __('umrah_bookings'); ?></h4>
@@ -381,9 +381,9 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 
             <!-- Financial summary strip -->
             <div class="modal-summary">
-                <div class="ms-cell"><div class="ms-label">Sold Price</div><div class="ms-val gold" id="sold-price">â€”</div></div>
-                <div class="ms-cell"><div class="ms-label">Base Price</div><div class="ms-val brown" id="base-price">â€”</div></div>
-                <div class="ms-cell"><div class="ms-label">Profit</div><div class="ms-val green" id="profit">â€”</div></div>
+                <div class="ms-cell"><div class="ms-label">Sold Price</div><div class="ms-val gold" id="sold-price">— </div></div>
+                <div class="ms-cell"><div class="ms-label">Base Price</div><div class="ms-val brown" id="base-price">— </div></div>
+                <div class="ms-cell"><div class="ms-label">Profit</div><div class="ms-val green" id="profit">— </div></div>
             </div>
 
             <div class="modal-body">
@@ -397,21 +397,21 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                         <div class="detail-section">
                             <div class="ds-title">Pilgrim Information</div>
-                            <div class="ds-row"><span class="ds-key">Full Name</span><span class="ds-val" id="pilgrim-name">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Passport No.</span><span class="ds-val gold" id="passport-number" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Relation</span><span class="ds-val" id="relation">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Gender</span><span class="ds-val" id="gender">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="branch-name">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Created By</span><span class="ds-val" id="created-by">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Full Name</span><span class="ds-val" id="pilgrim-name">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Passport No.</span><span class="ds-val gold" id="passport-number" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Relation</span><span class="ds-val" id="relation">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Gender</span><span class="ds-val" id="gender">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="branch-name">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Created By</span><span class="ds-val" id="created-by">— </span></div>
                         </div>
                         <div class="detail-section">
                             <div class="ds-title">Booking Information</div>
-                            <div class="ds-row"><span class="ds-key">Entry Date</span><span class="ds-val" id="entry-date" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Flight Date</span><span class="ds-val" id="flight-date" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Return Date</span><span class="ds-val" id="return-date" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Duration</span><span class="ds-val" id="duration">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Sold To</span><span class="ds-val" id="sold-to">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Status</span><span class="ds-val" id="booking-status">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Entry Date</span><span class="ds-val" id="entry-date" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Flight Date</span><span class="ds-val" id="flight-date" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Return Date</span><span class="ds-val" id="return-date" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Duration</span><span class="ds-val" id="duration">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Sold To</span><span class="ds-val" id="sold-to">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Status</span><span class="ds-val" id="booking-status">— </span></div>
                         </div>
                     </div>
                 </div>
@@ -421,22 +421,22 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                         <div class="detail-section">
                             <div class="ds-title">Family & Location</div>
-                            <div class="ds-row"><span class="ds-key">Head of Family</span><span class="ds-val" id="head-of-family">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Province</span><span class="ds-val" id="province">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">District</span><span class="ds-val" id="district">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Contact</span><span class="ds-val" id="contact" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Head of Family</span><span class="ds-val" id="head-of-family">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Province</span><span class="ds-val" id="province">— </span></div>
+                            <div class="ds-row"><span class="ds-key">District</span><span class="ds-val" id="district">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Contact</span><span class="ds-val" id="contact" style="font-family:'JetBrains Mono',monospace;">— </span></div>
                         </div>
                         <div class="detail-section">
                             <div class="ds-title">Payment Details</div>
-                            <div class="ds-row"><span class="ds-key">Room Type</span><span class="ds-val" id="room-type">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Currency</span><span class="ds-val" id="currency" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Paid Amount</span><span class="ds-val green" id="paid-amount" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Due Amount</span><span class="ds-val amber" id="due-amount" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Room Type</span><span class="ds-val" id="room-type">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Currency</span><span class="ds-val" id="currency" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Paid Amount</span><span class="ds-val green" id="paid-amount" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Due Amount</span><span class="ds-val amber" id="due-amount" style="font-family:'JetBrains Mono',monospace;">— </span></div>
                         </div>
                     </div>
                     <div class="detail-section" style="margin-top:0;">
                         <div class="ds-title">Remarks</div>
-                        <p id="remarks" style="font-size:14px;color:var(--text-main);margin:0;line-height:1.7;">â€”</p>
+                        <p id="remarks" style="font-size:14px;color:var(--text-main);margin:0;line-height:1.7;">— </p>
                     </div>
                 </div>
             </div>
@@ -488,7 +488,7 @@ document.querySelectorAll('.view-details').forEach(btn => {
         document.getElementById('profit').className       = 'ms-val ' + (prof >= 0 ? 'green' : 'red');
 
         document.getElementById('pilgrim-name').textContent  = [d.name, d.fname, d.gfname].filter(Boolean).join(' ');
-        document.getElementById('passport-number').textContent = d.passport_number || 'â€”';
+        document.getElementById('passport-number').textContent = d.passport_number || '— ';
         document.getElementById('relation').textContent      = d.relation     || 'N/A';
         document.getElementById('gender').textContent        = d.gender       || 'N/A';
         document.getElementById('branch-name').textContent   = d.branch_name  || 'No Branch';

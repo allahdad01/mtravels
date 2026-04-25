@@ -676,7 +676,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                         <th><span class="num-main"><?= $totals['date_change_tickets'] ?></span><span class="num-usd">$<?= number_format($totals['date_change_profit_usd'],2) ?></span></th>
                         <th><span class="num-main"><?= $totTxn ?></span></th>
                         <th><span class="num-usd" style="font-size:12px;">$<?= number_format($totals['total_revenue_usd'],2) ?></span><br><span class="num-afs"><?= number_format($totals['total_revenue_afs'],0) ?> AFS</span></th>
-                        <th><?php if($totPerf>0): ?><span class="perf-badge good">$<?= $totPerf ?>/txn</span><?php else: ?>â€”<?php endif; ?></th>
+                        <th><?php if($totPerf>0): ?><span class="perf-badge good">$<?= $totPerf ?>/txn</span><?php else: ?>— <?php endif; ?></th>
                     </tr>
                 </tfoot>
                 <?php endif; ?>
@@ -873,7 +873,7 @@ function initTableSearch() {
 function toggleTableView(view, btn) {
     document.querySelectorAll('.tv-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    // Just a visual state toggle â€” full reimplementation would require re-render
+    // Just a visual state toggle —  full reimplementation would require re-render
 }
 
 function exportTable(fmt) {

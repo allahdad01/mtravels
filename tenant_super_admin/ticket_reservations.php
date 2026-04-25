@@ -314,9 +314,9 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                 <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <div class="modal-summary">
-                <div class="ms-cell"><div class="ms-label">Sold Price</div><div class="ms-val blue" id="sold-price">â€”</div></div>
-                <div class="ms-cell"><div class="ms-label">Base Price</div><div class="ms-val teal" id="base-price">â€”</div></div>
-                <div class="ms-cell"><div class="ms-label">Profit</div><div class="ms-val green" id="profit">â€”</div></div>
+                <div class="ms-cell"><div class="ms-label">Sold Price</div><div class="ms-val blue" id="sold-price">— </div></div>
+                <div class="ms-cell"><div class="ms-label">Base Price</div><div class="ms-val teal" id="base-price">— </div></div>
+                <div class="ms-cell"><div class="ms-label">Profit</div><div class="ms-val green" id="profit">— </div></div>
             </div>
             <div class="modal-body">
                 <div class="modal-tabs">
@@ -327,25 +327,25 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                         <div class="detail-section">
                             <div class="ds-title">Client Information</div>
-                            <div class="ds-row"><span class="ds-key">Passenger</span><span class="ds-val" id="passenger-name">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">PNR</span><span class="ds-val" id="pnr" style="font-family:'JetBrains Mono',monospace;color:var(--blue);">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Supplier</span><span class="ds-val" id="supplier-name">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Sold To</span><span class="ds-val" id="sold-to">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="branch-name">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Created By</span><span class="ds-val" id="created-by">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Passenger</span><span class="ds-val" id="passenger-name">— </span></div>
+                            <div class="ds-row"><span class="ds-key">PNR</span><span class="ds-val" id="pnr" style="font-family:'JetBrains Mono',monospace;color:var(--blue);">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Supplier</span><span class="ds-val" id="supplier-name">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Sold To</span><span class="ds-val" id="sold-to">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="branch-name">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Created By</span><span class="ds-val" id="created-by">— </span></div>
                         </div>
                         <div class="detail-section">
                             <div class="ds-title">Additional Details</div>
-                            <div class="ds-row"><span class="ds-key">Currency</span><span class="ds-val" id="currency">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Phone</span><span class="ds-val" id="phone">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Gender</span><span class="ds-val" id="gender">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Currency</span><span class="ds-val" id="currency">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Phone</span><span class="ds-val" id="phone">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Gender</span><span class="ds-val" id="gender">— </span></div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-pane" id="pane-description">
                     <div class="detail-section">
                         <div class="ds-title">Description</div>
-                        <p id="description" style="font-size:14px;color:var(--text-main);margin:0;line-height:1.7;">â€”</p>
+                        <p id="description" style="font-size:14px;color:var(--text-main);margin:0;line-height:1.7;">— </p>
                     </div>
                 </div>
             </div>
@@ -388,12 +388,12 @@ document.querySelectorAll('.view-details').forEach(btn => {
         document.getElementById('profit').style.color     = profit >= 0 ? 'var(--green)' : 'var(--red)';
 
         document.getElementById('passenger-name').textContent = (t.title||'') + ' ' + (t.passenger_name||'');
-        document.getElementById('pnr').textContent         = t.pnr || 'â€”';
+        document.getElementById('pnr').textContent         = t.pnr || '— ';
         document.getElementById('supplier-name').textContent = t.supplier || 'N/A';
         document.getElementById('sold-to').textContent     = t.sold_to || 'N/A';
         document.getElementById('branch-name').textContent = t.branch_name || 'No Branch';
         document.getElementById('created-by').textContent  = t.created_by_name || 'N/A';
-        document.getElementById('currency').textContent    = t.currency || 'â€”';
+        document.getElementById('currency').textContent    = t.currency || '— ';
         document.getElementById('phone').textContent       = t.phone || 'N/A';
         document.getElementById('gender').textContent      = t.gender || 'N/A';
         document.getElementById('description').textContent = t.description || 'No description available.';

@@ -63,7 +63,7 @@ $to   = min($page * $results_per_page, $total_bookings);
 *,*::before,*::after{box-sizing:border-box}
 body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important;background:var(--surface)!important;color:var(--text-main)!important}
 
-/* Header â€” emerald green for hotels */
+/* Header —  emerald green for hotels */
 .dash-header{background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);border-radius:var(--radius);padding:24px 28px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 8px 32px rgba(16,185,129,0.22);position:relative;overflow:hidden}
 .dash-header::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat}
 .dash-header h4{font-size:22px;font-weight:800;color:#fff;margin:0 0 4px;letter-spacing:-0.4px;position:relative}
@@ -197,7 +197,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 <div class="pcoded-main-container">
 <div class="pcoded-content">
 
-    <!-- Header â€” emerald â†’ sky blue for hotel bookings -->
+    <!-- Header —  emerald â†’ sky blue for hotel bookings -->
     <div class="dash-header">
         <div>
             <h4><i class="feather icon-home" style="margin-right:8px;"></i>Hotel Bookings</h4>
@@ -294,11 +294,11 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     <td>
                         <div class="book-dates">
                             <i class="feather icon-log-in"></i>
-                            <span class="date-range"><?= htmlspecialchars($bk['check_in_date'] ?: 'â€”') ?></span>
+                            <span class="date-range"><?= htmlspecialchars($bk['check_in_date'] ?: '— ') ?></span>
                         </div>
                         <div class="book-dates">
                             <i class="feather icon-log-out" style="color:var(--text-sub)!important"></i>
-                            <span class="date-range"><?= htmlspecialchars($bk['check_out_date'] ?: 'â€”') ?></span>
+                            <span class="date-range"><?= htmlspecialchars($bk['check_out_date'] ?: '— ') ?></span>
                         </div>
                         <span class="status-pill <?= $spClass ?>"><?= ucfirst(htmlspecialchars($bk['status'] ?? 'Unknown')) ?></span>
                     </td>
@@ -354,9 +354,9 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 
             <!-- Financial summary strip -->
             <div class="modal-summary">
-                <div class="ms-cell"><div class="ms-label">Sold Amount</div><div class="ms-val blue" id="sold-amount">â€”</div></div>
-                <div class="ms-cell"><div class="ms-label">Base Amount</div><div class="ms-val teal" id="base-amount">â€”</div></div>
-                <div class="ms-cell"><div class="ms-label">Profit</div><div class="ms-val green" id="profit">â€”</div></div>
+                <div class="ms-cell"><div class="ms-label">Sold Amount</div><div class="ms-val blue" id="sold-amount">— </div></div>
+                <div class="ms-cell"><div class="ms-label">Base Amount</div><div class="ms-val teal" id="base-amount">— </div></div>
+                <div class="ms-cell"><div class="ms-label">Profit</div><div class="ms-val green" id="profit">— </div></div>
             </div>
 
             <div class="modal-body">
@@ -370,21 +370,21 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                         <div class="detail-section">
                             <div class="ds-title">Guest Information</div>
-                            <div class="ds-row"><span class="ds-key">Guest Name</span><span class="ds-val" id="guest-name">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Order ID</span><span class="ds-val" id="order-id" style="font-family:'JetBrains Mono',monospace;color:var(--blue);">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Gender</span><span class="ds-val" id="gender">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Phone</span><span class="ds-val" id="phone" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="branch-name">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Created By</span><span class="ds-val" id="created-by">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Guest Name</span><span class="ds-val" id="guest-name">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Order ID</span><span class="ds-val" id="order-id" style="font-family:'JetBrains Mono',monospace;color:var(--blue);">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Gender</span><span class="ds-val" id="gender">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Phone</span><span class="ds-val" id="phone" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="branch-name">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Created By</span><span class="ds-val" id="created-by">— </span></div>
                         </div>
                         <div class="detail-section">
                             <div class="ds-title">Booking Information</div>
-                            <div class="ds-row"><span class="ds-key">Check-in</span><span class="ds-val" id="check-in-date" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Check-out</span><span class="ds-val" id="check-out-date" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Issue Date</span><span class="ds-val" id="issue-date" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Supplier</span><span class="ds-val" id="supplier-name">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Sold To</span><span class="ds-val" id="sold-to">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Status</span><span class="ds-val" id="booking-status">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Check-in</span><span class="ds-val" id="check-in-date" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Check-out</span><span class="ds-val" id="check-out-date" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Issue Date</span><span class="ds-val" id="issue-date" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Supplier</span><span class="ds-val" id="supplier-name">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Sold To</span><span class="ds-val" id="sold-to">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Status</span><span class="ds-val" id="booking-status">— </span></div>
                         </div>
                     </div>
                 </div>
@@ -393,11 +393,11 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                 <div class="modal-pane" id="pane-accommodation">
                     <div class="detail-section">
                         <div class="ds-title">Accommodation Details</div>
-                        <div id="accommodation-details" style="font-size:14px;color:var(--text-main);line-height:1.8;">â€”</div>
+                        <div id="accommodation-details" style="font-size:14px;color:var(--text-main);line-height:1.8;">— </div>
                     </div>
                     <div class="detail-section">
                         <div class="ds-title">Remarks</div>
-                        <p id="remarks" style="font-size:14px;color:var(--text-main);margin:0;line-height:1.7;">â€”</p>
+                        <p id="remarks" style="font-size:14px;color:var(--text-main);margin:0;line-height:1.7;">— </p>
                     </div>
                 </div>
             </div>
@@ -446,7 +446,7 @@ document.querySelectorAll('.view-details').forEach(btn => {
         profEl.className = 'ms-val ' + (prof >= 0 ? 'green' : 'red');
 
         document.getElementById('guest-name').textContent   = [(d.title||''), (d.first_name||''), (d.last_name||'')].filter(Boolean).join(' ');
-        document.getElementById('order-id').textContent     = d.order_id || 'â€”';
+        document.getElementById('order-id').textContent     = d.order_id || '— ';
         document.getElementById('gender').textContent       = d.gender || 'N/A';
         document.getElementById('phone').textContent        = d.contact_no || 'N/A';
         document.getElementById('branch-name').textContent  = d.branch_name || 'No Branch';

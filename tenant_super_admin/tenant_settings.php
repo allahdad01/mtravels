@@ -190,7 +190,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
                         <div class="logo-upload-area" id="logoDropArea">
                             <input type="file" name="logo" accept="image/*" id="logoInput" onchange="previewImage(this)">
                             <i class="feather icon-upload-cloud" style="font-size:28px;color:#0891b2;display:block;margin-bottom:6px;"></i>
-                            <div class="logo-upload-label"><?php echo __('choose_file') ?> â€” <strong>click to browse</strong></div>
+                            <div class="logo-upload-label"><?php echo __('choose_file') ?> —  <strong>click to browse</strong></div>
                             <div style="font-size:10px;color:var(--text-sub);margin-top:4px;">PNG, JPG, SVG up to 2MB</div>
                         </div>
                         <div class="logo-preview-wrap" id="logoPreviewWrap">

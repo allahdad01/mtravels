@@ -97,7 +97,7 @@ textarea.tmpl-input.short{min-height:90px}
     <div class="dash-header">
         <div>
             <h4><i class="feather icon-file-text" style="margin-right:8px;"></i>Tazmin Agreement Templates</h4>
-            <p>Customize agreement sections for each language â€” Pashto &amp; Dari</p>
+            <p>Customize agreement sections for each language —  Pashto &amp; Dari</p>
         </div>
     </div>
 
@@ -157,7 +157,7 @@ textarea.tmpl-input.short{min-height:90px}
                 <!-- Section 2: Clauses -->
                 <div class="section-block">
                     <div class="section-title"><span class="section-num">2</span>Agreement Clauses</div>
-                    <div class="section-desc">Main content with numbered clauses â€” use an HTML ordered list &lt;ol&gt;&lt;li&gt;...&lt;/li&gt;&lt;/ol&gt;</div>
+                    <div class="section-desc">Main content with numbered clauses —  use an HTML ordered list &lt;ol&gt;&lt;li&gt;...&lt;/li&gt;&lt;/ol&gt;</div>
                     <label class="field-label">Clauses (HTML)</label>
                     <textarea id="pashto-content" class="tmpl-input"></textarea>
                 </div>
@@ -229,7 +229,7 @@ placeholder="د ضمانت کوونکي عنوان">
                 <!-- Section 2 -->
                 <div class="section-block">
                     <div class="section-title"><span class="section-num">2</span>Agreement Clauses</div>
-                    <div class="section-desc">Main content with numbered clauses â€” use an HTML ordered list &lt;ol&gt;&lt;li&gt;...&lt;/li&gt;&lt;/ol&gt;</div>
+                    <div class="section-desc">Main content with numbered clauses —  use an HTML ordered list &lt;ol&gt;&lt;li&gt;...&lt;/li&gt;&lt;/ol&gt;</div>
                     <label class="field-label">Clauses (HTML)</label>
                     <textarea id="dari-content" class="tmpl-input"></textarea>
                 </div>

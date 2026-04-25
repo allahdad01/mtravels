@@ -399,10 +399,10 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                 <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <div class="modal-summary">
-                <div class="ms-cell"><div class="ms-label">USD</div><div class="ms-val usd-c" id="usd-balance">â€”</div></div>
-                <div class="ms-cell"><div class="ms-label">AFS</div><div class="ms-val afs-c" id="afs-balance">â€”</div></div>
-                <div class="ms-cell"><div class="ms-label">Euro</div><div class="ms-val euro-c" id="euro-balance">â€”</div></div>
-                <div class="ms-cell"><div class="ms-label">AED</div><div class="ms-val darham-c" id="darham-balance">â€”</div></div>
+                <div class="ms-cell"><div class="ms-label">USD</div><div class="ms-val usd-c" id="usd-balance">— </div></div>
+                <div class="ms-cell"><div class="ms-label">AFS</div><div class="ms-val afs-c" id="afs-balance">— </div></div>
+                <div class="ms-cell"><div class="ms-label">Euro</div><div class="ms-val euro-c" id="euro-balance">— </div></div>
+                <div class="ms-cell"><div class="ms-label">AED</div><div class="ms-val darham-c" id="darham-balance">— </div></div>
             </div>
             <div class="modal-body">
                 <div class="modal-tabs">
@@ -413,27 +413,27 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                         <div class="detail-section">
                             <div class="ds-title">Account Information</div>
-                            <div class="ds-row"><span class="ds-key">Account Name</span><span class="ds-val" id="account-name">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Account Type</span><span class="ds-val" id="account-type">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Status</span><span class="ds-val" id="account-status">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Last Updated</span><span class="ds-val" id="last-updated" style="font-family:'JetBrains Mono',monospace;font-size:11px;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Created At</span><span class="ds-val" id="created-at" style="font-family:'JetBrains Mono',monospace;font-size:11px;">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Account Name</span><span class="ds-val" id="account-name">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Account Type</span><span class="ds-val" id="account-type">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Status</span><span class="ds-val" id="account-status">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Last Updated</span><span class="ds-val" id="last-updated" style="font-family:'JetBrains Mono',monospace;font-size:11px;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Created At</span><span class="ds-val" id="created-at" style="font-family:'JetBrains Mono',monospace;font-size:11px;">— </span></div>
                         </div>
                         <div class="detail-section">
                             <div class="ds-title">Activity Summary</div>
-                            <div class="ds-row"><span class="ds-key">Total Transactions</span><span class="ds-val blue" id="total-transactions" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Total Credits</span><span class="ds-val green" id="total-credits" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Total Debits</span><span class="ds-val red" id="total-debits" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Net Flow</span><span class="ds-val" id="net-flow" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Total Transactions</span><span class="ds-val blue" id="total-transactions" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Total Credits</span><span class="ds-val green" id="total-credits" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Total Debits</span><span class="ds-val red" id="total-debits" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Net Flow</span><span class="ds-val" id="net-flow" style="font-family:'JetBrains Mono',monospace;">— </span></div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-pane" id="pane-bank">
                     <div class="detail-section">
                         <div class="ds-title">Bank Information</div>
-                        <div class="ds-row"><span class="ds-key">Bank Name</span><span class="ds-val" id="bank-name">â€”</span></div>
-                        <div class="ds-row"><span class="ds-key">Account Number (USD)</span><span class="ds-val blue" id="account-number" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                        <div class="ds-row"><span class="ds-key">Account Number (AFS)</span><span class="ds-val" id="afs-account-number" style="font-family:'JetBrains Mono',monospace;color:#0f766e;">â€”</span></div>
+                        <div class="ds-row"><span class="ds-key">Bank Name</span><span class="ds-val" id="bank-name">— </span></div>
+                        <div class="ds-row"><span class="ds-key">Account Number (USD)</span><span class="ds-val blue" id="account-number" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                        <div class="ds-row"><span class="ds-key">Account Number (AFS)</span><span class="ds-val" id="afs-account-number" style="font-family:'JetBrains Mono',monospace;color:#0f766e;">— </span></div>
                     </div>
                 </div>
             </div>
@@ -449,7 +449,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header txn-header">
-                <h5 class="modal-title"><i class="feather icon-list" style="margin-right:8px;"></i>Transactions â€” <span id="account-name-header"></span></h5>
+                <h5 class="modal-title"><i class="feather icon-list" style="margin-right:8px;"></i>Transactions —  <span id="account-name-header"></span></h5>
                 <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <div class="modal-body" style="padding:0;">

@@ -67,7 +67,7 @@ $to   = min($page * $results_per_page, $total_clients);
 *,*::before,*::after{box-sizing:border-box}
 body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important;background:var(--surface)!important;color:var(--text-main)!important}
 
-/* Header â€” emerald â†’ teal (client green identity) */
+/* Header —  emerald â†’ teal (client green identity) */
 .dash-header{background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);border-radius:var(--radius);padding:24px 28px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 8px 32px rgba(5,150,105,0.25);position:relative;overflow:hidden}
 .dash-header::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.06'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat}
 .dash-header h4{font-size:22px;font-weight:800;color:#fff;margin:0 0 4px;letter-spacing:-0.4px;position:relative}
@@ -405,13 +405,13 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
             <div class="modal-summary">
                 <div class="ms-cell">
                     <div class="ms-label">USD Balance</div>
-                    <div class="ms-val" id="modal-usd-bal">â€”</div>
-                    <div class="ms-sub" id="modal-usd-dir">â€”</div>
+                    <div class="ms-val" id="modal-usd-bal">— </div>
+                    <div class="ms-sub" id="modal-usd-dir">— </div>
                 </div>
                 <div class="ms-cell">
                     <div class="ms-label">AFS Balance</div>
-                    <div class="ms-val" id="modal-afs-bal">â€”</div>
-                    <div class="ms-sub" id="modal-afs-dir">â€”</div>
+                    <div class="ms-val" id="modal-afs-bal">— </div>
+                    <div class="ms-sub" id="modal-afs-dir">— </div>
                 </div>
             </div>
 
@@ -425,16 +425,16 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                         <div class="detail-section">
                             <div class="ds-title">Client Information</div>
-                            <div class="ds-row"><span class="ds-key">Client Name</span><span class="ds-val" id="client-name">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Type</span><span class="ds-val" id="client-type">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Status</span><span class="ds-val" id="client-status">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Created At</span><span class="ds-val" id="created-at" style="font-family:'JetBrains Mono',monospace;font-size:11px;">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Client Name</span><span class="ds-val" id="client-name">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Type</span><span class="ds-val" id="client-type">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Status</span><span class="ds-val" id="client-status">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Created At</span><span class="ds-val" id="created-at" style="font-family:'JetBrains Mono',monospace;font-size:11px;">— </span></div>
                         </div>
                         <div class="detail-section">
                             <div class="ds-title">Financial Summary</div>
-                            <div class="ds-row"><span class="ds-key">Total Credits</span><span class="ds-val green" id="total-credits" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Total Debits</span><span class="ds-val red" id="total-debits" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                            <div class="ds-row"><span class="ds-key">Net Position</span><span class="ds-val" id="net-position" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Total Credits</span><span class="ds-val green" id="total-credits" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Total Debits</span><span class="ds-val red" id="total-debits" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                            <div class="ds-row"><span class="ds-key">Net Position</span><span class="ds-val" id="net-position" style="font-family:'JetBrains Mono',monospace;">— </span></div>
                         </div>
                     </div>
                 </div>
@@ -442,9 +442,9 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                 <div class="modal-pane" id="pane-contact">
                     <div class="detail-section">
                         <div class="ds-title">Contact Information</div>
-                        <div class="ds-row"><span class="ds-key">Phone</span><span class="ds-val" id="contact-phone" style="font-family:'JetBrains Mono',monospace;">â€”</span></div>
-                        <div class="ds-row"><span class="ds-key">Email</span><span class="ds-val" id="contact-email">â€”</span></div>
-                        <div class="ds-row"><span class="ds-key">Address</span><span class="ds-val" id="contact-address">â€”</span></div>
+                        <div class="ds-row"><span class="ds-key">Phone</span><span class="ds-val" id="contact-phone" style="font-family:'JetBrains Mono',monospace;">— </span></div>
+                        <div class="ds-row"><span class="ds-key">Email</span><span class="ds-val" id="contact-email">— </span></div>
+                        <div class="ds-row"><span class="ds-key">Address</span><span class="ds-val" id="contact-address">— </span></div>
                     </div>
                 </div>
             </div>
@@ -461,7 +461,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
     <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header txn-header">
-                <h5 class="modal-title"><i class="feather icon-list" style="margin-right:8px;"></i>Transactions â€” <span id="client-name-header"></span></h5>
+                <h5 class="modal-title"><i class="feather icon-list" style="margin-right:8px;"></i>Transactions —  <span id="client-name-header"></span></h5>
                 <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <div class="modal-body" style="padding:0;">
@@ -511,7 +511,7 @@ document.querySelectorAll('.view-details').forEach(btn => {
         aBalEl.className = 'ms-val ' + (afs >= 0 ? 'afs-p' : 'afs-n');
         document.getElementById('modal-afs-dir').textContent = afs >= 0 ? 'Credit balance' : 'Debit balance';
 
-        document.getElementById('client-name').textContent  = c.name || 'â€”';
+        document.getElementById('client-name').textContent  = c.name || '— ';
         document.getElementById('client-type').textContent  = (c.client_type||'').charAt(0).toUpperCase() + (c.client_type||'').slice(1);
         document.getElementById('client-status').textContent = (c.status||'').charAt(0).toUpperCase() + (c.status||'').slice(1);
         document.getElementById('created-at').textContent   = c.created_at || 'N/A';
