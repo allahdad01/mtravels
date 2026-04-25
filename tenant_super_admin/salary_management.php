@@ -273,7 +273,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                 <div>
                     <label class="form-label-custom">Search Employee</label>
                     <div class="search-group">
-                        <input type="text" id="searchInput" class="form-input" placeholder="Name, email, or phoneâ€¦" value="<?= htmlspecialchars($search) ?>">
+                        <input type="text" id="searchInput" class="form-input" placeholder="Name, email, or phone..." value="<?= htmlspecialchars($search) ?>">
                         <button class="search-btn" id="searchBtn"><i class="feather icon-search"></i>Search</button>
                         <?php if (!empty($search)): ?>
                         <a href="?branch=<?= urlencode($selected_branch) ?>" class="clear-btn"><i class="feather icon-x"></i>Clear</a>
@@ -364,9 +364,9 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                 <a href="<?= $base ?>&page=<?= $page-1 ?>" class="pag-btn <?= $page<=1?'disabled':'' ?>"><i class="feather icon-chevron-left"></i></a>
                 <?php
                 $sp2=max(1,$page-2); $ep=min($total_pages,$page+2);
-                if($sp2>1){echo '<a href="'.$base.'&page=1" class="pag-btn">1</a>';if($sp2>2)echo '<span class="pag-dots">â€¦</span>';}
+                if($sp2>1){echo '<a href="'.$base.'&page=1" class="pag-btn">1</a>';if($sp2>2)echo '<span class="pag-dots">...</span>';}
                 for($i=$sp2;$i<=$ep;$i++) echo '<a href="'.$base.'&page='.$i.'" class="pag-btn '.($i==$page?'active':'').'">'.$i.'</a>';
-                if($ep<$total_pages){if($ep<$total_pages-1)echo '<span class="pag-dots">â€¦</span>';echo '<a href="'.$base.'&page='.$total_pages.'" class="pag-btn">'.$total_pages.'</a>';}
+                if($ep<$total_pages){if($ep<$total_pages-1)echo '<span class="pag-dots">...</span>';echo '<a href="'.$base.'&page='.$total_pages.'" class="pag-btn">'.$total_pages.'</a>';}
                 ?>
                 <a href="<?= $base ?>&page=<?= $page+1 ?>" class="pag-btn <?= $page>=$total_pages?'disabled':'' ?>"><i class="feather icon-chevron-right"></i></a>
                 <a href="<?= $base ?>&page=<?= $total_pages ?>" class="pag-btn <?= $page>=$total_pages?'disabled':'' ?>"><i class="feather icon-chevrons-right"></i></a>
@@ -462,7 +462,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                 <div id="paymentsContent">
                     <div class="txn-loading">
                         <div class="spinner"></div>
-                        <p style="color:var(--text-sub);font-size:13px;margin:0;">Loading payment historyâ€¦</p>
+                        <p style="color:var(--text-sub);font-size:13px;margin:0;">Loading payment history...</p>
                     </div>
                 </div>
             </div>
@@ -528,7 +528,7 @@ document.querySelectorAll('.view-payments').forEach(btn => {
         const name = this.getAttribute('data-employee-name');
         document.getElementById('employee-name-header').textContent = name;
         document.getElementById('paymentsContent').innerHTML =
-            '<div class="txn-loading"><div class="spinner"></div><p style="color:var(--text-sub);font-size:13px;margin:0;">Loading payment historyâ€¦</p></div>';
+            '<div class="txn-loading"><div class="spinner"></div><p style="color:var(--text-sub);font-size:13px;margin:0;">Loading payment history...</p></div>';
         $('#paymentsModal').modal('show');
         fetch('get_employee_payments.php?user_id=' + uid)
             .then(r => r.text())

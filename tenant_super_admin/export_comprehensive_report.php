@@ -350,28 +350,54 @@ try {
     // Get date range
     $startDate = $_GET['startDate'] ?? date('Y-m-01');
     $endDate = $_GET['endDate'] ?? date('Y-m-t');
+    $selectedBranchId = $_GET['branch_id'] ?? '';
+
+    if (!isset($tenant_id)) {
+        $tenant_id = $_SESSION['tenant_id'] ?? null;
+    }
+
+    if (empty($tenant_id)) {
+        throw new Exception('Tenant not found for report export.');
+    }
+
+    $branchQuerySql = "SELECT id, name FROM branches WHERE tenant_id = ?";
+    $branchQueryParams = [$tenant_id];
+
+    if ($selectedBranchId !== '') {
+        $branchQuerySql .= " AND id = ?";
+        $branchQueryParams[] = $selectedBranchId;
+    }
+
+    $branchQuerySql .= " ORDER BY name";
 
     // Initialize spreadsheet
     $spreadsheet = new Spreadsheet();
+
+    // Get branches for the current tenant or the selected branch
+    $branchesQuery = $pdo->prepare($branchQuerySql);
+    $branchesQuery->execute($branchQueryParams);
+    $branches = $branchesQuery->fetchAll(PDO::FETCH_ASSOC);
+
+    if (empty($branches)) {
+        throw new Exception('No branches found for the selected filters.');
+    }
+
+    $reportTitle = count($branches) === 1
+        ? 'Comprehensive Financial Report - ' . $branches[0]['name']
+        : 'Comprehensive Financial Report - All Branches';
 
     // Set document properties
     $spreadsheet->getProperties()
         ->setCreator('Travel Agency Financial System')
         ->setLastModifiedBy('Travel Agency Financial System')
-        ->setTitle('Comprehensive Financial Report - All Branches')
-        ->setSubject('Financial Report - All Branches')
-        ->setDescription('Comprehensive financial report with income, expenses and profit/loss for all branches')
+        ->setTitle($reportTitle)
+        ->setSubject($reportTitle)
+        ->setDescription($reportTitle . ' with income, expenses and profit/loss details')
         ->setKeywords('financial report income expenses profit loss branches')
         ->setCategory('Financial Reports');
 
     // Set default font
     $spreadsheet->getDefaultStyle()->getFont()->setName('Arial')->setSize(10);
-
-    // Get branches for the current tenant
-    $tenant_id = $_SESSION['tenant_id'];
-    $branchesQuery = $pdo->prepare("SELECT id, name FROM branches WHERE tenant_id = ? ORDER BY name");
-    $branchesQuery->execute([$tenant_id]);
-    $branches = $branchesQuery->fetchAll(PDO::FETCH_ASSOC);
 
     $comparisonData = [];
 
@@ -1513,13 +1539,19 @@ try {
     $fileContent = file_get_contents($tempFile);
     $base64 = base64_encode($fileContent);
 
+    $filenameLabel = count($branches) === 1
+        ? preg_replace('/[^A-Za-z0-9_-]+/', '_', strtolower($branches[0]['name']))
+        : 'all_branches';
+    $filename = 'comprehensive_financial_report_' . $filenameLabel . '_' . $startDate . '_to_' . $endDate . '.xlsx';
+
     // Remove temporary file
     unlink($tempFile);
 
     // Return file as base64
     echo json_encode([
         'success' => true,
-        'file' => $base64
+        'file' => $base64,
+        'filename' => $filename
     ]);
 
 } catch (Exception $e) {

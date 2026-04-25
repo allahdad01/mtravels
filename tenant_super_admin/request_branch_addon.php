@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
 header("X-XSS-Protection: 1; mode=block");
@@ -109,13 +109,13 @@ $usage_pct   = isset($max_allowed, $current_branches) && $max_allowed > 0 ? roun
 *, *::before, *::after { box-sizing: border-box; }
 body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !important; background: var(--surface) !important; color: var(--text-main) !important; }
 
-/* ── Page Header ── */
+/* â”€â”€ Page Header â”€â”€ */
 .dash-header { background:var(--grad); border-radius:var(--radius); padding:24px 28px; margin-bottom:24px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 8px 32px rgba(64,153,255,0.22); position:relative; overflow:hidden; }
 .dash-header::before { content:''; position:absolute; inset:0; background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat; }
 .dash-header h4 { font-size:22px; font-weight:800; color:#fff; margin:0 0 4px; letter-spacing:-0.4px; position:relative; }
 .dash-header p  { color:rgba(255,255,255,0.8); margin:0; font-size:13px; position:relative; }
 
-/* ── Alerts ── */
+/* â”€â”€ Alerts â”€â”€ */
 .dash-alert { display:flex; align-items:flex-start; gap:12px; padding:14px 20px; border-radius:var(--radius); margin-bottom:16px; font-size:14px; font-weight:500; animation:slideDown 0.3s ease; }
 .dash-alert-success { background:#dcfce7; color:#166534; border-left:4px solid var(--green); }
 .dash-alert-danger  { background:#fee2e2; color:#991b1b; border-left:4px solid var(--red); }
@@ -125,11 +125,11 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
 .dash-alert .close-btn:hover { opacity:1; }
 @keyframes slideDown { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
 
-/* ── Two-column layout ── */
+/* â”€â”€ Two-column layout â”€â”€ */
 .page-grid { display:grid; grid-template-columns:1fr 340px; gap:20px; align-items:start; }
 @media(max-width:1024px){ .page-grid{ grid-template-columns:1fr; } }
 
-/* ── Shared card ── */
+/* â”€â”€ Shared card â”€â”€ */
 .dash-card { background:var(--card-bg); border-radius:var(--radius); border:1px solid var(--border); box-shadow:var(--shadow); overflow:hidden; margin-bottom:20px; }
 .dash-card-head { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .dash-card-head h6 { font-size:15px; font-weight:700; margin:0; display:flex; align-items:center; gap:8px; }
@@ -138,7 +138,7 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
 .count-badge { background:rgba(64,153,255,0.1); color:var(--blue); border-radius:20px; padding:3px 12px; font-size:12px; font-weight:700; margin-left:auto; }
 .warn-badge  { background:rgba(245,158,11,0.1); color:var(--amber); border-radius:20px; padding:3px 12px; font-size:12px; font-weight:700; margin-left:auto; }
 
-/* ── Status card (sidebar) ── */
+/* â”€â”€ Status card (sidebar) â”€â”€ */
 .stat-row { display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--border); }
 .stat-row:last-child { border-bottom:none; }
 .stat-row .sr-label { font-size:13px; color:var(--text-sub); display:flex; align-items:center; gap:7px; font-weight:500; }
@@ -158,7 +158,7 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
 .usage-bar-fill { height:100%; border-radius:99px; background:var(--grad); transition:width 0.6s ease; }
 .usage-bar-fill.warn { background:linear-gradient(90deg,var(--amber),var(--red)); }
 
-/* ── Request Form ── */
+/* â”€â”€ Request Form â”€â”€ */
 .form-label { font-size:12px; font-weight:700; color:var(--text-sub); text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:7px; }
 .form-input { width:100%; border:1.5px solid var(--border); border-radius:10px; padding:11px 14px; font-family:inherit; font-size:14px; color:var(--text-main); background:var(--surface); outline:none; transition:border-color 0.2s; }
 .form-input:focus { border-color:var(--blue); background:#fff; box-shadow:0 0 0 3px rgba(64,153,255,0.12); }
@@ -174,7 +174,7 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
 .submit-btn:hover { opacity:0.9; transform:translateY(-1px); box-shadow:0 4px 16px rgba(64,153,255,0.3); }
 .submit-btn:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
 
-/* ── Tables ── */
+/* â”€â”€ Tables â”€â”€ */
 .data-table { width:100%; border-collapse:collapse; }
 .data-table thead th { background:var(--surface); padding:11px 16px; font-size:11px; font-weight:700; color:var(--text-sub); text-transform:uppercase; letter-spacing:0.6px; border-bottom:1.5px solid var(--border); white-space:nowrap; }
 .data-table tbody tr { transition:background 0.15s; }
@@ -288,9 +288,9 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
                                 <div style="margin-bottom:18px;">
                                     <label class="form-label"><i class="feather icon-calendar" style="margin-right:5px;"></i>Billing Cycle</label>
                                     <select class="form-input" id="billing_cycle" name="billing_cycle" onchange="updateCost()">
-                                        <option value="monthly">Monthly — <?= number_format($pricing['monthly'], 2) ?> <?= $currency ?>/branch</option>
-                                        <option value="quarterly">Quarterly — <?= number_format($pricing['quarterly'], 2) ?> <?= $currency ?>/branch</option>
-                                        <option value="yearly">Yearly — <?= number_format($pricing['yearly'], 2) ?> <?= $currency ?>/branch</option>
+                                        <option value="monthly">Monthly â€” <?= number_format($pricing['monthly'], 2) ?> <?= $currency ?>/branch</option>
+                                        <option value="quarterly">Quarterly â€” <?= number_format($pricing['quarterly'], 2) ?> <?= $currency ?>/branch</option>
+                                        <option value="yearly">Yearly â€” <?= number_format($pricing['yearly'], 2) ?> <?= $currency ?>/branch</option>
                                     </select>
                                 </div>
                             </div>
@@ -303,7 +303,7 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
                             </div>
                             <div class="cost-box-row">
                                 <span class="cost-breakdown" id="costBreakdown">
-                                    1 branch × <?= number_format($pricing['monthly'], 2) ?> <?= $currency ?> = <?= number_format($pricing['monthly'], 2) ?> <?= $currency ?>/month
+                                    1 branch Ã— <?= number_format($pricing['monthly'], 2) ?> <?= $currency ?> = <?= number_format($pricing['monthly'], 2) ?> <?= $currency ?>/month
                                 </span>
                                 <span class="cost-total" id="estimatedCost"><?= number_format($pricing['monthly'], 2) ?> <?= $currency ?></span>
                             </div>
@@ -376,7 +376,7 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
                                 <td class="td-money"><?= number_format($addon['total_addon_cost'], 2) ?> <?= htmlspecialchars($addon['currency']) ?></td>
                                 <td class="td-cycle"><?= ucfirst($addon['billing_cycle']) ?></td>
                                 <td><span class="status-pill sp-active"><i class="feather icon-check"></i><?= ucfirst($addon['status']) ?></span></td>
-                                <td class="td-date"><?= $addon['next_renewal_date'] ? date('M d, Y', strtotime($addon['next_renewal_date'])) : '—' ?></td>
+                                <td class="td-date"><?= $addon['next_renewal_date'] ? date('M d, Y', strtotime($addon['next_renewal_date'])) : 'â€”' ?></td>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -391,7 +391,7 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
                 <div class="dash-card-head">
                     <h6><span class="ico"><i class="feather icon-clock"></i></span>Add-on Payment History</h6>
                     <form method="GET" class="search-wrap">
-                        <input type="text" name="search" class="search-input" placeholder="Search…" value="<?= htmlspecialchars($search_query) ?>">
+                        <input type="text" name="search" class="search-input" placeholder="Search..." value="<?= htmlspecialchars($search_query) ?>">
                         <button type="submit" class="search-btn"><i class="feather icon-search"></i></button>
                         <?php if (!empty($search_query)): ?>
                         <a href="request_branch_addon.php" class="clear-btn"><i class="feather icon-x"></i></a>
@@ -430,11 +430,11 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
                                 <td class="td-money"><?= number_format($payment['amount'], 2) ?> <?= htmlspecialchars($payment['currency']) ?></td>
                                 <td class="td-period">
                                     <?= date('M d, Y', strtotime($payment['period_start'])) ?>
-                                    <span style="color:var(--border);margin:0 4px;">→</span>
+                                    <span style="color:var(--border);margin:0 4px;">â†’</span>
                                     <?= date('M d, Y', strtotime($payment['period_end'])) ?>
                                 </td>
                                 <td><span class="status-pill <?= $sp ?>"><?= ucfirst($payment['status']) ?></span></td>
-                                <td class="td-date"><?= $payment['payment_date'] ? date('M d, Y', strtotime($payment['payment_date'])) : '—' ?></td>
+                                <td class="td-date"><?= $payment['payment_date'] ? date('M d, Y', strtotime($payment['payment_date'])) : 'â€”' ?></td>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -447,18 +447,18 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
                     $ep  = min($total_pages, $current_page + 2);
                 ?>
                 <div class="pag-wrap">
-                    <div class="pag-info">Page <?= $current_page ?> of <?= $total_pages ?> · <?= count($paginated_history) ?> of <?= $total_items ?> records</div>
+                    <div class="pag-info">Page <?= $current_page ?> of <?= $total_pages ?> Â· <?= count($paginated_history) ?> of <?= $total_items ?> records</div>
                     <div class="pag-links">
                         <a href="request_branch_addon.php?page=<?= $current_page - 1 . $qs ?>" class="pag-btn <?= $current_page === 1 ? 'disabled' : '' ?>"><i class="feather icon-chevron-left"></i></a>
                         <?php if ($sp2 > 1): ?>
                             <a href="request_branch_addon.php?page=1<?= $qs ?>" class="pag-btn">1</a>
-                            <?php if ($sp2 > 2): ?><span class="pag-dots">…</span><?php endif; ?>
+                            <?php if ($sp2 > 2): ?><span class="pag-dots">...</span><?php endif; ?>
                         <?php endif; ?>
                         <?php for ($i = $sp2; $i <= $ep; $i++): ?>
                         <a href="request_branch_addon.php?page=<?= $i . $qs ?>" class="pag-btn <?= $i === $current_page ? 'active' : '' ?>"><?= $i ?></a>
                         <?php endfor; ?>
                         <?php if ($ep < $total_pages): ?>
-                            <?php if ($ep < $total_pages - 1): ?><span class="pag-dots">…</span><?php endif; ?>
+                            <?php if ($ep < $total_pages - 1): ?><span class="pag-dots">...</span><?php endif; ?>
                             <a href="request_branch_addon.php?page=<?= $total_pages . $qs ?>" class="pag-btn"><?= $total_pages ?></a>
                         <?php endif; ?>
                         <a href="request_branch_addon.php?page=<?= $current_page + 1 . $qs ?>" class="pag-btn <?= $current_page === $total_pages ? 'disabled' : '' ?>"><i class="feather icon-chevron-right"></i></a>
@@ -492,7 +492,7 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
                     </div>
                     <div class="stat-row">
                         <div class="sr-label"><i class="feather icon-plus-circle"></i>Add-ons</div>
-                        <div class="sr-val sv-amber"><?= $additional_branches > 0 ? '+' . intval($additional_branches) : '—' ?></div>
+                        <div class="sr-val sv-amber"><?= $additional_branches > 0 ? '+' . intval($additional_branches) : 'â€”' ?></div>
                     </div>
                     <div class="stat-row">
                         <div class="sr-label"><i class="feather icon-maximize"></i>Max Allowed</div>
@@ -563,7 +563,7 @@ function updateCost() {
     const price = pricingData[cycle] || pricingData.monthly;
     const total = n * price;
     const suffix = { monthly: '/month', quarterly: '(3 months)', yearly: '(12 months)' }[cycle];
-    const label  = `${n} branch${n > 1 ? 'es' : ''} × ${price.toFixed(2)} ${cur} = ${total.toFixed(2)} ${cur} ${suffix}`;
+    const label  = `${n} branch${n > 1 ? 'es' : ''} Ã— ${price.toFixed(2)} ${cur} = ${total.toFixed(2)} ${cur} ${suffix}`;
     document.getElementById('costBreakdown').textContent = label;
     document.getElementById('estimatedCost').textContent = `${total.toFixed(2)} ${cur}`;
 }

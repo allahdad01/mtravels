@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -36,8 +36,8 @@ if (!$tenant_id) {
 
 function getCurrencySymbol($currencyCode) {
     $symbols = [
-        'USD' => '$', 'EUR' => '€', 'GBP' => '£', 'JPY' => '¥',
-        'AFN' => '؋', 'AED' => 'د.إ', 'INR' => '₹', 'PKR' => '₨',
+        'USD' => '$', 'EUR' => 'â‚¬', 'GBP' => 'Â£', 'JPY' => 'Â¥',
+        'AFN' => 'Ø‹', 'AED' => 'Ø¯.Ø¥', 'INR' => 'â‚¹', 'PKR' => 'â‚¨',
     ];
     return $symbols[$currencyCode] ?? $currencyCode;
 }
@@ -196,7 +196,7 @@ body, .pcoded-main-container {
     color: var(--text-main) !important;
 }
 
-/* ── Page Header ── */
+/* â”€â”€ Page Header â”€â”€ */
 .dash-header {
     background: var(--grad);
     border-radius: var(--radius);
@@ -214,7 +214,7 @@ body, .pcoded-main-container {
 .dash-header-left h4 { font-size: 22px; font-weight: 800; color: #fff; margin: 0 0 4px; letter-spacing: -0.4px; position: relative; }
 .dash-header-left p  { color: rgba(255,255,255,0.8); margin: 0; font-size: 13px; position: relative; }
 
-/* ── Alerts ── */
+/* â”€â”€ Alerts â”€â”€ */
 .dash-alert {
     display: flex; align-items: flex-start; gap: 12px;
     padding: 14px 20px; border-radius: var(--radius);
@@ -230,7 +230,7 @@ body, .pcoded-main-container {
 .dash-alert .close-btn:hover { opacity: 1; }
 @keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 
-/* ── Subscription Cards Grid ── */
+/* â”€â”€ Subscription Cards Grid â”€â”€ */
 .sub-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -343,7 +343,7 @@ body, .pcoded-main-container {
     font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
 }
 
-/* ── History Card ── */
+/* â”€â”€ History Card â”€â”€ */
 .dash-card {
     background: var(--card-bg);
     border-radius: var(--radius);
@@ -619,7 +619,7 @@ body, .pcoded-main-container {
             </h6>
             <form method="GET" class="search-wrap">
                 <input type="text" name="payment_search" class="search-input"
-                       placeholder="Search payments…" value="<?= htmlspecialchars($payment_search_query) ?>">
+                       placeholder="Search payments..." value="<?= htmlspecialchars($payment_search_query) ?>">
                 <button type="submit" class="search-btn"><i class="feather icon-search"></i></button>
                 <?php if (!empty($payment_search_query)): ?>
                 <a href="subscription_payments.php" class="clear-btn">
@@ -678,7 +678,7 @@ body, .pcoded-main-container {
         ?>
         <div class="pag-wrap">
             <div class="pag-info">
-                Page <?= $payment_current_page ?> of <?= $payment_total_pages ?> &nbsp;·&nbsp;
+                Page <?= $payment_current_page ?> of <?= $payment_total_pages ?> &nbsp;Â·&nbsp;
                 Showing <?= count($payments) ?> of <?= $payment_total_items ?> payments
             </div>
             <div class="pag-links">
@@ -689,7 +689,7 @@ body, .pcoded-main-container {
 
                 <?php if ($start_p > 1): ?>
                     <a href="subscription_payments.php?payment_page=1<?= $qs ?>" class="pag-btn">1</a>
-                    <?php if ($start_p > 2): ?><span class="pag-dots">…</span><?php endif; ?>
+                    <?php if ($start_p > 2): ?><span class="pag-dots">...</span><?php endif; ?>
                 <?php endif; ?>
 
                 <?php for ($i = $start_p; $i <= $end_p; $i++): ?>
@@ -698,7 +698,7 @@ body, .pcoded-main-container {
                 <?php endfor; ?>
 
                 <?php if ($end_p < $payment_total_pages): ?>
-                    <?php if ($end_p < $payment_total_pages - 1): ?><span class="pag-dots">…</span><?php endif; ?>
+                    <?php if ($end_p < $payment_total_pages - 1): ?><span class="pag-dots">...</span><?php endif; ?>
                     <a href="subscription_payments.php?payment_page=<?= $payment_total_pages . $qs ?>" class="pag-btn"><?= $payment_total_pages ?></a>
                 <?php endif; ?>
 

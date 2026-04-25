@@ -535,14 +535,7 @@ body, .pcoded-main-container {
             <h4><i class="feather icon-bar-chart-2" style="margin-right:8px;"></i>Owner Dashboard</h4>
             <p>Monitor performance &amp; manage your team across all branches</p>
         </div>
-        <div class="dash-header-actions">
-            <button class="btn-ghost" data-toggle="modal" data-target="#profileModal">
-                <i class="feather icon-user" style="margin-right:5px;"></i>Profile
-            </button>
-            <button class="btn-ghost" data-toggle="modal" data-target="#settingsModal">
-                <i class="feather icon-settings" style="margin-right:5px;"></i>Settings
-            </button>
-        </div>
+        
     </div>
 
     <!-- Alerts -->
@@ -573,7 +566,7 @@ body, .pcoded-main-container {
             <?php endforeach; ?>
         </select>
         <div class="filter-badge">
-            <i class="feather icon-git-branch" style="margin-right:4px;"></i>
+            <i class="feather icon-layers" style="margin-right:4px;"></i>
             <?= htmlspecialchars($current_branch_name) ?>
         </div>
     </div>
@@ -581,7 +574,7 @@ body, .pcoded-main-container {
     <!-- Stat Cards -->
     <div class="stat-grid">
         <div class="stat-card c-blue">
-            <div class="stat-icon"><i class="feather icon-git-branch"></i></div>
+            <div class="stat-icon"><i class="feather icon-layers"></i></div>
             <div class="stat-info">
                 <div class="stat-value"><?= $branchStats['total_branches'] ?? 0 ?></div>
                 <div class="stat-label">Total Branches</div>
@@ -690,7 +683,7 @@ body, .pcoded-main-container {
             <div class="actions-grid">
                 <?php
                 $actions = [
-                    ['branches.php',             'icon-git-branch',  'ti-blue',   'Manage Branches'],
+                    ['branches.php',             'feather icon-layers',  'ti-blue',   'Manage Branches'],
                     ['users.php',                'icon-user-plus',   'ti-teal',   'Manage Users'],
                     ['reports.php',              'icon-file-text',   'ti-green',  'View Reports'],
                     ['settings.php',             'icon-settings',    'ti-amber',  'Settings'],

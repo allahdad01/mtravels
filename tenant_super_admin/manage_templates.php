@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 include 'header.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'tenant_super_admin') {
@@ -16,7 +16,7 @@ $tenant_id = $_SESSION['tenant_id'];
     --surface:#f4f7fe;--card-bg:#ffffff;--border:#e8edf5;
     --text-main:#1a2340;--text-sub:#6b7a99;
     --green:#22c55e;--red:#ef4444;--amber:#f59e0b;
-    /* Template Management: Violet → Pink */
+    /* Template Management: Violet â†’ Pink */
     --c1:#7c3aed;--c2:#db2777;
     --radius:14px;--shadow:0 2px 12px rgba(124,58,237,.08);
 }
@@ -97,7 +97,7 @@ textarea.tmpl-input.short{min-height:90px}
     <div class="dash-header">
         <div>
             <h4><i class="feather icon-file-text" style="margin-right:8px;"></i>Tazmin Agreement Templates</h4>
-            <p>Customize agreement sections for each language — Pashto &amp; Dari</p>
+            <p>Customize agreement sections for each language â€” Pashto &amp; Dari</p>
         </div>
     </div>
 
@@ -110,14 +110,14 @@ textarea.tmpl-input.short{min-height:90px}
     <!-- Language tabs -->
     <div class="lang-tabs">
         <button class="lang-tab active" id="tab-pashto" onclick="switchTab('ps', this)">
-            <i class="feather icon-file-text"></i>Pashto <span class="lang-badge">(پشتو)</span>
+            <i class="feather icon-file-text"></i>Pashto <span class="lang-badge">(Ù¾Ø´ØªÙˆ)</span>
         </button>
         <button class="lang-tab" id="tab-dari" onclick="switchTab('dari', this)">
-            <i class="feather icon-file-text"></i>Dari <span class="lang-badge">(دری)</span>
+            <i class="feather icon-file-text"></i>Dari <span class="lang-badge">(Ø¯Ø±ÛŒ)</span>
         </button>
     </div>
 
-    <!-- ── Pashto Tab ── -->
+    <!-- â”€â”€ Pashto Tab â”€â”€ -->
     <div class="tab-panel active" id="panel-pashto">
         <div class="dash-card">
             <div class="dash-card-head">
@@ -141,11 +141,11 @@ textarea.tmpl-input.short{min-height:90px}
 
                     <div style="margin-bottom:12px;">
                         <label class="field-label">Header Title</label>
-                        <input type="text" id="pashto-header" class="tmpl-input" placeholder="د {{agency_name}} - {{branch_name}} سیاحتی او توریستی شرکت سره د محترم {{guarantor_name}} ضمانت لیک">
+                        <input type="text" id="pashto-header" class="tmpl-input" placeholder="Ø¯ {{agency_name}} - {{branch_name}} Ø³ÛŒØ§Ø­ØªÛŒ Ø§Ùˆ ØªÙˆØ±ÛŒØ³ØªÛŒ Ø´Ø±Ú©Øª Ø³Ø±Ù‡ Ø¯ Ù…Ø­ØªØ±Ù… {{guarantor_name}} Ø¶Ù…Ø§Ù†Øª Ù„ÛŒÚ©">
                     </div>
                     <div>
                         <label class="field-label">Subtitle</label>
-                        <input type="text" id="pashto-subtitle" class="tmpl-input" placeholder="د معتمرینو د لیږد په اړه لاندی مسؤلیتونو ته پاملرنه">
+                        <input type="text" id="pashto-subtitle" class="tmpl-input" placeholder="Ø¯ Ù…Ø¹ØªÙ…Ø±ÛŒÙ†Ùˆ Ø¯ Ù„ÛŒÚ–Ø¯ Ù¾Ù‡ Ø§Ú“Ù‡ Ù„Ø§Ù†Ø¯ÛŒ Ù…Ø³Ø¤Ù„ÛŒØªÙˆÙ†Ùˆ ØªÙ‡ Ù¾Ø§Ù…Ù„Ø±Ù†Ù‡">
                     </div>
                 </div>
 
@@ -154,7 +154,7 @@ textarea.tmpl-input.short{min-height:90px}
                 <!-- Section 2: Clauses -->
                 <div class="section-block">
                     <div class="section-title"><span class="section-num">2</span>Agreement Clauses</div>
-                    <div class="section-desc">Main content with numbered clauses — use an HTML ordered list &lt;ol&gt;&lt;li&gt;…&lt;/li&gt;&lt;/ol&gt;</div>
+                    <div class="section-desc">Main content with numbered clauses â€” use an HTML ordered list &lt;ol&gt;&lt;li&gt;...&lt;/li&gt;&lt;/ol&gt;</div>
                     <label class="field-label">Clauses (HTML)</label>
                     <textarea id="pashto-content" class="tmpl-input"></textarea>
                 </div>
@@ -168,7 +168,7 @@ textarea.tmpl-input.short{min-height:90px}
 
                     <div style="margin-bottom:12px;">
                         <label class="field-label">Guarantor Section Title</label>
-                        <input type="text" id="pashto-guarantor-title" class="tmpl-input" placeholder="د ضمانت کوونکی ژمنه">
+                        <input type="text" id="pashto-guarantor-title" class="tmpl-input" placeholder="Ø¯ Ø¶Ù…Ø§Ù†Øª Ú©ÙˆÙˆÙ†Ú©ÛŒ Ú˜Ù…Ù†Ù‡">
                     </div>
                     <div>
                         <label class="field-label">Guarantor Commitment Text</label>
@@ -185,7 +185,7 @@ textarea.tmpl-input.short{min-height:90px}
         </div>
     </div>
 
-    <!-- ── Dari Tab ── -->
+    <!-- â”€â”€ Dari Tab â”€â”€ -->
     <div class="tab-panel" id="panel-dari">
         <div class="dash-card">
             <div class="dash-card-head">
@@ -209,11 +209,11 @@ textarea.tmpl-input.short{min-height:90px}
 
                     <div style="margin-bottom:12px;">
                         <label class="field-label">Header Title</label>
-                        <input type="text" id="dari-header" class="tmpl-input" placeholder="توافقنامه ضمانت با شرکت سیاحتی و گردشگری {{agency_name}} - {{branch_name}}">
+                        <input type="text" id="dari-header" class="tmpl-input" placeholder="ØªÙˆØ§ÙÙ‚Ù†Ø§Ù…Ù‡ Ø¶Ù…Ø§Ù†Øª Ø¨Ø§ Ø´Ø±Ú©Øª Ø³ÛŒØ§Ø­ØªÛŒ Ùˆ Ú¯Ø±Ø¯Ø´Ú¯Ø±ÛŒ {{agency_name}} - {{branch_name}}">
                     </div>
                     <div>
                         <label class="field-label">Subtitle</label>
-                        <input type="text" id="dari-subtitle" class="tmpl-input" placeholder="توجه به مسئولیات زیر در مورد انتقال معتمرین">
+                        <input type="text" id="dari-subtitle" class="tmpl-input" placeholder="ØªÙˆØ¬Ù‡ Ø¨Ù‡ Ù…Ø³Ø¦ÙˆÙ„ÛŒØ§Øª Ø²ÛŒØ± Ø¯Ø± Ù…ÙˆØ±Ø¯ Ø§Ù†ØªÙ‚Ø§Ù„ Ù…Ø¹ØªÙ…Ø±ÛŒÙ†">
                     </div>
                 </div>
 
@@ -222,7 +222,7 @@ textarea.tmpl-input.short{min-height:90px}
                 <!-- Section 2 -->
                 <div class="section-block">
                     <div class="section-title"><span class="section-num">2</span>Agreement Clauses</div>
-                    <div class="section-desc">Main content with numbered clauses — use an HTML ordered list &lt;ol&gt;&lt;li&gt;…&lt;/li&gt;&lt;/ol&gt;</div>
+                    <div class="section-desc">Main content with numbered clauses â€” use an HTML ordered list &lt;ol&gt;&lt;li&gt;...&lt;/li&gt;&lt;/ol&gt;</div>
                     <label class="field-label">Clauses (HTML)</label>
                     <textarea id="dari-content" class="tmpl-input"></textarea>
                 </div>
@@ -236,7 +236,7 @@ textarea.tmpl-input.short{min-height:90px}
 
                     <div style="margin-bottom:12px;">
                         <label class="field-label">Guarantor Section Title</label>
-                        <input type="text" id="dari-guarantor-title" class="tmpl-input" placeholder="تعهد ضامن">
+                        <input type="text" id="dari-guarantor-title" class="tmpl-input" placeholder="ØªØ¹Ù‡Ø¯ Ø¶Ø§Ù…Ù†">
                     </div>
                     <div>
                         <label class="field-label">Guarantor Commitment Text</label>
@@ -314,9 +314,9 @@ function saveTemplate(language) {
         }
     }
 
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="feather icon-loader"></i> Saving…'; }
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="feather icon-loader"></i> Saving...'; }
 
-    Swal.fire({ title:'Saving…', allowOutsideClick:false, didOpen:()=>Swal.showLoading() });
+    Swal.fire({ title:'Saving...', allowOutsideClick:false, didOpen:()=>Swal.showLoading() });
 
     let done = 0;
     const total = Object.keys(sections).length;

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
 require_once('../includes/session_check.php');
@@ -59,7 +59,7 @@ function actStyle($action) {
 <!DOCTYPE html>
 <html lang="<?= get_current_lang() ?>" dir="<?= get_lang_dir() ?>">
 <head>
-    <title><?= __('user_profile') ?> — <?= htmlspecialchars($settings['agency_name']??'') ?></title>
+    <title><?= __('user_profile') ?> â€” <?= htmlspecialchars($settings['agency_name']??'') ?></title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=0,minimal-ui">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -81,7 +81,7 @@ function actStyle($action) {
     --surface:#f4f7fe;--card-bg:#ffffff;--border:#e8edf5;
     --text-main:#1a2340;--text-sub:#6b7a99;
     --green:#22c55e;--red:#ef4444;--amber:#f59e0b;
-    /* Profile: Blue → Teal (same as owner dashboard) */
+    /* Profile: Blue â†’ Teal (same as owner dashboard) */
     --c1:#4099ff;--c2:#2ed8b6;
     --radius:14px;--shadow:0 2px 12px rgba(64,153,255,.08);
 }
@@ -289,7 +289,7 @@ textarea.form-input{resize:vertical;min-height:80px}
                 <div class="activity-item">
                     <div class="act-dot <?= $s['cls'] ?>"><i class="feather icon-<?= $s['icon'] ?>"></i></div>
                     <div class="act-body">
-                        <strong><?= ucfirst(htmlspecialchars($act['action'])) ?> — <?= htmlspecialchars($act['table_name']??'system') ?></strong>
+                        <strong><?= ucfirst(htmlspecialchars($act['action'])) ?> â€” <?= htmlspecialchars($act['table_name']??'system') ?></strong>
                         <span><?= date('M d, Y  H:i', strtotime($act['created_at'])) ?></span>
                     </div>
                 </div>
@@ -362,7 +362,7 @@ textarea.form-input{resize:vertical;min-height:80px}
                     <div class="upload-area" onclick="document.getElementById('profileImage').click()">
                         <img src="<?= $imagePath ?>" alt="Preview" class="upload-preview" id="profilePreview">
                         <div class="upload-label"><i class="feather icon-upload-cloud" style="font-size:18px;color:#4099ff;display:block;margin-bottom:5px;"></i>Click to change</div>
-                        <div class="upload-hint">JPG · PNG · GIF · up to 5MB</div>
+                        <div class="upload-hint">JPG Â· PNG Â· GIF Â· up to 5MB</div>
                     </div>
                 </div>
             </div>
@@ -382,7 +382,7 @@ textarea.form-input{resize:vertical;min-height:80px}
 <script src="../assets/js/mobile-menu.js"></script>
 
 <script>
-/* ── Tabs ── */
+/* â”€â”€ Tabs â”€â”€ */
 function switchTab(name, btn) {
     document.querySelectorAll('.profile-tab').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-pane-custom').forEach(p => p.classList.remove('active'));
@@ -390,7 +390,7 @@ function switchTab(name, btn) {
     document.getElementById('pane-'+name).classList.add('active');
 }
 
-/* ── Toast ── */
+/* â”€â”€ Toast â”€â”€ */
 function toast(msg, type='success') {
     document.querySelectorAll('.notif-toast').forEach(n => n.remove());
     const t = document.createElement('div');
@@ -400,14 +400,14 @@ function toast(msg, type='success') {
     setTimeout(() => { t.style.transition='opacity .4s'; t.style.opacity=0; setTimeout(()=>t.remove(),400); }, 4000);
 }
 
-/* ── Password visibility ── */
+/* â”€â”€ Password visibility â”€â”€ */
 function togglePw(id, btn) {
     const inp=document.getElementById(id), icon=btn.querySelector('i');
     inp.type = inp.type==='password' ? 'text' : 'password';
     icon.className = inp.type==='text' ? 'feather icon-eye-off' : 'feather icon-eye';
 }
 
-/* ── Strength meter ── */
+/* â”€â”€ Strength meter â”€â”€ */
 document.getElementById('newPassword').addEventListener('input', function() {
     const v=this.value, bar=document.getElementById('strengthBar'), lbl=document.getElementById('strengthLabel');
     let sc=0;
@@ -427,11 +427,11 @@ function checkMatch() {
     const np=document.getElementById('newPassword').value, cp=document.getElementById('confirmPassword').value;
     const el=document.getElementById('confirmPassword'), msg=document.getElementById('matchMsg');
     if(!cp){el.classList.remove('match-ok','match-fail');msg.textContent='';return;}
-    if(np===cp){el.classList.add('match-ok');el.classList.remove('match-fail');msg.className='match-msg ok';msg.textContent='✓ Passwords match';}
-    else{el.classList.add('match-fail');el.classList.remove('match-ok');msg.className='match-msg err';msg.textContent='✗ Passwords do not match';}
+    if(np===cp){el.classList.add('match-ok');el.classList.remove('match-fail');msg.className='match-msg ok';msg.textContent='âœ“ Passwords match';}
+    else{el.classList.add('match-fail');el.classList.remove('match-ok');msg.className='match-msg err';msg.textContent='âœ— Passwords do not match';}
 }
 
-/* ── Image preview ── */
+/* â”€â”€ Image preview â”€â”€ */
 function previewProfileImage(input) {
     if (input.files && input.files[0]) {
         const r=new FileReader();
@@ -443,11 +443,11 @@ function previewProfileImage(input) {
     }
 }
 
-/* ── Save profile ── */
+/* â”€â”€ Save profile â”€â”€ */
 document.getElementById('profileForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     const btn=document.getElementById('saveProfileBtn');
-    btn.disabled=true; btn.innerHTML='<i class="feather icon-loader" style="animation:spin .7s linear infinite;"></i> Saving…';
+    btn.disabled=true; btn.innerHTML='<i class="feather icon-loader" style="animation:spin .7s linear infinite;"></i> Saving...';
     try {
         const r=await fetch('update_profile.php',{method:'POST',body:new FormData(this)});
         const d=await r.json();
@@ -457,7 +457,7 @@ document.getElementById('profileForm').addEventListener('submit', async function
     finally { btn.disabled=false; btn.innerHTML='<i class="feather icon-save"></i>Save Changes'; }
 });
 
-/* ── Change password ── */
+/* â”€â”€ Change password â”€â”€ */
 async function changePassword() {
     const cp=document.getElementById('currentPassword').value;
     const np=document.getElementById('newPassword').value;
@@ -465,7 +465,7 @@ async function changePassword() {
     if (!cp||!np||!cf){ toast('Please fill in all password fields','error'); return; }
     if (np!==cf){ toast('New passwords do not match','error'); return; }
     const btn=document.getElementById('changePwdBtn');
-    btn.disabled=true; btn.innerHTML='<i class="feather icon-loader" style="animation:spin .7s linear infinite;"></i> Updating…';
+    btn.disabled=true; btn.innerHTML='<i class="feather icon-loader" style="animation:spin .7s linear infinite;"></i> Updating...';
     const fd=new FormData(); fd.append('current_password',cp); fd.append('new_password',np); fd.append('confirm_password',cf);
     try {
         const r=await fetch('api/change_password.php',{method:'POST',body:fd});
@@ -476,7 +476,7 @@ async function changePassword() {
     finally { btn.disabled=false; btn.innerHTML='<i class="feather icon-lock"></i>Update Password'; }
 }
 
-/* ── Spin keyframe ── */
+/* â”€â”€ Spin keyframe â”€â”€ */
 const sty=document.createElement('style'); sty.textContent='@keyframes spin{to{transform:rotate(360deg)}}'; document.head.appendChild(sty);
 </script>
 </body>

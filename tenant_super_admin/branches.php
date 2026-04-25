@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 include 'header.php';
 require_once '../includes/BranchAddonManager.php';
 
@@ -159,7 +159,7 @@ $usage_pct = $max_allowed_branches > 0 ? round(($current_branches / $max_allowed
 *, *::before, *::after { box-sizing: border-box; }
 body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !important; background: var(--surface) !important; color: var(--text-main) !important; }
 
-/* ── Page Header ── */
+/* â”€â”€ Page Header â”€â”€ */
 .dash-header {
     background: var(--grad);
     border-radius: var(--radius); padding: 24px 28px; margin-bottom: 24px;
@@ -171,7 +171,7 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
 .dash-header p  { color:rgba(255,255,255,0.8); margin:0; font-size:13px; position:relative; }
 .dash-header-right { position:relative; }
 
-/* ── Alerts ── */
+/* â”€â”€ Alerts â”€â”€ */
 .dash-alert { display:flex; align-items:flex-start; gap:12px; padding:14px 20px; border-radius:var(--radius); margin-bottom:16px; font-size:14px; font-weight:500; animation:slideDown 0.3s ease; }
 .dash-alert-success { background:#dcfce7; color:#166534; border-left:4px solid var(--green); }
 .dash-alert-danger  { background:#fee2e2; color:#991b1b; border-left:4px solid var(--red); }
@@ -181,7 +181,7 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
 .dash-alert .close-btn:hover { opacity:1; }
 @keyframes slideDown { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
 
-/* ── Plan Info Card ── */
+/* â”€â”€ Plan Info Card â”€â”€ */
 .plan-card {
     background: var(--card-bg); border-radius: var(--radius);
     border: 1px solid var(--border); box-shadow: var(--shadow);
@@ -216,7 +216,7 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
 .usage-bar-fill { height:100%; border-radius:99px; background:var(--grad); transition:width 0.6s ease; }
 .usage-bar-fill.danger { background:linear-gradient(90deg,var(--amber),var(--red)); }
 
-/* ── Action row ── */
+/* â”€â”€ Action row â”€â”€ */
 .action-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:20px; }
 .btn-create {
     display:inline-flex; align-items:center; gap:8px;
@@ -227,7 +227,7 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
 .btn-create:hover { opacity:0.9; transform:translateY(-1px); box-shadow:0 4px 16px rgba(64,153,255,0.3); color:#fff; }
 .btn-create:disabled, .btn-create.disabled { opacity:0.45; cursor:not-allowed; transform:none; box-shadow:none; }
 
-/* ── Main table card ── */
+/* â”€â”€ Main table card â”€â”€ */
 .dash-card { background:var(--card-bg); border-radius:var(--radius); border:1px solid var(--border); box-shadow:var(--shadow); overflow:hidden; }
 .dash-card-head { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; }
 .dash-card-head h6 { font-size:15px; font-weight:700; margin:0; display:flex; align-items:center; gap:8px; }
@@ -271,7 +271,7 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
 .empty-state h5 { font-weight:700; margin-bottom:6px; }
 .empty-state p  { color:var(--text-sub); font-size:14px; margin-bottom:20px; }
 
-/* ── Modals ── */
+/* â”€â”€ Modals â”€â”€ */
 .modal-content { border:none; border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,0.18); font-family:inherit; }
 .modal-header  { background:var(--grad); color:#fff; border-radius:16px 16px 0 0; border:none; padding:18px 24px; }
 .modal-header .modal-title { font-weight:700; font-size:16px; }
@@ -356,7 +356,7 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
         </div>
         <div class="plan-stats">
             <div class="plan-stat">
-                <div class="ps-icon ps-blue"><i class="feather icon-git-branch"></i></div>
+                <div class="ps-icon ps-blue"><i class="feather icon-layers"></i></div>
                 <div class="ps-label">Current</div>
                 <div class="ps-value ps-blue"><span class="ps-value-c"><?= $current_branches ?></span></div>
             </div>
@@ -373,7 +373,7 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
             <div class="plan-stat">
                 <div class="ps-icon ps-amber"><i class="feather icon-plus-circle"></i></div>
                 <div class="ps-label">Add-ons</div>
-                <div class="ps-value ps-amber"><span class="ps-value-c"><?= $additional_branches > 0 ? '+' . $additional_branches : '—' ?></span></div>
+                <div class="ps-value ps-amber"><span class="ps-value-c"><?= $additional_branches > 0 ? '+' . $additional_branches : 'â€”' ?></span></div>
             </div>
         </div>
         <div class="usage-bar-wrap">
@@ -391,7 +391,7 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
     <!-- Branches Table -->
     <div class="dash-card">
         <div class="dash-card-head">
-            <h6><span class="ico"><i class="feather icon-git-branch"></i></span>All Branches</h6>
+            <h6><span class="ico"><i class="feather icon-layers"></i></span>All Branches</h6>
             <span class="count-badge"><?= count($branches) ?> branch<?= count($branches) !== 1 ? 'es' : '' ?></span>
         </div>
 
@@ -448,7 +448,7 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
                                 <?php endif; ?>
                             </div>
                             <?php else: ?>
-                                <span style="color:var(--border);font-style:italic;font-size:13px;">—</span>
+                                <span style="color:var(--border);font-style:italic;font-size:13px;">â€”</span>
                             <?php endif; ?>
                         </td>
                         <td class="td-date"><?= date('M d, Y', strtotime($branch['created_at'])) ?></td>
@@ -525,14 +525,14 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
                     </div>
                     <div class="form-group">
                         <label>Address</label>
-                        <textarea class="form-control" name="address" rows="3" placeholder="Full branch address…"></textarea>
+                        <textarea class="form-control" name="address" rows="3" placeholder="Full branch address..."></textarea>
                     </div>
                     <div class="form-group">
                         <label>Branch Manager</label>
                         <select class="form-control" name="manager_id">
                             <option value="">Select Manager (Optional)</option>
                             <?php foreach ($availableManagers as $m): ?>
-                            <option value="<?= $m['id'] ?>"><?= htmlspecialchars($m['name']) ?> · <?= htmlspecialchars($m['email']) ?></option>
+                            <option value="<?= $m['id'] ?>"><?= htmlspecialchars($m['name']) ?> Â· <?= htmlspecialchars($m['email']) ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -599,7 +599,7 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
                                 <select class="form-control" id="editBranchManager" name="manager_id">
                                     <option value="">Select Manager (Optional)</option>
                                     <?php foreach ($availableManagers as $m): ?>
-                                    <option value="<?= $m['id'] ?>"><?= htmlspecialchars($m['name']) ?> · <?= htmlspecialchars($m['email']) ?></option>
+                                    <option value="<?= $m['id'] ?>"><?= htmlspecialchars($m['name']) ?> Â· <?= htmlspecialchars($m['email']) ?></option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>

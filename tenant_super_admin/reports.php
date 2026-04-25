@@ -8,88 +8,108 @@ $start_date        = $_GET['start_date'] ?? date('Y-m-01');
 $end_date          = $_GET['end_date'] ?? date('Y-m-t');
 $comparison_period = $_GET['comparison_period'] ?? '';
 
+function fetchBranchReports($pdo, $tenant_id, $start_date, $end_date, $branch_id = '') {
+    try {
+        $branchFilter = "";
+        if (!empty($branch_id)) {
+            $branchFilter = "AND b.id = ?";
+        }
+
+        $stmt = $pdo->prepare("
+            SELECT b.name as branch_name, b.code as branch_code,
+                COALESCE(ticket_stats.ticket_bookings,0) as ticket_bookings,
+                COALESCE(ticket_stats.ticket_profit_usd,0) as ticket_profit_usd,
+                COALESCE(ticket_stats.ticket_profit_afs,0) as ticket_profit_afs,
+                COALESCE(reservation_stats.ticket_reservations,0) as ticket_reservations,
+                COALESCE(reservation_stats.reservation_profit_usd,0) as reservation_profit_usd,
+                COALESCE(reservation_stats.reservation_profit_afs,0) as reservation_profit_afs,
+                COALESCE(weight_stats.ticket_weights,0) as ticket_weights,
+                COALESCE(weight_stats.weight_profit_usd,0) as weight_profit_usd,
+                COALESCE(weight_stats.weight_profit_afs,0) as weight_profit_afs,
+                COALESCE(hotel_stats.hotel_bookings,0) as hotel_bookings,
+                COALESCE(hotel_stats.hotel_profit_usd,0) as hotel_profit_usd,
+                COALESCE(hotel_stats.hotel_profit_afs,0) as hotel_profit_afs,
+                COALESCE(visa_stats.visa_applications,0) as visa_applications,
+                COALESCE(visa_stats.visa_profit_usd,0) as visa_profit_usd,
+                COALESCE(visa_stats.visa_profit_afs,0) as visa_profit_afs,
+                COALESCE(umrah_stats.umrah_bookings,0) as umrah_bookings,
+                COALESCE(umrah_stats.umrah_profit_usd,0) as umrah_profit_usd,
+                COALESCE(umrah_stats.umrah_profit_afs,0) as umrah_profit_afs,
+                COALESCE(additional_stats.additional_payments,0) as additional_payments,
+                COALESCE(additional_stats.additional_profit_usd,0) as additional_profit_usd,
+                COALESCE(additional_stats.additional_profit_afs,0) as additional_profit_afs,
+                COALESCE(refund_stats.refunded_tickets,0) as refunded_tickets,
+                COALESCE(refund_stats.refund_profit_usd,0) as refund_profit_usd,
+                COALESCE(refund_stats.refund_profit_afs,0) as refund_profit_afs,
+                COALESCE(date_change_stats.date_change_tickets,0) as date_change_tickets,
+                COALESCE(date_change_stats.date_change_profit_usd,0) as date_change_profit_usd,
+                COALESCE(date_change_stats.date_change_profit_afs,0) as date_change_profit_afs,
+                COALESCE(ticket_stats.ticket_profit_usd,0)+COALESCE(reservation_stats.reservation_profit_usd,0)+COALESCE(weight_stats.weight_profit_usd,0)+COALESCE(hotel_stats.hotel_profit_usd,0)+COALESCE(visa_stats.visa_profit_usd,0)+COALESCE(umrah_stats.umrah_profit_usd,0)+COALESCE(additional_stats.additional_profit_usd,0)+COALESCE(refund_stats.refund_profit_usd,0)+COALESCE(date_change_stats.date_change_profit_usd,0) as total_revenue_usd,
+                COALESCE(ticket_stats.ticket_profit_afs,0)+COALESCE(reservation_stats.reservation_profit_afs,0)+COALESCE(weight_stats.weight_profit_afs,0)+COALESCE(hotel_stats.hotel_profit_afs,0)+COALESCE(visa_stats.visa_profit_afs,0)+COALESCE(umrah_stats.umrah_profit_afs,0)+COALESCE(additional_stats.additional_profit_afs,0)+COALESCE(refund_stats.refund_profit_afs,0)+COALESCE(date_change_stats.date_change_profit_afs,0) as total_revenue_afs,
+                COALESCE(user_stats.total_users,0) as total_users
+            FROM branches b
+            LEFT JOIN (SELECT branch_id,COUNT(id) as total_users FROM users WHERE tenant_id=? GROUP BY branch_id) user_stats ON user_stats.branch_id=b.id
+            LEFT JOIN (SELECT u.branch_id,COUNT(t.id) as ticket_bookings,SUM(CASE WHEN t.currency='USD' THEN t.profit ELSE 0 END) as ticket_profit_usd,SUM(CASE WHEN t.currency='AFS' THEN t.profit ELSE 0 END) as ticket_profit_afs FROM ticket_bookings t JOIN users u ON t.created_by=u.id WHERE t.created_at>=? AND t.created_at<=? GROUP BY u.branch_id) ticket_stats ON ticket_stats.branch_id=b.id
+            LEFT JOIN (SELECT u.branch_id,COUNT(tr.id) as ticket_reservations,SUM(CASE WHEN tr.currency='USD' THEN tr.profit ELSE 0 END) as reservation_profit_usd,SUM(CASE WHEN tr.currency='AFS' THEN tr.profit ELSE 0 END) as reservation_profit_afs FROM ticket_reservations tr JOIN users u ON tr.created_by=u.id WHERE tr.created_at>=? AND tr.created_at<=? GROUP BY u.branch_id) reservation_stats ON reservation_stats.branch_id=b.id
+            LEFT JOIN (SELECT u.branch_id,COUNT(tw.id) as ticket_weights,SUM(CASE WHEN tb.currency='USD' THEN tw.profit ELSE 0 END) as weight_profit_usd,SUM(CASE WHEN tb.currency='AFS' THEN tw.profit ELSE 0 END) as weight_profit_afs FROM ticket_weights tw JOIN users u ON tw.created_by=u.id LEFT JOIN ticket_bookings tb ON tb.id=tw.ticket_id WHERE tw.created_at>=? AND tw.created_at<=? GROUP BY u.branch_id) weight_stats ON weight_stats.branch_id=b.id
+            LEFT JOIN (SELECT u.branch_id,COUNT(h.id) as hotel_bookings,SUM(CASE WHEN h.currency='USD' THEN h.profit ELSE 0 END) as hotel_profit_usd,SUM(CASE WHEN h.currency='AFS' THEN h.profit ELSE 0 END) as hotel_profit_afs FROM hotel_bookings h JOIN users u ON h.created_by=u.id WHERE h.created_at>=? AND h.created_at<=? GROUP BY u.branch_id) hotel_stats ON hotel_stats.branch_id=b.id
+            LEFT JOIN (SELECT u.branch_id,COUNT(v.id) as visa_applications,SUM(CASE WHEN v.currency='USD' THEN v.profit ELSE 0 END) as visa_profit_usd,SUM(CASE WHEN v.currency='AFS' THEN v.profit ELSE 0 END) as visa_profit_afs FROM visa_applications v JOIN users u ON v.created_by=u.id WHERE v.created_at>=? AND v.created_at<=? GROUP BY u.branch_id) visa_stats ON visa_stats.branch_id=b.id
+            LEFT JOIN (SELECT u.branch_id,COUNT(um.booking_id) as umrah_bookings,SUM(CASE WHEN um.currency='USD' THEN um.profit ELSE 0 END) as umrah_profit_usd,SUM(CASE WHEN um.currency='AFS' THEN um.profit ELSE 0 END) as umrah_profit_afs FROM umrah_bookings um JOIN users u ON um.created_by=u.id WHERE um.created_at>=? AND um.created_at<=? GROUP BY u.branch_id) umrah_stats ON umrah_stats.branch_id=b.id
+            LEFT JOIN (SELECT u.branch_id,COUNT(ap.id) as additional_payments,SUM(CASE WHEN ap.currency='USD' THEN ap.profit ELSE 0 END) as additional_profit_usd,SUM(CASE WHEN ap.currency='AFS' THEN ap.profit ELSE 0 END) as additional_profit_afs FROM additional_payments ap JOIN users u ON ap.created_by=u.id WHERE ap.created_at>=? AND ap.created_at<=? GROUP BY u.branch_id) additional_stats ON additional_stats.branch_id=b.id
+            LEFT JOIN (SELECT u.branch_id,COUNT(rt.id) as refunded_tickets,SUM(CASE WHEN rt.currency='USD' THEN (CASE WHEN rt.calculation_method='base' THEN rt.service_penalty WHEN rt.calculation_method='sold' THEN (rt.service_penalty-IFNULL(tb.profit,0)) ELSE rt.service_penalty END) ELSE 0 END) as refund_profit_usd,SUM(CASE WHEN rt.currency='AFS' THEN (CASE WHEN rt.calculation_method='base' THEN rt.service_penalty WHEN rt.calculation_method='sold' THEN (rt.service_penalty-IFNULL(tb.profit,0)) ELSE rt.service_penalty END) ELSE 0 END) as refund_profit_afs FROM refunded_tickets rt JOIN users u ON rt.created_by=u.id LEFT JOIN ticket_bookings tb ON rt.ticket_id=tb.id WHERE rt.created_at>=? AND rt.created_at<=? GROUP BY u.branch_id) refund_stats ON refund_stats.branch_id=b.id
+            LEFT JOIN (SELECT u.branch_id,COUNT(dt.id) as date_change_tickets,SUM(CASE WHEN dt.currency='USD' THEN dt.service_penalty ELSE 0 END) as date_change_profit_usd,SUM(CASE WHEN dt.currency='AFS' THEN dt.service_penalty ELSE 0 END) as date_change_profit_afs FROM date_change_tickets dt JOIN users u ON dt.created_by=u.id WHERE dt.created_at>=? AND dt.created_at<=? GROUP BY u.branch_id) date_change_stats ON date_change_stats.branch_id=b.id
+            WHERE b.tenant_id=? AND b.status='active' $branchFilter
+            GROUP BY b.id,b.name,b.code ORDER BY total_revenue_usd DESC
+        ");
+
+        $params = [
+            $tenant_id,
+            $start_date.' 00:00:00',$end_date.' 23:59:59',
+            $start_date.' 00:00:00',$end_date.' 23:59:59',
+            $start_date.' 00:00:00',$end_date.' 23:59:59',
+            $start_date.' 00:00:00',$end_date.' 23:59:59',
+            $start_date.' 00:00:00',$end_date.' 23:59:59',
+            $start_date.' 00:00:00',$end_date.' 23:59:59',
+            $start_date.' 00:00:00',$end_date.' 23:59:59',
+            $start_date.' 00:00:00',$end_date.' 23:59:59',
+            $start_date.' 00:00:00',$end_date.' 23:59:59',
+            $tenant_id
+        ];
+
+        if (!empty($branch_id)) {
+            $params[] = $branch_id;
+        }
+
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log($e->getMessage());
+        return [];
+    }
+}
+
+function summarizeBranchReports($branchReports) {
+    $totals = ['branches'=>count($branchReports),'ticket_bookings'=>0,'ticket_profit_usd'=>0,'ticket_profit_afs'=>0,'ticket_reservations'=>0,'reservation_profit_usd'=>0,'reservation_profit_afs'=>0,'ticket_weights'=>0,'weight_profit_usd'=>0,'weight_profit_afs'=>0,'hotel_bookings'=>0,'hotel_profit_usd'=>0,'hotel_profit_afs'=>0,'visa_applications'=>0,'visa_profit_usd'=>0,'visa_profit_afs'=>0,'umrah_bookings'=>0,'umrah_profit_usd'=>0,'umrah_profit_afs'=>0,'additional_payments'=>0,'additional_profit_usd'=>0,'additional_profit_afs'=>0,'refunded_tickets'=>0,'refund_profit_usd'=>0,'refund_profit_afs'=>0,'date_change_tickets'=>0,'date_change_profit_usd'=>0,'date_change_profit_afs'=>0,'total_revenue_usd'=>0,'total_revenue_afs'=>0,'total_revenue'=>0,'total_users'=>0];
+
+    foreach ($branchReports as $reportRow) {
+        foreach (['ticket_bookings','ticket_profit_usd','ticket_profit_afs','ticket_reservations','reservation_profit_usd','reservation_profit_afs','ticket_weights','weight_profit_usd','weight_profit_afs','hotel_bookings','hotel_profit_usd','hotel_profit_afs','visa_applications','visa_profit_usd','visa_profit_afs','umrah_bookings','umrah_profit_usd','umrah_profit_afs','additional_payments','additional_profit_usd','additional_profit_afs','refunded_tickets','refund_profit_usd','refund_profit_afs','date_change_tickets','date_change_profit_usd','date_change_profit_afs','total_revenue_usd','total_revenue_afs','total_users'] as $key) {
+            $totals[$key] += $reportRow[$key] ?? 0;
+        }
+    }
+
+    $totals['total_revenue'] = $totals['total_revenue_usd'];
+
+    return $totals;
+}
+
 try {
     $stmt = $pdo->prepare("SELECT id, name, code FROM branches WHERE tenant_id = ? AND status = 'active' ORDER BY name");
     $stmt->execute([$tenant_id]);
     $branches = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { $branches = []; }
 
-try {
-    $params = []; $branchFilter = "";
-    if (!empty($branch_id)) { $branchFilter = "AND b.id = ?"; $params[] = $branch_id; }
-
-    $stmt = $pdo->prepare("
-        SELECT b.name as branch_name, b.code as branch_code,
-            COALESCE(ticket_stats.ticket_bookings,0) as ticket_bookings,
-            COALESCE(ticket_stats.ticket_profit_usd,0) as ticket_profit_usd,
-            COALESCE(ticket_stats.ticket_profit_afs,0) as ticket_profit_afs,
-            COALESCE(reservation_stats.ticket_reservations,0) as ticket_reservations,
-            COALESCE(reservation_stats.reservation_profit_usd,0) as reservation_profit_usd,
-            COALESCE(reservation_stats.reservation_profit_afs,0) as reservation_profit_afs,
-            COALESCE(weight_stats.ticket_weights,0) as ticket_weights,
-            COALESCE(weight_stats.weight_profit_usd,0) as weight_profit_usd,
-            COALESCE(weight_stats.weight_profit_afs,0) as weight_profit_afs,
-            COALESCE(hotel_stats.hotel_bookings,0) as hotel_bookings,
-            COALESCE(hotel_stats.hotel_profit_usd,0) as hotel_profit_usd,
-            COALESCE(hotel_stats.hotel_profit_afs,0) as hotel_profit_afs,
-            COALESCE(visa_stats.visa_applications,0) as visa_applications,
-            COALESCE(visa_stats.visa_profit_usd,0) as visa_profit_usd,
-            COALESCE(visa_stats.visa_profit_afs,0) as visa_profit_afs,
-            COALESCE(umrah_stats.umrah_bookings,0) as umrah_bookings,
-            COALESCE(umrah_stats.umrah_profit_usd,0) as umrah_profit_usd,
-            COALESCE(umrah_stats.umrah_profit_afs,0) as umrah_profit_afs,
-            COALESCE(additional_stats.additional_payments,0) as additional_payments,
-            COALESCE(additional_stats.additional_profit_usd,0) as additional_profit_usd,
-            COALESCE(additional_stats.additional_profit_afs,0) as additional_profit_afs,
-            COALESCE(refund_stats.refunded_tickets,0) as refunded_tickets,
-            COALESCE(refund_stats.refund_profit_usd,0) as refund_profit_usd,
-            COALESCE(refund_stats.refund_profit_afs,0) as refund_profit_afs,
-            COALESCE(date_change_stats.date_change_tickets,0) as date_change_tickets,
-            COALESCE(date_change_stats.date_change_profit_usd,0) as date_change_profit_usd,
-            COALESCE(date_change_stats.date_change_profit_afs,0) as date_change_profit_afs,
-            COALESCE(ticket_stats.ticket_profit_usd,0)+COALESCE(reservation_stats.reservation_profit_usd,0)+COALESCE(weight_stats.weight_profit_usd,0)+COALESCE(hotel_stats.hotel_profit_usd,0)+COALESCE(visa_stats.visa_profit_usd,0)+COALESCE(umrah_stats.umrah_profit_usd,0)+COALESCE(additional_stats.additional_profit_usd,0)+COALESCE(refund_stats.refund_profit_usd,0)+COALESCE(date_change_stats.date_change_profit_usd,0) as total_revenue_usd,
-            COALESCE(ticket_stats.ticket_profit_afs,0)+COALESCE(reservation_stats.reservation_profit_afs,0)+COALESCE(weight_stats.weight_profit_afs,0)+COALESCE(hotel_stats.hotel_profit_afs,0)+COALESCE(visa_stats.visa_profit_afs,0)+COALESCE(umrah_stats.umrah_profit_afs,0)+COALESCE(additional_stats.additional_profit_afs,0)+COALESCE(refund_stats.refund_profit_afs,0)+COALESCE(date_change_stats.date_change_profit_afs,0) as total_revenue_afs,
-            COALESCE(user_stats.total_users,0) as total_users
-        FROM branches b
-        LEFT JOIN (SELECT branch_id,COUNT(id) as total_users FROM users WHERE tenant_id=? GROUP BY branch_id) user_stats ON user_stats.branch_id=b.id
-        LEFT JOIN (SELECT u.branch_id,COUNT(t.id) as ticket_bookings,SUM(CASE WHEN t.currency='USD' THEN t.profit ELSE 0 END) as ticket_profit_usd,SUM(CASE WHEN t.currency='AFS' THEN t.profit ELSE 0 END) as ticket_profit_afs FROM ticket_bookings t JOIN users u ON t.created_by=u.id WHERE t.created_at>=? AND t.created_at<=? GROUP BY u.branch_id) ticket_stats ON ticket_stats.branch_id=b.id
-        LEFT JOIN (SELECT u.branch_id,COUNT(tr.id) as ticket_reservations,SUM(CASE WHEN tr.currency='USD' THEN tr.profit ELSE 0 END) as reservation_profit_usd,SUM(CASE WHEN tr.currency='AFS' THEN tr.profit ELSE 0 END) as reservation_profit_afs FROM ticket_reservations tr JOIN users u ON tr.created_by=u.id WHERE tr.created_at>=? AND tr.created_at<=? GROUP BY u.branch_id) reservation_stats ON reservation_stats.branch_id=b.id
-        LEFT JOIN (SELECT u.branch_id,COUNT(tw.id) as ticket_weights,SUM(CASE WHEN tb.currency='USD' THEN tw.profit ELSE 0 END) as weight_profit_usd,SUM(CASE WHEN tb.currency='AFS' THEN tw.profit ELSE 0 END) as weight_profit_afs FROM ticket_weights tw JOIN users u ON tw.created_by=u.id LEFT JOIN ticket_bookings tb ON tb.id=tw.ticket_id WHERE tw.created_at>=? AND tw.created_at<=? GROUP BY u.branch_id) weight_stats ON weight_stats.branch_id=b.id
-        LEFT JOIN (SELECT u.branch_id,COUNT(h.id) as hotel_bookings,SUM(CASE WHEN h.currency='USD' THEN h.profit ELSE 0 END) as hotel_profit_usd,SUM(CASE WHEN h.currency='AFS' THEN h.profit ELSE 0 END) as hotel_profit_afs FROM hotel_bookings h JOIN users u ON h.created_by=u.id WHERE h.created_at>=? AND h.created_at<=? GROUP BY u.branch_id) hotel_stats ON hotel_stats.branch_id=b.id
-        LEFT JOIN (SELECT u.branch_id,COUNT(v.id) as visa_applications,SUM(CASE WHEN v.currency='USD' THEN v.profit ELSE 0 END) as visa_profit_usd,SUM(CASE WHEN v.currency='AFS' THEN v.profit ELSE 0 END) as visa_profit_afs FROM visa_applications v JOIN users u ON v.created_by=u.id WHERE v.created_at>=? AND v.created_at<=? GROUP BY u.branch_id) visa_stats ON visa_stats.branch_id=b.id
-        LEFT JOIN (SELECT u.branch_id,COUNT(um.booking_id) as umrah_bookings,SUM(CASE WHEN um.currency='USD' THEN um.profit ELSE 0 END) as umrah_profit_usd,SUM(CASE WHEN um.currency='AFS' THEN um.profit ELSE 0 END) as umrah_profit_afs FROM umrah_bookings um JOIN users u ON um.created_by=u.id WHERE um.created_at>=? AND um.created_at<=? GROUP BY u.branch_id) umrah_stats ON umrah_stats.branch_id=b.id
-        LEFT JOIN (SELECT u.branch_id,COUNT(ap.id) as additional_payments,SUM(CASE WHEN ap.currency='USD' THEN ap.profit ELSE 0 END) as additional_profit_usd,SUM(CASE WHEN ap.currency='AFS' THEN ap.profit ELSE 0 END) as additional_profit_afs FROM additional_payments ap JOIN users u ON ap.created_by=u.id WHERE ap.created_at>=? AND ap.created_at<=? GROUP BY u.branch_id) additional_stats ON additional_stats.branch_id=b.id
-        LEFT JOIN (SELECT u.branch_id,COUNT(rt.id) as refunded_tickets,SUM(CASE WHEN rt.currency='USD' THEN (CASE WHEN rt.calculation_method='base' THEN rt.service_penalty WHEN rt.calculation_method='sold' THEN (rt.service_penalty-IFNULL(tb.profit,0)) ELSE rt.service_penalty END) ELSE 0 END) as refund_profit_usd,SUM(CASE WHEN rt.currency='AFS' THEN (CASE WHEN rt.calculation_method='base' THEN rt.service_penalty WHEN rt.calculation_method='sold' THEN (rt.service_penalty-IFNULL(tb.profit,0)) ELSE rt.service_penalty END) ELSE 0 END) as refund_profit_afs FROM refunded_tickets rt JOIN users u ON rt.created_by=u.id LEFT JOIN ticket_bookings tb ON rt.ticket_id=tb.id WHERE rt.created_at>=? AND rt.created_at<=? GROUP BY u.branch_id) refund_stats ON refund_stats.branch_id=b.id
-        LEFT JOIN (SELECT u.branch_id,COUNT(dt.id) as date_change_tickets,SUM(CASE WHEN dt.currency='USD' THEN dt.service_penalty ELSE 0 END) as date_change_profit_usd,SUM(CASE WHEN dt.currency='AFS' THEN dt.service_penalty ELSE 0 END) as date_change_profit_afs FROM date_change_tickets dt JOIN users u ON dt.created_by=u.id WHERE dt.created_at>=? AND dt.created_at<=? GROUP BY u.branch_id) date_change_stats ON date_change_stats.branch_id=b.id
-        WHERE b.tenant_id=? AND b.status='active' $branchFilter
-        GROUP BY b.id,b.name,b.code ORDER BY total_revenue_usd DESC
-    ");
-
-    $ep = [
-        $tenant_id,
-        $start_date.' 00:00:00',$end_date.' 23:59:59',
-        $start_date.' 00:00:00',$end_date.' 23:59:59',
-        $start_date.' 00:00:00',$end_date.' 23:59:59',
-        $start_date.' 00:00:00',$end_date.' 23:59:59',
-        $start_date.' 00:00:00',$end_date.' 23:59:59',
-        $start_date.' 00:00:00',$end_date.' 23:59:59',
-        $start_date.' 00:00:00',$end_date.' 23:59:59',
-        $start_date.' 00:00:00',$end_date.' 23:59:59',
-        $start_date.' 00:00:00',$end_date.' 23:59:59',
-        $tenant_id
-    ];
-    if (!empty($branch_id)) $ep[] = $branch_id;
-    $stmt->execute($ep);
-    $branchReports = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) { error_log($e->getMessage()); $branchReports = []; }
-
-$totals = ['branches'=>count($branchReports),'ticket_bookings'=>0,'ticket_profit_usd'=>0,'ticket_profit_afs'=>0,'ticket_reservations'=>0,'reservation_profit_usd'=>0,'reservation_profit_afs'=>0,'ticket_weights'=>0,'weight_profit_usd'=>0,'weight_profit_afs'=>0,'hotel_bookings'=>0,'hotel_profit_usd'=>0,'hotel_profit_afs'=>0,'visa_applications'=>0,'visa_profit_usd'=>0,'visa_profit_afs'=>0,'umrah_bookings'=>0,'umrah_profit_usd'=>0,'umrah_profit_afs'=>0,'additional_payments'=>0,'additional_profit_usd'=>0,'additional_profit_afs'=>0,'refunded_tickets'=>0,'refund_profit_usd'=>0,'refund_profit_afs'=>0,'date_change_tickets'=>0,'date_change_profit_usd'=>0,'date_change_profit_afs'=>0,'total_revenue_usd'=>0,'total_revenue_afs'=>0,'total_revenue'=>0,'total_users'=>0];
-foreach ($branchReports as $r) {
-    foreach (['ticket_bookings','ticket_profit_usd','ticket_profit_afs','ticket_reservations','reservation_profit_usd','reservation_profit_afs','ticket_weights','weight_profit_usd','weight_profit_afs','hotel_bookings','hotel_profit_usd','hotel_profit_afs','visa_applications','visa_profit_usd','visa_profit_afs','umrah_bookings','umrah_profit_usd','umrah_profit_afs','additional_payments','additional_profit_usd','additional_profit_afs','refunded_tickets','refund_profit_usd','refund_profit_afs','date_change_tickets','date_change_profit_usd','date_change_profit_afs','total_revenue_usd','total_revenue_afs','total_users'] as $k) {
-        $totals[$k] += $r[$k] ?? 0;
-    }
-}
-$totals['total_revenue'] = $totals['total_revenue_usd'];
+$branchReports = fetchBranchReports($pdo, $tenant_id, $start_date, $end_date, $branch_id);
+$totals = summarizeBranchReports($branchReports);
 
 $comparisonData = null; $comparisonLabel = '';
 $comparison_start_date = ''; $comparison_end_date = '';
@@ -109,14 +129,9 @@ if (!empty($comparison_period)) {
             $comparisonLabel = 'Same Month Last Year'; break;
     }
     if (!empty($comparison_start_date)) {
-        try {
-            $cBF = !empty($branch_id) ? "AND b.id = ?" : "";
-            $cStmt = $pdo->prepare("SELECT COALESCE(SUM(ticket_stats.ticket_bookings),0) as ticket_bookings,COALESCE(SUM(ticket_stats.ticket_profit_usd),0) as ticket_profit_usd,COALESCE(SUM(ticket_stats.ticket_profit_afs),0) as ticket_profit_afs,COALESCE(SUM(reservation_stats.ticket_reservations),0) as ticket_reservations,COALESCE(SUM(reservation_stats.reservation_profit_usd),0) as reservation_profit_usd,COALESCE(SUM(reservation_stats.reservation_profit_afs),0) as reservation_profit_afs,COALESCE(SUM(weight_stats.ticket_weights),0) as ticket_weights,COALESCE(SUM(weight_stats.weight_profit_usd),0) as weight_profit_usd,COALESCE(SUM(weight_stats.weight_profit_afs),0) as weight_profit_afs,COALESCE(SUM(hotel_stats.hotel_bookings),0) as hotel_bookings,COALESCE(SUM(hotel_stats.hotel_profit_usd),0) as hotel_profit_usd,COALESCE(SUM(hotel_stats.hotel_profit_afs),0) as hotel_profit_afs,COALESCE(SUM(visa_stats.visa_applications),0) as visa_applications,COALESCE(SUM(visa_stats.visa_profit_usd),0) as visa_profit_usd,COALESCE(SUM(visa_stats.visa_profit_afs),0) as visa_profit_afs,COALESCE(SUM(umrah_stats.umrah_bookings),0) as umrah_bookings,COALESCE(SUM(umrah_stats.umrah_profit_usd),0) as umrah_profit_usd,COALESCE(SUM(umrah_stats.umrah_profit_afs),0) as umrah_profit_afs,COALESCE(SUM(additional_stats.additional_payments),0) as additional_payments,COALESCE(SUM(additional_stats.additional_profit_usd),0) as additional_profit_usd,COALESCE(SUM(additional_stats.additional_profit_afs),0) as additional_profit_afs,COALESCE(SUM(refund_stats.refunded_tickets),0) as refunded_tickets,COALESCE(SUM(refund_stats.refund_profit_usd),0) as refund_profit_usd,COALESCE(SUM(refund_stats.refund_profit_afs),0) as refund_profit_afs,COALESCE(SUM(date_change_stats.date_change_tickets),0) as date_change_tickets,COALESCE(SUM(date_change_stats.date_change_profit_usd),0) as date_change_profit_usd,COALESCE(SUM(date_change_stats.date_change_profit_afs),0) as date_change_profit_afs,COALESCE(SUM(ticket_stats.ticket_profit_usd),0)+COALESCE(SUM(reservation_stats.reservation_profit_usd),0)+COALESCE(SUM(weight_stats.weight_profit_usd),0)+COALESCE(SUM(hotel_stats.hotel_profit_usd),0)+COALESCE(SUM(visa_stats.visa_profit_usd),0)+COALESCE(SUM(umrah_stats.umrah_profit_usd),0)+COALESCE(SUM(additional_stats.additional_profit_usd),0)+COALESCE(SUM(refund_stats.refund_profit_usd),0)+COALESCE(SUM(date_change_stats.date_change_profit_usd),0) as total_revenue_usd,COALESCE(SUM(ticket_stats.ticket_profit_afs),0)+COALESCE(SUM(reservation_stats.reservation_profit_afs),0)+COALESCE(SUM(weight_stats.weight_profit_afs),0)+COALESCE(SUM(hotel_stats.hotel_profit_afs),0)+COALESCE(SUM(visa_stats.visa_profit_afs),0)+COALESCE(SUM(umrah_stats.umrah_profit_afs),0)+COALESCE(SUM(additional_stats.additional_profit_afs),0)+COALESCE(SUM(refund_stats.refund_profit_afs),0)+COALESCE(SUM(date_change_stats.date_change_profit_afs),0) as total_revenue_afs,COALESCE(SUM(user_stats.total_users),0) as total_users FROM branches b LEFT JOIN (SELECT branch_id,COUNT(id) as total_users FROM users WHERE tenant_id=? GROUP BY branch_id) user_stats ON user_stats.branch_id=b.id LEFT JOIN (SELECT u.branch_id,COUNT(t.id) as ticket_bookings,SUM(CASE WHEN t.currency IN('USD','AFS') THEN t.profit ELSE 0 END) as ticket_profit FROM ticket_bookings t JOIN users u ON t.created_by=u.id WHERE t.created_at>=? AND t.created_at<=? GROUP BY u.branch_id) ticket_stats ON ticket_stats.branch_id=b.id LEFT JOIN (SELECT u.branch_id,COUNT(tr.id) as ticket_reservations,SUM(CASE WHEN tr.currency IN('USD','AFS') THEN tr.profit ELSE 0 END) as reservation_profit FROM ticket_reservations tr JOIN users u ON tr.created_by=u.id WHERE tr.created_at>=? AND tr.created_at<=? GROUP BY u.branch_id) reservation_stats ON reservation_stats.branch_id=b.id LEFT JOIN (SELECT u.branch_id,COUNT(tw.id) as ticket_weights,SUM(CASE WHEN tb.currency IN('USD','AFS') THEN tw.profit ELSE 0 END) as weight_profit FROM ticket_weights tw JOIN users u ON tw.created_by=u.id LEFT JOIN ticket_bookings tb ON tb.id=tw.ticket_id WHERE tw.created_at>=? AND tw.created_at<=? GROUP BY u.branch_id) weight_stats ON weight_stats.branch_id=b.id LEFT JOIN (SELECT u.branch_id,COUNT(h.id) as hotel_bookings,SUM(CASE WHEN h.currency IN('USD','AFS') THEN h.profit ELSE 0 END) as hotel_profit FROM hotel_bookings h JOIN users u ON h.created_by=u.id WHERE h.created_at>=? AND h.created_at<=? GROUP BY u.branch_id) hotel_stats ON hotel_stats.branch_id=b.id LEFT JOIN (SELECT u.branch_id,COUNT(v.id) as visa_applications,SUM(CASE WHEN v.currency IN('USD','AFS') THEN v.profit ELSE 0 END) as visa_profit FROM visa_applications v JOIN users u ON v.created_by=u.id WHERE v.created_at>=? AND v.created_at<=? GROUP BY u.branch_id) visa_stats ON visa_stats.branch_id=b.id LEFT JOIN (SELECT u.branch_id,COUNT(um.booking_id) as umrah_bookings,SUM(CASE WHEN um.currency IN('USD','AFS') THEN um.profit ELSE 0 END) as umrah_profit FROM umrah_bookings um JOIN users u ON um.created_by=u.id WHERE um.created_at>=? AND um.created_at<=? GROUP BY u.branch_id) umrah_stats ON umrah_stats.branch_id=b.id LEFT JOIN (SELECT u.branch_id,COUNT(ap.id) as additional_payments,SUM(CASE WHEN ap.currency IN('USD','AFS') THEN ap.profit ELSE 0 END) as additional_profit FROM additional_payments ap JOIN users u ON ap.created_by=u.id WHERE ap.created_at>=? AND ap.created_at<=? GROUP BY u.branch_id) additional_stats ON additional_stats.branch_id=b.id LEFT JOIN (SELECT u.branch_id,COUNT(rt.id) as refunded_tickets,-SUM(CASE WHEN rt.currency IN('USD','AFS') THEN (CASE WHEN rt.calculation_method='base' THEN rt.service_penalty WHEN rt.calculation_method='sold' THEN (rt.service_penalty-IFNULL(tb.profit,0)) ELSE rt.service_penalty END) ELSE 0 END) as refund_profit FROM refunded_tickets rt JOIN users u ON rt.created_by=u.id LEFT JOIN ticket_bookings tb ON rt.ticket_id=tb.id WHERE rt.created_at>=? AND rt.created_at<=? GROUP BY u.branch_id) refund_stats ON refund_stats.branch_id=b.id LEFT JOIN (SELECT u.branch_id,COUNT(dt.id) as date_change_tickets,-SUM(CASE WHEN dt.currency IN('USD','AFS') THEN dt.service_penalty ELSE 0 END) as date_change_profit FROM date_change_tickets dt JOIN users u ON dt.created_by=u.id WHERE dt.created_at>=? AND dt.created_at<=? GROUP BY u.branch_id) date_change_stats ON date_change_stats.branch_id=b.id WHERE b.tenant_id=? AND b.status='active' $cBF");
-            $cEP = [$tenant_id,$comparison_start_date.' 00:00:00',$comparison_end_date.' 23:59:59',$comparison_start_date.' 00:00:00',$comparison_end_date.' 23:59:59',$comparison_start_date.' 00:00:00',$comparison_end_date.' 23:59:59',$comparison_start_date.' 00:00:00',$comparison_end_date.' 23:59:59',$comparison_start_date.' 00:00:00',$comparison_end_date.' 23:59:59',$comparison_start_date.' 00:00:00',$comparison_end_date.' 23:59:59',$comparison_start_date.' 00:00:00',$comparison_end_date.' 23:59:59',$comparison_start_date.' 00:00:00',$comparison_end_date.' 23:59:59',$comparison_start_date.' 00:00:00',$comparison_end_date.' 23:59:59',$tenant_id];
-            if (!empty($branch_id)) $cEP[] = $branch_id;
-            $cStmt->execute($cEP);
-            $comparisonData = $cStmt->fetch(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) { error_log($e->getMessage()); $comparisonData = null; }
+        $comparisonData = summarizeBranchReports(
+            fetchBranchReports($pdo, $tenant_id, $comparison_start_date, $comparison_end_date, $branch_id)
+        );
     }
 }
 
@@ -127,7 +142,7 @@ function changeBadge($current, $comparison) {
         $up = $pct >= 0;
         return ['pct' => number_format(abs($pct), 1).'%', 'cls' => $up ? 'pos' : 'neg', 'icon' => $up ? 'trending-up' : 'trending-down'];
     } elseif ($current > 0) {
-        return ['pct' => 'âˆž', 'cls' => 'pos', 'icon' => 'trending-up'];
+        return ['pct' => '100%', 'cls' => 'pos', 'icon' => 'trending-up'];
     }
     return ['pct' => '0.0%', 'cls' => 'neutral', 'icon' => 'minus'];
 }
@@ -284,11 +299,6 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 .exp-big-btn i{display:block;font-size:22px;margin-bottom:8px;color:#1d4ed8}
 .exp-big-btn strong{display:block;font-size:13px;font-weight:700;color:var(--text-main);margin-bottom:3px}
 .exp-big-btn small{font-size:11px;color:var(--text-sub)}
-.custom-btns{display:flex;flex-direction:column;gap:8px}
-.cust-btn{display:flex;align-items:center;gap:8px;border:1.5px solid var(--border);border-radius:10px;padding:10px 14px;background:var(--card-bg);font-family:inherit;font-size:13px;font-weight:600;color:var(--text-sub);cursor:pointer;transition:all .2s}
-.cust-btn:hover{border-color:#1d4ed8;color:#1d4ed8}
-.info-note{background:rgba(29,78,216,.06);border-radius:10px;padding:12px 14px;font-size:12px;color:var(--text-sub);margin-top:12px;display:flex;align-items:flex-start;gap:7px}
-.info-note i{color:#1d4ed8;flex-shrink:0;margin-top:1px}
 .export-checks{display:flex;gap:20px;flex-wrap:wrap;margin-top:12px}
 .export-check{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:var(--text-main);cursor:pointer}
 .export-check input{accent-color:#1d4ed8}
@@ -329,7 +339,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
     <!-- Service summary tiles (12 tiles in 2 rows of 6) -->
     <div class="service-grid">
         <div class="svc-tile t-branches">
-            <div class="svc-tile-icon"><i class="feather icon-git-branch"></i></div>
+            <div class="svc-tile-icon"><i class="feather icon-layers"></i></div>
             <div class="svc-tile-label">Branches</div>
             <div class="svc-tile-count"><?= $totals['branches'] ?></div>
             <div class="svc-tile-sub">Active locations</div>
@@ -395,7 +405,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
             <div class="svc-tile-sub">USD $<?= number_format($totals['date_change_profit_usd'],0) ?><br>AFS <?= number_format($totals['date_change_profit_afs'],0) ?></div>
         </div>
         <div class="svc-tile t-revenue">
-            <div class="svc-tile-icon"><i class="feather icon-dollar-sign"></i></div>
+            <div class="svc-tile-icon"><i class="feather icon-pie-chart"></i></div>
             <div class="svc-tile-label">Net Revenue</div>
             <div class="svc-tile-count" style="font-size:15px;">$<?= number_format($totals['total_revenue_usd'],0) ?></div>
             <div class="svc-tile-sub">AFS <?= number_format($totals['total_revenue_afs'],0) ?></div>
@@ -512,7 +522,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
     <!-- Analytics chart -->
     <div class="dash-card">
         <div class="chart-tabs">
-            <button class="chart-tab active" id="tab-revenue" onclick="switchChartView('revenue',this)"><i class="feather icon-dollar-sign"></i>Revenue</button>
+            <button class="chart-tab active" id="tab-revenue" onclick="switchChartView('revenue',this)"><i class="feather icon-pie-chart"></i>Revenue</button>
             <button class="chart-tab" id="tab-bookings" onclick="switchChartView('bookings',this)"><i class="feather icon-list"></i>Bookings</button>
             <button class="chart-tab" id="tab-trends" onclick="switchChartView('trends',this)"><i class="feather icon-trending-up"></i>Trends</button>
         </div>
@@ -555,11 +565,11 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
             <div>
                 <h6 style="font-size:13px;font-weight:700;margin-bottom:14px;">Key Insights</h6>
                 <div class="insight-badge">
-                    <div class="ib-icon green"><i class="feather icon-dollar-sign"></i></div>
+                    <div class="ib-icon green"><i class="feather icon-pie-chart"></i></div>
                     <div class="ib-text"><strong>Total Revenue</strong><span>$<?= number_format($totals['total_revenue_usd'], 2) ?> USD + <?= number_format($totals['total_revenue_afs'], 0) ?> AFS this period</span></div>
                 </div>
                 <div class="insight-badge">
-                    <div class="ib-icon blue"><i class="feather icon-git-branch"></i></div>
+                    <div class="ib-icon blue"><i class="feather icon-layers"></i></div>
                     <div class="ib-text"><strong>Top Branch</strong><span><?= !empty($branchReports) ? htmlspecialchars($branchReports[0]['branch_name']).' ($'.number_format($branchReports[0]['total_revenue_usd'],2).')' : 'No data' ?></span></div>
                 </div>
                 <div class="insight-badge">
@@ -580,7 +590,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
             <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
                 <div class="tbl-search">
                     <i class="feather icon-search" style="color:var(--text-sub);"></i>
-                    <input type="text" class="tbl-search-input" id="tableSearch" placeholder="Search branchesâ€¦">
+                    <input type="text" class="tbl-search-input" id="tableSearch" placeholder="Search branches...">
                 </div>
                 <div class="tbl-view-btns">
                     <button class="tv-btn" onclick="toggleTableView('summary',this)">Summary</button>
@@ -674,34 +684,20 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
         </div>
     </div>
 
-    <!-- Export & Custom -->
-    <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;margin-bottom:20px;">
-        <div class="dash-card" style="margin-bottom:0;">
-            <div class="dash-card-head"><h6><span class="ico"><i class="feather icon-download"></i></span>Export Options</h6></div>
-            <div class="dash-card-body">
-                <div class="export-grid">
-                    <button class="exp-big-btn" onclick="exportReport('pdf')"><i class="feather icon-file-text"></i><strong>PDF Report</strong><small>With charts</small></button>
-                    <button class="exp-big-btn" onclick="exportReport('excel')"><i class="feather icon-file"></i><strong>Excel Workbook</strong><small>Multi-sheet</small></button>
-                    <button class="exp-big-btn" onclick="exportReport('csv')"><i class="feather icon-download"></i><strong>CSV Data</strong><small>Raw data</small></button>
-                </div>
-                <hr style="border-color:var(--border);margin:14px 0;">
-                <div class="export-checks">
-                    <label class="export-check"><input type="checkbox" id="includeCharts" checked> Include Charts</label>
-                    <label class="export-check"><input type="checkbox" id="includeSummary" checked> Include Summary</label>
-                    <label class="export-check"><input type="checkbox" id="includeTrends" checked> Include Trends</label>
-                </div>
+    <!-- Export -->
+    <div class="dash-card">
+        <div class="dash-card-head"><h6><span class="ico"><i class="feather icon-download"></i></span>Export Options</h6></div>
+        <div class="dash-card-body">
+            <div class="export-grid">
+                <button class="exp-big-btn" onclick="exportReport('pdf', this)"><i class="feather icon-file-text"></i><strong>PDF Report</strong><small>With charts</small></button>
+                <button class="exp-big-btn" onclick="exportReport('excel', this)"><i class="feather icon-file"></i><strong>Comprehensive Workbook</strong><small>Current date range</small></button>
+                <button class="exp-big-btn" onclick="exportReport('csv', this)"><i class="feather icon-download"></i><strong>CSV Data</strong><small>Raw data</small></button>
             </div>
-        </div>
-        <div class="dash-card" style="margin-bottom:0;">
-            <div class="dash-card-head"><h6><span class="ico"><i class="feather icon-settings"></i></span>Custom Reports</h6></div>
-            <div class="dash-card-body">
-                <div class="custom-btns">
-                    <button class="cust-btn" onclick="saveCustomReport()"><i class="feather icon-save"></i>Save Current View</button>
-                    <button class="cust-btn" onclick="loadSavedReports()"><i class="feather icon-folder"></i>Load Saved Reports</button>
-                    <button class="cust-btn" onclick="scheduleReport()"><i class="feather icon-clock"></i>Schedule Report</button>
-                    <button class="cust-btn" onclick="shareReport()"><i class="feather icon-share-2"></i>Share Report</button>
-                </div>
-                <div class="info-note"><i class="feather icon-info"></i>Create automated reports and share insights with your team.</div>
+            <hr style="border-color:var(--border);margin:14px 0;">
+            <div class="export-checks">
+                <label class="export-check"><input type="checkbox" id="includeCharts" checked> Include Charts</label>
+                <label class="export-check"><input type="checkbox" id="includeSummary" checked> Include Summary</label>
+                <label class="export-check"><input type="checkbox" id="includeTrends" checked> Include Trends</label>
             </div>
         </div>
     </div>
@@ -895,7 +891,29 @@ function printTable() {
 }
 
 /* â”€â”€ Export Report â”€â”€ */
-function exportReport(fmt) {
+function base64ToBlob(base64, mimeType) {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+
+    return new Blob([bytes], { type: mimeType });
+}
+
+function downloadBlob(blob, filename) {
+    const downloadUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(downloadUrl);
+}
+
+async function exportReport(fmt, btn = null) {
     if (fmt==='pdf') {
         try {
             const {jsPDF}=window.jspdf; const doc=new jsPDF();
@@ -910,9 +928,45 @@ function exportReport(fmt) {
             doc.save('branch_report.pdf');
         } catch(e) { alert('PDF export requires jsPDF library.'); }
     } else if (fmt==='excel') {
-        const ws=XLSX.utils.table_to_sheet(document.getElementById('performanceTable'));
-        const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Report');
-        XLSX.writeFile(wb,'branch_performance_report.xlsx');
+        const originalContent = btn ? btn.innerHTML : '';
+
+        try {
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="feather icon-loader"></i><strong>Preparing Workbook</strong><small>Please wait</small>';
+            }
+
+            const params = new URLSearchParams({
+                startDate: document.getElementById('start_date').value,
+                endDate: document.getElementById('end_date').value
+            });
+            const branchId = document.getElementById('branch_id').value;
+            if (branchId) {
+                params.append('branch_id', branchId);
+            }
+
+            const response = await fetch(`export_comprehensive_report.php?${params.toString()}`, {
+                credentials: 'same-origin'
+            });
+            const result = await response.json();
+
+            if (!response.ok || !result.success || !result.file) {
+                throw new Error(result.message || 'Failed to export comprehensive workbook.');
+            }
+
+            const fileBlob = base64ToBlob(
+                result.file,
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            );
+            downloadBlob(fileBlob, result.filename || 'comprehensive_financial_report.xlsx');
+        } catch (error) {
+            alert(error.message || 'Failed to export comprehensive workbook.');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalContent;
+            }
+        }
     } else {
         const ws=XLSX.utils.table_to_sheet(document.getElementById('performanceTable'));
         const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Report');
@@ -920,30 +974,12 @@ function exportReport(fmt) {
     }
 }
 
-/* â”€â”€ Custom report â”€â”€ */
-function saveCustomReport() {
-    const name=prompt('Enter report name:'); if(!name) return;
-    let saved=JSON.parse(localStorage.getItem('savedReports')||'[]');
-    saved.push({name,branch_id:$('#branch_id').val(),start_date:$('#start_date').val(),end_date:$('#end_date').val(),comparison_period:$('#comparison_period').val(),saved_at:new Date().toISOString()});
-    localStorage.setItem('savedReports',JSON.stringify(saved)); alert('Report saved!');
-}
-function loadSavedReports() {
-    const saved=JSON.parse(localStorage.getItem('savedReports')||'[]');
-    if(!saved.length){alert('No saved reports.'); return;}
-    const list=saved.map((r,i)=>`${i+1}. ${r.name} (${r.saved_at.split('T')[0]})`).join('\n');
-    const ch=prompt(list+'\n\nEnter report number to load:');
-    const idx=parseInt(ch)-1;
-    if(idx>=0&&idx<saved.length){const r=saved[idx];$('#branch_id').val(r.branch_id);$('#start_date').val(r.start_date);$('#end_date').val(r.end_date);$('#comparison_period').val(r.comparison_period);$('#filterForm').submit();}
-}
-function scheduleReport(){alert('Scheduling feature coming soon!');}
-function shareReport(){navigator.clipboard.writeText(window.location.href).then(()=>alert('URL copied to clipboard!'));}
-
 /* â”€â”€ Branch detail modal â”€â”€ */
 function showBranchDetails(code, name) {
     document.getElementById('branchDetailModalLabel').innerHTML = '<i class="feather icon-bar-chart-2" style="margin-right:8px;"></i>' + name;
     const canvas=document.getElementById('branchDetailChart');
     if(canvas._chart){canvas._chart.destroy(); canvas._chart=null;}
-    document.getElementById('branchMetrics').innerHTML='<div style="text-align:center;padding:20px;color:var(--text-sub);">Loadingâ€¦</div>';
+    document.getElementById('branchMetrics').innerHTML='<div style="text-align:center;padding:20px;color:var(--text-sub);">Loading...</div>';
     document.getElementById('branchActivity').innerHTML='';
     $('#branchDetailModal').modal('show');
 

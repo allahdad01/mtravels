@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 include 'header.php';
 
 $tenant_id = $_SESSION['tenant_id'];
@@ -185,7 +185,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                 <div>
                     <label class="form-label-custom">Search</label>
                     <div class="search-group">
-                        <input type="text" id="searchInput" class="form-input" placeholder="Passenger, PNR, airline, or route…" value="<?= htmlspecialchars($search) ?>">
+                        <input type="text" id="searchInput" class="form-input" placeholder="Passenger, PNR, airline, or route..." value="<?= htmlspecialchars($search) ?>">
                         <button class="search-btn" id="searchBtn"><i class="feather icon-search"></i>Search</button>
                         <?php if (!empty($search)): ?>
                         <a href="?branch=<?= $branch_filter ?>" class="clear-btn"><i class="feather icon-x"></i>Clear</a>
@@ -268,7 +268,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     <td class="td-r">
                         <div class="amt-main"><?= htmlspecialchars($t['currency']) ?> <?= number_format($t['sold'], 2) ?></div>
                         <?php if ($t['refund_amount'] > 0): ?>
-                        <div class="amt-refund">↩ Refund: <?= htmlspecialchars($t['currency']) ?> <?= number_format($t['refund_amount'], 2) ?></div>
+                        <div class="amt-refund">â†© Refund: <?= htmlspecialchars($t['currency']) ?> <?= number_format($t['refund_amount'], 2) ?></div>
                         <?php endif; ?>
                     </td>
                 </tr>
@@ -278,16 +278,16 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
         </div>
 
         <div class="pag-wrap">
-            <div class="pag-info">Showing <?= $from ?>–<?= $to ?> of <?= number_format($total_tickets) ?> reservations</div>
+            <div class="pag-info">Showing <?= $from ?>â€“<?= $to ?> of <?= number_format($total_tickets) ?> reservations</div>
             <div class="pag-links">
                 <?php $base = '?branch='.urlencode($branch_filter).'&search='.urlencode($search); ?>
                 <a href="<?= $base ?>&page=1" class="pag-btn <?= $page<=1?'disabled':'' ?>"><i class="feather icon-chevrons-left"></i></a>
                 <a href="<?= $base ?>&page=<?= $page-1 ?>" class="pag-btn <?= $page<=1?'disabled':'' ?>"><i class="feather icon-chevron-left"></i></a>
                 <?php
                 $sp2 = max(1,$page-2); $ep = min($total_pages,$page+2);
-                if ($sp2>1) { echo '<a href="'.$base.'&page=1" class="pag-btn">1</a>'; if($sp2>2) echo '<span class="pag-dots">…</span>'; }
+                if ($sp2>1) { echo '<a href="'.$base.'&page=1" class="pag-btn">1</a>'; if($sp2>2) echo '<span class="pag-dots">...</span>'; }
                 for ($i=$sp2;$i<=$ep;$i++) echo '<a href="'.$base.'&page='.$i.'" class="pag-btn '.($i==$page?'active':'').'">'.$i.'</a>';
-                if ($ep<$total_pages) { if($ep<$total_pages-1) echo '<span class="pag-dots">…</span>'; echo '<a href="'.$base.'&page='.$total_pages.'" class="pag-btn">'.$total_pages.'</a>'; }
+                if ($ep<$total_pages) { if($ep<$total_pages-1) echo '<span class="pag-dots">...</span>'; echo '<a href="'.$base.'&page='.$total_pages.'" class="pag-btn">'.$total_pages.'</a>'; }
                 ?>
                 <a href="<?= $base ?>&page=<?= $page+1 ?>" class="pag-btn <?= $page>=$total_pages?'disabled':'' ?>"><i class="feather icon-chevron-right"></i></a>
                 <a href="<?= $base ?>&page=<?= $total_pages ?>" class="pag-btn <?= $page>=$total_pages?'disabled':'' ?>"><i class="feather icon-chevrons-right"></i></a>
@@ -314,9 +314,9 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                 <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <div class="modal-summary">
-                <div class="ms-cell"><div class="ms-label">Sold Price</div><div class="ms-val blue" id="sold-price">—</div></div>
-                <div class="ms-cell"><div class="ms-label">Base Price</div><div class="ms-val teal" id="base-price">—</div></div>
-                <div class="ms-cell"><div class="ms-label">Profit</div><div class="ms-val green" id="profit">—</div></div>
+                <div class="ms-cell"><div class="ms-label">Sold Price</div><div class="ms-val blue" id="sold-price">â€”</div></div>
+                <div class="ms-cell"><div class="ms-label">Base Price</div><div class="ms-val teal" id="base-price">â€”</div></div>
+                <div class="ms-cell"><div class="ms-label">Profit</div><div class="ms-val green" id="profit">â€”</div></div>
             </div>
             <div class="modal-body">
                 <div class="modal-tabs">
@@ -327,25 +327,25 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                         <div class="detail-section">
                             <div class="ds-title">Client Information</div>
-                            <div class="ds-row"><span class="ds-key">Passenger</span><span class="ds-val" id="passenger-name">—</span></div>
-                            <div class="ds-row"><span class="ds-key">PNR</span><span class="ds-val" id="pnr" style="font-family:'JetBrains Mono',monospace;color:var(--blue);">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Supplier</span><span class="ds-val" id="supplier-name">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Sold To</span><span class="ds-val" id="sold-to">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="branch-name">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Created By</span><span class="ds-val" id="created-by">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Passenger</span><span class="ds-val" id="passenger-name">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">PNR</span><span class="ds-val" id="pnr" style="font-family:'JetBrains Mono',monospace;color:var(--blue);">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Supplier</span><span class="ds-val" id="supplier-name">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Sold To</span><span class="ds-val" id="sold-to">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="branch-name">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Created By</span><span class="ds-val" id="created-by">â€”</span></div>
                         </div>
                         <div class="detail-section">
                             <div class="ds-title">Additional Details</div>
-                            <div class="ds-row"><span class="ds-key">Currency</span><span class="ds-val" id="currency">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Phone</span><span class="ds-val" id="phone">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Gender</span><span class="ds-val" id="gender">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Currency</span><span class="ds-val" id="currency">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Phone</span><span class="ds-val" id="phone">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Gender</span><span class="ds-val" id="gender">â€”</span></div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-pane" id="pane-description">
                     <div class="detail-section">
                         <div class="ds-title">Description</div>
-                        <p id="description" style="font-size:14px;color:var(--text-main);margin:0;line-height:1.7;">—</p>
+                        <p id="description" style="font-size:14px;color:var(--text-main);margin:0;line-height:1.7;">â€”</p>
                     </div>
                 </div>
             </div>
@@ -388,12 +388,12 @@ document.querySelectorAll('.view-details').forEach(btn => {
         document.getElementById('profit').style.color     = profit >= 0 ? 'var(--green)' : 'var(--red)';
 
         document.getElementById('passenger-name').textContent = (t.title||'') + ' ' + (t.passenger_name||'');
-        document.getElementById('pnr').textContent         = t.pnr || '—';
+        document.getElementById('pnr').textContent         = t.pnr || 'â€”';
         document.getElementById('supplier-name').textContent = t.supplier || 'N/A';
         document.getElementById('sold-to').textContent     = t.sold_to || 'N/A';
         document.getElementById('branch-name').textContent = t.branch_name || 'No Branch';
         document.getElementById('created-by').textContent  = t.created_by_name || 'N/A';
-        document.getElementById('currency').textContent    = t.currency || '—';
+        document.getElementById('currency').textContent    = t.currency || 'â€”';
         document.getElementById('phone').textContent       = t.phone || 'N/A';
         document.getElementById('gender').textContent      = t.gender || 'N/A';
         document.getElementById('description').textContent = t.description || 'No description available.';

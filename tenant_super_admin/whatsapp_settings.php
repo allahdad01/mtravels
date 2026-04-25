@@ -332,18 +332,36 @@ textarea.form-input{resize:vertical;min-height:120px}
 
                 <!-- System info strip -->
                 <div class="sys-strip">
-                    <div class="sys-item">
-                        <span class="sys-item-icon"><?= function_exists('curl_init') ? 'âœ…' : 'âŒ' ?></span>
-                        <div><span class="sys-item-label">cURL</span><span class="sys-item-val"><?= function_exists('curl_init')?'Ready':'Missing' ?></span></div>
-                    </div>
-                    <div class="sys-item">
-                        <span class="sys-item-icon"><?= extension_loaded('openssl') ? 'âœ…' : 'âŒ' ?></span>
-                        <div><span class="sys-item-label">SSL</span><span class="sys-item-val"><?= extension_loaded('openssl')?'Ready':'Missing' ?></span></div>
-                    </div>
-                    <div class="sys-item">
-                        <span class="sys-item-icon">ðŸ˜</span>
-                        <div><span class="sys-item-label">PHP</span><span class="sys-item-val"><?= phpversion() ?></span></div>
-                    </div>
+                <div class="sys-item">
+    <span class="sys-item-icon">
+        <?= function_exists('curl_init') ? '✅' : '❌' ?>
+    </span>
+    <div>
+        <span class="sys-item-label">cURL</span>
+        <span class="sys-item-val">
+            <?= function_exists('curl_init') ? 'Ready' : 'Missing' ?>
+        </span>
+    </div>
+</div>
+<div class="sys-item">
+    <span class="sys-item-icon">
+        <?= extension_loaded('openssl') ? '✅' : '❌' ?>
+    </span>
+    <div>
+        <span class="sys-item-label">SSL</span>
+        <span class="sys-item-val">
+            <?= extension_loaded('openssl') ? 'Ready' : 'Missing' ?>
+        </span>
+    </div>
+</div>
+
+<div class="sys-item">
+    <span class="sys-item-icon">🐘</span>
+    <div>
+        <span class="sys-item-label">PHP</span>
+        <span class="sys-item-val"><?= phpversion() ?></span>
+    </div>
+</div>
                 </div>
 
                 <form id="waSettingsForm">
@@ -524,7 +542,7 @@ textarea.form-input{resize:vertical;min-height:120px}
             <div class="dash-card-body" id="queueStatus">
                 <div style="text-align:center;padding:30px;color:var(--text-sub);">
                     <i class="feather icon-loader spin" style="font-size:24px;display:block;margin-bottom:10px;"></i>
-                    Loadingâ€¦
+                    Loading...
                 </div>
             </div>
         </div>
@@ -558,9 +576,9 @@ textarea.form-input{resize:vertical;min-height:120px}
                         <div class="form-group">
                             <label class="form-label"><i class="feather icon-globe"></i>Language</label>
                             <select class="form-input" id="template_language" name="language" required>
-                                <option value="en">English</option>
-                                <option value="fa">Persian (ÙØ§Ø±Ø³ÛŒ)</option>
-                                <option value="ps">Pashto (Ù¾ÚšØªÙˆ)</option>
+                            <option value="en">English</option>
+<option value="fa">Dari (دری)</option>
+<option value="ps">Pashto (پښتو)</option>
                             </select>
                         </div>
                     </div>
@@ -623,7 +641,7 @@ document.getElementById('waSettingsForm').addEventListener('submit', async funct
     const fd = new FormData(this);
     fd.append('action','update_settings'); fd.append('csrf_token',CSRF);
     const btn = document.getElementById('saveSettingsBtn');
-    btn.disabled=true; btn.innerHTML='<i class="feather icon-loader spin"></i> Savingâ€¦';
+    btn.disabled=true; btn.innerHTML='<i class="feather icon-loader spin"></i> Saving...';
     try {
         const r = await fetch('',{method:'POST',body:fd});
         const d = await r.json();
@@ -638,7 +656,7 @@ async function testConnection() {
     const pid = document.getElementById('phone_number_id').value;
     if (!tok || !pid) { toast('Please fill in API Token and Phone Number ID first','error'); return; }
     const btn=document.getElementById('testConnBtn'), icon=document.getElementById('testConnIcon'), txt=document.getElementById('testConnText');
-    btn.disabled=true; icon.className='feather icon-loader spin'; txt.textContent='Testingâ€¦';
+    btn.disabled=true; icon.className='feather icon-loader spin'; txt.textContent='Testing...';
     try {
         const d = await post({action:'test_connection',api_token:tok,phone_number_id:pid});
         toast(d.message, d.success?'success':'error');
@@ -651,7 +669,7 @@ document.getElementById('testMsgForm').addEventListener('submit', async function
     e.preventDefault();
     const fd=new FormData(this); fd.append('action','send_test_message'); fd.append('csrf_token',CSRF);
     const btn=document.getElementById('sendTestBtn'), icon=document.getElementById('sendTestIcon'), txt=document.getElementById('sendTestText');
-    btn.disabled=true; icon.className='feather icon-loader spin'; txt.textContent='Sendingâ€¦';
+    btn.disabled=true; icon.className='feather icon-loader spin'; txt.textContent='Sending...';
     try {
         const r=await fetch('',{method:'POST',body:fd}); const d=await r.json();
         toast(d.message, d.success?'success':'error');
@@ -677,7 +695,7 @@ async function loadQueueStatus() {
 
 async function processQueue() {
     const btn=document.getElementById('processQueueBtn'), icon=document.getElementById('processIcon'), txt=document.getElementById('processText');
-    btn.disabled=true; icon.className='feather icon-loader spin'; txt.textContent='Processingâ€¦';
+    btn.disabled=true; icon.className='feather icon-loader spin'; txt.textContent='Processing...';
     try {
         const d = await post({action:'process_queue'});
         if (d.success) { toast(`Processed ${d.processed} messages${d.failed>0?` (${d.failed} failed)`:''}`, d.failed>0?'info':'success'); loadQueueStatus(); }

@@ -215,7 +215,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                 <div>
                     <label class="form-label-custom">Search</label>
                     <div class="search-group">
-                        <input type="text" id="searchInput" class="form-input" placeholder="Guest name, order ID, or accommodationâ€¦" value="<?= htmlspecialchars($search) ?>">
+                        <input type="text" id="searchInput" class="form-input" placeholder="Guest name, order ID, or accommodation..." value="<?= htmlspecialchars($search) ?>">
                         <button class="search-btn" id="searchBtn"><i class="feather icon-search"></i>Search</button>
                         <?php if (!empty($search)): ?>
                         <a href="?branch=<?= $branch_filter ?>" class="clear-btn"><i class="feather icon-x"></i>Clear</a>
@@ -323,9 +323,9 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                 <a href="<?= $base ?>&page=<?= $page-1 ?>" class="pag-btn <?= $page<=1?'disabled':'' ?>"><i class="feather icon-chevron-left"></i></a>
                 <?php
                 $sp2=max(1,$page-2); $ep=min($total_pages,$page+2);
-                if($sp2>1){echo '<a href="'.$base.'&page=1" class="pag-btn">1</a>';if($sp2>2)echo '<span class="pag-dots">â€¦</span>';}
+                if($sp2>1){echo '<a href="'.$base.'&page=1" class="pag-btn">1</a>';if($sp2>2)echo '<span class="pag-dots">...</span>';}
                 for($i=$sp2;$i<=$ep;$i++) echo '<a href="'.$base.'&page='.$i.'" class="pag-btn '.($i==$page?'active':'').'">'.$i.'</a>';
-                if($ep<$total_pages){if($ep<$total_pages-1)echo '<span class="pag-dots">â€¦</span>';echo '<a href="'.$base.'&page='.$total_pages.'" class="pag-btn">'.$total_pages.'</a>';}
+                if($ep<$total_pages){if($ep<$total_pages-1)echo '<span class="pag-dots">...</span>';echo '<a href="'.$base.'&page='.$total_pages.'" class="pag-btn">'.$total_pages.'</a>';}
                 ?>
                 <a href="<?= $base ?>&page=<?= $page+1 ?>" class="pag-btn <?= $page>=$total_pages?'disabled':'' ?>"><i class="feather icon-chevron-right"></i></a>
                 <a href="<?= $base ?>&page=<?= $total_pages ?>" class="pag-btn <?= $page>=$total_pages?'disabled':'' ?>"><i class="feather icon-chevrons-right"></i></a>

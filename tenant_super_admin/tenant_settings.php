@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 include 'header.php';
 $tenant_id = $_SESSION['tenant_id'];
 
@@ -25,7 +25,7 @@ require_once('../includes/db.php');
     --surface:#f4f7fe;--card-bg:#ffffff;--border:#e8edf5;
     --text-main:#1a2340;--text-sub:#6b7a99;
     --green:#22c55e;--red:#ef4444;
-    /* Agency Settings: Teal → Blue */
+    /* Agency Settings: Teal â†’ Blue */
     --c1:#0891b2;--c2:#1d4ed8;
     --radius:14px;--shadow:0 2px 12px rgba(8,145,178,.08);
 }
@@ -190,7 +190,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
                         <div class="logo-upload-area" id="logoDropArea">
                             <input type="file" name="logo" accept="image/*" id="logoInput" onchange="previewImage(this)">
                             <i class="feather icon-upload-cloud" style="font-size:28px;color:#0891b2;display:block;margin-bottom:6px;"></i>
-                            <div class="logo-upload-label"><?php echo __('choose_file') ?> — <strong>click to browse</strong></div>
+                            <div class="logo-upload-label"><?php echo __('choose_file') ?> â€” <strong>click to browse</strong></div>
                             <div style="font-size:10px;color:var(--text-sub);margin-top:4px;">PNG, JPG, SVG up to 2MB</div>
                         </div>
                         <div class="logo-preview-wrap" id="logoPreviewWrap">
@@ -284,7 +284,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
                         <input type="email" class="form-input" id="test_email" placeholder="test@example.com">
                     </div>
                     <button type="button" class="test-btn" id="testEmailBtn">
-                        <i class="feather icon-send"></i><?php echo __('send_test_email'); ?>
+                    <i class="feather icon-paper-plane"></i> <?php echo __('send_test_email'); ?>
                     </button>
                 </div>
 
@@ -362,7 +362,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!host || !user || !pass) { showToast('Please configure SMTP settings first.', 'error'); return; }
 
             testBtn.disabled = true;
-            testBtn.innerHTML = '<i class="feather icon-loader"></i>Sending…';
+            testBtn.innerHTML = '<i class="feather icon-loader"></i>Sending...';
 
             fetch('send_test_email.php', {
                 method: 'POST',

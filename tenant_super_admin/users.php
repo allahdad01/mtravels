@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 include 'header.php';
 require_once '../includes/UserAddonManager.php';
 
@@ -327,7 +327,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
             <h6><span class="ico"><i class="feather icon-list"></i></span>All Users</h6>
             <span class="count-badge"><?= count($users) ?> user<?= count($users)!==1?'s':'' ?></span>
             <div class="search-wrap" style="margin-left:auto;">
-                <input type="text" class="search-input" id="userSearch" placeholder="Search users…">
+                <input type="text" class="search-input" id="userSearch" placeholder="Search users...">
             </div>
         </div>
 
@@ -377,7 +377,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                             <?php endif; ?>
                         </td>
                         <td class="td-phone">
-                            <?= $user['phone'] ? '<a href="tel:'.htmlspecialchars($user['phone']).'" style="color:var(--text-sub);text-decoration:none;"><i class="feather icon-phone" style="margin-right:3px;"></i>'.htmlspecialchars($user['phone']).'</a>' : '<span style="color:var(--border);">—</span>' ?>
+                            <?= $user['phone'] ? '<a href="tel:'.htmlspecialchars($user['phone']).'" style="color:var(--text-sub);text-decoration:none;"><i class="feather icon-phone" style="margin-right:3px;"></i>'.htmlspecialchars($user['phone']).'</a>' : '<span style="color:var(--border);">â€”</span>' ?>
                         </td>
                         <td class="td-date"><?= date('M d, Y', strtotime($user['created_at'])) ?></td>
                         <td>
@@ -453,12 +453,12 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                                 <label>Branch</label>
                                 <select class="form-control" name="branch_id">
                                     <option value="">Select Branch (Optional)</option>
-                                    <?php foreach ($branches as $b): ?><option value="<?= $b['id'] ?>"><?= htmlspecialchars($b['name']) ?> · <?= htmlspecialchars($b['code']) ?></option><?php endforeach; ?>
+                                    <?php foreach ($branches as $b): ?><option value="<?= $b['id'] ?>"><?= htmlspecialchars($b['name']) ?> Â· <?= htmlspecialchars($b['code']) ?></option><?php endforeach; ?>
                                 </select>
                             </div>
                         </div>
                     </div>
-                    <div class="form-group"><label>Address</label><textarea class="form-control" name="address" rows="2" placeholder="Optional address…"></textarea></div>
+                    <div class="form-group"><label>Address</label><textarea class="form-control" name="address" rows="2" placeholder="Optional address..."></textarea></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn-modal-secondary" data-dismiss="modal">Cancel</button>
@@ -505,7 +505,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                                 <label>Branch</label>
                                 <select class="form-control" id="editUserBranch" name="branch_id">
                                     <option value="">Select Branch (Optional)</option>
-                                    <?php foreach ($branches as $b): ?><option value="<?= $b['id'] ?>"><?= htmlspecialchars($b['name']) ?> · <?= htmlspecialchars($b['code']) ?></option><?php endforeach; ?>
+                                    <?php foreach ($branches as $b): ?><option value="<?= $b['id'] ?>"><?= htmlspecialchars($b['name']) ?> Â· <?= htmlspecialchars($b['code']) ?></option><?php endforeach; ?>
                                 </select>
                             </div>
                         </div>

@@ -271,7 +271,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
                 <div class="filter-grid">
                     <div>
                         <label class="form-label">Search</label>
-                        <input type="text" class="form-input" name="search" placeholder="User, action, tableâ€¦" value="<?= htmlspecialchars($search) ?>">
+                        <input type="text" class="form-input" name="search" placeholder="User, action, table..." value="<?= htmlspecialchars($search) ?>">
                     </div>
                     <div>
                         <label class="form-label">User</label>
@@ -389,9 +389,9 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
 
                 <?php
                 $sp = max(1,$page-2); $ep = min($total_pages,$page+2);
-                if ($sp>1){ echo '<a class="pag-btn" href="'.buildPaginationUrl(1,$search,$user_filter,$action_filter,$table_filter).'">1</a>'; if ($sp>2) echo '<span class="pag-dots">â€¦</span>'; }
+                if ($sp>1){ echo '<a class="pag-btn" href="'.buildPaginationUrl(1,$search,$user_filter,$action_filter,$table_filter).'">1</a>'; if ($sp>2) echo '<span class="pag-dots">...</span>'; }
                 for($i=$sp;$i<=$ep;$i++) echo '<a class="pag-btn'.($i==$page?' active':'').'" href="'.buildPaginationUrl($i,$search,$user_filter,$action_filter,$table_filter).'">'.$i.'</a>';
-                if ($ep<$total_pages){ if($ep<$total_pages-1) echo '<span class="pag-dots">â€¦</span>'; echo '<a class="pag-btn" href="'.buildPaginationUrl($total_pages,$search,$user_filter,$action_filter,$table_filter).'">'.$total_pages.'</a>'; }
+                if ($ep<$total_pages){ if($ep<$total_pages-1) echo '<span class="pag-dots">...</span>'; echo '<a class="pag-btn" href="'.buildPaginationUrl($total_pages,$search,$user_filter,$action_filter,$table_filter).'">'.$total_pages.'</a>'; }
                 ?>
 
                 <?php if ($page<$total_pages): ?>

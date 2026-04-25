@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 include 'header.php';
 
 $tenant_id = $_SESSION['tenant_id'];
@@ -65,7 +65,7 @@ $to   = min($page * $results_per_page, $total_tickets);
 *,*::before,*::after{box-sizing:border-box}
 body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important;background:var(--surface)!important;color:var(--text-main)!important}
 
-/* Header — red-tinted for refunds */
+/* Header â€” red-tinted for refunds */
 .dash-header{background:linear-gradient(135deg,#ef4444 0%,#f97316 100%);border-radius:var(--radius);padding:24px 28px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 8px 32px rgba(239,68,68,0.22);position:relative;overflow:hidden}
 .dash-header::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat}
 .dash-header h4{font-size:22px;font-weight:800;color:#fff;margin:0 0 4px;letter-spacing:-0.4px;position:relative}
@@ -190,7 +190,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 <div class="pcoded-main-container">
 <div class="pcoded-content">
 
-    <!-- Header — red gradient to signal refunds -->
+    <!-- Header â€” red gradient to signal refunds -->
     <div class="dash-header">
         <div>
             <h4><i class="feather icon-refresh-ccw" style="margin-right:8px;"></i>Refunded Tickets</h4>
@@ -208,7 +208,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                 <div>
                     <label class="form-label-custom">Search</label>
                     <div class="search-group">
-                        <input type="text" id="searchInput" class="form-input" placeholder="Passenger, PNR, airline, or route…" value="<?= htmlspecialchars($search) ?>">
+                        <input type="text" id="searchInput" class="form-input" placeholder="Passenger, PNR, airline, or route..." value="<?= htmlspecialchars($search) ?>">
                         <button class="search-btn" id="searchBtn"><i class="feather icon-search"></i>Search</button>
                         <?php if (!empty($search)): ?>
                         <a href="?branch=<?= $branch_filter ?>" class="clear-btn"><i class="feather icon-x"></i>Clear</a>
@@ -292,7 +292,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     <td class="td-r">
                         <div class="amt-refund"><?= htmlspecialchars($t['currency']) ?> <?= number_format($t['refund_to_passenger'], 2) ?></div>
                         <?php if ($penalty > 0): ?>
-                        <div class="amt-penalty">⚠ Penalty: <?= htmlspecialchars($t['currency']) ?> <?= number_format($penalty, 2) ?></div>
+                        <div class="amt-penalty">âš  Penalty: <?= htmlspecialchars($t['currency']) ?> <?= number_format($penalty, 2) ?></div>
                         <?php endif; ?>
                     </td>
                 </tr>
@@ -302,16 +302,16 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
         </div>
 
         <div class="pag-wrap">
-            <div class="pag-info">Showing <?= $from ?>–<?= $to ?> of <?= number_format($total_tickets) ?> refunded tickets</div>
+            <div class="pag-info">Showing <?= $from ?>â€“<?= $to ?> of <?= number_format($total_tickets) ?> refunded tickets</div>
             <div class="pag-links">
                 <?php $base = '?branch='.urlencode($branch_filter).'&search='.urlencode($search); ?>
                 <a href="<?= $base ?>&page=1" class="pag-btn <?= $page<=1?'disabled':'' ?>"><i class="feather icon-chevrons-left"></i></a>
                 <a href="<?= $base ?>&page=<?= $page-1 ?>" class="pag-btn <?= $page<=1?'disabled':'' ?>"><i class="feather icon-chevron-left"></i></a>
                 <?php
                 $sp2=max(1,$page-2); $ep=min($total_pages,$page+2);
-                if($sp2>1){echo '<a href="'.$base.'&page=1" class="pag-btn">1</a>';if($sp2>2)echo '<span class="pag-dots">…</span>';}
+                if($sp2>1){echo '<a href="'.$base.'&page=1" class="pag-btn">1</a>';if($sp2>2)echo '<span class="pag-dots">...</span>';}
                 for($i=$sp2;$i<=$ep;$i++) echo '<a href="'.$base.'&page='.$i.'" class="pag-btn '.($i==$page?'active':'').'">'.$i.'</a>';
-                if($ep<$total_pages){if($ep<$total_pages-1)echo '<span class="pag-dots">…</span>';echo '<a href="'.$base.'&page='.$total_pages.'" class="pag-btn">'.$total_pages.'</a>';}
+                if($ep<$total_pages){if($ep<$total_pages-1)echo '<span class="pag-dots">...</span>';echo '<a href="'.$base.'&page='.$total_pages.'" class="pag-btn">'.$total_pages.'</a>';}
                 ?>
                 <a href="<?= $base ?>&page=<?= $page+1 ?>" class="pag-btn <?= $page>=$total_pages?'disabled':'' ?>"><i class="feather icon-chevron-right"></i></a>
                 <a href="<?= $base ?>&page=<?= $total_pages ?>" class="pag-btn <?= $page>=$total_pages?'disabled':'' ?>"><i class="feather icon-chevrons-right"></i></a>
@@ -340,9 +340,9 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 
             <!-- Price summary strip -->
             <div class="modal-summary">
-                <div class="ms-cell"><div class="ms-label">Refund Amount</div><div class="ms-val red" id="refund-amount">—</div></div>
-                <div class="ms-cell"><div class="ms-label">Total Penalties</div><div class="ms-val amber" id="total-penalties">—</div></div>
-                <div class="ms-cell"><div class="ms-label">Original Price</div><div class="ms-val blue" id="original-price">—</div></div>
+                <div class="ms-cell"><div class="ms-label">Refund Amount</div><div class="ms-val red" id="refund-amount">â€”</div></div>
+                <div class="ms-cell"><div class="ms-label">Total Penalties</div><div class="ms-val amber" id="total-penalties">â€”</div></div>
+                <div class="ms-cell"><div class="ms-label">Original Price</div><div class="ms-val blue" id="original-price">â€”</div></div>
             </div>
 
             <div class="modal-body">
@@ -356,19 +356,19 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                         <div class="detail-section">
                             <div class="ds-title">Client Information</div>
-                            <div class="ds-row"><span class="ds-key">Passenger</span><span class="ds-val" id="passenger-name">—</span></div>
-                            <div class="ds-row"><span class="ds-key">PNR</span><span class="ds-val" id="pnr" style="font-family:'JetBrains Mono',monospace;color:var(--blue);">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Supplier</span><span class="ds-val" id="supplier-name">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Sold To</span><span class="ds-val" id="sold-to">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="branch-name">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Created By</span><span class="ds-val" id="created-by">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Passenger</span><span class="ds-val" id="passenger-name">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">PNR</span><span class="ds-val" id="pnr" style="font-family:'JetBrains Mono',monospace;color:var(--blue);">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Supplier</span><span class="ds-val" id="supplier-name">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Sold To</span><span class="ds-val" id="sold-to">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Branch</span><span class="ds-val" id="branch-name">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Created By</span><span class="ds-val" id="created-by">â€”</span></div>
                         </div>
                         <div class="detail-section">
                             <div class="ds-title">Flight Information</div>
-                            <div class="ds-row"><span class="ds-key">Airline</span><span class="ds-val" id="airline">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Route</span><span class="ds-val" id="route">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Departure</span><span class="ds-val" id="departure-date">—</span></div>
-                            <div class="ds-row"><span class="ds-key">Issue Date</span><span class="ds-val" id="issue-date">—</span></div>
+                            <div class="ds-row"><span class="ds-key">Airline</span><span class="ds-val" id="airline">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Route</span><span class="ds-val" id="route">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Departure</span><span class="ds-val" id="departure-date">â€”</span></div>
+                            <div class="ds-row"><span class="ds-key">Issue Date</span><span class="ds-val" id="issue-date">â€”</span></div>
                         </div>
                     </div>
                 </div>
@@ -377,13 +377,13 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                 <div class="modal-pane" id="pane-refund">
                     <div class="detail-section">
                         <div class="ds-title">Refund Breakdown</div>
-                        <div class="ds-row"><span class="ds-key">Original Sold Price</span><span class="ds-val" id="original-sold">—</span></div>
-                        <div class="ds-row"><span class="ds-key">Supplier Penalty</span><span class="ds-val red" id="supplier-penalty">—</span></div>
-                        <div class="ds-row"><span class="ds-key">Service Penalty</span><span class="ds-val red" id="service-penalty">—</span></div>
+                        <div class="ds-row"><span class="ds-key">Original Sold Price</span><span class="ds-val" id="original-sold">â€”</span></div>
+                        <div class="ds-row"><span class="ds-key">Supplier Penalty</span><span class="ds-val red" id="supplier-penalty">â€”</span></div>
+                        <div class="ds-row"><span class="ds-key">Service Penalty</span><span class="ds-val red" id="service-penalty">â€”</span></div>
                         <hr class="ds-divider">
-                        <div class="ds-row"><span class="ds-key" style="font-weight:700;">Refund to Passenger</span><span class="ds-val green" id="refund-to-passenger">—</span></div>
-                        <div class="ds-row"><span class="ds-key">Status</span><span class="ds-val" id="refund-status">—</span></div>
-                        <div class="ds-row"><span class="ds-key">Remarks</span><span class="ds-val" id="remarks" style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</span></div>
+                        <div class="ds-row"><span class="ds-key" style="font-weight:700;">Refund to Passenger</span><span class="ds-val green" id="refund-to-passenger">â€”</span></div>
+                        <div class="ds-row"><span class="ds-key">Status</span><span class="ds-val" id="refund-status">â€”</span></div>
+                        <div class="ds-row"><span class="ds-key">Remarks</span><span class="ds-val" id="remarks" style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">â€”</span></div>
                     </div>
                 </div>
             </div>
@@ -430,14 +430,14 @@ document.querySelectorAll('.view-details').forEach(btn => {
         document.getElementById('original-price').textContent  = curr + ' ' + original.toFixed(2);
 
         document.getElementById('passenger-name').textContent = (t.title||'') + ' ' + (t.passenger_name||'');
-        document.getElementById('pnr').textContent            = t.pnr || '—';
+        document.getElementById('pnr').textContent            = t.pnr || 'â€”';
         document.getElementById('supplier-name').textContent  = t.supplier || 'N/A';
         document.getElementById('sold-to').textContent        = t.sold_to || 'N/A';
         document.getElementById('branch-name').textContent    = t.branch_name || 'No Branch';
         document.getElementById('created-by').textContent     = t.created_by_name || 'N/A';
 
         document.getElementById('airline').textContent        = t.airline || 'N/A';
-        document.getElementById('route').textContent          = (t.origin||'') + ' → ' + (t.destination||'');
+        document.getElementById('route').textContent          = (t.origin||'') + ' â†’ ' + (t.destination||'');
         document.getElementById('departure-date').textContent = t.departure_date || 'N/A';
         document.getElementById('issue-date').textContent     = t.issue_date || 'N/A';
 
