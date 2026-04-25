@@ -45,8 +45,10 @@ $sq = "SELECT COUNT(*) as total_transactions,
     COUNT(CASE WHEN type='deposit' THEN 1 END) as deposit_count,
     COUNT(CASE WHEN type='withdrawal' THEN 1 END) as withdrawal_count,
     COUNT(CASE WHEN type='exchange' THEN 1 END) as exchange_count,
-    SUM(CASE WHEN type='deposit' THEN amount ELSE 0 END) as total_deposits,
-    SUM(CASE WHEN type='withdrawal' THEN amount ELSE 0 END) as total_withdrawals
+    SUM(CASE WHEN type='deposit' AND currency='USD' THEN amount ELSE 0 END) as usd_deposits,
+    SUM(CASE WHEN type='deposit' AND currency='AFS' THEN amount ELSE 0 END) as afs_deposits,
+    SUM(CASE WHEN type='withdrawal' AND currency='USD' THEN amount ELSE 0 END) as usd_withdrawals,
+    SUM(CASE WHEN type='withdrawal' AND currency='AFS' THEN amount ELSE 0 END) as afs_withdrawals
 FROM sarafi_transactions WHERE tenant_id = ?";
 $sp2 = [$tenant_id];
 if ($selected_branch !== 'all') { $sq .= " AND branch_id = ?"; $sp2[] = $selected_branch; }
@@ -59,6 +61,16 @@ $branches = $bs->fetchAll(PDO::FETCH_ASSOC);
 
 $from = min(($page - 1) * $results_per_page + 1, $total_transactions);
 $to   = min($page * $results_per_page, $total_transactions);
+
+function currency_symbol($currency) {
+    $symbols = [
+        'USD'    => '$',
+        'AFS'    => '؋',
+        'EUR'    => '€',
+        'DARHAM' => 'د.إ',
+    ];
+    return $symbols[strtoupper($currency ?? '')] ?? '';
+}
 
 function typeBadgeClass($type) {
     return match(strtolower($type)) {
@@ -266,13 +278,25 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
             <i class="feather icon-repeat stat-icon"></i>
         </div>
         <div class="stat-card tdep">
-            <div class="stat-label">Total Deposits</div>
-            <div class="stat-value">$<?= number_format($summary['total_deposits'] ?? 0, 0) ?></div>
+            <div class="stat-label">USD Deposits</div>
+            <div class="stat-value">$<?= number_format($summary['usd_deposits'] ?? 0, 0) ?></div>
             <i class="feather icon-dollar-sign stat-icon"></i>
         </div>
         <div class="stat-card twit">
-            <div class="stat-label">Total Withdrawals</div>
-            <div class="stat-value">$<?= number_format($summary['total_withdrawals'] ?? 0, 0) ?></div>
+            <div class="stat-label">AFS Deposits</div>
+            <div class="stat-value">؋<?= number_format($summary['afs_deposits'] ?? 0, 0) ?></div>
+            <i class="feather icon-layers stat-icon"></i>
+        </div>
+    </div>
+    <div class="stat-grid" style="margin-top:-8px;">
+        <div class="stat-card tdep">
+            <div class="stat-label">USD Withdrawals</div>
+            <div class="stat-value">$<?= number_format($summary['usd_withdrawals'] ?? 0, 0) ?></div>
+            <i class="feather icon-trending-down stat-icon"></i>
+        </div>
+        <div class="stat-card twit">
+            <div class="stat-label">AFS Withdrawals</div>
+            <div class="stat-value">؋<?= number_format($summary['afs_withdrawals'] ?? 0, 0) ?></div>
             <i class="feather icon-trending-down stat-icon"></i>
         </div>
     </div>
@@ -331,9 +355,8 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                 <tbody>
                 <?php $counter = $offset + 1; foreach ($transactions as $txn):
                     $tc  = typeBadgeClass($txn['type']);
-                    $isUSD = strtoupper($txn['currency']) === 'USD';
-                    $curr  = $isUSD ? '$' : htmlspecialchars($txn['currency']).' ';
-                    $amtCls= $isUSD ? 'av-usd' : 'av-other';
+                    $curr  = currency_symbol($txn['currency']);
+                    $amtCls= strtoupper($txn['currency']) === 'USD' ? 'av-usd' : 'av-other';
                     $stCls = match($txn['status'] ?? '') {
                         'completed' => 'sp-completed',
                         'pending'   => 'sp-pending',
@@ -493,6 +516,11 @@ function doSearch() {
     window.location.href = '?branch=' + encodeURIComponent(b) + (s ? '&search=' + encodeURIComponent(s) : '');
 }
 
+function getCurrencySymbol(currency) {
+    const symbols = { 'USD': '$', 'AFS': '؋', 'EUR': '€', 'DARHAM': 'د.إ' };
+    return symbols[(currency || '').toUpperCase()] || '';
+}
+
 function switchTab(tab, btn) {
     document.querySelectorAll('.modal-pane').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.modal-tab').forEach(b => b.classList.remove('active'));
@@ -503,7 +531,7 @@ function switchTab(tab, btn) {
 document.querySelectorAll('.view-details').forEach(btn => {
     btn.addEventListener('click', function() {
         const t    = JSON.parse(this.getAttribute('data-transaction'));
-        const curr = t.currency === 'USD' ? '$' : (t.currency + ' ');
+        const curr = getCurrencySymbol(t.currency);
         const amt  = parseFloat(t.amount || 0).toFixed(2);
         const type = (t.type||'').charAt(0).toUpperCase() + (t.type||'').slice(1);
         const stat = (t.status||'').charAt(0).toUpperCase() + (t.status||'').slice(1);

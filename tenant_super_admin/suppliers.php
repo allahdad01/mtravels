@@ -45,8 +45,10 @@ $total_suppliers = $cs->fetch(PDO::FETCH_ASSOC)['total'];
 $total_pages     = max(1, ceil($total_suppliers / $results_per_page));
 
 $sq = "SELECT COUNT(*) as total_suppliers,
-    SUM(CASE WHEN balance > 0 THEN balance ELSE 0 END) as total_owed_by_suppliers,
-    SUM(CASE WHEN balance < 0 THEN ABS(balance) ELSE 0 END) as total_owed_to_suppliers
+    SUM(CASE WHEN balance > 0 AND currency='USD' THEN balance ELSE 0 END) as usd_owed_by,
+    SUM(CASE WHEN balance > 0 AND currency='AFS' THEN balance ELSE 0 END) as afs_owed_by,
+    SUM(CASE WHEN balance < 0 AND currency='USD' THEN ABS(balance) ELSE 0 END) as usd_owed_to,
+    SUM(CASE WHEN balance < 0 AND currency='AFS' THEN ABS(balance) ELSE 0 END) as afs_owed_to
 FROM suppliers WHERE tenant_id = ? AND status = 'active'";
 $sp2 = [$tenant_id];
 if ($selected_branch !== 'all') { $sq .= " AND branch_id = ?"; $sp2[] = $selected_branch; }
@@ -59,6 +61,16 @@ $branches = $bs->fetchAll(PDO::FETCH_ASSOC);
 
 $from = min(($page - 1) * $results_per_page + 1, $total_suppliers);
 $to   = min($page * $results_per_page, $total_suppliers);
+
+function currency_symbol($currency) {
+    $symbols = [
+        'USD'    => '$',
+        'AFS'    => '؋',
+        'EUR'    => '€',
+        'DARHAM' => 'د.إ',
+    ];
+    return $symbols[strtoupper($currency ?? '')] ?? '';
+}
 ?>
 
 <style>
@@ -242,13 +254,25 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
             <i class="feather icon-users stat-icon"></i>
         </div>
         <div class="stat-card owed-by">
-            <div class="stat-label">Owed by Suppliers</div>
-            <div class="stat-value">$<?= number_format($summary['total_owed_by_suppliers'] ?? 0, 2) ?></div>
+            <div class="stat-label">USD Owed by Suppliers</div>
+            <div class="stat-value">$<?= number_format($summary['usd_owed_by'] ?? 0, 2) ?></div>
             <i class="feather icon-trending-up stat-icon"></i>
         </div>
         <div class="stat-card owed-to">
-            <div class="stat-label">Owed to Suppliers</div>
-            <div class="stat-value">$<?= number_format($summary['total_owed_to_suppliers'] ?? 0, 2) ?></div>
+            <div class="stat-label">AFS Owed by Suppliers</div>
+            <div class="stat-value">؋<?= number_format($summary['afs_owed_by'] ?? 0, 2) ?></div>
+            <i class="feather icon-trending-up stat-icon"></i>
+        </div>
+    </div>
+    <div class="stat-grid" style="margin-top:-8px;">
+        <div class="stat-card owed-by">
+            <div class="stat-label">USD Owed to Suppliers</div>
+            <div class="stat-value">$<?= number_format($summary['usd_owed_to'] ?? 0, 2) ?></div>
+            <i class="feather icon-trending-down stat-icon"></i>
+        </div>
+        <div class="stat-card owed-to">
+            <div class="stat-label">AFS Owed to Suppliers</div>
+            <div class="stat-value">؋<?= number_format($summary['afs_owed_to'] ?? 0, 2) ?></div>
             <i class="feather icon-trending-down stat-icon"></i>
         </div>
     </div>
@@ -312,7 +336,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     $dirCls   = $bal >= 0 ? 'bal-dir-pos' : 'bal-dir-neg';
                     $dirLabel = $bal >= 0 ? 'Owed by supplier' : 'Owed to supplier';
                     $dirIcon  = $bal >= 0 ? 'icon-trending-up' : 'icon-trending-down';
-                    $curr     = $sup['currency'] === 'USD' ? '$' : 'AFS ';
+                    $curr     = currency_symbol($sup['currency']);
                     $isExt    = $sup['supplier_type'] === 'External';
                     $statusCls = $sup['status'] === 'active' ? 'sp-active' : 'sp-inactive';
                 ?>
@@ -366,8 +390,8 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     <td>
                         <div class="txn-count"><?= number_format($sup['transaction_count']) ?> txns</div>
                         <div class="txn-flows">
-                            <span class="txn-dr">D $<?= number_format($sup['total_debits'], 0) ?></span>
-                            <span class="txn-cr">C $<?= number_format($sup['total_credits'], 0) ?></span>
+                            <span class="txn-dr">D <?= $curr ?><?= number_format($sup['total_debits'], 0) ?></span>
+                            <span class="txn-cr">C <?= $curr ?><?= number_format($sup['total_credits'], 0) ?></span>
                         </div>
                     </td>
                     <td>
@@ -509,6 +533,11 @@ function doSearch() {
     window.location.href = '?branch=' + encodeURIComponent(b) + (s ? '&search=' + encodeURIComponent(s) : '');
 }
 
+function getCurrencySymbol(currency) {
+    const symbols = { 'USD': '$', 'AFS': '؋', 'EUR': '€', 'DARHAM': 'د.إ' };
+    return symbols[(currency || '').toUpperCase()] || '';
+}
+
 function switchTab(tab, btn) {
     document.querySelectorAll('.modal-pane').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.modal-tab').forEach(b => b.classList.remove('active'));
@@ -520,7 +549,7 @@ document.querySelectorAll('.view-details').forEach(btn => {
     btn.addEventListener('click', function() {
         const s   = JSON.parse(this.getAttribute('data-supplier'));
         const bal = parseFloat(s.balance || 0);
-        const curr = s.currency === 'USD' ? '$' : 'AFS ';
+        const curr = getCurrencySymbol(s.currency);
         const isPos = bal >= 0;
 
         const balEl = document.getElementById('modal-balance');
@@ -528,7 +557,7 @@ document.querySelectorAll('.view-details').forEach(btn => {
         balEl.className = 'mbs-value ' + (isPos ? 'pos' : 'neg');
 
         const dirEl = document.getElementById('modal-balance-dir');
-        dirEl.textContent = isPos ? 'â†‘ Owed by supplier' : '↓ Owed to supplier';
+        dirEl.textContent = isPos ? '↑ Owed by supplier' : '↓ Owed to supplier';
         dirEl.className = 'mbs-sub ' + (isPos ? 'pos' : 'neg');
 
         document.getElementById('modal-txn-count').textContent = parseInt(s.transaction_count||0).toLocaleString();
@@ -542,10 +571,10 @@ document.querySelectorAll('.view-details').forEach(btn => {
         const dr  = parseFloat(s.total_debits  || 0);
         const cr  = parseFloat(s.total_credits || 0);
         const net = cr - dr;
-        document.getElementById('total-debits').textContent  = '$' + dr.toFixed(2);
-        document.getElementById('total-credits').textContent = '$' + cr.toFixed(2);
+        document.getElementById('total-debits').textContent  = curr + dr.toFixed(2);
+        document.getElementById('total-credits').textContent = curr + cr.toFixed(2);
         const nEl = document.getElementById('net-position');
-        nEl.textContent  = (net >= 0 ? '+' : '') + '$' + net.toFixed(2);
+        nEl.textContent  = (net >= 0 ? '+' : '') + curr + net.toFixed(2);
         nEl.className    = 'ds-val ' + (net >= 0 ? 'green' : 'red');
 
         document.getElementById('contact-person').textContent  = s.contact_person || 'N/A';
