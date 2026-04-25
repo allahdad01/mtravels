@@ -227,15 +227,16 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
             <i class="feather icon-credit-card stat-icon"></i>
         </div>
         <div class="stat-card euro">
-            <div class="stat-label">Total Euro</div>
-            <div class="stat-value">â‚¬<?= number_format($summary['total_euro'] ?? 0, 2) ?></div>
-            <i class="feather icon-repeat stat-icon"></i>
-        </div>
-        <div class="stat-card darham">
-            <div class="stat-label">Total AED</div>
-            <div class="stat-value">Ø¯.Ø¥ <?= number_format($summary['total_darham'] ?? 0, 2) ?></div>
-            <i class="feather icon-package stat-icon"></i>
-        </div>
+    <div class="stat-label">Total Euro</div>
+    <div class="stat-value">€<?= number_format($summary['total_euro'] ?? 0, 2) ?></div>
+    <i class="feather icon-repeat stat-icon"></i>
+</div>
+
+<div class="stat-card darham">
+    <div class="stat-label">Total AED</div>
+    <div class="stat-value">د.إ <?= number_format($summary['total_darham'] ?? 0, 2) ?></div>
+    <i class="feather icon-package stat-icon"></i>
+</div>
     </div>
 
     <!-- Search & Filter -->
@@ -332,11 +333,18 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                         <div class="bal-row bal-usd"><span class="bal-dot bd-usd"></span>$<?= number_format($acc['usd_balance'], 2) ?></div>
                         <div class="bal-row bal-afs"><span class="bal-dot bd-afs"></span>AFS <?= number_format($acc['afs_balance'], 2) ?></div>
                         <?php if (floatval($acc['euro_balance']) > 0): ?>
-                        <div class="bal-row bal-euro"><span class="bal-dot bd-euro"></span>â‚¬<?= number_format($acc['euro_balance'], 2) ?></div>
-                        <?php endif; ?>
-                        <?php if (floatval($acc['darham_balance']) > 0): ?>
-                        <div class="bal-row bal-darham"><span class="bal-dot bd-darham"></span>Ø¯.Ø¥ <?= number_format($acc['darham_balance'], 2) ?></div>
-                        <?php endif; ?>
+    <div class="bal-row bal-euro">
+        <span class="bal-dot bd-euro"></span>
+        €<?= number_format($acc['euro_balance'], 2) ?>
+    </div>
+<?php endif; ?>
+
+<?php if (floatval($acc['darham_balance']) > 0): ?>
+    <div class="bal-row bal-darham">
+        <span class="bal-dot bd-darham"></span>
+        د.إ <?= number_format($acc['darham_balance'], 2) ?>
+    </div>
+<?php endif; ?>
                     </td>
                     <td>
                         <div class="txn-count"><?= number_format($acc['transaction_count']) ?> txns</div>
@@ -502,16 +510,16 @@ document.querySelectorAll('.view-details').forEach(btn => {
     btn.addEventListener('click', function() {
         const a = JSON.parse(this.getAttribute('data-account'));
 
-        document.getElementById('usd-balance').textContent    = '$'    + parseFloat(a.usd_balance    ||0).toFixed(2);
-        document.getElementById('afs-balance').textContent    = 'AFS ' + parseFloat(a.afs_balance    ||0).toFixed(2);
-        document.getElementById('euro-balance').textContent   = 'â‚¬'    + parseFloat(a.euro_balance   ||0).toFixed(2);
-        document.getElementById('darham-balance').textContent = 'Ø¯.Ø¥ ' + parseFloat(a.darham_balance ||0).toFixed(2);
+        document.getElementById('usd-balance').textContent    = '$'    + parseFloat(a.usd_balance    || 0).toFixed(2);
+document.getElementById('afs-balance').textContent    = 'AFS ' + parseFloat(a.afs_balance    || 0).toFixed(2);
+document.getElementById('euro-balance').textContent   = '€'    + parseFloat(a.euro_balance   || 0).toFixed(2);
+document.getElementById('darham-balance').textContent = 'د.إ ' + parseFloat(a.darham_balance || 0).toFixed(2);
 
-        document.getElementById('account-name').textContent  = a.name || 'â€”';
-        document.getElementById('account-type').textContent  = (a.account_type||'').charAt(0).toUpperCase() + (a.account_type||'').slice(1);
-        document.getElementById('account-status').textContent = (a.status||'').charAt(0).toUpperCase() + (a.status||'').slice(1);
-        document.getElementById('last-updated').textContent  = a.last_updated || 'N/A';
-        document.getElementById('created-at').textContent    = a.created_at   || 'N/A';
+document.getElementById('account-name').textContent   = a.name || '—';
+document.getElementById('account-type').textContent   = (a.account_type || '').charAt(0).toUpperCase() + (a.account_type || '').slice(1);
+document.getElementById('account-status').textContent = (a.status || '').charAt(0).toUpperCase() + (a.status || '').slice(1);
+document.getElementById('last-updated').textContent  = a.last_updated || 'N/A';
+document.getElementById('created-at').textContent    = a.created_at   || 'N/A';
 
         const cr  = parseFloat(a.total_credits||0);
         const dr  = parseFloat(a.total_debits ||0);

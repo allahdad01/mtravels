@@ -236,7 +236,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
     <div class="dash-header">
         <div>
             <h4><i class="feather icon-activity" style="margin-right:8px;"></i>Activity Logs</h4>
-            <p>Monitor all system activity <?= $user_branch_id ? "â€” $current_branch_name" : "â€” All Branches" ?></p>
+            <p>Monitor all system activity <?= $user_branch_id ? "—  $current_branch_name" : "—  All Branches" ?></p>
         </div>
         <a href="dashboard.php" class="back-btn"><i class="feather icon-home"></i>Dashboard</a>
     </div>
@@ -358,10 +358,10 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
                         <?php endif; ?>
                     </td>
                     <td>
-                        <span class="record-id">#<?= htmlspecialchars($log['record_id']??'â€”') ?></span>
+                        <span class="record-id">#<?= htmlspecialchars($log['record_id']??'— ') ?></span>
                         <?php if ($chgLabel): ?><div class="change-tag <?= $chgLabel ?>"><?= ucfirst($chgLabel) ?></div><?php endif; ?>
                     </td>
-                    <td><span class="ip-code"><?= htmlspecialchars($log['ip_address']??'â€”') ?></span></td>
+                    <td><span class="ip-code"><?= htmlspecialchars($log['ip_address']??'— ') ?></span></td>
                     <td>
                         <div class="ts-date"><?= date('d M Y', strtotime($log['created_at'])) ?></div>
                         <div class="ts-time"><?= date('H:i:s', strtotime($log['created_at'])) ?></div>
@@ -422,13 +422,13 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
             <div class="modal-summary-strip">
                 <div>
                     <div class="mss-item-label">Action</div>
-                    <div class="mss-item-val" id="ms-action">â€”</div>
-                    <div class="mss-item-sub" id="ms-table">â€”</div>
+                    <div class="mss-item-val" id="ms-action">— </div>
+                    <div class="mss-item-sub" id="ms-table">— </div>
                 </div>
                 <div>
                     <div class="mss-item-label">Performed By</div>
-                    <div class="mss-item-val" id="ms-user">â€”</div>
-                    <div class="mss-item-sub" id="ms-ts">â€”</div>
+                    <div class="mss-item-val" id="ms-user">— </div>
+                    <div class="mss-item-sub" id="ms-ts">— </div>
                 </div>
             </div>
 
@@ -445,17 +445,17 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
                 <div class="detail-grid">
                     <div class="detail-card">
                         <div class="detail-card-title">Activity Information</div>
-                        <div class="detail-row"><span class="detail-label">Action</span><span class="detail-val" id="d-action">â€”</span></div>
-                        <div class="detail-row"><span class="detail-label">Table</span><span class="detail-val" id="d-table">â€”</span></div>
-                        <div class="detail-row"><span class="detail-label">Record ID</span><span class="detail-val" id="d-record">â€”</span></div>
-                        <div class="detail-row"><span class="detail-label">Branch</span><span class="detail-val" id="d-branch">â€”</span></div>
+                        <div class="detail-row"><span class="detail-label">Action</span><span class="detail-val" id="d-action">— </span></div>
+                        <div class="detail-row"><span class="detail-label">Table</span><span class="detail-val" id="d-table">— </span></div>
+                        <div class="detail-row"><span class="detail-label">Record ID</span><span class="detail-val" id="d-record">— </span></div>
+                        <div class="detail-row"><span class="detail-label">Branch</span><span class="detail-val" id="d-branch">— </span></div>
                     </div>
                     <div class="detail-card">
                         <div class="detail-card-title">User &amp; System</div>
-                        <div class="detail-row"><span class="detail-label">User</span><span class="detail-val" id="d-user">â€”</span></div>
-                        <div class="detail-row"><span class="detail-label">IP Address</span><span class="detail-val" id="d-ip">â€”</span></div>
-                        <div class="detail-row"><span class="detail-label">Timestamp</span><span class="detail-val" id="d-ts">â€”</span></div>
-                        <div class="detail-row"><span class="detail-label">Log ID</span><span class="detail-val" id="d-logid">â€”</span></div>
+                        <div class="detail-row"><span class="detail-label">User</span><span class="detail-val" id="d-user">— </span></div>
+                        <div class="detail-row"><span class="detail-label">IP Address</span><span class="detail-val" id="d-ip">— </span></div>
+                        <div class="detail-row"><span class="detail-label">Timestamp</span><span class="detail-val" id="d-ts">— </span></div>
+                        <div class="detail-row"><span class="detail-label">Log ID</span><span class="detail-val" id="d-logid">— </span></div>
                     </div>
                 </div>
             </div>
@@ -477,11 +477,11 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
             <div class="modal-pane" id="pane-tech">
                 <div class="detail-card" style="border-radius:10px;">
                     <div class="detail-card-title">Technical Information</div>
-                    <div class="detail-row"><span class="detail-label">Log ID</span><span class="detail-val" id="t-logid">â€”</span></div>
-                    <div class="detail-row"><span class="detail-label">Tenant ID</span><span class="detail-val" id="t-tenantid">â€”</span></div>
-                    <div class="detail-row"><span class="detail-label">User ID</span><span class="detail-val" id="t-userid">â€”</span></div>
-                    <div class="detail-row"><span class="detail-label">Created At</span><span class="detail-val" id="t-createdat">â€”</span></div>
-                    <div style="margin-top:10px;"><span class="detail-label">User Agent</span><code class="ua-code" id="t-useragent">â€”</code></div>
+                    <div class="detail-row"><span class="detail-label">Log ID</span><span class="detail-val" id="t-logid">— </span></div>
+                    <div class="detail-row"><span class="detail-label">Tenant ID</span><span class="detail-val" id="t-tenantid">— </span></div>
+                    <div class="detail-row"><span class="detail-label">User ID</span><span class="detail-val" id="t-userid">— </span></div>
+                    <div class="detail-row"><span class="detail-label">Created At</span><span class="detail-val" id="t-createdat">— </span></div>
+                    <div style="margin-top:10px;"><span class="detail-label">User Agent</span><code class="ua-code" id="t-useragent">— </code></div>
                 </div>
             </div>
 
@@ -504,19 +504,19 @@ function switchTab(name, btn) {
 
 function showDetails(log) {
     // Summary strip
-    document.getElementById('ms-action').textContent = log.action || 'â€”';
-    document.getElementById('ms-table').textContent  = log.table_name || 'â€”';
+    document.getElementById('ms-action').textContent = log.action || '— ';
+    document.getElementById('ms-table').textContent  = log.table_name || '— ';
     document.getElementById('ms-user').textContent   = log.user_name || 'System';
-    document.getElementById('ms-ts').textContent     = log.created_at ? new Date(log.created_at).toLocaleString() : 'â€”';
+    document.getElementById('ms-ts').textContent     = log.created_at ? new Date(log.created_at).toLocaleString() : '— ';
 
     // Summary tab
-    document.getElementById('d-action').textContent = log.action || 'â€”';
-    document.getElementById('d-table').textContent  = log.table_name || 'â€”';
-    document.getElementById('d-record').textContent = log.record_id || 'â€”';
-    document.getElementById('d-branch').textContent = log.branch_name || 'â€”';
+    document.getElementById('d-action').textContent = log.action || '— ';
+    document.getElementById('d-table').textContent  = log.table_name || '— ';
+    document.getElementById('d-record').textContent = log.record_id || '— ';
+    document.getElementById('d-branch').textContent = log.branch_name || '— ';
     document.getElementById('d-user').textContent   = log.user_name || 'System';
-    document.getElementById('d-ip').textContent     = log.ip_address || 'â€”';
-    document.getElementById('d-ts').textContent     = log.created_at ? new Date(log.created_at).toLocaleString() : 'â€”';
+    document.getElementById('d-ip').textContent     = log.ip_address || '— ';
+    document.getElementById('d-ts').textContent     = log.created_at ? new Date(log.created_at).toLocaleString() : '— ';
     document.getElementById('d-logid').textContent  = log.id;
 
     // Old values tab
@@ -544,9 +544,9 @@ function showDetails(log) {
     // Technical tab
     document.getElementById('t-logid').textContent     = log.id;
     document.getElementById('t-tenantid').textContent  = log.tenant_id;
-    document.getElementById('t-userid').textContent    = log.user_id || 'â€”';
-    document.getElementById('t-createdat').textContent = log.created_at ? new Date(log.created_at).toLocaleString() : 'â€”';
-    document.getElementById('t-useragent').textContent = log.user_agent || 'â€”';
+    document.getElementById('t-userid').textContent    = log.user_id || '— ';
+    document.getElementById('t-createdat').textContent = log.created_at ? new Date(log.created_at).toLocaleString() : '— ';
+    document.getElementById('t-useragent').textContent = log.user_agent || '— ';
 
     // Reset to summary tab
     document.querySelectorAll('.modal-tab').forEach(b => b.classList.remove('active'));

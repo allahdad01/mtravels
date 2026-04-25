@@ -61,14 +61,10 @@ class CsrfProtection {
             return false;
         }
         
-        // Check token age (optional: regenerate if older than 1 hour)
+        // Check token age (regenerate if older than 1 hour)
         if (isset($_SESSION['csrf_token_time']) && (time() - $_SESSION['csrf_token_time']) > 3600) {
             self::regenerateToken();
-        }
-        
-        // Randomly regenerate token after successful validation
-        if (mt_rand(1, 100) <= (self::REGENERATE_PROBABILITY * 100)) {
-            self::regenerateToken();
+            return false; // Token expired
         }
         
         return true;

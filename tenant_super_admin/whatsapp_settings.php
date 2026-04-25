@@ -110,8 +110,8 @@ function testConnection(){
     $resp=curl_exec($ch); $err=curl_error($ch); $code=curl_getinfo($ch,CURLINFO_HTTP_CODE); $time=curl_getinfo($ch,CURLINFO_TOTAL_TIME); curl_close($ch);
     if($err){ echo json_encode(['success'=>false,'message'=>'cURL error: '.$err]); return; }
     if($code===200) echo json_encode(['success'=>true,'message'=>"Connected successfully ({$time}s)"]);
-    elseif($code===401) echo json_encode(['success'=>false,'message'=>'Unauthorized â€” invalid API token']);
-    elseif($code===403) echo json_encode(['success'=>false,'message'=>'Forbidden â€” check account approval']);
+    elseif($code===401) echo json_encode(['success'=>false,'message'=>'Unauthorized - invalid API token']);
+    elseif($code===403) echo json_encode(['success'=>false,'message'=>'Forbidden - check account approval']);
     else echo json_encode(['success'=>false,'message'=>"HTTP {$code}: {$resp}"]);
 }
 function sendTestMessage(){
@@ -584,12 +584,12 @@ textarea.form-input{resize:vertical;min-height:120px}
                     </div>
                     <div class="form-group">
                         <label class="form-label"><i class="feather icon-edit-3"></i>Template Name</label>
-                        <input type="text" class="form-input" id="template_name" name="template_name" placeholder="Optional â€” auto-generated if empty">
+                        <input type="text" class="form-input" id="template_name" name="template_name" placeholder="Optional - auto-generated if empty">
                     </div>
                     <div class="form-group">
                         <label class="form-label"><i class="feather icon-message-square"></i>Message Template</label>
                         <textarea class="form-input" id="message_template" name="message_template" rows="8" placeholder="Enter your message with {{variables}}" required></textarea>
-                        <div class="field-hint">Available: {client_name} Â· {booking_date} Â· {agency_name} Â· {contact_info} â€” use {variable_name} format</div>
+                        <div class="field-hint">Available: {client_name} | {booking_date} | {agency_name} | {contact_info} - use {variable_name} format</div>
                     </div>
                 </form>
             </div>

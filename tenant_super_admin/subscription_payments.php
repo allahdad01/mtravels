@@ -36,8 +36,14 @@ if (!$tenant_id) {
 
 function getCurrencySymbol($currencyCode) {
     $symbols = [
-        'USD' => '$', 'EUR' => 'â‚¬', 'GBP' => 'Â£', 'JPY' => 'Â¥',
-        'AFN' => 'Ø‹', 'AED' => 'Ø¯.Ø¥', 'INR' => 'â‚¹', 'PKR' => 'â‚¨',
+        'USD' => '$',
+        'EUR' => '€',
+        'GBP' => '£',
+        'JPY' => '¥',
+        'AFN' => '؋',
+        'AED' => 'د.إ',
+        'INR' => '₹',
+        'PKR' => '₨',
     ];
     return $symbols[$currencyCode] ?? $currencyCode;
 }

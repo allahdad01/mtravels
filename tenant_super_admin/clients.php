@@ -240,7 +240,9 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
             </div>
             <div class="stat-card">
                 <div class="stat-label" style="margin-bottom:6px;">Positive AFS</div>
-                <div class="stat-value med afs-pos">Ø‹<?= number_format($summary['positive_afs_balance'] ?? 0, 2) ?></div>
+                <div class="stat-value med afs-pos">
+    ؋<?= number_format($summary['positive_afs_balance'] ?? 0, 2) ?>
+</div>
                 <div class="stat-label">Credit Balances</div>
             </div>
             <div class="stat-card">
@@ -340,7 +342,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                                 <div class="bal-label"><?= $usd >= 0 ? 'Credit' : 'Debit' ?></div>
                             </td>
                             <td>
-                                <div class="bal-amount <?= $afsCls ?>">Ø‹<?= number_format($afs, 2) ?></div>
+                                <div class="bal-amount <?= $afsCls ?>">؋‹<?= number_format($afs, 2) ?></div>
                                 <div class="bal-label"><?= $afs >= 0 ? 'Credit' : 'Debit' ?></div>
                             </td>
                             <td>
@@ -505,7 +507,7 @@ document.querySelectorAll('.view-details').forEach(btn => {
         document.getElementById('modal-usd-dir').textContent = usd >= 0 ? 'Credit balance' : 'Debit balance';
 
         const aBalEl = document.getElementById('modal-afs-bal');
-        aBalEl.textContent = 'Ø‹' + afs.toFixed(2);
+        aBalEl.textContent = '؋‹' + afs.toFixed(2);
         aBalEl.className = 'ms-val ' + (afs >= 0 ? 'afs-p' : 'afs-n');
         document.getElementById('modal-afs-dir').textContent = afs >= 0 ? 'Credit balance' : 'Debit balance';
 

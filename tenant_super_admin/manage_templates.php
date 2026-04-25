@@ -110,10 +110,10 @@ textarea.tmpl-input.short{min-height:90px}
     <!-- Language tabs -->
     <div class="lang-tabs">
         <button class="lang-tab active" id="tab-pashto" onclick="switchTab('ps', this)">
-            <i class="feather icon-file-text"></i>Pashto <span class="lang-badge">(Ù¾Ø´ØªÙˆ)</span>
+            <i class="feather icon-file-text"></i>Pashto <span class="lang-badge">(پشتو)</span>
         </button>
         <button class="lang-tab" id="tab-dari" onclick="switchTab('dari', this)">
-            <i class="feather icon-file-text"></i>Dari <span class="lang-badge">(Ø¯Ø±ÛŒ)</span>
+            <i class="feather icon-file-text"></i>Dari <span class="lang-badge">(دری)</span>
         </button>
     </div>
 
@@ -140,13 +140,16 @@ textarea.tmpl-input.short{min-height:90px}
                     <div class="section-desc">Appears at the top of the document (main title and subtitle)</div>
 
                     <div style="margin-bottom:12px;">
-                        <label class="field-label">Header Title</label>
-                        <input type="text" id="pashto-header" class="tmpl-input" placeholder="Ø¯ {{agency_name}} - {{branch_name}} Ø³ÛŒØ§Ø­ØªÛŒ Ø§Ùˆ ØªÙˆØ±ÛŒØ³ØªÛŒ Ø´Ø±Ú©Øª Ø³Ø±Ù‡ Ø¯ Ù…Ø­ØªØ±Ù… {{guarantor_name}} Ø¶Ù…Ø§Ù†Øª Ù„ÛŒÚ©">
-                    </div>
-                    <div>
-                        <label class="field-label">Subtitle</label>
-                        <input type="text" id="pashto-subtitle" class="tmpl-input" placeholder="Ø¯ Ù…Ø¹ØªÙ…Ø±ÛŒÙ†Ùˆ Ø¯ Ù„ÛŒÚ–Ø¯ Ù¾Ù‡ Ø§Ú“Ù‡ Ù„Ø§Ù†Ø¯ÛŒ Ù…Ø³Ø¤Ù„ÛŒØªÙˆÙ†Ùˆ ØªÙ‡ Ù¾Ø§Ù…Ù„Ø±Ù†Ù‡">
-                    </div>
+    <label class="field-label">Header Title</label>
+    <input type="text" id="pashto-header" class="tmpl-input"
+        placeholder="د {{agency_name}} - {{branch_name}} سیاحتی او توریستی شرکت سره د محترم {{guarantor_name}} ضمانت لیک">
+</div>
+
+<div>
+    <label class="field-label">Subtitle</label>
+    <input type="text" id="pashto-subtitle" class="tmpl-input"
+        placeholder="د معتمریـنو د لیږد په اړه لاندې مسوولیتونو ته پام لرنه">
+</div>
                 </div>
 
                 <hr class="section-divider">
@@ -168,7 +171,8 @@ textarea.tmpl-input.short{min-height:90px}
 
                     <div style="margin-bottom:12px;">
                         <label class="field-label">Guarantor Section Title</label>
-                        <input type="text" id="pashto-guarantor-title" class="tmpl-input" placeholder="Ø¯ Ø¶Ù…Ø§Ù†Øª Ú©ÙˆÙˆÙ†Ú©ÛŒ Ú˜Ù…Ù†Ù‡">
+                        <input type="text" id="pashto-guarantor-title" class="tmpl-input"
+placeholder="د ضمانت کوونکي عنوان">
                     </div>
                     <div>
                         <label class="field-label">Guarantor Commitment Text</label>
@@ -208,13 +212,16 @@ textarea.tmpl-input.short{min-height:90px}
                     <div class="section-desc">Appears at the top of the document (main title and subtitle)</div>
 
                     <div style="margin-bottom:12px;">
-                        <label class="field-label">Header Title</label>
-                        <input type="text" id="dari-header" class="tmpl-input" placeholder="ØªÙˆØ§ÙÙ‚Ù†Ø§Ù…Ù‡ Ø¶Ù…Ø§Ù†Øª Ø¨Ø§ Ø´Ø±Ú©Øª Ø³ÛŒØ§Ø­ØªÛŒ Ùˆ Ú¯Ø±Ø¯Ø´Ú¯Ø±ÛŒ {{agency_name}} - {{branch_name}}">
-                    </div>
-                    <div>
-                        <label class="field-label">Subtitle</label>
-                        <input type="text" id="dari-subtitle" class="tmpl-input" placeholder="ØªÙˆØ¬Ù‡ Ø¨Ù‡ Ù…Ø³Ø¦ÙˆÙ„ÛŒØ§Øª Ø²ÛŒØ± Ø¯Ø± Ù…ÙˆØ±Ø¯ Ø§Ù†ØªÙ‚Ø§Ù„ Ù…Ø¹ØªÙ…Ø±ÛŒÙ†">
-                    </div>
+    <label class="field-label">Header Title</label>
+    <input type="text" id="dari-header" class="tmpl-input"
+        placeholder="توافقنامه ضمانت با شرکت سیاحتی و گردشگری {{agency_name}} - {{branch_name}}">
+</div>
+
+<div>
+    <label class="field-label">Subtitle</label>
+    <input type="text" id="dari-subtitle" class="tmpl-input"
+        placeholder="توجه به مسئولیت‌های زیر در مورد انتقال معتمرین">
+</div>
                 </div>
 
                 <hr class="section-divider">
@@ -236,7 +243,8 @@ textarea.tmpl-input.short{min-height:90px}
 
                     <div style="margin-bottom:12px;">
                         <label class="field-label">Guarantor Section Title</label>
-                        <input type="text" id="dari-guarantor-title" class="tmpl-input" placeholder="ØªØ¹Ù‡Ø¯ Ø¶Ø§Ù…Ù†">
+                        <input type="text" id="dari-guarantor-title" class="tmpl-input"
+placeholder="تعهد ضامن">
                     </div>
                     <div>
                         <label class="field-label">Guarantor Commitment Text</label>
