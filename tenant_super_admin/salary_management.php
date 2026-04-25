@@ -47,8 +47,15 @@ $cs = $pdo->prepare($cq); $cs->execute($cp);
 $total_salaries = $cs->fetch(PDO::FETCH_ASSOC)['total'];
 $total_pages    = max(1, ceil($total_salaries / $results_per_page));
 
-$sq = "SELECT COUNT(*) as total_employees, SUM(sm.base_salary) as total_salary_budget,
-    AVG(sm.base_salary) as avg_salary,
+$sq = "SELECT COUNT(*) as total_employees,
+    SUM(CASE WHEN sm.currency='USD' THEN sm.base_salary ELSE 0 END) as total_usd_budget,
+    SUM(CASE WHEN sm.currency='AFS' THEN sm.base_salary ELSE 0 END) as total_afs_budget,
+    SUM(CASE WHEN sm.currency='EUR' THEN sm.base_salary ELSE 0 END) as total_eur_budget,
+    SUM(CASE WHEN sm.currency='DARHAM' THEN sm.base_salary ELSE 0 END) as total_darham_budget,
+    AVG(CASE WHEN sm.currency='USD' THEN sm.base_salary END) as avg_usd_salary,
+    AVG(CASE WHEN sm.currency='AFS' THEN sm.base_salary END) as avg_afs_salary,
+    AVG(CASE WHEN sm.currency='EUR' THEN sm.base_salary END) as avg_eur_salary,
+    AVG(CASE WHEN sm.currency='DARHAM' THEN sm.base_salary END) as avg_darham_salary,
     COUNT(CASE WHEN sm.status='active' THEN 1 END) as active_employees
 FROM salary_management sm LEFT JOIN users u ON sm.user_id = u.id WHERE sm.tenant_id = ?";
 $sp2 = [$tenant_id];
@@ -62,6 +69,16 @@ $branches = $bs->fetchAll(PDO::FETCH_ASSOC);
 
 $from = min(($page - 1) * $results_per_page + 1, $total_salaries);
 $to   = min($page * $results_per_page, $total_salaries);
+
+function currency_symbol($currency) {
+    $symbols = [
+        'USD'    => '$',
+        'AFS'    => '؋',
+        'EUR'    => '€',
+        'DARHAM' => 'د.إ',
+    ];
+    return $symbols[strtoupper($currency ?? '')] ?? '';
+}
 ?>
 
 <style>
@@ -71,7 +88,7 @@ $to   = min($page * $results_per_page, $total_salaries);
     --surface:#f4f7fe; --card-bg:#ffffff; --border:#e8edf5;
     --text-main:#1a2340; --text-sub:#6b7a99;
     --green:#22c55e; --red:#ef4444;
-    /* Salary identity: indigo â†’ violet */
+    /* Salary identity: indigo → violet */
     --c1:#4f46e5; --c2:#7c3aed;
     --radius:14px; --shadow:0 2px 12px rgba(79,70,229,0.08);
 }
@@ -84,9 +101,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 .dash-header p{color:rgba(255,255,255,0.8);margin:0;font-size:13px;position:relative}
 
 /* Stat grid */
-.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
-@media(max-width:900px){.stat-grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:500px){.stat-grid{grid-template-columns:1fr}}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px}
 .stat-card{border-radius:var(--radius);padding:20px 22px;color:#fff;position:relative;overflow:hidden}
 .stat-card::after{content:'';position:absolute;right:-10px;bottom:-10px;width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,0.1)}
 .stat-card.total  {background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);box-shadow:0 6px 20px rgba(79,70,229,0.3)}
@@ -243,13 +258,23 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
             <i class="feather icon-user-check stat-icon"></i>
         </div>
         <div class="stat-card budget">
-            <div class="stat-label">Salary Budget</div>
-            <div class="stat-value">$<?= number_format($summary['total_salary_budget'] ?? 0, 2) ?></div>
+            <div class="stat-label">USD Budget</div>
+            <div class="stat-value">$<?= number_format($summary['total_usd_budget'] ?? 0, 2) ?></div>
             <i class="feather icon-dollar-sign stat-icon"></i>
         </div>
+        <div class="stat-card budget">
+            <div class="stat-label">AFS Budget</div>
+            <div class="stat-value">؋<?= number_format($summary['total_afs_budget'] ?? 0, 2) ?></div>
+            <i class="feather icon-layers stat-icon"></i>
+        </div>
         <div class="stat-card avg">
-            <div class="stat-label">Average Salary</div>
-            <div class="stat-value">$<?= number_format($summary['avg_salary'] ?? 0, 2) ?></div>
+            <div class="stat-label">USD Avg Salary</div>
+            <div class="stat-value">$<?= number_format($summary['avg_usd_salary'] ?? 0, 2) ?></div>
+            <i class="feather icon-trending-up stat-icon"></i>
+        </div>
+        <div class="stat-card avg">
+            <div class="stat-label">AFS Avg Salary</div>
+            <div class="stat-value">؋<?= number_format($summary['avg_afs_salary'] ?? 0, 2) ?></div>
             <i class="feather icon-trending-up stat-icon"></i>
         </div>
     </div>
@@ -336,8 +361,8 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                         <?php endif; ?>
                     </td>
                     <td>
-                        <div class="sal-amount">$<?= number_format($sal['base_salary'], 2) ?></div>
-                        <div class="sal-day"><i class="feather icon-calendar"></i>Day <?= $sal['payment_day'] ?> Â· <?= htmlspecialchars($sal['currency']) ?></div>
+                        <div class="sal-amount"><?= currency_symbol($sal['currency']) ?><?= number_format($sal['base_salary'], 2) ?></div>
+                        <div class="sal-day"><i class="feather icon-calendar"></i>Day <?= $sal['payment_day'] ?> · <?= htmlspecialchars($sal['currency']) ?></div>
                     </td>
                     <td>
                         <span class="branch-pill"><i class="feather icon-git-branch"></i><?= htmlspecialchars($sal['branch_name'] ?? 'N/A') ?></span>
@@ -348,7 +373,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     </td>
                     <td>
                         <div class="pay-count"><i class="feather icon-credit-card" style="color:var(--text-sub);font-size:12px;"></i><?= number_format($sal['payment_count']) ?> payments</div>
-                        <div class="pay-total">Total: $<?= number_format($sal['total_paid'], 2) ?></div>
+                        <div class="pay-total">Total: <?= currency_symbol($sal['currency']) ?><?= number_format($sal['total_paid'], 2) ?></div>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -493,13 +518,19 @@ function switchTab(tab, btn) {
     btn.classList.add('active');
 }
 
+function getCurrencySymbol(currency) {
+    const symbols = { 'USD': '$', 'AFS': '؋', 'EUR': '€', 'DARHAM': 'د.إ' };
+    return symbols[(currency || '').toUpperCase()] || '';
+}
+
 document.querySelectorAll('.view-details').forEach(btn => {
     btn.addEventListener('click', function() {
         const s = JSON.parse(this.getAttribute('data-salary'));
 
-        document.getElementById('modal-base-salary').textContent  = '$' + parseFloat(s.base_salary || 0).toFixed(2);
+        const sym = getCurrencySymbol(s.currency);
+        document.getElementById('modal-base-salary').textContent  = sym + parseFloat(s.base_salary || 0).toFixed(2);
         document.getElementById('modal-salary-currency').textContent = s.currency || '— ';
-        document.getElementById('modal-total-paid').textContent   = '$' + parseFloat(s.total_paid || 0).toFixed(2);
+        document.getElementById('modal-total-paid').textContent   = sym + parseFloat(s.total_paid || 0).toFixed(2);
         document.getElementById('modal-payment-count').textContent = s.payment_count + ' payments made';
 
         document.getElementById('emp-name').textContent   = s.employee_name  || '— ';
@@ -507,7 +538,7 @@ document.querySelectorAll('.view-details').forEach(btn => {
         document.getElementById('emp-phone').textContent  = s.employee_phone || 'N/A';
         document.getElementById('emp-branch').textContent = s.branch_name    || 'N/A';
 
-        document.getElementById('sal-amount').textContent   = '$' + parseFloat(s.base_salary || 0).toFixed(2);
+        document.getElementById('sal-amount').textContent   = sym + parseFloat(s.base_salary || 0).toFixed(2);
         document.getElementById('sal-currency').textContent = s.currency || '— ';
         document.getElementById('sal-pay-day').textContent  = 'Day ' + s.payment_day;
         document.getElementById('sal-status').textContent   = (s.status||'').charAt(0).toUpperCase() + (s.status||'').slice(1);
@@ -515,7 +546,7 @@ document.querySelectorAll('.view-details').forEach(btn => {
         document.getElementById('emp-hire-date').textContent  = s.hire_date ? new Date(s.hire_date).toLocaleDateString() : 'N/A';
         document.getElementById('emp-status').textContent     = (s.status||'').charAt(0).toUpperCase() + (s.status||'').slice(1);
         document.getElementById('emp-pay-count').textContent  = s.payment_count + ' payments';
-        document.getElementById('emp-total-paid').textContent = '$' + parseFloat(s.total_paid || 0).toFixed(2);
+        document.getElementById('emp-total-paid').textContent = sym + parseFloat(s.total_paid || 0).toFixed(2);
 
         switchTab('summary', document.querySelector('.modal-tab'));
         $('#detailsModal').modal('show');

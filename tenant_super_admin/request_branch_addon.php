@@ -430,7 +430,7 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
                                 <td class="td-money"><?= number_format($payment['amount'], 2) ?> <?= htmlspecialchars($payment['currency']) ?></td>
                                 <td class="td-period">
                                     <?= date('M d, Y', strtotime($payment['period_start'])) ?>
-                                    <span style="color:var(--border);margin:0 4px;">â†’</span>
+                                    <span style="color:var(--border);margin:0 4px;">→</span>
                                     <?= date('M d, Y', strtotime($payment['period_end'])) ?>
                                 </td>
                                 <td><span class="status-pill <?= $sp ?>"><?= ucfirst($payment['status']) ?></span></td>

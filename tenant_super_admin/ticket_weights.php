@@ -65,7 +65,7 @@ $to   = min($page * $results_per_page, $total_weights);
 *,*::before,*::after{box-sizing:border-box}
 body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important;background:var(--surface)!important;color:var(--text-main)!important}
 
-/* Header —  sky blue â†’ indigo for weights/luggage */
+/* Header —  sky blue → indigo for weights/luggage */
 .dash-header{background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);border-radius:var(--radius);padding:24px 28px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 8px 32px rgba(14,165,233,0.22);position:relative;overflow:hidden}
 .dash-header::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat}
 .dash-header h4{font-size:22px;font-weight:800;color:#fff;margin:0 0 4px;letter-spacing:-0.4px;position:relative}
@@ -186,7 +186,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 <div class="pcoded-main-container">
 <div class="pcoded-content">
 
-    <!-- Header —  sky blue â†’ indigo for luggage/weight context -->
+    <!-- Header —  sky blue → indigo for luggage/weight context -->
     <div class="dash-header">
         <div>
             <h4><i class="feather icon-package" style="margin-right:8px;"></i>Ticket Weights</h4>
@@ -431,7 +431,7 @@ document.querySelectorAll('.view-details').forEach(btn => {
         document.getElementById('passenger-name').textContent = (w.title||'') + ' ' + (w.passenger_name||'');
         document.getElementById('pnr').textContent            = w.pnr || '— ';
         document.getElementById('airline').textContent        = w.airline || 'N/A';
-        document.getElementById('route').textContent          = (w.origin||'') + ' â†’ ' + (w.destination||'');
+        document.getElementById('route').textContent          = (w.origin||'') + ' → ' + (w.destination||'');
         document.getElementById('branch-name').textContent    = w.branch_name || 'No Branch';
         document.getElementById('created-by').textContent     = w.created_by_name || 'N/A';
 

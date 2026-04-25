@@ -19,7 +19,7 @@ if (!$creditor_id) {
 }
 
 // Verify creditor belongs to this tenant
-$creditor_check = $pdo->prepare("SELECT c.id, c.name FROM creditors c WHERE c.id = ? AND c.tenant_id = ?");
+$creditor_check = $pdo->prepare("SELECT c.id, c.name, c.currency FROM creditors c WHERE c.id = ? AND c.tenant_id = ?");
 $creditor_check->execute([$creditor_id, $tenant_id]);
 $creditor = $creditor_check->fetch(PDO::FETCH_ASSOC);
 
@@ -27,6 +27,18 @@ if (!$creditor) {
     echo '<div class="alert alert-danger">Creditor not found</div>';
     exit();
 }
+
+function currency_symbol($currency) {
+    $symbols = [
+        'USD'    => '$',
+        'AFS'    => '؋',
+        'EUR'    => '€',
+        'DARHAM' => 'د.إ',
+    ];
+    return $symbols[strtoupper($currency ?? '')] ?? '';
+}
+
+$sym = currency_symbol($creditor['currency']);
 
 // Get transactions for this creditor
 $query = "SELECT ct.*
@@ -169,7 +181,7 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
             <span class="label">Credit Transactions</span>
         </div>
         <div class="summary-item">
-            <span class="value">$<?= number_format(($summary['total_debits'] ?? 0) - ($summary['total_credits'] ?? 0), 2) ?></span>
+            <span class="value"><?= $sym ?><?= number_format(($summary['total_debits'] ?? 0) - ($summary['total_credits'] ?? 0), 2) ?></span>
             <span class="label">Current Balance</span>
         </div>
     </div>
@@ -211,10 +223,10 @@ $summary = $summary_stmt->fetch(PDO::FETCH_ASSOC);
 
                     <div class="transaction-amounts text-right">
                         <div class="transaction-amount <?= $transaction['transaction_type'] ?>">
-                            <?= $transaction['transaction_type'] === 'debit' ? '+' : '-' ?>$<?= number_format($transaction['amount'], 2) ?>
+                            <?= $transaction['transaction_type'] === 'debit' ? '+' : '-' ?><?= $sym ?><?= number_format($transaction['amount'], 2) ?>
                         </div>
                         <div class="transaction-balance text-muted">
-                            Balance: $<?= number_format($transaction['running_balance'], 2) ?>
+                            Balance: <?= $sym ?><?= number_format($transaction['running_balance'], 2) ?>
                         </div>
                     </div>
                 </div>

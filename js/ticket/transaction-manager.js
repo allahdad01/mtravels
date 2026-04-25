@@ -208,7 +208,8 @@ const transactionManager = {
             payment_time: $('#paymentTime').val(),
             payment_amount: $('#paymentAmount').val(),
             payment_currency: $('#paymentCurrency').val(),
-            payment_description: $('#paymentDescription').val()
+            payment_description: $('#paymentDescription').val(),
+            receipt_number: $('#receiptNumber').val().trim()
         };
 
         // Add exchange rate if field is visible
@@ -238,6 +239,7 @@ const transactionManager = {
             payment_amount: formData.payment_amount,
             payment_currency: formData.payment_currency,
             payment_description: formData.payment_description,
+            receipt_number: formData.receipt_number,
             csrf_token: $('input[name="csrf_token"]').val()
         };
 
@@ -260,7 +262,7 @@ const transactionManager = {
                  if (response.success) {
                      $('#addTransactionForm').collapse('hide');
                      self.loadTransactionHistory(formData.booking_id);
-                     showToast('Transaction added successfully', 'success');
+                     showToast(response.message || 'Ticket transaction added successfully', 'success');
                      $('#hotelTransactionForm')[0].reset();
                      self.setDefaultDateTime();
                      $('#exchangeRateField').hide();

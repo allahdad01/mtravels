@@ -68,6 +68,16 @@ $payment_type_colors = [
     'advance' => 'warning',
     'other'   => 'secondary'
 ];
+
+function currency_symbol($currency) {
+    $symbols = [
+        'USD'    => '$',
+        'AFS'    => '؋',
+        'EUR'    => '€',
+        'DARHAM' => 'د.إ',
+    ];
+    return $symbols[strtoupper($currency ?? '')] ?? '';
+}
 ?>
 
 <style>
@@ -282,7 +292,7 @@ $payment_type_colors = [
                             <?= ucfirst($p['payment_type']) ?>
                         </span>
                     </td>
-                    <td class="pay-amount">$<?= number_format($p['amount'], 2) ?></td>
+                    <td class="pay-amount"><?= currency_symbol($p['currency']) ?><?= number_format($p['amount'], 2) ?></td>
                     <td><?= htmlspecialchars($p['currency']) ?></td>
                     <td><?= htmlspecialchars($p['account_name'] ?? 'N/A') ?></td>
                     <td><?= htmlspecialchars($p['description'] ?: '-') ?></td>

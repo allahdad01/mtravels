@@ -60,14 +60,14 @@ $to   = min($page * $results_per_page, $total_clients);
     --surface:#f4f7fe; --card-bg:#ffffff; --border:#e8edf5;
     --text-main:#1a2340; --text-sub:#6b7a99;
     --green:#22c55e; --red:#ef4444; --blue:#4099ff; --teal:#2ed8b6;
-    /* Client identity: green â†’ teal (preserving the original .bg-success green) */
+    /* Client identity: green → teal (preserving the original .bg-success green) */
     --c1:#059669; --c2:#0d9488;
     --radius:14px; --shadow:0 2px 12px rgba(64,153,255,0.08);
 }
 *,*::before,*::after{box-sizing:border-box}
 body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important;background:var(--surface)!important;color:var(--text-main)!important}
 
-/* Header —  emerald â†’ teal (client green identity) */
+/* Header —  emerald → teal (client green identity) */
 .dash-header{background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);border-radius:var(--radius);padding:24px 28px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 8px 32px rgba(5,150,105,0.25);position:relative;overflow:hidden}
 .dash-header::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.06'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat}
 .dash-header h4{font-size:22px;font-weight:800;color:#fff;margin:0 0 4px;letter-spacing:-0.4px;position:relative}

@@ -49,8 +49,10 @@ $total_pages   = max(1, ceil($total_debtors / $results_per_page));
 $sq = "SELECT COUNT(*) as total_debtors,
     COUNT(CASE WHEN status='active' THEN 1 END) as active_debtors,
     COUNT(CASE WHEN status='paid'   THEN 1 END) as paid_debtors,
-    SUM(balance) as total_outstanding,
-    AVG(balance) as avg_debt_amount
+    SUM(CASE WHEN currency='USD' THEN balance ELSE 0 END) as total_usd_outstanding,
+    SUM(CASE WHEN currency='AFS' THEN balance ELSE 0 END) as total_afs_outstanding,
+    AVG(CASE WHEN currency='USD' THEN balance END) as avg_usd_debt,
+    AVG(CASE WHEN currency='AFS' THEN balance END) as avg_afs_debt
 FROM debtors WHERE tenant_id = ?";
 $sp2 = [$tenant_id];
 if ($selected_branch !== 'all') { $sq .= " AND branch_id = ?"; $sp2[] = $selected_branch; }
@@ -63,6 +65,16 @@ $branches = $bs->fetchAll(PDO::FETCH_ASSOC);
 
 $from = min(($page - 1) * $results_per_page + 1, $total_debtors);
 $to   = min($page * $results_per_page, $total_debtors);
+
+function currency_symbol($currency) {
+    $symbols = [
+        'USD'    => '$',
+        'AFS'    => '؋',
+        'EUR'    => '€',
+        'DARHAM' => 'د.إ',
+    ];
+    return $symbols[strtoupper($currency ?? '')] ?? '';
+}
 ?>
 
 <style>
@@ -72,7 +84,7 @@ $to   = min($page * $results_per_page, $total_debtors);
     --surface:#f4f7fe; --card-bg:#ffffff; --border:#e8edf5;
     --text-main:#1a2340; --text-sub:#6b7a99;
     --green:#22c55e; --red:#ef4444;
-    /* Debtors identity: orange â†’ red (debt/receivables) */
+    /* Debtors identity: orange → red (debt/receivables) */
     --c1:#ea580c; --c2:#dc2626;
     --radius:14px; --shadow:0 2px 12px rgba(234,88,12,0.08);
 }
@@ -85,9 +97,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 .dash-header p{color:rgba(255,255,255,0.8);margin:0;font-size:13px;position:relative}
 
 /* Stat grid */
-.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
-@media(max-width:900px){.stat-grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:500px){.stat-grid{grid-template-columns:1fr}}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px}
 .stat-card{border-radius:var(--radius);padding:20px 22px;color:#fff;position:relative;overflow:hidden}
 .stat-card::after{content:'';position:absolute;right:-10px;bottom:-10px;width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,0.1)}
 .stat-card.total  {background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);box-shadow:0 6px 20px rgba(234,88,12,0.3)}
@@ -246,13 +256,23 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
             <i class="feather icon-user-check stat-icon"></i>
         </div>
         <div class="stat-card owed">
-            <div class="stat-label">Total Outstanding</div>
-            <div class="stat-value">$<?= number_format($summary['total_outstanding'] ?? 0, 0) ?></div>
+            <div class="stat-label">USD Outstanding</div>
+            <div class="stat-value">$<?= number_format($summary['total_usd_outstanding'] ?? 0, 0) ?></div>
             <i class="feather icon-alert-circle stat-icon"></i>
         </div>
+        <div class="stat-card owed">
+            <div class="stat-label">AFS Outstanding</div>
+            <div class="stat-value">؋<?= number_format($summary['total_afs_outstanding'] ?? 0, 0) ?></div>
+            <i class="feather icon-layers stat-icon"></i>
+        </div>
         <div class="stat-card avg">
-            <div class="stat-label">Average Debt</div>
-            <div class="stat-value">$<?= number_format($summary['avg_debt_amount'] ?? 0, 0) ?></div>
+            <div class="stat-label">USD Avg Debt</div>
+            <div class="stat-value">$<?= number_format($summary['avg_usd_debt'] ?? 0, 0) ?></div>
+            <i class="feather icon-trending-up stat-icon"></i>
+        </div>
+        <div class="stat-card avg">
+            <div class="stat-label">AFS Avg Debt</div>
+            <div class="stat-value">؋<?= number_format($summary['avg_afs_debt'] ?? 0, 0) ?></div>
             <i class="feather icon-trending-up stat-icon"></i>
         </div>
     </div>
@@ -346,7 +366,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                         <?php endif; ?>
                     </td>
                     <td>
-                        <div class="bal-val <?= $balCls ?>">$<?= number_format(abs($bal), 2) ?></div>
+                        <div class="bal-val <?= $balCls ?>"><?= currency_symbol($deb['currency']) ?><?= number_format(abs($bal), 2) ?></div>
                         <div class="bal-dir <?= $balCls ?>"><?= $balDir ?></div>
                         <div class="txn-count"><i class="feather icon-activity"></i><?= number_format($deb['transaction_count']) ?> txns</div>
                     </td>
@@ -491,6 +511,11 @@ document.getElementById('branchSelect').addEventListener('change', doSearch);
 document.getElementById('searchBtn').addEventListener('click', doSearch);
 document.getElementById('searchInput').addEventListener('keypress', e => { if(e.key==='Enter') doSearch(); });
 
+function getCurrencySymbol(currency) {
+    const symbols = { 'USD': '$', 'AFS': '؋', 'EUR': '€', 'DARHAM': 'د.إ' };
+    return symbols[(currency || '').toUpperCase()] || '';
+}
+
 function doSearch() {
     const s = document.getElementById('searchInput').value.trim();
     const b = document.getElementById('branchSelect').value;
@@ -509,7 +534,8 @@ document.querySelectorAll('.view-details').forEach(btn => {
         const d   = JSON.parse(this.getAttribute('data-debtor'));
         const bal = parseFloat(d.current_balance || 0);
         const pos = bal >= 0;
-        const balFmt = '$' + Math.abs(bal).toFixed(2);
+        const sym = getCurrencySymbol(d.currency);
+        const balFmt = sym + Math.abs(bal).toFixed(2);
 
         const mBal = document.getElementById('modal-balance');
         mBal.textContent = balFmt;
@@ -523,7 +549,7 @@ document.querySelectorAll('.view-details').forEach(btn => {
         document.getElementById('deb-branch').textContent  = d.branch_name || 'N/A';
         document.getElementById('deb-account').textContent = d.main_account_name || 'N/A';
 
-        document.getElementById('deb-orig-bal').textContent = '$' + parseFloat(d.balance||0).toFixed(2);
+        document.getElementById('deb-orig-bal').textContent = sym + parseFloat(d.balance||0).toFixed(2);
         const curEl = document.getElementById('deb-cur-bal');
         curEl.textContent  = balFmt;
         curEl.className    = 'ds-val ' + (pos ? 'pos' : 'neg');

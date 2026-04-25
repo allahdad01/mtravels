@@ -268,7 +268,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     <td class="td-r">
                         <div class="amt-main"><?= htmlspecialchars($t['currency']) ?> <?= number_format($t['sold'], 2) ?></div>
                         <?php if ($t['refund_amount'] > 0): ?>
-                        <div class="amt-refund">â†© Refund: <?= htmlspecialchars($t['currency']) ?> <?= number_format($t['refund_amount'], 2) ?></div>
+                        <div class="amt-refund">↩ Refund: <?= htmlspecialchars($t['currency']) ?> <?= number_format($t['refund_amount'], 2) ?></div>
                         <?php endif; ?>
                     </td>
                 </tr>

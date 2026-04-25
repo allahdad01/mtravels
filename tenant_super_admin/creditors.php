@@ -47,8 +47,10 @@ $total_pages     = max(1, ceil($total_creditors / $results_per_page));
 $sq = "SELECT COUNT(*) as total_creditors,
     COUNT(CASE WHEN status='active'   THEN 1 END) as active_creditors,
     COUNT(CASE WHEN status='inactive' THEN 1 END) as inactive_creditors,
-    SUM(balance) as total_outstanding,
-    AVG(balance) as avg_credit_amount
+    SUM(CASE WHEN currency='USD' THEN balance ELSE 0 END) as total_usd_outstanding,
+    SUM(CASE WHEN currency='AFS' THEN balance ELSE 0 END) as total_afs_outstanding,
+    AVG(CASE WHEN currency='USD' THEN balance END) as avg_usd_credit,
+    AVG(CASE WHEN currency='AFS' THEN balance END) as avg_afs_credit
 FROM creditors WHERE tenant_id = ?";
 $sp2 = [$tenant_id];
 if ($selected_branch !== 'all') { $sq .= " AND branch_id = ?"; $sp2[] = $selected_branch; }
@@ -61,6 +63,16 @@ $branches = $bs->fetchAll(PDO::FETCH_ASSOC);
 
 $from = min(($page - 1) * $results_per_page + 1, $total_creditors);
 $to   = min($page * $results_per_page, $total_creditors);
+
+function currency_symbol($currency) {
+    $symbols = [
+        'USD'    => '$',
+        'AFS'    => '؋',
+        'EUR'    => '€',
+        'DARHAM' => 'د.إ',
+    ];
+    return $symbols[strtoupper($currency ?? '')] ?? '';
+}
 ?>
 
 <style>
@@ -70,7 +82,7 @@ $to   = min($page * $results_per_page, $total_creditors);
     --surface:#f4f7fe; --card-bg:#ffffff; --border:#e8edf5;
     --text-main:#1a2340; --text-sub:#6b7a99;
     --green:#22c55e; --red:#ef4444;
-    /* Creditors identity: purple â†’ indigo (liabilities) */
+    /* Creditors identity: purple → indigo (liabilities) */
     --c1:#7c3aed; --c2:#4f46e5;
     --radius:14px; --shadow:0 2px 12px rgba(124,58,237,0.08);
 }
@@ -83,7 +95,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 .dash-header p{color:rgba(255,255,255,0.8);margin:0;font-size:13px;position:relative}
 
 /* Stat grid */
-.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px}
 @media(max-width:900px){.stat-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:500px){.stat-grid{grid-template-columns:1fr}}
 .stat-card{border-radius:var(--radius);padding:20px 22px;color:#fff;position:relative;overflow:hidden}
@@ -244,13 +256,23 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
             <i class="feather icon-user-check stat-icon"></i>
         </div>
         <div class="stat-card owed">
-            <div class="stat-label">Total Outstanding</div>
-            <div class="stat-value">$<?= number_format($summary['total_outstanding'] ?? 0, 0) ?></div>
+            <div class="stat-label">USD Outstanding</div>
+            <div class="stat-value">$<?= number_format($summary['total_usd_outstanding'] ?? 0, 0) ?></div>
             <i class="feather icon-credit-card stat-icon"></i>
         </div>
+        <div class="stat-card owed">
+            <div class="stat-label">AFS Outstanding</div>
+            <div class="stat-value">؋<?= number_format($summary['total_afs_outstanding'] ?? 0, 0) ?></div>
+            <i class="feather icon-layers stat-icon"></i>
+        </div>
         <div class="stat-card avg">
-            <div class="stat-label">Average Credit</div>
-            <div class="stat-value">$<?= number_format($summary['avg_credit_amount'] ?? 0, 0) ?></div>
+            <div class="stat-label">USD Avg Credit</div>
+            <div class="stat-value">$<?= number_format($summary['avg_usd_credit'] ?? 0, 0) ?></div>
+            <i class="feather icon-trending-up stat-icon"></i>
+        </div>
+        <div class="stat-card avg">
+            <div class="stat-label">AFS Avg Credit</div>
+            <div class="stat-value">؋<?= number_format($summary['avg_afs_credit'] ?? 0, 0) ?></div>
             <i class="feather icon-trending-up stat-icon"></i>
         </div>
     </div>
@@ -342,7 +364,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                         <?php endif; ?>
                     </td>
                     <td>
-                        <div class="bal-val <?= $balCls ?>">$<?= number_format(abs($bal), 2) ?></div>
+                        <div class="bal-val <?= $balCls ?>"><?= currency_symbol($cred['currency']) ?><?= number_format(abs($bal), 2) ?></div>
                         <div class="bal-dir <?= $balCls ?>"><?= $balDir ?></div>
                         <div class="txn-count"><i class="feather icon-activity"></i><?= number_format($cred['transaction_count']) ?> txns</div>
                     </td>
@@ -492,6 +514,11 @@ function doSearch() {
     window.location.href = '?branch=' + encodeURIComponent(b) + (s ? '&search=' + encodeURIComponent(s) : '');
 }
 
+function getCurrencySymbol(currency) {
+    const symbols = { 'USD': '$', 'AFS': '؋', 'EUR': '€', 'DARHAM': 'د.إ' };
+    return symbols[(currency || '').toUpperCase()] || '';
+}
+
 function switchTab(tab, btn) {
     document.querySelectorAll('.modal-pane').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.modal-tab').forEach(b => b.classList.remove('active'));
@@ -504,7 +531,8 @@ document.querySelectorAll('.view-details').forEach(btn => {
         const c   = JSON.parse(this.getAttribute('data-creditor'));
         const bal = parseFloat(c.current_balance || 0);
         const weOwe = bal >= 0;
-        const balFmt = '$' + Math.abs(bal).toFixed(2);
+        const sym = getCurrencySymbol(c.currency);
+        const balFmt = sym + Math.abs(bal).toFixed(2);
         const balDir = weOwe ? 'We owe' : 'Owed to us';
 
         const mBal = document.getElementById('modal-balance');
@@ -518,7 +546,7 @@ document.querySelectorAll('.view-details').forEach(btn => {
         document.getElementById('cred-status').textContent = (c.status||'').charAt(0).toUpperCase() + (c.status||'').slice(1);
         document.getElementById('cred-branch').textContent = c.branch_name || 'N/A';
 
-        document.getElementById('cred-orig-bal').textContent = '$' + parseFloat(c.balance||0).toFixed(2);
+        document.getElementById('cred-orig-bal').textContent = sym + parseFloat(c.balance||0).toFixed(2);
         const curEl = document.getElementById('cred-cur-bal');
         curEl.textContent = balFmt;
         curEl.className   = 'ds-val ' + (weOwe ? 'owe' : 'due');

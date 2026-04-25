@@ -350,7 +350,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                         <div class="txn-count"><?= number_format($acc['transaction_count']) ?> txns</div>
                         <div class="txn-flows">
                             <span class="txn-cr">â†‘ $<?= number_format($credits, 0) ?></span>
-                            <span class="txn-dr">â†“ $<?= number_format($debits, 0) ?></span>
+                            <span class="txn-dr">↓ $<?= number_format($debits, 0) ?></span>
                         </div>
                     </td>
                     <td>

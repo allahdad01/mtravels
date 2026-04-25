@@ -79,7 +79,7 @@ function typeBadgeClass($type) {
     --surface:#f4f7fe; --card-bg:#ffffff; --border:#e8edf5;
     --text-main:#1a2340; --text-sub:#6b7a99;
     --green:#22c55e; --red:#ef4444;
-    /* Sarafi identity: teal â†’ emerald (money exchange) */
+    /* Sarafi identity: teal → emerald (money exchange) */
     --c1:#0f766e; --c2:#059669;
     --radius:14px; --shadow:0 2px 12px rgba(15,118,110,0.08);
 }

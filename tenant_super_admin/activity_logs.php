@@ -100,7 +100,7 @@ function buildPaginationUrl($p,$search,$uf,$af,$tf){
     --surface:#f4f7fe;--card-bg:#ffffff;--border:#e8edf5;
     --text-main:#1a2340;--text-sub:#6b7a99;
     --green:#22c55e;--red:#ef4444;--amber:#f59e0b;
-    /* Activity Logs: Slate â†’ Indigo */
+    /* Activity Logs: Slate → Indigo */
     --c1:#334155;--c2:#4f46e5;
     --radius:14px;--shadow:0 2px 12px rgba(51,65,85,.08);
 }

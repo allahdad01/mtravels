@@ -155,7 +155,7 @@ function changeBadge($current, $comparison) {
     --surface:#f4f7fe;--card-bg:#ffffff;--border:#e8edf5;
     --text-main:#1a2340;--text-sub:#6b7a99;
     --green:#22c55e;--red:#ef4444;--amber:#f59e0b;
-    /* Reports identity: Navy â†’ Teal (analytics) */
+    /* Reports identity: Navy → Teal (analytics) */
     --c1:#1d4ed8;--c2:#0f766e;
     --radius:14px;--shadow:0 2px 12px rgba(29,78,216,.08);
 }

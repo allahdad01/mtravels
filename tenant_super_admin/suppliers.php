@@ -73,7 +73,7 @@ $to   = min($page * $results_per_page, $total_suppliers);
 *,*::before,*::after{box-sizing:border-box}
 body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important;background:var(--surface)!important;color:var(--text-main)!important}
 
-/* Header —  slate â†’ indigo for supplier/vendor management */
+/* Header —  slate → indigo for supplier/vendor management */
 .dash-header{background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);border-radius:var(--radius);padding:24px 28px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 8px 32px rgba(51,65,85,0.25);position:relative;overflow:hidden}
 .dash-header::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat}
 .dash-header h4{font-size:22px;font-weight:800;color:#fff;margin:0 0 4px;letter-spacing:-0.4px;position:relative}
@@ -528,7 +528,7 @@ document.querySelectorAll('.view-details').forEach(btn => {
         balEl.className = 'mbs-value ' + (isPos ? 'pos' : 'neg');
 
         const dirEl = document.getElementById('modal-balance-dir');
-        dirEl.textContent = isPos ? 'â†‘ Owed by supplier' : 'â†“ Owed to supplier';
+        dirEl.textContent = isPos ? 'â†‘ Owed by supplier' : '↓ Owed to supplier';
         dirEl.className = 'mbs-sub ' + (isPos ? 'pos' : 'neg');
 
         document.getElementById('modal-txn-count').textContent = parseInt(s.transaction_count||0).toLocaleString();

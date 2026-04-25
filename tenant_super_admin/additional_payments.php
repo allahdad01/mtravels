@@ -6,8 +6,9 @@ $user_id        = $_SESSION['user_id'];
 $user_role      = $_SESSION['role'];
 $user_branch_id = $_SESSION['branch_id'] ?? null;
 
-$search = isset($_GET['search']) ? trim($_GET['search']) : '';
-$page   = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$search          = isset($_GET['search']) ? trim($_GET['search']) : '';
+$selected_branch = isset($_GET['branch']) ? $_GET['branch'] : ($user_branch_id ?: 'all');
+$page            = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $results_per_page = 25;
 $offset = ($page - 1) * $results_per_page;
 
@@ -23,7 +24,7 @@ $query = "SELECT ap.*,
           WHERE ap.tenant_id = ?";
 
 $params = [$tenant_id];
-if ($user_branch_id) { $query .= " AND ap.branch_id = ?"; $params[] = $user_branch_id; }
+if ($selected_branch !== 'all') { $query .= " AND ap.branch_id = ?"; $params[] = $selected_branch; }
 if (!empty($search)) {
     $query .= " AND (ap.description LIKE ? OR ap.payment_type LIKE ? OR c.name LIKE ? OR s.name LIKE ?)";
     $sp = "%$search%"; $params = array_merge($params, [$sp,$sp,$sp,$sp]);
@@ -39,7 +40,7 @@ $cq = "SELECT COUNT(*) as total FROM additional_payments ap
        LEFT JOIN suppliers s ON ap.supplier_id = s.id
        WHERE ap.tenant_id = ?";
 $cp = [$tenant_id];
-if ($user_branch_id) { $cq .= " AND ap.branch_id = ?"; $cp[] = $user_branch_id; }
+if ($selected_branch !== 'all') { $cq .= " AND ap.branch_id = ?"; $cp[] = $selected_branch; }
 if (!empty($search)) {
     $cq .= " AND (ap.description LIKE ? OR ap.payment_type LIKE ? OR c.name LIKE ? OR s.name LIKE ?)";
     $sp = "%$search%"; $cp = array_merge($cp, [$sp,$sp,$sp,$sp]);
@@ -51,12 +52,17 @@ $total_pages    = max(1, ceil($total_payments / $results_per_page));
 $sq = "SELECT COUNT(*) as total_payments,
     SUM(CASE WHEN currency='USD' THEN sold_amount ELSE 0 END) as total_usd_amount,
     SUM(CASE WHEN currency='AFS' THEN sold_amount ELSE 0 END) as total_afs_amount,
-    SUM(profit) as total_profit
+    SUM(CASE WHEN currency='USD' THEN profit ELSE 0 END) as total_usd_profit,
+    SUM(CASE WHEN currency='AFS' THEN profit ELSE 0 END) as total_afs_profit
 FROM additional_payments WHERE tenant_id = ?";
 $sp2 = [$tenant_id];
-if ($user_branch_id) { $sq .= " AND branch_id = ?"; $sp2[] = $user_branch_id; }
+if ($selected_branch !== 'all') { $sq .= " AND branch_id = ?"; $sp2[] = $selected_branch; }
 $ss = $pdo->prepare($sq); $ss->execute($sp2);
 $summary = $ss->fetch(PDO::FETCH_ASSOC);
+
+$bs = $pdo->prepare("SELECT id, name FROM branches WHERE tenant_id = ? AND status='active' ORDER BY name");
+$bs->execute([$tenant_id]);
+$branches = $bs->fetchAll(PDO::FETCH_ASSOC);
 
 $from = min(($page - 1) * $results_per_page + 1, $total_payments);
 $to   = min($page * $results_per_page, $total_payments);
@@ -82,9 +88,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 .dash-header p{color:rgba(255,255,255,0.8);margin:0;font-size:13px;position:relative}
 
 /* Stat grid */
-.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
-@media(max-width:900px){.stat-grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:500px){.stat-grid{grid-template-columns:1fr}}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
 .stat-card{border-radius:var(--radius);padding:20px 22px;color:#fff;position:relative;overflow:hidden}
 .stat-card::after{content:'';position:absolute;right:-10px;bottom:-10px;width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,0.1)}
 .stat-card.total {background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);box-shadow:0 6px 20px rgba(8,145,178,0.3)}
@@ -251,25 +255,43 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
             <i class="feather icon-layers stat-icon"></i>
         </div>
         <div class="stat-card profit">
-            <div class="stat-label">Total Profit</div>
-            <div class="stat-value">$<?= number_format($summary['total_profit'] ?? 0, 2) ?></div>
+            <div class="stat-label">USD Profit</div>
+            <div class="stat-value">$<?= number_format($summary['total_usd_profit'] ?? 0, 2) ?></div>
+            <i class="feather icon-trending-up stat-icon"></i>
+        </div>
+        <div class="stat-card profit">
+            <div class="stat-label">AFS Profit</div>
+            <div class="stat-value">AFS <?= number_format($summary['total_afs_profit'] ?? 0, 2) ?></div>
             <i class="feather icon-trending-up stat-icon"></i>
         </div>
     </div>
 
-    <!-- Search -->
+    <!-- Search & Filter -->
     <div class="dash-card">
         <div class="dash-card-head">
-            <h6><span class="ico"><i class="feather icon-search"></i></span>Search Payments</h6>
+            <h6><span class="ico"><i class="feather icon-filter"></i></span>Filter & Search</h6>
         </div>
         <div class="dash-card-body">
-            <label class="form-label-custom">Search by description, type, client or supplier</label>
-            <div class="search-group">
-                <input type="text" id="searchInput" class="form-input" placeholder="Description, payment type, client, supplier..." value="<?= htmlspecialchars($search) ?>">
-                <button class="search-btn" id="searchBtn"><i class="feather icon-search"></i>Search</button>
-                <?php if (!empty($search)): ?>
-                <a href="?" class="clear-btn"><i class="feather icon-x"></i>Clear</a>
-                <?php endif; ?>
+            <div class="search-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:end;">
+                <div>
+                    <label class="form-label-custom">Branch</label>
+                    <select class="form-input" id="branchSelect">
+                        <option value="all" <?= $selected_branch==='all'?'selected':'' ?>>All Branches</option>
+                        <?php foreach ($branches as $b): ?>
+                        <option value="<?= $b['id'] ?>" <?= $selected_branch==$b['id']?'selected':'' ?>><?= htmlspecialchars($b['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label-custom">Search by description, type, client or supplier</label>
+                    <div class="search-group">
+                        <input type="text" id="searchInput" class="form-input" placeholder="Description, payment type, client, supplier..." value="<?= htmlspecialchars($search) ?>">
+                        <button class="search-btn" id="searchBtn"><i class="feather icon-search"></i>Search</button>
+                        <?php if (!empty($search)): ?>
+                        <a href="?branch=<?= urlencode($selected_branch) ?>" class="clear-btn"><i class="feather icon-x"></i>Clear</a>
+                        <?php endif; ?>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -326,7 +348,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     <td>
                         <div class="amt-row"><span class="amt-lbl">Base</span><span class="amt-val av-base"><?= $curr ?><?= number_format($pay['base_amount'], 2) ?></span></div>
                         <div class="amt-row"><span class="amt-lbl">Sold</span><span class="amt-val av-sold"><?= $curr ?><?= number_format($pay['sold_amount'], 2) ?></span></div>
-                        <div class="amt-row"><span class="amt-lbl">Profit</span><span class="amt-val <?= $pCls ?>"><?= $profit >= 0 ? '+' : '' ?>$<?= number_format($profit, 2) ?></span></div>
+                        <div class="amt-row"><span class="amt-lbl">Profit</span><span class="amt-val <?= $pCls ?>"><?= $profit >= 0 ? '+' : '' ?><?= $curr ?><?= number_format($profit, 2) ?></span></div>
                     </td>
                     <td>
                         <?php if (!empty($pay['client_name'])): ?>
@@ -358,7 +380,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
         <div class="pag-wrap">
             <div class="pag-info">Showing <?= $from ?>â€“<?= $to ?> of <?= number_format($total_payments) ?> payments</div>
             <div class="pag-links">
-                <?php $base = '?search='.urlencode($search); ?>
+                <?php $base = '?branch='.urlencode($selected_branch).'&search='.urlencode($search); ?>
                 <a href="<?= $base ?>&page=1" class="pag-btn <?= $page<=1?'disabled':'' ?>"><i class="feather icon-chevrons-left"></i></a>
                 <a href="<?= $base ?>&page=<?= $page-1 ?>" class="pag-btn <?= $page<=1?'disabled':'' ?>"><i class="feather icon-chevron-left"></i></a>
                 <?php
@@ -461,10 +483,12 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 <script>
 document.getElementById('searchBtn').addEventListener('click', doSearch);
 document.getElementById('searchInput').addEventListener('keypress', e => { if(e.key==='Enter') doSearch(); });
+document.getElementById('branchSelect').addEventListener('change', doSearch);
 
 function doSearch() {
     const s = document.getElementById('searchInput').value.trim();
-    window.location.href = '?' + (s ? 'search=' + encodeURIComponent(s) : '');
+    const b = document.getElementById('branchSelect').value;
+    window.location.href = '?branch=' + encodeURIComponent(b) + (s ? '&search=' + encodeURIComponent(s) : '');
 }
 
 function switchTab(tab, btn) {
@@ -487,7 +511,7 @@ document.querySelectorAll('.view-details').forEach(btn => {
         document.getElementById('modal-base').textContent     = curr + base.toFixed(2);
 
         const profEl = document.getElementById('modal-profit');
-        profEl.textContent = (prof >= 0 ? '+$' : '-$') + Math.abs(prof).toFixed(2);
+        profEl.textContent = (prof >= 0 ? '+' : '-') + curr + Math.abs(prof).toFixed(2);
         profEl.className = 'ms-val ' + (prof >= 0 ? 'ppos' : 'pneg');
         document.getElementById('modal-profit-dir').textContent = prof >= 0 ? 'Net gain' : 'Net loss';
 
@@ -505,7 +529,7 @@ document.querySelectorAll('.view-details').forEach(btn => {
         document.getElementById('fin-base').textContent     = curr + base.toFixed(2);
         document.getElementById('fin-sold').textContent     = curr + sold.toFixed(2);
         const finProf = document.getElementById('fin-profit');
-        finProf.textContent = (prof >= 0 ? '+$' : '-$') + Math.abs(prof).toFixed(2);
+        finProf.textContent = (prof >= 0 ? '+' : '-') + curr + Math.abs(prof).toFixed(2);
         finProf.className = 'ds-val ' + (prof >= 0 ? 'green' : 'red');
         document.getElementById('fin-currency').textContent = p.currency || '— ';
         document.getElementById('fin-id').textContent       = p.id || '— ';

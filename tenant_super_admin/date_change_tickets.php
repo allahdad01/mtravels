@@ -193,7 +193,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 <div class="pcoded-main-container">
 <div class="pcoded-content">
 
-    <!-- Header —  amberâ†’purple for date changes -->
+    <!-- Header —  amber→purple for date changes -->
     <div class="dash-header">
         <div>
             <h4><i class="feather icon-calendar" style="margin-right:8px;"></i>Date Change Tickets</h4>
@@ -297,8 +297,8 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                         <span class="branch-pill"><i class="feather icon-git-branch"></i><?= htmlspecialchars($t['branch_name'] ?: 'No Branch') ?></span>
                     </td>
                     <td class="td-r">
-                        <div class="pen-supplier">â†“ Supplier: <?= htmlspecialchars($t['currency']) ?> <?= number_format($supPen, 2) ?></div>
-                        <div class="pen-service">âš  Service: <?= htmlspecialchars($t['currency']) ?> <?= number_format($svcPen, 2) ?></div>
+                        <div class="pen-supplier">↓ Supplier: <?= htmlspecialchars($t['currency']) ?> <?= number_format($supPen, 2) ?></div>
+                        <div class="pen-service">⚠  Service: <?= htmlspecialchars($t['currency']) ?> <?= number_format($svcPen, 2) ?></div>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -448,7 +448,7 @@ document.querySelectorAll('.view-details').forEach(btn => {
         document.getElementById('created-by').textContent     = t.created_by_name || 'N/A';
 
         document.getElementById('airline').textContent        = t.airline || 'N/A';
-        document.getElementById('route').textContent          = (t.origin||'') + ' â†’ ' + (t.destination||'');
+        document.getElementById('route').textContent          = (t.origin||'') + ' → ' + (t.destination||'');
         document.getElementById('original-date').textContent  = t.departure_date || 'N/A';
         document.getElementById('issue-date').textContent     = t.issue_date || 'N/A';
 

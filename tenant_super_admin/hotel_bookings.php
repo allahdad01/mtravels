@@ -197,7 +197,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 <div class="pcoded-main-container">
 <div class="pcoded-content">
 
-    <!-- Header —  emerald â†’ sky blue for hotel bookings -->
+    <!-- Header —  emerald → sky blue for hotel bookings -->
     <div class="dash-header">
         <div>
             <h4><i class="feather icon-home" style="margin-right:8px;"></i>Hotel Bookings</h4>
@@ -251,7 +251,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                         <th style="width:44px;"></th>
                         <th>Guest</th>
                         <th>Hotel / Accommodation</th>
-                        <th>Check-in â†’ Check-out</th>
+                        <th>Check-in → Check-out</th>
                         <th>Branch</th>
                         <th class="r">Amount</th>
                     </tr>

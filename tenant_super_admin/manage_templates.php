@@ -16,7 +16,7 @@ $tenant_id = $_SESSION['tenant_id'];
     --surface:#f4f7fe;--card-bg:#ffffff;--border:#e8edf5;
     --text-main:#1a2340;--text-sub:#6b7a99;
     --green:#22c55e;--red:#ef4444;--amber:#f59e0b;
-    /* Template Management: Violet â†’ Pink */
+    /* Template Management: Violet → Pink */
     --c1:#7c3aed;--c2:#db2777;
     --radius:14px;--shadow:0 2px 12px rgba(124,58,237,.08);
 }

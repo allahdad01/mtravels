@@ -292,7 +292,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     <td class="td-r">
                         <div class="amt-refund"><?= htmlspecialchars($t['currency']) ?> <?= number_format($t['refund_to_passenger'], 2) ?></div>
                         <?php if ($penalty > 0): ?>
-                        <div class="amt-penalty">âš  Penalty: <?= htmlspecialchars($t['currency']) ?> <?= number_format($penalty, 2) ?></div>
+                        <div class="amt-penalty">⚠  Penalty: <?= htmlspecialchars($t['currency']) ?> <?= number_format($penalty, 2) ?></div>
                         <?php endif; ?>
                     </td>
                 </tr>
@@ -437,7 +437,7 @@ document.querySelectorAll('.view-details').forEach(btn => {
         document.getElementById('created-by').textContent     = t.created_by_name || 'N/A';
 
         document.getElementById('airline').textContent        = t.airline || 'N/A';
-        document.getElementById('route').textContent          = (t.origin||'') + ' â†’ ' + (t.destination||'');
+        document.getElementById('route').textContent          = (t.origin||'') + ' → ' + (t.destination||'');
         document.getElementById('departure-date').textContent = t.departure_date || 'N/A';
         document.getElementById('issue-date').textContent     = t.issue_date || 'N/A';
 

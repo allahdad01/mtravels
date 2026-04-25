@@ -302,9 +302,9 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     </td>
                     <td class="td-r">
                         <div class="amt-main"><?= htmlspecialchars($t['currency']) ?> <?= number_format($t['sold'], 2) ?></div>
-                        <?php if ($t['refund_amount'] > 0): ?><div class="amt-refund">â†© Refund: <?= htmlspecialchars($t['currency']) ?> <?= number_format($t['refund_amount'], 2) ?></div><?php endif; ?>
-                        <?php if ($t['date_change_penalties'] > 0): ?><div class="amt-dc">âŸ³ Change: <?= htmlspecialchars($t['currency']) ?> <?= number_format($t['date_change_penalties'], 2) ?></div><?php endif; ?>
-                        <?php if ($t['weight_items_count'] > 0): ?><div class="amt-wt">âš– <?= $t['weight_items_count'] ?> items / <?= number_format($t['total_weight_count'], 2) ?>kg</div><?php endif; ?>
+                        <?php if ($t['refund_amount'] > 0): ?><div class="amt-refund">↩ Refund: <?= htmlspecialchars($t['currency']) ?> <?= number_format($t['refund_amount'], 2) ?></div><?php endif; ?>
+                        <?php if ($t['date_change_penalties'] > 0): ?><div class="amt-dc">⟳ Change: <?= htmlspecialchars($t['currency']) ?> <?= number_format($t['date_change_penalties'], 2) ?></div><?php endif; ?>
+                        <?php if ($t['weight_items_count'] > 0): ?><div class="amt-wt">⚖ <?= $t['weight_items_count'] ?> items / <?= number_format($t['total_weight_count'], 2) ?>kg</div><?php endif; ?>
                     </td>
                 </tr>
                 <?php endforeach; ?>
