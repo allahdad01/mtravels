@@ -27,7 +27,7 @@ if (!$account) {
 }
 
 // Get transactions with pagination
-$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$page = max(1, isset($_GET['page']) ? (int)$_GET['page'] : 1);
 $results_per_page = 20;
 $offset = ($page - 1) * $results_per_page;
 
@@ -47,7 +47,7 @@ $count_query = "SELECT COUNT(*) as total FROM main_account_transactions WHERE ma
 $count_stmt = $pdo->prepare($count_query);
 $count_stmt->execute([$account_id, $tenant_id]);
 $total_transactions = $count_stmt->fetch(PDO::FETCH_ASSOC)['total'];
-$total_pages = ceil($total_transactions / $results_per_page);
+$total_pages = max(1, (int) ceil($total_transactions / $results_per_page));
 ?>
 
 <div class="table-responsive">
@@ -127,12 +127,12 @@ $total_pages = ceil($total_transactions / $results_per_page);
         <ul class="pagination pagination-sm mb-0">
             <?php if ($page > 1): ?>
                 <li class="page-item">
-                    <a class="page-link" href="#" onclick="loadTransactions(<?= $account_id ?>, 1)">
+                    <a class="page-link" href="#" onclick="loadTransactions(<?= $account_id ?>, 1); return false;">
                         <i class="feather icon-chevrons-left"></i>
                     </a>
                 </li>
                 <li class="page-item">
-                    <a class="page-link" href="#" onclick="loadTransactions(<?= $account_id ?>, <?= $page - 1 ?>)">
+                    <a class="page-link" href="#" onclick="loadTransactions(<?= $account_id ?>, <?= $page - 1 ?>); return false;">
                         <i class="feather icon-chevron-left"></i>
                     </a>
                 </li>
@@ -143,7 +143,7 @@ $total_pages = ceil($total_transactions / $results_per_page);
             $end_page = min($total_pages, $page + 2);
 
             if ($start_page > 1) {
-                echo '<li class="page-item"><a class="page-link" href="#" onclick="loadTransactions(' . $account_id . ', 1)">1</a></li>';
+                echo '<li class="page-item"><a class="page-link" href="#" onclick="loadTransactions(' . $account_id . ', 1); return false;">1</a></li>';
                 if ($start_page > 2) {
                     echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
                 }
@@ -151,7 +151,7 @@ $total_pages = ceil($total_transactions / $results_per_page);
 
             for ($i = $start_page; $i <= $end_page; $i++) {
                 echo '<li class="page-item ' . ($i == $page ? 'active' : '') . '">
-                    <a class="page-link" href="#" onclick="loadTransactions(' . $account_id . ', ' . $i . ')">' . $i . '</a>
+                    <a class="page-link" href="#" onclick="loadTransactions(' . $account_id . ', ' . $i . '); return false;">' . $i . '</a>
                 </li>';
             }
 
@@ -159,18 +159,18 @@ $total_pages = ceil($total_transactions / $results_per_page);
                 if ($end_page < $total_pages - 1) {
                     echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
                 }
-                echo '<li class="page-item"><a class="page-link" href="#" onclick="loadTransactions(' . $account_id . ', ' . $total_pages . ')">' . $total_pages . '</a></li>';
+                echo '<li class="page-item"><a class="page-link" href="#" onclick="loadTransactions(' . $account_id . ', ' . $total_pages . '); return false;">' . $total_pages . '</a></li>';
             }
             ?>
 
             <?php if ($page < $total_pages): ?>
                 <li class="page-item">
-                    <a class="page-link" href="#" onclick="loadTransactions(<?= $account_id ?>, <?= $page + 1 ?>)">
+                    <a class="page-link" href="#" onclick="loadTransactions(<?= $account_id ?>, <?= $page + 1 ?>); return false;">
                         <i class="feather icon-chevron-right"></i>
                     </a>
                 </li>
                 <li class="page-item">
-                    <a class="page-link" href="#" onclick="loadTransactions(<?= $account_id ?>, <?= $total_pages ?>)">
+                    <a class="page-link" href="#" onclick="loadTransactions(<?= $account_id ?>, <?= $total_pages ?>); return false;">
                         <i class="feather icon-chevrons-right"></i>
                     </a>
                 </li>
@@ -179,25 +179,6 @@ $total_pages = ceil($total_transactions / $results_per_page);
     </nav>
 </div>
 <?php endif; ?>
-
-<script>
-// Function to load transactions (called from parent window)
-function loadTransactions(accountId, page) {
-    const modal = document.getElementById('transactionsModal');
-    const content = document.getElementById('transactionsContent');
-
-    content.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div><p class="mt-2">Loading transactions...</p></div>';
-
-    fetch('get_account_transactions.php?account_id=' + accountId + '&page=' + page)
-        .then(response => response.text())
-        .then(data => {
-            content.innerHTML = data;
-        })
-        .catch(error => {
-            content.innerHTML = '<div class="alert alert-danger">Error loading transactions: ' + error.message + '</div>';
-        });
-}
-</script>
 
 <style>
 .transaction-date .date-main {

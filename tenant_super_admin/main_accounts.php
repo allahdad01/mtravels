@@ -466,6 +466,25 @@ document.getElementById('branchSelect').addEventListener('change', doSearch);
 document.getElementById('searchBtn').addEventListener('click', doSearch);
 document.getElementById('searchInput').addEventListener('keypress', e => { if(e.key==='Enter') doSearch(); });
 
+function getTransactionsLoadingMarkup() {
+    return '<div class="txn-loading"><div class="spinner"></div><p style="color:var(--text-sub);font-size:13px;margin:0;">Loading transactions...</p></div>';
+}
+
+function loadTransactions(accountId, page = 1) {
+    const content = document.getElementById('transactionsContent');
+
+    content.innerHTML = getTransactionsLoadingMarkup();
+
+    fetch('get_account_transactions.php?account_id=' + encodeURIComponent(accountId) + '&page=' + encodeURIComponent(page))
+        .then(response => response.text())
+        .then(html => {
+            content.innerHTML = html;
+        })
+        .catch(error => {
+            content.innerHTML = '<div style="padding:20px;color:var(--red);">Error loading transactions: ' + error.message + '</div>';
+        });
+}
+
 function doSearch() {
     const s = document.getElementById('searchInput').value.trim();
     const b = document.getElementById('branchSelect').value;
@@ -518,16 +537,8 @@ document.querySelectorAll('.view-transactions').forEach(btn => {
         const id   = this.getAttribute('data-account-id');
         const name = this.getAttribute('data-account-name');
         document.getElementById('account-name-header').textContent = name;
-        document.getElementById('transactionsContent').innerHTML =
-            '<div class="txn-loading"><div class="spinner"></div><p style="color:var(--text-sub);font-size:13px;margin:0;">Loading transactionsâ€¦</p></div>';
         $('#transactionsModal').modal('show');
-        fetch('get_account_transactions.php?account_id=' + id)
-            .then(r => r.text())
-            .then(html => { document.getElementById('transactionsContent').innerHTML = html; })
-            .catch(err => {
-                document.getElementById('transactionsContent').innerHTML =
-                    '<div style="padding:20px;color:var(--red);">Error: ' + err.message + '</div>';
-            });
+        loadTransactions(id, 1);
     });
 });
 </script>
