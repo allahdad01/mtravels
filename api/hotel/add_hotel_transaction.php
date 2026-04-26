@@ -27,6 +27,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $amount = floatval($_POST['payment_amount']);
         $currency = $_POST['payment_currency'];
         $exchange_rate = floatval($_POST['exchange_rate']) ? intval($_POST['exchange_rate']) : null;
+        $receipt_number = isset($_POST['receipt_number'])
+            ? trim((string) DbSecurity::validateInput($_POST['receipt_number'], 'string', ['maxlength' => 100]))
+            : '';
         
 
         // Get booking details with better error handling
@@ -94,8 +97,8 @@ $payment_date = isset($_POST['payment_date']) ? DbSecurity::validateInput($_POST
 $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['booking_id'], 'int', ['min' => 0]) : null;
             $stmt = $pdo->prepare("
                 INSERT INTO main_account_transactions 
-                (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, tenant_id, exchange_rate, branch_id)
-                VALUES (?, ?, ?, ?, ?, 'hotel', ?, ?, ?, ?, ?, ?)
+                (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, tenant_id, exchange_rate, branch_id, receipt)
+                VALUES (?, ?, ?, ?, ?, 'hotel', ?, ?, ?, ?, ?, ?, ?)
             ");
             
             $stmt->execute([
@@ -109,7 +112,8 @@ $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['bo
                 $payment_date,
                 $tenant_id,
                 $exchange_rate,
-                $branch_id
+                $branch_id,
+                $receipt_number
             ]);
         
 
@@ -118,13 +122,14 @@ $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['bo
 
         
             $notificationMessage = sprintf(
-                "New payment received for hotel booking #%s - %s %s %s: Amount %s %.2f",
+                "New payment received for hotel booking #%s - %s %s %s: Amount %s %.2f%s",
                 htmlspecialchars($booking['order_id']),
                 htmlspecialchars($booking['title']),
                 htmlspecialchars($booking['first_name']),
                 htmlspecialchars($booking['last_name']),
                 $currency,
-                abs($amount)
+                abs($amount),
+                $receipt_number !== '' ? " | Receipt: {$receipt_number}" : ''
             );
         
 
@@ -150,7 +155,8 @@ $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['bo
             'description' => $description,
             'amount' => $amount,
             'currency' => $currency,
-            'exchange_rate' => $exchange_rate
+            'exchange_rate' => $exchange_rate,
+            'receipt_number' => $receipt_number
         ]);
         
         $user_id = $_SESSION['user_id'] ?? 0;

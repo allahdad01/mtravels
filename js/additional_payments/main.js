@@ -311,6 +311,7 @@ $(document).ready(function() {
              payment_date: $('#payment_date').val(),
              payment_time: $('#payment_time').val(),
              payment_description: $('#payment_description').val(),
+             receipt_number: ($('#receipt_number').val() || '').trim(),
              csrf_token: csrfToken
          };
 
@@ -334,6 +335,7 @@ $(document).ready(function() {
                         // Reset form fields
                         $('#payment_amount').val('');
                         $('#payment_description').val('');
+                        $('#receipt_number').val('');
                         $('#exchange_rate').val('');
                         // Reload transactions
                         transactionManager.loadTransactionHistory($('#transaction_payment_id').val());

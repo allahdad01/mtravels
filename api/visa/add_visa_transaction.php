@@ -43,6 +43,7 @@ $payment_date = isset($_POST['payment_date']) ? DbSecurity::validateInput($_POST
 
 // Validate visa_id
 $visa_id = isset($_POST['visa_id']) ? DbSecurity::validateInput($_POST['visa_id'], 'int', ['min' => 0]) : null;
+$receipt_number = isset($_POST['receipt_number']) ? DbSecurity::validateInput($_POST['receipt_number'], 'string', ['maxlength' => 100]) : '';
 
 $username = isset($_SESSION["name"]) ? $_SESSION["name"] : "Unknown User";
 
@@ -58,6 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $payment_description = $_POST['payment_description'] ?? '';
         $payment_amount = floatval($_POST['payment_amount']);
         $currency = $_POST['payment_currency'] ?? $_POST['currency'];
+        $receipt_number = trim((string) $receipt_number);
 
         $exchange_rate = isset($_POST['exchange_rate']) ? floatval($_POST['exchange_rate']) : null;
     
@@ -118,8 +120,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Insert transaction record in main_account_transactions
         $stmt = $pdo->prepare("INSERT INTO main_account_transactions
-            (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, exchange_rate, created_at, tenant_id, branch_id)
-            VALUES (?, ?, ?, ?, ?, 'visa_sale', ?, ?, ?, ?, ?, ?)");
+            (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, exchange_rate, created_at, tenant_id, branch_id, receipt)
+            VALUES (?, ?, ?, ?, ?, 'visa_sale', ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $visa['paid_to'],
             $transaction_type,
@@ -131,7 +133,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $exchange_rate,
             $payment_datetime,
             $tenant_id,
-            $branch_id
+            $branch_id,
+            $receipt_number
         ]);
 
         // Get the last inserted ID for main account transaction
@@ -139,11 +142,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Create notification message
         $notification_message = sprintf(
-            "New payment received for visa application #%s - %s: Amount %s %.2f",
+            "New payment received for visa application #%s - %s: Amount %s %.2f%s",
             $visa_id,
             $visa['applicant_name'],
             $currency,
-            abs($payment_amount)
+            abs($payment_amount),
+            $receipt_number !== '' ? " | Receipt: {$receipt_number}" : ''
         );
 
         $notifStmt = $pdo->prepare("

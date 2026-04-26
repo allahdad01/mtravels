@@ -16,6 +16,8 @@ $currency = isset($_POST['currency']) ? DbSecurity::validateInput($_POST['curren
 $exchangeRate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_POST['exchange_rate'], 'float', ['min' => 0]) : null;
 $transactionDate = isset($_POST['transaction_date']) ? DbSecurity::validateInput($_POST['transaction_date'], 'string', ['maxlength' => 19]) : '';
 $remarks = isset($_POST['remarks']) ? DbSecurity::validateInput($_POST['remarks'], 'string', ['maxlength' => 255]) : '';
+$receipt_number = isset($_POST['receipt_number']) ? DbSecurity::validateInput($_POST['receipt_number'], 'string', ['maxlength' => 100]) : '';
+$receipt_number = trim((string) $receipt_number);
 
 // Exchange rate is now stored in separate column, no need to append to remarks
 
@@ -102,8 +104,8 @@ try {
     // Insert main account transaction
     $mainTransaction = $pdo->prepare("
         INSERT INTO main_account_transactions
-        (main_account_id, type, amount, currency, exchange_rate, description, transaction_of, reference_id, balance, created_at, tenant_id, branch_id)
-        VALUES (?, 'credit', ?, ?, ?, ?, 'weight', ?, ?, ?, ?, ?)
+        (main_account_id, type, amount, currency, exchange_rate, description, transaction_of, reference_id, balance, created_at, tenant_id, branch_id, receipt)
+        VALUES (?, 'credit', ?, ?, ?, ?, 'weight', ?, ?, ?, ?, ?, ?)
     ");
     $mainTransaction->bindParam(1, $weight['paid_to'], PDO::PARAM_INT);
     $mainTransaction->bindParam(2, $amount, PDO::PARAM_STR);
@@ -115,6 +117,7 @@ try {
     $mainTransaction->bindParam(8, $transactionDate, PDO::PARAM_STR);
     $mainTransaction->bindParam(9, $tenant_id, PDO::PARAM_INT);
     $mainTransaction->bindParam(10, $branch_id, PDO::PARAM_INT);
+    $mainTransaction->bindParam(11, $receipt_number, PDO::PARAM_STR);
     if (!$mainTransaction->execute()) {
         throw new PDOException('Failed to save transaction');
     }
@@ -122,12 +125,13 @@ try {
 
     // Create notification
     $notificationMessage = sprintf(
-        "New payment received for weight charge #%s - %s %s: Amount %s %.2f",
+        "New payment received for weight charge #%s - %s %s: Amount %s %.2f%s",
         $weight['pnr'],
         $weight['title'],
         $weight['passenger_name'],
         $currency,
-        $amount
+        $amount,
+        $receipt_number !== '' ? " | Receipt: {$receipt_number}" : ''
     );
 
     $notification = $pdo->prepare("
@@ -156,6 +160,7 @@ try {
         'exchange_rate' => $exchangeRate,
         'transaction_date' => $transactionDate,
         'remarks' => $remarks,
+        'receipt_number' => $receipt_number,
         'main_account_id' => $weight['paid_to'],
         'balance' => $newBalance
     ]);

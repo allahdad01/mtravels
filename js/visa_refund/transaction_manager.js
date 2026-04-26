@@ -352,6 +352,7 @@
 
             // Set the original amount
             formData.set('original_amount', originalAmount);
+            formData.set('receipt_number', ($('#receiptNumber').val() || '').trim());
 
             // Add exchange rate if provided
             const exchangeRate = $('#transactionExchangeRate').val();

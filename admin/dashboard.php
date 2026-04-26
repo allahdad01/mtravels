@@ -1027,7 +1027,13 @@ function displayModernNotifications($stmt, $status) {
          echo '<div class="tl-date-group"><div class="tl-date-hdr">'.$lbl.'</div>';
          foreach($rows as $row){
              $id=htmlspecialchars($row['id']);
-             $msg=htmlspecialchars($row['message']);
+             $rawMsg=(string)($row['message'] ?? '');
+             $receiptValue='';
+             if(preg_match('/Receipt:\s*([^\.\|]+)/i',$rawMsg,$receiptMatch)){
+                 $receiptValue=trim($receiptMatch[1]);
+             }
+             $displayMsg=trim(preg_replace('/\s*Receipt:\s*[^\.\|]+\.?/i','',$rawMsg));
+             $msg=htmlspecialchars($displayMsg !== '' ? $displayMsg : $rawMsg);
              $name=htmlspecialchars($row['related_name']??'');
              $amt=$row['transaction_amount']??0;
              $cur=htmlspecialchars($row['transaction_currency']??'');
@@ -1047,10 +1053,11 @@ function displayModernNotifications($stmt, $status) {
                   case 'deposit_sarafi':case 'hawala_sarafi':case 'withdrawal_sarafi':$dotClass='tld-sarafi';$icon='fa-exchange-alt';$iconPrefix='fas';break;
               }
               // Check if notification contains "deleted" in the message
-              $isDeleted = stripos($msg, 'deleted') !== false;
+              $isDeleted = stripos($rawMsg, 'deleted') !== false;
+              $hasReceipt = $receiptValue !== '';
               // For umrah transactions with transaction_to='Bank', hide the "Received" button
               $isBankTransaction = $type === 'umrah' && $umrahTransactionTo === 'Bank';
-              $readOnly=in_array($type,['deposit_sarafi','hawala_sarafi','withdrawal_sarafi','supplier_fund','client_fund','expense','expense_update','expense_delete','refund','ticket_refund']) || $isDeleted || $isBankTransaction;
+              $readOnly=in_array($type,['deposit_sarafi','hawala_sarafi','withdrawal_sarafi','supplier_fund','client_fund','expense','expense_update','expense_delete','refund','ticket_refund']) || $isDeleted || $isBankTransaction || $hasReceipt;
               echo '<div class="tl-item notification-'.htmlspecialchars($status).'" data-id="'.$id.'">';
               echo '<div class="tl-dot '.$dotClass.($status==='unread'?' unread':'').'"><i class="'.$iconPrefix.' '.$icon.'"></i></div>';
              echo '<div class="tl-body">';
@@ -1059,8 +1066,11 @@ function displayModernNotifications($stmt, $status) {
              if($name||$amt){
                  echo '<div class="tl-meta">';
                  if($name) echo '<span class="tl-chip"><i class="fas fa-user"></i>'.$name.'</span>';
-                 if($amt)  echo '<span class="tl-chip"><i class="fas fa-credit-card"></i>'.$sym.number_format((float)$amt,2).'</span>';
+                 if($amt && !$hasReceipt)  echo '<span class="tl-chip"><i class="fas fa-credit-card"></i>'.$sym.number_format((float)$amt,2).'</span>';
+                 if($hasReceipt) echo '<span class="tl-chip"><i class="fas fa-receipt"></i>'.htmlspecialchars($receiptValue).'</span>';
                  echo '</div>';
+             } elseif($hasReceipt){
+                 echo '<div class="tl-meta"><span class="tl-chip"><i class="fas fa-receipt"></i>'.htmlspecialchars($receiptValue).'</span></div>';
              }
              if($status==='unread'){
                  echo '<div class="tl-actions">';

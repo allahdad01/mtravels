@@ -29,6 +29,9 @@ $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['bo
 // Validate exchange_rate (optional)
 $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_POST['exchange_rate'], 'float', ['min' => 0]) : null;
 
+// Validate receipt number (optional)
+$receipt_number = isset($_POST['receipt_number']) ? DbSecurity::validateInput($_POST['receipt_number'], 'string', ['maxlength' => 100]) : '';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $booking_id = intval($_POST['booking_id']);
@@ -36,7 +39,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $description = $_POST['payment_description'];
         $amount = floatval($_POST['payment_amount']);
         $currency = $_POST['payment_currency'];
-        $exchange_rate = floatval($_POST['exchange_rate']);
+        $exchange_rate = isset($_POST['exchange_rate']) ? floatval($_POST['exchange_rate']) : null;
+        $receipt_number = trim((string) $receipt_number);
 
         // Get booking details
         $stmt = $pdo->prepare("SELECT paid_to, title, passenger_name, pnr FROM date_change_tickets WHERE id = ? And tenant_id = ? And branch_id = ?");
@@ -78,8 +82,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Insert transaction record
         $stmt = $pdo->prepare("INSERT INTO main_account_transactions 
-            (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, tenant_id, exchange_rate, branch_id)
-            VALUES (?, 'credit', ?, ?, ?, 'date_change', ?, ?, ?, ?, ?, ?)");
+            (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, tenant_id, exchange_rate, branch_id, receipt)
+            VALUES (?, 'credit', ?, ?, ?, 'date_change', ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $booking['paid_to'],
             $amount,
@@ -90,7 +94,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $payment_date,
             $tenant_id,
             $exchange_rate,
-            $branch_id
+            $branch_id,
+            $receipt_number
         ]);
 
         // Get the last inserted ID using PDO's lastInsertId()
@@ -98,12 +103,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Create notification
         $notificationMessage = sprintf(
-            "New payment received for date change #%s - %s %s: Amount %s %.2f",
+            "New payment received for date change #%s - %s %s: Amount %s %.2f%s",
             $booking['pnr'],
             $booking['title'],
             $booking['passenger_name'],
             $currency,
-            $amount
+            $amount,
+            $receipt_number !== '' ? " | Receipt: {$receipt_number}" : ''
         );
 
         $notifStmt = $pdo->prepare("
@@ -128,6 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'amount' => $amount,
             'currency' => $currency,
             'exchange_rate' => $exchange_rate,
+            'receipt_number' => $receipt_number,
             'main_account_id' => $booking['paid_to']
         ]);
         

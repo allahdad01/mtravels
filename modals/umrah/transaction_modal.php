@@ -234,12 +234,18 @@
 // Show/Hide Receipt Number and Main Account fields based on Transaction To selection
 $(document).ready(function() {
     $('#transaction_to').change(function() {
-        if ($(this).val() === 'Bank') {
+        const transactionTo = $(this).val();
+
+        if (transactionTo === 'Bank' || transactionTo === 'Internal Account') {
             $('#receiptNumberField').slideDown();
+        } else {
+            $('#receiptNumberField').slideUp();
+        }
+
+        if (transactionTo === 'Bank') {
             // Check if supplier is internal, then load main accounts
             checkAndLoadMainAccounts();
         } else {
-            $('#receiptNumberField').slideUp();
             $('#mainAccountField').slideUp();
         }
     });

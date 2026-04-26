@@ -29,6 +29,7 @@ $refund_id = isset($_POST['refund_id']) ? DbSecurity::validateInput($_POST['refu
 // Validate main_account_id
 $main_account_id = isset($_POST['main_account_id']) ? DbSecurity::validateInput($_POST['main_account_id'], 'int', ['min' => 0]) : null;
 $payment_exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_POST['exchange_rate'], 'float', ['min' => 0]) : null;
+$receipt_number = isset($_POST['receipt_number']) ? DbSecurity::validateInput($_POST['receipt_number'], 'string', ['maxlength' => 100]) : '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $refund_id = intval($_POST['refund_id']);
@@ -40,6 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $description = $_POST['payment_description'];
         $amount = floatval($_POST['payment_amount']);
         $currency = $_POST['payment_currency'];
+        $receipt_number = trim((string) $receipt_number);
 
         // Get refund details including visa application info
          $stmt = $pdo->prepare("
@@ -88,8 +90,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Insert transaction record
         $stmt = $pdo->prepare("INSERT INTO main_account_transactions 
-            (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, tenant_id, exchange_rate, branch_id)
-            VALUES (?, 'debit', ?, ?, ?, 'hotel_refund', ?, ?, ?, ?, ?, ?)");
+            (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, tenant_id, exchange_rate, branch_id, receipt)
+            VALUES (?, 'debit', ?, ?, ?, 'hotel_refund', ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $main_account_id,
             $transactionAmount,
@@ -100,7 +102,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $payment_date,
             $tenant_id,
             $payment_exchange_rate,
-            $branch_id
+            $branch_id,
+            $receipt_number
         ]);
 
         // Get the last inserted ID
@@ -108,13 +111,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Create notification with client type info
         $notificationMessage = sprintf(
-            "Hotel refund payment for %s client - %s (%s) Amount %s %.2f",
+            "Hotel refund payment for %s client - %s (%s) Amount %s %.2f%s",
             ucfirst($refund['client_type']),
             $refund['first_name'],
             $refund['last_name'],
             
             $currency,
-            $amount
+            $amount,
+            $receipt_number !== '' ? " | Receipt: {$receipt_number}" : ''
         );
 
         $notifStmt = $pdo->prepare("
@@ -143,6 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'first_name' => $refund['first_name'],
             'last_name' => $refund['last_name'],
             'order_id' => $refund['order_id'],
+            'receipt_number' => $receipt_number,
             
         ]);
         

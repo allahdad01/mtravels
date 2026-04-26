@@ -51,7 +51,13 @@ function generateNotificationHtml($stmt, $status) {
     if ($stmt->rowCount() > 0) {
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $notification_id = htmlspecialchars($row['id']);
-            $message = htmlspecialchars($row['message']);
+            $raw_message = (string)($row['message'] ?? '');
+            $receipt_value = '';
+            if (preg_match('/Receipt:\s*([^\.\|]+)/i', $raw_message, $receipt_match)) {
+                $receipt_value = trim($receipt_match[1]);
+            }
+            $display_message = trim(preg_replace('/\s*Receipt:\s*[^\.\|]+\.?/i', '', $raw_message));
+            $message = htmlspecialchars($display_message !== '' ? $display_message : $raw_message);
             $related_name = htmlspecialchars($row['related_name'] ?? '');
             $transaction_amount = htmlspecialchars($row['transaction_amount'] ?? '');
             $transaction_currency = htmlspecialchars($row['transaction_currency'] ?? '');
@@ -70,7 +76,7 @@ function generateNotificationHtml($stmt, $status) {
             if ($status === 'unread') {
                 // Array of transaction types that should only show read button
                 $read_only_types = ['deposit_sarafi', 'hawala_sarafi', 'withdrawal_sarafi', 'supplier_fund', 'client_fund', 'expense', 'expense_update', 'expense_delete'];
-                $show_only_read = in_array($transaction_type, $read_only_types);
+                $show_only_read = in_array($transaction_type, $read_only_types) || $receipt_value !== '';
                 
                 if (!$show_only_read) {
                     $html .= '<button class="btn btn-success btn-sm approve-button" ' .
@@ -97,6 +103,9 @@ function generateNotificationHtml($stmt, $status) {
             $html .= '<td class="notification-content">';
             $html .= '<div class="message-wrapper">';
             $html .= '<h6 class="message-text">' . $message . '</h6>';
+            if ($receipt_value !== '') {
+                $html .= '<div style="margin-top:6px;"><span class="badge badge-light" style="font-size:11px;border:1px solid #d1d5db;padding:4px 8px;"><i class="fas fa-receipt"></i> ' . htmlspecialchars($receipt_value) . '</span></div>';
+            }
             $html .= '</div>';
             $html .= '</td>';
             

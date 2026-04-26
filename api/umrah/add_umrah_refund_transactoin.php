@@ -29,6 +29,7 @@ $refund_id = isset($_POST['refund_id']) ? DbSecurity::validateInput($_POST['refu
 // Validate main_account_id
 $main_account_id = isset($_POST['main_account_id']) ? DbSecurity::validateInput($_POST['main_account_id'], 'int', ['min' => 0]) : null;
 $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_POST['exchange_rate'], 'float', ['min' => 0]) : null;
+$receipt_number = isset($_POST['receipt_number']) ? DbSecurity::validateInput($_POST['receipt_number'], 'string', ['maxlength' => 100]) : '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $refund_id = intval($_POST['refund_id']);
@@ -37,7 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $description = $_POST['payment_description'];
         $amount = floatval($_POST['payment_amount']);
         $currency = $_POST['payment_currency'];
-        $exchange_rate = floatval($_POST['exchange_rate']);
+        $exchange_rate = isset($_POST['exchange_rate']) ? floatval($_POST['exchange_rate']) : null;
+        $receipt_number = trim((string) $receipt_number);
         // Get refund details including visa application info
         $stmt = $pdo->prepare("
             SELECT r.*, um.name,
@@ -100,8 +102,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Insert transaction record
         $stmt = $pdo->prepare("INSERT INTO main_account_transactions
-            (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, tenant_id, branch_id, exchange_rate)
-            VALUES (?, 'debit', ?, ?, ?, 'umrah_refund', ?, ?, ?, ?, ?, ?)");
+            (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, tenant_id, branch_id, exchange_rate, receipt)
+            VALUES (?, 'debit', ?, ?, ?, 'umrah_refund', ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $main_account_id,
             $transactionAmount,
@@ -112,7 +114,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $payment_date,
             $tenant_id,
             $branch_id,
-            $exchange_rate
+            $exchange_rate,
+            $receipt_number
         ]);
 
         // Get the last inserted ID
@@ -120,12 +123,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Create notification with client type info
         $notificationMessage = sprintf(
-            "Umrah refund payment for %s client - %s Amount %s %.2f",
+            "Umrah refund payment for %s client - %s Amount %s %.2f%s",
             ucfirst($refund['client_type']),
             $refund['name'],
             
             $currency,
-            $amount
+            $amount,
+            $receipt_number !== '' ? " | Receipt: {$receipt_number}" : ''
         );
 
         $notifStmt = $pdo->prepare("
@@ -152,6 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'client_type' => $refund['client_type'],
             'main_account_id' => $main_account_id,
             'name' => $refund['name'],
+            'receipt_number' => $receipt_number,
             
         ]);
         

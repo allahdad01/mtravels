@@ -34,6 +34,10 @@ const getExchangeRateExample = function(baseCurrency, targetCurrency) {
     return examples[key] || 'Enter the exchange rate';
 };
 
+const umrahTransactionNeedsReceipt = function(transactionTo) {
+    return transactionTo === 'Bank' || transactionTo === 'Internal Account';
+};
+
 function openTransactionTab(umrahId, soldAmount) {
     // Make sure soldAmount is a number
     soldAmount = parseFloat(soldAmount) || 0;
@@ -325,6 +329,15 @@ $(document).ready(function() {
 
         const formData = new FormData(this);
         const umrahId = $('#transactionUmrahIdInput').val();
+        const transactionTo = formData.get('transaction_to') || $('#transaction_to').val();
+        const receiptNumber = (formData.get('receipt_number') || $('#receiptNumber').val() || '').trim();
+
+        if (umrahTransactionNeedsReceipt(transactionTo) && !receiptNumber) {
+            alert('Receipt number is required for bank and internal account transactions');
+            submitBtn.prop('disabled', false);
+            submitBtn.html(originalHtml);
+            return;
+        }
 
         // Ensure payment_currency is included if missing
         if (!formData.has('payment_currency')) {
@@ -369,7 +382,7 @@ $(document).ready(function() {
                         $('#umrahTransactionForm')[0].reset();
                         $('#paymentCurrency').val('');
                         $('#transaction_to').val('Internal Account');
-                        $('#receiptNumberField').hide();
+                        $('#receiptNumberField').show();
 
                     } else {
                         // Re-enable submit button on business logic error
@@ -407,7 +420,7 @@ $(document).ready(function() {
 
     // Show/Hide receipt number field
     $('#transaction_to').on('change', function() {
-        if ($(this).val() === 'Bank') {
+        if (umrahTransactionNeedsReceipt($(this).val())) {
             $('#receiptNumberField').slideDown();
         } else {
             $('#receiptNumberField').slideUp();
@@ -449,7 +462,7 @@ $('#paymentCurrency').on('change', function() {
         $('#umrahTransactionForm')[0].reset();
         $('#paymentCurrency').val(''); // Clear currency selection
         $('#transaction_to').val('Internal Account');
-        $('#receiptNumberField').hide();
+        $('#receiptNumberField').show();
 
         // Reset exchange rate field
         $('#exchangeRateField').hide();

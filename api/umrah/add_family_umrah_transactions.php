@@ -35,13 +35,13 @@ $main_account_id = isset($_POST['main_account_id']) ? DbSecurity::validateInput(
      $member_payments = [];
  }
  
- // Validate bank receipts if transaction is to bank
+ // Validate member receipts for payment channels that require them
  $transaction_to_lower = strtolower(trim($transaction_to ?? ''));
- if ($transaction_to_lower === 'bank') {
+ if ($transaction_to_lower === 'bank' || $transaction_to_lower === 'internal account') {
      foreach ($member_payments as $member_data) {
          if (empty($member_data['receipt_number'])) {
              header('HTTP/1.1 400 Bad Request');
-             echo json_encode(['success' => false, 'message' => 'Each member requires a unique receipt number for bank transactions']);
+             echo json_encode(['success' => false, 'message' => 'Each member requires a receipt number for bank and internal account transactions']);
              exit();
          }
      }
@@ -445,6 +445,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             foreach ($member_payments as $member_data) {
                 $booking_id = intval($member_data['booking_id']);
                 $member_payment_amount = floatval($member_data['amount']);
+                $member_receipt_number = isset($member_data['receipt_number']) ? trim($member_data['receipt_number']) : '';
 
                 if ($member_payment_amount <= 0) {
                     continue; // Skip if no payment for this member
@@ -470,7 +471,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $umrah_transaction_id = $transaction_result['id'];
 
                 // Create individual notification for this member
-                $notification_message = "Customer: $traveler_name has paid: $member_payment_amount $payment_currency to $transaction_to processed by $username for the Umrah booking.";
+                $notification_message = "Customer {$traveler_name} paid {$member_payment_amount} {$payment_currency} to {$transaction_to} for the Umrah booking. Processed by {$username}.";
+                if (!empty($member_receipt_number)) {
+                    $notification_message .= " Receipt: {$member_receipt_number}.";
+                }
 
                 $notificationStmt = $pdo->prepare("INSERT INTO notifications (transaction_id, transaction_type, message, recipient_role, status, created_at, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, NOW(), ?, ?)");
                 $notificationStmt->bindParam(1, $umrah_transaction_id, PDO::PARAM_INT);

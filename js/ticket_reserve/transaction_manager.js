@@ -361,7 +361,8 @@ loadTransactionModal: function(ticketId) {
             payment_time: $('#paymentTime').val(),
             payment_amount: $('#paymentAmount').val(),
             payment_currency: $('#paymentCurrency').val(),
-            payment_description: $('#paymentDescription').val()
+            payment_description: $('#paymentDescription').val(),
+            receipt_number: ($('#receiptNumber').val() || '').trim()
         };
 
         // Add exchange rate if field is visible
@@ -387,7 +388,8 @@ loadTransactionModal: function(ticketId) {
             payment_date: paymentDateTime,
             payment_amount: formData.payment_amount,
             payment_currency: formData.payment_currency,
-            payment_description: formData.payment_description
+            payment_description: formData.payment_description,
+            receipt_number: formData.receipt_number
         };
 
         // Add exchange rate if provided

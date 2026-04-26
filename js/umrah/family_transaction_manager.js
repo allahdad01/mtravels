@@ -1,6 +1,10 @@
 // Note: getCurrencyDisplay and getExchangeRateExample are defined in transaction_manager.js
 // to avoid duplicate declaration errors
 
+function familyTransactionNeedsReceipt(transactionTo) {
+    return transactionTo === 'Bank' || transactionTo === 'Internal Account';
+}
+
 function openFamilyTransactionModal(familyId, familyName, packageName, totalMembers) {
     // Set family info
     document.getElementById('familyTransactionFamilyId').value = familyId;
@@ -95,11 +99,10 @@ function loadFamilyMemberPaymentInputs(members) {
          // Store member currency for exchange rate logic
          window.familyMemberCurrencies.push(member.currency);
          
-         // Check if we're in bank transaction mode
-         const isBank = $('#familyTransactionTo').val() === 'Bank';
+         const needsReceipt = familyTransactionNeedsReceipt($('#familyTransactionTo').val());
          
          let receiptInput = '';
-         if (isBank) {
+         if (needsReceipt) {
              receiptInput = `
                  <div class="form-group mb-2">
                      <label class="small text-primary">
@@ -154,7 +157,7 @@ $(document).ready(function() {
 
         // Collect member payments
          const memberPayments = [];
-         const isBank = $('#familyTransactionTo').val() === 'Bank';
+         const requiresReceipt = familyTransactionNeedsReceipt($('#familyTransactionTo').val());
          
          // Track booking IDs that have amounts
          const bookingIdsWithAmounts = new Set();
@@ -180,8 +183,8 @@ $(document).ready(function() {
              return;
          }
          
-         // For bank transactions, validate that each member has a receipt number
-         if (isBank) {
+         // Validate that each paid member has a receipt number when required
+         if (requiresReceipt) {
              let missingReceipts = [];
              bookingIdsWithAmounts.forEach(bookingId => {
                  const receiptValue = $(`#receipt_${bookingId}`).val();
@@ -197,7 +200,7 @@ $(document).ready(function() {
              });
              
              if (missingReceipts.length > 0) {
-                 alert('Bank transactions require a receipt number for each member.\nPlease enter receipt numbers for all members.');
+                 alert('Bank and internal account transactions require a receipt number for each member.\nPlease enter receipt numbers for all members.');
                  submitBtn.prop('disabled', false);
                  submitBtn.html(originalHtml);
                  return;
@@ -266,9 +269,10 @@ $(document).ready(function() {
 
     // Show/Hide receipt number field and reload member inputs with receipts
      $('#familyTransactionTo').on('change', function() {
-         const isBankTransaction = $(this).val() === 'Bank';
+         const transactionTo = $(this).val();
+         const needsReceipt = familyTransactionNeedsReceipt(transactionTo);
          
-         if (isBankTransaction) {
+         if (needsReceipt) {
              $('#familyReceiptNumberField').slideDown();
              $('#bankReceiptAlert').slideDown();
              // Reload member inputs to show receipt fields
@@ -337,7 +341,8 @@ $(document).ready(function() {
         $('#familyTransactionFormData')[0].reset();
         $('#familyPaymentCurrency').val('');
         $('#familyTransactionTo').val('Internal Account');
-        $('#familyReceiptNumberField').hide();
+        $('#familyReceiptNumberField').show();
+        $('#bankReceiptAlert').show();
 
         // Reset exchange rate field
         const exchangeRateField = $('#familyExchangeRateField');

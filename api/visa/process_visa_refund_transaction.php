@@ -31,6 +31,7 @@ $main_account_id = isset($_POST['main_account_id']) ? DbSecurity::validateInput(
 
 // Validate exchange_rate
 $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_POST['exchange_rate'], 'float', ['min' => 0]) : null;
+$receipt_number = isset($_POST['receipt_number']) ? DbSecurity::validateInput($_POST['receipt_number'], 'string', ['maxlength' => 100]) : '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
@@ -46,6 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $amount = floatval($_POST['payment_amount']);
         $currency = $_POST['payment_currency'];
         $exchange_rate = isset($_POST['exchange_rate']) ? floatval($_POST['exchange_rate']) : null;
+        $receipt_number = trim((string) $receipt_number);
 
         // Get refund details including visa application info
         $stmt = $pdo->prepare("
@@ -113,8 +115,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Insert transaction record
         $stmt = $pdo->prepare("INSERT INTO main_account_transactions
-            (main_account_id, type, amount, currency, exchange_rate, description, transaction_of, reference_id, balance, created_at, tenant_id, branch_id)
-            VALUES (?, 'debit', ?, ?, ?, ?, 'visa_refund', ?, ?, ?, ?, ?)");
+            (main_account_id, type, amount, currency, exchange_rate, description, transaction_of, reference_id, balance, created_at, tenant_id, branch_id, receipt)
+            VALUES (?, 'debit', ?, ?, ?, ?, 'visa_refund', ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $main_account_id,
             $transactionAmount,
@@ -125,7 +127,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $newBalance,
             $payment_date,
             $tenant_id,
-            $branch_id
+            $branch_id,
+            $receipt_number
         ]);
 
         // Get the last inserted ID
@@ -133,13 +136,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Create notification with client type info
         $notificationMessage = sprintf(
-            "Visa refund payment for %s client - %s (%s) from %s: Amount %s %.2f",
+            "Visa refund payment for %s client - %s (%s) from %s: Amount %s %.2f%s",
             ucfirst($refund['client_type']),
             $refund['applicant_name'],
             $refund['passport_number'],
             $refund['country'],
             $currency,
-            $amount
+            $amount,
+            $receipt_number !== '' ? " | Receipt: {$receipt_number}" : ''
         );
 
         $notifStmt = $pdo->prepare("
@@ -164,6 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'amount' => $amount,
             'currency' => $currency,
             'exchange_rate' => $exchange_rate,
+            'receipt_number' => $receipt_number,
             'client_type' => $refund['client_type'],
             'main_account_id' => $main_account_id,
             'applicant_name' => $refund['applicant_name'],

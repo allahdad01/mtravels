@@ -48,6 +48,7 @@ $payment_id = isset($_POST['payment_id']) ? DbSecurity::validateInput($_POST['pa
 
 // Validate exchange_rate
 $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_POST['exchange_rate'], 'float', ['min' => 0]) : null;
+$receipt_number = isset($_POST['receipt_number']) ? DbSecurity::validateInput($_POST['receipt_number'], 'string', ['maxlength' => 100]) : '';
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -67,6 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $payment_time = $_POST['payment_time'] ?? date('H:i:s');
         $payment_datetime = $payment_date . ' ' . $payment_time;
         $exchangeRate = isset($_POST['exchange_rate']) ? floatval($_POST['exchange_rate']) : null;
+        $receipt_number = trim((string) $receipt_number);
 
         // Begin transaction
         $pdo->beginTransaction();
@@ -99,8 +101,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Insert transaction record
         $stmt = $pdo->prepare("INSERT INTO main_account_transactions
-            (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, exchange_rate, created_at, tenant_id, branch_id)
-            VALUES (?, 'credit', ?, ?, ?, 'additional_payment', ?, ?, ?, ?, ?, ?)");
+            (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, exchange_rate, created_at, tenant_id, branch_id, receipt)
+            VALUES (?, 'credit', ?, ?, ?, 'additional_payment', ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $mainAccountId,
             $amount,
@@ -111,7 +113,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $exchangeRate,
             $payment_datetime,
             $tenant_id,
-            $branch_id
+            $branch_id,
+            $receipt_number
         ]);
 
         // Get the last inserted ID using PDO's lastInsertId()
@@ -119,10 +122,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Create notification
         $notificationMessage = sprintf(
-            "New additional payment received: Amount %s %.2f - %s",
+            "New additional payment received: Amount %s %.2f - %s%s",
             $currency,
             $amount,
-            $description
+            $description,
+            $receipt_number !== '' ? " | Receipt: {$receipt_number}" : ''
         );
 
         $notifStmt = $pdo->prepare("
@@ -149,7 +153,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'balance' => $newBalance,
             'exchange_rate' => $exchangeRate,
             'payment_datetime' => $payment_datetime,
-            'tenant_id' => $tenant_id
+            'tenant_id' => $tenant_id,
+            'receipt_number' => $receipt_number
         ]);
         
         $user_id = $_SESSION['user_id'];

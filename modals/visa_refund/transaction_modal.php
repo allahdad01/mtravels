@@ -216,6 +216,13 @@
                                             ?>
                                         </select>
                                     </div>
+                                    <div class="form-group">
+                                        <label for="receiptNumber">
+                                            <i class="feather icon-hash mr-1"></i><?= __('receipt_number') ?>
+                                        </label>
+                                        <input type="text" class="form-control" id="receiptNumber"
+                                               name="receipt_number" placeholder="<?= __('enter_receipt_number') ?>">
+                                    </div>
 
                                     <div class="text-right mt-3">
                                         <button type="button" class="btn btn-secondary" data-toggle="collapse" 

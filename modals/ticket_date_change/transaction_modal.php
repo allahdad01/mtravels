@@ -255,6 +255,18 @@
                                     </div>
                                 </div>
 
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <div class="form-group">
+                                            <label for="receiptNumber" class="font-weight-semibold text-dark">
+                                                <i class="feather icon-hash mr-1"></i><?= __('receipt_number') ?>
+                                            </label>
+                                            <input type="text" class="form-control border" id="receiptNumber"
+                                                name="receipt_number" placeholder="<?= __('enter_receipt_number') ?>">
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <!-- Action Buttons -->
                                 <div class="row">
                                     <div class="col-12">

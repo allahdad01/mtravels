@@ -53,6 +53,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $receipt_number = isset($_POST['receipt_number']) ? DbSecurity::validateInput($_POST['receipt_number'], 'string', ['maxlength' => 255]) : null;
     $currency = $_POST['payment_currency'];
     $main_account_id = isset($_POST['main_account_id']) ? intval($_POST['main_account_id']) : null;
+    $transaction_to_lower = strtolower(trim($transaction_to));
+
+    if ($transaction_to_lower === 'bank' || $transaction_to_lower === 'internal account') {
+        if (empty(trim((string) $receipt_number))) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Receipt number is required for bank and internal account transactions']);
+            exit;
+        }
+    }
 
     // Start a transaction
     $pdo->beginTransaction();
@@ -128,7 +137,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $supplier_type = $supplier_data['supplier_type'];
 
         // Normalize $transaction_to to lowercase for case-insensitive comparison
-        $transaction_to_lower = strtolower(trim($transaction_to));
         $transaction_type = 'Credit'; // Default transaction type for adding a transaction
         $client_transaction_type = 'credit';
 
@@ -467,7 +475,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $base_amount = floatval($supplier['sold_price']);
 
         // Step 5: Add a notification for the admin with the correct umrah_transaction_id
-        $notification_message = "Customer: $traveler_name has paid: $payment_amount $currency to $transaction_to processed by $username for the Umrah booking.";
+        $notification_message = "Customer {$traveler_name} paid {$payment_amount} {$currency} to {$transaction_to} for the Umrah booking. Processed by {$username}.";
+        if (!empty($receipt_number)) {
+            $notification_message .= " Receipt: {$receipt_number}.";
+        }
 
         $recipient_role = "admin";
         $transaction_type = "umrah";

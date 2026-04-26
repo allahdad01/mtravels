@@ -464,6 +464,7 @@ const transactionManager = {
         if (date) {
             formData.set('payment_date', `${date} ${time}`);
         }
+        formData.set('receipt_number', ($('#receiptNumber').val() || '').trim());
 
         const self = this;
 

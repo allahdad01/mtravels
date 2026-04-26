@@ -269,6 +269,7 @@
         if (date) {
             formData.set('payment_date', `${date} ${time}`);
         }
+        formData.set('receipt_number', ($('#receiptNumber').val() || '').trim());
         
         $.ajax({
             url: '../api/visa/add_visa_transaction.php',

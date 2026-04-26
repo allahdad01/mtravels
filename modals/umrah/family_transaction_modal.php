@@ -142,7 +142,7 @@
                                              <h6 class="mb-3"><?= __('member_payments') ?></h6>
                                              <div class="alert alert-info" id="bankReceiptAlert" style="display: none;">
                                                  <i class="feather icon-info mr-2"></i>
-                                                 <strong>Bank Transaction Mode:</strong> Please enter a unique receipt number for each member below.
+                                                 <strong>Receipt Numbers:</strong> You can enter a separate receipt number for each member below.
                                              </div>
                                              <div id="familyMemberPayments" class="row">
                                                  <!-- Member payment inputs will be loaded here -->
@@ -203,12 +203,18 @@
 // Show/Hide Receipt Number and Main Account fields based on Transaction To selection
 $(document).ready(function() {
     $('#familyTransactionTo').change(function() {
-        if ($(this).val() === 'Bank') {
+        const transactionTo = $(this).val();
+
+        if (transactionTo === 'Bank' || transactionTo === 'Internal Account') {
             $('#familyReceiptNumberField').slideDown();
+        } else {
+            $('#familyReceiptNumberField').slideUp();
+        }
+
+        if (transactionTo === 'Bank') {
             // Check if supplier is internal, then load main accounts
             checkAndLoadFamilyMainAccounts();
         } else {
-            $('#familyReceiptNumberField').slideUp();
             $('#familyMainAccountField').slideUp();
         }
     });

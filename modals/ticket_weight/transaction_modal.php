@@ -230,6 +230,15 @@
                                     <textarea class="form-control" id="transactionRemarks" name="remarks" rows="3" placeholder="Optional remarks..."></textarea>
                                 </div>
 
+                                <div class="form-group">
+                                    <label for="receiptNumber" class="font-weight-bold">
+                                        <i class="feather icon-hash mr-1"></i>
+                                        <?= __('receipt_number') ?>
+                                    </label>
+                                    <input type="text" class="form-control" id="receiptNumber"
+                                        name="receipt_number" placeholder="<?= __('enter_receipt_number') ?>">
+                                </div>
+
                                 <div class="text-right">
                                     <button type="submit" class="btn btn-primary btn-lg px-4">
                                         <i class="feather icon-save mr-2"></i>

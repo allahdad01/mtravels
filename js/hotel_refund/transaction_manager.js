@@ -415,6 +415,7 @@ const transactionManager = {
         // Set the booking_id from refund_id for compatibility
         const refundId = $('#refund_id').val();
         formData.set('booking_id', refundId);
+        formData.set('receipt_number', ($('#receiptNumber').val() || '').trim());
         
         // Validate required fields
         if (!refundId) {

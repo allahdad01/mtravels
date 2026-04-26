@@ -35,6 +35,9 @@ $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['bo
 // Validate exchange_rate (optional)
 $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_POST['exchange_rate'], 'float', ['min' => 0]) : null;
 
+// Validate receipt number (optional)
+$receipt_number = isset($_POST['receipt_number']) ? DbSecurity::validateInput($_POST['receipt_number'], 'string', ['maxlength' => 100]) : '';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $booking_id = intval($_POST['booking_id']);
@@ -43,6 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $amount = floatval($_POST['payment_amount']);
         $currency = $_POST['payment_currency'];
         $exchange_rate = isset($_POST['exchange_rate']) ? floatval($_POST['exchange_rate']) : null;
+        $receipt_number = trim((string) $receipt_number);
 
         // Get booking details including client type
         $stmt = $pdo->prepare("
@@ -83,8 +87,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Insert transaction record (for both types, but only agency affects balance)
         $stmt = $pdo->prepare("INSERT INTO main_account_transactions
-            (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, tenant_id, branch_id, exchange_rate)
-            VALUES (?, 'debit', ?, ?, ?, 'ticket_refund', ?, ?, ?, ?, ?, ?)");
+            (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, tenant_id, branch_id, exchange_rate, receipt)
+            VALUES (?, 'debit', ?, ?, ?, 'ticket_refund', ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $booking['paid_to'],
             $amount,
@@ -95,7 +99,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $payment_date,
             $tenant_id,
             $branch_id,
-            $exchange_rate
+            $exchange_rate,
+            $receipt_number
         ]);
 
         // Get the last inserted ID using PDO's lastInsertId()
@@ -103,13 +108,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Create notification with client type info
         $notificationMessage = sprintf(
-            "Refund payment for %s client ticket #%s - %s %s: Amount %s %.2f",
+            "Refund payment for %s client ticket #%s - %s %s: Amount %s %.2f%s",
             ucfirst($booking['client_type']),
             $booking['pnr'],
             $booking['title'],
             $booking['passenger_name'],
             $currency,
-            $amount
+            $amount,
+            $receipt_number !== '' ? " | Receipt: {$receipt_number}" : ''
         );
 
         $notifStmt = $pdo->prepare("
@@ -134,6 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'amount' => $amount,
             'currency' => $currency,
             'exchange_rate' => $exchange_rate,
+            'receipt_number' => $receipt_number,
             'client_type' => $booking['client_type'],
             'main_account_id' => $booking['paid_to']
         ]);

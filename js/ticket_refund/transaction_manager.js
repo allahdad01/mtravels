@@ -464,6 +464,8 @@ const transactionManager = {
         const form = $(this);
         const formData = new FormData(form[0]);
         const ticketId = $('#booking_id').val();
+        const receiptNumber = ($('#receiptNumber').val() || '').trim();
+        formData.set('receipt_number', receiptNumber);
 
         // Combine date and time into a single datetime value
         const date = formData.get('payment_date');

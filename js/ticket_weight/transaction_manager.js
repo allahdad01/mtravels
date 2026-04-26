@@ -656,6 +656,8 @@ $('#weightTransactionForm').on('submit', function(e) {
             formData.set('exchange_rate', exchangeRate);
         }
     }
+    const receiptNumber = ($('#receiptNumber').val() || '').trim();
+    formData.set('receipt_number', receiptNumber);
 
     $.ajax({
         url: '../api/ticket_weight/save_weight_transaction.php',
