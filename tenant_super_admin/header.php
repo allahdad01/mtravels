@@ -13,6 +13,7 @@ if (!isset($_SESSION['user_id'])) {
 require_once('../includes/session_check.php');
 // Include CSRF protection
 require_once('../includes/CsrfProtection.php');
+require_once('../includes/CommunicationAddonManager.php');
 // Generate or get CSRF token for this session
 $csrf_token = CsrfProtection::getToken();
 // Include language system
@@ -93,6 +94,9 @@ $session_timeout = 1800; // 30 minutes in seconds
 $remaining_time = isset($_SESSION['login_time']) ? $session_timeout - (time() - $_SESSION['login_time']) : $session_timeout;
 $remaining_time = max(0, $remaining_time); // Ensure non-negative
 
+$communicationAddonManager = new CommunicationAddonManager($pdo, $tenant_id);
+$has_whatsapp_addon = $communicationAddonManager->hasActiveAddon($tenant_id, 'whatsapp');
+$has_smtp_addon = $communicationAddonManager->hasActiveAddon($tenant_id, 'smtp');
 
 ?>
 
@@ -1498,6 +1502,12 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                         <span class="pcoded-mtext">Request Users</span>
                     </a>
                 </li>
+                <li data-username="request_communication_addon" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'request_communication_addon.php' ? 'active' : ''; ?>">
+                    <a href="request_communication_addon.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-message-square"></i></span>
+                        <span class="pcoded-mtext">Request Communication</span>
+                    </a>
+                </li>
                 <?php if (hasFeature('attendance', $allowed_features)): ?>
                 <li data-username="branch_attendance" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'branch_attendance.php' ? 'active' : ''; ?>">
                     <a href="branch_attendance.php" class="nav-link">
@@ -1723,12 +1733,14 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                     </a>
                 </li>
 
+                <?php if ($has_whatsapp_addon): ?>
                 <li data-username="whatsapp_settings" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'whatsapp_settings.php' ? 'active' : ''; ?>">
                     <a href="whatsapp_settings.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-message-circle"></i></span>
                         <span class="pcoded-mtext">WhatsApp Settings</span>
                     </a>
                 </li>
+                <?php endif; ?>
 
                 <li data-username="activity_logs" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'activity_logs.php' ? 'active' : ''; ?>">
                     <a href="activity_logs.php" class="nav-link">

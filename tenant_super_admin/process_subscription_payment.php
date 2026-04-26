@@ -87,7 +87,7 @@ $items = [
 if ($addon_cost > 0) {
     $items[] = [
         'id' => 'addon_' . $subscription_id,
-        'name' => 'Branch Add-ons',
+        'name' => 'Add-ons',
         'price' => $addon_cost
     ];
 }

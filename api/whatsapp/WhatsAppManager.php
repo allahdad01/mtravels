@@ -24,15 +24,34 @@ class WhatsAppManager {
         if (!$this->tenant_id) {
             throw new Exception("Tenant ID is required");
         }
-        
-        $stmt = $this->pdo->prepare("SELECT * FROM whatsapp_settings WHERE tenant_id = ? AND status = 'active'");
+
+        // WhatsApp can be used only when the add-on is active.
+        $addonStmt = $this->pdo->prepare("
+            SELECT COUNT(*) AS cnt
+            FROM communication_addons
+            WHERE tenant_id = ? AND addon_type = 'whatsapp' AND status = 'active'
+        ");
+        $addonStmt->execute([$this->tenant_id]);
+        $addon = $addonStmt->fetch(PDO::FETCH_ASSOC);
+        if (intval($addon['cnt'] ?? 0) === 0) {
+            throw new Exception("WhatsApp add-on is not active for this tenant");
+        }
+
+        $stmt = $this->pdo->prepare("SELECT * FROM whatsapp_settings WHERE tenant_id = ? ORDER BY id DESC LIMIT 1");
         $stmt->execute([$this->tenant_id]);
         $this->settings = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         if (!$this->settings) {
-            // Create default settings if none exist
             $this->createDefaultSettings();
-            $this->loadSettings();
+            $this->settings = [
+                'tenant_id' => $this->tenant_id,
+                'provider' => 'meta',
+                'api_token' => '',
+                'phone_number_id' => '',
+                'status' => 'inactive',
+                'auto_notifications' => 0,
+                'real_time_notifications' => 0
+            ];
         }
     }
     
@@ -59,6 +78,10 @@ class WhatsAppManager {
      */
     public function sendBookingNotification($type, $booking_id, $additional_data = []) {
         try {
+            if (($this->settings['status'] ?? 'inactive') !== 'active') {
+                return ['success' => false, 'message' => 'WhatsApp settings are not active'];
+            }
+
             // Get booking details based on type
             $booking = $this->getBookingDetails($type, $booking_id);
             if (!$booking) {

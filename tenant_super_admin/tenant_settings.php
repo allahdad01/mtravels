@@ -16,6 +16,10 @@ if (isset($_SESSION['settings_message'])) {
 }
 
 require_once('../includes/db.php');
+require_once('../includes/CommunicationAddonManager.php');
+
+$communicationAddonManager = new CommunicationAddonManager($pdo, $tenant_id);
+$has_smtp_addon = $communicationAddonManager->hasActiveAddon($tenant_id, 'smtp');
 ?>
 
 <style>
@@ -208,6 +212,13 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
                 <h6><span class="ico ico-smtp"><i class="feather icon-mail"></i></span><?php echo __('smtp_configuration'); ?></h6>
             </div>
             <div class="dash-card-body">
+                <?php if (!$has_smtp_addon): ?>
+                <div class="dash-alert warning" style="margin-bottom:0;">
+                    <i class="feather icon-alert-triangle"></i>
+                    SMTP settings are available after purchasing the SMTP add-on.
+                    <a href="request_communication_addon.php" style="margin-left:8px;font-weight:700;">Request Add-on</a>
+                </div>
+                <?php else: ?>
 
                 <div class="form-grid-3" style="margin-bottom:18px;">
                     <div class="form-group">
@@ -287,6 +298,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
                     <i class="feather icon-paper-plane"></i> <?php echo __('send_test_email'); ?>
                     </button>
                 </div>
+                <?php endif; ?>
 
             </div>
         </div>

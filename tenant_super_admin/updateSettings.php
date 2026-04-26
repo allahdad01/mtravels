@@ -10,6 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_once '../includes/db.php';
     require_once '../includes/CsrfProtection.php';
     require_once '../includes/SecureFileUpload.php';
+    require_once '../includes/CommunicationAddonManager.php';
     
     // Validate CSRF token for all POST requests
     if (!CsrfProtection::validateToken($_POST['csrf_token'] ?? null)) {
@@ -43,10 +44,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Get current settings for activity log
-    $getCurrentSettingsQuery = "SELECT agency_name, title, phone, email, address, logo, smtp_host, smtp_port, smtp_encryption, smtp_username, smtp_from_email, smtp_from_name, smtp_enabled FROM settings WHERE id = ? AND tenant_id = ?";
+    $getCurrentSettingsQuery = "SELECT agency_name, title, phone, email, address, logo, smtp_host, smtp_port, smtp_encryption, smtp_username, smtp_password, smtp_from_email, smtp_from_name, smtp_enabled FROM settings WHERE id = ? AND tenant_id = ?";
     $getCurrentSettingsStmt = $pdo->prepare($getCurrentSettingsQuery);
     $getCurrentSettingsStmt->execute([$id, $tenant_id]);
     $oldSettings = $getCurrentSettingsStmt->fetch(PDO::FETCH_ASSOC);
+
+    $communicationAddonManager = new CommunicationAddonManager($pdo, $tenant_id);
+    $has_smtp_addon = $communicationAddonManager->hasActiveAddon($tenant_id, 'smtp');
+    if (!$has_smtp_addon && $oldSettings) {
+        // Protect SMTP fields from direct POST updates when SMTP add-on is not active.
+        $smtp_host = $oldSettings['smtp_host'] ?? '';
+        $smtp_port = $oldSettings['smtp_port'] ?? '';
+        $smtp_encryption = $oldSettings['smtp_encryption'] ?? '';
+        $smtp_username = $oldSettings['smtp_username'] ?? '';
+        $smtp_password = $oldSettings['smtp_password'] ?? '';
+        $smtp_from_email = $oldSettings['smtp_from_email'] ?? '';
+        $smtp_from_name = $oldSettings['smtp_from_name'] ?? '';
+        $smtp_enabled = 0;
+    }
 
     // Handle logo upload (if a new file is uploaded) using SecureFileUpload
     $logo_path = '';

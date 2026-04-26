@@ -172,21 +172,30 @@ try {
                COALESCE((
                    SELECT SUM(ba.total_addon_cost) 
                    FROM branch_addons ba 
-                   WHERE ba.tenant_id = ts.tenant_id AND ba.status = 'active'
+                   WHERE ba.tenant_id = ts.tenant_id AND ba.status = 'active' AND ba.billing_cycle = ts.billing_cycle
                ), 0) as branch_addon_cost,
                COALESCE((
                    SELECT SUM(ua.total_addon_cost) 
                    FROM user_addons ua 
-                   WHERE ua.tenant_id = ts.tenant_id AND ua.status = 'active'
+                   WHERE ua.tenant_id = ts.tenant_id AND ua.status = 'active' AND ua.billing_cycle = ts.billing_cycle
                ), 0) as user_addon_cost,
+               COALESCE((
+                   SELECT SUM(ca.addon_price)
+                   FROM communication_addons ca
+                   WHERE ca.tenant_id = ts.tenant_id AND ca.status = 'active' AND ca.billing_cycle = ts.billing_cycle
+               ), 0) as communication_addon_cost,
                COALESCE((
                    SELECT SUM(ba.total_addon_cost) 
                    FROM branch_addons ba 
-                   WHERE ba.tenant_id = ts.tenant_id AND ba.status = 'active'
+                   WHERE ba.tenant_id = ts.tenant_id AND ba.status = 'active' AND ba.billing_cycle = ts.billing_cycle
                ), 0) + COALESCE((
                    SELECT SUM(ua.total_addon_cost) 
                    FROM user_addons ua 
-                   WHERE ua.tenant_id = ts.tenant_id AND ua.status = 'active'
+                   WHERE ua.tenant_id = ts.tenant_id AND ua.status = 'active' AND ua.billing_cycle = ts.billing_cycle
+               ), 0) + COALESCE((
+                   SELECT SUM(ca.addon_price)
+                   FROM communication_addons ca
+                   WHERE ca.tenant_id = ts.tenant_id AND ca.status = 'active' AND ca.billing_cycle = ts.billing_cycle
                ), 0) as total_addon_cost
         FROM tenant_subscriptions ts
         LEFT JOIN tenants t ON ts.tenant_id = t.id
@@ -838,12 +847,15 @@ $pay_total_pages = $payment_total_pages;
                                     <div class="ssc-detail-item">
                                         <span class="ssc-detail-label">Add-ons</span>
                                         <span class="ssc-detail-value ssc-addons">
-                                            <?php if ($sub['branch_addon_cost'] > 0 || $sub['user_addon_cost'] > 0): ?>
+                                            <?php if ($sub['branch_addon_cost'] > 0 || $sub['user_addon_cost'] > 0 || $sub['communication_addon_cost'] > 0): ?>
                                                 <?php if ($sub['branch_addon_cost'] > 0): ?>
                                                 +<?= $symbol . number_format($sub['branch_addon_cost'], 2) ?> branch
                                                 <?php endif; ?>
                                                 <?php if ($sub['user_addon_cost'] > 0): ?>
                                                 +<?= $symbol . number_format($sub['user_addon_cost'], 2) ?> users
+                                                <?php endif; ?>
+                                                <?php if ($sub['communication_addon_cost'] > 0): ?>
+                                                +<?= $symbol . number_format($sub['communication_addon_cost'], 2) ?> communication
                                                 <?php endif; ?>
                                             <?php else: ?>
                                             -
@@ -1064,13 +1076,16 @@ $pay_total_pages = $payment_total_pages;
                                      $subSymbol = getCurrencySymbol($sub['currency'] ?? 'USD');
                                      $subTotal = floatval($sub['amount']) + floatval($sub['total_addon_cost']);
                                      $addonsText = '';
-                                     if ($sub['branch_addon_cost'] > 0 || $sub['user_addon_cost'] > 0) {
+                                     if ($sub['branch_addon_cost'] > 0 || $sub['user_addon_cost'] > 0 || $sub['communication_addon_cost'] > 0) {
                                          $addons = [];
                                          if ($sub['branch_addon_cost'] > 0) {
                                              $addons[] = $subSymbol . number_format($sub['branch_addon_cost'], 2) . ' branch';
                                          }
                                          if ($sub['user_addon_cost'] > 0) {
                                              $addons[] = $subSymbol . number_format($sub['user_addon_cost'], 2) . ' users';
+                                         }
+                                         if ($sub['communication_addon_cost'] > 0) {
+                                             $addons[] = $subSymbol . number_format($sub['communication_addon_cost'], 2) . ' communication';
                                          }
                                          $addonsText = ' + ' . implode(', ', $addons);
                                      }

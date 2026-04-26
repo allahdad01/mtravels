@@ -191,17 +191,28 @@ class UserAddonManager {
         
         $estimated_cost = $this->calculateAddonCost($num_users, $billing_cycle, $plan['currency']);
         
-        $stmt = $this->conn->prepare("
-            INSERT INTO user_addon_requests 
-            (tenant_id, requested_additional_users, estimated_monthly_cost, currency, status)
-            VALUES (?, ?, ?, ?, 'pending')
-        ");
-        
         try {
-            $stmt->execute([$tenant_id, $num_users, $estimated_cost, $plan['currency']]);
+            // Preferred schema: includes billing_cycle on request.
+            $stmt = $this->conn->prepare("
+                INSERT INTO user_addon_requests 
+                (tenant_id, requested_additional_users, billing_cycle, estimated_monthly_cost, currency, status)
+                VALUES (?, ?, ?, ?, ?, 'pending')
+            ");
+            $stmt->execute([$tenant_id, $num_users, $billing_cycle, $estimated_cost, $plan['currency']]);
             $request_id = $this->conn->lastInsertId();
         } catch (PDOException $e) {
-            return ['success' => false, 'message' => 'Database error: ' . $e->getMessage()];
+            // Backward compatibility for databases that don't yet have billing_cycle on request table.
+            try {
+                $stmt = $this->conn->prepare("
+                    INSERT INTO user_addon_requests 
+                    (tenant_id, requested_additional_users, estimated_monthly_cost, currency, status)
+                    VALUES (?, ?, ?, ?, 'pending')
+                ");
+                $stmt->execute([$tenant_id, $num_users, $estimated_cost, $plan['currency']]);
+                $request_id = $this->conn->lastInsertId();
+            } catch (PDOException $inner) {
+                return ['success' => false, 'message' => 'Database error: ' . $inner->getMessage()];
+            }
         }
         
         return [
@@ -237,6 +248,7 @@ class UserAddonManager {
         }
         
         // Use the estimated cost from the request
+        $request_billing_cycle = $request['billing_cycle'] ?? 'monthly';
         $total_cost = $request['estimated_monthly_cost'];
         
         // Calculate price per user
@@ -247,7 +259,7 @@ class UserAddonManager {
             INSERT INTO user_addons 
             (tenant_id, plan_id, base_users, additional_users, addon_price_per_user, 
              currency, total_addon_cost, billing_cycle, status, created_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'monthly', 'active', ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)
         ");
         
         try {
@@ -259,6 +271,7 @@ class UserAddonManager {
                 $addon_price,
                 $request['currency'],
                 $total_cost,
+                $request_billing_cycle,
                 $approved_by_user_id
             ]);
             $addon_id = $this->conn->lastInsertId();

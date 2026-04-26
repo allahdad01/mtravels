@@ -194,17 +194,28 @@ class BranchAddonManager {
         
         $estimated_cost = $this->calculateAddonCost($num_branches, $billing_cycle, $plan['currency']);
         
-        $stmt = $this->conn->prepare("
-            INSERT INTO branch_addon_requests 
-            (tenant_id, requested_additional_branches, estimated_monthly_cost, currency, status)
-            VALUES (?, ?, ?, ?, 'pending')
-        ");
-        
         try {
-            $stmt->execute([$tenant_id, $num_branches, $estimated_cost, $plan['currency']]);
+            // Preferred schema: includes billing_cycle on request.
+            $stmt = $this->conn->prepare("
+                INSERT INTO branch_addon_requests 
+                (tenant_id, requested_additional_branches, billing_cycle, estimated_monthly_cost, currency, status)
+                VALUES (?, ?, ?, ?, ?, 'pending')
+            ");
+            $stmt->execute([$tenant_id, $num_branches, $billing_cycle, $estimated_cost, $plan['currency']]);
             $request_id = $this->conn->lastInsertId();
         } catch (PDOException $e) {
-            return ['success' => false, 'message' => 'Database error: ' . $e->getMessage()];
+            // Backward compatibility for databases that don't yet have billing_cycle on request table.
+            try {
+                $stmt = $this->conn->prepare("
+                    INSERT INTO branch_addon_requests 
+                    (tenant_id, requested_additional_branches, estimated_monthly_cost, currency, status)
+                    VALUES (?, ?, ?, ?, 'pending')
+                ");
+                $stmt->execute([$tenant_id, $num_branches, $estimated_cost, $plan['currency']]);
+                $request_id = $this->conn->lastInsertId();
+            } catch (PDOException $inner) {
+                return ['success' => false, 'message' => 'Database error: ' . $inner->getMessage()];
+            }
         }
         
         return [
@@ -240,6 +251,7 @@ class BranchAddonManager {
         }
         
         // Use the estimated cost from the request (already calculated with tenant's configured pricing)
+        $request_billing_cycle = $request['billing_cycle'] ?? 'monthly';
         $total_cost = $request['estimated_monthly_cost'];
         
         // Calculate price per branch based on requested branches
@@ -250,7 +262,7 @@ class BranchAddonManager {
             INSERT INTO branch_addons 
             (tenant_id, plan_id, base_branches, additional_branches, addon_price_per_branch, 
              currency, total_addon_cost, billing_cycle, status, created_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'monthly', 'active', ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)
         ");
         
         try {
@@ -262,6 +274,7 @@ class BranchAddonManager {
                 $addon_price,
                 $request['currency'],
                 $total_cost,
+                $request_billing_cycle,
                 $approved_by_user_id
             ]);
             $addon_id = $this->conn->lastInsertId();

@@ -23,6 +23,7 @@ require_once '../config.php';
 require_once '../includes/db.php';
 require_once '../includes/BranchAddonManager.php';
 require_once '../includes/UserAddonManager.php';
+require_once '../includes/CommunicationAddonManager.php';
 
 if (!isset($pdo) || !$pdo) {
     die("Database connection failed. Please contact administrator.");
@@ -50,6 +51,7 @@ function getCurrencySymbol($currencyCode) {
 
 $addonManager     = new BranchAddonManager($pdo, $tenant_id);
 $userAddonManager = new UserAddonManager($pdo, $tenant_id);
+$communicationAddonManager = new CommunicationAddonManager($pdo, $tenant_id);
 
 $tenant_payment_status = 'current';
 try {
@@ -510,10 +512,22 @@ body, .pcoded-main-container {
         <?php if (count($subscriptions) > 0): ?>
             <?php foreach ($subscriptions as $subscription):
                 $activeBranchAddons = $addonManager->getActiveBranchAddons($tenant_id);
+                $subscriptionCycle = strtolower($subscription['billing_cycle'] ?? 'monthly');
+                $activeBranchAddons = array_filter($activeBranchAddons, function($addon) use ($subscriptionCycle) {
+                    return strtolower($addon['billing_cycle'] ?? 'monthly') === $subscriptionCycle;
+                });
                 $branchAddonCost = array_sum(array_column($activeBranchAddons, 'total_addon_cost'));
                 $activeUserAddons = $userAddonManager->getActiveUserAddons($tenant_id);
+                $activeUserAddons = array_filter($activeUserAddons, function($addon) use ($subscriptionCycle) {
+                    return strtolower($addon['billing_cycle'] ?? 'monthly') === $subscriptionCycle;
+                });
                 $userAddonCost = array_sum(array_column($activeUserAddons, 'total_addon_cost'));
-                $totalAddonCost = $branchAddonCost + $userAddonCost;
+                $activeCommunicationAddons = $communicationAddonManager->getActiveAddons($tenant_id);
+                $activeCommunicationAddons = array_filter($activeCommunicationAddons, function($addon) use ($subscriptionCycle) {
+                    return strtolower($addon['billing_cycle'] ?? 'monthly') === $subscriptionCycle;
+                });
+                $communicationAddonCost = array_sum(array_column($activeCommunicationAddons, 'addon_price'));
+                $totalAddonCost = $branchAddonCost + $userAddonCost + $communicationAddonCost;
                 $totalAmount    = floatval($subscription['amount']) + $totalAddonCost;
                 $symbol         = getCurrencySymbol($subscription['currency']);
                 $status         = strtolower($subscription['status']);
@@ -559,6 +573,12 @@ body, .pcoded-main-container {
                         <div class="addon-row">
                             <span class="ar-label"><i class="feather icon-users"></i>User Add-ons</span>
                             <span class="ar-value"><?= $symbol . number_format($userAddonCost, 2) ?></span>
+                        </div>
+                        <?php endif; ?>
+                        <?php if ($communicationAddonCost > 0): ?>
+                        <div class="addon-row">
+                            <span class="ar-label"><i class="feather icon-message-circle"></i>Communication Add-ons</span>
+                            <span class="ar-value"><?= $symbol . number_format($communicationAddonCost, 2) ?></span>
                         </div>
                         <?php endif; ?>
                         <div class="addon-row" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">

@@ -5,6 +5,7 @@
 session_start();
 require_once '../includes/db.php';
 require_once '../includes/CsrfProtection.php';
+require_once '../includes/CommunicationAddonManager.php';
 
 if (!isset($_SESSION['user_id'])) {
     header('Location: ../login.php');
@@ -13,6 +14,14 @@ if (!isset($_SESSION['user_id'])) {
 
 $tenant_id = $_SESSION['tenant_id'] ?? null;
 $user_id   = $_SESSION['user_id'];
+$communicationAddonManager = new CommunicationAddonManager($pdo, $tenant_id);
+$has_whatsapp_addon = $communicationAddonManager->hasActiveAddon($tenant_id, 'whatsapp');
+
+if (!$has_whatsapp_addon) {
+    $_SESSION['comm_addon_error'] = 'Please purchase the WhatsApp add-on first.';
+    header('Location: request_communication_addon.php');
+    exit();
+}
 
 // Handle AJAX POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

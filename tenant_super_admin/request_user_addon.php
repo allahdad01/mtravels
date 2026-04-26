@@ -18,6 +18,11 @@ $usageStats       = $userAddonManager->getUsageStats();
 $plan             = $usageStats['plan'];
 $addonPricing     = $userAddonManager->getAddonPricing();
 $currency         = htmlspecialchars($plan['currency'] ?? 'USD');
+$default_billing_cycle = 'monthly';
+if (is_array($plan) && !empty($plan['billing_cycle']) && in_array($plan['billing_cycle'], ['monthly', 'quarterly', 'yearly'], true)) {
+    $default_billing_cycle = $plan['billing_cycle'];
+}
+$default_cycle_price = floatval($addonPricing[$default_billing_cycle] ?? $addonPricing['monthly']);
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_addon'])) {
@@ -25,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_addon'])) {
         $error = __('invalid_csrf_token');
     } else {
         $num_users     = intval($_POST['num_users'] ?? 0);
-        $billing_cycle = $_POST['billing_cycle'] ?? 'monthly';
+        $billing_cycle = $_POST['billing_cycle'] ?? $default_billing_cycle;
         if ($num_users <= 0) {
             $error = __('invalid_number_of_users');
         } elseif ($num_users > 100) {
@@ -323,9 +328,9 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
                                         <i class="feather icon-repeat" style="margin-right:4px;"></i><?= __('billing_cycle') ?> *
                                     </label>
                                     <select class="form-input" id="billing_cycle" name="billing_cycle" required onchange="updateEstimatedCost()">
-                                        <option value="monthly"><?= __('monthly') ?> — <?= number_format($addonPricing['monthly'], 2) ?> <?= $currency ?>/<?= __('user') ?></option>
-                                        <option value="quarterly"><?= __('quarterly') ?> — <?= number_format($addonPricing['quarterly'], 2) ?> <?= $currency ?>/<?= __('user') ?></option>
-                                        <option value="yearly"><?= __('yearly') ?> — <?= number_format($addonPricing['yearly'], 2) ?> <?= $currency ?>/<?= __('user') ?></option>
+                                        <option value="monthly" <?= $default_billing_cycle === 'monthly' ? 'selected' : '' ?>><?= __('monthly') ?> — <?= number_format($addonPricing['monthly'], 2) ?> <?= $currency ?>/<?= __('user') ?></option>
+                                        <option value="quarterly" <?= $default_billing_cycle === 'quarterly' ? 'selected' : '' ?>><?= __('quarterly') ?> — <?= number_format($addonPricing['quarterly'], 2) ?> <?= $currency ?>/<?= __('user') ?></option>
+                                        <option value="yearly" <?= $default_billing_cycle === 'yearly' ? 'selected' : '' ?>><?= __('yearly') ?> — <?= number_format($addonPricing['yearly'], 2) ?> <?= $currency ?>/<?= __('user') ?></option>
                                     </select>
                                 </div>
                             </div>
@@ -334,10 +339,10 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
                         <!-- Cost Estimator -->
                         <div class="cost-box">
                             <div class="cost-box-label"><i class="feather icon-dollar-sign"></i><?= __('estimated_cost') ?></div>
-                            <div class="cost-total"><span id="estimated_cost"><?= number_format($addonPricing['monthly'], 2) ?></span> <?= $currency ?></div>
-                            <div class="cost-period" id="cost_period">/ <?= __('month') ?></div>
+                            <div class="cost-total"><span id="estimated_cost"><?= number_format($default_cycle_price, 2) ?></span> <?= $currency ?></div>
+                            <div class="cost-period" id="cost_period">/ <?= __($default_billing_cycle === 'yearly' ? 'year' : ($default_billing_cycle === 'quarterly' ? 'quarter' : 'month')) ?></div>
                             <div class="cost-breakdown" id="cost_breakdown">
-                                1 user × <?= number_format($addonPricing['monthly'], 2) ?> <?= $currency ?> = <?= number_format($addonPricing['monthly'], 2) ?> <?= $currency ?>/<?= __('month') ?>
+                                1 user × <?= number_format($default_cycle_price, 2) ?> <?= $currency ?> = <?= number_format($default_cycle_price, 2) ?> <?= $currency ?>/<?= __($default_billing_cycle === 'yearly' ? 'year' : ($default_billing_cycle === 'quarterly' ? 'quarter' : 'month')) ?>
                             </div>
                         </div>
 

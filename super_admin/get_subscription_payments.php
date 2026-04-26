@@ -68,13 +68,32 @@ try {
          exit();
      }
 
-     // Get active branch add-ons for this tenant
+     // Get active add-ons for this tenant (branch + users + communication)
      $stmt = $pdo->prepare("
-         SELECT COALESCE(SUM(total_addon_cost), 0) as total_addon_cost
-         FROM branch_addons
-         WHERE tenant_id = ? AND status = 'active'
+         SELECT
+             COALESCE((
+                 SELECT SUM(ba.total_addon_cost)
+                 FROM branch_addons ba
+                 WHERE ba.tenant_id = ? AND ba.status = 'active' AND ba.billing_cycle = ?
+             ), 0)
+             +
+             COALESCE((
+                 SELECT SUM(ua.total_addon_cost)
+                 FROM user_addons ua
+                 WHERE ua.tenant_id = ? AND ua.status = 'active' AND ua.billing_cycle = ?
+             ), 0)
+             +
+             COALESCE((
+                 SELECT SUM(ca.addon_price)
+                 FROM communication_addons ca
+                 WHERE ca.tenant_id = ? AND ca.status = 'active' AND ca.billing_cycle = ?
+             ), 0) as total_addon_cost
      ");
-     $stmt->execute([$subscription['tenant_id']]);
+     $stmt->execute([
+         $subscription['tenant_id'], $subscription['billing_cycle'],
+         $subscription['tenant_id'], $subscription['billing_cycle'],
+         $subscription['tenant_id'], $subscription['billing_cycle']
+     ]);
      $addonCostResult = $stmt->fetch(PDO::FETCH_ASSOC);
      $totalAddonCost = floatval($addonCostResult['total_addon_cost'] ?? 0);
      $totalAmount = floatval($subscription['amount']) + $totalAddonCost;

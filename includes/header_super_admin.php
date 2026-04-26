@@ -210,6 +210,20 @@ if (!function_exists('h')) {
                     </a>
                 </li>
 
+                <li data-username="manage_communication_addons" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_communication_addons.php' ? 'active' : ''; ?>">
+                    <a href="manage_communication_addons.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="fas fa-comment-dots"></i></span>
+                        <span class="pcoded-mtext">Communication Addons</span>
+                    </a>
+                </li>
+
+                <li data-username="manage_communication_addon_pricing" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_communication_addon_pricing.php' ? 'active' : ''; ?>">
+                    <a href="manage_communication_addon_pricing.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="fas fa-tags"></i></span>
+                        <span class="pcoded-mtext">Communication Addon Pricing</span>
+                    </a>
+                </li>
+
                 <li data-username="manage_sales_agents" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_sales_agents.php' ? 'active' : ''; ?>">
                     <a href="manage_sales_agents.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-briefcase"></i></span>

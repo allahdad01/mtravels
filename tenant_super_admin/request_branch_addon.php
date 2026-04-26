@@ -26,6 +26,10 @@ $tenant_id     = $_SESSION['tenant_id'];
 $addon_manager = new BranchAddonManager($pdo, $tenant_id);
 $pricing       = $addon_manager->getAddonPricing($tenant_id);
 $plan_info     = $addon_manager->getTenantPlanInfo($tenant_id);
+$default_billing_cycle = 'monthly';
+if (is_array($plan_info) && !empty($plan_info['billing_cycle']) && in_array($plan_info['billing_cycle'], ['monthly', 'quarterly', 'yearly'], true)) {
+    $default_billing_cycle = $plan_info['billing_cycle'];
+}
 
 if (!$plan_info) {
     $error = 'You do not have an active subscription. Please contact support.';
@@ -66,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $form_error = 'Invalid CSRF token';
     } else {
         $num_branches  = intval($_POST['num_branches'] ?? 0);
-        $billing_cycle = $_POST['billing_cycle'] ?? 'monthly';
+        $billing_cycle = $_POST['billing_cycle'] ?? $default_billing_cycle;
         if ($num_branches <= 0) {
             $form_error = 'Please enter a valid number of branches';
         } else {
@@ -82,6 +86,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 }
 
 $currency    = htmlspecialchars($plan_info['currency'] ?? 'USD');
+$default_cycle_price = floatval($pricing[$default_billing_cycle] ?? $pricing['monthly']);
+$default_cycle_suffix = ['monthly' => '/month', 'quarterly' => '(3 months)', 'yearly' => '(12 months)'][$default_billing_cycle] ?? '/month';
 $avail_slots = isset($max_allowed, $current_branches) ? $max_allowed - $current_branches : 0;
 $usage_pct   = isset($max_allowed, $current_branches) && $max_allowed > 0 ? round(($current_branches / $max_allowed) * 100) : 0;
 ?>
@@ -288,9 +294,9 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
                                 <div style="margin-bottom:18px;">
                                     <label class="form-label"><i class="feather icon-calendar" style="margin-right:5px;"></i>Billing Cycle</label>
                                     <select class="form-input" id="billing_cycle" name="billing_cycle" onchange="updateCost()">
-                                        <option value="monthly">Monthly —  <?= number_format($pricing['monthly'], 2) ?> <?= $currency ?>/branch</option>
-                                        <option value="quarterly">Quarterly —  <?= number_format($pricing['quarterly'], 2) ?> <?= $currency ?>/branch</option>
-                                        <option value="yearly">Yearly —  <?= number_format($pricing['yearly'], 2) ?> <?= $currency ?>/branch</option>
+                                        <option value="monthly" <?= $default_billing_cycle === 'monthly' ? 'selected' : '' ?>>Monthly —  <?= number_format($pricing['monthly'], 2) ?> <?= $currency ?>/branch</option>
+                                        <option value="quarterly" <?= $default_billing_cycle === 'quarterly' ? 'selected' : '' ?>>Quarterly —  <?= number_format($pricing['quarterly'], 2) ?> <?= $currency ?>/branch</option>
+                                        <option value="yearly" <?= $default_billing_cycle === 'yearly' ? 'selected' : '' ?>>Yearly —  <?= number_format($pricing['yearly'], 2) ?> <?= $currency ?>/branch</option>
                                     </select>
                                 </div>
                             </div>
@@ -303,9 +309,9 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
                             </div>
                             <div class="cost-box-row">
                                 <span class="cost-breakdown" id="costBreakdown">
-                                    1 branch Ã— <?= number_format($pricing['monthly'], 2) ?> <?= $currency ?> = <?= number_format($pricing['monthly'], 2) ?> <?= $currency ?>/month
+                                    1 branch x <?= number_format($default_cycle_price, 2) ?> <?= $currency ?> = <?= number_format($default_cycle_price, 2) ?> <?= $currency ?> <?= $default_cycle_suffix ?>
                                 </span>
-                                <span class="cost-total" id="estimatedCost"><?= number_format($pricing['monthly'], 2) ?> <?= $currency ?></span>
+                                <span class="cost-total" id="estimatedCost"><?= number_format($default_cycle_price, 2) ?> <?= $currency ?></span>
                             </div>
                         </div>
 

@@ -167,7 +167,8 @@ function getPlatformSettingsFormatted() {
         'smtp_username' => $raw_settings['smtp_username'] ?? '',
         'smtp_password' => $raw_settings['smtp_password'] ?? '',
         'smtp_from_email' => $raw_settings['smtp_from_email'] ?? '',
-        'smtp_from_name' => $raw_settings['smtp_from_name'] ?? 'MTravels'
+        'smtp_from_name' => $raw_settings['smtp_from_name'] ?? 'MTravels',
+        'smtp_enabled' => intval($raw_settings['smtp_enabled'] ?? 0)
     ];
     
     return $formatted;
@@ -185,15 +186,36 @@ function getTenantSMTPSettings($tenantId = null) {
         return getPlatformSettingsFormatted();
     }
 
+    // Tenant SMTP config is available only when SMTP add-on is active.
+    try {
+        $addonStmt = $pdo->prepare("
+            SELECT COUNT(*) AS cnt
+            FROM communication_addons
+            WHERE tenant_id = ? AND addon_type = 'smtp' AND status = 'active'
+        ");
+        $addonStmt->bindParam(1, $tenantId, PDO::PARAM_INT);
+        $addonStmt->execute();
+        $addonRow = $addonStmt->fetch(PDO::FETCH_ASSOC);
+        $hasSmtpAddon = intval($addonRow['cnt'] ?? 0) > 0;
+    } catch (Exception $e) {
+        // Table may not exist before migration; fail safe to platform SMTP.
+        $hasSmtpAddon = false;
+    }
+
+    if (!$hasSmtpAddon) {
+        return getPlatformSettingsFormatted();
+    }
+
     // Check if tenant has custom SMTP settings in settings table
-    $stmt = $pdo->prepare("SELECT smtp_host, smtp_port, smtp_encryption, smtp_username, smtp_password, smtp_from_email, smtp_from_name FROM settings WHERE tenant_id = ?");
+    $stmt = $pdo->prepare("SELECT smtp_host, smtp_port, smtp_encryption, smtp_username, smtp_password, smtp_from_email, smtp_from_name, smtp_enabled FROM settings WHERE tenant_id = ?");
     $stmt->bindParam(1, $tenantId, PDO::PARAM_INT);
     $stmt->execute();
     $tenantSettings = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    // Filter out empty values and return only configured settings
+    // Filter out empty values and return only configured settings.
+    // Keep numeric 0/1 (smtp_enabled) untouched.
     $filteredSettings = array_filter($tenantSettings, function($value) {
-        return !empty($value);
+        return $value !== null && $value !== '';
     });
 
     // If tenant has SMTP settings, use them; otherwise fall back to platform settings
