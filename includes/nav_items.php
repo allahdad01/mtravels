@@ -10,6 +10,14 @@
 // Current page for active-state detection
 $currentPage = basename($_SERVER['PHP_SELF']);
 
+// Communication add-on state (used for SMTP-linked menu items).
+$has_smtp_addon = false;
+if (isset($pdo, $tenant_id)) {
+    require_once __DIR__ . '/CommunicationAddonManager.php';
+    $communicationAddonManager = new CommunicationAddonManager($pdo, (int) $tenant_id);
+    $has_smtp_addon = $communicationAddonManager->hasActiveAddon((int) $tenant_id, 'smtp');
+}
+
 /**
  * Returns 'active' when the current page is in the given list.
  */
@@ -455,12 +463,14 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
         <span class="pcoded-mtext"><?= __('activity_log') ?></span>
     </a>
 </li>
+<?php if ($has_smtp_addon): ?>
 <li class="nav-item <?= navActive('email_analytics.php') ?>">
     <a href="email_analytics.php" class="nav-link">
         <span class="pcoded-micon"><i class="feather icon-mail"></i></span>
         <span class="pcoded-mtext"><?= __('email_analytics') ?></span>
     </a>
 </li>
+<?php endif; ?>
 <?php endif; ?>
 
 <!-- ── Support Tickets ────────────────────────────────────────────────── -->

@@ -74,34 +74,61 @@ $all_addons = $addon_manager->getAllAddons();
 include '../includes/header_super_admin.php';
 ?>
 
+<style>
+    .ca-wrap { padding: 20px; }
+    .ca-head { background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%); color: #fff; border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
+    .ca-head h4 { margin: 0; font-weight: 700; color: #fff; }
+    .ca-head p { margin: 6px 0 0; opacity: .9; font-size: 13px; }
+    .ca-alert { border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; font-weight: 600; }
+    .ca-card { background: #fff; border: 1px solid #e8edf5; border-radius: 12px; box-shadow: 0 2px 12px rgba(64,153,255,.08); margin-bottom: 16px; }
+    .ca-card-head { padding: 14px 16px; border-bottom: 1px solid #e8edf5; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .ca-card-head h5 { margin: 0; font-size: 15px; font-weight: 700; }
+    .ca-card-body { padding: 14px 16px; }
+    .ca-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .ca-table thead th { background: #f4f7fe; color: #6b7a99; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; padding: 10px; border-bottom: 1px solid #e8edf5; }
+    .ca-table tbody td { padding: 10px; border-bottom: 1px solid #eef2f8; vertical-align: top; }
+    .ca-table tbody tr:last-child td { border-bottom: none; }
+    .ca-inline-form { display: inline-flex; align-items: center; gap: 6px; margin-right: 6px; margin-bottom: 6px; }
+    .ca-inline-form input[type="text"] { width: 145px; }
+    .ca-badge { display: inline-flex; align-items: center; border-radius: 16px; padding: 3px 10px; font-size: 11px; font-weight: 700; }
+    .ca-badge.pending { background: rgba(245,158,11,.12); color: #92400e; }
+    .ca-badge.active { background: rgba(34,197,94,.12); color: #166534; }
+    .ca-badge.inactive { background: rgba(107,122,153,.12); color: #475569; }
+</style>
+
 <div class="pcoded-main-container">
     <div class="pcoded-wrapper">
         <div class="pcoded-content">
             <div class="pcoded-inner-content">
                 <div class="main-body">
                     <div class="page-wrapper">
-                        <?php if (!empty($success)): ?>
-                        <div class="alert alert-success"><?= htmlspecialchars($success) ?></div>
-                        <?php endif; ?>
-                        <?php if (!empty($error)): ?>
-                        <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
-                        <?php endif; ?>
+                        <div class="ca-wrap">
+                            <div class="ca-head">
+                                <h4><i class="feather icon-message-circle mr-1"></i>Communication Add-ons</h4>
+                                <p>Approve requests and manage active WhatsApp/SMTP add-ons</p>
+                            </div>
+                            <?php if (!empty($success)): ?>
+                            <div class="alert alert-success ca-alert"><?= htmlspecialchars($success) ?></div>
+                            <?php endif; ?>
+                            <?php if (!empty($error)): ?>
+                            <div class="alert alert-danger ca-alert"><?= htmlspecialchars($error) ?></div>
+                            <?php endif; ?>
 
-                        <div class="card">
-                            <div class="card-header">
+                        <div class="ca-card">
+                            <div class="ca-card-head">
                                 <h5>Pending Communication Add-on Requests</h5>
-                                <div class="mt-2">
+                                <div>
                                     <a href="manage_communication_addon_pricing.php" class="btn btn-sm btn-primary">
                                         <i class="feather icon-dollar-sign mr-1"></i>Manage Pricing
                                     </a>
                                 </div>
                             </div>
-                            <div class="card-body">
+                            <div class="ca-card-body">
                                 <?php if (empty($pending_requests)): ?>
                                 <p class="text-muted mb-0">No pending requests.</p>
                                 <?php else: ?>
                                 <div class="table-responsive">
-                                    <table class="table table-bordered table-sm">
+                                    <table class="ca-table">
                                         <thead>
                                             <tr>
                                                 <th>Tenant</th>
@@ -123,14 +150,14 @@ include '../includes/header_super_admin.php';
                                                 <td><?= htmlspecialchars($item['currency']) . ' ' . number_format(floatval($item['estimated_monthly_cost']), 2) ?></td>
                                                 <td><?= htmlspecialchars($item['created_at']) ?></td>
                                                 <td>
-                                                    <form method="POST" class="d-inline">
+                                                    <form method="POST" class="ca-inline-form">
                                                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                                                         <input type="hidden" name="action" value="approve">
                                                         <input type="hidden" name="request_id" value="<?= intval($item['id']) ?>">
                                                         <input type="text" class="form-control form-control-sm mb-1" name="approval_notes" placeholder="Approval notes">
                                                         <button type="submit" class="btn btn-success btn-sm">Approve</button>
                                                     </form>
-                                                    <form method="POST" class="d-inline">
+                                                    <form method="POST" class="ca-inline-form">
                                                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                                                         <input type="hidden" name="action" value="reject">
                                                         <input type="hidden" name="request_id" value="<?= intval($item['id']) ?>">
@@ -147,16 +174,16 @@ include '../includes/header_super_admin.php';
                             </div>
                         </div>
 
-                        <div class="card">
-                            <div class="card-header">
+                        <div class="ca-card">
+                            <div class="ca-card-head">
                                 <h5>All Communication Add-ons</h5>
                             </div>
-                            <div class="card-body">
+                            <div class="ca-card-body">
                                 <?php if (empty($all_addons)): ?>
                                 <p class="text-muted mb-0">No communication add-ons found.</p>
                                 <?php else: ?>
                                 <div class="table-responsive">
-                                    <table class="table table-bordered table-sm">
+                                    <table class="ca-table">
                                         <thead>
                                             <tr>
                                                 <th>Tenant</th>
@@ -177,22 +204,22 @@ include '../includes/header_super_admin.php';
                                                 <td><?= htmlspecialchars($addon['currency']) . ' ' . number_format(floatval($addon['addon_price']), 2) ?></td>
                                                 <td>
                                                     <?php if (($addon['status'] ?? '') === 'active'): ?>
-                                                    <span class="badge badge-success">Active</span>
+                                                    <span class="ca-badge active">Active</span>
                                                     <?php else: ?>
-                                                    <span class="badge badge-secondary"><?= htmlspecialchars(ucfirst($addon['status'])) ?></span>
+                                                    <span class="ca-badge inactive"><?= htmlspecialchars(ucfirst($addon['status'])) ?></span>
                                                     <?php endif; ?>
                                                 </td>
                                                 <td><?= htmlspecialchars($addon['created_at']) ?></td>
                                                 <td>
                                                     <?php if (($addon['status'] ?? '') === 'active'): ?>
-                                                    <form method="POST" class="d-inline">
+                                                    <form method="POST" class="ca-inline-form">
                                                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                                                         <input type="hidden" name="action" value="suspend">
                                                         <input type="hidden" name="addon_id" value="<?= intval($addon['id']) ?>">
                                                         <button type="submit" class="btn btn-warning btn-sm">Suspend</button>
                                                     </form>
                                                     <?php else: ?>
-                                                    <form method="POST" class="d-inline">
+                                                    <form method="POST" class="ca-inline-form">
                                                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                                                         <input type="hidden" name="action" value="reactivate">
                                                         <input type="hidden" name="addon_id" value="<?= intval($addon['id']) ?>">
@@ -207,6 +234,7 @@ include '../includes/header_super_admin.php';
                                 </div>
                                 <?php endif; ?>
                             </div>
+                        </div>
                         </div>
                     </div>
                 </div>

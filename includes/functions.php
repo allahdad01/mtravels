@@ -3,7 +3,9 @@
 function sendEmail($to, $subject, $body, $isHtml = true, $emailType = 'general', $recipientName = '', $tenantId = null, $attachments = []) {
     require_once dirname(__DIR__) . '/vendor/autoload.php';
 
-    // Get SMTP settings - tenant-specific or platform fallback
+    // Resolve SMTP by context:
+    // - no tenantId => platform SMTP (super admin/system)
+    // - tenantId    => tenant SMTP only
     $smtpSettings = getTenantSMTPSettings($tenantId);
 
     // Check if SMTP email sending is enabled
@@ -57,10 +59,12 @@ function sendEmail($to, $subject, $body, $isHtml = true, $emailType = 'general',
             }
         }
 
+        $senderName = !empty($smtpSettings['smtp_from_name']) ? $smtpSettings['smtp_from_name'] : $tenantName;
+
         // Recipients
         $mail->setFrom(
             !empty($smtpSettings['smtp_from_email']) ? $smtpSettings['smtp_from_email'] : $smtpSettings['smtp_username'],
-            $tenantName
+            $senderName
         );
         $mail->addAddress($to, $recipientName);
 
@@ -174,7 +178,9 @@ function getPlatformSettingsFormatted() {
     return $formatted;
 }
 
-// Get tenant-specific SMTP settings (fallback to platform settings)
+// Get SMTP settings source by context:
+// - no tenantId => platform SMTP (super admin/system emails)
+// - tenantId    => tenant SMTP (tenant emails), with no platform fallback
 function getTenantSMTPSettings($tenantId = null) {
     global $pdo;
 
@@ -186,44 +192,23 @@ function getTenantSMTPSettings($tenantId = null) {
         return getPlatformSettingsFormatted();
     }
 
-    // Tenant SMTP config is available only when SMTP add-on is active.
-    try {
-        $addonStmt = $pdo->prepare("
-            SELECT COUNT(*) AS cnt
-            FROM communication_addons
-            WHERE tenant_id = ? AND addon_type = 'smtp' AND status = 'active'
-        ");
-        $addonStmt->bindParam(1, $tenantId, PDO::PARAM_INT);
-        $addonStmt->execute();
-        $addonRow = $addonStmt->fetch(PDO::FETCH_ASSOC);
-        $hasSmtpAddon = intval($addonRow['cnt'] ?? 0) > 0;
-    } catch (Exception $e) {
-        // Table may not exist before migration; fail safe to platform SMTP.
-        $hasSmtpAddon = false;
-    }
-
-    if (!$hasSmtpAddon) {
-        return getPlatformSettingsFormatted();
-    }
-
-    // Check if tenant has custom SMTP settings in settings table
+    // Tenant emails must use tenant SMTP settings only.
     $stmt = $pdo->prepare("SELECT smtp_host, smtp_port, smtp_encryption, smtp_username, smtp_password, smtp_from_email, smtp_from_name, smtp_enabled FROM settings WHERE tenant_id = ?");
     $stmt->bindParam(1, $tenantId, PDO::PARAM_INT);
     $stmt->execute();
-    $tenantSettings = $stmt->fetch(PDO::FETCH_ASSOC);
+    $tenantSettings = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
-    // Filter out empty values and return only configured settings.
-    // Keep numeric 0/1 (smtp_enabled) untouched.
-    $filteredSettings = array_filter($tenantSettings, function($value) {
-        return $value !== null && $value !== '';
-    });
-
-    // If tenant has SMTP settings, use them; otherwise fall back to platform settings
-    if (!empty($filteredSettings)) {
-        return $filteredSettings;
-    }
-
-    return getPlatformSettingsFormatted();
+    // Normalize tenant SMTP result without platform fallback.
+    return [
+        'smtp_host' => $tenantSettings['smtp_host'] ?? '',
+        'smtp_port' => $tenantSettings['smtp_port'] ?? 587,
+        'smtp_encryption' => $tenantSettings['smtp_encryption'] ?? 'tls',
+        'smtp_username' => $tenantSettings['smtp_username'] ?? '',
+        'smtp_password' => $tenantSettings['smtp_password'] ?? '',
+        'smtp_from_email' => $tenantSettings['smtp_from_email'] ?? '',
+        'smtp_from_name' => $tenantSettings['smtp_from_name'] ?? '',
+        'smtp_enabled' => intval($tenantSettings['smtp_enabled'] ?? 0)
+    ];
 }
 
 // Send ticket notification email
@@ -1728,6 +1713,10 @@ function sendTicketNotificationWithAttachment($email, $name, $subject, $body, $a
     // Get SMTP settings
     global $tenant_id;
     $smtpSettings = getTenantSMTPSettings($tenant_id);
+
+    if (empty($smtpSettings['smtp_enabled'])) {
+        return false;
+    }
     
     if (empty($smtpSettings['smtp_host']) || empty($smtpSettings['smtp_username']) || empty($smtpSettings['smtp_password'])) {
         return false;
@@ -1769,10 +1758,12 @@ function sendTicketNotificationWithAttachment($email, $name, $subject, $body, $a
             }
         }
         
+        $senderName = !empty($smtpSettings['smtp_from_name']) ? $smtpSettings['smtp_from_name'] : $tenantName;
+
         // Recipients
         $mail->setFrom(
             !empty($smtpSettings['smtp_from_email']) ? $smtpSettings['smtp_from_email'] : $smtpSettings['smtp_username'],
-            $tenantName
+            $senderName
         );
         $mail->addAddress($email, $name);
         

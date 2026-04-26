@@ -163,18 +163,44 @@ $tenants = $stmt->fetchAll(PDO::FETCH_ASSOC);
 include '../includes/header_super_admin.php';
 ?>
 
+<style>
+    .cp-wrap { padding: 20px; }
+    .cp-head { background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%); color: #fff; border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
+    .cp-head h4 { margin: 0; color: #fff; font-weight: 700; }
+    .cp-head p { margin: 6px 0 0; opacity: .9; font-size: 13px; }
+    .cp-card { background: #fff; border: 1px solid #e8edf5; border-radius: 12px; box-shadow: 0 2px 12px rgba(64,153,255,.08); }
+    .cp-card-head { padding: 14px 16px; border-bottom: 1px solid #e8edf5; }
+    .cp-card-head h5 { margin: 0; font-weight: 700; font-size: 15px; }
+    .cp-card-body { padding: 14px 16px; }
+    .cp-search { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; }
+    .cp-search input { width: 280px; max-width: 100%; }
+    .cp-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .cp-table thead th { background: #f4f7fe; color: #6b7a99; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; padding: 10px; border-bottom: 1px solid #e8edf5; }
+    .cp-table tbody td { padding: 10px; border-bottom: 1px solid #eef2f8; vertical-align: top; }
+    .cp-table tbody tr:last-child td { border-bottom: none; }
+    .cp-grid { display: grid; grid-template-columns: repeat(2, minmax(120px, 1fr)); gap: 6px; }
+    .cp-grid input { width: 100%; }
+    .cp-pill { display: inline-flex; align-items: center; border-radius: 16px; padding: 2px 9px; font-size: 11px; font-weight: 700; }
+    .cp-pill.active { background: rgba(34,197,94,.12); color: #166534; }
+    .cp-pill.other { background: rgba(107,122,153,.12); color: #475569; }
+</style>
+
 <div class="pcoded-main-container">
     <div class="pcoded-wrapper">
         <div class="pcoded-content">
             <div class="pcoded-inner-content">
                 <div class="main-body">
                     <div class="page-wrapper">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5><i class="feather icon-dollar-sign mr-2"></i>Communication Addon Pricing</h5>
-                                <small>Set tenant-specific pricing for WhatsApp and SMTP add-ons</small>
+                        <div class="cp-wrap">
+                        <div class="cp-head">
+                            <h4><i class="feather icon-dollar-sign mr-1"></i>Communication Addon Pricing</h4>
+                            <p>Set tenant-wise monthly, quarterly, and yearly prices for WhatsApp/SMTP</p>
+                        </div>
+                        <div class="cp-card">
+                            <div class="cp-card-head">
+                                <h5>Pricing Configuration</h5>
                             </div>
-                            <div class="card-body">
+                            <div class="cp-card-body">
                                 <?php if (isset($success)): ?>
                                 <div class="alert alert-success"><?= htmlspecialchars($success) ?></div>
                                 <?php endif; ?>
@@ -189,16 +215,16 @@ include '../includes/header_super_admin.php';
                                 </div>
                                 <?php endif; ?>
 
-                                <form method="GET" action="manage_communication_addon_pricing.php" class="form-inline mb-3">
-                                    <input type="text" class="form-control mr-2" name="search" placeholder="Search tenant..." value="<?= htmlspecialchars($search_query) ?>">
+                                <form method="GET" action="manage_communication_addon_pricing.php" class="cp-search">
+                                    <input type="text" class="form-control" name="search" placeholder="Search tenant..." value="<?= htmlspecialchars($search_query) ?>">
                                     <button type="submit" class="btn btn-primary">Search</button>
                                     <?php if ($search_query !== ''): ?>
-                                    <a href="manage_communication_addon_pricing.php" class="btn btn-light ml-2">Clear</a>
+                                    <a href="manage_communication_addon_pricing.php" class="btn btn-light">Clear</a>
                                     <?php endif; ?>
                                 </form>
 
                                 <div class="table-responsive">
-                                    <table class="table table-bordered table-sm">
+                                    <table class="cp-table">
                                         <thead>
                                             <tr>
                                                 <th>Tenant</th>
@@ -225,7 +251,8 @@ include '../includes/header_super_admin.php';
                                             <tr>
                                                 <td>
                                                     <strong><?= htmlspecialchars($tenant['name']) ?></strong><br>
-                                                    <small class="text-muted"><?= htmlspecialchars($tenant['subdomain']) ?> (<?= htmlspecialchars($tenant['status']) ?>)</small>
+                                                    <small class="text-muted"><?= htmlspecialchars($tenant['subdomain']) ?></small><br>
+                                                    <span class="cp-pill <?= ($tenant['status'] ?? '') === 'active' ? 'active' : 'other' ?>"><?= htmlspecialchars($tenant['status']) ?></span>
                                                 </td>
                                                 <td>
                                                     <div>Monthly: <?= $symbol . number_format($wa_m, 2) ?></div>
@@ -242,13 +269,13 @@ include '../includes/header_super_admin.php';
                                                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                                                         <input type="hidden" name="action" value="update_pricing">
                                                         <input type="hidden" name="tenant_id" value="<?= intval($tenant['id']) ?>">
-                                                        <div class="form-row">
-                                                            <div class="col-6 mb-1"><input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="whatsapp_addon_monthly_price" value="<?= htmlspecialchars($wa_m) ?>" title="WA Monthly"></div>
-                                                            <div class="col-6 mb-1"><input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="whatsapp_addon_quarterly_price" value="<?= htmlspecialchars($wa_q) ?>" title="WA Quarterly"></div>
-                                                            <div class="col-6 mb-1"><input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="whatsapp_addon_yearly_price" value="<?= htmlspecialchars($wa_y) ?>" title="WA Yearly"></div>
-                                                            <div class="col-6 mb-1"><input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="smtp_addon_monthly_price" value="<?= htmlspecialchars($sm_m) ?>" title="SMTP Monthly"></div>
-                                                            <div class="col-6 mb-1"><input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="smtp_addon_quarterly_price" value="<?= htmlspecialchars($sm_q) ?>" title="SMTP Quarterly"></div>
-                                                            <div class="col-6 mb-1"><input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="smtp_addon_yearly_price" value="<?= htmlspecialchars($sm_y) ?>" title="SMTP Yearly"></div>
+                                                        <div class="cp-grid">
+                                                            <input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="whatsapp_addon_monthly_price" value="<?= htmlspecialchars($wa_m) ?>" title="WA Monthly">
+                                                            <input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="whatsapp_addon_quarterly_price" value="<?= htmlspecialchars($wa_q) ?>" title="WA Quarterly">
+                                                            <input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="whatsapp_addon_yearly_price" value="<?= htmlspecialchars($wa_y) ?>" title="WA Yearly">
+                                                            <input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="smtp_addon_monthly_price" value="<?= htmlspecialchars($sm_m) ?>" title="SMTP Monthly">
+                                                            <input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="smtp_addon_quarterly_price" value="<?= htmlspecialchars($sm_q) ?>" title="SMTP Quarterly">
+                                                            <input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="smtp_addon_yearly_price" value="<?= htmlspecialchars($sm_y) ?>" title="SMTP Yearly">
                                                         </div>
                                                         <button type="submit" class="btn btn-success btn-sm mt-1">Update Pricing</button>
                                                     </form>
@@ -271,6 +298,7 @@ include '../includes/header_super_admin.php';
                                 </nav>
                                 <?php endif; ?>
                             </div>
+                        </div>
                         </div>
                     </div>
                 </div>
