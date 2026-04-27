@@ -16,6 +16,7 @@ enforce_auth();
 
 // Database connection
 require_once '../../includes/db.php';
+require_once '../../api/whatsapp/WhatsAppManager.php';
 
 // Validate returnDate
 $returnDate = isset($_POST['returnDate']) ? DbSecurity::validateInput($_POST['returnDate'], 'date') : null;
@@ -333,6 +334,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Commit the database transaction
         $pdo->commit();
+
+        // Send WhatsApp notification for ticket reservation (if configured)
+        try {
+            $whatsappManager = new WhatsAppManager($tenant_id);
+            $whatsapp_result = $whatsappManager->sendBookingNotification('ticket_reserve', $ticket_id);
+            
+            if ($whatsapp_result['success']) {
+                error_log("WhatsApp notification sent for Ticket Reservation ID: $ticket_id");
+            } else {
+                error_log("WhatsApp notification failed for Ticket Reservation ID: $ticket_id - " . $whatsapp_result['message']);
+            }
+        } catch (Exception $e) {
+            // Don't fail the operation if WhatsApp fails
+            error_log("WhatsApp integration error for Ticket Reservation ID: $ticket_id - " . $e->getMessage());
+        }
 
         // Send email notification to client
         require_once '../../includes/functions.php';

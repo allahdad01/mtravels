@@ -1,6 +1,7 @@
 <?php
 require_once '../../includes/db.php';
 require_once '../../admin/includes/db_security.php';
+require_once '../../api/whatsapp/WhatsAppManager.php';
 session_start();
 // Check if it's a POST request
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -210,6 +211,21 @@ try {
 
     // Commit transaction
     $pdo->commit();
+
+    // Send WhatsApp notification for ticket weight (if configured)
+    try {
+        $whatsappManager = new WhatsAppManager($tenant_id);
+        $whatsapp_result = $whatsappManager->sendBookingNotification('ticket_weight', $weightId);
+        
+        if ($whatsapp_result['success']) {
+            error_log("WhatsApp notification sent for Ticket Weight ID: $weightId");
+        } else {
+            error_log("WhatsApp notification failed for Ticket Weight ID: $weightId - " . $whatsapp_result['message']);
+        }
+    } catch (Exception $e) {
+        // Don't fail the operation if WhatsApp fails
+        error_log("WhatsApp integration error for Ticket Weight ID: $weightId - " . $e->getMessage());
+    }
 
     echo json_encode(['success' => true, 'message' => 'Weight and transactions saved successfully']);
 

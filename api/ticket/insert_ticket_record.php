@@ -7,6 +7,7 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Database Connection
 require_once '../../includes/db.php';
+require_once '../../api/whatsapp/WhatsAppManager.php';
 
 // Validate Input Parameters
 if (!isset($_POST['ticketId'], $_POST['status'], $_POST['base'], $_POST['sold'], 
@@ -279,6 +280,22 @@ try {
     $activity_log_stmt->execute();
 
     $pdo->commit();
+
+    // Send WhatsApp notification for refund ticket (if configured)
+    try {
+        $whatsappManager = new WhatsAppManager($tenant_id);
+        $whatsapp_result = $whatsappManager->sendBookingNotification('refund_ticket', $ticket_id);
+        
+        if ($whatsapp_result['success']) {
+            error_log("WhatsApp notification sent for Refund Ticket ID: $ticket_id");
+        } else {
+            error_log("WhatsApp notification failed for Refund Ticket ID: $ticket_id - " . $whatsapp_result['message']);
+        }
+    } catch (Exception $e) {
+        // Don't fail the operation if WhatsApp fails
+        error_log("WhatsApp integration error for Refund Ticket ID: $ticket_id - " . $e->getMessage());
+    }
+
      echo 'success';
 
 } catch (Exception $e) {

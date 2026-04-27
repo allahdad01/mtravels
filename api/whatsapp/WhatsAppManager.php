@@ -93,8 +93,14 @@ class WhatsAppManager {
                 return ['success' => false, 'message' => 'Auto notifications disabled'];
             }
             
-            // Allow callers to override the destination number for flows that do not use clients.
+            // Resolve destination phone number with priority:
+            // 1. Explicit override from caller
+            // 2. Booking's own phone field (ticket phone, visa phone, family contact, hotel contact_no)
+            // 3. Client's registered phone number (fallback)
             $client_phone = $additional_data['phone_number'] ?? null;
+            if (!$client_phone) {
+                $client_phone = $booking['booking_phone'] ?? null;
+            }
             if (!$client_phone) {
                 $client_phone = $booking['client_phone'] ?? null;
             }
@@ -133,7 +139,7 @@ class WhatsAppManager {
         switch ($type) {
             case 'visa':
                 $stmt = $this->pdo->prepare("
-                    SELECT va.*, c.name as client_name, c.phone as client_phone,
+                    SELECT va.*, va.phone as booking_phone, c.name as client_name, c.phone as client_phone,
                            s.name as supplier_name
                     FROM visa_applications va
                     LEFT JOIN clients c ON va.sold_to = c.id
@@ -144,7 +150,7 @@ class WhatsAppManager {
                 
             case 'umrah':
                 $stmt = $this->pdo->prepare("
-                    SELECT ub.*, c.name as client_name, c.phone as client_phone,
+                    SELECT ub.*, f.contact as booking_phone, c.name as client_name, c.phone as client_phone,
                            f.head_of_family
                     FROM umrah_bookings ub
                     LEFT JOIN clients c ON ub.sold_to = c.id
@@ -155,7 +161,7 @@ class WhatsAppManager {
                 
             case 'hotel':
                 $stmt = $this->pdo->prepare("
-                    SELECT hb.*, c.name as client_name, c.phone as client_phone,
+                    SELECT hb.*, hb.contact_no as booking_phone, c.name as client_name, c.phone as client_phone,
                            s.name as supplier_name
                     FROM hotel_bookings hb
                     LEFT JOIN clients c ON hb.sold_to = c.id
@@ -166,12 +172,57 @@ class WhatsAppManager {
                 
             case 'ticket':
                 $stmt = $this->pdo->prepare("
-                    SELECT tb.*, c.name as client_name, c.phone as client_phone,
+                    SELECT tb.*, tb.phone as booking_phone, c.name as client_name, c.phone as client_phone,
                            s.name as supplier_name
                     FROM ticket_bookings tb
                     LEFT JOIN clients c ON tb.sold_to = c.id
                     LEFT JOIN suppliers s ON tb.supplier = s.id
                     WHERE tb.id = ? AND tb.tenant_id = ?
+                ");
+                break;
+
+            case 'date_change_ticket':
+                $stmt = $this->pdo->prepare("
+                    SELECT dct.*, dct.phone as booking_phone, c.name as client_name, c.phone as client_phone,
+                           s.name as supplier_name
+                    FROM date_change_tickets dct
+                    LEFT JOIN clients c ON dct.sold_to = c.id
+                    LEFT JOIN suppliers s ON dct.supplier = s.id
+                    WHERE dct.id = ? AND dct.tenant_id = ?
+                ");
+                break;
+
+            case 'refund_ticket':
+                $stmt = $this->pdo->prepare("
+                    SELECT rt.*, rt.phone as booking_phone, c.name as client_name, c.phone as client_phone,
+                           s.name as supplier_name
+                    FROM refunded_tickets rt
+                    LEFT JOIN clients c ON rt.sold_to = c.id
+                    LEFT JOIN suppliers s ON rt.supplier = s.id
+                    WHERE rt.id = ? AND rt.tenant_id = ?
+                ");
+                break;
+
+            case 'ticket_reserve':
+                $stmt = $this->pdo->prepare("
+                    SELECT tres.*, tres.phone as booking_phone, c.name as client_name, c.phone as client_phone,
+                           s.name as supplier_name
+                    FROM ticket_reservations tres
+                    LEFT JOIN clients c ON tres.sold_to = c.id
+                    LEFT JOIN suppliers s ON tres.supplier = s.id
+                    WHERE tres.id = ? AND tres.tenant_id = ?
+                ");
+                break;
+
+            case 'ticket_weight':
+                $stmt = $this->pdo->prepare("
+                    SELECT tw.*, tb.phone as booking_phone, c.name as client_name, c.phone as client_phone,
+                           s.name as supplier_name
+                    FROM ticket_weights tw
+                    LEFT JOIN ticket_bookings tb ON tw.ticket_id = tb.id
+                    LEFT JOIN clients c ON tw.sold_to = c.id
+                    LEFT JOIN suppliers s ON tw.supplier = s.id
+                    WHERE tw.id = ? AND tw.tenant_id = ?
                 ");
                 break;
 
@@ -230,14 +281,114 @@ class WhatsAppManager {
                 break;
                 
             case 'ticket':
+                // Build sector information
+                $sector = $booking['origin'] . ' → ' . $booking['destination'];
+                $trip_type = $booking['trip_type'] ?? 'One Way';
+                $return_info = '';
+                
+                if ($trip_type === 'Round Trip' && isset($booking['return_date']) && !empty($booking['return_date'])) {
+                    $return_sector = '';
+                    if (isset($booking['return_origin']) && isset($booking['return_destination'])) {
+                        $return_sector = $booking['return_origin'] . ' → ' . $booking['return_destination'];
+                    } else {
+                        $return_sector = $booking['destination'] . ' → ' . $booking['origin'];
+                    }
+                    $return_info = "\n🔄 Return: " . $booking['return_date'] . ' (' . $return_sector . ')';
+                }
+                
                 $template_data = array_merge($template_data, [
                     'passenger_name' => $booking['passenger_name'],
                     'pnr' => $booking['pnr'],
-                    'flight_number' => $booking['flight_number'] ?? 'N/A',
+                    'sector' => $sector,
+                    'trip_type' => $trip_type,
                     'departure_date' => $booking['departure_date'],
                     'departure_time' => $booking['departure_time'] ?? 'N/A',
-                    'destination' => $booking['destination'] ?? $booking['to_airport'],
+                    'destination' => $booking['destination'] ?? $booking['to_airport'] ?? 'N/A',
+                    'origin' => $booking['origin'] ?? 'N/A',
+                    'return_date' => $booking['return_date'] ?? 'N/A',
+                    'return_sector' => $return_info ?: 'N/A',
                     'amount' => $booking['sold'] . ' ' . $booking['currency']
+                ]);
+                break;
+
+            case 'date_change_ticket':
+                // Determine which date(s) changed
+                $date_type = $booking['date_type'] ?? 'departure';
+                $old_departure = $booking['old_departure_date'] ?? $booking['departure_date'] ?? 'N/A';
+                $new_departure = $booking['departure_date'] ?? 'N/A';
+                $old_return = $booking['old_return_date'] ?? $booking['return_date'] ?? 'N/A';
+                $new_return = $booking['return_date'] ?? 'N/A';
+                
+                $sector = ($booking['origin'] ?? 'N/A') . ' → ' . ($booking['destination'] ?? 'N/A');
+                $return_sector = '';
+                if (isset($booking['return_origin']) && isset($booking['return_destination'])) {
+                    $return_sector = $booking['return_origin'] . ' → ' . $booking['return_destination'];
+                } elseif (isset($booking['origin']) && isset($booking['destination'])) {
+                    $return_sector = $booking['destination'] . ' → ' . $booking['origin'];
+                }
+                
+                $template_data = array_merge($template_data, [
+                    'passenger_name' => $booking['passenger_name'] ?? 'N/A',
+                    'pnr' => $booking['pnr'] ?? 'N/A',
+                    'sector' => $sector,
+                    'date_type' => $date_type,
+                    'old_departure_date' => $old_departure,
+                    'new_departure_date' => $new_departure,
+                    'old_return_date' => $old_return,
+                    'new_return_date' => $new_return,
+                    'return_sector' => $return_sector,
+                    'change_fee' => ($booking['service_penalty'] ?? 0) . ' ' . ($booking['currency'] ?? 'USD')
+                ]);
+                break;
+
+            case 'refund_ticket':
+                // Build sector information
+                $sector = ($booking['origin'] ?? 'N/A') . ' → ' . ($booking['destination'] ?? 'N/A');
+                $refund_to_passenger = $booking['refund_to_passenger'] ?? 'N/A';
+                $weight_info = '';
+                // If there's a ticket_id, we could fetch weight from ticket_weights table
+                // but for now we'll just include refund_to_passenger field
+                
+                $template_data = array_merge($template_data, [
+                    'passenger_name' => $booking['passenger_name'] ?? $booking['name'] ?? 'N/A',
+                    'pnr' => $booking['pnr'] ?? 'N/A',
+                    'sector' => $sector,
+                    'refund_amount' => ($booking['refund_amount'] ?? $booking['sold'] ?? 0) . ' ' . ($booking['currency'] ?? 'USD'),
+                    'refund_to_passenger' => $refund_to_passenger,
+                    'refund_reason' => $booking['refund_reason'] ?? 'N/A',
+                    'refund_date' => $booking['refund_date'] ?? date('Y-m-d')
+                ]);
+                break;
+
+            case 'ticket_reserve':
+                $template_data = array_merge($template_data, [
+                    'passenger_name' => $booking['passenger_name'] ?? $booking['name'] ?? 'N/A',
+                    'pnr' => $booking['pnr'] ?? 'N/A',
+                    'reservation_date' => $booking['reservation_date'] ?? $booking['created_at'] ?? date('Y-m-d'),
+                    'expiry_date' => $booking['expiry_date'] ?? 'N/A',
+                    'reservation_amount' => ($booking['reservation_amount'] ?? $booking['sold'] ?? 0) . ' ' . ($booking['currency'] ?? 'USD')
+                ]);
+                break;
+
+            case 'ticket_weight':
+                // Build sector information
+                $sector = ($booking['origin'] ?? 'N/A') . ' → ' . ($booking['destination'] ?? 'N/A');
+                $weight = $booking['weight'] ?? 'N/A';
+                $weight_unit = 'kg'; // default unit
+                $excess_fee = ($booking['sold_price'] ?? $booking['sold'] ?? 0) . ' ' . ($booking['currency'] ?? 'USD');
+                $base_price = ($booking['base_price'] ?? 0) . ' ' . ($booking['currency'] ?? 'USD');
+                $profit = ($booking['profit'] ?? 0) . ' ' . ($booking['currency'] ?? 'USD');
+                
+                $template_data = array_merge($template_data, [
+                    'passenger_name' => $booking['passenger_name'] ?? $booking['name'] ?? 'N/A',
+                    'pnr' => $booking['pnr'] ?? 'N/A',
+                    'sector' => $sector,
+                    'weight' => $weight,
+                    'weight_unit' => $weight_unit,
+                    'excess_fee' => $excess_fee,
+                    'base_price' => $base_price,
+                    'profit' => $profit,
+                    'currency' => $booking['currency'] ?? 'USD'
                 ]);
                 break;
 
@@ -340,15 +491,92 @@ Your flight ticket has been confirmed:
 
 👤 Passenger: {{passenger_name}}
 🆔 PNR: {{pnr}}
-✈️ Flight: {{flight_number}}
-📅 Date: {{departure_date}}
-⏰ Time: {{departure_time}}
-🌍 Destination: {{destination}}
+🌍 Sector: {{sector}}
+📅 Trip Type: {{trip_type}}
+📅 Departure Date: {{departure_date}}
+⏰ Departure Time: {{departure_time}}
+{{#return_date}}🔄 Return Date: {{return_date}}{{/return_date}}
 💰 Amount: {{amount}}
 
 📅 Booking Date: {{booking_date}}
 
 Have a safe journey!
+📞 Contact: {{contact_info}}",
+
+            'date_change_ticket' => "📅 *Flight Date Change Confirmation*
+
+Hello {{client_name}},
+
+Your flight date change has been processed:
+
+👤 Passenger: {{passenger_name}}
+🆔 PNR: {{pnr}}
+🌍 Sector: {{sector}}
+{{#date_type}}📅 Change Type: {{date_type}}{{/date_type}}
+{{#old_departure_date}}📅 Old Departure Date: {{old_departure_date}}{{/old_departure_date}}
+{{#new_departure_date}}📅 New Departure Date: {{new_departure_date}}{{/new_departure_date}}
+{{#old_return_date}}🔄 Old Return Date: {{old_return_date}}{{/old_return_date}}
+{{#new_return_date}}🔄 New Return Date: {{new_return_date}}{{/new_return_date}}
+💰 Change Fee: {{change_fee}}
+
+📅 Processed Date: {{booking_date}}
+
+Thank you for choosing {{agency_name}}!
+📞 Contact: {{contact_info}}",
+
+            'refund_ticket' => "💸 *Ticket Refund Confirmation*
+
+Hello {{client_name}},
+
+Your ticket refund has been processed:
+
+👤 Passenger: {{passenger_name}}
+🆔 PNR: {{pnr}}
+🌍 Sector: {{sector}}
+💰 Refund Amount: {{refund_amount}}
+{{#refund_to_passenger}}📤 Refund To Passenger: {{refund_to_passenger}}{{/refund_to_passenger}}
+� Reason: {{refund_reason}}
+📅 Refund Date: {{refund_date}}
+
+📅 Processed Date: {{booking_date}}
+
+The refund will be processed to your original payment method.
+📞 Contact: {{contact_info}}",
+
+            'ticket_reserve' => "📋 *Ticket Reservation Confirmation*
+
+Hello {{client_name}},
+
+Your ticket reservation has been confirmed:
+
+👤 Passenger: {{passenger_name}}
+🆔 PNR: {{pnr}}
+📅 Reservation Date: {{reservation_date}}
+📅 Expiry Date: {{expiry_date}}
+💰 Reservation Amount: {{reservation_amount}}
+
+📅 Booking Date: {{booking_date}}
+
+Please complete the payment before expiry to secure your ticket.
+📞 Contact: {{contact_info}}",
+
+            'ticket_weight' => "⚖️ *Excess Baggage Confirmation*
+
+Hello {{client_name}},
+
+Your excess baggage has been processed:
+
+👤 Passenger: {{passenger_name}}
+🆔 PNR: {{pnr}}
+🌍 Sector: {{sector}}
+⚖️ Weight: {{weight}} {{weight_unit}}
+💰 Excess Fee: {{excess_fee}}
+{{#base_price}}📊 Base Price: {{base_price}}{{/base_price}}
+{{#profit}}📈 Profit: {{profit}}{{/profit}}
+
+� Processed Date: {{booking_date}}
+
+Safe travels with your baggage!
 📞 Contact: {{contact_info}}",
 
         ];
@@ -597,6 +825,26 @@ class MetaWhatsAppProvider {
             'name' => 'umrah_booking_confirmation',
             'lang' => 'en',
             'fields' => ['client_name', 'name', 'flight_date', 'return_date', '__agency__', '__contact__']
+        ],
+        'date_change_ticket' => [
+            'name' => 'ticket_date_change_confirmation',
+            'lang' => 'en',
+            'fields' => ['client_name', 'pnr', 'old_departure_date', 'new_departure_date', '__agency__', '__contact__']
+        ],
+        'refund_ticket' => [
+            'name' => 'ticket_refund_confirmation',
+            'lang' => 'en',
+            'fields' => ['client_name', 'pnr', 'refund_amount', 'refund_reason', '__agency__', '__contact__']
+        ],
+        'ticket_reserve' => [
+            'name' => 'ticket_reservation_confirmation',
+            'lang' => 'en',
+            'fields' => ['client_name', 'pnr', 'reservation_date', 'expiry_date', '__agency__', '__contact__']
+        ],
+        'ticket_weight' => [
+            'name' => 'excess_baggage_confirmation',
+            'lang' => 'en',
+            'fields' => ['client_name', 'pnr', 'weight', 'weight_unit', '__agency__', '__contact__']
         ],
     ];
     

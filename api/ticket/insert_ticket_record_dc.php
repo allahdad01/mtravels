@@ -16,6 +16,7 @@ enforce_auth();
 $username = isset($_SESSION["name"]) ? $_SESSION["name"] : "Unknown User";
 $user_id = $_SESSION['user_id'] ?? 0;
 require_once '../../includes/db.php';
+require_once '../../api/whatsapp/WhatsAppManager.php';
 
 // Validate description
 $description = isset($_POST['description']) ? DbSecurity::validateInput($_POST['description'], 'string', ['maxlength' => 255]) : null;
@@ -335,6 +336,22 @@ if (
             $activity_log_stmt->execute();
 
             $pdo->commit(); // Commit the transaction
+
+            // Send WhatsApp notification for date change ticket (if configured)
+            try {
+                $whatsappManager = new WhatsAppManager($tenant_id);
+                $whatsapp_result = $whatsappManager->sendBookingNotification('date_change_ticket', $ticket_id);
+                
+                if ($whatsapp_result['success']) {
+                    error_log("WhatsApp notification sent for Date Change Ticket ID: $ticket_id");
+                } else {
+                    error_log("WhatsApp notification failed for Date Change Ticket ID: $ticket_id - " . $whatsapp_result['message']);
+                }
+            } catch (Exception $e) {
+                // Don't fail the operation if WhatsApp fails
+                error_log("WhatsApp integration error for Date Change Ticket ID: $ticket_id - " . $e->getMessage());
+            }
+
             echo 'success';
         } catch (Exception $e) {
             $pdo->rollback(); // Roll back the transaction in case of errors
