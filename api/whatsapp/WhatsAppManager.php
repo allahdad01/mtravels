@@ -93,8 +93,12 @@ class WhatsAppManager {
                 return ['success' => false, 'message' => 'Auto notifications disabled'];
             }
             
-            // Get client phone number
-            $client_phone = $this->getClientPhone($booking['sold_to']);
+            // Allow callers to override the destination number for flows that do not use clients.
+            $client_phone = $additional_data['phone_number'] ?? null;
+            if (!$client_phone) {
+                $client_phone = $booking['client_phone'] ?? null;
+            }
+
             if (!$client_phone) {
                 throw new Exception("Client phone number not found");
             }
@@ -171,15 +175,6 @@ class WhatsAppManager {
                 ");
                 break;
 
-            case 'maktob':
-                $stmt = $this->pdo->prepare("
-                    SELECT m.*, u.name as sender_name, u.email as sender_email
-                    FROM maktobs m
-                    LEFT JOIN users u ON m.sender_id = u.id
-                    WHERE m.id = ? AND m.tenant_id = ?
-                ");
-                break;
-
             default:
                 throw new Exception("Invalid booking type: $type");
         }
@@ -189,24 +184,15 @@ class WhatsAppManager {
     }
     
     /**
-     * Get client phone number
-     */
-    private function getClientPhone($client_id) {
-        $stmt = $this->pdo->prepare("SELECT phone FROM clients WHERE id = ? AND tenant_id = ?");
-        $stmt->execute([$client_id, $this->tenant_id]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $result['phone'] ?? null;
-    }
-    
-    /**
      * Generate formatted message based on booking type
      */
     private function generateMessage($type, $booking, $additional_data) {
+        $agency = $this->getAgencySettings();
         $template_data = [
             'client_name' => $booking['client_name'],
             'booking_date' => date('Y-m-d'),
-            'agency_name' => $this->getAgencyName(),
-            'contact_info' => $this->getContactInfo()
+            'agency_name' => $agency['agency_name'] ?? 'Travel Agency',
+            'contact_info' => ($agency['phone'] ?? '') . ' | ' . ($agency['email'] ?? '')
         ];
         
         // Add type-specific data
@@ -255,15 +241,6 @@ class WhatsAppManager {
                 ]);
                 break;
 
-            case 'maktob':
-                $template_data = array_merge($template_data, [
-                    'maktob_number' => $booking['maktob_number'],
-                    'subject' => $booking['subject'],
-                    'company_name' => $booking['company_name'],
-                    'sender_name' => $booking['sender_name'],
-                    'maktob_date' => $booking['maktob_date']
-                ]);
-                break;
         }
         
         // Get template from database
@@ -374,22 +351,6 @@ Your flight ticket has been confirmed:
 Have a safe journey!
 📞 Contact: {{contact_info}}",
 
-            'maktob' => "📄 *Official Letter Sent*
-
-Hello,
-
-An official letter has been sent:
-
-📋 Letter Number: {{maktob_number}}
-📝 Subject: {{subject}}
-🏢 Company: {{company_name}}
-👤 Sender: {{sender_name}}
-📅 Date: {{maktob_date}}
-
-📅 Sent Date: {{booking_date}}
-
-Please check your email for the complete document.
-📞 Contact: {{contact_info}}"
         ];
         
         return $templates[$type] ?? "New booking notification for {{client_name}}";
@@ -452,19 +413,38 @@ Please check your email for the complete document.
      */
     private function sendMessage($message_data) {
         try {
-            // For demo purposes, we'll use a mock provider
-            // In production, integrate with actual WhatsApp Business API
-            
             $provider = $this->getProvider();
+            $booking = [];
+
+            try {
+                if (!empty($message_data['reference_id'])) {
+                    $booking = $this->getBookingDetails(
+                        $message_data['message_type'],
+                        $message_data['reference_id']
+                    ) ?: [];
+                }
+            } catch (Exception $e) {
+                $booking = [];
+            }
+
+            if ($booking) {
+                $agency = $this->getAgencySettings();
+                $booking['agency_name'] = $agency['agency_name'] ?? 'Travel Agency';
+                $booking['contact_info'] = ($agency['phone'] ?? '') . ' | ' . ($agency['email'] ?? '');
+            }
+
             $result = $provider->sendMessage(
                 $message_data['phone_number'],
-                $message_data['message']
+                $message_data['message'],
+                $booking,
+                $message_data['message_type']
             );
             
             return [
                 'success' => $result['success'],
                 'provider_message_id' => $result['message_id'] ?? null,
-                'error' => $result['error'] ?? null
+                'error' => $result['error'] ?? null,
+                'via' => $result['via'] ?? 'text'
             ];
             
         } catch (Exception $e) {
@@ -482,14 +462,15 @@ Please check your email for the complete document.
         $status = $result['success'] ? 'sent' : 'failed';
         $provider_message_id = $result['provider_message_id'] ?? null;
         $error = $result['error'] ?? null;
+        $via = $result['via'] ?? 'text';
         
         $stmt = $this->pdo->prepare("
             UPDATE whatsapp_messages 
-            SET status = ?, provider_message_id = ?, error_message = ?, 
-                sent_at = NOW()
+            SET status = ?, provider_message_id = ?, error_message = ?,
+                sent_at = NOW(), sent_via = ?
             WHERE id = ?
         ");
-        $stmt->execute([$status, $provider_message_id, $error, $message_id]);
+        $stmt->execute([$status, $provider_message_id, $error, $via, $message_id]);
     }
     
     /**
@@ -516,23 +497,14 @@ Please check your email for the complete document.
     }
     
     /**
-     * Get agency name for templates
+     * Get agency settings (name, phone, email) in a single query
      */
-    private function getAgencyName() {
-        $stmt = $this->pdo->prepare("SELECT agency_name FROM settings WHERE tenant_id = ?");
+    private function getAgencySettings() {
+        $stmt = $this->pdo->prepare("
+            SELECT agency_name, phone, email FROM settings WHERE tenant_id = ? LIMIT 1
+        ");
         $stmt->execute([$this->tenant_id]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $result['agency_name'] ?? 'Travel Agency';
-    }
-    
-    /**
-     * Get contact info for templates
-     */
-    private function getContactInfo() {
-        $stmt = $this->pdo->prepare("SELECT phone, email FROM settings WHERE tenant_id = ?");
-        $stmt->execute([$this->tenant_id]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $result['phone'] . ' | ' . $result['email'];
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?? [];
     }
     
     /**
@@ -605,51 +577,60 @@ class MetaWhatsAppProvider {
     private $api_token;
     private $phone_number_id;
     private $base_url;
+    private $default_templates = [
+        'ticket' => [
+            'name' => 'ticket_booking_confirmation',
+            'lang' => 'en',
+            'fields' => ['client_name', 'pnr', 'origin', 'destination', 'departure_date', '__agency__', '__contact__']
+        ],
+        'visa' => [
+            'name' => 'visa_application_confirmation',
+            'lang' => 'en',
+            'fields' => ['client_name', 'country', 'passport_number', 'visa_type', '__agency__', '__contact__']
+        ],
+        'hotel' => [
+            'name' => 'hotel_booking_confirmation',
+            'lang' => 'en',
+            'fields' => ['client_name', 'accommodation_details', 'check_in_date', 'check_out_date', '__agency__', '__contact__']
+        ],
+        'umrah' => [
+            'name' => 'umrah_booking_confirmation',
+            'lang' => 'en',
+            'fields' => ['client_name', 'name', 'flight_date', 'return_date', '__agency__', '__contact__']
+        ],
+    ];
     
     public function __construct($settings) {
         $this->settings = $settings;
         $this->api_token = $settings['api_token'] ?? '';
         $this->phone_number_id = $settings['phone_number_id'] ?? '';
-        $this->base_url = 'https://graph.facebook.com/v18.0';
+        $this->base_url = 'https://graph.facebook.com/v21.0';
     }
     
     /**
      * Send message via Meta WhatsApp Business API
      */
-    public function sendMessage($phone_number, $message) {
+    public function sendMessage($phone_number, $message, $booking = [], $type = null) {
         try {
-            // Validate inputs
             if (empty($this->api_token) || empty($this->phone_number_id)) {
                 throw new Exception("API token or phone number ID is missing");
             }
             
-            // Format phone number (ensure it starts with country code)
             $formatted_phone = $this->formatPhoneNumber($phone_number);
-            
-            // Prepare API request
-            $data = [
-                'messaging_product' => 'whatsapp',
-                'to' => $formatted_phone,
-                'type' => 'text',
-                'text' => [
-                    'body' => $message
-                ]
-            ];
-            
-            $url = $this->base_url . '/' . $this->phone_number_id . '/messages';
-            
-            $response = $this->makeHttpRequest('POST', $url, $data);
-            
-            if ($response && isset($response['messages'][0]['id'])) {
-                return [
-                    'success' => true,
-                    'message_id' => $response['messages'][0]['id'],
-                    'status' => 'sent'
-                ];
-            } else {
-                throw new Exception("Failed to send message via Meta API");
+
+            $result = $this->sendTextMessage($formatted_phone, $message);
+
+            if (
+                !$result['success'] &&
+                ($result['error_code'] ?? null) === 131047 &&
+                $type &&
+                isset($this->default_templates[$type])
+            ) {
+                error_log("WhatsApp 131047: falling back to template for type=$type");
+                return $this->sendDefaultTemplate($formatted_phone, $type, $booking);
             }
-            
+
+            return $result;
         } catch (Exception $e) {
             error_log("Meta WhatsApp API Error: " . $e->getMessage());
             return [
@@ -668,12 +649,125 @@ class MetaWhatsAppProvider {
         
         // If phone number doesn't start with country code, assume it's missing
         // You'll need to configure the default country code in settings
-        $default_country_code = $this->settings['default_country_code'] ?? '1'; // Default to US
+        $default_country_code = $this->settings['default_country_code'] ?? '93';
         if (strlen($clean_phone) <= 10) {
             $clean_phone = $default_country_code . $clean_phone;
         }
         
         return $clean_phone;
+    }
+
+    /**
+     * Send a free-form text message.
+     */
+    private function sendTextMessage($phone_number, $message) {
+        $url = $this->base_url . '/' . $this->phone_number_id . '/messages';
+        $data = [
+            'messaging_product' => 'whatsapp',
+            'to' => $phone_number,
+            'type' => 'text',
+            'text' => [
+                'body' => $message
+            ]
+        ];
+
+        try {
+            $response = $this->makeHttpRequest('POST', $url, $data);
+
+            if ($response && isset($response['messages'][0]['id'])) {
+                return [
+                    'success' => true,
+                    'message_id' => $response['messages'][0]['id'],
+                    'status' => 'sent',
+                    'via' => 'text'
+                ];
+            }
+
+            throw new Exception("Unexpected API response");
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+                'error_code' => $this->parseErrorCode($e->getMessage()),
+                'via' => 'text'
+            ];
+        }
+    }
+
+    /**
+     * Send one of the built-in approved Meta templates.
+     */
+    private function sendDefaultTemplate($phone_number, $type, $booking) {
+        if (!isset($this->default_templates[$type])) {
+            return [
+                'success' => false,
+                'error' => "No default template for type: $type"
+            ];
+        }
+
+        $template = $this->default_templates[$type];
+        $parameters = [];
+
+        foreach ($template['fields'] as $field) {
+            if ($field === '__agency__') {
+                $text = (string)($booking['agency_name'] ?? 'Travel Agency');
+            } elseif ($field === '__contact__') {
+                $text = (string)($booking['contact_info'] ?? '');
+            } else {
+                $text = (string)($booking[$field] ?? 'N/A');
+            }
+
+            $parameters[] = [
+                'type' => 'text',
+                'text' => $text
+            ];
+        }
+
+        $data = [
+            'messaging_product' => 'whatsapp',
+            'to' => $phone_number,
+            'type' => 'template',
+            'template' => [
+                'name' => $template['name'],
+                'language' => ['code' => $template['lang']],
+                'components' => [[
+                    'type' => 'body',
+                    'parameters' => $parameters
+                ]]
+            ]
+        ];
+
+        try {
+            $url = $this->base_url . '/' . $this->phone_number_id . '/messages';
+            $response = $this->makeHttpRequest('POST', $url, $data);
+
+            if ($response && isset($response['messages'][0]['id'])) {
+                return [
+                    'success' => true,
+                    'message_id' => $response['messages'][0]['id'],
+                    'via' => 'template'
+                ];
+            }
+
+            throw new Exception("Template send failed");
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+                'via' => 'template'
+            ];
+        }
+    }
+
+    /**
+     * Extract Meta error codes from exception messages.
+     */
+    private function parseErrorCode($error_message) {
+        if (preg_match('/"code"\s*:\s*(\d+)/', $error_message, $matches)) {
+            return (int)$matches[1];
+        }
+
+        return null;
     }
     
     /**
@@ -698,11 +792,17 @@ class MetaWhatsAppProvider {
         
         $response = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curl_error = curl_error($ch);
         curl_close($ch);
+
+        if ($curl_error) {
+            throw new Exception("cURL Error: $curl_error");
+        }
         
         if ($http_code >= 200 && $http_code < 300) {
             return json_decode($response, true);
         } else {
+            error_log("WhatsApp API HTTP $http_code: $response");
             throw new Exception("HTTP Error: $http_code - $response");
         }
     }
@@ -773,7 +873,7 @@ class MockWhatsAppProvider {
         $this->settings = $settings;
     }
     
-    public function sendMessage($phone_number, $message) {
+    public function sendMessage($phone_number, $message, $booking = [], $type = null) {
         // Mock implementation - always succeeds in demo
         error_log("Mock WhatsApp Message to $phone_number: " . substr($message, 0, 100) . "...");
         

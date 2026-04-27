@@ -49,6 +49,35 @@ WhatsApp notifications show as "sent" in logs but are not received on phone numb
    - **Real Time Notifications**: `Enabled`
 3. Save changes
 
+#### Step 4: Create Approved Meta Templates
+The application now falls back to approved Meta templates when a free-form message is rejected outside the 24-hour reply window. Create these templates in Meta Business Manager with the exact names below.
+
+1. `ticket_booking_confirmation`
+```text
+Hello {{1}}, your flight ticket has been confirmed. PNR: {{2}}, from {{3}} to {{4}} on {{5}}. Have a safe journey! Contact: {{6}}
+```
+
+2. `visa_application_confirmation`
+```text
+Hello {{1}}, your visa application for {{2}} has been processed. Passport: {{3}}, Type: {{4}}. Thank you for choosing {{5}}! Contact: {{6}}
+```
+
+3. `hotel_booking_confirmation`
+```text
+Hello {{1}}, your hotel booking is confirmed. Hotel: {{2}}, Check-in: {{3}}, Check-out: {{4}}. Thank you for choosing {{5}}! Contact: {{6}}
+```
+
+4. `umrah_booking_confirmation`
+```text
+Assalamu Alaikum {{1}}, your Umrah booking is confirmed. Pilgrim: {{2}}, Departure: {{3}}, Return: {{4}}. May Allah accept your Umrah! Contact: {{5}}
+```
+
+Parameter mapping used by the application:
+- `ticket_booking_confirmation`: client name, PNR, origin, destination, departure date, agency name, contact info
+- `visa_application_confirmation`: client name, country, passport number, visa type, agency name, contact info
+- `hotel_booking_confirmation`: client name, accommodation details, check-in date, check-out date, agency name, contact info
+- `umrah_booking_confirmation`: client name, pilgrim name, flight date, return date, agency name, contact info
+
 ### Solution B: Use Mock Provider for Testing (Temporary)
 
 If you just need the system to work for testing/development:

@@ -99,16 +99,6 @@ try {
             sendEmail($admin['email'], $subject, $body, true, 'maktob_notification', $admin['name'], $_SESSION['tenant_id']);
         }
 
-        // Send WhatsApp notification if phone available
-         if ($admin && $admin['phone']) {
-             try {
-                 require_once('../whatsapp/WhatsAppManager.php');
-                $whatsappManager = new WhatsAppManager($_SESSION['tenant_id']);
-                $whatsappManager->sendBookingNotification('maktob', $maktob_id);
-            } catch (Exception $e) {
-                error_log("WhatsApp notification failed for maktob: " . $e->getMessage());
-            }
-        }
     }
 
     echo json_encode(['success' => true, 'message' => 'Maktob status updated successfully']);
