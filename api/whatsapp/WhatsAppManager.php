@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * WhatsApp Automation API Manager
  * Handles tenant-based WhatsApp notifications for ticket bookings
@@ -184,10 +184,12 @@ class WhatsAppManager {
             case 'date_change_ticket':
                 $stmt = $this->pdo->prepare("
                     SELECT dct.*, dct.phone as booking_phone, c.name as client_name, c.phone as client_phone,
-                           s.name as supplier_name
+                           s.name as supplier_name,
+                           tb.departure_date as old_departure_date, tb.return_date as old_return_date
                     FROM date_change_tickets dct
                     LEFT JOIN clients c ON dct.sold_to = c.id
                     LEFT JOIN suppliers s ON dct.supplier = s.id
+                    LEFT JOIN ticket_bookings tb ON dct.ticket_id = tb.id
                     WHERE dct.id = ? AND dct.tenant_id = ?
                 ");
                 break;
@@ -216,12 +218,14 @@ class WhatsAppManager {
 
             case 'ticket_weight':
                 $stmt = $this->pdo->prepare("
-                    SELECT tw.*, tb.phone as booking_phone, c.name as client_name, c.phone as client_phone,
+                    SELECT tw.*, tb.phone as booking_phone, tb.origin, tb.destination,
+                           tb.passenger_name, tb.pnr, tb.currency, tb.sold_to, tb.supplier,
+                           c.name as client_name, c.phone as client_phone,
                            s.name as supplier_name
                     FROM ticket_weights tw
                     LEFT JOIN ticket_bookings tb ON tw.ticket_id = tb.id
-                    LEFT JOIN clients c ON tw.sold_to = c.id
-                    LEFT JOIN suppliers s ON tw.supplier = s.id
+                    LEFT JOIN clients c ON tb.sold_to = c.id
+                    LEFT JOIN suppliers s ON tb.supplier = s.id
                     WHERE tw.id = ? AND tw.tenant_id = ?
                 ");
                 break;
@@ -313,10 +317,11 @@ class WhatsAppManager {
 
             case 'date_change_ticket':
                 // Determine which date(s) changed
+                // old_departure_date and old_return_date come from ticket_bookings via JOIN
                 $date_type = $booking['date_type'] ?? 'departure';
-                $old_departure = $booking['old_departure_date'] ?? $booking['departure_date'] ?? 'N/A';
+                $old_departure = $booking['old_departure_date'] ?? 'N/A';
                 $new_departure = $booking['departure_date'] ?? 'N/A';
-                $old_return = $booking['old_return_date'] ?? $booking['return_date'] ?? 'N/A';
+                $old_return = $booking['old_return_date'] ?? 'N/A';
                 $new_return = $booking['return_date'] ?? 'N/A';
                 
                 $sector = ($booking['origin'] ?? 'N/A') . ' → ' . ($booking['destination'] ?? 'N/A');
@@ -345,18 +350,14 @@ class WhatsAppManager {
                 // Build sector information
                 $sector = ($booking['origin'] ?? 'N/A') . ' → ' . ($booking['destination'] ?? 'N/A');
                 $refund_to_passenger = $booking['refund_to_passenger'] ?? 'N/A';
-                $weight_info = '';
-                // If there's a ticket_id, we could fetch weight from ticket_weights table
-                // but for now we'll just include refund_to_passenger field
                 
                 $template_data = array_merge($template_data, [
                     'passenger_name' => $booking['passenger_name'] ?? $booking['name'] ?? 'N/A',
                     'pnr' => $booking['pnr'] ?? 'N/A',
                     'sector' => $sector,
-                    'refund_amount' => ($booking['refund_amount'] ?? $booking['sold'] ?? 0) . ' ' . ($booking['currency'] ?? 'USD'),
-                    'refund_to_passenger' => $refund_to_passenger,
-                    'refund_reason' => $booking['refund_reason'] ?? 'N/A',
-                    'refund_date' => $booking['refund_date'] ?? date('Y-m-d')
+                    'refund_amount' => $refund_to_passenger . ' ' . ($booking['currency'] ?? 'USD'),
+                    'refund_reason' => $booking['remarks'] ?? 'N/A',
+                    'refund_date' => isset($booking['created_at']) ? date('Y-m-d', strtotime($booking['created_at'])) : date('Y-m-d')
                 ]);
                 break;
 
@@ -364,31 +365,29 @@ class WhatsAppManager {
                 $template_data = array_merge($template_data, [
                     'passenger_name' => $booking['passenger_name'] ?? $booking['name'] ?? 'N/A',
                     'pnr' => $booking['pnr'] ?? 'N/A',
-                    'reservation_date' => $booking['reservation_date'] ?? $booking['created_at'] ?? date('Y-m-d'),
+                    'sector' => ($booking['origin'] ?? 'N/A') . ' → ' . ($booking['destination'] ?? 'N/A'),
+                    'airline' => $booking['airline'] ?? 'N/A',
+                    'departure_date' => $booking['departure_date'] ?? 'N/A',
+                    'reservation_date' => $booking['issue_date'] ?? $booking['created_at'] ?? date('Y-m-d'),
                     'expiry_date' => $booking['expiry_date'] ?? 'N/A',
-                    'reservation_amount' => ($booking['reservation_amount'] ?? $booking['sold'] ?? 0) . ' ' . ($booking['currency'] ?? 'USD')
+                    'reservation_amount' => ($booking['sold'] ?? 0) . ' ' . ($booking['currency'] ?? 'USD')
                 ]);
                 break;
 
             case 'ticket_weight':
-                // Build sector information
+                // origin, destination, passenger_name, pnr, currency come from ticket_bookings via JOIN
                 $sector = ($booking['origin'] ?? 'N/A') . ' → ' . ($booking['destination'] ?? 'N/A');
                 $weight = $booking['weight'] ?? 'N/A';
                 $weight_unit = 'kg'; // default unit
-                $excess_fee = ($booking['sold_price'] ?? $booking['sold'] ?? 0) . ' ' . ($booking['currency'] ?? 'USD');
-                $base_price = ($booking['base_price'] ?? 0) . ' ' . ($booking['currency'] ?? 'USD');
-                $profit = ($booking['profit'] ?? 0) . ' ' . ($booking['currency'] ?? 'USD');
+                $excess_fee = ($booking['sold_price'] ?? 0) . ' ' . ($booking['currency'] ?? 'USD');
                 
                 $template_data = array_merge($template_data, [
-                    'passenger_name' => $booking['passenger_name'] ?? $booking['name'] ?? 'N/A',
+                    'passenger_name' => $booking['passenger_name'] ?? 'N/A',
                     'pnr' => $booking['pnr'] ?? 'N/A',
                     'sector' => $sector,
                     'weight' => $weight,
                     'weight_unit' => $weight_unit,
-                    'excess_fee' => $excess_fee,
-                    'base_price' => $base_price,
-                    'profit' => $profit,
-                    'currency' => $booking['currency'] ?? 'USD'
+                    'excess_fee' => $excess_fee
                 ]);
                 break;
 
@@ -404,7 +403,7 @@ class WhatsAppManager {
     private function getMessageTemplate($type, $data) {
         // Check database for custom template first
         $stmt = $this->pdo->prepare("
-            SELECT message_template FROM whatsapp_templates 
+            SELECT message_template FROM whatsapp_templates
             WHERE tenant_id = ? AND template_type = ? AND status = 'active'
         ");
         $stmt->execute([$this->tenant_id, $type]);
@@ -417,10 +416,35 @@ class WhatsAppManager {
             $message = $this->getDefaultTemplate($type);
         }
         
-        // Replace variables in template
+        // Process conditional blocks {{#key}}...{{/key}} first
+        // If the key has a non-empty, non-'N/A' value, keep the content (with variables replaced)
+        // Otherwise, remove the entire block
+        $message = preg_replace_callback(
+            '/\{\{#(\w+)\}\}(.*?)\{\{\/\1\}\}/s',
+            function($matches) use ($data) {
+                $key = $matches[1];
+                $content = $matches[2];
+                $value = $data[$key] ?? '';
+                // Check if value is meaningful (not empty, not 'N/A')
+                if ($value !== '' && $value !== 'N/A' && $value !== null) {
+                    // Replace variables inside the conditional block
+                    foreach ($data as $k => $v) {
+                        $content = str_replace('{{' . $k . '}}', $v, $content);
+                    }
+                    return $content;
+                }
+                return ''; // Remove the entire block
+            },
+            $message
+        );
+        
+        // Replace remaining variables in template
         foreach ($data as $key => $value) {
             $message = str_replace('{{' . $key . '}}', $value, $message);
         }
+        
+        // Clean up any leftover empty lines from removed conditionals
+        $message = preg_replace("/\n{3,}/", "\n\n", $message);
         
         return $message;
     }
@@ -534,7 +558,6 @@ Your ticket refund has been processed:
 🆔 PNR: {{pnr}}
 🌍 Sector: {{sector}}
 💰 Refund Amount: {{refund_amount}}
-{{#refund_to_passenger}}📤 Refund To Passenger: {{refund_to_passenger}}{{/refund_to_passenger}}
 � Reason: {{refund_reason}}
 📅 Refund Date: {{refund_date}}
 
@@ -551,8 +574,10 @@ Your ticket reservation has been confirmed:
 
 👤 Passenger: {{passenger_name}}
 🆔 PNR: {{pnr}}
+🌍 Sector: {{sector}}
+✈️ Airline: {{airline}}
+📅 Departure Date: {{departure_date}}
 📅 Reservation Date: {{reservation_date}}
-📅 Expiry Date: {{expiry_date}}
 💰 Reservation Amount: {{reservation_amount}}
 
 📅 Booking Date: {{booking_date}}
@@ -571,8 +596,6 @@ Your excess baggage has been processed:
 🌍 Sector: {{sector}}
 ⚖️ Weight: {{weight}} {{weight_unit}}
 💰 Excess Fee: {{excess_fee}}
-{{#base_price}}📊 Base Price: {{base_price}}{{/base_price}}
-{{#profit}}📈 Profit: {{profit}}{{/profit}}
 
 � Processed Date: {{booking_date}}
 
@@ -829,22 +852,22 @@ class MetaWhatsAppProvider {
         'date_change_ticket' => [
             'name' => 'ticket_date_change_confirmation',
             'lang' => 'en',
-            'fields' => ['client_name', 'pnr', 'old_departure_date', 'new_departure_date', '__agency__', '__contact__']
+            'fields' => ['client_name', 'pnr', 'old_departure_date', 'departure_date', '__agency__', '__contact__']
         ],
         'refund_ticket' => [
             'name' => 'ticket_refund_confirmation',
             'lang' => 'en',
-            'fields' => ['client_name', 'pnr', 'refund_amount', 'refund_reason', '__agency__', '__contact__']
+            'fields' => ['client_name', 'pnr', 'refund_to_passenger', 'remarks', '__agency__', '__contact__']
         ],
         'ticket_reserve' => [
             'name' => 'ticket_reservation_confirmation',
             'lang' => 'en',
-            'fields' => ['client_name', 'pnr', 'reservation_date', 'expiry_date', '__agency__', '__contact__']
+            'fields' => ['client_name', 'pnr', 'issue_date', 'departure_date', '__agency__', '__contact__']
         ],
         'ticket_weight' => [
             'name' => 'excess_baggage_confirmation',
             'lang' => 'en',
-            'fields' => ['client_name', 'pnr', 'weight', 'weight_unit', '__agency__', '__contact__']
+            'fields' => ['client_name', 'pnr', 'weight', 'sold_price', '__agency__', '__contact__']
         ],
     ];
     
