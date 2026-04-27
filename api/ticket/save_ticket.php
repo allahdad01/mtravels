@@ -823,16 +823,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Send WhatsApp notification to client (if configured)
             try {
                 $whatsappManager = new WhatsAppManager($tenant_id);
-                $whatsapp_result = $whatsappManager->sendBookingNotification('ticket', $main_booking_id);
+                $whatsapp_result = $whatsappManager->sendBookingNotification('ticket', $record_id);
                 
                 if ($whatsapp_result['success']) {
-                    error_log("WhatsApp notification sent for Ticket booking ID: $main_booking_id");
+                    error_log("WhatsApp notification sent for Ticket booking ID: $record_id");
                 } else {
-                    error_log("WhatsApp notification failed for Ticket booking ID: $main_booking_id - " . $whatsapp_result['message']);
+                    error_log("WhatsApp notification failed for Ticket booking ID: $record_id - " . $whatsapp_result['message']);
                 }
             } catch (Exception $e) {
                 // Don't fail the operation if WhatsApp fails
-                error_log("WhatsApp integration error for Ticket booking ID: $main_booking_id - " . $e->getMessage());
+                error_log("WhatsApp integration error for Ticket booking ID: $record_id - " . $e->getMessage());
             }
 
             // Clean up temporary PDF file

@@ -7,6 +7,8 @@
 header('Content-Type: application/json');
 session_start();
 
+$is_webhook_request = isset($_GET['webhook']);
+
 // Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
@@ -16,9 +18,10 @@ require_once '../../includes/db.php';
 
 // Load input validation helper
 require_once '../../includes/InputValidator.php';
+require_once '../../admin/security.php';
 
 // CSRF Protection for POST/PUT/DELETE requests
-if (in_array($_SERVER['REQUEST_METHOD'], ['POST', 'PUT', 'DELETE']) && !verify_csrf_token()) {
+if (!$is_webhook_request && in_array($_SERVER['REQUEST_METHOD'], ['POST', 'PUT', 'DELETE']) && !verify_csrf_token()) {
     http_response_code(403);
     echo json_encode(['error' => 'Security validation failed. Please try again.']);
     exit;
@@ -538,7 +541,14 @@ class WhatsAppAPI {
 
 // Process webhook from WhatsApp provider
 if (isset($_GET['webhook'])) {
-    handleWebhook();
+    // Check if this is a Meta verification request (GET with hub parameters)
+    // Note: Meta sends parameters as hub.mode, hub.verify_token, hub.challenge (with dots)
+    // PHP converts dots to underscores in $_GET
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['hub_mode']) && $_GET['hub_mode'] === 'subscribe') {
+        handleMetaVerification();
+    } else {
+        handleWebhook();
+    }
     exit;
 }
 
@@ -550,13 +560,129 @@ if (isset($_GET['webhook'])) {
  * @return bool True if signature is valid
  */
 function verifyWebhookSignature($payload, $signature, $secret) {
-    // Expected format: sha256=<hash>
-    if (strpos($signature, 'sha256=') !== 0) {
-        return false;
+    $signature = trim((string)$signature);
+
+    if (strpos($signature, 'sha256=') === 0) {
+        $expected_signature = 'sha256=' . hash_hmac('sha256', $payload, $secret);
+        return hash_equals($signature, $expected_signature);
     }
+
+    if (strpos($signature, 'sha1=') === 0) {
+        $expected_signature = 'sha1=' . hash_hmac('sha1', $payload, $secret);
+        return hash_equals($signature, $expected_signature);
+    }
+
+    if (preg_match('/^[a-f0-9]{64}$/i', $signature) === 1) {
+        $expected_signature = hash_hmac('sha256', $payload, $secret);
+        return hash_equals(strtolower($signature), strtolower($expected_signature));
+    }
+
+    return false;
+}
+
+/**
+ * Get the webhook signature header across Apache/ngrok variations.
+ *
+ * @return array{value:string,source:string|null}
+ */
+function getWebhookSignature() {
+    $server_keys = [
+        'HTTP_X_HUB_SIGNATURE_256',
+        'REDIRECT_HTTP_X_HUB_SIGNATURE_256',
+        'HTTP_X_HUB_SIGNATURE',
+        'REDIRECT_HTTP_X_HUB_SIGNATURE',
+    ];
+
+    foreach ($server_keys as $key) {
+        $value = trim((string)($_SERVER[$key] ?? ''));
+        if ($value !== '') {
+            return ['value' => $value, 'source' => $key];
+        }
+    }
+
+    if (function_exists('getallheaders')) {
+        foreach (getallheaders() as $name => $value) {
+            if (
+                strcasecmp($name, 'X-Hub-Signature-256') === 0 ||
+                strcasecmp($name, 'X-Hub-Signature') === 0
+            ) {
+                $normalized = trim((string)$value);
+                if ($normalized !== '') {
+                    return ['value' => $normalized, 'source' => $name];
+                }
+            }
+        }
+    }
+
+    return ['value' => '', 'source' => null];
+}
+
+/**
+ * Load the webhook secret from supported environment variable names.
+ */
+function getWebhookSecret() {
+    foreach (['WHATSAPP_WEBHOOK_SECRET', 'META_APP_SECRET', 'FACEBOOK_APP_SECRET'] as $key) {
+        $value = getenv($key);
+        if ($value !== false && trim($value) !== '') {
+            return trim($value);
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Describe the configured secret source without exposing the value.
+ */
+function getWebhookSecretHint() {
+    foreach (['WHATSAPP_WEBHOOK_SECRET', 'META_APP_SECRET', 'FACEBOOK_APP_SECRET'] as $key) {
+        $value = getenv($key);
+        if ($value !== false && trim($value) !== '') {
+            return $key;
+        }
+    }
+
+    return 'database_or_missing';
+}
+
+/**
+ * Handle Meta WhatsApp webhook verification
+ * Meta sends GET request with hub.mode=subscribe, hub.verify_token, hub.challenge
+ */
+function handleMetaVerification() {
+    $hub_mode = $_GET['hub_mode'] ?? '';
+    $hub_verify_token = $_GET['hub_verify_token'] ?? '';
+    $hub_challenge = $_GET['hub_challenge'] ?? '';
     
-    $expected_signature = 'sha256=' . hash_hmac('sha256', $payload, $secret);
-    return hash_equals($signature, $expected_signature);
+    error_log("Meta verification request: mode=$hub_mode, token=$hub_verify_token, challenge=$hub_challenge");
+    
+    // Get verify token from database (first active tenant)
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare("SELECT webhook_verify_token FROM whatsapp_settings WHERE status = 'active' LIMIT 1");
+        $stmt->execute();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        $expected_token = $result['webhook_verify_token'] ?? 'test'; // Default to 'test'
+        
+        // Verify the token
+        if ($hub_mode === 'subscribe' && hash_equals($hub_verify_token, $expected_token)) {
+            error_log("Meta verification SUCCESS - returning challenge: $hub_challenge");
+            // Return the challenge to complete verification
+            header('Content-Type: text/plain');
+            echo $hub_challenge;
+            exit;
+        } else {
+            error_log("Meta verification FAILED - token mismatch. Expected: $expected_token, Got: $hub_verify_token");
+            http_response_code(403);
+            echo 'Verification failed - token mismatch';
+            exit;
+        }
+    } catch (Exception $e) {
+        error_log("Meta verification error: " . $e->getMessage());
+        http_response_code(500);
+        echo 'Internal server error';
+        exit;
+    }
 }
 
 /**
@@ -567,29 +693,112 @@ function verifyWebhookSignature($payload, $signature, $secret) {
  */
 function identifyTenantFromWebhook($data) {
     global $pdo;
+
+    if (!empty($data['entry'])) {
+        foreach ($data['entry'] as $entry) {
+            foreach (($entry['changes'] ?? []) as $change) {
+                $phone_number_id = $change['value']['metadata']['phone_number_id'] ?? null;
+
+                if (!$phone_number_id) {
+                    continue;
+                }
+
+                try {
+                    $stmt = $pdo->prepare("SELECT tenant_id FROM whatsapp_settings WHERE phone_number_id = ? LIMIT 1");
+                    $stmt->execute([$phone_number_id]);
+                    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                    if ($result) {
+                        return (int)$result['tenant_id'];
+                    }
+                } catch (Exception $e) {
+                    error_log("Webhook error identifying tenant by phone number ID: " . $e->getMessage());
+                }
+            }
+        }
+    }
     
     // Try to identify from phone number or webhook metadata
     $phone = $data['from'] ?? $data['phone'] ?? null;
     
     if (!$phone) {
-        error_log("Webhook: Could not identify tenant - no phone number");
+        error_log("Webhook: Could not identify tenant - no phone number or phone number ID");
         return null;
     }
     
-    // Query WhatsApp settings to find matching tenant
-    try {
-        $stmt = $pdo->prepare("SELECT tenant_id FROM whatsapp_settings WHERE phone_number = ? OR business_phone = ? LIMIT 1");
-        $stmt->execute([$phone, $phone]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if ($result) {
-            return (int)$result['tenant_id'];
-        }
-    } catch (Exception $e) {
-        error_log("Webhook error identifying tenant: " . $e->getMessage());
-    }
-    
     return null;
+}
+
+/**
+ * Check whether the payload matches Meta's webhook format.
+ */
+function isMetaWebhookPayload($data) {
+    return !empty($data['entry']) && ($data['object'] ?? '') === 'whatsapp_business_account';
+}
+
+/**
+ * Normalize webhook timestamps for MySQL timestamp columns.
+ */
+function normalizeWebhookTimestamp($timestamp) {
+    if (empty($timestamp)) {
+        return date('Y-m-d H:i:s');
+    }
+
+    if (is_numeric($timestamp)) {
+        return date('Y-m-d H:i:s', (int)$timestamp);
+    }
+
+    $parsed = strtotime($timestamp);
+    if ($parsed === false) {
+        return date('Y-m-d H:i:s');
+    }
+
+    return date('Y-m-d H:i:s', $parsed);
+}
+
+/**
+ * Process Meta webhook payloads for delivery statuses and inbound messages.
+ */
+function processMetaWebhook($data, $tenant_id) {
+    foreach ($data['entry'] as $entry) {
+        foreach (($entry['changes'] ?? []) as $change) {
+            $value = $change['value'] ?? [];
+            $display_phone_number = $value['metadata']['display_phone_number'] ?? '';
+
+            foreach (($value['statuses'] ?? []) as $status_update) {
+                $status_message = $status_update['errors'][0]['title']
+                    ?? $status_update['conversation']['id']
+                    ?? '';
+
+                updateMessageStatus([
+                    'message_id' => $status_update['id'] ?? '',
+                    'status' => $status_update['status'] ?? '',
+                    'timestamp' => normalizeWebhookTimestamp($status_update['timestamp'] ?? null),
+                    'message' => $status_message,
+                    'raw_payload' => $status_update,
+                ], $tenant_id);
+            }
+
+            foreach (($value['messages'] ?? []) as $message) {
+                $message_content = $message['text']['body']
+                    ?? $message['button']['text']
+                    ?? $message['interactive']['button_reply']['title']
+                    ?? $message['interactive']['list_reply']['title']
+                    ?? '';
+
+                handleReceivedMessage([
+                    'from' => $message['from'] ?? '',
+                    'to' => $display_phone_number,
+                    'message' => $message_content,
+                    'raw_payload' => $message,
+                ], $tenant_id);
+            }
+
+            if (empty($value['statuses']) && empty($value['messages'])) {
+                logWebhook($change, $tenant_id);
+            }
+        }
+    }
 }
 
 /**
@@ -599,7 +808,7 @@ function identifyTenantFromWebhook($data) {
 function handleWebhook() {
     try {
         // 1. Get webhook secret from settings or environment
-        $webhook_secret = getenv('WHATSAPP_WEBHOOK_SECRET');
+        $webhook_secret = getWebhookSecret();
         if (!$webhook_secret) {
             // If no environment variable, try to get from database (first active tenant)
             global $pdo;
@@ -615,10 +824,14 @@ function handleWebhook() {
         
         // 2. Verify webhook signature
         $raw_payload = file_get_contents('php://input');
-        $signature = $_SERVER['HTTP_X_HUB_SIGNATURE'] ?? '';
+        $signature_data = getWebhookSignature();
+        $signature = $signature_data['value'];
         
         if (empty($signature) || !verifyWebhookSignature($raw_payload, $signature, $webhook_secret)) {
-            error_log("Webhook verification failed - Invalid signature");
+            error_log(
+                "Webhook verification failed - Invalid signature (header source: " .
+                ($signature_data['source'] ?? 'none') . ", secret source: " . getWebhookSecretHint() . ")"
+            );
             http_response_code(401);
             echo json_encode(['error' => 'Unauthorized']);
             return;
@@ -638,6 +851,14 @@ function handleWebhook() {
         }
         
         error_log("Webhook received for tenant $tenant_id: " . json_encode($data));
+
+        if (isMetaWebhookPayload($data)) {
+            processMetaWebhook($data, $tenant_id);
+
+            http_response_code(200);
+            echo json_encode(['status' => 'processed']);
+            return;
+        }
         
         // 5. Process webhook based on type
         if (isset($data['type'])) {
@@ -673,7 +894,7 @@ function updateMessageStatus($data, $tenant_id) {
     
     $message_id = $data['message_id'] ?? '';
     $status = $data['status'] ?? '';
-    $timestamp = $data['timestamp'] ?? date('Y-m-d H:i:s');
+    $timestamp = normalizeWebhookTimestamp($data['timestamp'] ?? null);
     
     if (!$message_id || !$status) {
         return;
@@ -700,6 +921,13 @@ function updateMessageStatus($data, $tenant_id) {
             WHERE provider_message_id = ? AND tenant_id = ?
         ");
         $stmt->execute([$status, $timestamp, $message_id, $tenant_id]);
+    } else {
+        $stmt = $pdo->prepare("
+            UPDATE whatsapp_messages 
+            SET status = ? 
+            WHERE provider_message_id = ? AND tenant_id = ?
+        ");
+        $stmt->execute([$status, $message_id, $tenant_id]);
     }
     
     // Log delivery status - ensure we're logging for the correct tenant
@@ -709,12 +937,17 @@ function updateMessageStatus($data, $tenant_id) {
             delivery_timestamp, raw_response
         ) SELECT id, provider_message_id, ?, ?, ?, ?
         FROM whatsapp_messages WHERE provider_message_id = ? AND tenant_id = ?
+        ON DUPLICATE KEY UPDATE
+            status = VALUES(status),
+            status_message = VALUES(status_message),
+            delivery_timestamp = VALUES(delivery_timestamp),
+            raw_response = VALUES(raw_response)
     ");
     $stmt->execute([
         $status, 
         $data['message'] ?? '', 
         $timestamp, 
-        json_encode($data), 
+        json_encode($data['raw_payload'] ?? $data), 
         $message_id,
         $tenant_id
     ]);
@@ -741,7 +974,7 @@ function handleReceivedMessage($data, $tenant_id) {
         $data['from'] ?? '',
         $data['to'] ?? '',
         $data['message'] ?? '',
-        json_encode($data)
+        json_encode($data['raw_payload'] ?? $data)
     ]);
 }
 
