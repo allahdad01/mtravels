@@ -256,6 +256,22 @@ try {
     // Commit transaction
     $pdo->commit();
     
+    // Send WhatsApp notification for JV payment (if configured)
+    try {
+        require_once '../api/whatsapp/WhatsAppManager.php';
+        $whatsappManager = new WhatsAppManager($tenant_id);
+        $whatsapp_result = $whatsappManager->sendBookingNotification('jv_payment', $jvPaymentId);
+        
+        if ($whatsapp_result['success']) {
+            error_log("WhatsApp notification sent for JV Payment ID: $jvPaymentId");
+        } else {
+            error_log("WhatsApp notification failed for JV Payment ID: $jvPaymentId - " . $whatsapp_result['message']);
+        }
+    } catch (Exception $e) {
+        // Don't fail the operation if WhatsApp fails
+        error_log("WhatsApp integration error for JV Payment ID: $jvPaymentId - " . $e->getMessage());
+    }
+    
     $_SESSION['success_message'] = 'JV payment processed successfully. Client balance reduced and supplier balance increased.';
 } catch (Exception $e) {
     // Rollback on error

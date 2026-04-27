@@ -230,6 +230,27 @@ class WhatsAppManager {
                 ");
                 break;
 
+            case 'jv_payment':
+                $stmt = $this->pdo->prepare("
+                    SELECT jp.*, c.name as client_name, c.phone as client_phone, c.phone as booking_phone,
+                           s.name as supplier_name
+                    FROM jv_payments jp
+                    LEFT JOIN clients c ON jp.client_id = c.id
+                    LEFT JOIN suppliers s ON jp.supplier_id = s.id
+                    WHERE jp.id = ? AND jp.tenant_id = ?
+                ");
+                break;
+
+            case 'client_fund':
+                $stmt = $this->pdo->prepare("
+                    SELECT ct.*, c.name as client_name, c.phone as client_phone, c.phone as booking_phone,
+                           ct.amount as funded_amount, ct.currency as fund_currency
+                    FROM client_transactions ct
+                    LEFT JOIN clients c ON ct.client_id = c.id
+                    WHERE ct.id = ? AND ct.tenant_id = ? AND ct.transaction_of = 'fund'
+                ");
+                break;
+
             default:
                 throw new Exception("Invalid booking type: $type");
         }
@@ -388,6 +409,23 @@ class WhatsAppManager {
                     'weight' => $weight,
                     'weight_unit' => $weight_unit,
                     'excess_fee' => $excess_fee
+                ]);
+                break;
+
+            case 'jv_payment':
+                $template_data = array_merge($template_data, [
+                    'jv_name' => $booking['jv_name'] ?? 'N/A',
+                    'supplier_name' => $booking['supplier_name'] ?? 'N/A',
+                    'amount' => ($booking['total_amount'] ?? 0) . ' ' . ($booking['currency'] ?? 'USD'),
+                    'receipt' => $booking['receipt'] ?? 'N/A'
+                ]);
+                break;
+
+            case 'client_fund':
+                $template_data = array_merge($template_data, [
+                    'funded_amount' => ($booking['funded_amount'] ?? $booking['amount'] ?? 0) . ' ' . ($booking['fund_currency'] ?? $booking['currency'] ?? 'USD'),
+                    'new_balance' => ($booking['balance'] ?? 'N/A') . ' ' . ($booking['fund_currency'] ?? $booking['currency'] ?? 'USD'),
+                    'receipt' => $booking['receipt'] ?? 'N/A'
                 ]);
                 break;
 
@@ -600,6 +638,37 @@ Your excess baggage has been processed:
 � Processed Date: {{booking_date}}
 
 Safe travels with your baggage!
+📞 Contact: {{contact_info}}",
+
+            'jv_payment' => "💳 *JV Payment Confirmation*
+
+Hello {{client_name}},
+
+A JV payment has been processed for your account:
+
+📋 Payment: {{jv_name}}
+🏢 Supplier: {{supplier_name}}
+💰 Amount: {{amount}}
+🧾 Receipt: {{receipt}}
+
+📅 Date: {{booking_date}}
+
+Thank you for choosing {{agency_name}}!
+📞 Contact: {{contact_info}}",
+
+            'client_fund' => "💰 *Account Funding Confirmation*
+
+Hello {{client_name}},
+
+Your account has been funded successfully:
+
+💰 Amount Credited: {{funded_amount}}
+📊 New Balance: {{new_balance}}
+🧾 Receipt: {{receipt}}
+
+📅 Date: {{booking_date}}
+
+Thank you for choosing {{agency_name}}!
 📞 Contact: {{contact_info}}",
 
         ];
@@ -868,6 +937,16 @@ class MetaWhatsAppProvider {
             'name' => 'excess_baggage_confirmation',
             'lang' => 'en',
             'fields' => ['client_name', 'pnr', 'weight', 'sold_price', '__agency__', '__contact__']
+        ],
+        'jv_payment' => [
+            'name' => 'jv_payment_confirmation',
+            'lang' => 'en',
+            'fields' => ['client_name', 'jv_name', 'total_amount', 'currency', '__agency__', '__contact__']
+        ],
+        'client_fund' => [
+            'name' => 'client_fund_confirmation',
+            'lang' => 'en',
+            'fields' => ['client_name', 'amount', 'currency', 'receipt', '__agency__', '__contact__']
         ],
     ];
     

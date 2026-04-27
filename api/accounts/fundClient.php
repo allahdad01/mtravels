@@ -358,6 +358,23 @@ try {
     }
     
     $pdo->commit();
+    
+    // Send WhatsApp notification for client fund (if configured)
+    try {
+        require_once '../../api/whatsapp/WhatsAppManager.php';
+        $whatsappManager = new WhatsAppManager($tenant_id);
+        $whatsapp_result = $whatsappManager->sendBookingNotification('client_fund', $lastInsertId);
+        
+        if ($whatsapp_result['success']) {
+            error_log("WhatsApp notification sent for Client Fund ID: $lastInsertId");
+        } else {
+            error_log("WhatsApp notification failed for Client Fund ID: $lastInsertId - " . $whatsapp_result['message']);
+        }
+    } catch (Exception $e) {
+        // Don't fail the operation if WhatsApp fails
+        error_log("WhatsApp integration error for Client Fund ID: $lastInsertId - " . $e->getMessage());
+    }
+    
     echo json_encode(['success' => true, 'message' => 'Client account funded successfully.']);
 } catch (Exception $e) {
     $pdo->rollBack();
