@@ -40,7 +40,6 @@ if (empty($whatsapp_settings)) {
     $whatsapp_settings = loadWhatsAppSettings($tenant_id);
 }
 $whatsapp_settings = array_merge(getDefaultSettings(), $whatsapp_settings);
-$templates = loadTemplates($tenant_id);
 $analytics = loadAnalytics($tenant_id);
 
 /* â”€â”€ DB helpers â”€â”€ */
@@ -61,10 +60,6 @@ function ensureDefaultSettings($tid) {
         try{$pdo->prepare("INSERT INTO whatsapp_settings(tenant_id,provider,api_token,phone_number_id,webhook_verify_token,webhook_url,status,auto_notifications,real_time_notifications,max_messages_per_hour,retry_attempts,created_at,updated_at) VALUES(?,'meta','','','','','inactive',1,0,1000,3,NOW(),NOW())")->execute([$tid]);}catch(Exception $e){error_log($e->getMessage());}
     }
 }
-function loadTemplates($tid) {
-    global $pdo;
-    try{ $s=$pdo->prepare("SELECT * FROM whatsapp_templates WHERE tenant_id=? ORDER BY template_type,language"); $s->execute([$tid]); return $s->fetchAll(PDO::FETCH_ASSOC); }catch(Exception $e){ return []; }
-}
 function loadAnalytics($tid) {
     global $pdo;
     try{ $s=$pdo->prepare("SELECT * FROM whatsapp_analytics WHERE tenant_id=? ORDER BY date DESC LIMIT 30"); $s->execute([$tid]); return $s->fetchAll(PDO::FETCH_ASSOC); }catch(Exception $e){ return []; }
@@ -77,7 +72,6 @@ function handleAjaxRequest() {
     try {
         switch ($_POST['action']??'') {
             case 'update_settings':   updateSettings();   break;
-            case 'save_template':     saveTemplate();     break;
             case 'test_connection':   testConnection();   break;
             case 'send_test_message': sendTestMessage();  break;
             case 'get_queue_status':  getQueueStatus();   break;
@@ -98,15 +92,6 @@ function updateSettings(){
         $s->execute([$tenant_id,$d['provider'],$d['api_token'],$d['phone_number_id'],$d['webhook_verify_token'],$d['webhook_url'],$d['auto_notifications'],$d['real_time_notifications'],$d['max_messages_per_hour'],$d['retry_attempts'],$d['status']]);
     }
     echo json_encode(['success'=>true,'message'=>'Settings updated successfully']);
-}
-function saveTemplate(){
-    global $pdo,$tenant_id,$user_id;
-    $tt=$_POST['template_type']??''; $msg=$_POST['message_template']??'';
-    if(empty($tt)||empty($msg)) throw new Exception("Template type and message are required");
-    $lang=$_POST['language']??'en'; $name=$_POST['template_name']??"{$tt}_{$lang}";
-    $s=$pdo->prepare("INSERT INTO whatsapp_templates(tenant_id,template_name,template_type,language,message_template,created_by,status) VALUES(?,?,?,?,?,?,'active') ON DUPLICATE KEY UPDATE template_name=VALUES(template_name),message_template=VALUES(message_template),updated_at=NOW()");
-    $s->execute([$tenant_id,$name,$tt,$lang,$msg,$user_id]);
-    echo json_encode(['success'=>true,'message'=>'Template saved successfully']);
 }
 function testConnection(){
     global $pdo,$tenant_id;
@@ -197,7 +182,6 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 .dash-card-head h6{font-size:14px;font-weight:700;margin:0}
 .ico{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;flex-shrink:0}
 .ico-wa    {background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%)}
-.ico-tmpl  {background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%)}
 .ico-test  {background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%)}
 .ico-queue {background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%)}
 .dash-card-body{padding:20px}
@@ -250,23 +234,6 @@ textarea.form-input{resize:vertical;min-height:120px}
 .save-btn:hover{opacity:.9}
 .save-btn:disabled{opacity:.6;cursor:not-allowed}
 
-/* Templates table */
-.data-table{width:100%;border-collapse:collapse}
-.data-table thead th{background:var(--surface);padding:9px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-sub);border-bottom:1.5px solid var(--border);text-align:left}
-.data-table tbody tr:hover{background:rgba(37,211,102,.03)}
-.data-table tbody td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:12px;vertical-align:middle}
-.data-table tbody tr:last-child td{border-bottom:none}
-.type-badge{display:inline-flex;align-items:center;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;background:rgba(37,211,102,.12);color:#166534}
-.lang-badge{font-size:11px;font-weight:600;color:var(--text-sub);font-family:'JetBrains Mono',monospace}
-.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;border:1.5px solid var(--border);background:var(--card-bg);cursor:pointer;font-size:12px;color:var(--text-sub);transition:all .15s}
-.icon-btn:hover.edit{border-color:#1d4ed8;color:#1d4ed8}
-.icon-btn:hover.del{border-color:var(--red);color:var(--red)}
-.add-tmpl-btn{display:inline-flex;align-items:center;gap:5px;border:1.5px solid rgba(255,255,255,.3);border-radius:8px;padding:6px 12px;background:rgba(255,255,255,.15);color:#fff;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
-.add-tmpl-btn:hover{background:rgba(255,255,255,.25)}
-.empty-templates{text-align:center;padding:40px 20px}
-.empty-templates i{font-size:36px;opacity:.2;display:block;margin-bottom:12px}
-.empty-templates p{color:var(--text-sub);font-size:13px;margin:0}
-
 /* Queue */
 .queue-row{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border-radius:10px;padding:10px 14px;margin-bottom:8px}
 .queue-row:last-child{margin-bottom:0}
@@ -294,17 +261,6 @@ textarea.form-input{resize:vertical;min-height:120px}
 .notif-toast.error  {background:#fff;border:1.5px solid rgba(239,68,68,.3);color:#991b1b}
 .notif-toast.info   {background:#fff;border:1.5px solid rgba(8,145,178,.3);color:#0e7490}
 
-/* Modal */
-.modal-content{border:none;border-radius:16px;font-family:inherit;box-shadow:0 20px 60px rgba(0,0,0,.18)}
-.modal-header{background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);color:#fff;border-radius:16px 16px 0 0;border:none;padding:18px 24px}
-.modal-header .modal-title{font-weight:700;font-size:15px}
-.modal-header .close{color:#fff;opacity:.8;font-size:22px}
-.modal-header .close:hover{opacity:1}
-.modal-body{padding:20px}
-.modal-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;border:none}
-.btn-cancel-modal{display:inline-flex;align-items:center;gap:6px;background:var(--surface);color:var(--text-sub);border:1.5px solid var(--border);border-radius:10px;padding:9px 18px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer}
-.btn-save-modal{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);color:#fff;border:none;border-radius:10px;padding:9px 18px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
-.btn-save-modal:hover{opacity:.9}
 
 /* Loading spinner */
 .spin{animation:spin .7s linear infinite}
@@ -326,11 +282,8 @@ textarea.form-input{resize:vertical;min-height:120px}
         </button>
     </div>
 
-    <!-- Top 2-column row: Config + Templates -->
-    <div class="two-col">
-
-        <!-- Config card -->
-        <div class="dash-card">
+    <!-- Config card -->
+    <div class="dash-card">
             <div class="dash-card-head">
                 <div class="dash-card-head-left">
                     <span class="ico ico-wa"><i class="feather icon-settings"></i></span>
@@ -338,40 +291,6 @@ textarea.form-input{resize:vertical;min-height:120px}
                 </div>
             </div>
             <div class="dash-card-body">
-
-                <!-- System info strip -->
-                <div class="sys-strip">
-                <div class="sys-item">
-    <span class="sys-item-icon">
-        <?= function_exists('curl_init') ? '✅' : '❌' ?>
-    </span>
-    <div>
-        <span class="sys-item-label">cURL</span>
-        <span class="sys-item-val">
-            <?= function_exists('curl_init') ? 'Ready' : 'Missing' ?>
-        </span>
-    </div>
-</div>
-<div class="sys-item">
-    <span class="sys-item-icon">
-        <?= extension_loaded('openssl') ? '✅' : '❌' ?>
-    </span>
-    <div>
-        <span class="sys-item-label">SSL</span>
-        <span class="sys-item-val">
-            <?= extension_loaded('openssl') ? 'Ready' : 'Missing' ?>
-        </span>
-    </div>
-</div>
-
-<div class="sys-item">
-    <span class="sys-item-icon">🐘</span>
-    <div>
-        <span class="sys-item-label">PHP</span>
-        <span class="sys-item-val"><?= phpversion() ?></span>
-    </div>
-</div>
-                </div>
 
                 <form id="waSettingsForm">
                     <div class="form-grid-2">
@@ -462,50 +381,6 @@ textarea.form-input{resize:vertical;min-height:120px}
             </div>
         </div>
 
-        <!-- Templates card -->
-        <div class="dash-card">
-            <div class="dash-card-head">
-                <div class="dash-card-head-left">
-                    <span class="ico ico-tmpl"><i class="feather icon-file-text"></i></span>
-                    <h6><?php echo __('message_templates'); ?></h6>
-                </div>
-                <button class="add-tmpl-btn" onclick="openTemplateModal()"><i class="feather icon-plus"></i><?php echo __('add_template'); ?></button>
-            </div>
-            <div class="dash-card-body" style="padding:0;">
-                <?php if (empty($templates)): ?>
-                <div class="empty-templates">
-                    <i class="feather icon-inbox"></i>
-                    <p><?php echo __('no_templates_found'); ?><br><span style="font-size:11px;color:var(--text-sub);"><?php echo __('add_first_template'); ?></span></p>
-                </div>
-                <?php else: ?>
-                <div style="overflow-x:auto;">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th><i class="feather icon-tag" style="font-size:10px;"></i> <?php echo __('template'); ?></th>
-                                <th><i class="feather icon-globe" style="font-size:10px;"></i> <?php echo __('language'); ?></th>
-                                <th style="text-align:right;"><?php echo __('actions'); ?></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        <?php foreach ($templates as $t): ?>
-                        <tr>
-                            <td><span class="type-badge"><?= ucfirst(htmlspecialchars($t['template_type'])) ?></span></td>
-                            <td><span class="lang-badge"><?= strtoupper(htmlspecialchars($t['language'])) ?></span></td>
-                            <td style="text-align:right;display:flex;gap:5px;justify-content:flex-end;">
-                                <button class="icon-btn edit" onclick="editTemplate(<?= $t['id'] ?>)" title="Edit"><i class="feather icon-edit-2"></i></button>
-                                <button class="icon-btn del" onclick="deleteTemplate(<?= $t['id'] ?>)" title="Delete"><i class="feather icon-trash-2"></i></button>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-                <?php endif; ?>
-            </div>
-        </div>
-    </div>
-
     <!-- Bottom 2-column row: Test + Queue -->
     <div class="two-col">
 
@@ -558,56 +433,6 @@ textarea.form-input{resize:vertical;min-height:120px}
     </div>
 
 </div>
-</div>
-
-<!-- Template Modal -->
-<div class="modal fade" id="templateModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="feather icon-file-text" style="margin-right:8px;"></i>Message Template</h5>
-                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
-            </div>
-            <div class="modal-body">
-                <form id="templateForm">
-                    <input type="hidden" id="template_id" name="template_id">
-                    <div class="form-grid-2">
-                        <div class="form-group">
-                            <label class="form-label"><i class="feather icon-tag"></i>Template Type</label>
-                            <select class="form-input" id="template_type" name="template_type" required>
-                                <option value="visa">Visa</option>
-                                <option value="umrah">Umrah</option>
-                                <option value="hotel">Hotel</option>
-                                <option value="ticket">Flight Ticket</option>
-                                <option value="refund">Refund</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label"><i class="feather icon-globe"></i>Language</label>
-                            <select class="form-input" id="template_language" name="language" required>
-                            <option value="en">English</option>
-<option value="fa">Dari (دری)</option>
-<option value="ps">Pashto (پښتو)</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label"><i class="feather icon-edit-3"></i>Template Name</label>
-                        <input type="text" class="form-input" id="template_name" name="template_name" placeholder="Optional - auto-generated if empty">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label"><i class="feather icon-message-square"></i>Message Template</label>
-                        <textarea class="form-input" id="message_template" name="message_template" rows="8" placeholder="Enter your message with {{variables}}" required></textarea>
-                        <div class="field-hint">Available: {client_name} | {booking_date} | {agency_name} | {contact_info} - use {variable_name} format</div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn-cancel-modal" data-dismiss="modal"><i class="feather icon-x"></i>Cancel</button>
-                <button type="button" class="btn-save-modal" onclick="saveTemplate()"><i class="feather icon-save"></i>Save Template</button>
-            </div>
-        </div>
-    </div>
 </div>
 
 <?php include 'footer.php'; ?>
@@ -711,25 +536,6 @@ async function processQueue() {
         else toast('Error: '+d.message,'error');
     } catch(err){ toast('Error processing queue','error'); }
     finally { btn.disabled=false; icon.className='feather icon-refresh-cw'; txt.textContent='<?php echo __("process_queue"); ?>'; }
-}
-
-/* â”€â”€ Template modal â”€â”€ */
-function openTemplateModal() {
-    document.getElementById('templateForm').reset();
-    document.getElementById('template_id').value='';
-    $('#templateModal').modal('show');
-}
-function editTemplate(id) { openTemplateModal(); /* load via AJAX if needed */ }
-function deleteTemplate(id) { if(confirm('Delete this template?')) { toast('Template deleted','success'); location.reload(); } }
-
-async function saveTemplate() {
-    const fd=new FormData(document.getElementById('templateForm'));
-    fd.append('action','save_template'); fd.append('csrf_token',CSRF);
-    try {
-        const r=await fetch('',{method:'POST',body:fd}); const d=await r.json();
-        if(d.success){ toast(d.message,'success'); $('#templateModal').modal('hide'); location.reload(); }
-        else toast('Error: '+d.message,'error');
-    } catch(err){ toast('Error saving template','error'); }
 }
 
 // Init

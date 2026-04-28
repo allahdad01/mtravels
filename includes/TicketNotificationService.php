@@ -16,10 +16,10 @@ class TicketNotificationService {
     public function notifyTicketCreated($ticketId) {
         try {
             $stmt = $this->pdo->prepare("
-                SELECT 
+                SELECT
                     st.id, st.ticket_number, st.title, st.description,
-                    st.priority, st.created_by_user_id,
-                    u.name, u.email, 
+                    st.priority, st.created_by_user_id, st.tenant_id,
+                    u.name, u.email,
                     tc.name as category_name,
                     t.name as tenant_name
                 FROM support_tickets st
@@ -40,12 +40,13 @@ class TicketNotificationService {
             $adminStmt->execute();
             $admins = $adminStmt->fetchAll(PDO::FETCH_ASSOC);
             
-            // Send email to super admins
+            // Send email to super admins (platform SMTP)
             foreach ($admins as $admin) {
                 $this->sendEmail(
                     $admin['email'],
                     'New Support Ticket: ' . $ticket['ticket_number'],
-                    $this->buildTicketCreatedEmail($ticket)
+                    $this->buildTicketCreatedEmail($ticket),
+                    null // super admin emails use platform SMTP
                 );
             }
             
@@ -65,8 +66,9 @@ class TicketNotificationService {
     public function notifyTicketReply($ticketId, $replyId) {
         try {
             $stmt = $this->pdo->prepare("
-                SELECT 
+                SELECT
                     st.id, st.ticket_number, st.title, st.created_by_user_id,
+                    st.tenant_id,
                     u.name, u.email,
                     tr.reply_text, tr.replied_by_user_id,
                     ru.name as replied_by_name
@@ -88,11 +90,12 @@ class TicketNotificationService {
             
             if ($reply['is_internal_note']) return false;
             
-            // Send email to ticket creator
+            // Send email to ticket creator (tenant SMTP)
             $this->sendEmail(
                 $data['email'],
                 'Reply to Your Support Ticket: ' . $data['ticket_number'],
-                $this->buildTicketReplyEmail($data)
+                $this->buildTicketReplyEmail($data),
+                $data['tenant_id']
             );
             
             // Record notification
@@ -111,8 +114,9 @@ class TicketNotificationService {
     public function notifyStatusChange($ticketId, $oldStatus, $newStatus) {
         try {
             $stmt = $this->pdo->prepare("
-                SELECT 
+                SELECT
                     st.id, st.ticket_number, st.title, st.created_by_user_id,
+                    st.tenant_id,
                     u.name, u.email
                 FROM support_tickets st
                 JOIN users u ON st.created_by_user_id = u.id
@@ -123,11 +127,12 @@ class TicketNotificationService {
             
             if (!$ticket) return false;
             
-            // Send email to ticket creator
+            // Send email to ticket creator (tenant SMTP)
             $this->sendEmail(
                 $ticket['email'],
                 'Ticket Status Updated: ' . $ticket['ticket_number'],
-                $this->buildStatusChangeEmail($ticket, $oldStatus, $newStatus)
+                $this->buildStatusChangeEmail($ticket, $oldStatus, $newStatus),
+                $ticket['tenant_id']
             );
             
             // Record notification
@@ -146,9 +151,9 @@ class TicketNotificationService {
     public function notifySLABreach($ticketId) {
         try {
             $stmt = $this->pdo->prepare("
-                SELECT 
+                SELECT
                     st.id, st.ticket_number, st.title, st.priority,
-                    st.sla_due_at, st.created_by_user_id,
+                    st.sla_due_at, st.created_by_user_id, st.tenant_id,
                     u.name, u.email
                 FROM support_tickets st
                 JOIN users u ON st.created_by_user_id = u.id
@@ -159,11 +164,12 @@ class TicketNotificationService {
             
             if (!$ticket) return false;
             
-            // Send email to ticket creator
+            // Send email to ticket creator (tenant SMTP)
             $this->sendEmail(
                 $ticket['email'],
                 'SLA Breach Alert: ' . $ticket['ticket_number'],
-                $this->buildSLABreachEmail($ticket)
+                $this->buildSLABreachEmail($ticket),
+                $ticket['tenant_id']
             );
             
             // Get super admin emails for notification
@@ -173,12 +179,13 @@ class TicketNotificationService {
             $adminStmt->execute();
             $admins = $adminStmt->fetchAll(PDO::FETCH_ASSOC);
             
-            // Send email to super admins
+            // Send email to super admins (platform SMTP)
             foreach ($admins as $admin) {
                 $this->sendEmail(
                     $admin['email'],
                     'SLA Breach Alert: ' . $ticket['ticket_number'],
-                    $this->buildSLABreachEmail($ticket, true)
+                    $this->buildSLABreachEmail($ticket, true),
+                    null // super admin emails use platform SMTP
                 );
             }
             
@@ -270,11 +277,11 @@ Due Date: {$ticket['sla_due_at']}
     /**
      * Send email (integrates with existing email system)
      */
-    private function sendEmail($to, $subject, $body) {
+    private function sendEmail($to, $subject, $body, $tenantId = null) {
         try {
             // Use the application's email sending function if available
             if (function_exists('sendEmail')) {
-                return sendEmail($to, $subject, $body);
+                return sendEmail($to, $subject, $body, true, 'ticket_notification', '', $tenantId);
             }
             
             // Fallback to PHP mail
