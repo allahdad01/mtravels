@@ -210,6 +210,12 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
         <div class="dash-card">
             <div class="dash-card-head">
                 <h6><span class="ico ico-smtp"><i class="feather icon-mail"></i></span><?php echo __('smtp_configuration'); ?></h6>
+                <?php if ($has_smtp_addon): ?>
+                <a href="email_analytics.php" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:10px;background:rgba(109,40,217,.10);border:1px solid rgba(109,40,217,.18);color:#6d28d9;font-size:12px;font-weight:700;text-decoration:none;">
+                    <i class="feather icon-bar-chart-2"></i>
+                    <span><?= __('email_analytics') ?></span>
+                </a>
+                <?php endif; ?>
             </div>
             <div class="dash-card-body">
                 <?php if (!$has_smtp_addon): ?>

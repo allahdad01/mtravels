@@ -1748,6 +1748,15 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                 </li>
                 <?php endif; ?>
 
+                <?php if ($has_smtp_addon): ?>
+                <li data-username="email_analytics" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'email_analytics.php' ? 'active' : ''; ?>">
+                    <a href="email_analytics.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-mail"></i></span>
+                        <span class="pcoded-mtext"><?= __('email_analytics') ?></span>
+                    </a>
+                </li>
+                <?php endif; ?>
+
                 <li data-username="activity_logs" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'activity_logs.php' ? 'active' : ''; ?>">
                     <a href="activity_logs.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-activity"></i></span>
