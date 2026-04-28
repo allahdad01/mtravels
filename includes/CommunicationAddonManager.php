@@ -137,7 +137,7 @@ class CommunicationAddonManager {
             $currencyStmt = $this->conn->prepare("
                 SELECT ts.currency
                 FROM tenant_subscriptions ts
-                WHERE ts.tenant_id = ? AND ts.status = 'active'
+                WHERE ts.tenant_id = ? AND ts.status IN ('active', 'trial')
                 ORDER BY ts.start_date DESC
                 LIMIT 1
             ");
@@ -332,7 +332,7 @@ class CommunicationAddonManager {
                     p.name AS plan_name
                 FROM communication_addon_requests car
                 JOIN tenants t ON car.tenant_id = t.id
-                LEFT JOIN tenant_subscriptions ts ON ts.tenant_id = t.id AND ts.status = 'active'
+                LEFT JOIN tenant_subscriptions ts ON ts.tenant_id = t.id AND ts.status IN ('active', 'trial')
                 LEFT JOIN plans p ON ts.plan_id = p.id
                 WHERE car.status = 'pending'
                 ORDER BY car.created_at ASC

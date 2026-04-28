@@ -35,7 +35,7 @@ class UserAddonManager {
                 ts.currency
             FROM tenant_subscriptions ts
             JOIN plans p ON ts.plan_id = p.id
-            WHERE ts.tenant_id = ? AND ts.status = 'active'
+            WHERE ts.tenant_id = ? AND ts.status IN ('active', 'trial')
             LIMIT 1
         ");
         
@@ -412,7 +412,7 @@ class UserAddonManager {
                 p.max_users
             FROM user_addon_requests uar
             JOIN tenants t ON uar.tenant_id = t.id
-            LEFT JOIN tenant_subscriptions ts ON t.id = ts.tenant_id AND ts.status = 'active'
+            LEFT JOIN tenant_subscriptions ts ON t.id = ts.tenant_id AND ts.status IN ('active', 'trial')
             LEFT JOIN plans p ON ts.plan_id = p.id
             WHERE uar.status = 'pending'
             ORDER BY uar.requested_at DESC

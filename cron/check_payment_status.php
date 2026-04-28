@@ -20,6 +20,106 @@ try {
     $threeDaysFromNow = date('Y-m-d', strtotime('+3 days'));
     $fiveDaysAgo = date('Y-m-d', strtotime('-5 days'));
 
+    // ─── Step 1: Check trial expiration ─────────────────────────────
+    echo "\n--- Checking trial expirations ---\n";
+    $stmt = $pdo->prepare("
+        SELECT id, name, trial_days, trial_end_date, status
+        FROM tenants
+        WHERE status = 'trial'
+        AND trial_end_date IS NOT NULL
+        AND trial_end_date <= ?
+        AND deleted_at IS NULL
+    ");
+    $stmt->execute([$today]);
+    $expired_trials = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    echo "Found " . count($expired_trials) . " expired trials\n";
+
+    foreach ($expired_trials as $tenant) {
+        $tenantId = $tenant['id'];
+        $tenantName = $tenant['name'];
+        $trialEndDate = $tenant['trial_end_date'];
+
+        echo "  Trial expired for: $tenantName (ID: $tenantId) - Trial ended: $trialEndDate\n";
+
+        // Suspend tenant - trial has expired
+        $pdo->prepare("UPDATE tenants SET status = 'suspended', payment_status = 'suspended', updated_at = NOW() WHERE id = ?")
+            ->execute([$tenantId]);
+
+        // Update subscription status from 'trial' to 'expired'
+        $pdo->prepare("UPDATE tenant_subscriptions SET status = 'expired', updated_at = NOW() WHERE tenant_id = ? AND status = 'trial'")
+            ->execute([$tenantId]);
+
+        // Send notification about trial expiration
+        $message = "
+TRIAL PERIOD EXPIRED
+
+Dear {$tenantName},
+
+Your free trial period has expired on {$trialEndDate}.
+
+To continue using MTravels, please activate your subscription by making a payment. Your account has been temporarily suspended.
+
+Contact support or make a payment to restore access immediately.
+
+Best regards,
+MTravels Support Team
+        ";
+
+        $stmt = $pdo->prepare("
+            INSERT INTO notifications
+            (tenant_id, transaction_id, transaction_type, message, recipient_role, status)
+            VALUES (?, NULL, 'mtravels', ?, 'Admin', 'Unread')
+        ");
+        $stmt->execute([$tenantId, trim($message)]);
+
+        echo "  Tenant suspended due to trial expiration\n";
+    }
+
+    // ─── Step 2: Warn trials expiring soon (3 days) ─────────────────
+    $stmt = $pdo->prepare("
+        SELECT id, name, trial_days, trial_end_date, billing_email
+        FROM tenants
+        WHERE status = 'trial'
+        AND trial_end_date IS NOT NULL
+        AND trial_end_date <= ?
+        AND trial_end_date > ?
+        AND deleted_at IS NULL
+    ");
+    $stmt->execute([$threeDaysFromNow, $today]);
+    $warning_trials = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($warning_trials as $tenant) {
+        $tenantId = $tenant['id'];
+        $trialEndDate = $tenant['trial_end_date'];
+        $daysLeft = (int)((strtotime($trialEndDate) - strtotime($today)) / 86400);
+
+        $message = "
+TRIAL EXPIRING SOON - {$daysLeft} day" . ($daysLeft !== 1 ? 's' : '') . " remaining
+
+Dear {$tenant['name']},
+
+Your free trial period will expire on {$trialEndDate} ({$daysLeft} day" . ($daysLeft !== 1 ? 's' : '') . " left).
+
+To avoid service interruption, please activate your subscription before the trial ends.
+
+Best regards,
+MTravels Support Team
+        ";
+
+        $stmt = $pdo->prepare("
+            INSERT INTO notifications
+            (tenant_id, transaction_id, transaction_type, message, recipient_role, status)
+            VALUES (?, NULL, 'mtravels', ?, 'Admin', 'Unread')
+        ");
+        $stmt->execute([$tenantId, trim($message)]);
+
+        echo "  Trial warning sent to: {$tenant['name']} ({$daysLeft} days left)\n";
+    }
+
+    // ─── Step 3: Check payment statuses (existing logic) ─────────────
+    echo "\n--- Checking payment statuses ---\n";
+
     // Get all active tenants with subscriptions
     $stmt = $pdo->prepare("
         SELECT t.*, ts.next_billing_date, ts.status as subscription_status

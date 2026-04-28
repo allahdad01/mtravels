@@ -38,7 +38,7 @@ require_once '../includes/db.php';
 if (isset($_GET['action']) && $_GET['action'] === 'get_tenant' && isset($_GET['id'])) {
     $tenant_id = intval($_GET['id']);
     
-    $stmt = $pdo->prepare("SELECT id, name, identifier, status, plan, billing_email, created_at FROM tenants WHERE id = ? AND status != 'deleted'");
+    $stmt = $pdo->prepare("SELECT id, name, identifier, status, plan, trial_days, trial_end_date, billing_email, created_at FROM tenants WHERE id = ? AND status != 'deleted'");
     $stmt->execute([$tenant_id]);
     $tenant = $stmt->fetch();
     if ($tenant) {
@@ -65,6 +65,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $plan = trim($_POST['plan'] ?? '');
     $status = trim($_POST['status'] ?? '');
     $billing_email = trim($_POST['billing_email'] ?? '');
+    $has_trial = isset($_POST['has_trial']) ? true : false;
+    $trial_days = intval($_POST['trial_days'] ?? 0);
 
     $errors = [];
 
@@ -75,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     if (!filter_var($billing_email, FILTER_VALIDATE_EMAIL)) {
         $errors[] = "Invalid email address.";
     }
-    if (!in_array($status, ['active', 'inactive', 'suspended'])) {
+    if (!in_array($status, ['active', 'inactive', 'suspended', 'trial'])) {
         $errors[] = "Invalid status.";
     }
     if (!preg_match('/^[a-zA-Z0-9_-]+$/', $identifier)) {
@@ -93,24 +95,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     if ($stmt->fetch()['count'] == 0) {
         $errors[] = "Invalid or inactive plan selected.";
     }
+
+    // Calculate trial_end_date based on trial settings
+    $trial_end_date = null;
+    if ($has_trial && $trial_days > 0) {
+        $trial_end_date = date('Y-m-d', strtotime("+{$trial_days} days"));
+        // If enabling trial, set status to trial
+        if ($status === 'active') {
+            $status = 'trial';
+        }
+    }
+
     if (empty($errors)) {
         // Update tenant
          $stmt = $pdo->prepare("
-             UPDATE tenants 
-             SET name = ?, identifier = ?, plan = ?, status = ?, 
+             UPDATE tenants
+             SET name = ?, identifier = ?, plan = ?, status = ?,
+                 trial_days = ?, trial_end_date = ?,
                  billing_email = ?, updated_at = NOW()
              WHERE id = ?
          ");
-         $stmt->execute([$name, $identifier, $plan, $status, $billing_email, $tenant_id]);
+         $stmt->execute([$name, $identifier, $plan, $status, $trial_days, $trial_end_date, $billing_email, $tenant_id]);
         // Log action
         $user_id = $_SESSION['user_id'];
-        $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at) 
+        $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at)
                                 VALUES (?, 'update_tenant', 'tenant', ?, ?, ?, NOW())");
         $details = json_encode([
             'tenant_id' => $tenant_id,
             'name' => $name,
-            'subdomain' => $subdomain,
-            'status' => $status
+            'identifier' => $identifier,
+            'status' => $status,
+            'has_trial' => $has_trial,
+            'trial_days' => $trial_days,
+            'trial_end_date' => $trial_end_date
         ]);
         $ip_address = $_SERVER['REMOTE_ADDR'];
         $stmt->execute([$user_id, $tenant_id, $details, $ip_address]);
@@ -163,7 +180,7 @@ $current_page = max(1, min($current_page, $total_pages));
 $offset = ($current_page - 1) * $items_per_page;
 
 // Fetch paginated tenants
-$query = "SELECT id, name, identifier, status, plan, billing_email, created_at FROM tenants WHERE status != 'deleted'";
+$query = "SELECT id, name, identifier, status, plan, trial_days, trial_end_date, billing_email, created_at FROM tenants WHERE status != 'deleted'";
 
 if (!empty($search_query)) {
     $query .= " AND (name LIKE ? OR identifier LIKE ? OR billing_email LIKE ?)";
@@ -182,7 +199,7 @@ $stmt->execute($query_params);
 $tenants = $stmt->fetchAll();
 
 // Fetch plans for create and edit tenant forms
-$stmt = $pdo->prepare("SELECT id, name, price, currency FROM plans WHERE status = 'active' ORDER BY name");
+$stmt = $pdo->prepare("SELECT id, name, price, currency, trial_days FROM plans WHERE status = 'active' ORDER BY name");
 $stmt->execute();
 $plans = $stmt->fetchAll();
 ?>
@@ -259,6 +276,7 @@ $plans = $stmt->fetchAll();
                                                 <select class="sa-filter-select" name="status">
                                                     <option value="">All Status</option>
                                                     <option value="active" <?= $status_filter === 'active' ? 'selected' : '' ?>>Active</option>
+                                                    <option value="trial" <?= $status_filter === 'trial' ? 'selected' : '' ?>>Trial</option>
                                                     <option value="inactive" <?= $status_filter === 'inactive' ? 'selected' : '' ?>>Inactive</option>
                                                     <option value="suspended" <?= $status_filter === 'suspended' ? 'selected' : '' ?>>Suspended</option>
                                                 </select>
@@ -288,14 +306,19 @@ $plans = $stmt->fetchAll();
                                     <?php foreach ($tenants as $tenant):
                                         $status_pill = match($tenant['status']) {
                                             'active' => 'pill-green',
+                                            'trial' => 'pill-blue',
                                             'suspended' => 'pill-red',
                                             default => 'pill-amber'
                                         };
                                         $status_icon = match($tenant['status']) {
                                             'active' => '●',
+                                            'trial' => '⏳',
                                             'suspended' => '⊘',
                                             default => '○'
                                         };
+                                        $is_trial = !empty($tenant['trial_days']) && $tenant['trial_days'] > 0;
+                                        $trial_expired = $is_trial && !empty($tenant['trial_end_date']) && strtotime($tenant['trial_end_date']) < strtotime('today');
+                                        $trial_remaining = $is_trial && !empty($tenant['trial_end_date']) ? max(0, (int)((strtotime($tenant['trial_end_date']) - strtotime('today')) / 86400)) : 0;
                                     ?>
                                     <div class="tenant-card">
                                         <div class="tc-header">
@@ -310,6 +333,25 @@ $plans = $stmt->fetchAll();
                                                 <span class="tc-label">Plan</span>
                                                 <span class="tc-value"><?= htmlspecialchars($tenant['plan']) ?></span>
                                             </div>
+                                            <?php if ($is_trial): ?>
+                                            <div class="tc-info-row">
+                                                <span class="tc-label">Trial</span>
+                                                <span class="tc-value" style="color: <?= $trial_expired ? 'var(--red)' : 'var(--blue)' ?>; font-weight: 600;">
+                                                    <?= intval($tenant['trial_days']) ?> days
+                                                    <?php if ($trial_expired): ?>
+                                                        (Expired)
+                                                    <?php elseif (!empty($tenant['trial_end_date'])): ?>
+                                                        (<?= $trial_remaining ?> day<?= $trial_remaining !== 1 ? 's' : '' ?> left)
+                                                    <?php endif; ?>
+                                                </span>
+                                            </div>
+                                            <?php if (!empty($tenant['trial_end_date'])): ?>
+                                            <div class="tc-info-row">
+                                                <span class="tc-label">Trial Ends</span>
+                                                <span class="tc-value" style="font-size: 0.8rem;"><?= date('M d, Y', strtotime($tenant['trial_end_date'])) ?></span>
+                                            </div>
+                                            <?php endif; ?>
+                                            <?php endif; ?>
                                             <div class="tc-info-row">
                                                 <span class="tc-label">ID</span>
                                                 <span class="tc-value" style="font-family: 'Courier New', monospace; font-size: 0.75rem;"><?= htmlspecialchars($tenant['identifier']) ?></span>
@@ -432,9 +474,10 @@ $plans = $stmt->fetchAll();
                                                         <select class="sa-form-input sa-form-select" id="plan" name="plan" required>
                                                             <option value="">Select a plan</option>
                                                             <?php foreach ($plans as $plan): ?>
-                                                            <option value="<?= htmlspecialchars($plan['name']) ?>" 
+                                                            <option value="<?= htmlspecialchars($plan['name']) ?>"
                                                                     data-price="<?= htmlspecialchars($plan['price']) ?>"
-                                                                    data-currency="<?= htmlspecialchars($plan['currency']) ?>">
+                                                                    data-currency="<?= htmlspecialchars($plan['currency']) ?>"
+                                                                    data-trial-days="<?= htmlspecialchars($plan['trial_days'] ?? 0) ?>">
                                                                 <?= htmlspecialchars($plan['name']) ?>
                                                             </option>
                                                             <?php endforeach; ?>
@@ -445,6 +488,44 @@ $plans = $stmt->fetchAll();
                                                                 <span id="planPrice">-</span> <span id="planCurrency">-</span>
                                                             </p>
                                                             <p style="margin: 6px 0 0 0; font-size: 0.75rem; color: var(--muted);">A subscription will be automatically created for this plan</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Trial Period Section -->
+                                                <div class="sa-form-section" style="margin-top: 16px;">
+                                                    <h6 class="sa-form-section-title">
+                                                        <i class="feather icon-clock mr-1"></i> Trial Period
+                                                    </h6>
+                                                    <div class="sa-form-grid-2">
+                                                        <div class="sa-form-group">
+                                                            <label class="sa-form-label" for="has_trial">
+                                                                Enable Trial Period
+                                                            </label>
+                                                            <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
+                                                                <label class="sa-toggle-switch">
+                                                                    <input type="checkbox" id="has_trial" name="has_trial" value="1">
+                                                                    <span class="sa-toggle-slider"></span>
+                                                                </label>
+                                                                <span id="trialStatusLabel" style="font-size: 0.85rem; color: var(--muted);">No trial</span>
+                                                            </div>
+                                                            <p class="sa-form-hint">Start this tenant with a free trial period before paid subscription</p>
+                                                        </div>
+                                                        <div class="sa-form-group" id="trialDaysGroup" style="display: none;">
+                                                            <label for="trial_days" class="sa-form-label">
+                                                                Trial Days
+                                                            </label>
+                                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                                <button type="button" class="sa-trial-btn" id="trialMinus" onclick="adjustTrialDays(-1)">−</button>
+                                                                <input type="number" class="sa-form-input" id="trial_days" name="trial_days" min="1" max="365" value="14" style="text-align: center; width: 80px;">
+                                                                <button type="button" class="sa-trial-btn" id="trialPlus" onclick="adjustTrialDays(1)">+</button>
+                                                            </div>
+                                                            <p class="sa-form-hint">Plan default: <strong id="planTrialDefault">0</strong> days (editable)</p>
+                                                            <div id="trialEndDatePreview" style="margin-top: 8px; padding: 8px 12px; background: rgba(59,130,246,0.08); border-radius: 6px; display: none;">
+                                                                <span style="font-size: 0.8rem; color: var(--blue); font-weight: 600;">
+                                                                    Trial ends: <span id="trialEndDateText">-</span>
+                                                                </span>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -561,6 +642,7 @@ $plans = $stmt->fetchAll();
                                                         </label>
                                                         <select class="sa-form-input sa-form-select" id="edit_status" name="status" required>
                                                             <option value="active">Active</option>
+                                                            <option value="trial">Trial</option>
                                                             <option value="inactive">Inactive</option>
                                                             <option value="suspended">Suspended</option>
                                                         </select>
@@ -572,6 +654,45 @@ $plans = $stmt->fetchAll();
                                                             <span class="sa-required">*</span>
                                                         </label>
                                                         <input type="email" class="sa-form-input" id="edit_billing_email" name="billing_email" required>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Edit Trial Period Section -->
+                                            <div class="sa-form-section" style="margin-top: 16px;">
+                                                <h6 class="sa-form-section-title">
+                                                    <i class="feather icon-clock mr-1"></i> Trial Period
+                                                </h6>
+                                                <div class="sa-form-grid-2">
+                                                    <div class="sa-form-group">
+                                                        <label class="sa-form-label" for="edit_has_trial">
+                                                            Enable Trial Period
+                                                        </label>
+                                                        <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
+                                                            <label class="sa-toggle-switch">
+                                                                <input type="checkbox" id="edit_has_trial" name="has_trial" value="1">
+                                                                <span class="sa-toggle-slider"></span>
+                                                            </label>
+                                                            <span id="editTrialStatusLabel" style="font-size: 0.85rem; color: var(--muted);">No trial</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="sa-form-group" id="editTrialDaysGroup" style="display: none;">
+                                                        <label for="edit_trial_days" class="sa-form-label">
+                                                            Trial Days
+                                                        </label>
+                                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                                            <button type="button" class="sa-trial-btn" onclick="adjustEditTrialDays(-1)">−</button>
+                                                            <input type="number" class="sa-form-input" id="edit_trial_days" name="trial_days" min="0" max="365" value="14" style="text-align: center; width: 80px;">
+                                                            <button type="button" class="sa-trial-btn" onclick="adjustEditTrialDays(1)">+</button>
+                                                        </div>
+                                                        <div id="editTrialEndDatePreview" style="margin-top: 8px; padding: 8px 12px; background: rgba(59,130,246,0.08); border-radius: 6px; display: none;">
+                                                            <span style="font-size: 0.8rem; color: var(--blue); font-weight: 600;">
+                                                                Trial ends: <span id="editTrialEndDateText">-</span>
+                                                            </span>
+                                                        </div>
+                                                        <?php if (!empty($tenant['trial_end_date'])): ?>
+                                                        <p class="sa-form-hint">Current trial end date: <?= htmlspecialchars($tenant['trial_end_date']) ?></p>
+                                                        <?php endif; ?>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1010,6 +1131,69 @@ $plans = $stmt->fetchAll();
         color: var(--blue);
     }
 
+    /* ─── TOGGLE SWITCH ────────────────────────────────────────── */
+    .sa-toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 44px;
+        height: 24px;
+    }
+    .sa-toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    .sa-toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background-color: var(--border);
+        transition: 0.3s;
+        border-radius: 24px;
+    }
+    .sa-toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.3s;
+        border-radius: 50%;
+    }
+    .sa-toggle-switch input:checked + .sa-toggle-slider {
+        background: var(--grad);
+    }
+    .sa-toggle-switch input:checked + .sa-toggle-slider:before {
+        transform: translateX(20px);
+    }
+
+    /* ─── TRIAL ADJUST BUTTONS ─────────────────────────────────── */
+    .sa-trial-btn {
+        width: 36px;
+        height: 36px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        border-radius: 8px;
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--text);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s ease;
+    }
+    .sa-trial-btn:hover {
+        background: var(--grad);
+        color: white;
+        border-color: transparent;
+    }
+    .sa-trial-btn:active {
+        transform: scale(0.95);
+    }
+
     .pill-muted {
         background: var(--surface2);
         color: var(--muted);
@@ -1324,7 +1508,96 @@ $plans = $stmt->fetchAll();
 <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
 <script src="../assets/js/pcoded.min.js"></script>
 <script>
-// Handle edit tenant button click
+// ─── Trial Days Adjustment (Create Modal) ──────────────────────
+function adjustTrialDays(delta) {
+    const input = document.getElementById('trial_days');
+    let val = parseInt(input.value) || 0;
+    val = Math.max(1, Math.min(365, val + delta));
+    input.value = val;
+    updateTrialEndDate();
+}
+
+// ─── Trial Days Adjustment (Edit Modal) ────────────────────────
+function adjustEditTrialDays(delta) {
+    const input = document.getElementById('edit_trial_days');
+    let val = parseInt(input.value) || 0;
+    val = Math.max(0, Math.min(365, val + delta));
+    input.value = val;
+    updateEditTrialEndDate();
+}
+
+// ─── Calculate Trial End Date (Create Modal) ───────────────────
+function updateTrialEndDate() {
+    const days = parseInt(document.getElementById('trial_days').value) || 0;
+    const preview = document.getElementById('trialEndDatePreview');
+    const text = document.getElementById('trialEndDateText');
+    if (days > 0) {
+        const endDate = new Date();
+        endDate.setDate(endDate.getDate() + days);
+        const options = { year: 'numeric', month: 'short', day: 'numeric' };
+        text.textContent = endDate.toLocaleDateString('en-US', options);
+        preview.style.display = 'block';
+    } else {
+        preview.style.display = 'none';
+    }
+}
+
+// ─── Calculate Trial End Date (Edit Modal) ─────────────────────
+function updateEditTrialEndDate() {
+    const days = parseInt(document.getElementById('edit_trial_days').value) || 0;
+    const preview = document.getElementById('editTrialEndDatePreview');
+    const text = document.getElementById('editTrialEndDateText');
+    if (days > 0) {
+        const endDate = new Date();
+        endDate.setDate(endDate.getDate() + days);
+        const options = { year: 'numeric', month: 'short', day: 'numeric' };
+        text.textContent = endDate.toLocaleDateString('en-US', options);
+        preview.style.display = 'block';
+    } else {
+        preview.style.display = 'none';
+    }
+}
+
+// ─── Trial Toggle (Create Modal) ───────────────────────────────
+document.getElementById('has_trial').addEventListener('change', function() {
+    const group = document.getElementById('trialDaysGroup');
+    const label = document.getElementById('trialStatusLabel');
+    if (this.checked) {
+        group.style.display = 'block';
+        label.textContent = 'Trial enabled';
+        label.style.color = 'var(--blue)';
+        updateTrialEndDate();
+    } else {
+        group.style.display = 'none';
+        label.textContent = 'No trial';
+        label.style.color = 'var(--muted)';
+    }
+});
+
+// ─── Trial Toggle (Edit Modal) ─────────────────────────────────
+document.getElementById('edit_has_trial').addEventListener('change', function() {
+    const group = document.getElementById('editTrialDaysGroup');
+    const label = document.getElementById('editTrialStatusLabel');
+    if (this.checked) {
+        group.style.display = 'block';
+        label.textContent = 'Trial enabled';
+        label.style.color = 'var(--blue)';
+        updateEditTrialEndDate();
+    } else {
+        group.style.display = 'none';
+        label.textContent = 'No trial';
+        label.style.color = 'var(--muted)';
+        document.getElementById('edit_trial_days').value = 0;
+    }
+});
+
+// ─── Trial Days Input Change (Create Modal) ────────────────────
+document.getElementById('trial_days').addEventListener('input', updateTrialEndDate);
+
+// ─── Trial Days Input Change (Edit Modal) ──────────────────────
+document.getElementById('edit_trial_days').addEventListener('input', updateEditTrialEndDate);
+
+// ─── Handle edit tenant button click ───────────────────────────
 $(document).on('click', '.edit-tenant-btn', function() {
     const tenantId = $(this).data('tenant-id');
     
@@ -1351,6 +1624,28 @@ $(document).on('click', '.edit-tenant-btn', function() {
               $('#edit_plan').val(data.plan);
               $('#edit_status').val(data.status);
               $('#edit_billing_email').val(data.billing_email);
+             
+             // Populate trial fields
+             const hasTrial = data.trial_days && parseInt(data.trial_days) > 0;
+             $('#edit_has_trial').prop('checked', hasTrial);
+             $('#edit_trial_days').val(hasTrial ? parseInt(data.trial_days) : 0);
+             
+             if (hasTrial) {
+                 $('#editTrialDaysGroup').show();
+                 $('#editTrialStatusLabel').text('Trial enabled');
+                 $('#editTrialStatusLabel').css('color', 'var(--blue)');
+                 if (data.trial_end_date) {
+                     $('#editTrialEndDatePreview').show();
+                     const endDate = new Date(data.trial_end_date);
+                     const options = { year: 'numeric', month: 'short', day: 'numeric' };
+                     $('#editTrialEndDateText').text(endDate.toLocaleDateString('en-US', options));
+                 }
+             } else {
+                 $('#editTrialDaysGroup').hide();
+                 $('#editTrialStatusLabel').text('No trial');
+                 $('#editTrialStatusLabel').css('color', 'var(--muted)');
+                 $('#editTrialEndDatePreview').hide();
+             }
             
             // Update modal title
             $('#editTenantModalLabel').text('Edit Tenant - ' + data.name);
@@ -1373,6 +1668,10 @@ $('#editTenantModal').on('hidden.bs.modal', function () {
     $('#editTenantForm')[0].reset();
     $('#editTenantForm').hide();
     $('#editTenantLoader').hide();
+    $('#editTrialDaysGroup').hide();
+    $('#editTrialEndDatePreview').hide();
+    $('#editTrialStatusLabel').text('No trial');
+    $('#editTrialStatusLabel').css('color', 'var(--muted)');
     $('#editTenantModalLabel').text('<?= __('edit_tenant') ?>');
 });
 
@@ -1394,7 +1693,7 @@ document.querySelectorAll('.delete-tenant').forEach(button => {
     });
 });
 
-// Handle plan selection and display price
+// Handle plan selection and display price + trial days
 document.getElementById('plan').addEventListener('change', function() {
     const selectedOption = this.options[this.selectedIndex];
     const priceDisplay = document.getElementById('planPriceDisplay');
@@ -1404,10 +1703,18 @@ document.getElementById('plan').addEventListener('change', function() {
     } else {
         const price = selectedOption.getAttribute('data-price');
         const currency = selectedOption.getAttribute('data-currency');
+        const trialDays = parseInt(selectedOption.getAttribute('data-trial-days')) || 0;
         
         document.getElementById('planPrice').textContent = parseFloat(price).toFixed(2);
         document.getElementById('planCurrency').textContent = currency + '/month';
         priceDisplay.style.display = 'block';
+        
+        // Update trial days default from plan
+        document.getElementById('planTrialDefault').textContent = trialDays;
+        if (document.getElementById('has_trial').checked) {
+            document.getElementById('trial_days').value = trialDays > 0 ? trialDays : 14;
+            updateTrialEndDate();
+        }
     }
 });
 

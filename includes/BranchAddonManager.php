@@ -35,7 +35,7 @@ class BranchAddonManager {
                 ts.currency
             FROM tenant_subscriptions ts
             JOIN plans p ON ts.plan_id = p.id
-            WHERE ts.tenant_id = ? AND ts.status = 'active'
+            WHERE ts.tenant_id = ? AND ts.status IN ('active', 'trial')
             LIMIT 1
         ");
         
@@ -415,7 +415,7 @@ class BranchAddonManager {
                 p.max_branches
             FROM branch_addon_requests bar
             JOIN tenants t ON bar.tenant_id = t.id
-            LEFT JOIN tenant_subscriptions ts ON t.id = ts.tenant_id AND ts.status = 'active'
+            LEFT JOIN tenant_subscriptions ts ON t.id = ts.tenant_id AND ts.status IN ('active', 'trial')
             LEFT JOIN plans p ON ts.plan_id = p.id
             WHERE bar.status = 'pending'
             ORDER BY bar.requested_at DESC

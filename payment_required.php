@@ -17,7 +17,7 @@ $tenant_info   = null;
 $subscriptions = [];
 if (isset($_SESSION['tenant_id'])) {
     try {
-        $stmt = $pdo->prepare("SELECT name, billing_email, payment_due_date, payment_status FROM tenants WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT name, billing_email, payment_due_date, payment_status, status, trial_days, trial_end_date FROM tenants WHERE id = ?");
         $stmt->execute([$_SESSION['tenant_id']]);
         $tenant_info = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -34,6 +34,7 @@ if (isset($_SESSION['tenant_id'])) {
 }
 
 $is_overdue = $tenant_info && $tenant_info['payment_status'] === 'overdue';
+$is_trial_expired = $tenant_info && $tenant_info['status'] === 'suspended' && !empty($tenant_info['trial_end_date']) && $tenant_info['trial_end_date'] < date('Y-m-d');
 ?>
 <!DOCTYPE html>
 <html lang="<?= get_current_lang() ?>" dir="<?= get_lang_dir() ?>">
@@ -430,18 +431,30 @@ $is_overdue = $tenant_info && $tenant_info['payment_status'] === 'overdue';
       <div class="banner-icon">
         <i class="fas fa-exclamation-triangle"></i>
       </div>
+      <?php if ($is_trial_expired): ?>
+      <h1>Trial Period Expired</h1>
+      <p>Your free trial has ended. Activate your subscription to continue.</p>
+      <?php else: ?>
       <h1>Payment Required</h1>
       <p>Your account access has been suspended.</p>
+      <?php endif; ?>
     </div>
 
     <!-- Body -->
     <div class="card-body">
 
       <!-- Notice -->
+      <?php if ($is_trial_expired): ?>
+      <div class="notice" style="border-left-color: #3b82f6; background: rgba(59,130,246,0.06);">
+        <i class="fas fa-hourglass-end" style="color: #3b82f6;"></i>
+        <span><strong>Trial Expired:</strong> Your <?= intval($tenant_info['trial_days']) ?>-day free trial ended on <strong><?= date('F j, Y', strtotime($tenant_info['trial_end_date'])) ?></strong>. Please activate your subscription to restore full access to your account.</span>
+      </div>
+      <?php else: ?>
       <div class="notice">
         <i class="fas fa-info-circle"></i>
         <span><strong>Action needed:</strong> Your account has been temporarily suspended due to an outstanding subscription payment. Please settle the balance to restore access.</span>
       </div>
+      <?php endif; ?>
 
       <!-- Account status -->
       <?php if ($tenant_info): ?>

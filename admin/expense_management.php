@@ -35,7 +35,7 @@ $query = "
     SELECT p.features
     FROM tenant_subscriptions ts
     JOIN plans p ON ts.plan_id = p.id
-    WHERE ts.tenant_id = ? AND ts.status = 'active'
+    WHERE ts.tenant_id = ? AND ts.status IN ('active', 'trial')
 ";
 $stmt = $pdo->prepare($query);
 $stmt->execute([$_SESSION['tenant_id'] ?? 1]);

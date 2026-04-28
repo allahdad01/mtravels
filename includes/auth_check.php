@@ -66,12 +66,12 @@ try {
     $settingStmt->execute([$tenant_id]);
     $settings = $settingStmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
-    // Active subscription features
+    // Active subscription features (includes trial — trial tenants get full plan features)
     $featStmt = $pdo->prepare(
         "SELECT p.features
          FROM tenant_subscriptions ts
          JOIN plans p ON ts.plan_id = p.id
-         WHERE ts.tenant_id = ? AND ts.status = 'active'
+         WHERE ts.tenant_id = ? AND ts.status IN ('active', 'trial')
          ORDER BY ts.start_date DESC
          LIMIT 1"
     );

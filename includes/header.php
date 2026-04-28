@@ -47,6 +47,105 @@ require_once(__DIR__ . '/auth_check.php');
 </div>
 <!-- [ Pre-loader ] End -->
 
+<?php
+// Check if tenant is in trial mode and show banner
+if (isset($tenant_id) && $tenant_id) {
+    try {
+        $trial_stmt = $pdo->prepare("SELECT status, trial_days, trial_end_date FROM tenants WHERE id = ?");
+        $trial_stmt->execute([$tenant_id]);
+        $trial_info = $trial_stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($trial_info && $trial_info['status'] === 'trial' && !empty($trial_info['trial_end_date'])) {
+            $trial_end = $trial_info['trial_end_date'];
+            $today = date('Y-m-d');
+            $days_left = max(0, (int)((strtotime($trial_end) - strtotime($today)) / 86400));
+            $is_expired = $trial_end < $today;
+            $urgency_class = $is_expired ? 'trial-banner-expired' : ($days_left <= 3 ? 'trial-banner-urgent' : 'trial-banner-active');
+?>
+<!-- Trial Period Banner -->
+<div class="trial-banner <?= $urgency_class ?>" id="trialBanner">
+    <div class="trial-banner-content">
+        <div class="trial-banner-icon">
+            <i class="feather icon-clock"></i>
+        </div>
+        <div class="trial-banner-text">
+            <?php if ($is_expired): ?>
+                <strong>Trial Expired!</strong> Your trial period ended on <?= date('M d, Y', strtotime($trial_end)) ?>. Please contact your administrator to activate the subscription.
+            <?php else: ?>
+                <strong>Trial Period:</strong> You have <strong><?= $days_left ?> day<?= $days_left !== 1 ? 's' : '' ?></strong> remaining in your free trial. Trial ends on <strong><?= date('M d, Y', strtotime($trial_end)) ?></strong>.
+            <?php endif; ?>
+        </div>
+        <button class="trial-banner-close" onclick="document.getElementById('trialBanner').style.display='none'">&times;</button>
+    </div>
+</div>
+<style>
+.trial-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    padding: 0;
+    font-family: 'Inter', system-ui, sans-serif;
+}
+.trial-banner-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    color: #fff;
+}
+.trial-banner-active .trial-banner-content {
+    background: linear-gradient(135deg, #3b82f6, #2ed8b6);
+}
+.trial-banner-urgent .trial-banner-content {
+    background: linear-gradient(135deg, #f59e0b, #ef4444);
+    animation: trial-pulse 2s ease-in-out infinite;
+}
+.trial-banner-expired .trial-banner-content {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+.trial-banner-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+.trial-banner-text {
+    flex: 1;
+    text-align: center;
+}
+.trial-banner-close {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: #fff;
+    font-size: 1.3rem;
+    cursor: pointer;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    line-height: 1;
+}
+.trial-banner-close:hover {
+    background: rgba(255,255,255,0.4);
+}
+@keyframes trial-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.85; }
+}
+</style>
+<?php
+        }
+    } catch (Exception $e) {
+        // Silently ignore
+    }
+}
+?>
+
 <!-- Mobile Floating Hamburger Button -->
 <div class="mobile-menu-float">
     <a class="mobile-menu" id="mobile-collapse" href="javascript:"><span></span></a>

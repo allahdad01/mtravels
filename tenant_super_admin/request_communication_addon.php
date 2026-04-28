@@ -21,7 +21,7 @@ $addon_manager = new CommunicationAddonManager($pdo, $tenant_id);
 $plan_stmt = $pdo->prepare("
     SELECT ts.currency, ts.billing_cycle
     FROM tenant_subscriptions ts
-    WHERE ts.tenant_id = ? AND ts.status = 'active'
+    WHERE ts.tenant_id = ? AND ts.status IN ('active', 'trial')
     ORDER BY ts.start_date DESC
     LIMIT 1
 ");
