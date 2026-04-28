@@ -37,6 +37,7 @@ $features = $_POST['features'] ?? '';
 $price = $_POST['price'] ?? 0;
 $currency = $_POST['currency'] ?? 'USD';
 $max_users = $_POST['max_users'] ?? 0;
+$max_branches = $_POST['max_branches'] ?? 0;
 $trial_days = $_POST['trial_days'] ?? 0;
 $status = $_POST['status'] ?? 'active';
 $errors = [];
@@ -54,6 +55,11 @@ if (!is_numeric($price) || $price < 0) {
 // Validate max_users
 if (!is_numeric($max_users) || $max_users < 0) {
     $errors[] = "Max users must be a non-negative number.";
+}
+
+// Validate max_branches
+if (!is_numeric($max_branches) || $max_branches < 0) {
+    $errors[] = "Max branches must be a non-negative number.";
 }
 
 // Validate trial_days
@@ -98,14 +104,14 @@ if (empty($errors)) {
         $plan_id = $plan['id'];
 
         // Update plan
-        $stmt = $pdo->prepare("UPDATE plans SET description = ?, features = ?, price = ?, currency = ?, max_users = ?, trial_days = ?, status = ?, updated_at = NOW() WHERE name = ?");
-        $stmt->execute([$description, $features, $price, $currency, $max_users, $trial_days, $status, $original_name]);
+        $stmt = $pdo->prepare("UPDATE plans SET description = ?, features = ?, price = ?, currency = ?, max_users = ?, max_branches = ?, trial_days = ?, status = ?, updated_at = NOW() WHERE name = ?");
+        $stmt->execute([$description, $features, $price, $currency, $max_users, $max_branches, $trial_days, $status, $original_name]);
 
         // Log action
         $user_id = $_SESSION['user_id'];
         $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at) 
                                 VALUES (?, 'update_plan', 'plan', ?, ?, ?, NOW())");
-        $details = json_encode(['name' => $original_name, 'description' => $description, 'price' => $price, 'currency' => $currency, 'max_users' => $max_users, 'trial_days' => $trial_days, 'status' => $status]);
+        $details = json_encode(['name' => $original_name, 'description' => $description, 'price' => $price, 'currency' => $currency, 'max_users' => $max_users, 'max_branches' => $max_branches, 'trial_days' => $trial_days, 'status' => $status]);
         $ip_address = $_SERVER['REMOTE_ADDR'];
         $stmt->execute([$user_id, $plan_id, $details, $ip_address]);
 

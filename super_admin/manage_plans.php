@@ -91,7 +91,7 @@ $current_page = max(1, min($current_page, $total_pages));
 $offset = ($current_page - 1) * $items_per_page;
 
 // Fetch paginated plans
-$query = "SELECT name, description, features, price, currency, max_users, trial_days, status, created_at FROM plans WHERE 1=1";
+$query = "SELECT name, description, features, price, currency, max_users, max_branches, trial_days, status, created_at FROM plans WHERE 1=1";
 
 if (!empty($search_query)) {
     $query .= " AND (name LIKE ? OR description LIKE ?)";
@@ -267,6 +267,10 @@ $plans = $stmt->fetchAll();
                                                     <strong><?= htmlspecialchars($plan['max_users']) ?></strong>
                                                 </div>
                                                 <div class="pc-info-row">
+                                                    <span>Max Branches:</span>
+                                                    <strong><?= htmlspecialchars($plan['max_branches'] ?? 0) ?></strong>
+                                                </div>
+                                                <div class="pc-info-row">
                                                     <span>Trial Days:</span>
                                                     <strong><?= htmlspecialchars($plan['trial_days']) ?></strong>
                                                 </div>
@@ -431,19 +435,25 @@ $plans = $stmt->fetchAll();
                     </div>
 
                     <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="form-group">
                                 <label for="max_users">Max Users</label>
                                 <input type="number" min="0" class="form-control" id="max_users" name="max_users" value="0">
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="max_branches">Max Branches</label>
+                                <input type="number" min="0" class="form-control" id="max_branches" name="max_branches" value="0">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
                             <div class="form-group">
                                 <label for="trial_days">Trial Days</label>
                                 <input type="number" min="0" class="form-control" id="trial_days" name="trial_days" value="0">
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="form-group">
                                 <label for="status">Status</label>
                                 <select class="form-control" id="status" name="status">
@@ -527,19 +537,25 @@ $plans = $stmt->fetchAll();
                     </div>
 
                     <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="form-group">
                                 <label for="editMaxUsers">Max Users</label>
                                 <input type="number" min="0" class="form-control" id="editMaxUsers" name="max_users" value="0" required>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="editMaxBranches">Max Branches</label>
+                                <input type="number" min="0" class="form-control" id="editMaxBranches" name="max_branches" value="0" required>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
                             <div class="form-group">
                                 <label for="editTrialDays">Trial Days</label>
                                 <input type="number" min="0" class="form-control" id="editTrialDays" name="trial_days" value="0" required>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="form-group">
                                 <label for="editStatus">Status</label>
                                 <select class="form-control" id="editStatus" name="status" required>
@@ -1513,6 +1529,7 @@ function editPlan(planName) {
                 document.getElementById('editCurrency').value = data.plan.currency || 'USD';
                 document.getElementById('editDescription').value = data.plan.description;
                 document.getElementById('editMaxUsers').value = data.plan.max_users;
+                document.getElementById('editMaxBranches').value = data.plan.max_branches || 0;
                 document.getElementById('editTrialDays').value = data.plan.trial_days;
                 document.getElementById('editStatus').value = data.plan.status;
                 document.getElementById('editFeatures').value = data.plan.features;

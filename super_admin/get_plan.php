@@ -23,7 +23,7 @@ if (empty($plan_name)) {
 }
 
 try {
-    $stmt = $pdo->prepare("SELECT id, name, price, currency, description, max_users, trial_days, status, features FROM plans WHERE name = ?");
+    $stmt = $pdo->prepare("SELECT id, name, price, currency, description, max_users, max_branches, trial_days, status, features FROM plans WHERE name = ?");
     $stmt->execute([$plan_name]);
     $plan = $stmt->fetch();
 
