@@ -1740,6 +1740,12 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                         <span class="pcoded-mtext">WhatsApp Settings</span>
                     </a>
                 </li>
+                <li data-username="whatsapp_analytics" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'whatsapp_analytics.php' ? 'active' : ''; ?>">
+                    <a href="whatsapp_analytics.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-bar-chart-2"></i></span>
+                        <span class="pcoded-mtext">WhatsApp Analytics</span>
+                    </a>
+                </li>
                 <?php endif; ?>
 
                 <li data-username="activity_logs" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'activity_logs.php' ? 'active' : ''; ?>">

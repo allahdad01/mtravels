@@ -171,9 +171,12 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 .dash-header::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='30' cy='30' r='20' fill='%23ffffff' fill-opacity='0.05'/%3E%3C/svg%3E") repeat}
 .dash-header h4{font-size:22px;font-weight:800;color:#fff;margin:0 0 4px;position:relative}
 .dash-header p{color:rgba(255,255,255,.8);margin:0;font-size:13px;position:relative}
+.header-actions{display:flex;align-items:center;gap:10px;position:relative;flex-wrap:wrap;justify-content:flex-end}
 .test-conn-btn{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.2);color:#fff;border:1.5px solid rgba(255,255,255,.3);border-radius:10px;padding:9px 18px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;position:relative}
 .test-conn-btn:hover{background:rgba(255,255,255,.3)}
 .test-conn-btn:disabled{opacity:.6;cursor:not-allowed}
+.analytics-link-btn{display:inline-flex;align-items:center;gap:7px;background:#fff;color:#128c7e;border:1.5px solid rgba(255,255,255,.7);border-radius:10px;padding:9px 18px;font-family:inherit;font-size:13px;font-weight:700;text-decoration:none;transition:all .2s;position:relative}
+.analytics-link-btn:hover{background:rgba(255,255,255,.92);color:#0f766e;text-decoration:none}
 
 /* Cards */
 .dash-card{background:var(--card-bg);border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow);overflow:hidden;margin-bottom:20px}
@@ -276,10 +279,16 @@ textarea.form-input{resize:vertical;min-height:120px}
             <h4><i class="feather icon-message-square" style="margin-right:8px;"></i><?php echo __('whatsapp_automation_settings'); ?></h4>
             <p><?php echo __('configure_whatsapp_notifications'); ?></p>
         </div>
-        <button type="button" class="test-conn-btn" id="testConnBtn" onclick="testConnection()">
-            <i class="feather icon-wifi" id="testConnIcon"></i>
-            <span id="testConnText"><?php echo __('test_connection'); ?></span>
-        </button>
+        <div class="header-actions">
+            <a href="whatsapp_analytics.php" class="analytics-link-btn">
+                <i class="feather icon-bar-chart-2"></i>
+                <span>View Analytics</span>
+            </a>
+            <button type="button" class="test-conn-btn" id="testConnBtn" onclick="testConnection()">
+                <i class="feather icon-wifi" id="testConnIcon"></i>
+                <span id="testConnText"><?php echo __('test_connection'); ?></span>
+            </button>
+        </div>
     </div>
 
     <!-- Config card -->
