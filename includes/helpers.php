@@ -125,3 +125,30 @@ function getElapsedTime($label, $startTime) {
     logDebug("$label: {$elapsed}ms");
     return $elapsed;
 }
+
+/**
+ * Get currency symbol from currency code
+ *
+ * @param string $currency Currency code (e.g. USD, AFN, EUR)
+ * @return string Currency symbol
+ */
+if (!function_exists('getCurrencySymbol')) {
+    function getCurrencySymbol($currency) {
+        $symbols = [
+            'USD' => '$',
+            'AFN' => '؋',
+            'AFS' => '؋',  // Legacy support
+            'EUR' => '€',
+            'GBP' => '£',
+            'INR' => '₹',
+            'JPY' => '¥',
+            'CNY' => '¥',
+            'AUD' => 'A$',
+            'CAD' => 'C$',
+            'CHF' => 'CHF',
+            'SEK' => 'kr',
+            'NZD' => 'NZ$',
+        ];
+        return $symbols[strtoupper($currency)] ?? '$';
+    }
+}

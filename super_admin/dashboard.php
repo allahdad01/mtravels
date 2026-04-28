@@ -1,21 +1,10 @@
 <?php
-// Start session if not already started
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-// Include global security module which sets headers
+// Include global security module which handles:
+//   - Secure session start (httponly, samesite, secure cookies)
+//   - Session timeout (30 min)
+//   - CSRF token generation
+//   - Security headers
 require_once 'security.php';
-
-// Check session timeout (30 minutes)
-$sessionTimeout = 30 * 60;
-if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > $sessionTimeout)) {
-    session_unset();
-    session_destroy();
-    header('Location: ../login.php?timeout=1');
-    exit();
-}
-$_SESSION['last_activity'] = time();
 
 // Check if user is a super admin
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'super_admin' || !is_null($_SESSION['tenant_id'])) {
@@ -23,33 +12,10 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role
     exit();
 }
 
-// Create CSRF token if not exists
-if (!isset($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-}
-
 // Database connection
 require_once '../includes/db.php';
 
-// ── CURRENCY HELPER ───────────────────────────────────────────────────────────
-function getCurrencySymbol($currency) {
-    $symbols = [
-        'USD' => '$',
-        'AFN' => '؋',
-        'AFS' => '؋',  // Legacy support
-        'EUR' => '€',
-        'GBP' => '£',
-        'INR' => '₹',
-        'JPY' => '¥',
-        'CNY' => '¥',
-        'AUD' => 'A$',
-        'CAD' => 'C$',
-        'CHF' => 'CHF',
-        'SEK' => 'kr',
-        'NZD' => 'NZ$',
-    ];
-    return $symbols[strtoupper($currency)] ?? '$';
-}
+// getCurrencySymbol() is now loaded from includes/helpers.php via db.php
 
 // ── USER DATA ─────────────────────────────────────────────────────────────────
 $user_id = $_SESSION['user_id'];
@@ -102,65 +68,89 @@ foreach ($all_currencies as $currency) {
     $monthly_data[$currency] = compact('rev', 'exp', 'profit', 'margin');
 }
 
-$total_revenue  = array_sum($revenue_by_currency);
-$total_expenses = array_sum($expense_by_currency);
-$monthly_profit = array_sum(array_column($monthly_data, 'profit'));
+// NOTE: $total_revenue / $total_expenses / $monthly_profit removed —
+// summing across different currencies produces meaningless numbers.
+// The per-currency $monthly_data array is used in the template instead.
 
 // ── MRR / ARR ─────────────────────────────────────────────────────────────────
+// NOTE: Never sum across currencies — 500 AFN + 50 USD ≠ 550 of anything.
+// We keep MRR/ARR per currency and display the dominant currency.
+
 $stmt = $pdo->prepare("SELECT ts.currency, SUM(ts.amount) as mrr, COUNT(*) as subscription_count FROM tenant_subscriptions ts WHERE ts.status = 'active' AND ts.billing_cycle = 'monthly' GROUP BY ts.currency");
 $stmt->execute();
 $mrr_by_currency = [];
-$mrr = 0;
 $mrr_subs = 0;
-$mrr_currency = 'USD';
 foreach ($stmt->fetchAll() as $row) {
     $mrr_by_currency[$row['currency']] = floatval($row['mrr'] ?? 0);
-    $mrr += floatval($row['mrr'] ?? 0);
     $mrr_subs += intval($row['subscription_count'] ?? 0);
-    if (empty($mrr_currency) || $row['currency'] !== 'USD') {
-        $mrr_currency = $row['currency'];
-    }
 }
 
 $stmt = $pdo->prepare("SELECT ts.currency, SUM(ts.amount) as yearly_revenue FROM tenant_subscriptions ts WHERE ts.status = 'active' AND ts.billing_cycle = 'yearly' GROUP BY ts.currency");
 $stmt->execute();
 $yearly_by_currency = [];
-$yearly_revenue = 0;
 foreach ($stmt->fetchAll() as $row) {
     $yearly_by_currency[$row['currency']] = floatval($row['yearly_revenue'] ?? 0);
-    $yearly_revenue += floatval($row['yearly_revenue'] ?? 0);
 }
 
 $stmt = $pdo->prepare("SELECT ts.currency, SUM(ts.amount) as quarterly_revenue FROM tenant_subscriptions ts WHERE ts.status = 'active' AND ts.billing_cycle = 'quarterly' GROUP BY ts.currency");
 $stmt->execute();
 $quarterly_by_currency = [];
-$quarterly_revenue = 0;
 foreach ($stmt->fetchAll() as $row) {
     $quarterly_by_currency[$row['currency']] = floatval($row['quarterly_revenue'] ?? 0);
-    $quarterly_revenue += floatval($row['quarterly_revenue'] ?? 0);
 }
 
-$arr = ($mrr * 12) + $yearly_revenue + ($quarterly_revenue * 4);
+// Build ARR per currency: (monthly MRR × 12) + yearly + (quarterly × 4)
+$all_sub_currencies = array_unique(array_merge(
+    array_keys($mrr_by_currency),
+    array_keys($yearly_by_currency),
+    array_keys($quarterly_by_currency)
+));
+$arr_by_currency = [];
+foreach ($all_sub_currencies as $cur) {
+    $arr_by_currency[$cur] = ($mrr_by_currency[$cur] ?? 0) * 12
+                           + ($yearly_by_currency[$cur] ?? 0)
+                           + ($quarterly_by_currency[$cur] ?? 0) * 4;
+}
+
+// Dominant currency = the one with the highest MRR (most representative)
+$mrr_currency = !empty($mrr_by_currency)
+    ? array_keys($mrr_by_currency, max($mrr_by_currency))[0]
+    : 'USD';
+$mrr = $mrr_by_currency[$mrr_currency] ?? 0;
+$arr = $arr_by_currency[$mrr_currency] ?? 0;
 
 // ── REVENUE TREND (12 months) ─────────────────────────────────────────────────
+// Single query per table instead of 24 queries in a loop.
+// Filter by dominant currency to avoid mixing currencies in the chart.
+$trend_start = date('Y-m-01', strtotime('-11 months'));
+$trend_end   = date('Y-m-t');
+
+$stmt = $pdo->prepare("
+    SELECT DATE_FORMAT(payment_date, '%Y-%m') as month, SUM(amount) as total
+    FROM system_revenue
+    WHERE payment_date BETWEEN ? AND ? AND status = 'completed' AND currency = ?
+    GROUP BY month ORDER BY month
+");
+$stmt->execute([$trend_start, $trend_end, $mrr_currency]);
+$rev_trend_raw = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+$stmt = $pdo->prepare("
+    SELECT DATE_FORMAT(date, '%Y-%m') as month, SUM(amount) as total
+    FROM system_expenses
+    WHERE date BETWEEN ? AND ? AND currency = ?
+    GROUP BY month ORDER BY month
+");
+$stmt->execute([$trend_start, $trend_end, $mrr_currency]);
+$exp_trend_raw = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
 $revenue_trend  = [];
 $expense_trend  = [];
 $revenue_labels = [];
 for ($i = 11; $i >= 0; $i--) {
-    $month_date  = date('Y-m-01', strtotime("-$i months"));
-    $month_key   = date('Y-m', strtotime($month_date));
-    $month_start = $month_key . '-01';
-    $month_end   = date('Y-m-t', strtotime($month_start));
-
-    $stmt = $pdo->prepare("SELECT SUM(amount) as total FROM system_revenue WHERE payment_date BETWEEN ? AND ? AND status = 'completed'");
-    $stmt->execute([$month_start, $month_end]);
-    $revenue_trend[] = floatval($stmt->fetch()['total'] ?? 0);
-
-    $stmt = $pdo->prepare("SELECT SUM(amount) as total FROM system_expenses WHERE date BETWEEN ? AND ?");
-    $stmt->execute([$month_start, $month_end]);
-    $expense_trend[] = floatval($stmt->fetch()['total'] ?? 0);
-
-    $revenue_labels[] = date('M y', strtotime($month_start));
+    $month_key = date('Y-m', strtotime("-$i months"));
+    $revenue_trend[]  = floatval($rev_trend_raw[$month_key] ?? 0);
+    $expense_trend[]  = floatval($exp_trend_raw[$month_key] ?? 0);
+    $revenue_labels[] = date('M y', strtotime($month_key . '-01'));
 }
 
 // ── SUBSCRIPTION STATUS ───────────────────────────────────────────────────────
@@ -187,29 +177,46 @@ $total_plan_subs = array_sum(array_column($subscriptions_by_plan, 'count'));
 $max_plan_count  = $subscriptions_by_plan[0]['count'] ?? 1;
 
 // ── CHURN RATE ────────────────────────────────────────────────────────────────
-$prev_month = date('Y-m', strtotime('-1 month'));
-$prev_start = $prev_month . '-01';
-$prev_end   = date('Y-m-t', strtotime($prev_start));
-
-$stmt = $pdo->prepare("SELECT COUNT(*) as expired FROM tenant_subscriptions WHERE status = 'expired' AND updated_at BETWEEN ? AND ?");
-$stmt->execute([$prev_start, $prev_end]);
-$prev_expired = $stmt->fetch()['expired'];
-
+// Churn rate = (subscriptions expired this month / active subs at month start) × 100
 $stmt = $pdo->prepare("SELECT COUNT(*) as expired FROM tenant_subscriptions WHERE status = 'expired' AND updated_at BETWEEN ? AND ?");
 $stmt->execute([$start_date, $end_date]);
 $curr_expired = $stmt->fetch()['expired'];
-$churn_rate   = $prev_expired > 0 ? (($curr_expired - $prev_expired) / $prev_expired) * 100 : 0;
+
+$subs_at_month_start = $active_subscriptions + $curr_expired; // active now + those that expired this month
+$churn_rate = $subs_at_month_start > 0 ? ($curr_expired / $subs_at_month_start) * 100 : 0;
 
 // ── REVENUE AT RISK ────────────────────────────────────────────────────────────
 $risk_date = date('Y-m-d', strtotime('+30 days'));
-$stmt = $pdo->prepare("SELECT COUNT(*) as count, SUM(ts.amount) as total_value FROM tenant_subscriptions ts WHERE ts.status = 'active' AND ts.end_date IS NOT NULL AND DATE(ts.end_date) BETWEEN ? AND ?");
+$stmt = $pdo->prepare("SELECT ts.currency, COUNT(*) as count, SUM(ts.amount) as total_value FROM tenant_subscriptions ts WHERE ts.status = 'active' AND ts.end_date IS NOT NULL AND DATE(ts.end_date) BETWEEN ? AND ? GROUP BY ts.currency");
 $stmt->execute([$end_date, $risk_date]);
-$revenue_at_risk = $stmt->fetch();
+$revenue_at_risk_rows = $stmt->fetchAll();
+// Build per-currency lookup; also provide a single-value fallback using dominant currency
+$revenue_at_risk = ['count' => 0, 'total_value' => 0, 'currency' => $mrr_currency];
+foreach ($revenue_at_risk_rows as $rar) {
+    $revenue_at_risk['count'] += intval($rar['count']);
+    if ($rar['currency'] === $mrr_currency) {
+        $revenue_at_risk['total_value'] = floatval($rar['total_value']);
+        $revenue_at_risk['currency'] = $rar['currency'];
+    }
+}
 
 // ── SUBSCRIPTION METRICS ──────────────────────────────────────────────────────
-$stmt = $pdo->prepare("SELECT AVG(ts.amount) as avg_value, MIN(ts.amount) as min_value, MAX(ts.amount) as max_value FROM tenant_subscriptions ts WHERE ts.status = 'active'");
+$stmt = $pdo->prepare("SELECT ts.currency, AVG(ts.amount) as avg_value, MIN(ts.amount) as min_value, MAX(ts.amount) as max_value FROM tenant_subscriptions ts WHERE ts.status = 'active' GROUP BY ts.currency");
 $stmt->execute();
-$subscription_metrics = $stmt->fetch();
+$sub_metrics_rows = $stmt->fetchAll();
+// Use dominant currency for display
+$subscription_metrics = ['avg_value' => 0, 'min_value' => 0, 'max_value' => 0, 'currency' => $mrr_currency];
+foreach ($sub_metrics_rows as $sm) {
+    if ($sm['currency'] === $mrr_currency) {
+        $subscription_metrics = $sm;
+        $subscription_metrics['currency'] = $sm['currency'];
+        break;
+    }
+}
+if (empty($subscription_metrics['avg_value']) && !empty($sub_metrics_rows)) {
+    $subscription_metrics = $sub_metrics_rows[0];
+    $subscription_metrics['currency'] = $sub_metrics_rows[0]['currency'];
+}
 
 // ── TENANT HEALTH ──────────────────────────────────────────────────────────────
 $stmt = $pdo->prepare("
@@ -411,14 +418,16 @@ $risk_counts = ['critical' => 0, 'high' => 0, 'medium' => 0, 'low' => 0];
 foreach ($at_risk_tenants_phase1 as $t) $risk_counts[$t['risk_level']]++;
 
 // ── TOP SALES AGENTS ──────────────────────────────────────────────────────────
+// Correct join: sales_agents → sales_agent_tenants → tenant_subscriptions
 $stmt = $pdo->prepare("
-    SELECT u.id, u.name,
+    SELECT sa.id, sa.name,
         COUNT(DISTINCT ts.id) as subscriptions_count,
-        COALESCE(SUM(ts.amount), 0) as total_revenue, 'USD' as currency
-    FROM users u
-    LEFT JOIN tenant_subscriptions ts ON u.id = ts.tenant_id
-    WHERE u.role = 'sales_agent' AND (ts.status = 'active' OR ts.status IS NULL)
-    GROUP BY u.id, u.name
+        COALESCE(SUM(ts.amount), 0) as total_revenue,
+        ts.currency
+    FROM sales_agents sa
+    LEFT JOIN sales_agent_tenants sat ON sa.id = sat.sales_agent_id AND sat.status = 'active'
+    LEFT JOIN tenant_subscriptions ts ON sat.tenant_id = ts.tenant_id AND ts.status = 'active'
+    GROUP BY sa.id, sa.name, ts.currency
     ORDER BY total_revenue DESC LIMIT 8
 ");
 $stmt->execute();
@@ -438,14 +447,23 @@ $activity_counts = [];
 foreach ($activity_rows as $d) { $activity_labels[] = $d['action']; $activity_counts[] = $d['count']; }
 
 // ── TENANT GROWTH (6 months) ──────────────────────────────────────────────────
+// Single query instead of 6 separate queries
+$growth_start = date('Y-m-01', strtotime('-5 months'));
+$stmt = $pdo->prepare("
+    SELECT DATE_FORMAT(created_at, '%Y-%m') as month, COUNT(*) as count
+    FROM tenants
+    WHERE status != 'deleted' AND created_at >= ?
+    GROUP BY month ORDER BY month
+");
+$stmt->execute([$growth_start]);
+$growth_raw = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
 $tenant_growth = [];
 $growth_months = [];
 for ($i = 5; $i >= 0; $i--) {
     $month = date('Y-m', strtotime("-$i months"));
-    $growth_months[] = date('M Y', strtotime($month));
-    $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM tenants WHERE status != 'deleted' AND DATE_FORMAT(created_at, '%Y-%m') = ?");
-    $stmt->execute([$month]);
-    $tenant_growth[] = $stmt->fetch()['count'];
+    $growth_months[]  = date('M Y', strtotime($month));
+    $tenant_growth[]  = intval($growth_raw[$month] ?? 0);
 }
 ?>
 <?php
@@ -1022,19 +1040,19 @@ body { background: var(--bg) !important; }
               <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             </div>
           </div>
-          <div class="sa-stat-foot">Revenue at risk: $<?= number_format($revenue_at_risk['total_value'] ?? 0, 0) ?></div>
+          <div class="sa-stat-foot">Revenue at risk: <?= getCurrencySymbol($revenue_at_risk['currency'] ?? 'USD') ?><?= number_format($revenue_at_risk['total_value'] ?? 0, 0) ?></div>
         </div>
         <div class="sa-stat">
           <div class="sa-stat-top">
             <div>
-              <div class="sa-stat-val">$<?= number_format($subscription_metrics['avg_value'] ?? 0, 0) ?></div>
+              <div class="sa-stat-val"><?= getCurrencySymbol($subscription_metrics['currency'] ?? 'USD') ?><?= number_format($subscription_metrics['avg_value'] ?? 0, 0) ?></div>
               <div class="sa-stat-name">Avg Subscription Value</div>
             </div>
             <div class="sa-stat-icon si-green">
               <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
             </div>
           </div>
-          <div class="sa-stat-foot">Min $<?= number_format($subscription_metrics['min_value'] ?? 0, 0) ?> · Max $<?= number_format($subscription_metrics['max_value'] ?? 0, 0) ?></div>
+          <div class="sa-stat-foot">Min <?= getCurrencySymbol($subscription_metrics['currency'] ?? 'USD') ?><?= number_format($subscription_metrics['min_value'] ?? 0, 0) ?> · Max <?= getCurrencySymbol($subscription_metrics['currency'] ?? 'USD') ?><?= number_format($subscription_metrics['max_value'] ?? 0, 0) ?></div>
         </div>
         <div class="sa-stat">
           <div class="sa-stat-top">
@@ -1342,7 +1360,7 @@ body { background: var(--bg) !important; }
           <div class="sa-stat-foot">
             <span><?= htmlspecialchars($agent['name']) ?></span>
             <span>·</span>
-            <span>$<?= number_format($agent['total_revenue'], 0) ?> revenue</span>
+            <span><?= getCurrencySymbol($agent['currency'] ?? 'USD') ?><?= number_format($agent['total_revenue'], 0) ?> revenue</span>
           </div>
         </div>
         <?php endif; ?>
@@ -1536,7 +1554,7 @@ new Chart(document.getElementById('revenueChart'), {
     scales: {
       y: {
         grid: { color: 'rgba(255,255,255,0.04)' },
-        ticks: { callback: v => '$' + (v / 1000).toFixed(0) + 'k' }
+        ticks: { callback: v => '<?= getCurrencySymbol($mrr_currency) ?>' + (v / 1000).toFixed(0) + 'k' }
       },
       x: { grid: { display: false } }
     }
@@ -1551,7 +1569,7 @@ new Chart(document.getElementById('subChart'), {
     datasets: [{
       data: [<?= $sub_status_data['active'] ?>, <?= $sub_status_data['expired'] ?>, <?= $sub_status_data['pending'] ?>],
       backgroundColor: ['#22d3a0', '#f43f5e', '#f59e0b'],
-      borderColor: '#151820',
+      borderColor: '#ffffff',
       borderWidth: 3,
       hoverOffset: 6
     }]
