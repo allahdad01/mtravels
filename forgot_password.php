@@ -150,7 +150,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         try {
                             $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
                             
-                            $reset_link = $protocol . '://' . $_SERVER['HTTP_HOST'] . '/almoqadas/mtravels/reset_password.php?token=' . urlencode($reset_token);
+                            $reset_link = $protocol . '://' . $_SERVER['HTTP_HOST'] . '/reset_password.php?token=' . urlencode($reset_token);
                             
                         } catch (Exception $e) {
                             $message = "An error occurred while processing your request.";

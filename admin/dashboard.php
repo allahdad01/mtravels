@@ -440,11 +440,11 @@ $selected_date = InputValidator::getDate($_GET['departure_date'] ?? '', 'Y-m-d',
 .dropdown-item{color:var(--text)!important;border-radius:8px!important;padding:8px 14px!important;font-size:13px!important;font-family:'Plus Jakarta Sans',sans-serif!important;}
 .dropdown-item:hover{background:var(--surface3)!important;}
 
-/* Notifications Collapse */
-#notificationsContent{max-height:500px;overflow-y:auto;overflow-x:hidden;transition:max-height 0.3s ease,opacity 0.3s ease;opacity:1;}
-#notificationsContent.collapsed{max-height:0;opacity:0;overflow:hidden;}
-.notif-collapse-btn i{transition:transform 0.3s ease;}
-.notif-collapse-btn.collapsed i{transform:rotate(180deg);}
+/* Notifications Collapse — scoped to dashboard card only */
+.d-card #notificationsContent{max-height:500px;overflow-y:auto;overflow-x:hidden;transition:max-height 0.3s ease,opacity 0.3s ease;opacity:1;}
+.d-card #notificationsContent.collapsed{max-height:0;opacity:0;overflow:hidden;}
+.d-card .notif-collapse-btn i{transition:transform 0.3s ease;}
+.d-card .notif-collapse-btn.collapsed i{transform:rotate(180deg);}
 
 /* Umrah Bookings Table */
 .umrah-bookings-wrapper{width:100%;overflow-x:auto;}
@@ -468,625 +468,503 @@ $selected_date = InputValidator::getDate($_GET['departure_date'] ?? '', 'Y-m-d',
 
 <!-- ─── MAIN CONTENT ──────────────────────────────────────────────────────── -->
 <div class="pcoded-main-container">
- <div class="pcoded-wrapper">
-  <div class="pcoded-content">
    <div class="pcoded-inner-content">
     <div class="main-body">
      <div class="page-wrapper">
       <div class="dash-wrap">
-       <div class="dash-inner">
+        <div class="dash-inner">
 
-         <!-- ATTENDANCE STATUS WIDGET -->
-         <?php if ($show_att_widget): ?>
-         <div class="att-status-widget" id="attStatusWidget">
-           <div class="att-widget-left">
-             <div class="att-widget-indicator <?= $att_state === 'checked_in' ? 'online pulse' : ($att_state === 'completed' ? 'completed' : 'offline') ?>">
-               <?php if ($att_state === 'checked_in'): ?>
-                 <i class="fas fa-check" style="color:#10b981;"></i>
-               <?php elseif ($att_state === 'completed'): ?>
-                 <i class="fas fa-check-double" style="color:#22c55e;"></i>
-               <?php else: ?>
-                 <i class="fas fa-sign-in-alt" style="color:#f43f5e;"></i>
-               <?php endif; ?>
-             </div>
-             <div class="att-widget-info">
-               <h3>
-                 <?php if ($att_state === 'checked_in'): ?>
-                   <?= __('currently_working') ?>
-                 <?php elseif ($att_state === 'completed'): ?>
-                   <?= __('shift_completed') ?>
-                 <?php else: ?>
-                   <?= __('not_checked_in') ?>
-                 <?php endif; ?>
-               </h3>
-               <p>
-                 <?php if ($att_state === 'checked_in'): ?>
-                   <?= __('checked_in_at') ?>: <strong><?= date('h:i A', strtotime($today_attendance['check_in_time'])) ?></strong>
-                 <?php elseif ($att_state === 'completed'): ?>
-                   <?= __('checked_out_at') ?>: <strong><?= date('h:i A', strtotime($today_attendance['check_out_time'])) ?></strong>
-                 <?php else: ?>
-                   Office: <?= date('h:i A', strtotime($attendance_settings['office_start_time'])) ?> - <?= date('h:i A', strtotime($attendance_settings['office_end_time'])) ?>
-                 <?php endif; ?>
-               </p>
-             </div>
-           </div>
-           <div class="att-widget-right">
-             <?php if ($att_state === 'checked_in'): ?>
-               <div class="att-widget-time">
-                 <div class="att-widget-time-label"><?= __('working_time') ?></div>
-                 <div class="att-widget-time-value" id="workingTime"><?= (int)floor($att_working_minutes / 60) ?>h <?= (int)round($att_working_minutes % 60) ?>m</div>
-               </div>
-             <?php elseif ($att_state === 'completed'): ?>
-               <div class="att-widget-time">
-                 <div class="att-widget-time-label"><?= __('total_hours') ?></div>
-                 <div class="att-widget-time-value"><?= (int)floor($att_working_minutes / 60) ?>h <?= (int)round($att_working_minutes % 60) ?>m</div>
-               </div>
-             <?php endif; ?>
-             <button class="att-widget-action-btn" onclick="goToAttendance()" <?php if ($att_state === 'checked_in'): ?>style="background:rgba(244,63,94,.3);border-color:rgba(244,63,94,.5);"<?php endif; ?>>
-               <i class="fas <?php echo $att_state === 'checked_in' ? 'fa-sign-out-alt' : 'fa-clock'; ?>"></i> 
-               <?php echo $att_state === 'checked_in' ? (__('check_out') ?? 'Check Out') : __('attendance'); ?>
-             </button>
-           </div>
-           </div>
-           <?php endif; ?>
+            <!-- ATTENDANCE STATUS WIDGET -->
+            <?php if ($show_att_widget): ?>
+            <div class="att-status-widget" id="attStatusWidget">
+              <div class="att-widget-left">
+                <div class="att-widget-indicator <?= $att_state === 'checked_in' ? 'online pulse' : ($att_state === 'completed' ? 'completed' : 'offline') ?>">
+                  <?php if ($att_state === 'checked_in'): ?>
+                    <i class="fas fa-check" style="color:#10b981;"></i>
+                  <?php elseif ($att_state === 'completed'): ?>
+                    <i class="fas fa-check-double" style="color:#22c55e;"></i>
+                  <?php else: ?>
+                    <i class="fas fa-sign-in-alt" style="color:#f43f5e;"></i>
+                  <?php endif; ?>
+                </div>
+                <div class="att-widget-info">
+                  <h3>
+                    <?php if ($att_state === 'checked_in'): ?>
+                      <?= __('currently_working') ?>
+                    <?php elseif ($att_state === 'completed'): ?>
+                      <?= __('shift_completed') ?>
+                    <?php else: ?>
+                      <?= __('not_checked_in') ?>
+                    <?php endif; ?>
+                  </h3>
+                  <p>
+                    <?php if ($att_state === 'checked_in'): ?>
+                      <?= __('checked_in_at') ?>: <strong><?= date('h:i A', strtotime($today_attendance['check_in_time'])) ?></strong>
+                    <?php elseif ($att_state === 'completed'): ?>
+                      <?= __('checked_out_at') ?>: <strong><?= date('h:i A', strtotime($today_attendance['check_out_time'])) ?></strong>
+                    <?php else: ?>
+                      Office: <?= date('h:i A', strtotime($attendance_settings['office_start_time'])) ?> - <?= date('h:i A', strtotime($attendance_settings['office_end_time'])) ?>
+                    <?php endif; ?>
+                  </p>
+                </div>
+              </div>
+              <div class="att-widget-right">
+                <?php if ($att_state === 'checked_in'): ?>
+                  <div class="att-widget-time">
+                    <div class="att-widget-time-label"><?= __('working_time') ?></div>
+                    <div class="att-widget-time-value" id="workingTime"><?= (int)floor($att_working_minutes / 60) ?>h <?= (int)round($att_working_minutes % 60) ?>m</div>
+                  </div>
+                <?php elseif ($att_state === 'completed'): ?>
+                  <div class="att-widget-time">
+                    <div class="att-widget-time-label"><?= __('total_hours') ?></div>
+                    <div class="att-widget-time-value"><?= (int)floor($att_working_minutes / 60) ?>h <?= (int)round($att_working_minutes % 60) ?>m</div>
+                  </div>
+                <?php endif; ?>
+                <button class="att-widget-action-btn" onclick="goToAttendance()" <?php if ($att_state === 'checked_in'): ?>style="background:rgba(244,63,94,.3);border-color:rgba(244,63,94,.5);"<?php endif; ?>>
+                  <i class="fas <?php echo $att_state === 'checked_in' ? 'fa-sign-out-alt' : 'fa-clock'; ?>"></i> 
+                  <?php echo $att_state === 'checked_in' ? (__('check_out') ?? 'Check Out') : __('attendance'); ?>
+                </button>
+              </div>
+              </div>
+              <?php endif; ?>
 
-           <!-- HEADER -->
-         <div class="dash-header">
-          <div>
-            <h1><?= __('welcome_back') ?>, <?= htmlspecialchars($user['name'] ?? 'Admin') ?> 👋</h1>
-            <p><?= __('dashboard_subtitle') ?></p>
-          </div>
-          <div class="header-actions">
+              <!-- HEADER -->
+            <div class="dash-header">
+              <div>
+                <h1><?= __('welcome_back') ?>, <?= htmlspecialchars($user['name'] ?? 'Admin') ?> 👋</h1>
+                <p><?= __('dashboard_subtitle') ?></p>
+              </div>
+              <div class="header-actions">
+                <?php if (in_array($user['role'], ['admin','finance'])): ?>
+                <div class="dropdown">
+                  <button class="dbtn dbtn-ghost dropdown-toggle" data-toggle="dropdown">
+                    <i class="fas fa-bolt"></i> <?= __('quick_actions') ?>
+                  </button>
+                  <div class="dropdown-menu dropdown-menu-right">
+                    <a class="dropdown-item" href="ticket.php"><i class="fas fa-plus-circle mr-2" style="color:var(--violet-light);"></i><?= __('add_ticket') ?></a>
+                    <a class="dropdown-item" href="client.php"><i class="fas fa-user-plus mr-2" style="color:var(--emerald);"></i><?= __('add_client') ?></a>
+                    <a class="dropdown-item" href="supplier.php"><i class="fas fa-truck mr-2" style="color:var(--amber);"></i><?= __('add_supplier') ?></a>
+                  </div>
+                </div>
+                <?php endif; ?>
+                <button class="dbtn dbtn-info" data-toggle="modal" data-target="#dashboardTutorialsModal">
+                  <i class="fas fa-play-circle"></i> Watch Tutorials
+                </button>
+              </div>
+            </div>
+
+            <!-- ALERTS -->
             <?php if (in_array($user['role'], ['admin','finance'])): ?>
-            <div class="dropdown">
-              <button class="dbtn dbtn-ghost dropdown-toggle" data-toggle="dropdown">
-                <i class="fas fa-bolt"></i> <?= __('quick_actions') ?>
-              </button>
-              <div class="dropdown-menu dropdown-menu-right">
-                <a class="dropdown-item" href="ticket.php"><i class="fas fa-plus-circle mr-2" style="color:var(--violet-light);"></i><?= __('add_ticket') ?></a>
-                <a class="dropdown-item" href="client.php"><i class="fas fa-user-plus mr-2" style="color:var(--emerald);"></i><?= __('add_client') ?></a>
-                <a class="dropdown-item" href="supplier.php"><i class="fas fa-truck mr-2" style="color:var(--amber);"></i><?= __('add_supplier') ?></a>
+            <?php if (!empty($suppliersWithLowBalance)): ?>
+            <div class="d-alert d-alert-warning">
+              <div class="d-alert-icon"><i class="fas fa-exclamation-triangle"></i></div>
+              <div style="flex:1">
+                <div class="d-alert-title">Low Supplier Balance Alert</div>
+                <div style="font-size:13px;color:rgba(0, 0, 0, 0.55);"><?= count($suppliersWithLowBalance) ?> supplier(s) need attention</div>
+                <div class="d-alert-items">
+                  <?php foreach ($suppliersWithLowBalance as $sup):
+                    $sym = ($sup['currency']==='USD')?'$':'؋'; ?>
+                  <span class="d-alert-chip"><?= htmlspecialchars($sup['name']) ?> · <?= $sym.number_format($sup['balance'],2) ?></span>
+                  <?php endforeach; ?>
+                </div>
+              </div>
+              <button class="d-alert-close" onclick="this.parentElement.style.display='none'">✕</button>
+            </div>
+            <?php endif; ?>
+            <?php if (!empty($clientsWithLowBalance)): ?>
+            <div class="d-alert d-alert-danger">
+              <div class="d-alert-icon"><i class="fas fa-circle-exclamation"></i></div>
+              <div style="flex:1">
+                <div class="d-alert-title">Client Balance Due Alert</div>
+                <div style="font-size:13px;color:rgba(255,255,255,.55);"><?= count($clientsWithLowBalance) ?> client(s) exceeded thresholds</div>
+                <div class="d-alert-items">
+                  <?php foreach ($clientsWithLowBalance as $cl):
+                    $parts=[];
+                    if ($cl['usd_balance']<-1000) $parts[]="USD: $".number_format($cl['usd_balance'],2);
+                    if ($cl['afs_balance']<-20000) $parts[]="AFS: ؋".number_format($cl['afs_balance'],2); ?>
+                  <span class="d-alert-chip"><?= htmlspecialchars($cl['name']) ?> · <?= implode(' | ',$parts) ?></span>
+                  <?php endforeach; ?>
+                </div>
+              </div>
+              <button class="d-alert-close" onclick="this.parentElement.style.display='none'">✕</button>
+            </div>
+            <?php endif; ?>
+            <?php endif; ?>
+
+            <!-- FINANCIAL WEALTH CHART (admin only) -->
+            <?php if ($user['role']==='admin'): ?>
+            <div class="sec-label"><i class="fas fa-chart-area"></i> <?= __('financial_wealth_distribution') ?></div>
+            <div class="fin-chart-card">
+              <div class="d-card-header" style="margin-bottom:18px;">
+                <div class="d-card-title"><div class="ci ci-violet"><i class="fas fa-chart-area"></i></div><?= __('financial_wealth_distribution') ?></div>
+                <div class="fin-controls">
+                  <select class="fin-select" id="financeChartPeriod">
+                    <option value="daily"><?= __('daily') ?></option>
+                    <option value="monthly" selected><?= __('monthly') ?></option>
+                    <option value="yearly"><?= __('yearly') ?></option>
+                  </select>
+                  <select class="fin-select" id="financeChartCurrency">
+                    <option value="USD" selected><?= __('usd') ?></option>
+                    <option value="AFS"><?= __('afs') ?></option>
+                    <option value="EUR"><?= __('eur') ?></option>
+                    <option value="AED"><?= __('aed') ?></option>
+                  </select>
+                </div>
+              </div>
+              <div class="fin-chart-layout">
+                <div><div id="financeFlowChart" style="min-height:350px;"></div></div>
+                <div class="wealth-panel">
+                  <div class="wealth-panel-title"><i class="fas fa-wallet"></i> <?= __('wealth_distribution') ?></div>
+                  <div class="wealth-date-badge" id="currentDateBadge"><?= date('F Y') ?></div>
+                  <div class="wealth-row">
+                    <div class="wealth-row-label"><div class="wealth-dot" style="background:var(--violet);"></div><?= __('main_accounts') ?></div>
+                    <div class="wealth-row-value" id="mainAccountBalance" style="color:var(--violet-light);">$0.00</div>
+                  </div>
+                  <div class="wealth-row">
+                    <div class="wealth-row-label"><div class="wealth-dot" style="background:var(--sky);"></div><?= __('supplier_credits') ?></div>
+                    <div class="wealth-row-value" id="supplierBalance" style="color:var(--sky);">$0.00</div>
+                  </div>
+                  <div class="wealth-row">
+                    <div class="wealth-row-label"><div class="wealth-dot" style="background:var(--emerald);"></div><?= __('client_credits') ?></div>
+                    <div class="wealth-row-value" id="clientBalance" style="color:var(--emerald);">$0.00</div>
+                  </div>
+                  <div class="wealth-row">
+                    <div class="wealth-row-label"><div class="wealth-dot" style="background:var(--rose);"></div><?= __('debtor_balance') ?></div>
+                    <div class="wealth-row-value" id="debtorBalance" style="color:var(--rose);">$0.00</div>
+                  </div>
+                  <div class="wealth-total-row">
+                    <div class="wealth-total-label"><?= __('total_net_worth') ?></div>
+                    <div class="wealth-total-value" id="totalNetWorth">$0.00</div>
+                  </div>
+                </div>
               </div>
             </div>
             <?php endif; ?>
-            <button class="dbtn dbtn-info" data-toggle="modal" data-target="#dashboardTutorialsModal">
-              <i class="fas fa-play-circle"></i> Watch Tutorials
-            </button>
-          </div>
-        </div>
 
-        <!-- ALERTS -->
-        <?php if (in_array($user['role'], ['admin','finance'])): ?>
-        <?php if (!empty($suppliersWithLowBalance)): ?>
-        <div class="d-alert d-alert-warning">
-          <div class="d-alert-icon"><i class="fas fa-exclamation-triangle"></i></div>
-          <div style="flex:1">
-            <div class="d-alert-title">Low Supplier Balance Alert</div>
-            <div style="font-size:13px;color:rgba(0, 0, 0, 0.55);"><?= count($suppliersWithLowBalance) ?> supplier(s) need attention</div>
-            <div class="d-alert-items">
-              <?php foreach ($suppliersWithLowBalance as $sup):
-                $sym = ($sup['currency']==='USD')?'$':'؋'; ?>
-              <span class="d-alert-chip"><?= htmlspecialchars($sup['name']) ?> · <?= $sym.number_format($sup['balance'],2) ?></span>
-              <?php endforeach; ?>
-            </div>
-          </div>
-          <button class="d-alert-close" onclick="this.parentElement.style.display='none'">✕</button>
-        </div>
-        <?php endif; ?>
-        <?php if (!empty($clientsWithLowBalance)): ?>
-        <div class="d-alert d-alert-danger">
-          <div class="d-alert-icon"><i class="fas fa-circle-exclamation"></i></div>
-          <div style="flex:1">
-            <div class="d-alert-title">Client Balance Due Alert</div>
-            <div style="font-size:13px;color:rgba(255,255,255,.55);"><?= count($clientsWithLowBalance) ?> client(s) exceeded thresholds</div>
-            <div class="d-alert-items">
-              <?php foreach ($clientsWithLowBalance as $cl):
-                $parts=[];
-                if ($cl['usd_balance']<-1000) $parts[]="USD: $".number_format($cl['usd_balance'],2);
-                if ($cl['afs_balance']<-20000) $parts[]="AFS: ؋".number_format($cl['afs_balance'],2); ?>
-              <span class="d-alert-chip"><?= htmlspecialchars($cl['name']) ?> · <?= implode(' | ',$parts) ?></span>
-              <?php endforeach; ?>
-            </div>
-          </div>
-          <button class="d-alert-close" onclick="this.parentElement.style.display='none'">✕</button>
-        </div>
-        <?php endif; ?>
-        <?php endif; ?>
-
-        <!-- FINANCIAL WEALTH CHART (admin only) -->
-        <?php if ($user['role']==='admin'): ?>
-        <div class="sec-label"><i class="fas fa-chart-area"></i> <?= __('financial_wealth_distribution') ?></div>
-        <div class="fin-chart-card">
-          <div class="d-card-header" style="margin-bottom:18px;">
-            <div class="d-card-title"><div class="ci ci-violet"><i class="fas fa-chart-area"></i></div><?= __('financial_wealth_distribution') ?></div>
-            <div class="fin-controls">
-              <select class="fin-select" id="financeChartPeriod">
-                <option value="daily"><?= __('daily') ?></option>
-                <option value="monthly" selected><?= __('monthly') ?></option>
-                <option value="yearly"><?= __('yearly') ?></option>
-              </select>
-              <select class="fin-select" id="financeChartCurrency">
-                <option value="USD" selected><?= __('usd') ?></option>
-                <option value="AFS"><?= __('afs') ?></option>
-                <option value="EUR"><?= __('eur') ?></option>
-                <option value="AED"><?= __('aed') ?></option>
-              </select>
-            </div>
-          </div>
-          <div class="fin-chart-layout">
-            <div><div id="financeFlowChart" style="min-height:350px;"></div></div>
-            <div class="wealth-panel">
-              <div class="wealth-panel-title"><i class="fas fa-wallet"></i> <?= __('wealth_distribution') ?></div>
-              <div class="wealth-date-badge" id="currentDateBadge"><?= date('F Y') ?></div>
-              <div class="wealth-row">
-                <div class="wealth-row-label"><div class="wealth-dot" style="background:var(--violet);"></div><?= __('main_accounts') ?></div>
-                <div class="wealth-row-value" id="mainAccountBalance" style="color:var(--violet-light);">$0.00</div>
+            <!-- SALES CARDS (admin only) -->
+            <?php if ($user['role']==='admin'): ?>
+            <div class="sec-label"><i class="fas fa-chart-line"></i> Performance Overview</div>
+            
+            <!-- Sales Filter Controls (Outside Cards) -->
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:22px;">
+              <!-- Daily Filter -->
+              <div style="background:linear-gradient(135deg,rgba(255,193,7,.08),rgba(255,193,7,.04));border:1.5px solid rgba(255,193,7,.3);border-radius:14px;padding:14px;position:relative;overflow:hidden;">
+                <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:radial-gradient(circle,rgba(255,193,7,.1),transparent);border-radius:50%;"></div>
+                <div style="position:relative;z-index:1;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                    <label style="font-size:12px;font-weight:700;color:var(--text);margin:0;letter-spacing:0.5px;text-transform:uppercase;"><i class="fas fa-sun" style="color:#f59e0b;margin-right:6px;"></i><?= __('daily') ?></label>
+                    <button class="dbtn dbtn-ghost" style="padding:3px 8px;font-size:10px;border-radius:6px;color:#f59e0b;opacity:0.7;transition:all .2s;" onclick="resetDailyFilter()" title="Reset to today"><i class="fas fa-redo-alt"></i></button>
+                  </div>
+                  <div style="display:flex;gap:6px;align-items:stretch;">
+                    <input type="date" class="sc-filter-input date-filter" id="dailyDateInput" value="<?= date('Y-m-d') ?>" style="flex:1;padding:9px 12px;font-size:12px;background:#fff;color:var(--text);border:1px solid rgba(245,158,11,.2);border-radius:8px;">
+                    <button class="sc-filter-btn apply-daily-filter" style="flex:0;padding:9px 12px;background:#f59e0b;color:#fff;border-radius:8px;border:none;font-weight:600;transition:all .2s;" onmouseover="this.style.background='#d97706'" onmouseout="this.style.background='#f59e0b'"><i class="fas fa-check"></i></button>
+                  </div>
+                </div>
               </div>
-              <div class="wealth-row">
-                <div class="wealth-row-label"><div class="wealth-dot" style="background:var(--sky);"></div><?= __('supplier_credits') ?></div>
-                <div class="wealth-row-value" id="supplierBalance" style="color:var(--sky);">$0.00</div>
+              
+              <!-- Monthly Filter -->
+              <div style="background:linear-gradient(135deg,rgba(59,130,246,.08),rgba(59,130,246,.04));border:1.5px solid rgba(59,130,246,.3);border-radius:14px;padding:14px;position:relative;overflow:hidden;">
+                <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:radial-gradient(circle,rgba(59,130,246,.1),transparent);border-radius:50%;"></div>
+                <div style="position:relative;z-index:1;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                    <label style="font-size:12px;font-weight:700;color:var(--text);margin:0;letter-spacing:0.5px;text-transform:uppercase;"><i class="fas fa-calendar-alt" style="color:#3b82f6;margin-right:6px;"></i><?= __('monthly') ?></label>
+                    <button class="dbtn dbtn-ghost" style="padding:3px 8px;font-size:10px;border-radius:6px;color:#3b82f6;opacity:0.7;transition:all .2s;" onclick="resetMonthlyFilter()" title="Reset to this month"><i class="fas fa-redo-alt"></i></button>
+                  </div>
+                  <div style="display:flex;gap:6px;align-items:stretch;">
+                    <input type="month" class="sc-filter-input date-filter" id="monthlyDateInput" value="<?= date('Y-m') ?>" style="flex:1;padding:9px 12px;font-size:12px;background:#fff;color:var(--text);border:1px solid rgba(59,130,246,.2);border-radius:8px;">
+                    <button class="sc-filter-btn apply-monthly-filter" style="flex:0;padding:9px 12px;background:#3b82f6;color:#fff;border-radius:8px;border:none;font-weight:600;transition:all .2s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'"><i class="fas fa-check"></i></button>
+                  </div>
+                </div>
               </div>
-              <div class="wealth-row">
-                <div class="wealth-row-label"><div class="wealth-dot" style="background:var(--emerald);"></div><?= __('client_credits') ?></div>
-                <div class="wealth-row-value" id="clientBalance" style="color:var(--emerald);">$0.00</div>
-              </div>
-              <div class="wealth-row">
-                <div class="wealth-row-label"><div class="wealth-dot" style="background:var(--rose);"></div><?= __('debtor_balance') ?></div>
-                <div class="wealth-row-value" id="debtorBalance" style="color:var(--rose);">$0.00</div>
-              </div>
-              <div class="wealth-total-row">
-                <div class="wealth-total-label"><?= __('total_net_worth') ?></div>
-                <div class="wealth-total-value" id="totalNetWorth">$0.00</div>
+              
+              <!-- Yearly Filter -->
+              <div style="background:linear-gradient(135deg,rgba(16,185,129,.08),rgba(16,185,129,.04));border:1.5px solid rgba(16,185,129,.3);border-radius:14px;padding:14px;position:relative;overflow:hidden;">
+                <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:radial-gradient(circle,rgba(16,185,129,.1),transparent);border-radius:50%;"></div>
+                <div style="position:relative;z-index:1;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                    <label style="font-size:12px;font-weight:700;color:var(--text);margin:0;letter-spacing:0.5px;text-transform:uppercase;"><i class="fas fa-chart-line" style="color:#10b981;margin-right:6px;"></i><?= __('yearly') ?></label>
+                    <button class="dbtn dbtn-ghost" style="padding:3px 8px;font-size:10px;border-radius:6px;color:#10b981;opacity:0.7;transition:all .2s;" onclick="resetYearlyFilter()" title="Reset to this year"><i class="fas fa-redo-alt"></i></button>
+                  </div>
+                  <div style="display:flex;gap:6px;align-items:stretch;">
+                    <select class="sc-filter-input date-filter" id="yearlyDateInput" style="flex:1;padding:9px 12px;font-size:12px;background:#fff;color:var(--text);border:1px solid rgba(16,185,129,.2);border-radius:8px;">
+                      <?php $cy=date('Y'); for($y=$cy;$y>=$cy-5;$y--): ?>
+                      <option value="<?=$y?>"<?=$y==$cy?' selected':''?>><?=$y?></option>
+                      <?php endfor; ?>
+                    </select>
+                    <button class="sc-filter-btn apply-yearly-filter" style="flex:0;padding:9px 12px;background:#10b981;color:#fff;border-radius:8px;border:none;font-weight:600;transition:all .2s;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'"><i class="fas fa-check"></i></button>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-        <?php endif; ?>
-
-        <!-- SALES CARDS (admin only) -->
-         <?php if ($user['role']==='admin'): ?>
-         <div class="sec-label"><i class="fas fa-chart-line"></i> Performance Overview</div>
-         
-         <!-- Sales Filter Controls (Outside Cards) -->
-         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:22px;">
-           <!-- Daily Filter -->
-           <div style="background:linear-gradient(135deg,rgba(255,193,7,.08),rgba(255,193,7,.04));border:1.5px solid rgba(255,193,7,.3);border-radius:14px;padding:14px;position:relative;overflow:hidden;">
-             <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:radial-gradient(circle,rgba(255,193,7,.1),transparent);border-radius:50%;"></div>
-             <div style="position:relative;z-index:1;">
-               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-                 <label style="font-size:12px;font-weight:700;color:var(--text);margin:0;letter-spacing:0.5px;text-transform:uppercase;"><i class="fas fa-sun" style="color:#f59e0b;margin-right:6px;"></i><?= __('daily') ?></label>
-                 <button class="dbtn dbtn-ghost" style="padding:3px 8px;font-size:10px;border-radius:6px;color:#f59e0b;opacity:0.7;transition:all .2s;" onclick="resetDailyFilter()" title="Reset to today"><i class="fas fa-redo-alt"></i></button>
-               </div>
-               <div style="display:flex;gap:6px;align-items:stretch;">
-                 <input type="date" class="sc-filter-input date-filter" id="dailyDateInput" value="<?= date('Y-m-d') ?>" style="flex:1;padding:9px 12px;font-size:12px;background:#fff;color:var(--text);border:1px solid rgba(245,158,11,.2);border-radius:8px;">
-                 <button class="sc-filter-btn apply-daily-filter" style="flex:0;padding:9px 12px;background:#f59e0b;color:#fff;border-radius:8px;border:none;font-weight:600;transition:all .2s;" onmouseover="this.style.background='#d97706'" onmouseout="this.style.background='#f59e0b'"><i class="fas fa-check"></i></button>
-               </div>
-             </div>
-           </div>
-           
-           <!-- Monthly Filter -->
-           <div style="background:linear-gradient(135deg,rgba(59,130,246,.08),rgba(59,130,246,.04));border:1.5px solid rgba(59,130,246,.3);border-radius:14px;padding:14px;position:relative;overflow:hidden;">
-             <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:radial-gradient(circle,rgba(59,130,246,.1),transparent);border-radius:50%;"></div>
-             <div style="position:relative;z-index:1;">
-               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-                 <label style="font-size:12px;font-weight:700;color:var(--text);margin:0;letter-spacing:0.5px;text-transform:uppercase;"><i class="fas fa-calendar-alt" style="color:#3b82f6;margin-right:6px;"></i><?= __('monthly') ?></label>
-                 <button class="dbtn dbtn-ghost" style="padding:3px 8px;font-size:10px;border-radius:6px;color:#3b82f6;opacity:0.7;transition:all .2s;" onclick="resetMonthlyFilter()" title="Reset to this month"><i class="fas fa-redo-alt"></i></button>
-               </div>
-               <div style="display:flex;gap:6px;align-items:stretch;">
-                 <input type="month" class="sc-filter-input date-filter" id="monthlyDateInput" value="<?= date('Y-m') ?>" style="flex:1;padding:9px 12px;font-size:12px;background:#fff;color:var(--text);border:1px solid rgba(59,130,246,.2);border-radius:8px;">
-                 <button class="sc-filter-btn apply-monthly-filter" style="flex:0;padding:9px 12px;background:#3b82f6;color:#fff;border-radius:8px;border:none;font-weight:600;transition:all .2s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'"><i class="fas fa-check"></i></button>
-               </div>
-             </div>
-           </div>
-           
-           <!-- Yearly Filter -->
-           <div style="background:linear-gradient(135deg,rgba(16,185,129,.08),rgba(16,185,129,.04));border:1.5px solid rgba(16,185,129,.3);border-radius:14px;padding:14px;position:relative;overflow:hidden;">
-             <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;background:radial-gradient(circle,rgba(16,185,129,.1),transparent);border-radius:50%;"></div>
-             <div style="position:relative;z-index:1;">
-               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-                 <label style="font-size:12px;font-weight:700;color:var(--text);margin:0;letter-spacing:0.5px;text-transform:uppercase;"><i class="fas fa-chart-line" style="color:#10b981;margin-right:6px;"></i><?= __('yearly') ?></label>
-                 <button class="dbtn dbtn-ghost" style="padding:3px 8px;font-size:10px;border-radius:6px;color:#10b981;opacity:0.7;transition:all .2s;" onclick="resetYearlyFilter()" title="Reset to this year"><i class="fas fa-redo-alt"></i></button>
-               </div>
-               <div style="display:flex;gap:6px;align-items:stretch;">
-                 <select class="sc-filter-input date-filter" id="yearlyDateInput" style="flex:1;padding:9px 12px;font-size:12px;background:#fff;color:var(--text);border:1px solid rgba(16,185,129,.2);border-radius:8px;">
-                   <?php $cy=date('Y'); for($y=$cy;$y>=$cy-5;$y--): ?>
-                   <option value="<?=$y?>"<?=$y==$cy?' selected':''?>><?=$y?></option>
-                   <?php endfor; ?>
-                 </select>
-                 <button class="sc-filter-btn apply-yearly-filter" style="flex:0;padding:9px 12px;background:#10b981;color:#fff;border-radius:8px;border:none;font-weight:600;transition:all .2s;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'"><i class="fas fa-check"></i></button>
-               </div>
-             </div>
-           </div>
-         </div>
-         
-         <div class="sales-grid">
-           <!-- Daily -->
-           <div class="sales-card sc-daily daily-sales" data-type="daily"
-                data-usd="<?= number_format($dailySales['usd_profit'],2) ?>"
-                data-afs="<?= number_format($dailySales['afs_profit'],2) ?>">
-             <div class="sc-label"><i class="fas fa-sun"></i> <?= __('daily_sales') ?></div>
-             <div class="sc-amount">$<span id="dailyUsdProfit"><?= number_format($dailySales['usd_profit'],2) ?></span></div>
-             <div class="sc-secondary">؋<span id="dailyAfsProfit"><?= number_format($dailySales['afs_profit'],2) ?></span></div>
-             <div class="sc-footer">
-               <span class="trend-badge"><?php if($dailyTrendPercent>=0):?><i class="fas fa-arrow-up"></i><?php else:?><i class="fas fa-arrow-down"></i><?php endif;?> <?= number_format(abs($dailyTrendPercent),1) ?>%</span>
-               <div class="sc-sparkline"><div class="spark-bar" style="height:35%"></div><div class="spark-bar" style="height:55%"></div><div class="spark-bar" style="height:40%"></div><div class="spark-bar" style="height:75%"></div><div class="spark-bar" style="height:60%"></div><div class="spark-bar" style="height:80%"></div><div class="spark-bar hi" style="height:100%"></div></div>
-             </div>
-             <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
-               <span style="font-size:11px;opacity:.6;" id="dailyDateDisplay"><?= __('today') ?></span>
-             </div>
-           </div>
-           
-           <!-- Monthly -->
-           <div class="sales-card sc-monthly monthly-sales" data-type="monthly"
-                data-usd="<?= number_format($monthlySales['usd_profit'],2) ?>"
-                data-afs="<?= number_format($monthlySales['afs_profit'],2) ?>">
-             <div class="sc-label"><i class="fas fa-calendar-alt"></i> <?= __('monthly_sales') ?></div>
-             <div class="sc-amount">$<span id="monthlyUsdProfit"><?= number_format($monthlySales['usd_profit'],2) ?></span></div>
-             <div class="sc-secondary">؋<span id="monthlyAfsProfit"><?= number_format($monthlySales['afs_profit'],2) ?></span></div>
-             <div class="sc-footer">
-               <span class="trend-badge"><?php if($monthlyTrendPercent>=0):?><i class="fas fa-arrow-up"></i><?php else:?><i class="fas fa-arrow-down"></i><?php endif;?> <?= number_format(abs($monthlyTrendPercent),1) ?>%</span>
-               <div class="sc-sparkline"><div class="spark-bar" style="height:30%"></div><div class="spark-bar" style="height:50%"></div><div class="spark-bar" style="height:65%"></div><div class="spark-bar" style="height:45%"></div><div class="spark-bar" style="height:80%"></div><div class="spark-bar" style="height:60%"></div><div class="spark-bar hi" style="height:100%"></div></div>
-             </div>
-             <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
-               <span style="font-size:11px;opacity:.6;" id="monthlyDateDisplay"><?= date('M Y') ?></span>
-             </div>
-           </div>
-           
-           <!-- Yearly -->
-           <div class="sales-card sc-yearly yearly-sales" data-type="yearly"
-                data-usd="<?= number_format($yearlySales['usd_profit'],2) ?>"
-                data-afs="<?= number_format($yearlySales['afs_profit'],2) ?>">
-             <div class="sc-label"><i class="fas fa-chart-line"></i> <?= __('yearly_sales') ?></div>
-             <div class="sc-amount">$<span id="yearlyUsdProfit"><?= number_format($yearlySales['usd_profit'],2) ?></span></div>
-             <div class="sc-secondary">؋<span id="yearlyAfsProfit"><?= number_format($yearlySales['afs_profit'],2) ?></span></div>
-             <div class="sc-footer">
-               <span class="trend-badge"><?php if($yearlyTrendPercent>=0):?><i class="fas fa-arrow-up"></i><?php else:?><i class="fas fa-arrow-down"></i><?php endif;?> <?= number_format(abs($yearlyTrendPercent),1) ?>%</span>
-               <div class="sc-sparkline"><div class="spark-bar" style="height:20%"></div><div class="spark-bar" style="height:38%"></div><div class="spark-bar" style="height:32%"></div><div class="spark-bar" style="height:58%"></div><div class="spark-bar" style="height:52%"></div><div class="spark-bar" style="height:72%"></div><div class="spark-bar hi" style="height:100%"></div></div>
-             </div>
-             <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
-               <span style="font-size:11px;opacity:.6;" id="yearlyDateDisplay"><?= date('Y') ?></span>
-             </div>
-           </div>
-         </div>
-         <?php endif; ?>
-
-        <!-- OUTSTANDING DUES (admin + finance) -->
-        <?php if (in_array($user['role'],['admin','finance'])): ?>
-        <div class="sec-label"><i class="fas fa-receipt"></i> <?= __('outstanding_dues') ?></div>
-        <div class="dues-grid">
-          <?php if (hasFeature('ticket_bookings',$allowed_features)): ?>
-          <div class="due-card dc-ticket" data-type="ticket"><div class="due-icon"><i class="fas fa-ticket-alt"></i></div><div class="due-label"><?= __('ticket_bookings') ?></div><div class="due-usd" id="ticketDuesUSD">$0.00</div><div class="due-afs" id="ticketDuesAFS">؋0.00</div><div class="due-bar-track"><div class="due-bar-fill"></div></div></div>
-          <?php endif; ?>
-          <?php if (hasFeature('date_change_tickets',$allowed_features)): ?>
-          <div class="due-card dc-datechange" data-type="datechange"><div class="due-icon"><i class="fas fa-calendar-times"></i></div><div class="due-label"><?= __('date_change') ?></div><div class="due-usd" id="dateChangeDuesUSD">$0.00</div><div class="due-afs" id="dateChangeDuesAFS">؋0.00</div><div class="due-bar-track"><div class="due-bar-fill"></div></div></div>
-          <?php endif; ?>
-          <?php if (hasFeature('refunded_tickets',$allowed_features)): ?>
-          <div class="due-card dc-refund" data-type="refunded"><div class="due-icon"><i class="fas fa-undo-alt"></i></div><div class="due-label"><?= __('refunded_tickets') ?></div><div class="due-usd" id="refundedDuesUSD">$0.00</div><div class="due-afs" id="refundedDuesAFS">؋0.00</div><div class="due-bar-track"><div class="due-bar-fill"></div></div></div>
-          <?php endif; ?>
-          <?php if (hasFeature('umrah_bookings',$allowed_features)): ?>
-          <div class="due-card dc-umrah" data-type="umrah"><div class="due-icon"><i class="fas fa-mosque"></i></div><div class="due-label"><?= __('umrah') ?></div><div class="due-usd" id="umrahDuesUSD">$0.00</div><div class="due-afs" id="umrahDuesAFS">؋0.00</div><div class="due-bar-track"><div class="due-bar-fill"></div></div></div>
-          <?php endif; ?>
-          <?php if (hasFeature('visa_applications',$allowed_features)): ?>
-          <div class="due-card dc-visa" data-type="visa"><div class="due-icon"><i class="fas fa-passport"></i></div><div class="due-label"><?= __('visa') ?></div><div class="due-usd" id="visaDuesUSD">$0.00</div><div class="due-afs" id="visaDuesAFS">؋0.00</div><div class="due-bar-track"><div class="due-bar-fill"></div></div></div>
-          <?php endif; ?>
-          <?php if (hasFeature('hotel_bookings',$allowed_features)): ?>
-          <div class="due-card dc-hotel" data-type="hotel"><div class="due-icon"><i class="fas fa-hotel"></i></div><div class="due-label"><?= __('hotel') ?></div><div class="due-usd" id="hotelDuesUSD">$0.00</div><div class="due-afs" id="hotelDuesAFS">؋0.00</div><div class="due-bar-track"><div class="due-bar-fill"></div></div></div>
-          <?php endif; ?>
-          <?php if (hasFeature('additional_payments',$allowed_features)): ?>
-          <div class="due-card dc-addpay" data-type="addpayment"><div class="due-icon"><i class="fas fa-dollar-sign"></i></div><div class="due-label"><?= __('additional_payments') ?></div><div class="due-usd" id="addpaymentDuesUSD">$0.00</div><div class="due-afs" id="addpaymentDuesAFS">؋0.00</div><div class="due-bar-track"><div class="due-bar-fill"></div></div></div>
-          <?php endif; ?>
-          <?php if (hasFeature('ticket_weights',$allowed_features)): ?>
-          <div class="due-card dc-weight" data-type="weight"><div class="due-icon"><i class="fas fa-weight-hanging"></i></div><div class="due-label"><?= __('weight') ?></div><div class="due-usd" id="weightDuesUSD">$0.00</div><div class="due-afs" id="weightDuesAFS">؋0.00</div><div class="due-bar-track"><div class="due-bar-fill"></div></div></div>
-          <?php endif; ?>
-          <?php if (hasFeature('ticket_reservations',$allowed_features)): ?>
-          <div class="due-card dc-reserve" data-type="ticket_reserve"><div class="due-icon"><i class="fas fa-bookmark"></i></div><div class="due-label"><?= __('ticket_reserve') ?></div><div class="due-usd" id="ticketReserveDuesUSD">$0.00</div><div class="due-afs" id="ticketReserveDuesAFS">؋0.00</div><div class="due-bar-track"><div class="due-bar-fill"></div></div></div>
-          <?php endif; ?>
-        </div>
-        <?php endif; ?>
-
-        <!-- TICKET BOOKINGS + NOTIFICATIONS -->
-        <?php
-        $today_stmt=$this_week_stmt=$this_month_stmt=$today_departures_stmt=null;
-        try {
-          $today_stmt=$pdo->prepare("SELECT tb.*,s.name AS supplier_name FROM ticket_bookings tb LEFT JOIN suppliers s ON tb.supplier=s.id AND s.tenant_id=tb.tenant_id WHERE DATE(tb.created_at)=CURDATE() AND tb.tenant_id=?");
-          $today_stmt->execute([$tenant_id]);
-          $this_week_stmt=$pdo->prepare("SELECT tb.*,s.name AS supplier_name FROM ticket_bookings tb LEFT JOIN suppliers s ON tb.supplier=s.id AND s.tenant_id=tb.tenant_id WHERE YEARWEEK(tb.created_at,1)=YEARWEEK(CURDATE(),1) AND tb.tenant_id=?");
-          $this_week_stmt->execute([$tenant_id]);
-          $this_month_stmt=$pdo->prepare("SELECT tb.*,s.name AS supplier_name FROM ticket_bookings tb LEFT JOIN suppliers s ON tb.supplier=s.id AND s.tenant_id=tb.tenant_id WHERE YEAR(tb.created_at)=YEAR(CURDATE()) AND MONTH(tb.created_at)=MONTH(CURDATE()) AND tb.tenant_id=?");
-          $this_month_stmt->execute([$tenant_id]);
-          $today_departures_stmt=$pdo->prepare("SELECT tb.*,s.name AS supplier_name,tb.phone AS passenger_phone FROM ticket_bookings tb LEFT JOIN suppliers s ON tb.supplier=s.id AND s.tenant_id=tb.tenant_id WHERE DATE(tb.departure_date)=? AND tb.tenant_id=?");
-          $today_departures_stmt->execute([$selected_date,$tenant_id]);
-        } catch(PDOException $e){error_log($e->getMessage());}
-
-        // Helper to render flight card rows
-        function renderFlightCard($row) {
-          $o=$row['origin']??$row['from_city']??''; $d=$row['destination']??$row['to_city']??'';
-          $oc=$row['origin_code']??$row['from_code']??''; $dc=$row['destination_code']??$row['to_code']??'';
-          echo '<div class="flight-card">';
-          echo '<div class="fc-pass"><h3>'.htmlspecialchars($row['passenger_name']).'</h3>';
-          echo '<span><i class="fas fa-barcode" style="font-size:10px;"></i> '.htmlspecialchars($row['pnr']).'</span>';
-          if (!empty($row['passenger_phone'])) echo '<span style="color:var(--sky);margin-top:3px;"><i class="fas fa-phone-alt" style="font-size:10px;"></i> '.htmlspecialchars($row['passenger_phone']).'</span>';
-          echo '</div>';
-          echo '<div class="fc-route"><div><div class="fc-city-code">'.htmlspecialchars($oc?:strtoupper(substr($o,0,3))).'</div><div class="fc-city-name">'.htmlspecialchars($o).'</div></div><div class="fc-arrow"><div class="fc-arrow-line"></div><div class="fc-airline">'.htmlspecialchars($row['airline']??$row['supplier_name']??'').'</div></div><div><div class="fc-city-code">'.htmlspecialchars($dc?:strtoupper(substr($d,0,3))).'</div><div class="fc-city-name">'.htmlspecialchars($d).'</div></div></div>';
-          echo '<div class="fc-dates"><div class="fc-date-row"><i class="fas fa-calendar-check"></i> '.htmlspecialchars(__('issue')).': <span>'.date('d M Y',strtotime($row['issue_date'])).'</span></div><div class="fc-date-row dep"><i class="fas fa-plane-departure"></i> '.htmlspecialchars(__('departure')).': <span>'.date('d M Y',strtotime($row['departure_date'])).'</span></div></div>';
-          echo '<div class="fc-sold">'.htmlspecialchars($row['sold']).'</div>';
-          echo '</div>';
-        }
-        ?>
-
-        <div class="two-col">
-
-          <!-- Ticket Bookings -->
-          <?php if ($showTickets && in_array($user['role'],['admin','finance','sales'])): ?>
-          <div class="d-card" style="margin-bottom:0;">
-            <div class="d-card-header">
-              <div class="d-card-title"><div class="ci ci-violet"><i class="fas fa-plane"></i></div><?= __('ticket_bookings_overview') ?></div>
-            </div>
-            <div class="ftabs">
-              <button class="ftab active" onclick="switchFlightTab(this,'ftab-dep')">✈ <?= $selected_date===date('Y-m-d')?__('todays_departures'):'Dep '.date('M d',strtotime($selected_date)) ?></button>
-              <button class="ftab" onclick="switchFlightTab(this,'ftab-today')"><?= __('today') ?></button>
-              <button class="ftab" onclick="switchFlightTab(this,'ftab-week')"><?= __('this_week') ?></button>
-              <button class="ftab" onclick="switchFlightTab(this,'ftab-month')"><?= __('this_month') ?></button>
-            </div>
-
-            <div id="ftab-dep">
-              <div class="dep-filter-bar">
-                <form method="GET" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-                  <label>Departure Date:</label>
-                  <input type="date" name="departure_date" class="dep-date-input" value="<?= htmlspecialchars($selected_date) ?>">
-                  <button type="submit" class="dbtn dbtn-primary" style="padding:6px 14px;font-size:12px;">Filter</button>
-                  <a href="dashboard.php" class="dbtn dbtn-ghost" style="padding:6px 14px;font-size:12px;">Today</a>
-                </form>
+            
+            <div class="sales-grid">
+              <!-- Daily -->
+              <div class="sales-card sc-daily daily-sales" data-type="daily"
+                    data-usd="<?= number_format($dailySales['usd_profit'],2) ?>"
+                    data-afs="<?= number_format($dailySales['afs_profit'],2) ?>">
+                <div class="sc-label"><i class="fas fa-sun"></i> <?= __('daily_sales') ?></div>
+                <div class="sc-amount">$<span id="dailyUsdProfit"><?= number_format($dailySales['usd_profit'],2) ?></span></div>
+                <div class="sc-secondary">؋<span id="dailyAfsProfit"><?= number_format($dailySales['afs_profit'],2) ?></span></div>
+                <div class="sc-footer">
+                  <span class="trend-badge"><?php if($dailyTrendPercent>=0):?><i class="fas fa-arrow-up"></i><?php else:?><i class="fas fa-arrow-down"></i><?php endif;?> <?= number_format(abs($dailyTrendPercent),1) ?>%</span>
+                  <div class="sc-sparkline"><div class="spark-bar" style="height:35%"></div><div class="spark-bar" style="height:55%"></div><div class="spark-bar" style="height:40%"></div><div class="spark-bar" style="height:75%"></div><div class="spark-bar" style="height:60%"></div><div class="spark-bar" style="height:80%"></div><div class="spark-bar hi" style="height:100%"></div></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
+                  <span style="font-size:11px;opacity:.6;" id="dailyDateDisplay"><?= __('today') ?></span>
+                </div>
               </div>
-              <div class="flight-cards">
-                <?php if ($today_departures_stmt&&$today_departures_stmt->rowCount()>0): while($row=$today_departures_stmt->fetch(PDO::FETCH_ASSOC)): renderFlightCard($row); endwhile; else: ?>
-                <div class="d-empty"><i class="fas fa-plane-slash"></i>No departures for this date</div>
-                <?php endif; ?>
+              
+              <!-- Monthly -->
+              <div class="sales-card sc-monthly monthly-sales" data-type="monthly"
+                    data-usd="<?= number_format($monthlySales['usd_profit'],2) ?>"
+                    data-afs="<?= number_format($monthlySales['afs_profit'],2) ?>">
+                <div class="sc-label"><i class="fas fa-calendar-alt"></i> <?= __('monthly_sales') ?></div>
+                <div class="sc-amount">$<span id="monthlyUsdProfit"><?= number_format($monthlySales['usd_profit'],2) ?></span></div>
+                <div class="sc-secondary">؋<span id="monthlyAfsProfit"><?= number_format($monthlySales['afs_profit'],2) ?></span></div>
+                <div class="sc-footer">
+                  <span class="trend-badge"><?php if($monthlyTrendPercent>=0):?><i class="fas fa-arrow-up"></i><?php else:?><i class="fas fa-arrow-down"></i><?php endif;?> <?= number_format(abs($monthlyTrendPercent),1) ?>%</span>
+                  <div class="sc-sparkline"><div class="spark-bar" style="height:30%"></div><div class="spark-bar" style="height:50%"></div><div class="spark-bar" style="height:65%"></div><div class="spark-bar" style="height:45%"></div><div class="spark-bar" style="height:80%"></div><div class="spark-bar" style="height:60%"></div><div class="spark-bar hi" style="height:100%"></div></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
+                  <span style="font-size:11px;opacity:.6;" id="monthlyDateDisplay"><?= date('M Y') ?></span>
+                </div>
+              </div>
+              
+              <!-- Yearly -->
+              <div class="sales-card sc-yearly yearly-sales" data-type="yearly"
+                    data-usd="<?= number_format($yearlySales['usd_profit'],2) ?>"
+                    data-afs="<?= number_format($yearlySales['afs_profit'],2) ?>">
+                <div class="sc-label"><i class="fas fa-chart-line"></i> <?= __('yearly_sales') ?></div>
+                <div class="sc-amount">$<span id="yearlyUsdProfit"><?= number_format($yearlySales['usd_profit'],2) ?></span></div>
+                <div class="sc-secondary">؋<span id="yearlyAfsProfit"><?= number_format($yearlySales['afs_profit'],2) ?></span></div>
+                <div class="sc-footer">
+                  <span class="trend-badge"><?php if($yearlyTrendPercent>=0):?><i class="fas fa-arrow-up"></i><?php else:?><i class="fas fa-arrow-down"></i><?php endif;?> <?= number_format(abs($yearlyTrendPercent),1) ?>%</span>
+                  <div class="sc-sparkline"><div class="spark-bar" style="height:20%"></div><div class="spark-bar" style="height:38%"></div><div class="spark-bar" style="height:32%"></div><div class="spark-bar" style="height:58%"></div><div class="spark-bar" style="height:52%"></div><div class="spark-bar" style="height:72%"></div><div class="spark-bar hi" style="height:100%"></div></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
+                  <span style="font-size:11px;opacity:.6;" id="yearlyDateDisplay"><?= date('Y') ?></span>
+                </div>
               </div>
             </div>
-            <div id="ftab-today" style="display:none;"><div class="flight-cards">
-              <?php if ($today_stmt&&$today_stmt->rowCount()>0): while($row=$today_stmt->fetch(PDO::FETCH_ASSOC)): renderFlightCard($row); endwhile; else: ?>
-              <div class="d-empty"><i class="fas fa-ticket-alt"></i>No tickets booked today</div>
+            <?php endif; ?>
+
+            <!-- OUTSTANDING DUES (admin + finance) -->
+            <?php if (in_array($user['role'],['admin','finance'])): ?>
+            <div class="sec-label"><i class="fas fa-receipt"></i> <?= __('outstanding_dues') ?></div>
+            <div class="dues-grid">
+              <?php if (hasFeature('ticket_bookings',$allowed_features)): ?>
+              <div class="due-card dc-ticket" data-type="ticket"><div class="due-icon"><i class="fas fa-ticket-alt"></i></div><div class="due-label"><?= __('ticket_bookings') ?></div><div class="due-usd" id="ticketDuesUSD">$0.00</div><div class="due-afs" id="ticketDuesAFS">؋0.00</div><div class="due-bar-track"><div class="due-bar-fill"></div></div></div>
               <?php endif; ?>
-            </div></div>
-            <div id="ftab-week" style="display:none;"><div class="flight-cards">
-              <?php if ($this_week_stmt&&$this_week_stmt->rowCount()>0): while($row=$this_week_stmt->fetch(PDO::FETCH_ASSOC)): renderFlightCard($row); endwhile; else: ?>
-              <div class="d-empty"><i class="fas fa-ticket-alt"></i>No tickets this week</div>
+              <?php if (hasFeature('date_change_tickets',$allowed_features)): ?>
+              <div class="due-card dc-datechange" data-type="datechange"><div class="due-icon"><i class="fas fa-calendar-times"></i></div><div class="due-label"><?= __('date_change') ?></div><div class="due-usd" id="dateChangeDuesUSD">$0.00</div><div class="due-afs" id="dateChangeDuesAFS">؋0.00</div><div class="due-bar-track"><div class="due-bar-fill"></div></div></div>
               <?php endif; ?>
-            </div></div>
-            <div id="ftab-month" style="display:none;"><div class="flight-cards">
-              <?php if ($this_month_stmt&&$this_month_stmt->rowCount()>0): while($row=$this_month_stmt->fetch(PDO::FETCH_ASSOC)): renderFlightCard($row); endwhile; else: ?>
-              <div class="d-empty"><i class="fas fa-ticket-alt"></i>No tickets this month</div>
+              <?php if (hasFeature('refunded_tickets',$allowed_features)): ?>
+              <div class="due-card dc-refund" data-type="refunded"><div class="due-icon"><i class="fas fa-undo-alt"></i></div><div class="due-label"><?= __('refunded_tickets') ?></div><div class="due-usd" id="refundedDuesUSD">$0.00</div><div class="due-afs" id="refundedDuesAFS">؋0.00</div><div class="due-bar-track"><div class="due-bar-fill"></div></div></div>
               <?php endif; ?>
-            </div></div>
-          </div>
-          <?php endif; ?>
+              <?php if (hasFeature('umrah_bookings',$allowed_features)): ?>
+              <div class="due-card dc-umrah" data-type="umrah"><div class="due-icon"><i class="fas fa-mosque"></i></div><div class="due-label"><?= __('umrah') ?></div><div class="due-usd" id="umrahDuesUSD">$0.00</div><div class="due-afs" id="umrahDuesAFS">؋0.00</div><div class="due-bar-track"><div class="due-bar-fill"></div></div></div>
+              <?php endif; ?>
+              <?php if (hasFeature('visa_applications',$allowed_features)): ?>
+              <div class="due-card dc-visa" data-type="visa"><div class="due-icon"><i class="fas fa-passport"></i></div><div class="due-label"><?= __('visa') ?></div><div class="due-usd" id="visaDuesUSD">$0.00</div><div class="due-afs" id="visaDuesAFS">؋0.00</div><div class="due-bar-track"><div class="due-bar-fill"></div></div></div>
+              <?php endif; ?>
+              <?php if (hasFeature('hotel_bookings',$allowed_features)): ?>
+              <div class="due-card dc-hotel" data-type="hotel"><div class="due-icon"><i class="fas fa-hotel"></i></div><div class="due-label"><?= __('hotel') ?></div><div class="due-usd" id="hotelDuesUSD">$0.00</div><div class="due-afs" id="hotelDuesAFS">؋0.00</div><div class="due-bar-track"><div class="due-bar-fill"></div></div></div>
+              <?php endif; ?>
+              <?php if (hasFeature('additional_payments',$allowed_features)): ?>
+              <div class="due-card dc-addpay" data-type="addpayment"><div class="due-icon"><i class="fas fa-dollar-sign"></i></div><div class="due-label"><?= __('additional_payments') ?></div><div class="due-usd" id="addpaymentDuesUSD">$0.00</div><div class="due-afs" id="addpaymentDuesAFS">؋0.00</div><div class="due-bar-track"><div class="due-bar-fill"></div></div></div>
+              <?php endif; ?>
+              <?php if (hasFeature('ticket_weights',$allowed_features)): ?>
+              <div class="due-card dc-weight" data-type="weight"><div class="due-icon"><i class="fas fa-weight-hanging"></i></div><div class="due-label"><?= __('weight') ?></div><div class="due-usd" id="weightDuesUSD">$0.00</div><div class="due-afs" id="weightDuesAFS">؋0.00</div><div class="due-bar-track"><div class="due-bar-fill"></div></div></div>
+              <?php endif; ?>
+              <?php if (hasFeature('ticket_reservations',$allowed_features)): ?>
+              <div class="due-card dc-reserve" data-type="ticket_reserve"><div class="due-icon"><i class="fas fa-bookmark"></i></div><div class="due-label"><?= __('ticket_reserve') ?></div><div class="due-usd" id="ticketReserveDuesUSD">$0.00</div><div class="due-afs" id="ticketReserveDuesAFS">؋0.00</div><div class="due-bar-track"><div class="due-bar-fill"></div></div></div>
+              <?php endif; ?>
+            </div>
+            <?php endif; ?>
 
-          <!-- Notifications (admin only) -->
-          <?php if ($user['role']==='admin'): ?>
-          <div class="d-card" style="margin-bottom:0;" id="notificationsCard">
-            <div class="d-card-header" style="justify-content: space-between;">
-              <div class="d-card-title"><div class="ci ci-sky"><i class="fas fa-bell"></i></div><?= __('recent_notifications') ?></div>
-              <button class="notif-collapse-btn" onclick="toggleNotificationsCollapse()" title="Collapse/Expand" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:18px;padding:4px;transition:transform 0.3s ease;">
-                <i class="fas fa-chevron-up"></i>
-              </button>
-            </div>
-            <div class="notif-tabs-row">
-              <button class="notif-tab-btn active" onclick="switchNotifTab(this,'ntab-unread')">
-                <?= __('unread') ?> <span class="nbadge" id="unreadNotifCount"><?php try{$cs=$pdo->prepare("SELECT COUNT(*) FROM notifications WHERE status='unread' AND tenant_id=?");$cs->execute([$tenant_id]);echo $cs->fetchColumn();}catch(Exception $e){echo 0;} ?></span>
-              </button>
-              <button class="notif-tab-btn" onclick="switchNotifTab(this,'ntab-read')"><?= __('read') ?></button>
-            </div>
-            <div id="notificationsContent">
-              <div id="ntab-unread">
-              <?php
-              try {
-                $nq="SELECT n.*,CASE WHEN n.transaction_type='visa' THEN va.applicant_name WHEN n.transaction_type='supplier' THEN s.name WHEN n.transaction_type='umrah' THEN ub.name ELSE NULL END AS related_name,CASE WHEN n.transaction_type='visa' THEN va.base WHEN n.transaction_type='supplier' THEN st.amount WHEN n.transaction_type='umrah' THEN ub.sold_price ELSE 0 END AS transaction_amount,CASE WHEN n.transaction_type='visa' THEN va.currency WHEN n.transaction_type='supplier' THEN s.currency ELSE NULL END AS transaction_currency,CASE WHEN n.transaction_type='umrah' THEN ut.transaction_to ELSE NULL END AS umrah_transaction_to FROM notifications n LEFT JOIN visa_applications va ON n.transaction_id=va.id AND n.transaction_type='visa' LEFT JOIN umrah_bookings ub ON n.transaction_id=ub.booking_id AND n.transaction_type='umrah' LEFT JOIN umrah_transactions ut ON n.transaction_id=ut.id AND n.transaction_type='umrah' LEFT JOIN supplier_transactions st ON n.transaction_id=st.id AND n.transaction_type='supplier' LEFT JOIN suppliers s ON st.supplier_id=s.id OR va.supplier=s.id WHERE n.status='unread' AND n.tenant_id=? ORDER BY n.created_at DESC";
-                $ns=$pdo->prepare($nq);$ns->execute([$tenant_id]);
-                if($ns->rowCount()>0) displayModernNotifications($ns,'unread');
-                else echo '<div class="d-empty"><i class="fas fa-bell-slash"></i>'.__('no_unread_notifications_available').'</div>';
-              } catch(PDOException $e){error_log($e->getMessage());}
-              ?>
-            </div>
-            <div id="ntab-read" style="display:none;">
-              <div class="read-filter">
-                <label><?= __('filter') ?>:</label>
-                <input type="date" class="dep-date-input" id="readNotificationsDate" value="<?= date('Y-m-d') ?>">
-                <button class="dbtn dbtn-ghost" id="applyReadDateFilter" style="padding:6px 14px;font-size:12px;"><i class="fas fa-filter"></i> <?= __('filter') ?></button>
-              </div>
-              <div id="readNotificationsBody">
-                <?php
-                  try {
-                    $rq="SELECT n.*,CASE WHEN n.transaction_type='visa' THEN va.applicant_name WHEN n.transaction_type='supplier' THEN s.name WHEN n.transaction_type='umrah' THEN ub.name ELSE NULL END AS related_name,CASE WHEN n.transaction_type='visa' THEN va.base WHEN n.transaction_type='supplier' THEN st.amount WHEN n.transaction_type='umrah' THEN ub.sold_price ELSE 0 END AS transaction_amount,CASE WHEN n.transaction_type='visa' THEN va.currency WHEN n.transaction_type='supplier' THEN s.currency ELSE NULL END AS transaction_currency,CASE WHEN n.transaction_type='umrah' THEN ut.transaction_to ELSE NULL END AS umrah_transaction_to FROM notifications n LEFT JOIN visa_applications va ON n.transaction_id=va.id AND n.transaction_type='visa' LEFT JOIN umrah_bookings ub ON n.transaction_id=ub.booking_id AND n.transaction_type='umrah' LEFT JOIN umrah_transactions ut ON n.transaction_id=ut.id AND n.transaction_type='umrah' LEFT JOIN supplier_transactions st ON n.transaction_id=st.id AND n.transaction_type='supplier' LEFT JOIN suppliers s ON st.supplier_id=s.id OR va.supplier=s.id WHERE n.status='read' AND DATE(n.created_at)=? AND n.tenant_id=? ORDER BY n.created_at DESC";
-                    $rs=$pdo->prepare($rq);$rs->execute([date('Y-m-d'),$tenant_id]);
-                    if($rs->rowCount()>0) displayModernNotifications($rs,'read');
-                    else echo '<div class="d-empty"><i class="fas fa-inbox"></i>'.__('no_read_notifications_for_selected_date').'</div>';
-                  } catch(PDOException $e){error_log($e->getMessage());}
-                  ?>
-                </div>
-                </div>
-                </div>
-                </div>
-                <?php endif; ?>
+            <!-- TICKET BOOKINGS -->
+            <?php
+            $today_stmt=$this_week_stmt=$this_month_stmt=$today_departures_stmt=null;
+            try {
+              $today_stmt=$pdo->prepare("SELECT tb.*,s.name AS supplier_name FROM ticket_bookings tb LEFT JOIN suppliers s ON tb.supplier=s.id AND s.tenant_id=tb.tenant_id WHERE DATE(tb.created_at)=CURDATE() AND tb.tenant_id=?");
+              $today_stmt->execute([$tenant_id]);
+              $this_week_stmt=$pdo->prepare("SELECT tb.*,s.name AS supplier_name FROM ticket_bookings tb LEFT JOIN suppliers s ON tb.supplier=s.id AND s.tenant_id=tb.tenant_id WHERE YEARWEEK(tb.created_at,1)=YEARWEEK(CURDATE(),1) AND tb.tenant_id=?");
+              $this_week_stmt->execute([$tenant_id]);
+              $this_month_stmt=$pdo->prepare("SELECT tb.*,s.name AS supplier_name FROM ticket_bookings tb LEFT JOIN suppliers s ON tb.supplier=s.id AND s.tenant_id=tb.tenant_id WHERE YEAR(tb.created_at)=YEAR(CURDATE()) AND MONTH(tb.created_at)=MONTH(CURDATE()) AND tb.tenant_id=?");
+              $this_month_stmt->execute([$tenant_id]);
+              $today_departures_stmt=$pdo->prepare("SELECT tb.*,s.name AS supplier_name,tb.phone AS passenger_phone FROM ticket_bookings tb LEFT JOIN suppliers s ON tb.supplier=s.id AND s.tenant_id=tb.tenant_id WHERE DATE(tb.departure_date)=? AND tb.tenant_id=?");
+              $today_departures_stmt->execute([$selected_date,$tenant_id]);
+            } catch(PDOException $e){error_log($e->getMessage());}
 
-            </div><!-- /.two-col -->
+            // Helper to render flight card rows
+            function renderFlightCard($row) {
+              $o=$row['origin']??$row['from_city']??''; $d=$row['destination']??$row['to_city']??'';
+              $oc=$row['origin_code']??$row['from_code']??''; $dc=$row['destination_code']??$row['to_code']??'';
+              echo '<div class="flight-card">';
+              echo '<div class="fc-pass"><h3>'.htmlspecialchars($row['passenger_name']).'</h3>';
+              echo '<span><i class="fas fa-barcode" style="font-size:10px;"></i> '.htmlspecialchars($row['pnr']).'</span>';
+              if (!empty($row['passenger_phone'])) echo '<span style="color:var(--sky);margin-top:3px;"><i class="fas fa-phone-alt" style="font-size:10px;"></i> '.htmlspecialchars($row['passenger_phone']).'</span>';
+              echo '</div>';
+              echo '<div class="fc-route"><div><div class="fc-city-code">'.htmlspecialchars($oc?:strtoupper(substr($o,0,3))).'</div><div class="fc-city-name">'.htmlspecialchars($o).'</div></div><div class="fc-arrow"><div class="fc-arrow-line"></div><div class="fc-airline">'.htmlspecialchars($row['airline']??$row['supplier_name']??'').'</div></div><div><div class="fc-city-code">'.htmlspecialchars($dc?:strtoupper(substr($d,0,3))).'</div><div class="fc-city-name">'.htmlspecialchars($d).'</div></div></div>';
+              echo '<div class="fc-dates"><div class="fc-date-row"><i class="fas fa-calendar-check"></i> '.htmlspecialchars(__('issue')).': <span>'.date('d M Y',strtotime($row['issue_date'])).'</span></div><div class="fc-date-row dep"><i class="fas fa-plane-departure"></i> '.htmlspecialchars(__('departure')).': <span>'.date('d M Y',strtotime($row['departure_date'])).'</span></div></div>';
+              echo '<div class="fc-sold">'.htmlspecialchars($row['sold']).'</div>';
+              echo '</div>';
+            }
+            ?>
 
-        <!-- TOP PERFORMERS + CLIENT DEBTS -->
-        <?php if (in_array($user['role'],['admin','finance'])): ?>
-        <div class="two-col">
-          <?php if ($showTickets && $user['role']==='admin'): ?>
-          <div class="d-card" style="margin-bottom:0;">
-            <div class="d-card-header">
-              <div class="d-card-title"><div class="ci ci-amber"><i class="fas fa-trophy"></i></div><?= __('top_performers') ?></div>
-              <span style="font-size:12px;color:var(--text-muted);"><?= date('M Y') ?></span>
-            </div>
-            <div class="lb-filter-row">
-              <label><?= __('performance_period') ?>:</label>
-              <input type="month" class="dep-date-input date-filter" id="performanceDateInput" value="<?= date('Y-m') ?>">
-              <button class="dbtn dbtn-ghost apply-performance-filter" style="padding:6px 14px;font-size:12px;"><i class="fas fa-filter"></i> <?= __('apply_filter') ?></button>
-            </div>
-            <div class="lb-list" id="topPerformersTableBody">
-              <?php
-              $topPerformers=getTopPerformersByTicketProfit(date('m'),date('Y'));
-              if (count($topPerformers)>0):
-                $rank=1; $maxP=max(array_column($topPerformers,'total_profit_usd'));
-                foreach($topPerformers as $p):
-                  $pct=$maxP>0?round(($p['total_profit_usd']/$maxP)*100):0;
-                  $rc=$rank===1?'rank-1':($rank===2?'rank-2':($rank===3?'rank-3':'rank-other'));
-                  $ri=$rank===1?'🥇':($rank===2?'🥈':($rank===3?'🥉':$rank));
-                  $bc=$rank===1?'lb-bar-1':($rank===2?'lb-bar-2':($rank===3?'lb-bar-3':'lb-bar-o'));
-              ?>
-              <div class="lb-item">
-                <div class="lb-rank <?=$rc?>"><?=$ri?></div>
-                <div class="lb-info"><div class="lb-name"><?=htmlspecialchars($p['user_name'])?></div><div class="lb-bar-track"><div class="lb-bar-fill <?=$bc?>" style="width:<?=$pct?>%"></div></div></div>
-                <div class="lb-right"><div class="lb-profit">$<?=number_format($p['total_profit_usd'],2)?></div><div class="lb-tickets"><?=$p['total_tickets']?> <?=__('total_tickets')?></div></div>
-              </div>
-              <?php $rank++; endforeach;
-              else: echo '<div class="d-empty"><i class="fas fa-award"></i>'.__('no_ticket_sales_data_available').'</div>';
-              endif; ?>
-            </div>
-          </div>
-          <?php endif; ?>
-
-          <div class="d-card" style="margin-bottom:0;">
-            <div class="d-card-header">
-              <div class="d-card-title"><div class="ci ci-rose"><i class="fas fa-exclamation-circle"></i></div><?= __('client_debts') ?></div>
-              <span style="font-size:12px;color:var(--text-muted);"><?= __('clients_with_negative_balance') ?></span>
-            </div>
-            <div class="debt-pills">
-              <?php $clientsWithDebts=getClientsWithDebts();
-              if (count($clientsWithDebts)>0):
-                foreach($clientsWithDebts as $cl): ?>
-              <a href="client_detail.php?id=<?=$cl['id']?>" class="debt-pill">
-                <div class="debt-pill-name"><?=htmlspecialchars($cl['name'])?></div>
-                <div class="debt-pill-amounts">
-                  <span class="debt-amt <?=$cl['usd_balance']<0?'debt-neg':'debt-ok'?>">$<?=number_format($cl['usd_balance'],2)?></span>
-                  <span class="debt-amt debt-ok" style="opacity:.4;">|</span>
-                  <span class="debt-amt <?=$cl['afs_balance']<0?'debt-neg':'debt-ok'?>">؋<?=number_format($cl['afs_balance'],2)?></span>
-                </div>
-              </a>
-              <?php endforeach;
-              else: echo '<div class="d-empty"><i class="fas fa-check-circle" style="color:var(--emerald);"></i>'.__('no_clients_with_negative_balance_found').'</div>';
-              endif; ?>
-            </div>
-          </div>
-        </div>
-        <?php endif; ?>
-
-        <!-- UMRAH STATISTICS -->
+        <!-- Ticket Bookings -->
+        <?php if ($showTickets && in_array($user['role'],['admin','finance','sales'])): ?>
         <div class="d-card">
           <div class="d-card-header">
-            <div class="d-card-title"><div class="ci ci-emerald"><i class="feather icon-map-pin"></i></div><?= __('umrah_statistics') ?></div>
-            <span style="font-size:12px;color:var(--text-muted);"><?= __('this_month') ?></span>
+            <div class="d-card-title"><div class="ci ci-violet"><i class="fas fa-plane"></i></div><?= __('ticket_bookings_overview') ?></div>
           </div>
-          <div class="umrah-stat-row">
-            <div class="umrah-stat"><div class="umrah-stat-val us-green" id="umrahTotalBookings">0</div><div class="umrah-stat-lbl"><?= __('total_bookings') ?></div></div>
-            <div class="umrah-stat"><div class="umrah-stat-val us-blue"  id="umrahActivePackages">0</div><div class="umrah-stat-lbl"><?= __('ongoing_bookings') ?></div></div>
-            <div class="umrah-stat"><div class="umrah-stat-val us-violet" id="umrahServices">0</div><div class="umrah-stat-lbl"><?= __('total_pilgrims') ?></div></div>
+          <div class="ftabs">
+            <button class="ftab active" onclick="switchFlightTab(this,'ftab-dep')">✈ <?= $selected_date===date('Y-m-d')?__('todays_departures'):'Dep '.date('M d',strtotime($selected_date)) ?></button>
+            <button class="ftab" onclick="switchFlightTab(this,'ftab-today')"><?= __('today') ?></button>
+            <button class="ftab" onclick="switchFlightTab(this,'ftab-week')"><?= __('this_week') ?></button>
+            <button class="ftab" onclick="switchFlightTab(this,'ftab-month')"><?= __('this_month') ?></button>
           </div>
-          <div class="sec-label"><?= __('recent_bookings') ?></div>
-          <div class="umrah-bookings-wrapper">
-            <table class="umrah-bookings-table">
-              <thead>
-                <tr>
-                  <th><?= __('booking_id') ?></th>
-                  <th><?= __('package_type') ?></th>
-                  <th><?= __('passenger_name') ?></th>
-                  <th><?= __('amount') ?></th>
-                  <th><?= __('status') ?></th>
-                </tr>
-              </thead>
-              <tbody id="umrahBookingsTable">
-                <tr>
-                  <td colspan="5" class="text-center"><div class="d-spinner"><i class="fas fa-spinner fa-spin mr-2"></i><?= __('loading') ?>...</div></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
 
-       </div><!-- /.dash-inner -->
+          <div id="ftab-dep">
+            <div class="dep-filter-bar">
+              <form method="GET" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <label>Departure Date:</label>
+                <input type="date" name="departure_date" class="dep-date-input" value="<?= htmlspecialchars($selected_date) ?>">
+                <button type="submit" class="dbtn dbtn-primary" style="padding:6px 14px;font-size:12px;">Filter</button>
+                <a href="dashboard.php" class="dbtn dbtn-ghost" style="padding:6px 14px;font-size:12px;">Today</a>
+              </form>
+            </div>
+            <div class="flight-cards">
+              <?php if ($today_departures_stmt&&$today_departures_stmt->rowCount()>0): while($row=$today_departures_stmt->fetch(PDO::FETCH_ASSOC)): renderFlightCard($row); endwhile; else: ?>
+              <div class="d-empty"><i class="fas fa-plane-slash"></i>No departures for this date</div>
+              <?php endif; ?>
+            </div>
+          </div>
+          <div id="ftab-today" style="display:none;"><div class="flight-cards">
+            <?php if ($today_stmt&&$today_stmt->rowCount()>0): while($row=$today_stmt->fetch(PDO::FETCH_ASSOC)): renderFlightCard($row); endwhile; else: ?>
+            <div class="d-empty"><i class="fas fa-ticket-alt"></i>No tickets booked today</div>
+            <?php endif; ?>
+          </div></div>
+          <div id="ftab-week" style="display:none;"><div class="flight-cards">
+            <?php if ($this_week_stmt&&$this_week_stmt->rowCount()>0): while($row=$this_week_stmt->fetch(PDO::FETCH_ASSOC)): renderFlightCard($row); endwhile; else: ?>
+            <div class="d-empty"><i class="fas fa-ticket-alt"></i>No tickets this week</div>
+            <?php endif; ?>
+          </div></div>
+          <div id="ftab-month" style="display:none;"><div class="flight-cards">
+            <?php if ($this_month_stmt&&$this_month_stmt->rowCount()>0): while($row=$this_month_stmt->fetch(PDO::FETCH_ASSOC)): renderFlightCard($row); endwhile; else: ?>
+            <div class="d-empty"><i class="fas fa-ticket-alt"></i>No tickets this month</div>
+            <?php endif; ?>
+          </div></div>
+        </div>
+        <?php endif; ?>
+
+
+
+            <!-- TOP PERFORMERS + CLIENT DEBTS -->
+            <?php if (in_array($user['role'],['admin','finance'])): ?>
+            <div class="two-col">
+              <?php if ($showTickets && $user['role']==='admin'): ?>
+              <div class="d-card" style="margin-bottom:0;">
+                <div class="d-card-header">
+                  <div class="d-card-title"><div class="ci ci-amber"><i class="fas fa-trophy"></i></div><?= __('top_performers') ?></div>
+                  <span style="font-size:12px;color:var(--text-muted);"><?= date('M Y') ?></span>
+                </div>
+                <div class="lb-filter-row">
+                  <label><?= __('performance_period') ?>:</label>
+                  <input type="month" class="dep-date-input date-filter" id="performanceDateInput" value="<?= date('Y-m') ?>">
+                  <button class="dbtn dbtn-ghost apply-performance-filter" style="padding:6px 14px;font-size:12px;"><i class="fas fa-filter"></i> <?= __('apply_filter') ?></button>
+                </div>
+                <div class="lb-list" id="topPerformersTableBody">
+                  <?php
+                  $topPerformers=getTopPerformersByTicketProfit(date('m'),date('Y'));
+                  if (count($topPerformers)>0):
+                    $rank=1; $maxP=max(array_column($topPerformers,'total_profit_usd'));
+                    foreach($topPerformers as $p):
+                      $pct=$maxP>0?round(($p['total_profit_usd']/$maxP)*100):0;
+                      $rc=$rank===1?'rank-1':($rank===2?'rank-2':($rank===3?'rank-3':'rank-other'));
+                      $ri=$rank===1?'🥇':($rank===2?'🥈':($rank===3?'🥉':$rank));
+                      $bc=$rank===1?'lb-bar-1':($rank===2?'lb-bar-2':($rank===3?'lb-bar-3':'lb-bar-o'));
+                  ?>
+                  <div class="lb-item">
+                    <div class="lb-rank <?=$rc?>"><?=$ri?></div>
+                    <div class="lb-info"><div class="lb-name"><?=htmlspecialchars($p['user_name'])?></div><div class="lb-bar-track"><div class="lb-bar-fill <?=$bc?>" style="width:<?=$pct?>%"></div></div></div>
+                    <div class="lb-right"><div class="lb-profit">$<?=number_format($p['total_profit_usd'],2)?></div><div class="lb-tickets"><?=$p['total_tickets']?> <?=__('total_tickets')?></div></div>
+                  </div>
+                  <?php $rank++; endforeach;
+                  else: echo '<div class="d-empty"><i class="fas fa-award"></i>'.__('no_ticket_sales_data_available').'</div>';
+                  endif; ?>
+                </div>
+              </div>
+              <?php endif; ?>
+
+              <div class="d-card" style="margin-bottom:0;">
+                <div class="d-card-header">
+                  <div class="d-card-title"><div class="ci ci-rose"><i class="fas fa-exclamation-circle"></i></div><?= __('client_debts') ?></div>
+                  <span style="font-size:12px;color:var(--text-muted);"><?= __('clients_with_negative_balance') ?></span>
+                </div>
+                <div class="debt-pills">
+                  <?php $clientsWithDebts=getClientsWithDebts();
+                  if (count($clientsWithDebts)>0):
+                    foreach($clientsWithDebts as $cl): ?>
+                  <a href="client_detail.php?id=<?=$cl['id']?>" class="debt-pill">
+                    <div class="debt-pill-name"><?=htmlspecialchars($cl['name'])?></div>
+                    <div class="debt-pill-amounts">
+                      <span class="debt-amt <?=$cl['usd_balance']<0?'debt-neg':'debt-ok'?>">$<?=number_format($cl['usd_balance'],2)?></span>
+                      <span class="debt-amt debt-ok" style="opacity:.4;">|</span>
+                      <span class="debt-amt <?=$cl['afs_balance']<0?'debt-neg':'debt-ok'?>">؋<?=number_format($cl['afs_balance'],2)?></span>
+                    </div>
+                  </a>
+                  <?php endforeach;
+                  else: echo '<div class="d-empty"><i class="fas fa-check-circle" style="color:var(--emerald);"></i>'.__('no_clients_with_negative_balance_found').'</div>';
+                  endif; ?>
+                </div>
+              </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- UMRAH STATISTICS -->
+            <div class="d-card">
+              <div class="d-card-header">
+                <div class="d-card-title"><div class="ci ci-emerald"><i class="feather icon-map-pin"></i></div><?= __('umrah_statistics') ?></div>
+                <span style="font-size:12px;color:var(--text-muted);"><?= __('this_month') ?></span>
+              </div>
+              <div class="umrah-stat-row">
+                <div class="umrah-stat"><div class="umrah-stat-val us-green" id="umrahTotalBookings">0</div><div class="umrah-stat-lbl"><?= __('total_bookings') ?></div></div>
+                <div class="umrah-stat"><div class="umrah-stat-val us-blue"  id="umrahActivePackages">0</div><div class="umrah-stat-lbl"><?= __('ongoing_bookings') ?></div></div>
+                <div class="umrah-stat"><div class="umrah-stat-val us-violet" id="umrahServices">0</div><div class="umrah-stat-lbl"><?= __('total_pilgrims') ?></div></div>
+              </div>
+              <div class="sec-label"><?= __('recent_bookings') ?></div>
+              <div class="umrah-bookings-wrapper">
+                <table class="umrah-bookings-table">
+                  <thead>
+                    <tr>
+                      <th><?= __('booking_id') ?></th>
+                      <th><?= __('package_type') ?></th>
+                      <th><?= __('passenger_name') ?></th>
+                      <th><?= __('amount') ?></th>
+                      <th><?= __('status') ?></th>
+                    </tr>
+                  </thead>
+                  <tbody id="umrahBookingsTable">
+                    <tr>
+                      <td colspan="5" class="text-center"><div class="d-spinner"><i class="fas fa-spinner fa-spin mr-2"></i><?= __('loading') ?>...</div></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+        </div><!-- /.dash-inner -->
       </div><!-- /.dash-wrap -->
-     </div>
     </div>
-   </div>
   </div>
  </div>
 </div>
 
-<?php
-// ─── displayModernNotifications() ────────────────────────────────────────────
-function displayModernNotifications($stmt, $status) {
-     $byDate=[];
-     while($row=$stmt->fetch(PDO::FETCH_ASSOC)){
-         $date=date('Y-m-d',strtotime($row['created_at']));
-         $byDate[$date][]=$row;
-     }
-     foreach($byDate as $date=>$rows){
-         $lbl=($date===date('Y-m-d'))?__('today'):(($date===date('Y-m-d',strtotime('-1 day')))?__('yesterday'):date('l, F j, Y',strtotime($date)));
-         echo '<div class="tl-date-group"><div class="tl-date-hdr">'.$lbl.'</div>';
-         foreach($rows as $row){
-             $id=htmlspecialchars($row['id']);
-             $rawMsg=(string)($row['message'] ?? '');
-             $receiptValue='';
-             if(preg_match('/Receipt:\s*([^\.\|]+)/i',$rawMsg,$receiptMatch)){
-                 $receiptValue=trim($receiptMatch[1]);
-             }
-             $displayMsg=trim(preg_replace('/\s*Receipt:\s*[^\.\|]+\.?/i','',$rawMsg));
-             $msg=htmlspecialchars($displayMsg !== '' ? $displayMsg : $rawMsg);
-             $name=htmlspecialchars($row['related_name']??'');
-             $amt=$row['transaction_amount']??0;
-             $cur=htmlspecialchars($row['transaction_currency']??'');
-             $type=htmlspecialchars($row['transaction_type']??'');
-             $umrahTransactionTo=htmlspecialchars($row['umrah_transaction_to']??'');
-             $time=date('g:i A',strtotime($row['created_at']));
-             $sym=($cur==='USD')?'$':($cur==='AFS'?'؋':($cur==='EUR'?'€':''));
-             $dotClass='tld-default';$icon='fa-bell';$iconPrefix='fas';
-              switch($type){
-                  case 'visa':    $dotClass='tld-visa';    $icon='fa-passport';$iconPrefix='fas';break;
-                  case 'supplier':$dotClass='tld-supplier';$icon='fa-truck';$iconPrefix='fas';break;
-                  case 'umrah':   $dotClass='tld-umrah';   $icon='icon-map-pin';$iconPrefix='feather';break;
-                  case 'ticket':  $dotClass='tld-ticket';  $icon='fa-ticket-alt';$iconPrefix='fas';break;
-                  case 'refund':  $dotClass='tld-refund';  $icon='fa-undo-alt';$iconPrefix='fas';break;
-                  case 'expense':case 'expense_update':case 'expense_delete':$dotClass='tld-expense';$icon='fa-receipt';$iconPrefix='fas';break;
-                  case 'hotel':   $dotClass='tld-hotel';   $icon='fa-hotel';$iconPrefix='fas';break;
-                  case 'deposit_sarafi':case 'hawala_sarafi':case 'withdrawal_sarafi':$dotClass='tld-sarafi';$icon='fa-exchange-alt';$iconPrefix='fas';break;
-              }
-              // Check if notification contains "deleted" in the message
-              $isDeleted = stripos($rawMsg, 'deleted') !== false;
-              $hasReceipt = $receiptValue !== '';
-              // For umrah transactions with transaction_to='Bank', hide the "Received" button
-              $isBankTransaction = $type === 'umrah' && $umrahTransactionTo === 'Bank';
-              $readOnly=in_array($type,['deposit_sarafi','hawala_sarafi','withdrawal_sarafi','supplier_fund','client_fund','expense','expense_update','expense_delete','refund','ticket_refund']) || $isDeleted || $isBankTransaction || $hasReceipt;
-              echo '<div class="tl-item notification-'.htmlspecialchars($status).'" data-id="'.$id.'">';
-              echo '<div class="tl-dot '.$dotClass.($status==='unread'?' unread':'').'"><i class="'.$iconPrefix.' '.$icon.'"></i></div>';
-             echo '<div class="tl-body">';
-             echo '<div class="tl-top"><span class="tl-type">'.$type.'</span><span class="tl-time">'.$time.'</span></div>';
-             echo '<div class="tl-msg">'.$msg.'</div>';
-             if($name||$amt){
-                 echo '<div class="tl-meta">';
-                 if($name) echo '<span class="tl-chip"><i class="fas fa-user"></i>'.$name.'</span>';
-                 if($amt && !$hasReceipt)  echo '<span class="tl-chip"><i class="fas fa-credit-card"></i>'.$sym.number_format((float)$amt,2).'</span>';
-                 if($hasReceipt) echo '<span class="tl-chip"><i class="fas fa-receipt"></i>'.htmlspecialchars($receiptValue).'</span>';
-                 echo '</div>';
-             } elseif($hasReceipt){
-                 echo '<div class="tl-meta"><span class="tl-chip"><i class="fas fa-receipt"></i>'.htmlspecialchars($receiptValue).'</span></div>';
-             }
-             if($status==='unread'){
-                 echo '<div class="tl-actions">';
-                 if(!$readOnly) echo '<button class="tl-btn tl-btn-receive approve-button" data-id="'.$id.'" data-amount="'.$amt.'" data-currency="'.$cur.'" data-type="'.$type.'"><i class="fas fa-check"></i>'.htmlspecialchars(__('received')).'</button>';
-                 echo '<button class="tl-btn tl-btn-read read-button" data-id="'.$id.'"><i class="fas fa-eye"></i>'.htmlspecialchars(__('mark_as_read')).'</button>';
-                 echo '</div>';
-             }
-             echo '</div></div>';
-         }
-         echo '</div>';
-     }
-}
-?>
+
 
 <!-- MODALS -->
-<?php include '../modals/dashboard/receipt_modal.php'; ?>
+<?php include_once '../modals/dashboard/receipt_modal.php'; ?>
 <?php include '../modals/dashboard/debtor_modal.php'; ?>
 <?php include '../modals/dashboard/sales_modal.php'; ?>
 <?php include '../includes/admin_footer.php'; ?>
@@ -1099,10 +977,10 @@ function displayModernNotifications($stmt, $status) {
 
 <!-- ORIGINAL JS — all logic & API calls preserved unchanged -->
 <script src="../js/dashboard/dashboard-charts.js"></script>
-<script src="../js/dashboard/dashboard-notifications.js"></script>
+<!-- dashboard-notifications.js removed: notification handlers now in includes/header.php -->
 <script src="../js/dashboard/dashboard-sales.js"></script>
 <script src="../js/dashboard/dashboard-filters.js"></script>
-<script src="../js/dashboard/dashboard-receipt.js"></script>
+<!-- dashboard-receipt.js removed: receipt modal handlers now in includes/header.php -->
 <script src="../js/dashboard/dashboard-debtors.js"></script>
 <script src="../js/dashboard/dashboard-dues.js"></script>
 <script src="../js/dashboard/umrah-statistics.js"></script>
@@ -1119,14 +997,8 @@ function switchFlightTab(btn,id){
     if(el) el.style.display=(t===id)?'block':'none';
   });
 }
-function switchNotifTab(btn,id){
-  btn.closest('.d-card').querySelectorAll('.notif-tab-btn').forEach(t=>t.classList.remove('active'));
-  btn.classList.add('active');
-  ['ntab-unread','ntab-read'].forEach(t=>{
-    const el=document.getElementById(t);
-    if(el) el.style.display=(t===id)?'block':'none';
-  });
-}
+// switchNotifTab is now handled globally by includes/header.php
+// (notification card in dashboard is disabled; header handles all notifications)
 
 /* Reset filter functions */
 function resetDailyFilter(){
@@ -1232,43 +1104,8 @@ $('#dashboardTutorialsModal').on('show.bs.modal',function(){
   if(dashboardTutorials.length) $('.tutorial-item').first().trigger('click');
   });
 
-  // Notifications collapse/expand functionality
-  function toggleNotificationsCollapse() {
-  const content = document.getElementById('notificationsContent');
-  const btn = document.querySelector('.notif-collapse-btn');
-  
-  if (content.classList.contains('collapsed')) {
-    content.classList.remove('collapsed');
-    btn.classList.remove('collapsed');
-    localStorage.setItem('notificationsCollapsed', 'false');
-  } else {
-    content.classList.add('collapsed');
-    btn.classList.add('collapsed');
-    localStorage.setItem('notificationsCollapsed', 'true');
-  }
-  }
-
-  // Restore collapse state on page load & auto-collapse if count >= 10
-  document.addEventListener('DOMContentLoaded', function() {
-  const content = document.getElementById('notificationsContent');
-  const btn = document.querySelector('.notif-collapse-btn');
-  const unreadCountElement = document.getElementById('unreadNotifCount');
-  const unreadCount = unreadCountElement ? parseInt(unreadCountElement.textContent) : 0;
-  
-  // Auto-collapse if unread count >= 10
-  if (unreadCount >= 10) {
-    if (content) content.classList.add('collapsed');
-    if (btn) btn.classList.add('collapsed');
-    localStorage.setItem('notificationsCollapsed', 'true');
-  } else {
-    // Otherwise, restore previous state
-    const isCollapsed = localStorage.getItem('notificationsCollapsed') === 'true';
-    if (isCollapsed) {
-      if (content) content.classList.add('collapsed');
-      if (btn) btn.classList.add('collapsed');
-    }
-  }
-  });
+  // Notifications are now handled globally by includes/header.php
+  // (dashboard notification card is disabled; collapse JS removed to avoid conflicts)
 
   // Navigation to attendance page
   function goToAttendance() {

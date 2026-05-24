@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // SMTP settings
     $smtp_host = $_POST['smtp_host'] ?? '';
-    $smtp_port = $_POST['smtp_port'] ?? '';
+    $smtp_port = !empty($_POST['smtp_port']) ? intval($_POST['smtp_port']) : null;
     $smtp_encryption = $_POST['smtp_encryption'] ?? '';
     $smtp_username = $_POST['smtp_username'] ?? '';
     $smtp_password = $_POST['smtp_password'] ?? '';
@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$has_smtp_addon && $oldSettings) {
         // Protect SMTP fields from direct POST updates when SMTP add-on is not active.
         $smtp_host = $oldSettings['smtp_host'] ?? '';
-        $smtp_port = $oldSettings['smtp_port'] ?? '';
+        $smtp_port = $oldSettings['smtp_port'] ?? null;
         $smtp_encryption = $oldSettings['smtp_encryption'] ?? '';
         $smtp_username = $oldSettings['smtp_username'] ?? '';
         $smtp_password = $oldSettings['smtp_password'] ?? '';
@@ -67,16 +67,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $logo_path = '';
     if (!empty($logo['name'])) {
         try {
-            $uploader = new SecureFileUpload(2 * 1024 * 1024, '../uploads/');
-            $result = $uploader->upload('logo', 'logo', 1);
+            $uploader = new SecureFileUpload(5 * 1024 * 1024, '../uploads/');
+            $result = $uploader->upload('logo', 'logo');
             
             if ($result['success']) {
                 $logo_path = $result['data']['filename'];  // Save just the file name (not the full path)
             } else {
-                die("Failed to upload logo image: " . $result['error']);
+                $_SESSION['settings_message'] = $result['error'];
+                $_SESSION['settings_type'] = 'danger';
+                header('Location: tenant_settings.php');
+                exit();
             }
         } catch (Exception $e) {
-            die("Upload error: " . $e->getMessage());
+            $_SESSION['settings_message'] = 'Upload error: ' . $e->getMessage();
+            $_SESSION['settings_type'] = 'danger';
+            header('Location: tenant_settings.php');
+            exit();
         }
     } else {
         // If no new file is uploaded, keep the existing logo (only its file name)

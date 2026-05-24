@@ -448,7 +448,7 @@ class PassportPhotoExtractor {
         const bookingId = this.currentBookingId;
 
         try {
-            const response = await fetch('/almoqadas/mtravels/api/umrah/extract_passport_photo.php', {
+            const response = await fetch('/api/umrah/extract_passport_photo.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

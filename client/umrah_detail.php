@@ -1195,7 +1195,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 
       <!-- Documents -->
       <?php
-      $basePath = '/almoqadas/mtravels';
+      $basePath = '';
       $docPhoto = !empty($umrahData['photo_path']) ? $basePath . $umrahData['photo_path'] : '';
       $docPassport = !empty($umrahData['passport_path']) ? $basePath . $umrahData['passport_path'] : '';
       $docVisa = !empty($umrahData['visa_path']) ? $basePath . $umrahData['visa_path'] : '';

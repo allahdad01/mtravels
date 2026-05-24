@@ -88,8 +88,8 @@ $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : '
 $host = $_SERVER['HTTP_HOST'];
 
 // Get the base path from the REQUEST_URI
-// The script is at /almoqadas/mtravels/api/umrah/generate_id_cards.php
-// We need to go back to /almoqadas/mtravels/
+// The script is at /api/umrah/generate_id_cards.php
+// We need to go back to /
 $scriptPath = dirname(dirname(dirname($_SERVER['SCRIPT_NAME']))); // Remove /api/umrah/
 if ($scriptPath === '.' || $scriptPath === '/') {
     $scriptPath = '';

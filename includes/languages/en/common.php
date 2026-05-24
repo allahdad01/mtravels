@@ -15,6 +15,13 @@ return [
     // Navigation
     'navigation' => 'Navigation',
     'pages' => 'Pages',
+    'travel_services' => 'Travel & Services',
+    'finance_accounting' => 'Finance & Accounting',
+    'people_hr' => 'People & HR',
+    'operations' => 'Operations',
+    'communication' => 'Communication',
+    'security_monitoring' => 'Security & Monitoring',
+    'support' => 'Support',
     
     // Menu items
     'home' => 'Home',

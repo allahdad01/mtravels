@@ -15,6 +15,13 @@ return [
     // Navigation
     'navigation' => 'ناوبری',
     'pages' => 'صفحات',
+    'travel_services' => 'سفر و خدمات',
+    'finance_accounting' => 'مالی و حسابداری',
+    'people_hr' => 'افراد و منابع انسانی',
+    'operations' => 'عملیات',
+    'communication' => 'ارتباطات',
+    'security_monitoring' => 'امنیت و نظارت',
+    'support' => 'پشتیبانی',
     
     // Menu items
     'home' => 'خانه',

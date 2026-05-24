@@ -123,7 +123,7 @@ async function saveDocumentFile(file, documentType) {
             formData.append('family_id', familyId);
         }
         
-        const response = await fetch('/almoqadas/mtravels/api/umrah/save_passport_document.php', {
+        const response = await fetch('/api/umrah/save_passport_document.php', {
             method: 'POST',
             body: formData,
             credentials: 'same-origin'
@@ -165,7 +165,7 @@ async function extractPhotoFromPassport(file, familyId) {
             try {
                 const imageData = e.target.result;
                 
-                const response = await fetch('/almoqadas/mtravels/api/umrah/auto_extract_passport_photo.php', {
+                const response = await fetch('/api/umrah/auto_extract_passport_photo.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -292,7 +292,7 @@ async function performClientSideOCR(file, documentType) {
         // Send OCR text to server for MRZ parsing
         showDocumentStatus(documentType, `⏳ Extracting data with server-side MRZ parsing...`, 'info');
         
-        const response = await fetch('/almoqadas/mtravels/api/umrah/extract_text.php', {
+        const response = await fetch('/api/umrah/extract_text.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

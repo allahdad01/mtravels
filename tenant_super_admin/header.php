@@ -1410,9 +1410,635 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
     html[dir="rtl"] .pcoded-navbar * {
         box-sizing: border-box !important;
     }
+
+    /* ============================================
+    MODERN HEADER & SIDEBAR TEMPLATE
+    ============================================ */
+    :root {
+        --app-gradient: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        --app-gradient-soft: linear-gradient(135deg, rgba(64,153,255,.12) 0%, rgba(46,216,182,.12) 100%);
+        --app-header-height: 64px;
+        --app-sidebar-width: 260px;
+        --app-sidebar-collapsed-width: 68px;
+        --app-bg-page: #f0f4f8;
+        --app-bg-sidebar: #0f1b2d;
+        --app-bg-header: #ffffff;
+        --app-text-primary: #1a2332;
+        --app-text-secondary: #6b7a90;
+        --app-text-sidebar: #a8b8cc;
+        --app-border: #e4eaf2;
+        --app-shadow-sm: 0 1px 4px rgba(0,0,0,.06);
+        --app-shadow-lg: 0 8px 32px rgba(64,153,255,.18);
+        --app-radius-sm: 6px;
+        --app-transition: .28s cubic-bezier(.4,0,.2,1);
+    }
+
+    body {
+        background: var(--app-bg-page) !important;
+        overflow-x: hidden;
+    }
+
+    .app-shell-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(10,20,40,.45);
+        backdrop-filter: blur(2px);
+        z-index: 1030;
+        opacity: 0;
+        transition: opacity var(--app-transition);
+    }
+
+    .app-shell-overlay.active {
+        display: block;
+        opacity: 1;
+    }
+
+    .app-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: var(--app-header-height);
+        background: var(--app-bg-header);
+        border-bottom: 1px solid var(--app-border);
+        box-shadow: var(--app-shadow-sm);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0 1.5rem;
+        z-index: 1020;
+    }
+
+    .app-header__toggle {
+        width: 38px;
+        height: 38px;
+        border-radius: var(--app-radius-sm);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        background: transparent;
+        border: 0;
+        cursor: pointer;
+        transition: background var(--app-transition);
+        flex-shrink: 0;
+    }
+
+    .app-header__toggle:hover {
+        background: var(--app-gradient-soft);
+    }
+
+    .app-header__toggle span {
+        display: block;
+        width: 20px;
+        height: 2px;
+        background: var(--app-text-secondary);
+        border-radius: 2px;
+        transition: var(--app-transition);
+    }
+
+    body.sidebar-open .app-header__toggle span:nth-child(1) {
+        transform: translateY(7px) rotate(45deg);
+    }
+
+    body.sidebar-open .app-header__toggle span:nth-child(2) {
+        opacity: 0;
+    }
+
+    body.sidebar-open .app-header__toggle span:nth-child(3) {
+        transform: translateY(-7px) rotate(-45deg);
+    }
+
+    .app-header__brand {
+        display: flex;
+        align-items: center;
+        gap: .625rem;
+        min-width: 0;
+        flex-shrink: 0;
+        color: var(--app-text-primary);
+    }
+
+    .app-header__brand-logo,
+    .pcoded-navbar .b-bg {
+        width: 36px !important;
+        height: 36px !important;
+        border-radius: var(--app-radius-sm) !important;
+        background: var(--app-gradient) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        box-shadow: var(--app-shadow-lg) !important;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+
+    .app-header__brand-logo img,
+    .pcoded-navbar .b-bg img {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover;
+    }
+
+    .app-header__brand-name,
+    .pcoded-navbar .b-title {
+        font-size: 1.05rem !important;
+        font-weight: 700 !important;
+        background: var(--app-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .app-header__search {
+        flex: 1;
+        max-width: 400px;
+        position: relative;
+    }
+
+    .app-header__search i {
+        position: absolute;
+        left: .85rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--app-text-secondary);
+        pointer-events: none;
+    }
+
+    .app-header__search input {
+        width: 100%;
+        height: 38px;
+        padding: 0 1rem 0 2.5rem;
+        border: 1.5px solid var(--app-border);
+        border-radius: 999px;
+        background: var(--app-bg-page);
+        font-size: .875rem;
+        color: var(--app-text-primary);
+        outline: none;
+        transition: border-color var(--app-transition), box-shadow var(--app-transition);
+    }
+
+    .app-header__search input:focus {
+        border-color: #4099ff;
+        box-shadow: 0 0 0 3px rgba(64,153,255,.15);
+        background: #fff;
+    }
+
+    .app-header__actions {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: .625rem;
+    }
+
+    .app-header__icon-btn {
+        width: 38px;
+        height: 38px;
+        border-radius: var(--app-radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--app-text-secondary);
+        background: transparent;
+        border: 0;
+        position: relative;
+        transition: background var(--app-transition), color var(--app-transition);
+    }
+
+    .app-header__icon-btn:hover {
+        background: var(--app-gradient-soft);
+        color: #4099ff;
+    }
+
+    .app-header__badge {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        width: 8px;
+        height: 8px;
+        background: #ff4d6d;
+        border-radius: 50%;
+        border: 2px solid #fff;
+    }
+
+    .app-header__avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--app-gradient);
+        box-shadow: var(--app-shadow-lg);
+        color: #fff;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    .app-header__avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .pcoded-navbar {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: var(--app-sidebar-width) !important;
+        height: 100vh !important;
+        background: var(--app-bg-sidebar) !important;
+        z-index: 1040 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        transform: translateX(0) !important;
+        transition: transform var(--app-transition), width var(--app-transition) !important;
+        overflow: hidden !important;
+        box-shadow: none !important;
+    }
+
+    .pcoded-navbar .navbar-wrapper {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        height: 100%;
+    }
+
+    .pcoded-navbar .navbar-brand.header-logo {
+        height: var(--app-header-height);
+        display: flex !important;
+        align-items: center !important;
+        padding: 0 1.5rem !important;
+        margin: 0 !important;
+        gap: .625rem !important;
+        border-bottom: 1px solid rgba(255,255,255,.06);
+        background: transparent !important;
+        border-radius: 0 !important;
+        flex-shrink: 0;
+    }
+
+    .pcoded-navbar .b-brand {
+        display: flex !important;
+        align-items: center !important;
+        gap: .625rem !important;
+        min-width: 0;
+    }
+
+    .pcoded-navbar .language-selector {
+        margin-left: auto;
+        padding: 0 !important;
+    }
+
+    .pcoded-navbar .language-selector select {
+        height: 28px;
+        border-radius: 999px !important;
+        padding: 0 8px !important;
+        font-size: 11px !important;
+    }
+
+    .pcoded-navbar .navbar-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1.5rem .625rem 6.5rem !important;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255,255,255,.12) transparent;
+    }
+
+    .pcoded-navbar .navbar-content::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .pcoded-navbar .navbar-content::-webkit-scrollbar-thumb {
+        background: rgba(255,255,255,.12);
+        border-radius: 4px;
+    }
+
+    .pcoded-navbar .pcoded-inner-navbar,
+    .pcoded-navbar .pcoded-inner-navbar > li {
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .pcoded-navbar .pcoded-menu-caption {
+        padding: 1rem .625rem .375rem !important;
+        margin: 0 !important;
+    }
+
+    .pcoded-navbar .pcoded-menu-caption label {
+        font-size: .67rem !important;
+        font-weight: 600 !important;
+        letter-spacing: .1em !important;
+        text-transform: uppercase !important;
+        color: rgba(168,184,204,.45) !important;
+        margin: 0 !important;
+    }
+
+    .pcoded-navbar li a.nav-link {
+        display: flex !important;
+        align-items: center !important;
+        gap: .625rem !important;
+        padding: .62rem .625rem !important;
+        border-radius: var(--app-radius-sm) !important;
+        margin: .125rem 0 !important;
+        color: var(--app-text-sidebar) !important;
+        background: transparent !important;
+        font-size: .875rem !important;
+        font-weight: 500 !important;
+        white-space: nowrap !important;
+        box-shadow: none !important;
+        transform: none !important;
+        transition: background var(--app-transition), color var(--app-transition), box-shadow var(--app-transition) !important;
+    }
+
+    .pcoded-navbar li a.nav-link:hover {
+        background: rgba(255,255,255,.07) !important;
+        color: #fff !important;
+        transform: none !important;
+        box-shadow: none !important;
+    }
+
+    .pcoded-navbar li.active > a.nav-link {
+        background: var(--app-gradient) !important;
+        color: #fff !important;
+        box-shadow: 0 4px 14px rgba(64,153,255,.35) !important;
+    }
+
+    .pcoded-navbar .pcoded-micon {
+        width: 22px !important;
+        min-width: 22px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        color: inherit !important;
+        margin: 0 !important;
+        transform: none !important;
+    }
+
+    .pcoded-navbar .pcoded-micon i,
+    .pcoded-navbar .pcoded-mtext {
+        color: inherit !important;
+    }
+
+    .pcoded-navbar .pcoded-mtext {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .pcoded-navbar .user-profile-section {
+        position: absolute !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: .75rem !important;
+        border-top: 1px solid rgba(255,255,255,.06) !important;
+        background: var(--app-bg-sidebar) !important;
+        border-radius: 0 !important;
+    }
+
+    .pcoded-main-container {
+        margin-left: var(--app-sidebar-width) !important;
+        margin-right: 0 !important;
+        padding-top: var(--app-header-height) !important;
+        min-height: 100vh;
+        transition: margin-left var(--app-transition), margin-right var(--app-transition) !important;
+    }
+
+    body.sidebar-collapsed .pcoded-navbar {
+        width: var(--app-sidebar-collapsed-width) !important;
+    }
+
+    body.sidebar-collapsed .pcoded-main-container {
+        margin-left: var(--app-sidebar-collapsed-width) !important;
+    }
+
+    body.sidebar-collapsed .pcoded-navbar .b-title,
+    body.sidebar-collapsed .pcoded-navbar .language-selector,
+    body.sidebar-collapsed .pcoded-navbar .pcoded-menu-caption label,
+    body.sidebar-collapsed .pcoded-navbar .pcoded-mtext,
+    body.sidebar-collapsed .pcoded-navbar .user-profile-section div div:not(:first-child),
+    body.sidebar-collapsed .pcoded-navbar .user-profile-section a.nav-link {
+        display: none !important;
+    }
+
+    body.sidebar-collapsed .pcoded-navbar .navbar-brand.header-logo,
+    body.sidebar-collapsed .pcoded-navbar li a.nav-link {
+        justify-content: center !important;
+        padding-left: .5rem !important;
+        padding-right: .5rem !important;
+    }
+
+    html[dir="rtl"] .app-header__search i {
+        left: auto;
+        right: .85rem;
+    }
+
+    html[dir="rtl"] .app-header__search input {
+        padding: 0 2.5rem 0 1rem;
+    }
+
+    html[dir="rtl"] .app-header__actions {
+        margin-left: 0;
+        margin-right: auto;
+    }
+
+    html[dir="rtl"] .pcoded-navbar {
+        right: 0 !important;
+        left: auto !important;
+    }
+
+    html[dir="rtl"] .pcoded-main-container {
+        margin-right: var(--app-sidebar-width) !important;
+        margin-left: 0 !important;
+    }
+
+    html[dir="rtl"] body.sidebar-collapsed .pcoded-main-container {
+        margin-right: var(--app-sidebar-collapsed-width) !important;
+        margin-left: 0 !important;
+    }
+
+    html[dir="rtl"] .pcoded-navbar .language-selector {
+        margin-left: 0;
+        margin-right: auto;
+    }
+
+    @media (min-width: 1024px) {
+        .app-header {
+            left: var(--app-sidebar-width);
+            transition: left var(--app-transition), right var(--app-transition);
+        }
+
+        .app-header__brand {
+            display: none !important;
+        }
+
+        body.sidebar-collapsed .app-header {
+            left: var(--app-sidebar-collapsed-width);
+        }
+
+        body.sidebar-collapsed .pcoded-navbar:hover {
+            width: var(--app-sidebar-width) !important;
+        }
+
+        body.sidebar-collapsed .pcoded-navbar:hover .navbar-brand.header-logo,
+        body.sidebar-collapsed .pcoded-navbar:hover li a.nav-link {
+            justify-content: flex-start !important;
+            padding-left: .625rem !important;
+            padding-right: .625rem !important;
+        }
+
+        body.sidebar-collapsed .pcoded-navbar:hover .b-title,
+        body.sidebar-collapsed .pcoded-navbar:hover .language-selector,
+        body.sidebar-collapsed .pcoded-navbar:hover .pcoded-menu-caption label,
+        body.sidebar-collapsed .pcoded-navbar:hover .pcoded-mtext {
+            display: inline-block !important;
+        }
+
+        body.sidebar-collapsed .pcoded-navbar:hover .user-profile-section div div:not(:first-child) {
+            display: block !important;
+        }
+
+        body.sidebar-collapsed .pcoded-navbar:hover .user-profile-section a.nav-link {
+            display: flex !important;
+        }
+
+        html[dir="rtl"] .app-header {
+            left: 0;
+            right: var(--app-sidebar-width);
+        }
+
+        html[dir="rtl"] body.sidebar-collapsed .app-header {
+            right: var(--app-sidebar-collapsed-width);
+        }
+
+        html[dir="rtl"] body.sidebar-collapsed .pcoded-navbar:hover .navbar-brand.header-logo,
+        html[dir="rtl"] body.sidebar-collapsed .pcoded-navbar:hover li a.nav-link {
+            justify-content: flex-start !important;
+        }
+    }
+
+    @media (max-width: 1023px) {
+        .app-header {
+            left: 0;
+            right: 0;
+            padding: 0 1rem;
+        }
+
+        .app-header__brand-name {
+            max-width: 180px;
+        }
+
+        .pcoded-navbar {
+            transform: translateX(-100%) !important;
+            width: var(--app-sidebar-width) !important;
+            max-width: 85vw;
+        }
+
+        body.sidebar-open .pcoded-navbar {
+            transform: translateX(0) !important;
+        }
+
+        html[dir="rtl"] .pcoded-navbar {
+            transform: translateX(100%) !important;
+        }
+
+        html[dir="rtl"] body.sidebar-open .pcoded-navbar {
+            transform: translateX(0) !important;
+        }
+
+        .pcoded-main-container,
+        html[dir="rtl"] .pcoded-main-container,
+        body.sidebar-collapsed .pcoded-main-container,
+        html[dir="rtl"] body.sidebar-collapsed .pcoded-main-container {
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+
+        .mobile-menu-float {
+            display: none !important;
+        }
+    }
+
+    @media (max-width: 639px) {
+        .app-header__search {
+            display: none;
+        }
+
+        .app-header__brand-name {
+            max-width: 130px;
+        }
+
+        .app-header__actions {
+            gap: .25rem;
+        }
+
+        .app-header__icon-btn {
+            width: 34px;
+            height: 34px;
+        }
+    }
+
+    .pcoded-navbar .pcoded-inner-navbar li > a.nav-link,
+    html[dir="ltr"] .pcoded-navbar .pcoded-inner-navbar li > a.nav-link,
+    html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar li > a.nav-link {
+        display: flex !important;
+        align-items: center !important;
+        gap: .625rem !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        padding: .62rem .625rem !important;
+        box-sizing: border-box !important;
+    }
+
+    .pcoded-navbar .pcoded-inner-navbar li > a.nav-link .pcoded-micon,
+    html[dir="ltr"] .pcoded-navbar .pcoded-inner-navbar li > a.nav-link .pcoded-micon,
+    html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar li > a.nav-link .pcoded-micon {
+        position: static !important;
+        order: 0 !important;
+        flex: 0 0 22px !important;
+        width: 22px !important;
+        min-width: 22px !important;
+        max-width: 22px !important;
+        height: 22px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        transform: none !important;
+    }
+
+    .pcoded-navbar .pcoded-inner-navbar li > a.nav-link .pcoded-mtext,
+    html[dir="ltr"] .pcoded-navbar .pcoded-inner-navbar li > a.nav-link .pcoded-mtext,
+    html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar li > a.nav-link .pcoded-mtext {
+        position: static !important;
+        order: 0 !important;
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+    }
+
+    html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar li > a.nav-link {
+        flex-direction: row-reverse !important;
+    }
+
+    html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar li > a.nav-link .pcoded-mtext {
+        text-align: right !important;
+    }
 </style>
 
 </head>
+<body>
   
   <!-- [ Pre-loader ] start -->
     <div class="loader-bg">
@@ -1450,9 +2076,25 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                     <strong>Trial Period:</strong> You have <strong><?= $days_left ?> day<?= $days_left !== 1 ? 's' : '' ?></strong> remaining in your free trial. Trial ends on <strong><?= date('M d, Y', strtotime($trial_end)) ?></strong>.
                 <?php endif; ?>
             </div>
-            <button class="trial-banner-close" onclick="document.getElementById('trialBanner').style.display='none'">&times;</button>
+            <button class="trial-banner-close" onclick="closeTrialBanner();">&times;</button>
         </div>
     </div>
+    <script>
+    function closeTrialBanner() {
+        var banner = document.getElementById('trialBanner');
+        if (banner) {
+            banner.style.display = 'none';
+        }
+        document.body.classList.remove('has-trial-banner');
+        sessionStorage.setItem('trialBannerClosed', 'true');
+    }
+
+    if (sessionStorage.getItem('trialBannerClosed') === 'true') {
+        closeTrialBanner();
+    } else {
+        document.body.classList.add('has-trial-banner');
+    }
+    </script>
     <style>
     .trial-banner {
         position: fixed;
@@ -1512,9 +2154,16 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
         0%, 100% { opacity: 1; }
         50% { opacity: 0.85; }
     }
-    /* Push content down to account for banner */
-    .pcoded-navbar { top: 44px !important; }
-    .loader-bg { top: 44px !important; }
+    body.has-trial-banner .app-header {
+        top: 44px !important;
+    }
+    body.has-trial-banner .pcoded-navbar {
+        top: 44px !important;
+        height: calc(100vh - 44px) !important;
+    }
+    body.has-trial-banner .pcoded-main-container {
+        padding-top: calc(var(--app-header-height) + 44px) !important;
+    }
     </style>
     <?php
             }
@@ -1524,18 +2173,48 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
     }
     ?>
 
-    <!-- Mobile Floating Hamburger Button -->
-    <div class="mobile-menu-float">
-        <a class="mobile-menu" id="mobile-collapse" href="javascript:"><span></span></a>
-    </div>
+    <div class="app-shell-overlay" id="appShellOverlay"></div>
+
+    <header class="app-header" role="banner">
+        <button class="app-header__toggle" id="mobile-collapse" type="button" aria-label="Toggle sidebar" aria-expanded="false">
+            <span></span><span></span><span></span>
+        </button>
+
+        <a href="dashboard.php" class="app-header__brand">
+            <span class="app-header__brand-logo">
+                <img src="../uploads/logo/<?= htmlspecialchars($settings['logo']) ?>" alt="<?= htmlspecialchars($settings['agency_name']) ?>">
+            </span>
+            <span class="app-header__brand-name"><?= htmlspecialchars($settings['agency_name']) ?></span>
+        </a>
+
+        <div class="app-header__search">
+            <i class="feather icon-search"></i>
+            <input type="search" id="m-search" placeholder="Search..." aria-label="Search">
+        </div>
+
+        <div class="app-header__actions">
+            <?php if (hasFeature('inter_tenant_chat', $allowed_features)): ?>
+            <a class="app-header__icon-btn" href="../chat.php" aria-label="Messages">
+                <i class="feather icon-message-circle"></i>
+                <span class="app-header__badge"></span>
+            </a>
+            <?php endif; ?>
+            <a class="app-header__icon-btn" href="tenant_settings.php" aria-label="Settings">
+                <i class="feather icon-settings"></i>
+            </a>
+            <a class="app-header__avatar" href="profile.php" aria-label="Profile">
+                <img src="<?= $imagePath ?>" alt="<?= htmlspecialchars($user['name'] ?? 'User') ?>">
+            </a>
+        </div>
+    </header>
 
 <!-- [ navigation menu ] start -->
-<nav class="pcoded-navbar">
+<aside class="pcoded-navbar" id="sidebar" role="navigation" aria-label="Main navigation">
     <div class="navbar-wrapper">
         <div class="navbar-brand header-logo">
             <a href="dashboard.php" class="b-brand">
                 <div class="b-bg">
-                    <img class="rounded-circle" style="width:40px;" src="../Uploads/logo/<?= htmlspecialchars($settings['logo']) ?>" alt="activity-user">
+                    <img class="rounded-circle" style="width:40px;" src="../uploads/logo/<?= htmlspecialchars($settings['logo']) ?>" alt="activity-user">
                 </div>
                 <span class="b-title"><?= htmlspecialchars($settings['agency_name']) ?></span>
             </a>
@@ -1546,7 +2225,6 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                     <option value="ps" <?= get_current_lang() == 'ps' ? 'selected' : '' ?> style="background: #4099ff; color: #ffffff;">پښتو</option>
                 </select>
             </div>
-            <a class="mobile-menu" id="mobile-collapse" href="javascript:"><span></span><span></span><span></span></a>
         </div>
         <div class="navbar-content scroll-div" style="padding-bottom: 100px;">
             <ul class="nav pcoded-inner-navbar">
@@ -1811,8 +2489,9 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                 </li>
                 <?php endif; ?>
 
+                <!-- ── Settings ────────────────────────────────────────────────────── -->
                 <li class="nav-item pcoded-menu-caption">
-                    <label>Settings & Tools</label>
+                    <label><?= __('settings') ?></label>
                 </li>
                 <li data-username="tenant_settings" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'tenant_settings.php' ? 'active' : ''; ?>">
                     <a href="tenant_settings.php" class="nav-link">
@@ -1827,13 +2506,12 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                     </a>
                 </li>
 
-                <!-- ── 2FA ────────────────────────────────────────────────────────────── -->
-                <li class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'totp_setup.php' ? 'active' : ''; ?>">
-                    <a href="../totp_setup.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-shield"></i></span>
-                        <span class="pcoded-mtext"><?= __('2fa') ?></span>
-                    </a>
+                <!-- ── Communication ────────────────────────────────────────────────── -->
+                <?php if ($has_whatsapp_addon || $has_smtp_addon): ?>
+                <li class="nav-item pcoded-menu-caption">
+                    <label><?= __('communication') ?></label>
                 </li>
+                <?php endif; ?>
 
                 <?php if ($has_whatsapp_addon): ?>
                 <li data-username="whatsapp_settings" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'whatsapp_settings.php' ? 'active' : ''; ?>">
@@ -1858,6 +2536,19 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                     </a>
                 </li>
                 <?php endif; ?>
+
+                <!-- ── Security & Monitoring ────────────────────────────────────────── -->
+                <li class="nav-item pcoded-menu-caption">
+                    <label><?= __('security_monitoring') ?></label>
+                </li>
+
+                <!-- ── 2FA ────────────────────────────────────────────────────────────── -->
+                <li class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'totp_setup.php' ? 'active' : ''; ?>">
+                    <a href="../totp_setup.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-shield"></i></span>
+                        <span class="pcoded-mtext"><?= __('2fa') ?></span>
+                    </a>
+                </li>
 
                 <li data-username="activity_logs" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'activity_logs.php' ? 'active' : ''; ?>">
                     <a href="activity_logs.php" class="nav-link">
@@ -1889,8 +2580,63 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
             </div>
         </div>
     </div>
-</nav>
+</aside>
 <!-- [ navigation menu ] end -->
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const body = document.body;
+    const toggleBtn = document.getElementById('mobile-collapse');
+    const overlay = document.getElementById('appShellOverlay');
+
+    function isDesktop() {
+        return window.innerWidth >= 1024;
+    }
+
+    function closeSidebar() {
+        body.classList.remove('sidebar-open');
+        if (overlay) {
+            overlay.classList.remove('active');
+        }
+        if (toggleBtn) {
+            toggleBtn.setAttribute('aria-expanded', 'false');
+        }
+    }
+
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (isDesktop()) {
+                body.classList.toggle('sidebar-collapsed');
+                closeSidebar();
+                return;
+            }
+
+            const open = body.classList.toggle('sidebar-open');
+            if (overlay) {
+                overlay.classList.toggle('active', open);
+            }
+            toggleBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+    }
+
+    if (overlay) {
+        overlay.addEventListener('click', closeSidebar);
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeSidebar();
+        }
+    });
+
+    window.addEventListener('resize', function() {
+        if (isDesktop()) {
+            closeSidebar();
+        }
+    });
+});
+</script>
 
 
 <?php if (hasFeature('inter_tenant_chat', $allowed_features)): ?>
@@ -1988,46 +2734,6 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
 </div>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Ensure mobile menu toggle works
-    const mobileToggle = document.getElementById('mobile-collapse');
-    if (mobileToggle) {
-        mobileToggle.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-
-            // Check if we're on mobile (screen width < 992px)
-            if (window.innerWidth < 992) {
-                const navbar = document.querySelector('.pcoded-navbar');
-                const overlay = document.querySelector('.mobile-menu-overlay');
-                if (navbar) {
-                    const isOpen = navbar.classList.contains('open');
-                    if (isOpen) {
-                        // Close sidebar
-                        navbar.classList.remove('open');
-                        if (overlay) {
-                            overlay.classList.remove('show');
-                        }
-                    } else {
-                        // Open sidebar as overlay
-                        navbar.classList.add('mobile-overlay', 'open');
-                        if (overlay) {
-                            overlay.classList.add('show');
-                        } else {
-                            // Create overlay if it doesn't exist
-                            const newOverlay = document.createElement('div');
-                            newOverlay.className = 'mobile-menu-overlay show';
-                            newOverlay.addEventListener('click', function() {
-                                navbar.classList.remove('open');
-                                newOverlay.classList.remove('show');
-                            });
-                            document.body.appendChild(newOverlay);
-                        }
-                    }
-                }
-            }
-        });
-    }
-
     // Session timeout functionality
     let remainingTime = <?php echo $remaining_time; ?>; // Get remaining time from PHP
 

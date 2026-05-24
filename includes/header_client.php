@@ -1412,7 +1412,7 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
         <div class="navbar-brand header-logo">
             <a href="dashboard.php" class="b-brand">
                 <div class="b-bg">
-                    <img class="rounded-circle" style="width:40px;" src="../Uploads/logo/<?= htmlspecialchars($settings['logo']) ?>" alt="activity-user">
+                    <img class="rounded-circle" style="width:40px;" src="../uploads/logo/<?= htmlspecialchars($settings['logo']) ?>" alt="activity-user">
                 </div>
                 <span class="b-title"><?= htmlspecialchars($settings['agency_name']) ?></span>
             </a>

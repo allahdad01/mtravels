@@ -754,7 +754,7 @@ body, .pcoded-main-container {
 
 <script>
 window.addEventListener('message', function(event) {
-    if (event.origin !== 'https://checkout.hesabpay.com' && event.origin !== 'https://api-sandbox.hesab.com') return;
+    if (event.origin !== 'https://checkout.hesabpay.com') return;
     if (event.data && event.data.type === 'paymentSuccess') {
         const { success, message, transaction_id } = event.data;
         if (success) {

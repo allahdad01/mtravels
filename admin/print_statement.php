@@ -84,7 +84,7 @@ foreach ($transactions as $tx) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= htmlspecialchars($settings['agency_name']) ?> — <?= __('customer_statement') ?></title>
-<link rel="icon" href="../Uploads/logo/<?= htmlspecialchars($settings['logo'] ?? '') ?>" type="image/x-icon">
+<link rel="icon" href="../uploads/logo/<?= htmlspecialchars($settings['logo'] ?? '') ?>" type="image/x-icon">
 <link rel="stylesheet" href="../assets/fonts/fontawesome/css/fontawesome-all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 
@@ -530,7 +530,7 @@ body {
       </div>
       <div class="header-center">
         <?php if (!empty($settings['logo'])): ?>
-        <img src="../Uploads/logo/<?= htmlspecialchars($settings['logo']) ?>" alt="logo">
+        <img src="../uploads/logo/<?= htmlspecialchars($settings['logo']) ?>" alt="logo">
         <?php endif; ?>
       </div>
       <div class="statement-label-block">

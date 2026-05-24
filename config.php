@@ -11,35 +11,34 @@ header_remove('X-AspNetMvc-Version');
 /* Load environment variables from .env file */
 require_once dirname(__FILE__) . '/includes/env_loader.php';
 
-/* Database credentials. Using environment variables for security */
-define('DB_SERVER', EnvLoader::get('DB_SERVER', 'localhost'));
-define('DB_USERNAME', EnvLoader::get('DB_USERNAME', 'root'));
-
-// Validate DB_PASSWORD is configured (cannot be empty for security)
+/* Database credentials. Strictly from environment variables - no fallbacks */
+$db_server = EnvLoader::get('DB_SERVER');
+$db_username = EnvLoader::get('DB_USERNAME');
 $db_password = EnvLoader::get('DB_PASSWORD');
-if ($db_password === false) {
-    // In development (localhost/XAMPP), allow empty password
-    // In production (non-localhost), require environment variable
-    $is_localhost = ($_SERVER['HTTP_HOST'] === 'localhost' || $_SERVER['HTTP_HOST'] === '127.0.0.1' || strpos($_SERVER['HTTP_HOST'], 'xampp') !== false);
-    
-    if ($is_localhost) {
-        // Development environment - allow empty password for XAMPP
-        define('DB_PASSWORD', '');
-    } else {
-        // Production environment - require password
-        die("ERROR: Database security not configured. Please set DB_PASSWORD environment variable.");
-    }
-} else {
-    define('DB_PASSWORD', $db_password);
+$db_name = EnvLoader::get('DB_NAME');
+$app_env = EnvLoader::get('APP_ENV');
+
+$missing = [];
+if ($db_server === false) $missing[] = 'DB_SERVER';
+if ($db_username === false) $missing[] = 'DB_USERNAME';
+if ($db_password === false) $missing[] = 'DB_PASSWORD';
+if ($db_name === false) $missing[] = 'DB_NAME';
+if ($app_env === false) $missing[] = 'APP_ENV';
+
+if (!empty($missing)) {
+    die('ERROR: Missing required environment variables: ' . implode(', ', $missing) . '. Please configure your .env file.');
 }
 
-define('DB_NAME', EnvLoader::get('DB_NAME', 'travelagency_saas'));
-define('APP_ENV', EnvLoader::get('APP_ENV', 'development'));
+define('DB_SERVER', $db_server);
+define('DB_USERNAME', $db_username);
+define('DB_PASSWORD', $db_password);
+define('DB_NAME', $db_name);
+define('APP_ENV', $app_env);
 
-// Hesabpay API Configuration - Using environment variables for security
-define('HESABPAY_MERCHANT_ID', EnvLoader::get('HESABPAY_MERCHANT_ID', ''));
-define('HESABPAY_API_KEY', EnvLoader::get('HESABPAY_API_KEY', 'MzI0ZjM3NzEtMTg3OS00YzllLTgzZjMtOTg4ZDdmOTY1MTg4X185OGE2Njg3MWU0YzgzZmZjOTFmMQ=='));
-define('HESABPAY_BASE_URL', EnvLoader::get('HESABPAY_BASE_URL', 'https://api-sandbox.hesab.com/api/v1'));
+// Hesabpay API Configuration - Strictly from environment variables
+define('HESABPAY_MERCHANT_ID', EnvLoader::get('HESABPAY_MERCHANT_ID'));
+define('HESABPAY_API_KEY', EnvLoader::get('HESABPAY_API_KEY'));
+define('HESABPAY_BASE_URL', EnvLoader::get('HESABPAY_BASE_URL'));
 
 // Platform Configuration
 define('PLATFORM_NAME', 'MTravels');

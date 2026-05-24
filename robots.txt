@@ -1,0 +1,43 @@
+User-agent: *
+Allow: /
+
+# Disallow sensitive application areas
+Disallow: /admin/
+Disallow: /client/
+Disallow: /super_admin/
+Disallow: /tenant_super_admin/
+Disallow: /sales_agent/
+Disallow: /api/
+Disallow: /includes/
+Disallow: /cron/
+Disallow: /scripts/
+Disallow: /modals/
+Disallow: /uploads/
+Disallow: /backups/
+Disallow: /secure_keys/
+Disallow: /signaling/
+Disallow: /migrations/
+
+# Disallow utility/test files
+Disallow: /test_email_send.php
+Disallow: /test_webhook.php
+Disallow: /test_whatsapp_send.php
+Disallow: /form_fuzzer.php
+Disallow: /db_export.php
+Disallow: /db_structure.php
+Disallow: /fix_whatsapp_issues.php
+Disallow: /config.php
+Disallow: /contact_handler.php
+Disallow: /email_tracking.php
+Disallow: /send_email.php
+Disallow: /php_login.php
+Disallow: /logout.php
+Disallow: /access_denied.php
+Disallow: /payment_required.php
+Disallow: /totp_setup.php
+Disallow: /language_switcher.php
+Disallow: /forgot_password.php
+Disallow: /reset_password.php
+
+# Sitemap location
+Sitemap: https://mtravel.org/sitemap.xml

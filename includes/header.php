@@ -14,6 +14,140 @@
  */
 
 require_once(__DIR__ . '/auth_check.php');
+
+$header_unread_notifications = [];
+$header_read_notifications = [];
+$header_unread_count = 0;
+if (($user['role'] ?? '') === 'admin' && isset($pdo, $tenant_id)) {
+    try {
+        $header_count_stmt = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE LOWER(status) = 'unread' AND tenant_id = ?");
+        $header_count_stmt->execute([$tenant_id]);
+        $header_unread_count = (int) $header_count_stmt->fetchColumn();
+
+        $header_notification_select = "
+            SELECT n.*,
+                   CASE WHEN n.transaction_type='visa' THEN va.applicant_name
+                        WHEN n.transaction_type='supplier' THEN s.name
+                        WHEN n.transaction_type='umrah' THEN ub.name
+                        ELSE NULL END AS related_name,
+                   CASE WHEN n.transaction_type='visa' THEN va.base
+                        WHEN n.transaction_type='supplier' THEN st.amount
+                        WHEN n.transaction_type='umrah' THEN ub.sold_price
+                        ELSE 0 END AS transaction_amount,
+                   CASE WHEN n.transaction_type='visa' THEN va.currency
+                        WHEN n.transaction_type='supplier' THEN s.currency
+                        ELSE NULL END AS transaction_currency,
+                   CASE WHEN n.transaction_type='umrah' THEN ut.transaction_to
+                        ELSE NULL END AS umrah_transaction_to
+            FROM notifications n
+            LEFT JOIN visa_applications va ON n.transaction_id=va.id AND n.transaction_type='visa'
+            LEFT JOIN umrah_bookings ub ON n.transaction_id=ub.booking_id AND n.transaction_type='umrah'
+            LEFT JOIN umrah_transactions ut ON n.transaction_id=ut.id AND n.transaction_type='umrah'
+            LEFT JOIN supplier_transactions st ON n.transaction_id=st.id AND n.transaction_type='supplier'
+            LEFT JOIN suppliers s ON st.supplier_id=s.id OR va.supplier=s.id
+            WHERE LOWER(n.status)=? AND n.tenant_id=?
+        ";
+
+        $header_unread_stmt = $pdo->prepare($header_notification_select . " ORDER BY n.created_at DESC");
+        $header_unread_stmt->execute(['unread', $tenant_id]);
+        $header_unread_notifications = $header_unread_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $header_read_stmt = $pdo->prepare($header_notification_select . " AND DATE(n.created_at)=? ORDER BY n.created_at DESC");
+        $header_read_stmt->execute(['read', $tenant_id, date('Y-m-d')]);
+        $header_read_notifications = $header_read_stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        error_log('Header notification error: ' . $e->getMessage());
+    }
+}
+
+if (!function_exists('renderHeaderNotifications')) {
+    function renderHeaderNotifications(array $notifications, string $status): void {
+        if (empty($notifications)) {
+            $empty_key = $status === 'unread' ? 'no_unread_notifications_available' : 'no_read_notifications_for_selected_date';
+            echo '<div class="app-notification-menu__empty"><i class="feather icon-bell-off"></i><div>' . h(__($empty_key)) . '</div></div>';
+            return;
+        }
+
+        $by_date = [];
+        foreach ($notifications as $row) {
+            $date = date('Y-m-d', strtotime($row['created_at']));
+            $by_date[$date][] = $row;
+        }
+
+        foreach ($by_date as $date => $rows) {
+            $label = ($date === date('Y-m-d')) ? __('today') : (($date === date('Y-m-d', strtotime('-1 day'))) ? __('yesterday') : date('l, F j, Y', strtotime($date)));
+            echo '<div class="tl-date-group"><div class="tl-date-hdr">' . h($label) . '</div>';
+
+            foreach ($rows as $row) {
+                $id = (int) $row['id'];
+                $raw_msg = (string) ($row['message'] ?? '');
+                $receipt_value = '';
+                if (preg_match('/Receipt:\s*([^\.\|]+)/i', $raw_msg, $receipt_match)) {
+                    $receipt_value = trim($receipt_match[1]);
+                }
+                $display_msg = trim(preg_replace('/\s*Receipt:\s*[^\.\|]+\.?/i', '', $raw_msg));
+                $message = h($display_msg !== '' ? $display_msg : $raw_msg);
+                $name = h($row['related_name'] ?? '');
+                $amount = $row['transaction_amount'] ?? 0;
+                $currency = h($row['transaction_currency'] ?? '');
+                $type = h($row['transaction_type'] ?? '');
+                $umrah_transaction_to = (string) ($row['umrah_transaction_to'] ?? '');
+                $time = date('g:i A', strtotime($row['created_at']));
+                $symbol = ($currency === 'USD') ? '$' : (($currency === 'AFS') ? '؋' : (($currency === 'EUR') ? '€' : ''));
+                $dot_class = 'tld-default';
+                $icon = 'fa-bell';
+                $icon_prefix = 'fas';
+
+                switch ((string) ($row['transaction_type'] ?? '')) {
+                    case 'visa': $dot_class = 'tld-visa'; $icon = 'fa-passport'; break;
+                    case 'supplier': $dot_class = 'tld-supplier'; $icon = 'fa-truck'; break;
+                    case 'umrah': $dot_class = 'tld-umrah'; $icon = 'icon-map-pin'; $icon_prefix = 'feather'; break;
+                    case 'ticket': $dot_class = 'tld-ticket'; $icon = 'fa-ticket-alt'; break;
+                    case 'refund': $dot_class = 'tld-refund'; $icon = 'fa-undo-alt'; break;
+                    case 'expense':
+                    case 'expense_update':
+                    case 'expense_delete': $dot_class = 'tld-expense'; $icon = 'fa-receipt'; break;
+                    case 'hotel': $dot_class = 'tld-hotel'; $icon = 'fa-hotel'; break;
+                    case 'deposit_sarafi':
+                    case 'hawala_sarafi':
+                    case 'withdrawal_sarafi': $dot_class = 'tld-sarafi'; $icon = 'fa-exchange-alt'; break;
+                }
+
+                $is_deleted = stripos($raw_msg, 'deleted') !== false;
+                $has_receipt = $receipt_value !== '';
+                $is_bank_transaction = ($row['transaction_type'] ?? '') === 'umrah' && $umrah_transaction_to === 'Bank';
+                $read_only = in_array(($row['transaction_type'] ?? ''), ['deposit_sarafi','hawala_sarafi','withdrawal_sarafi','supplier_fund','client_fund','expense','expense_update','expense_delete','refund','ticket_refund'], true) || $is_deleted || $is_bank_transaction || $has_receipt;
+
+                echo '<div class="tl-item notification-' . h($status) . '" data-id="' . $id . '">';
+                echo '<div class="tl-dot ' . h($dot_class) . ($status === 'unread' ? ' unread' : '') . '"><i class="' . h($icon_prefix . ' ' . $icon) . '"></i></div>';
+                echo '<div class="tl-body">';
+                echo '<div class="tl-top"><span class="tl-type">' . $type . '</span><span class="tl-time">' . h($time) . '</span></div>';
+                echo '<div class="tl-msg">' . $message . '</div>';
+
+                if ($name || $amount || $has_receipt) {
+                    echo '<div class="tl-meta">';
+                    if ($name) echo '<span class="tl-chip"><i class="fas fa-user"></i>' . $name . '</span>';
+                    if ($amount && !$has_receipt) echo '<span class="tl-chip"><i class="fas fa-credit-card"></i>' . h($symbol . number_format((float) $amount, 2)) . '</span>';
+                    if ($has_receipt) echo '<span class="tl-chip"><i class="fas fa-receipt"></i>' . h($receipt_value) . '</span>';
+                    echo '</div>';
+                }
+
+                if ($status === 'unread') {
+                    echo '<div class="tl-actions">';
+                    if (!$read_only) {
+                        echo '<button class="tl-btn tl-btn-receive approve-button" data-id="' . $id . '" data-amount="' . h((string) $amount) . '" data-currency="' . $currency . '" data-type="' . $type . '"><i class="fas fa-check"></i>' . h(__('received')) . '</button>';
+                    }
+                    echo '<button class="tl-btn tl-btn-read read-button" data-id="' . $id . '"><i class="fas fa-eye"></i>' . h(__('mark_as_read')) . '</button>';
+                    echo '</div>';
+                }
+
+                echo '</div></div>';
+            }
+
+            echo '</div>';
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="<?= get_current_lang() ?>" dir="<?= get_lang_dir() ?>">
@@ -37,7 +171,698 @@ require_once(__DIR__ . '/auth_check.php');
 
     <!-- Dashboard styles (badges, cards, layout) -->
     <link rel="stylesheet" href="../css/dashboard/dashboard-styles.css">
+    <style>
+    :root {
+        --app-gradient: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        --app-gradient-soft: linear-gradient(135deg, rgba(64,153,255,.12) 0%, rgba(46,216,182,.12) 100%);
+        --app-header-height: 64px;
+        --app-sidebar-width: 260px;
+        --app-sidebar-collapsed-width: 68px;
+        --app-bg-page: #f0f4f8;
+        --app-bg-sidebar: #0f1b2d;
+        --app-bg-header: #ffffff;
+        --app-text-primary: #1a2332;
+        --app-text-secondary: #6b7a90;
+        --app-text-sidebar: #a8b8cc;
+        --app-border: #e4eaf2;
+        --app-shadow-sm: 0 1px 4px rgba(0,0,0,.06);
+        --app-shadow-lg: 0 8px 32px rgba(64,153,255,.18);
+        --app-radius-sm: 6px;
+        --app-transition: .28s cubic-bezier(.4,0,.2,1);
+    }
+
+    body { background: var(--app-bg-page) !important; overflow-x: hidden; }
+
+    .app-shell-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(10,20,40,.45);
+        backdrop-filter: blur(2px);
+        z-index: 1030;
+        opacity: 0;
+        transition: opacity var(--app-transition);
+    }
+    .app-shell-overlay.active { display: block; opacity: 1; }
+
+    .app-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: var(--app-header-height);
+        background: var(--app-bg-header);
+        border-bottom: 1px solid var(--app-border);
+        box-shadow: var(--app-shadow-sm);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0 1.5rem;
+        z-index: 1020;
+    }
+
+    .app-header__toggle {
+        width: 38px;
+        height: 38px;
+        border-radius: var(--app-radius-sm);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        background: transparent;
+        border: 0;
+        cursor: pointer;
+        transition: background var(--app-transition);
+        flex-shrink: 0;
+    }
+    .app-header__toggle:hover { background: var(--app-gradient-soft); }
+    .app-header__toggle span {
+        display: block;
+        width: 20px;
+        height: 2px;
+        background: var(--app-text-secondary);
+        border-radius: 2px;
+        transition: var(--app-transition);
+    }
+    body.sidebar-open .app-header__toggle span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    body.sidebar-open .app-header__toggle span:nth-child(2) { opacity: 0; }
+    body.sidebar-open .app-header__toggle span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    .app-header__brand {
+        display: flex;
+        align-items: center;
+        gap: .625rem;
+        min-width: 0;
+        flex-shrink: 0;
+        color: var(--app-text-primary);
+    }
+    .app-header__brand-logo,
+    .pcoded-navbar .b-bg {
+        width: 36px !important;
+        height: 36px !important;
+        border-radius: var(--app-radius-sm) !important;
+        background: var(--app-gradient) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        box-shadow: var(--app-shadow-lg) !important;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+    .app-header__brand-logo img,
+    .pcoded-navbar .b-bg img {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover;
+    }
+    .app-header__brand-name,
+    .pcoded-navbar .b-title {
+        font-size: 1.05rem !important;
+        font-weight: 700 !important;
+        background: var(--app-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .app-header__spacer { flex: 1; min-width: 1rem; }
+    .app-header__search { flex: 1; max-width: 400px; position: relative; }
+    .app-header__search i {
+        position: absolute;
+        left: .85rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--app-text-secondary);
+        pointer-events: none;
+    }
+    .app-header__search input {
+        width: 100%;
+        height: 38px;
+        padding: 0 1rem 0 2.5rem;
+        border: 1.5px solid var(--app-border);
+        border-radius: 999px;
+        background: var(--app-bg-page);
+        font-size: .875rem;
+        color: var(--app-text-primary);
+        outline: none;
+    }
+
+    .app-header__actions { margin-left: auto; display: flex; align-items: center; gap: .625rem; }
+    .app-header__icon-btn {
+        width: 38px;
+        height: 38px;
+        border-radius: var(--app-radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--app-text-secondary);
+        background: transparent;
+        border: 0;
+        position: relative;
+    }
+    .app-header__icon-btn:hover { background: var(--app-gradient-soft); color: #4099ff; }
+    .app-header__badge {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        width: 8px;
+        height: 8px;
+        background: #ff4d6d;
+        border-radius: 50%;
+        border: 2px solid #fff;
+    }
+    .app-header__avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--app-gradient);
+        box-shadow: var(--app-shadow-lg);
+        flex-shrink: 0;
+    }
+    .app-header__avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+    .app-header__notification {
+        position: relative;
+    }
+
+    .app-header__notification-count {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 5px;
+        border-radius: 999px;
+        background: #ef4444;
+        color: #fff;
+        border: 2px solid #fff;
+        font-size: 10px;
+        font-weight: 700;
+        line-height: 14px;
+        text-align: center;
+    }
+
+    .app-notification-menu {
+        position: absolute;
+        top: calc(100% + 12px);
+        right: 0;
+        width: min(560px, calc(100vw - 24px));
+        max-height: 620px;
+        background: #fff;
+        border: 1px solid var(--app-border);
+        border-radius: 10px;
+        box-shadow: 0 18px 50px rgba(15, 27, 45, .18);
+        overflow: hidden;
+        display: none;
+        z-index: 1100;
+    }
+
+    .app-notification-menu.open {
+        display: block;
+    }
+
+    .app-notification-menu__head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--app-border);
+    }
+
+    .app-notification-menu__title {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--app-text-primary);
+    }
+
+    .app-notification-menu__list {
+        max-height: 480px;
+        overflow-y: auto;
+    }
+
+    .app-notification-tabs {
+        display: flex;
+        gap: 8px;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--app-border);
+    }
+
+    .app-notification-tabs .notif-tab-btn {
+        border: 0;
+        border-radius: 999px;
+        padding: 7px 12px;
+        background: #f1f5f9;
+        color: var(--app-text-secondary);
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .app-notification-tabs .notif-tab-btn.active {
+        background: var(--app-gradient);
+        color: #fff;
+    }
+
+    .app-notification-tabs .nbadge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 18px;
+        height: 18px;
+        border-radius: 999px;
+        background: rgba(255,255,255,.24);
+        color: inherit;
+        padding: 0 6px;
+        margin-left: 4px;
+        font-size: 11px;
+    }
+
+    .app-notification-menu .read-filter {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        background: #f8fafc;
+        border-bottom: 1px solid var(--app-border);
+    }
+
+    .app-notification-menu .read-filter label {
+        margin: 0;
+        color: var(--app-text-secondary);
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .app-notification-menu .dep-date-input {
+        height: 32px;
+        border: 1px solid var(--app-border);
+        border-radius: 8px;
+        padding: 0 8px;
+        font-size: 12px;
+    }
+
+    .app-notification-menu .dbtn {
+        height: 32px;
+        border: 0;
+        border-radius: 8px;
+        padding: 0 10px;
+        background: var(--app-gradient);
+        color: #fff;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .app-notification-menu .tl-date-hdr {
+        padding: 10px 14px 6px;
+        color: var(--app-text-secondary);
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        background: #f8fafc;
+    }
+
+    .app-notification-menu .tl-item {
+        display: flex;
+        gap: 10px;
+        padding: 12px 14px;
+        border-bottom: 1px solid #eef2f7;
+    }
+
+    .app-notification-menu .tl-dot {
+        width: 32px;
+        height: 32px;
+        border-radius: 9px;
+        background: var(--app-gradient-soft);
+        color: #4099ff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 32px;
+    }
+
+    .app-notification-menu .tl-dot.unread {
+        box-shadow: inset 0 0 0 1px rgba(64,153,255,.28);
+    }
+
+    .app-notification-menu .tl-body {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .app-notification-menu .tl-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 4px;
+    }
+
+    .app-notification-menu .tl-type {
+        color: #4099ff;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    .app-notification-menu .tl-time {
+        color: var(--app-text-secondary);
+        font-size: 11px;
+        white-space: nowrap;
+    }
+
+    .app-notification-menu .tl-msg {
+        color: var(--app-text-primary);
+        font-size: 12px;
+        line-height: 1.45;
+    }
+
+    .app-notification-menu .tl-meta {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-top: 7px;
+    }
+
+    .app-notification-menu .tl-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        border-radius: 999px;
+        background: #f1f5f9;
+        color: var(--app-text-secondary);
+        padding: 3px 7px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .app-notification-menu .tl-actions {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+    }
+
+    .app-notification-menu .tl-btn {
+        border: 0;
+        border-radius: 7px;
+        padding: 5px 8px;
+        color: #fff;
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .app-notification-menu .tl-btn i {
+        margin-right: 4px;
+    }
+
+    .app-notification-menu .tl-btn-read {
+        background: #4099ff;
+    }
+
+    .app-notification-menu .tl-btn-receive {
+        background: #10b981;
+    }
+
+    .app-notification-item {
+        display: flex;
+        gap: 10px;
+        padding: 12px 14px;
+        border-bottom: 1px solid #eef2f7;
+    }
+
+    .app-notification-item__icon {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        background: var(--app-gradient-soft);
+        color: #4099ff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 30px;
+    }
+
+    .app-notification-item__body {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .app-notification-item__msg {
+        color: var(--app-text-primary);
+        font-size: 12px;
+        line-height: 1.45;
+    }
+
+    .app-notification-item__meta {
+        margin-top: 4px;
+        color: var(--app-text-secondary);
+        font-size: 11px;
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    .app-notification-menu__empty {
+        padding: 28px 16px;
+        text-align: center;
+        color: var(--app-text-secondary);
+        font-size: 13px;
+    }
+
+    .app-notification-menu__foot {
+        padding: 10px 14px;
+        border-top: 1px solid var(--app-border);
+        font-size: 12px;
+        color: #4099ff;
+        font-weight: 600;
+        text-align: center;
+    }
+
+    .pcoded-navbar {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: var(--app-sidebar-width) !important;
+        height: 100vh !important;
+        background: var(--app-bg-sidebar) !important;
+        z-index: 1040 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        transform: translateX(0) !important;
+        transition: transform var(--app-transition), width var(--app-transition) !important;
+        overflow: hidden !important;
+        box-shadow: none !important;
+    }
+    .pcoded-navbar .navbar-wrapper { display: flex; flex-direction: column; width: 100%; height: 100%; position: relative; z-index: 1; }
+    .pcoded-navbar .navbar-brand.header-logo {
+        height: var(--app-header-height);
+        display: flex !important;
+        align-items: center !important;
+        padding: 0 1.5rem !important;
+        margin: 0 !important;
+        gap: .625rem !important;
+        border-bottom: 1px solid rgba(255,255,255,.06) !important;
+        background: transparent !important;
+        border-radius: 0 !important;
+        flex-shrink: 0;
+    }
+    .pcoded-navbar .b-brand { display: flex !important; align-items: center !important; gap: .625rem !important; min-width: 0; }
+    .pcoded-navbar .language-selector { margin-left: auto; padding: 0 !important; }
+    .pcoded-navbar .language-selector select {
+        height: 28px;
+        border-radius: 999px !important;
+        padding: 0 8px !important;
+        font-size: 11px !important;
+    }
+    .pcoded-navbar .navbar-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1.5rem .625rem 6.5rem !important;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255,255,255,.12) transparent;
+    }
+
+    .pcoded-navbar .pcoded-inner-navbar,
+    .pcoded-navbar .pcoded-inner-navbar > li { width: 100% !important; margin: 0 !important; padding: 0 !important; }
+    .pcoded-navbar .pcoded-menu-caption { padding: 1rem .625rem .375rem !important; margin: 0 !important; }
+    .pcoded-navbar .pcoded-menu-caption label {
+        font-size: .67rem !important;
+        font-weight: 600 !important;
+        letter-spacing: .1em !important;
+        text-transform: uppercase !important;
+        color: rgba(168,184,204,.45) !important;
+        margin: 0 !important;
+    }
+    .pcoded-navbar .pcoded-inner-navbar li > a.nav-link,
+    html[dir="ltr"] .pcoded-navbar .pcoded-inner-navbar li > a.nav-link,
+    html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar li > a.nav-link {
+        display: flex !important;
+        align-items: center !important;
+        gap: .625rem !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        padding: .62rem .625rem !important;
+        margin: .125rem 0 !important;
+        box-sizing: border-box !important;
+        color: var(--app-text-sidebar) !important;
+        background: transparent !important;
+        transform: none !important;
+        box-shadow: none !important;
+    }
+    .pcoded-navbar .pcoded-inner-navbar li > a.nav-link:hover {
+        background: rgba(255,255,255,.07) !important;
+        color: #fff !important;
+        padding: .62rem .625rem !important;
+        transform: none !important;
+    }
+    .pcoded-navbar .pcoded-inner-navbar li.active > a.nav-link {
+        background: var(--app-gradient) !important;
+        color: #fff !important;
+        box-shadow: 0 4px 14px rgba(64,153,255,.35) !important;
+    }
+    .pcoded-navbar .pcoded-inner-navbar li > a.nav-link .pcoded-micon,
+    html[dir="ltr"] .pcoded-navbar .pcoded-inner-navbar li > a.nav-link .pcoded-micon,
+    html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar li > a.nav-link .pcoded-micon {
+        position: static !important;
+        order: 0 !important;
+        flex: 0 0 22px !important;
+        width: 22px !important;
+        min-width: 22px !important;
+        max-width: 22px !important;
+        height: 22px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        transform: none !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        color: inherit !important;
+    }
+    .pcoded-navbar .pcoded-inner-navbar li > a.nav-link .pcoded-mtext,
+    html[dir="ltr"] .pcoded-navbar .pcoded-inner-navbar li > a.nav-link .pcoded-mtext,
+    html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar li > a.nav-link .pcoded-mtext {
+        position: static !important;
+        order: 0 !important;
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+        color: inherit !important;
+    }
+
+    .pcoded-navbar .user-profile-section {
+        position: absolute !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: .75rem !important;
+        border-top: 1px solid rgba(255,255,255,.06) !important;
+        background: var(--app-bg-sidebar) !important;
+        border-radius: 0 !important;
+    }
+    .pcoded-main-container {
+        margin-left: var(--app-sidebar-width) !important;
+        margin-right: 0 !important;
+        padding-top: var(--app-header-height) !important;
+        min-height: 100vh;
+        transition: margin-left var(--app-transition), margin-right var(--app-transition) !important;
+    }
+
+    body.sidebar-collapsed .pcoded-navbar { width: var(--app-sidebar-collapsed-width) !important; }
+    body.sidebar-collapsed .pcoded-main-container { margin-left: var(--app-sidebar-collapsed-width) !important; }
+    body.sidebar-collapsed .pcoded-navbar .b-title,
+    body.sidebar-collapsed .pcoded-navbar .language-selector,
+    body.sidebar-collapsed .pcoded-navbar .pcoded-menu-caption label,
+    body.sidebar-collapsed .pcoded-navbar .pcoded-mtext,
+    body.sidebar-collapsed .pcoded-navbar .user-profile-section div div:not(:first-child),
+    body.sidebar-collapsed .pcoded-navbar .user-profile-section a.nav-link { display: none !important; }
+    body.sidebar-collapsed .pcoded-navbar .navbar-brand.header-logo,
+    body.sidebar-collapsed .pcoded-navbar li a.nav-link {
+        justify-content: center !important;
+        padding-left: .5rem !important;
+        padding-right: .5rem !important;
+    }
+
+    html[dir="rtl"] .app-header__search i { left: auto; right: .85rem; }
+    html[dir="rtl"] .app-header__search input { padding: 0 2.5rem 0 1rem; }
+    html[dir="rtl"] .app-header__actions { margin-left: 0; margin-right: auto; }
+    html[dir="rtl"] .app-notification-menu { right: auto; left: 0; }
+    html[dir="rtl"] .app-header__notification-count { right: auto; left: -5px; }
+    html[dir="rtl"] .pcoded-navbar { right: 0 !important; left: auto !important; }
+    html[dir="rtl"] .pcoded-main-container { margin-right: var(--app-sidebar-width) !important; margin-left: 0 !important; }
+    html[dir="rtl"] body.sidebar-collapsed .pcoded-main-container { margin-right: var(--app-sidebar-collapsed-width) !important; margin-left: 0 !important; }
+    html[dir="rtl"] .pcoded-navbar .language-selector { margin-left: 0; margin-right: auto; }
+    html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar li > a.nav-link { flex-direction: row-reverse !important; }
+    html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar li > a.nav-link .pcoded-mtext { text-align: right !important; }
+
+    @media (min-width: 1024px) {
+        .app-header {
+            left: var(--app-sidebar-width);
+            transition: left var(--app-transition), right var(--app-transition);
+        }
+        .app-header__brand { display: none !important; }
+        body.sidebar-collapsed .app-header { left: var(--app-sidebar-collapsed-width); }
+        body.sidebar-collapsed .pcoded-navbar:hover { width: var(--app-sidebar-width) !important; }
+        body.sidebar-collapsed .pcoded-navbar:hover .navbar-brand.header-logo,
+        body.sidebar-collapsed .pcoded-navbar:hover li a.nav-link {
+            justify-content: flex-start !important;
+            padding-left: .625rem !important;
+            padding-right: .625rem !important;
+        }
+        body.sidebar-collapsed .pcoded-navbar:hover .b-title,
+        body.sidebar-collapsed .pcoded-navbar:hover .language-selector,
+        body.sidebar-collapsed .pcoded-navbar:hover .pcoded-menu-caption label,
+        body.sidebar-collapsed .pcoded-navbar:hover .pcoded-mtext { display: inline-block !important; }
+        body.sidebar-collapsed .pcoded-navbar:hover .user-profile-section div div:not(:first-child) { display: block !important; }
+        body.sidebar-collapsed .pcoded-navbar:hover .user-profile-section a.nav-link { display: flex !important; }
+        html[dir="rtl"] .app-header { left: 0; right: var(--app-sidebar-width); }
+        html[dir="rtl"] body.sidebar-collapsed .app-header { right: var(--app-sidebar-collapsed-width); }
+    }
+
+    @media (max-width: 1023px) {
+        .app-header { left: 0; right: 0; padding: 0 1rem; }
+        .app-header__brand-name { max-width: 180px; }
+        .pcoded-navbar {
+            transform: translateX(-100%) !important;
+            width: var(--app-sidebar-width) !important;
+            max-width: 85vw;
+        }
+        body.sidebar-open .pcoded-navbar { transform: translateX(0) !important; }
+        html[dir="rtl"] .pcoded-navbar { transform: translateX(100%) !important; }
+        html[dir="rtl"] body.sidebar-open .pcoded-navbar { transform: translateX(0) !important; }
+        .pcoded-main-container,
+        html[dir="rtl"] .pcoded-main-container,
+        body.sidebar-collapsed .pcoded-main-container,
+        html[dir="rtl"] body.sidebar-collapsed .pcoded-main-container {
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+        .mobile-menu-float { display: none !important; }
+    }
+
+    @media (max-width: 639px) {
+        .app-header__search { display: none; }
+        .app-header__brand-name { max-width: 130px; }
+        .app-header__actions { gap: .25rem; }
+        .app-header__icon-btn { width: 34px; height: 34px; }
+    }
+    </style>
 </head>
+<body>
 
 <!-- [ Pre-loader ] start -->
 <div class="loader-bg">
@@ -75,9 +900,22 @@ if (isset($tenant_id) && $tenant_id) {
                 <strong>Trial Period:</strong> You have <strong><?= $days_left ?> day<?= $days_left !== 1 ? 's' : '' ?></strong> remaining in your free trial. Trial ends on <strong><?= date('M d, Y', strtotime($trial_end)) ?></strong>.
             <?php endif; ?>
         </div>
-        <button class="trial-banner-close" onclick="document.getElementById('trialBanner').style.display='none'">&times;</button>
+        <button class="trial-banner-close" onclick="closeTrialBanner();">&times;</button>
     </div>
 </div>
+<script>
+function closeTrialBanner() {
+    var banner = document.getElementById('trialBanner');
+    if (banner) banner.style.display = 'none';
+    document.body.classList.remove('has-trial-banner');
+    sessionStorage.setItem('trialBannerClosed', 'true');
+}
+if (sessionStorage.getItem('trialBannerClosed') === 'true') {
+    closeTrialBanner();
+} else {
+    document.body.classList.add('has-trial-banner');
+}
+</script>
 <style>
 .trial-banner {
     position: fixed;
@@ -137,6 +975,16 @@ if (isset($tenant_id) && $tenant_id) {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.85; }
 }
+body.has-trial-banner .app-header {
+    top: 44px !important;
+}
+body.has-trial-banner .pcoded-navbar {
+    top: 44px !important;
+    height: calc(100vh - 44px) !important;
+}
+body.has-trial-banner .pcoded-main-container {
+    padding-top: calc(var(--app-header-height) + 44px) !important;
+}
 </style>
 <?php
         }
@@ -146,13 +994,77 @@ if (isset($tenant_id) && $tenant_id) {
 }
 ?>
 
-<!-- Mobile Floating Hamburger Button -->
-<div class="mobile-menu-float">
-    <a class="mobile-menu" id="mobile-collapse" href="javascript:"><span></span></a>
-</div>
+<div class="app-shell-overlay" id="appShellOverlay"></div>
+
+<header class="app-header" role="banner">
+    <button class="app-header__toggle" id="mobile-collapse" type="button" aria-label="Toggle sidebar" aria-expanded="false">
+        <span></span><span></span><span></span>
+    </button>
+
+    <a href="dashboard.php" class="app-header__brand">
+        <span class="app-header__brand-logo">
+            <img src="../uploads/logo/<?= h($settings['logo'] ?? '') ?>" alt="<?= h($settings['agency_name'] ?? '') ?>">
+        </span>
+        <span class="app-header__brand-name"><?= h($settings['agency_name'] ?? '') ?></span>
+    </a>
+
+    <div class="app-header__spacer"></div>
+
+    <div class="app-header__actions">
+        <?php if (($user['role'] ?? '') === 'admin'): ?>
+        <div class="app-header__notification">
+            <button class="app-header__icon-btn" type="button" id="appNotificationToggle" aria-label="Notifications" aria-expanded="false">
+                <i class="feather icon-bell"></i>
+                <?php if ($header_unread_count > 0): ?>
+                <span class="app-header__notification-count" id="headerNotifBadge"><?= $header_unread_count > 99 ? '99+' : $header_unread_count ?></span>
+                <?php endif; ?>
+            </button>
+            <div class="app-notification-menu" id="appNotificationMenu" aria-hidden="true">
+                <div class="app-notification-menu__head">
+                    <div class="app-notification-menu__title"><?= h(__('recent_notifications')) ?></div>
+                    <span class="app-notification-menu__title"><?= (int) $header_unread_count ?></span>
+                </div>
+                <div class="notif-tabs-row app-notification-tabs">
+                    <button class="notif-tab-btn active" type="button" onclick="switchNotifTab(this,'ntab-unread')">
+                        <?= h(__('unread')) ?> <span class="nbadge" id="unreadNotifCount"><?= (int) $header_unread_count ?></span>
+                    </button>
+                    <button class="notif-tab-btn" type="button" onclick="switchNotifTab(this,'ntab-read')"><?= h(__('read')) ?></button>
+                </div>
+                <div class="app-notification-menu__list" id="notificationsContent">
+                    <div id="ntab-unread">
+                        <?php renderHeaderNotifications($header_unread_notifications, 'unread'); ?>
+                    </div>
+                    <div id="ntab-read" style="display:none;">
+                        <div class="read-filter">
+                            <label><?= h(__('filter')) ?>:</label>
+                            <input type="date" class="dep-date-input" id="readNotificationsDate" value="<?= date('Y-m-d') ?>">
+                            <button class="dbtn dbtn-ghost" id="applyReadDateFilter" type="button">
+                                <i class="fas fa-filter"></i> <?= h(__('filter')) ?>
+                            </button>
+                        </div>
+                        <div id="readNotificationsBody">
+                            <?php renderHeaderNotifications($header_read_notifications, 'read'); ?>
+                        </div>
+                    </div>
+                </div>
+                <div class="app-notification-menu__foot"><?= h(__('recent_notifications')) ?></div>
+            </div>
+        </div>
+        <?php endif; ?>
+        <?php if (hasFeature('inter_tenant_chat', $allowed_features)): ?>
+        <a class="app-header__icon-btn" href="../chat.php" aria-label="Messages">
+            <i class="feather icon-message-circle"></i>
+            <span class="app-header__badge"></span>
+        </a>
+        <?php endif; ?>
+        <a class="app-header__avatar" href="profile.php" aria-label="Profile">
+            <img src="<?= $imagePath ?>" alt="<?= h($user['name'] ?? 'User') ?>">
+        </a>
+    </div>
+</header>
 
 <!-- [ navigation menu ] start -->
-<nav class="pcoded-navbar">
+<aside class="pcoded-navbar" id="sidebar" role="navigation" aria-label="Main navigation">
     <div class="navbar-wrapper">
 
         <!-- Brand / logo -->
@@ -160,7 +1072,7 @@ if (isset($tenant_id) && $tenant_id) {
             <a href="dashboard.php" class="b-brand">
                 <div class="b-bg">
                     <img class="rounded-circle" style="width:40px;"
-                         src="../Uploads/logo/<?= h($settings['logo'] ?? '') ?>"
+                         src="../uploads/logo/<?= h($settings['logo'] ?? '') ?>"
                          alt="<?= h($settings['agency_name'] ?? '') ?>">
                 </div>
                 <span class="b-title"><?= h($settings['agency_name'] ?? '') ?></span>
@@ -176,7 +1088,6 @@ if (isset($tenant_id) && $tenant_id) {
                 </select>
             </div>
 
-            <a class="mobile-menu" id="mobile-collapse" href="javascript:"><span></span><span></span><span></span></a>
         </div>
         <!-- /brand -->
 
@@ -231,7 +1142,7 @@ if (isset($tenant_id) && $tenant_id) {
         <!-- /user profile strip -->
 
     </div>
-</nav>
+</aside>
 <!-- [ navigation menu ] end -->
 
 <?php if (hasFeature('inter_tenant_chat', $allowed_features)): ?>
@@ -260,10 +1171,305 @@ if (isset($tenant_id) && $tenant_id) {
 
 <!-- ── Floating Tasks Widget ──────────────────────────────────── -->
 <?php include_once 'floating_tasks.php'; ?>
+<?php include_once __DIR__ . '/../modals/dashboard/receipt_modal.php'; ?>
 
 <!-- ── Scripts ────────────────────────────────────────────────── -->
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    var shellToggle = document.getElementById('mobile-collapse');
+    var shellOverlay = document.getElementById('appShellOverlay');
+
+    function isModernShellDesktop() {
+        return window.innerWidth >= 1024;
+    }
+
+    function closeModernShellSidebar() {
+        document.body.classList.remove('sidebar-open');
+        shellOverlay && shellOverlay.classList.remove('active');
+        shellToggle && shellToggle.setAttribute('aria-expanded', 'false');
+    }
+
+    if (shellToggle) {
+        shellToggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+
+            if (isModernShellDesktop()) {
+                document.body.classList.toggle('sidebar-collapsed');
+                closeModernShellSidebar();
+                return;
+            }
+
+            var open = document.body.classList.toggle('sidebar-open');
+            shellOverlay && shellOverlay.classList.toggle('active', open);
+            shellToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+    }
+
+    shellOverlay && shellOverlay.addEventListener('click', closeModernShellSidebar);
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeModernShellSidebar();
+    });
+    window.addEventListener('resize', function() {
+        if (isModernShellDesktop()) closeModernShellSidebar();
+    });
+
+    var notificationToggle = document.getElementById('appNotificationToggle');
+    var notificationMenu = document.getElementById('appNotificationMenu');
+
+    if (notificationToggle && notificationMenu) {
+        notificationToggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var isOpen = notificationMenu.classList.toggle('open');
+            notificationMenu.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+            notificationToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!notificationMenu.contains(e.target) && !notificationToggle.contains(e.target)) {
+                notificationMenu.classList.remove('open');
+                notificationMenu.setAttribute('aria-hidden', 'true');
+                notificationToggle.setAttribute('aria-expanded', 'false');
+            }
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                notificationMenu.classList.remove('open');
+                notificationMenu.setAttribute('aria-hidden', 'true');
+                notificationToggle.setAttribute('aria-expanded', 'false');
+            }
+        });
+    }
+
+    if (typeof window.switchNotifTab !== 'function') {
+        window.switchNotifTab = function(btn, id) {
+            var menu = btn.closest('.app-notification-menu') || btn.closest('.d-card');
+            if (!menu) return;
+            menu.querySelectorAll('.notif-tab-btn').forEach(function(tab) {
+                tab.classList.remove('active');
+            });
+            btn.classList.add('active');
+            ['ntab-unread', 'ntab-read'].forEach(function(tabId) {
+                var panel = menu.querySelector('#' + tabId);
+                if (panel) panel.style.display = tabId === id ? 'block' : 'none';
+            });
+        };
+    }
+
+    document.addEventListener('click', function(e) {
+        var readButton = e.target.closest('#appNotificationMenu .read-button');
+        if (!readButton) return;
+
+        e.preventDefault();
+        e.stopImmediatePropagation();
+
+        var notificationId = readButton.getAttribute('data-id');
+        var formData = new FormData();
+        formData.append('notification_id', notificationId);
+        formData.append('status', 'read');
+        formData.append('csrf_token', document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '<?= h($_SESSION['csrf_token'] ?? '') ?>');
+
+        fetch('../api/dashboard/update_notification_status.php', {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (!data || !data.success) return;
+
+            var item = readButton.closest('.tl-item');
+            if (item) item.remove();
+
+            var countEl = document.getElementById('unreadNotifCount');
+            if (countEl) {
+                var currentCount = parseInt(countEl.textContent, 10) || 0;
+                countEl.textContent = Math.max(0, currentCount - 1);
+            }
+
+            var badge = document.getElementById('headerNotifBadge');
+            if (badge) {
+                var badgeCount = parseInt(badge.textContent, 10) || 0;
+                var nextCount = Math.max(0, badgeCount - 1);
+                if (nextCount > 0) badge.textContent = nextCount > 99 ? '99+' : nextCount;
+                else badge.remove();
+            }
+        })
+        .catch(function(error) { console.error('Notification update error:', error); });
+    }, true);
+
+    document.addEventListener('click', function(e) {
+        var approveButton = e.target.closest('#appNotificationMenu .approve-button');
+        if (!approveButton) return;
+
+        e.preventDefault();
+        e.stopImmediatePropagation();
+
+        var hiddenNotification = document.getElementById('hiddenNotificationId');
+        if (hiddenNotification) hiddenNotification.value = approveButton.getAttribute('data-id') || '';
+
+        // Try jQuery/Bootstrap modal first, then vanilla JS fallback
+        if (window.jQuery && jQuery('#receiptModal').length && jQuery.fn.modal) {
+            jQuery('#receiptModal').modal('show');
+        } else {
+            var modal = document.getElementById('receiptModal');
+            if (modal) {
+                modal.classList.add('show');
+                modal.style.display = 'block';
+                modal.setAttribute('aria-hidden', 'false');
+                document.body.classList.add('modal-open');
+                // Create backdrop
+                if (!document.getElementById('receiptModalBackdrop')) {
+                    var backdrop = document.createElement('div');
+                    backdrop.className = 'modal-backdrop fade show';
+                    backdrop.id = 'receiptModalBackdrop';
+                    document.body.appendChild(backdrop);
+                }
+            }
+        }
+    }, true);
+
+    // ── Receipt modal submit handler (vanilla JS, works on all pages) ──
+    var submitReceiptBtn = document.getElementById('submitReceipt');
+    if (submitReceiptBtn) {
+        submitReceiptBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var receiptNumber = document.getElementById('receiptNumber').value;
+            var remarks = document.getElementById('remarks').value;
+            var notificationId = document.getElementById('hiddenNotificationId').value;
+            var csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '<?= h($_SESSION['csrf_token'] ?? '') ?>';
+
+            if (!receiptNumber || !remarks) {
+                // Show simple warning toast
+                var warningToast = document.createElement('div');
+                warningToast.className = 'toast-notification bg-warning';
+                warningToast.innerHTML = '<i class="feather icon-alert-triangle mr-2"></i><span>Please enter both receipt number and remarks.</span><button type="button" class="close ml-2 text-white">&times;</button>';
+                warningToast.style.cssText = 'position:fixed;top:20px;right:20px;padding:16px 20px;border-radius:10px;display:flex;align-items:center;gap:10px;color:#fff;font-size:14px;font-weight:500;z-index:9999;box-shadow:0 10px 25px rgba(0,0,0,0.2);opacity:0;transform:translateX(400px);transition:all 0.3s ease;';
+                document.body.appendChild(warningToast);
+                setTimeout(function() { warningToast.style.opacity = '1'; warningToast.style.transform = 'translateX(0)'; }, 100);
+                setTimeout(function() { warningToast.style.opacity = '0'; warningToast.style.transform = 'translateX(400px)'; setTimeout(function() { warningToast.remove(); }, 300); }, 3000);
+                return;
+            }
+
+            var formData = new FormData();
+            formData.append('notification_id', notificationId);
+            formData.append('receipt_number', receiptNumber);
+            formData.append('remarks', remarks);
+            formData.append('csrf_token', csrfToken);
+
+            fetch('../api/dashboard/approve_notification.php', {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data && data.status === 'success') {
+                    // Show success toast
+                    var successToast = document.createElement('div');
+                    successToast.className = 'toast-notification bg-success';
+                    successToast.innerHTML = '<i class="feather icon-check-circle mr-2"></i><span>' + (data.message || 'Notification approved successfully') + '</span><button type="button" class="close ml-2 text-white">&times;</button>';
+                    successToast.style.cssText = 'position:fixed;top:20px;right:20px;padding:16px 20px;border-radius:10px;display:flex;align-items:center;gap:10px;color:#fff;font-size:14px;font-weight:500;z-index:9999;box-shadow:0 10px 25px rgba(0,0,0,0.2);opacity:0;transform:translateX(400px);transition:all 0.3s ease;';
+                    document.body.appendChild(successToast);
+                    setTimeout(function() { successToast.style.opacity = '1'; successToast.style.transform = 'translateX(0)'; }, 100);
+                    setTimeout(function() { successToast.style.opacity = '0'; successToast.style.transform = 'translateX(400px)'; setTimeout(function() { successToast.remove(); }, 300); }, 3000);
+
+                    // Close the modal
+                    if (window.jQuery && jQuery.fn.modal) {
+                        jQuery('#receiptModal').modal('hide');
+                    } else if (window.closeReceiptModal) {
+                        window.closeReceiptModal();
+                    }
+
+                    // Remove the notification item from the UI
+                    var notifItem = document.querySelector('[data-id="' + notificationId + '"]');
+                    if (notifItem) {
+                        var tlItem = notifItem.closest('.tl-item') || notifItem;
+                        tlItem.style.transition = 'opacity 0.4s ease';
+                        tlItem.style.opacity = '0';
+                        setTimeout(function() { tlItem.remove(); }, 400);
+
+                        // Update unread count
+                        var countEl = document.getElementById('unreadNotifCount');
+                        if (countEl) {
+                            var currentCount = parseInt(countEl.textContent, 10) || 0;
+                            countEl.textContent = Math.max(0, currentCount - 1);
+                        }
+                        var badge = document.getElementById('headerNotifBadge');
+                        if (badge) {
+                            var badgeCount = parseInt(badge.textContent, 10) || 0;
+                            var nextCount = Math.max(0, badgeCount - 1);
+                            if (nextCount > 0) badge.textContent = nextCount > 99 ? '99+' : nextCount;
+                            else badge.remove();
+                        }
+                    }
+
+                    // Clear form fields
+                    document.getElementById('receiptNumber').value = '';
+                    document.getElementById('remarks').value = '';
+                } else {
+                    // Show error toast
+                    var errorToast = document.createElement('div');
+                    errorToast.className = 'toast-notification bg-danger';
+                    errorToast.innerHTML = '<i class="feather icon-alert-circle mr-2"></i><span>' + (data.message || 'Failed to approve notification') + '</span><button type="button" class="close ml-2 text-white">&times;</button>';
+                    errorToast.style.cssText = 'position:fixed;top:20px;right:20px;padding:16px 20px;border-radius:10px;display:flex;align-items:center;gap:10px;color:#fff;font-size:14px;font-weight:500;z-index:9999;box-shadow:0 10px 25px rgba(0,0,0,0.2);opacity:0;transform:translateX(400px);transition:all 0.3s ease;';
+                    document.body.appendChild(errorToast);
+                    setTimeout(function() { errorToast.style.opacity = '1'; errorToast.style.transform = 'translateX(0)'; }, 100);
+                    setTimeout(function() { errorToast.style.opacity = '0'; errorToast.style.transform = 'translateX(400px)'; setTimeout(function() { errorToast.remove(); }, 300); }, 3000);
+                }
+            })
+            .catch(function(error) {
+                console.error('Receipt submit error:', error);
+                var errToast = document.createElement('div');
+                errToast.className = 'toast-notification bg-danger';
+                errToast.innerHTML = '<i class="feather icon-alert-circle mr-2"></i><span>An error occurred while processing your request.</span><button type="button" class="close ml-2 text-white">&times;</button>';
+                errToast.style.cssText = 'position:fixed;top:20px;right:20px;padding:16px 20px;border-radius:10px;display:flex;align-items:center;gap:10px;color:#fff;font-size:14px;font-weight:500;z-index:9999;box-shadow:0 10px 25px rgba(0,0,0,0.2);opacity:0;transform:translateX(400px);transition:all 0.3s ease;';
+                document.body.appendChild(errToast);
+                setTimeout(function() { errToast.style.opacity = '1'; errToast.style.transform = 'translateX(0)'; }, 100);
+                setTimeout(function() { errToast.style.opacity = '0'; errToast.style.transform = 'translateX(400px)'; setTimeout(function() { errToast.remove(); }, 300); }, 3000);
+            });
+        });
+    }
+
+    // ── Read notifications date filter ──────────────────────────────
+    var applyReadDateFilterBtn = document.getElementById('applyReadDateFilter');
+    if (applyReadDateFilterBtn) {
+        applyReadDateFilterBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var selectedDate = document.getElementById('readNotificationsDate').value;
+            if (!selectedDate) return;
+
+            var readBody = document.getElementById('readNotificationsBody');
+            if (readBody) readBody.innerHTML = '<div style="text-align:center;padding:28px;color:var(--app-text-secondary);"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+
+            var formData = new FormData();
+            formData.append('date', selectedDate);
+            formData.append('status', 'read');
+
+            fetch('../api/dashboard/get_filtered_notifications.php', {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data && data.status === 'success' && data.html) {
+                    if (readBody) readBody.innerHTML = data.html;
+                } else {
+                    if (readBody) readBody.innerHTML = '<div style="text-align:center;padding:28px;color:var(--app-text-secondary);"><i class="feather icon-inbox"></i><div>No read notifications for selected date</div></div>';
+                }
+            })
+            .catch(function(error) {
+                console.error('Read filter error:', error);
+                if (readBody) readBody.innerHTML = '<div style="text-align:center;padding:28px;color:#ef4444;">Error loading notifications</div>';
+            });
+        });
+    }
 
     // ── Mobile sidebar ────────────────────────────────────────────
     var mobileFloat = document.querySelector('.mobile-menu-float');

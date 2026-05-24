@@ -4,7 +4,15 @@
  * Sidebar navigation items partial.
  * Requires: $user, $allowed_features (both set by auth_check.php)
  *
- * Uses a tiny helper to shorten active-state checks.
+ * Organized into logical sections:
+ *   1. Navigation  – Dashboard
+ *   2. Travel & Services – Tickets, Hotels, Umrah, Visa
+ *   3. Finance & Accounting – Accounts, Debtors, Creditors, Sarafi, Expenses, Payments
+ *   4. People & HR – HR Management, Salary, Suppliers, Clients
+ *   5. Operations – Letters, Assets, Excel Import, Search
+ *   6. Communication – Chat, Email Analytics
+ *   7. Security & Monitoring – 2FA, Activity Log
+ *   8. Support – Support Tickets, Tutorials
  */
 
 // Current page for active-state detection
@@ -39,12 +47,13 @@ if (!function_exists('navTrigger')) {
 }
 ?>
 
-<!-- Navigation caption -->
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SECTION 1: Navigation – Dashboard
+     ═══════════════════════════════════════════════════════════════════════ -->
 <li class="nav-item pcoded-menu-caption">
     <label><?= __('navigation') ?></label>
 </li>
 
-<!-- Dashboard -->
 <li class="nav-item <?= navActive('dashboard.php') ?>">
     <a href="dashboard.php" class="nav-link">
         <span class="pcoded-micon"><i class="feather icon-home"></i></span>
@@ -52,153 +61,12 @@ if (!function_exists('navTrigger')) {
     </a>
 </li>
 
-<!-- Pages caption -->
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SECTION 2: Travel & Services – Tickets, Hotels, Umrah, Visa
+     ═══════════════════════════════════════════════════════════════════════ -->
 <li class="nav-item pcoded-menu-caption">
-    <label><?= __('pages') ?></label>
+    <label><?= __('travel_services') ?></label>
 </li>
-
-<!-- ── Chat ──────────────────────────────────────────────────────────── -->
-<?php if (hasFeature('inter_tenant_chat', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
-<li class="nav-item pcoded-hasmenu <?= navTrigger('chat.php', 'send_messages.php', 'chat_settings.php', 'tenant_peering.php', 'branch_peering.php') ?>">
-    <a href="javascript:" class="nav-link">
-        <span class="pcoded-micon"><i class="feather icon-message-circle"></i></span>
-        <span class="pcoded-mtext"><?= __('chat') ?></span>
-    </a>
-    <ul class="pcoded-submenu">
-        <li class="<?= navActive('chat.php') ?>">
-            <a href="../chat.php"><i class="feather icon-users"></i> <?= __('chat') ?></a>
-        </li>
-        <li class="<?= navActive('chat_settings.php') ?>">
-            <a href="chat_settings.php"><i class="feather icon-settings"></i> Chat Settings</a>
-        </li>
-        <li class="<?= navActive('tenant_peering.php') ?>">
-            <a href="tenant_peering.php"><i class="feather icon-users"></i> Tenant Peering</a>
-        </li>
-        <li class="<?= navActive('branch_peering.php') ?>">
-            <a href="branch_peering.php"><i class="feather icon-users"></i> Branch Peering</a>
-        </li>
-    </ul>
-</li>
-<?php endif; ?>
-
-<!-- ── Accounts ──────────────────────────────────────────────────────── -->
-<?php if (staffCanSeeMenu($user['role'])): ?>
-<li class="nav-item <?= navActive('accounts.php') ?>">
-    <a href="accounts.php" class="nav-link">
-        <span class="pcoded-micon"><i class="feather icon-briefcase"></i></span>
-        <span class="pcoded-mtext"><?= __('accounts') ?></span>
-    </a>
-</li>
-<?php endif; ?>
-
-<!-- ── Debtors ───────────────────────────────────────────────────────── -->
-<?php if (hasFeature('debtors', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
-<li class="nav-item <?= navActive('debtors.php') ?>">
-    <a href="debtors.php" class="nav-link">
-        <span class="pcoded-micon"><i class="feather icon-users"></i></span>
-        <span class="pcoded-mtext"><?= __('debtors') ?></span>
-    </a>
-</li>
-<?php endif; ?>
-
-<!-- ── Creditors ─────────────────────────────────────────────────────── -->
-<?php if (hasFeature('creditors', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
-<li class="nav-item <?= navActive('creditors.php') ?>">
-    <a href="creditors.php" class="nav-link">
-        <span class="pcoded-micon"><i class="feather icon-users"></i></span>
-        <span class="pcoded-mtext"><?= __('creditors') ?></span>
-    </a>
-</li>
-<?php endif; ?>
-
-<!-- ── Sarafi ────────────────────────────────────────────────────────── -->
-<?php if (hasFeature('sarafi', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
-<li class="nav-item <?= navActive('sarafi.php') ?>">
-    <a href="sarafi.php" class="nav-link">
-        <span class="pcoded-micon"><i class="feather icon-credit-card"></i></span>
-        <span class="pcoded-mtext"><?= __('sarafi') ?></span>
-    </a>
-</li>
-<?php endif; ?>
-
-<!-- ── Salary ────────────────────────────────────────────────────────── -->
-<?php if (hasFeature('salary', $allowed_features)): ?>
-    <?php if (staffCanSeeMenu($user['role'])): ?>
-    <!-- Admin / manager: full salary submenu -->
-    <li class="nav-item pcoded-hasmenu <?= navTrigger('salary_management.php', 'salary_payment.php', 'salary_payments.php') ?>">
-        <a href="javascript:" class="nav-link">
-            <span class="pcoded-micon"><i class="fas fa-dollar-sign"></i></span>
-            <span class="pcoded-mtext"><?= __('salary_management') ?></span>
-        </a>
-        <ul class="pcoded-submenu">
-            <li class="<?= navActive('salary_management.php') ?>">
-                <a href="salary_management.php"><?= __('employee_salaries') ?></a>
-            </li>
-            <li class="<?= navActive('salary_payment.php') ?>">
-                <a href="salary_payment.php"><?= __('process_payment') ?></a>
-            </li>
-            <li class="<?= navActive('salary_payments.php') ?>">
-                <a href="salary_payments.php"><i class="feather icon-user mr-2"></i><?= __('my_payments') ?></a>
-            </li>
-        </ul>
-    </li>
-    <?php else: ?>
-    <!-- Staff: My Payments only -->
-    <li class="nav-item <?= navActive('salary_payments.php') ?>">
-        <a href="salary_payments.php" class="nav-link">
-            <span class="pcoded-micon"><i class="fas fa-dollar-sign"></i></span>
-            <span class="pcoded-mtext"><?= __('my_payments') ?></span>
-        </a>
-    </li>
-    <?php endif; ?>
-<?php endif; ?>
-
-<!-- ── HR Management ─────────────────────────────────────────────────── -->
-<?php if (hasFeature('salary', $allowed_features)): ?>
-    <?php
-    $hrPages = ['hr.php', 'employee_management.php', 'employee_performance.php',
-                'attendance.php', 'manage_attendance.php', 'attendance_settings.php',
-                'hr_reports.php', 'add_employee.php', 'edit_employee.php', 'employee_details.php'];
-    ?>
-    <?php if (staffCanSeeMenu($user['role'])): ?>
-    <li class="nav-item pcoded-hasmenu <?= navTrigger(...$hrPages) ?>">
-        <a href="javascript:" class="nav-link">
-            <span class="pcoded-micon"><i class="feather icon-users"></i></span>
-            <span class="pcoded-mtext"><?= __('hr_management') ?></span>
-        </a>
-        <ul class="pcoded-submenu">
-            <li class="<?= navActive('hr.php') ?>">
-                <a href="hr.php"><?= __('hr_dashboard') ?></a>
-            </li>
-            <li class="<?= navActive('employee_management.php') ?>">
-                <a href="employee_management.php"><?= __('employee_management') ?></a>
-            </li>
-            <li class="<?= navActive('employee_performance.php') ?>">
-                <a href="employee_performance.php"><?= __('performance_reviews') ?></a>
-            </li>
-            <?php if (hasFeature('attendance', $allowed_features)): ?>
-            <li class="<?= navActive('attendance.php') ?>">
-                <a href="attendance.php"><i class="feather icon-clock mr-2"></i><?= __('my_attendance') ?></a>
-            </li>
-            <li class="<?= navActive('manage_attendance.php') ?>">
-                <a href="manage_attendance.php"><i class="feather icon-calendar mr-2"></i><?= __('manage_attendance') ?></a>
-            </li>
-            <li class="<?= navActive('attendance_settings.php') ?>">
-                <a href="attendance_settings.php"><i class="feather icon-settings mr-2"></i><?= __('attendance_settings') ?></a>
-            </li>
-            <?php endif; ?>
-        </ul>
-    </li>
-    <?php else: ?>
-    <!-- Staff: My Attendance only -->
-    <li class="nav-item <?= navActive('attendance.php') ?>">
-        <a href="attendance.php" class="nav-link">
-            <span class="pcoded-micon"><i class="feather icon-clock"></i></span>
-            <span class="pcoded-mtext"><?= __('my_attendance') ?></span>
-        </a>
-    </li>
-    <?php endif; ?>
-<?php endif; ?>
 
 <!-- ── Ticket Management ──────────────────────────────────────────────── -->
 <?php
@@ -320,58 +188,49 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 </li>
 <?php endif; ?>
 
-<!-- ── Additional Payments ────────────────────────────────────────────── -->
-<?php if (hasFeature('additional_payments', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
-<li class="nav-item <?= navActive('additional_payments.php') ?>">
-    <a href="additional_payments.php" class="nav-link">
-        <span class="pcoded-micon"><i class="feather icon-users"></i></span>
-        <span class="pcoded-mtext"><?= __('additional_payments') ?></span>
-    </a>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SECTION 3: Finance & Accounting
+     ═══════════════════════════════════════════════════════════════════════ -->
+<li class="nav-item pcoded-menu-caption">
+    <label><?= __('finance_accounting') ?></label>
 </li>
-<?php endif; ?>
 
-<!-- ── JV Payments ────────────────────────────────────────────────────── -->
-<?php if (hasFeature('jv_payments', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
-<li class="nav-item <?= navActive('jv_payments.php') ?>">
-    <a href="jv_payments.php" class="nav-link">
-        <span class="pcoded-micon"><i class="feather icon-users"></i></span>
-        <span class="pcoded-mtext"><?= __('jv_payments') ?></span>
-    </a>
-</li>
-<?php endif; ?>
-
-<!-- ── Manage Letters (Maktobs) ───────────────────────────────────────── -->
-<?php if (hasFeature('manage_maktobs', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
-<li class="nav-item <?= navActive('manage_maktobs.php') ?>">
-    <a href="manage_maktobs.php" class="nav-link">
-        <span class="pcoded-micon"><i class="fas fa-file-alt"></i></span>
-        <span class="pcoded-mtext"><?= __('manage_letters') ?></span>
-    </a>
-</li>
-<?php endif; ?>
-
-<!-- ── Assets ────────────────────────────────────────────────────────── -->
-<?php if (hasFeature('assets', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
-<li class="nav-item <?= navActive('assets.php') ?>">
-    <a href="assets.php" class="nav-link">
-        <span class="pcoded-micon"><i class="feather icon-users"></i></span>
-        <span class="pcoded-mtext"><?= __('assets') ?></span>
-    </a>
-</li>
-<?php endif; ?>
-
-<!-- ── Supplier / Client ──────────────────────────────────────────────── -->
+<!-- ── Accounts ──────────────────────────────────────────────────────── -->
 <?php if (staffCanSeeMenu($user['role'])): ?>
-<li class="nav-item <?= navActive('supplier.php') ?>">
-    <a href="supplier.php" class="nav-link">
-        <span class="pcoded-micon"><i class="feather icon-users"></i></span>
-        <span class="pcoded-mtext"><?= __('supplier') ?></span>
+<li class="nav-item <?= navActive('accounts.php') ?>">
+    <a href="accounts.php" class="nav-link">
+        <span class="pcoded-micon"><i class="feather icon-briefcase"></i></span>
+        <span class="pcoded-mtext"><?= __('accounts') ?></span>
     </a>
 </li>
-<li class="nav-item <?= navActive('client.php') ?>">
-    <a href="client.php" class="nav-link">
-        <span class="pcoded-micon"><i class="feather icon-user"></i></span>
-        <span class="pcoded-mtext"><?= __('client') ?></span>
+<?php endif; ?>
+
+<!-- ── Debtors ───────────────────────────────────────────────────────── -->
+<?php if (hasFeature('debtors', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
+<li class="nav-item <?= navActive('debtors.php') ?>">
+    <a href="debtors.php" class="nav-link">
+        <span class="pcoded-micon"><i class="feather icon-user-minus"></i></span>
+        <span class="pcoded-mtext"><?= __('debtors') ?></span>
+    </a>
+</li>
+<?php endif; ?>
+
+<!-- ── Creditors ─────────────────────────────────────────────────────── -->
+<?php if (hasFeature('creditors', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
+<li class="nav-item <?= navActive('creditors.php') ?>">
+    <a href="creditors.php" class="nav-link">
+        <span class="pcoded-micon"><i class="feather icon-user-plus"></i></span>
+        <span class="pcoded-mtext"><?= __('creditors') ?></span>
+    </a>
+</li>
+<?php endif; ?>
+
+<!-- ── Sarafi ────────────────────────────────────────────────────────── -->
+<?php if (hasFeature('sarafi', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
+<li class="nav-item <?= navActive('sarafi.php') ?>">
+    <a href="sarafi.php" class="nav-link">
+        <span class="pcoded-micon"><i class="feather icon-credit-card"></i></span>
+        <span class="pcoded-mtext"><?= __('sarafi') ?></span>
     </a>
 </li>
 <?php endif; ?>
@@ -394,6 +253,26 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
             <a href="global_budget_allocation.php"><i class="feather icon-globe mr-2"></i>Global Budget Allocation</a>
         </li>
     </ul>
+</li>
+<?php endif; ?>
+
+<!-- ── Additional Payments ────────────────────────────────────────────── -->
+<?php if (hasFeature('additional_payments', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
+<li class="nav-item <?= navActive('additional_payments.php') ?>">
+    <a href="additional_payments.php" class="nav-link">
+        <span class="pcoded-micon"><i class="feather icon-plus-circle"></i></span>
+        <span class="pcoded-mtext"><?= __('additional_payments') ?></span>
+    </a>
+</li>
+<?php endif; ?>
+
+<!-- ── JV Payments ────────────────────────────────────────────────────── -->
+<?php if (hasFeature('jv_payments', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
+<li class="nav-item <?= navActive('jv_payments.php') ?>">
+    <a href="jv_payments.php" class="nav-link">
+        <span class="pcoded-micon"><i class="feather icon-layers"></i></span>
+        <span class="pcoded-mtext"><?= __('jv_payments') ?></span>
+    </a>
 </li>
 <?php endif; ?>
 
@@ -427,6 +306,139 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 </li>
 <?php endif; ?>
 
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SECTION 4: People & HR
+     ═══════════════════════════════════════════════════════════════════════ -->
+<li class="nav-item pcoded-menu-caption">
+    <label><?= __('people_hr') ?></label>
+</li>
+
+<!-- ── HR Management ─────────────────────────────────────────────────── -->
+<?php if (hasFeature('salary', $allowed_features)): ?>
+    <?php
+    $hrPages = ['hr.php', 'employee_management.php', 'employee_performance.php',
+                'attendance.php', 'manage_attendance.php', 'attendance_settings.php',
+                'hr_reports.php', 'add_employee.php', 'edit_employee.php', 'employee_details.php'];
+    ?>
+    <?php if (staffCanSeeMenu($user['role'])): ?>
+    <li class="nav-item pcoded-hasmenu <?= navTrigger(...$hrPages) ?>">
+        <a href="javascript:" class="nav-link">
+            <span class="pcoded-micon"><i class="feather icon-users"></i></span>
+            <span class="pcoded-mtext"><?= __('hr_management') ?></span>
+        </a>
+        <ul class="pcoded-submenu">
+            <li class="<?= navActive('hr.php') ?>">
+                <a href="hr.php"><?= __('hr_dashboard') ?></a>
+            </li>
+            <li class="<?= navActive('employee_management.php') ?>">
+                <a href="employee_management.php"><?= __('employee_management') ?></a>
+            </li>
+            <li class="<?= navActive('employee_performance.php') ?>">
+                <a href="employee_performance.php"><?= __('performance_reviews') ?></a>
+            </li>
+            <?php if (hasFeature('attendance', $allowed_features)): ?>
+            <li class="<?= navActive('attendance.php') ?>">
+                <a href="attendance.php"><i class="feather icon-clock mr-2"></i><?= __('my_attendance') ?></a>
+            </li>
+            <li class="<?= navActive('manage_attendance.php') ?>">
+                <a href="manage_attendance.php"><i class="feather icon-calendar mr-2"></i><?= __('manage_attendance') ?></a>
+            </li>
+            <li class="<?= navActive('attendance_settings.php') ?>">
+                <a href="attendance_settings.php"><i class="feather icon-settings mr-2"></i><?= __('attendance_settings') ?></a>
+            </li>
+            <?php endif; ?>
+        </ul>
+    </li>
+    <?php else: ?>
+    <!-- Staff: My Attendance only -->
+    <li class="nav-item <?= navActive('attendance.php') ?>">
+        <a href="attendance.php" class="nav-link">
+            <span class="pcoded-micon"><i class="feather icon-clock"></i></span>
+            <span class="pcoded-mtext"><?= __('my_attendance') ?></span>
+        </a>
+    </li>
+    <?php endif; ?>
+<?php endif; ?>
+
+<!-- ── Salary ────────────────────────────────────────────────────────── -->
+<?php if (hasFeature('salary', $allowed_features)): ?>
+    <?php if (staffCanSeeMenu($user['role'])): ?>
+    <!-- Admin / manager: full salary submenu -->
+    <li class="nav-item pcoded-hasmenu <?= navTrigger('salary_management.php', 'salary_payment.php', 'salary_payments.php') ?>">
+        <a href="javascript:" class="nav-link">
+            <span class="pcoded-micon"><i class="fas fa-dollar-sign"></i></span>
+            <span class="pcoded-mtext"><?= __('salary_management') ?></span>
+        </a>
+        <ul class="pcoded-submenu">
+            <li class="<?= navActive('salary_management.php') ?>">
+                <a href="salary_management.php"><?= __('employee_salaries') ?></a>
+            </li>
+            <li class="<?= navActive('salary_payment.php') ?>">
+                <a href="salary_payment.php"><?= __('process_payment') ?></a>
+            </li>
+            <li class="<?= navActive('salary_payments.php') ?>">
+                <a href="salary_payments.php"><i class="feather icon-user mr-2"></i><?= __('my_payments') ?></a>
+            </li>
+        </ul>
+    </li>
+    <?php else: ?>
+    <!-- Staff: My Payments only -->
+    <li class="nav-item <?= navActive('salary_payments.php') ?>">
+        <a href="salary_payments.php" class="nav-link">
+            <span class="pcoded-micon"><i class="fas fa-dollar-sign"></i></span>
+            <span class="pcoded-mtext"><?= __('my_payments') ?></span>
+        </a>
+    </li>
+    <?php endif; ?>
+<?php endif; ?>
+
+<!-- ── Supplier ──────────────────────────────────────────────────────── -->
+<?php if (staffCanSeeMenu($user['role'])): ?>
+<li class="nav-item <?= navActive('supplier.php') ?>">
+    <a href="supplier.php" class="nav-link">
+        <span class="pcoded-micon"><i class="feather icon-truck"></i></span>
+        <span class="pcoded-mtext"><?= __('supplier') ?></span>
+    </a>
+</li>
+<?php endif; ?>
+
+<!-- ── Client ────────────────────────────────────────────────────────── -->
+<?php if (staffCanSeeMenu($user['role'])): ?>
+<li class="nav-item <?= navActive('client.php') ?>">
+    <a href="client.php" class="nav-link">
+        <span class="pcoded-micon"><i class="feather icon-user"></i></span>
+        <span class="pcoded-mtext"><?= __('client') ?></span>
+    </a>
+</li>
+<?php endif; ?>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SECTION 5: Operations
+     ═══════════════════════════════════════════════════════════════════════ -->
+<li class="nav-item pcoded-menu-caption">
+    <label><?= __('operations') ?></label>
+</li>
+
+<!-- ── Manage Letters (Maktobs) ───────────────────────────────────────── -->
+<?php if (hasFeature('manage_maktobs', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
+<li class="nav-item <?= navActive('manage_maktobs.php') ?>">
+    <a href="manage_maktobs.php" class="nav-link">
+        <span class="pcoded-micon"><i class="fas fa-file-alt"></i></span>
+        <span class="pcoded-mtext"><?= __('manage_letters') ?></span>
+    </a>
+</li>
+<?php endif; ?>
+
+<!-- ── Assets ────────────────────────────────────────────────────────── -->
+<?php if (hasFeature('assets', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
+<li class="nav-item <?= navActive('assets.php') ?>">
+    <a href="assets.php" class="nav-link">
+        <span class="pcoded-micon"><i class="feather icon-box"></i></span>
+        <span class="pcoded-mtext"><?= __('assets') ?></span>
+    </a>
+</li>
+<?php endif; ?>
+
 <!-- ── Excel Import ───────────────────────────────────────────────────── -->
 <?php if (staffCanSeeMenu($user['role'])): ?>
 <li class="nav-item <?= navActive('excel_import.php') ?>">
@@ -436,14 +448,6 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
     </a>
 </li>
 <?php endif; ?>
-
-<!-- ── 2FA ────────────────────────────────────────────────────────────── -->
-<li class="nav-item <?= navActive('totp.php') ?>">
-    <a href="../totp_setup.php" class="nav-link">
-        <span class="pcoded-micon"><i class="feather icon-shield"></i></span>
-        <span class="pcoded-mtext"><?= __('2fa') ?></span>
-    </a>
-</li>
 
 <!-- ── Search ────────────────────────────────────────────────────────── -->
 <?php if (staffCanSeeMenu($user['role'])): ?>
@@ -455,15 +459,39 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 </li>
 <?php endif; ?>
 
-<!-- ── Activity Log / Email Analytics ───────────────────────────────── -->
-<?php if (staffCanSeeMenu($user['role'])): ?>
-<li class="nav-item <?= navActive('activity_log.php') ?>">
-    <a href="activity_log.php" class="nav-link">
-        <span class="pcoded-micon"><i class="feather icon-activity"></i></span>
-        <span class="pcoded-mtext"><?= __('activity_log') ?></span>
-    </a>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SECTION 6: Communication
+     ═══════════════════════════════════════════════════════════════════════ -->
+<li class="nav-item pcoded-menu-caption">
+    <label><?= __('communication') ?></label>
 </li>
-<?php if ($has_smtp_addon): ?>
+
+<!-- ── Chat ──────────────────────────────────────────────────────────── -->
+<?php if (hasFeature('inter_tenant_chat', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
+<li class="nav-item pcoded-hasmenu <?= navTrigger('chat.php', 'send_messages.php', 'chat_settings.php', 'tenant_peering.php', 'branch_peering.php') ?>">
+    <a href="javascript:" class="nav-link">
+        <span class="pcoded-micon"><i class="feather icon-message-circle"></i></span>
+        <span class="pcoded-mtext"><?= __('chat') ?></span>
+    </a>
+    <ul class="pcoded-submenu">
+        <li class="<?= navActive('chat.php') ?>">
+            <a href="../chat.php"><i class="feather icon-users"></i> <?= __('chat') ?></a>
+        </li>
+        <li class="<?= navActive('chat_settings.php') ?>">
+            <a href="chat_settings.php"><i class="feather icon-settings"></i> Chat Settings</a>
+        </li>
+        <li class="<?= navActive('tenant_peering.php') ?>">
+            <a href="tenant_peering.php"><i class="feather icon-users"></i> Tenant Peering</a>
+        </li>
+        <li class="<?= navActive('branch_peering.php') ?>">
+            <a href="branch_peering.php"><i class="feather icon-users"></i> Branch Peering</a>
+        </li>
+    </ul>
+</li>
+<?php endif; ?>
+
+<!-- ── Email Analytics ───────────────────────────────────────────────── -->
+<?php if (staffCanSeeMenu($user['role']) && $has_smtp_addon): ?>
 <li class="nav-item <?= navActive('email_analytics.php') ?>">
     <a href="email_analytics.php" class="nav-link">
         <span class="pcoded-micon"><i class="feather icon-mail"></i></span>
@@ -471,7 +499,38 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
     </a>
 </li>
 <?php endif; ?>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SECTION 7: Security & Monitoring
+     ═══════════════════════════════════════════════════════════════════════ -->
+<li class="nav-item pcoded-menu-caption">
+    <label><?= __('security_monitoring') ?></label>
+</li>
+
+<!-- ── 2FA ────────────────────────────────────────────────────────────── -->
+<li class="nav-item <?= navActive('totp.php') ?>">
+    <a href="../totp_setup.php" class="nav-link">
+        <span class="pcoded-micon"><i class="feather icon-shield"></i></span>
+        <span class="pcoded-mtext"><?= __('2fa') ?></span>
+    </a>
+</li>
+
+<!-- ── Activity Log ──────────────────────────────────────────────────── -->
+<?php if (staffCanSeeMenu($user['role'])): ?>
+<li class="nav-item <?= navActive('activity_log.php') ?>">
+    <a href="activity_log.php" class="nav-link">
+        <span class="pcoded-micon"><i class="feather icon-activity"></i></span>
+        <span class="pcoded-mtext"><?= __('activity_log') ?></span>
+    </a>
+</li>
 <?php endif; ?>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SECTION 8: Support
+     ═══════════════════════════════════════════════════════════════════════ -->
+<li class="nav-item pcoded-menu-caption">
+    <label><?= __('support') ?></label>
+</li>
 
 <!-- ── Support Tickets ────────────────────────────────────────────────── -->
 <?php if (staffCanSeeMenu($user['role'])): ?>

@@ -194,9 +194,80 @@ if (!function_exists('h')) {
     </div>
 
     <script>
-    // Reset form when modal is closed
+    // Reset form when modal is closed (Bootstrap event)
     document.getElementById('receiptModal').addEventListener('hidden.bs.modal', function() {
-    document.getElementById('receiptForm').reset();
-    document.getElementById('hiddenNotificationId').value = '';
+        document.getElementById('receiptForm').reset();
+        document.getElementById('hiddenNotificationId').value = '';
     });
+
+    // Vanilla JS close handlers (for pages without Bootstrap jQuery)
+    (function() {
+        var receiptModal = document.getElementById('receiptModal');
+        if (!receiptModal) return;
+
+        function closeReceiptModal() {
+            receiptModal.classList.remove('show');
+            receiptModal.style.display = 'none';
+            receiptModal.setAttribute('aria-hidden', 'true');
+            document.body.classList.remove('modal-open');
+            var backdrop = document.getElementById('receiptModalBackdrop');
+            if (backdrop) backdrop.remove();
+            // Reset form
+            var form = document.getElementById('receiptForm');
+            if (form) form.reset();
+            var hiddenId = document.getElementById('hiddenNotificationId');
+            if (hiddenId) hiddenId.value = '';
+        }
+
+        // Close button (×) inside modal header
+        var closeBtn = receiptModal.querySelector('[data-dismiss="modal"]');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (window.jQuery && jQuery.fn.modal) {
+                    jQuery('#receiptModal').modal('hide');
+                } else {
+                    closeReceiptModal();
+                }
+            });
+        }
+
+        // Secondary close button in footer
+        var footerCloseBtn = receiptModal.querySelector('.modal-footer [data-dismiss="modal"]');
+        if (footerCloseBtn && footerCloseBtn !== closeBtn) {
+            footerCloseBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (window.jQuery && jQuery.fn.modal) {
+                    jQuery('#receiptModal').modal('hide');
+                } else {
+                    closeReceiptModal();
+                }
+            });
+        }
+
+        // Close on backdrop click
+        document.addEventListener('click', function(e) {
+            if (e.target && e.target.id === 'receiptModalBackdrop') {
+                if (window.jQuery && jQuery.fn.modal) {
+                    jQuery('#receiptModal').modal('hide');
+                } else {
+                    closeReceiptModal();
+                }
+            }
+        });
+
+        // Close on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && receiptModal.classList.contains('show')) {
+                if (window.jQuery && jQuery.fn.modal) {
+                    jQuery('#receiptModal').modal('hide');
+                } else {
+                    closeReceiptModal();
+                }
+            }
+        });
+
+        // Expose close function globally for reuse
+        window.closeReceiptModal = closeReceiptModal;
+    })();
     </script>

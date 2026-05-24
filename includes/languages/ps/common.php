@@ -15,6 +15,13 @@ return [
     // Navigation
     'navigation' => 'نویګیشن',
     'pages' => 'پاڼې',
+    'travel_services' => 'سفر او خدمات',
+    'finance_accounting' => 'مالي او حسابداري',
+    'people_hr' => 'خلک او انساني سرچینې',
+    'operations' => 'عملیات',
+    'communication' => 'اړیکې',
+    'security_monitoring' => 'خوندیتوب او څارنه',
+    'support' => 'ملاتړ',
     
     // Menu items
     'home' => 'کورپاڼه',

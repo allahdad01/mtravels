@@ -34,7 +34,7 @@ function viewMemberDetails(bookingId) {
                      if (!photoSrc.startsWith('http')) {
                          // Remove leading slash and prepend correct base path
                          photoSrc = photoSrc.startsWith('/') ? photoSrc : '/' + photoSrc;
-                         photoSrc = '/almoqadas/mtravels' + photoSrc;
+                         photoSrc = '' + photoSrc;
                      }
                      
                      photoDisplay.innerHTML = `
