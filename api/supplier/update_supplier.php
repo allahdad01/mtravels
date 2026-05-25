@@ -35,6 +35,14 @@ $phone = isset($_POST['phone']) ? DbSecurity::validateInput($_POST['phone'], 'st
 // Validate supplier_type
 $supplier_type = isset($_POST['supplier_type']) ? DbSecurity::validateInput($_POST['supplier_type'], 'string', ['maxlength' => 255]) : null;
 
+// Validate category
+$allowed_categories = ['ticket', 'visa', 'umrah', 'hotel', 'all'];
+$category = isset($_POST['category']) ? $_POST['category'] : 'all';
+if (!in_array($category, $allowed_categories)) {
+    $category = 'all';
+}
+$category = htmlspecialchars(trim($category));
+
 // Validate name
 $name = isset($_POST['name']) ? DbSecurity::validateInput($_POST['name'], 'string', ['maxlength' => 255]) : null;
 
@@ -42,7 +50,7 @@ $name = isset($_POST['name']) ? DbSecurity::validateInput($_POST['name'], 'strin
 $id = isset($_POST['id']) ? DbSecurity::validateInput($_POST['id'], 'int', ['min' => 0]) : null;
 $contact_person = isset($_POST['contact_person']) ? DbSecurity::validateInput($_POST['contact_person'], 'string', ['maxlength' => 255]) : null;
 
-$query = "UPDATE suppliers SET name = ?, contact_person = ?, phone = ?, email = ?, address = ?, currency = ?, supplier_type = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+$query = "UPDATE suppliers SET name = ?, contact_person = ?, phone = ?, email = ?, address = ?, currency = ?, supplier_type = ?, category = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
 $stmt = $pdo->prepare($query);
 $stmt->bindParam(1, $name, PDO::PARAM_STR);
 $stmt->bindParam(2, $contact_person, PDO::PARAM_STR);
@@ -51,9 +59,10 @@ $stmt->bindParam(4, $email, PDO::PARAM_STR);
 $stmt->bindParam(5, $address, PDO::PARAM_STR);
 $stmt->bindParam(6, $currency, PDO::PARAM_STR);
 $stmt->bindParam(7, $supplier_type, PDO::PARAM_STR);
-$stmt->bindParam(8, $id, PDO::PARAM_INT);
-$stmt->bindParam(9, $tenant_id, PDO::PARAM_INT);
-$stmt->bindParam(10, $branch_id, PDO::PARAM_INT);
+$stmt->bindParam(8, $category, PDO::PARAM_STR);
+$stmt->bindParam(9, $id, PDO::PARAM_INT);
+$stmt->bindParam(10, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(11, $branch_id, PDO::PARAM_INT);
 
 if ($stmt->execute()) {
     // Add activity logging

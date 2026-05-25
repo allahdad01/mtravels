@@ -49,7 +49,7 @@ $clientAccounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch supplier accounts with their balances
 $supplierQuery = "
-    SELECT sa.id, sa.name AS supplier_name, sa.currency, sa.balance, sa.updated_at, sa.status, sa.supplier_type
+    SELECT sa.id, sa.name AS supplier_name, sa.currency, sa.balance, sa.updated_at, sa.status, sa.supplier_type, sa.category
     FROM suppliers sa where status = 'active' AND tenant_id = ? And branch_id = ?";
 $supplierStmt = $pdo->prepare($supplierQuery);
 $supplierStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
@@ -760,6 +760,14 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                 </div>
 
                                 <div class="ac-pill-row">
+                                    <span class="ac-pill-label">Category:</span>
+                                    <span class="ac-pill active" onclick="acPill(this,'acSupplierList','category','all')">All</span>
+                                    <span class="ac-pill" onclick="acPill(this,'acSupplierList','category','ticket')"><?= __('ticket') ?? 'Ticket' ?></span>
+                                    <span class="ac-pill" onclick="acPill(this,'acSupplierList','category','visa')"><?= __('visa') ?? 'Visa' ?></span>
+                                    <span class="ac-pill" onclick="acPill(this,'acSupplierList','category','umrah')"><?= __('umrah') ?? 'Umrah' ?></span>
+                                    <span class="ac-pill" onclick="acPill(this,'acSupplierList','category','hotel')"><?= __('hotel') ?? 'Hotel' ?></span>
+                                </div>
+                                <div class="ac-pill-row">
                                     <span class="ac-pill-label">Filter:</span>
                                     <span class="ac-pill active" onclick="acPill(this,'acSupplierList','currency','all')">All</span>
                                     <span class="ac-pill" onclick="acPill(this,'acSupplierList','currency','USD')">USD</span>
@@ -793,6 +801,7 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                          data-supplier-name="<?= htmlspecialchars($row['supplier_name']) ?>"
                                          data-currency="<?= htmlspecialchars($row['currency']) ?>"
                                          data-balance="<?= $row['balance'] ?>"
+                                         data-category="<?= htmlspecialchars($row['category'] ?? 'all') ?>"
                                          data-status="<?= isset($row['status']) ? $row['status'] : 'active' ?>">
                                         <div class="ac-lc-inner">
                                             <div class="ac-lc-avatar <?= $isInactive ? 'inactive' : 'supplier' ?>">
@@ -804,6 +813,24 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                             </div>
                                             <div class="ac-lc-badges">
                                                 <span class="ac-badge <?= strtolower($row['currency']) ?>"><?= htmlspecialchars($row['currency']) ?></span>
+                                                <?php
+                                                $cat = $row['category'] ?? 'all';
+                                                $catBadgeClass = match($cat) {
+                                                    'ticket' => 'usd',
+                                                    'visa' => 'afs',
+                                                    'umrah' => 'active',
+                                                    'hotel' => 'inactive',
+                                                    default => 'afs'
+                                                };
+                                                $catLabel = match($cat) {
+                                                    'ticket' => 'Ticket',
+                                                    'visa' => 'Visa',
+                                                    'umrah' => 'Umrah',
+                                                    'hotel' => 'Hotel',
+                                                    default => 'All'
+                                                };
+                                                ?>
+                                                <span class="ac-badge <?= $catBadgeClass ?>"><?= $catLabel ?></span>
                                                 <span class="ac-badge <?= $isInactive ? 'inactive' : 'active' ?>"><?= $isInactive ? 'Inactive' : 'Active' ?></span>
                                             </div>
                                             <div class="ac-lc-balances">
@@ -1029,18 +1056,21 @@ function acPill(el, listId, attr, val) {
 function _acApplyPills(listId) {
     var list  = document.getElementById(listId);
     var pills = list.closest('.ac-section-body').querySelectorAll('.ac-pill.active');
-    var currency = 'all', balance = 'all';
+    var currency = 'all', balance = 'all', category = 'all';
     pills.forEach(function(p) {
         var fn = p.getAttribute('onclick') || '';
         var m  = fn.match(/'([^']+)'\s*\)\s*$/);
         if (!m) return;
-        if (fn.indexOf("'currency'") > -1) currency = m[1];
-        if (fn.indexOf("'balance'")  > -1) balance  = m[1];
+        if (fn.indexOf("'currency'")  > -1) currency  = m[1];
+        if (fn.indexOf("'balance'")   > -1) balance   = m[1];
+        if (fn.indexOf("'category'")  > -1) category  = m[1];
     });
     list.querySelectorAll('.ac-list-card').forEach(function(card) {
         var show   = true;
         var cur    = card.dataset.currency || '';
+        var cat    = card.dataset.category || 'all';
         var usd    = parseFloat(card.dataset.usdBalance !== undefined ? card.dataset.usdBalance : (card.dataset.balance || 0));
+        if (category !== 'all' && cat !== category && cat !== 'all') show = false;
         if (currency !== 'all' && cur !== currency) show = false;
         if (balance === 'positive' && usd <= 0) show = false;
         if (balance === 'negative' && usd >= 0) show = false;

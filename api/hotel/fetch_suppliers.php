@@ -13,7 +13,7 @@ header('Content-Type: application/json');
 try {
     $stmt = $pdo->prepare("SELECT id, name
                            FROM suppliers
-                           WHERE status = 'active' AND tenant_id = ? AND branch_id = ?
+                           WHERE status = 'active' AND tenant_id = ? AND branch_id = ? AND category IN ('hotel', 'all')
                            ORDER BY name");
     $stmt->execute([$tenant_id, $branch_id]);
     $suppliers = $stmt->fetchAll(PDO::FETCH_ASSOC);

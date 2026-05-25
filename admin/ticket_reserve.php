@@ -93,7 +93,7 @@ foreach ($ticketsResult as $row) {
     }
 }
 
-$suppliersQuery = "SELECT id, name FROM suppliers WHERE status = 'active' AND tenant_id = ? AND branch_id = ?";
+$suppliersQuery = "SELECT id, name FROM suppliers WHERE status = 'active' AND tenant_id = ? AND branch_id = ? AND category IN ('ticket', 'all')";
 $stmtSup = $pdo->prepare($suppliersQuery);
 $stmtSup->bindParam(1, $tenant_id, PDO::PARAM_INT);
 $stmtSup->bindParam(2, $branch_id, PDO::PARAM_INT);

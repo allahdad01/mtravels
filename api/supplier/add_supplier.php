@@ -43,6 +43,13 @@ $contact_person = isset($_POST['contact_person']) ? DbSecurity::validateInput($_
 // Validate name
 $name = isset($_POST['name']) ? DbSecurity::validateInput($_POST['name'], 'string', ['maxlength' => 255]) : null;
 
+// Validate category
+$allowed_categories = ['ticket', 'visa', 'umrah', 'hotel', 'all'];
+$category = isset($_POST['category']) ? $_POST['category'] : 'all';
+if (!in_array($category, $allowed_categories)) {
+    $category = 'all';
+}
+
 // Validate and sanitize input data
 $name = htmlspecialchars(trim($_POST['name']));
 $contact_person = htmlspecialchars(trim($_POST['contact_person']));
@@ -52,9 +59,10 @@ $address = htmlspecialchars(trim($_POST['address']));
 $currency = htmlspecialchars(trim($_POST['currency']));
 $balance = filter_var(trim($_POST['balance']), FILTER_VALIDATE_FLOAT);
 $supplier_type = htmlspecialchars(trim($_POST['supplier_type']));
+$category = htmlspecialchars(trim($category));
 
 // Prepare and bind
-$stmt = $pdo->prepare("INSERT INTO suppliers (name, contact_person, phone, email, address, currency, balance, supplier_type, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+$stmt = $pdo->prepare("INSERT INTO suppliers (name, contact_person, phone, email, address, currency, balance, supplier_type, category, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 $stmt->bindParam(1, $name, PDO::PARAM_STR);
 $stmt->bindParam(2, $contact_person, PDO::PARAM_STR);
 $stmt->bindParam(3, $phone, PDO::PARAM_STR);
@@ -63,8 +71,9 @@ $stmt->bindParam(5, $address, PDO::PARAM_STR);
 $stmt->bindParam(6, $currency, PDO::PARAM_STR);
 $stmt->bindParam(7, $balance, PDO::PARAM_STR);
 $stmt->bindParam(8, $supplier_type, PDO::PARAM_STR);
-$stmt->bindParam(9, $tenant_id, PDO::PARAM_INT);
-$stmt->bindParam(10, $branch_id, PDO::PARAM_INT);
+$stmt->bindParam(9, $category, PDO::PARAM_STR);
+$stmt->bindParam(10, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(11, $branch_id, PDO::PARAM_INT);
 
 // Execute and check for errors
 if ($stmt->execute()) {
@@ -82,6 +91,7 @@ if ($stmt->execute()) {
         'currency' => $currency,
         'balance' => $balance,
         'supplier_type' => $supplier_type,
+        'category' => $category,
         'branch_id' => $branch_id
     ]);
     

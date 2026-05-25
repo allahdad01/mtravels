@@ -79,7 +79,7 @@ $stmt->execute();
 $visas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 /* Fetch Suppliers */
-$stmt = $pdo->prepare("SELECT id, name FROM suppliers WHERE status = 'active' AND tenant_id = ? AND branch_id = ?");
+$stmt = $pdo->prepare("SELECT id, name FROM suppliers WHERE status = 'active' AND tenant_id = ? AND branch_id = ? AND category IN ('visa', 'all')");
 $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
 $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
 $stmt->execute();

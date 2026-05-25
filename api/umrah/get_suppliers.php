@@ -9,7 +9,7 @@ enforce_auth();
 require_once '../../includes/db.php';
 
 // Fetch suppliers with currency
-$suppliersQuery = "SELECT id, name, currency FROM suppliers WHERE tenant_id = ? AND branch_id = ? AND status = 'active'";
+$suppliersQuery = "SELECT id, name, currency FROM suppliers WHERE tenant_id = ? AND branch_id = ? AND status = 'active' AND category IN ('umrah', 'all')";
 $suppliersStmt = $pdo->prepare($suppliersQuery);
 $suppliersStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
 $suppliersStmt->bindParam(2, $branch_id, PDO::PARAM_INT);

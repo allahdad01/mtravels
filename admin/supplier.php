@@ -397,6 +397,12 @@ td.num {
 .badge-company    { background: var(--teal-soft);    color: var(--teal); }
 .badge-active     { background: var(--green-soft);   color: var(--green); }
 .badge-inactive   { background: var(--surface-3);    color: var(--ink-4); }
+.badge-ticket     { background: var(--blue-soft);   color: var(--blue); }
+.badge-visa       { background: var(--violet-soft); color: var(--violet); }
+.badge-umrah      { background: var(--amber-soft);  color: var(--amber); }
+.badge-hotel      { background: var(--rose-soft);   color: var(--rose); }
+.badge-all        { background: var(--teal-soft);    color: var(--teal); }
+.badge-all        { background: var(--amber-soft);  color: var(--amber); }
 
 /* Balance cell */
 .bal-positive { color: var(--green); font-weight: 600; }
@@ -623,6 +629,13 @@ td.num {
         <button class="filter-pill" data-type="internal"><?= __('internal') ?? 'Internal' ?></button>
         <button class="filter-pill" data-type="external"><?= __('external') ?? 'External' ?></button>
         </div>
+        <div class="filter-pills" id="categoryFilterPills">
+        <button class="filter-pill active" data-category="">All</button>
+        <button class="filter-pill" data-category="ticket"><?= __('ticket') ?? 'Ticket' ?></button>
+        <button class="filter-pill" data-category="visa"><?= __('visa') ?? 'Visa' ?></button>
+        <button class="filter-pill" data-category="umrah"><?= __('umrah') ?? 'Umrah' ?></button>
+        <button class="filter-pill" data-category="hotel"><?= __('hotel') ?? 'Hotel' ?></button>
+        </div>
       </div>
       <div class="toolbar-right">
         <div class="tab-toggle">
@@ -644,6 +657,7 @@ td.num {
             <th>#</th>
             <th><?= __('supplier_info') ?></th>
             <th><?= __('supplier_type') ?></th>
+            <th><?= __('category') ?? 'Category' ?></th>
             <th class="num"><?= __('balance') ?></th>
             <th class="col-currency"><?= __('currency') ?></th>
             <th class="col-address"><?= __('address') ?></th>
@@ -699,6 +713,7 @@ td.num {
   let suppliers   = [];
   let currentTab  = 'active';
   let currentType = '';
+  let currentCategory = '';
   let currentSearch = '';
   let currentPage   = 1;
   const PER_PAGE    = 8;
@@ -783,6 +798,7 @@ td.num {
     return suppliers.filter(s => {
       if (s.status !== currentTab) return false;
       if (currentType && (s.supplier_type || '').toLowerCase() !== currentType) return false;
+      if (currentCategory && (s.category || 'all').toLowerCase() !== currentCategory) return false;
       if (q && !(s.name || '').toLowerCase().includes(q) && !(s.id || '').toString().includes(q)) return false;
       return true;
     });
@@ -825,6 +841,8 @@ td.num {
   function buildRow(s, rowNum) {
     const typeSlug  = (s.supplier_type || '').toLowerCase();
     const typeLabel = s.supplier_type || '—';
+    const categorySlug  = (s.category || 'all').toLowerCase();
+    const categoryLabel = (s.category || 'all').charAt(0).toUpperCase() + (s.category || 'all').slice(1);
     const currency  = s.currency || 'USD';
 
     return `
@@ -840,6 +858,7 @@ td.num {
           </div>
         </td>
         <td><span class="badge-${escHtml(typeSlug)}">${escHtml(typeLabel)}</span></td>
+        <td><span class="badge-${escHtml(categorySlug)}">${escHtml(categoryLabel)}</span></td>
         <td class="num">${fmtBalance(s.balance)}</td>
         <td class="col-currency">
           <span class="currency-chip">${escHtml(currency)}</span>
@@ -888,6 +907,7 @@ td.num {
     setVal('editPhone',           s.phone);
     setVal('editEmail',           s.email);
     setVal('editSupplierType',    s.supplier_type);
+    setVal('editSupplierCategory', s.category || 'all');
     setVal('editCurrency',        s.currency);
     setVal('editAddress',         s.address);
 
@@ -973,11 +993,19 @@ td.num {
     currentSearch = e.target.value; currentPage = 1; render();
   });
 
-  document.querySelectorAll('.filter-pill').forEach(pill => {
+  document.querySelectorAll('#typeFilterPills .filter-pill').forEach(pill => {
     pill.addEventListener('click', function () {
-      document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('#typeFilterPills .filter-pill').forEach(p => p.classList.remove('active'));
       this.classList.add('active');
       currentType = this.dataset.type; currentPage = 1; render();
+    });
+  });
+
+  document.querySelectorAll('#categoryFilterPills .filter-pill').forEach(pill => {
+    pill.addEventListener('click', function () {
+      document.querySelectorAll('#categoryFilterPills .filter-pill').forEach(p => p.classList.remove('active'));
+      this.classList.add('active');
+      currentCategory = this.dataset.category; currentPage = 1; render();
     });
   });
 

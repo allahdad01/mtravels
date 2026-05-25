@@ -46,6 +46,18 @@
                                 </select>
                             </div>
                         </div>
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label class="form-label"><?= __('category') ?? 'Category' ?></label>
+                                <select class="form-control" id="editSupplierCategory" name="category" required>
+                                    <option value="all"><?= __('all') ?? 'All' ?></option>
+                                    <option value="ticket"><?= __('ticket') ?? 'Ticket' ?></option>
+                                    <option value="visa"><?= __('visa') ?? 'Visa' ?></option>
+                                    <option value="umrah"><?= __('umrah') ?? 'Umrah' ?></option>
+                                    <option value="hotel"><?= __('hotel') ?? 'Hotel' ?></option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                     <div class="row">
                         <div class="col-md-6">

@@ -88,7 +88,7 @@ $stmt->execute($params);
 $tickets = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch Suppliers
-$suppliersQuery = "SELECT id, name FROM suppliers WHERE tenant_id = ? AND branch_id = ?";
+$suppliersQuery = "SELECT id, name FROM suppliers WHERE tenant_id = ? AND branch_id = ? AND status = 'active' AND category IN ('ticket', 'all')";
 $stmt = $pdo->prepare($suppliersQuery);
 $stmt->execute([$tenant_id, $branch_id]);
 $suppliers = $stmt->fetchAll(PDO::FETCH_ASSOC);

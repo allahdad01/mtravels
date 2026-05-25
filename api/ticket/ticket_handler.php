@@ -189,7 +189,7 @@ foreach ($ticketsResult as $row) {
 }
 
 // Fetch Suppliers
-$suppliersQuery = "SELECT id, name FROM suppliers WHERE status = 'active' AND tenant_id = ? AND branch_id = ?";
+$suppliersQuery = "SELECT id, name FROM suppliers WHERE status = 'active' AND tenant_id = ? AND branch_id = ? AND category IN ('ticket', 'all')";
 $stmt = $pdo->prepare($suppliersQuery);
 $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
 $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
