@@ -109,6 +109,15 @@ $(document).ready(function() {
     // Save Payment button click handler - SINGLE HANDLER
     $('#savePayment').off('click').on('click', function(e) {
         e.preventDefault(); // Prevent any default behavior
+
+        // Validate main account selection before submitting
+        var mainAccountId = $('#main_account_id').val();
+        if (!mainAccountId || mainAccountId === '') {
+            alert('Please select a main account. Main account selection is required.');
+            $('#main_account_id').focus();
+            return;
+        }
+
         var $btn = $(this);
         var originalHtml = $btn.html();
         $btn.prop('disabled', true);

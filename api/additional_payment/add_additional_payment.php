@@ -36,7 +36,16 @@ try {
     $profit = DbSecurity::validateInput($_POST['profit'], 'float');
     $sold_amount = DbSecurity::validateInput($_POST['sold_amount'], 'float', ['min' => 0]);
     $currency = DbSecurity::validateInput($_POST['currency'], 'currency');
-    $main_account_id = DbSecurity::validateInput($_POST['main_account_id'], 'int', ['min' => 0]);
+    $main_account_id = DbSecurity::validateInput($_POST['main_account_id'], 'int', ['min' => 1]);
+
+    // Validate that main_account_id is provided (compulsory field)
+    if (!$main_account_id || $main_account_id <= 0) {
+        $pdo->rollBack();
+        http_response_code(400);
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => 'Main account selection is required. Please select a main account.']);
+        exit;
+    }
     $is_from_supplier = isset($_POST['is_from_supplier']) ? 1 : 0;
     $supplier_id = $is_from_supplier ? DbSecurity::validateInput($_POST['supplier_id'], 'int', ['min' => 0]) : null;
     $is_for_client = isset($_POST['is_for_client']) ? 1 : 0;

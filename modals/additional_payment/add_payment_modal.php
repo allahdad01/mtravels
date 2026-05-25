@@ -18,7 +18,7 @@
                         <input type="text" class="form-control" id="payment_type" name="payment_type" required>
                     </div>
                     <div class="form-group">
-                        <label for="main_account_id"><?= __('main_account') ?></label>
+                        <label for="main_account_id"><?= __('main_account') ?> <span class="text-danger">*</span></label>
                         <select class="form-control" id="main_account_id" name="main_account_id" required>
                             <option value=""><?= __('select_main_account') ?></option>
                             <?php foreach ($mainAccounts as $account): ?>
