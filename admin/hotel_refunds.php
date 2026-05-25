@@ -821,7 +821,6 @@ document.addEventListener('click', function(e) {
 <script src="../assets/js/pcoded.min.js"></script>
 <script src="../js/hotel_refund/transaction_manager.js"></script>
 <script src="../js/hotel_refund/hotel_management.js"></script>
-<script src="../js/hotel_refund/button_protection.js"></script>
 
 <?php include '../includes/admin_footer.php'; ?>
 

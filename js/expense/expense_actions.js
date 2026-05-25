@@ -146,8 +146,12 @@ $('.edit-category').on('click', function() {
 
 // Delete category button click handler
 $('.delete-category').on('click', function() {
+        var $btn = $(this);
+        var originalHtml = $btn.html();
         if (confirm('are_you_sure_you_want_to_delete_this_category')) {
-        const categoryId = $(this).data('id');
+        $btn.prop('disabled', true);
+        $btn.html('<i class="fas fa-spinner fa-spin"></i>');
+        const categoryId = $btn.data('id');
         
         $.ajax({
             url: '../api/expense/expense_actions.php',
@@ -165,9 +169,12 @@ $('.delete-category').on('click', function() {
                 } else {
                     alert('error: ' + response.message);
                 }
+                $btn.prop('disabled', false);
+                $btn.html(originalHtml);
             },
             error: function(xhr, status, error) {
-
+                $btn.prop('disabled', false);
+                $btn.html(originalHtml);
                 alert('an_error_occurred_while_deleting_the_category');
             }
         });
@@ -245,8 +252,12 @@ $('.edit-expense').on('click', function() {
 
 // Delete expense button click handler
 $('.delete-expense').on('click', function() {
+    var $btn = $(this);
+    var originalHtml = $btn.html();
     if (confirm('are_you_sure_you_want_to_delete_this_expense')) {
-        const expenseId = $(this).data('id');
+        $btn.prop('disabled', true);
+        $btn.html('<i class="fas fa-spinner fa-spin"></i>');
+        const expenseId = $btn.data('id');
         
         $.ajax({
             url: '../api/expense/expense_actions.php',
@@ -264,9 +275,12 @@ $('.delete-expense').on('click', function() {
                 } else {
                     alert('error: ' + response.message);
                 }
+                $btn.prop('disabled', false);
+                $btn.html(originalHtml);
             },
             error: function(xhr, status, error) {
-
+                $btn.prop('disabled', false);
+                $btn.html(originalHtml);
                 alert('an_error_occurred_while_deleting_the_expense');
             }
         });

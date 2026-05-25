@@ -1116,14 +1116,18 @@ $(document).ready(function () {
 // ── Send maktob ──
 $(document).on('click', '.send-maktob', function (e) {
   e.preventDefault();
-  var id = $(this).data('id');
+  var $btn = $(this);
+  var originalHtml = $btn.html();
+  var id = $btn.data('id');
   if (confirm('Are you sure you want to send this maktob to branch?')) {
+    $btn.prop('disabled', true);
+    $btn.html('<i class="fas fa-spinner fa-spin mr-1"></i>Sending...');
     $.ajax({
       url: '../api/maktob/update_status.php',
       method: 'POST',
       data: { id: id, action: 'send' },
-      success: function (r) { r.success ? location.reload() : alert('Error: ' + r.message); },
-      error: function () { alert('Error updating maktob status'); }
+      success: function (r) { r.success ? location.reload() : (alert('Error: ' + r.message), $btn.prop('disabled', false), $btn.html(originalHtml)); },
+      error: function () { $btn.prop('disabled', false); $btn.html(originalHtml); alert('Error updating maktob status'); }
     });
   }
 });
@@ -1131,14 +1135,18 @@ $(document).on('click', '.send-maktob', function (e) {
 // ── Archive maktob ──
 $(document).on('click', '.archive-maktob', function (e) {
   e.preventDefault();
-  var id = $(this).data('id');
+  var $btn = $(this);
+  var originalHtml = $btn.html();
+  var id = $btn.data('id');
   if (confirm('Are you sure you want to archive this maktob?')) {
+    $btn.prop('disabled', true);
+    $btn.html('<i class="fas fa-spinner fa-spin mr-1"></i>Archiving...');
     $.ajax({
       url: '../api/maktob/update_status.php',
       method: 'POST',
       data: { id: id, action: 'archive' },
-      success: function (r) { r.success ? location.reload() : alert('Error: ' + r.message); },
-      error: function () { alert('Error updating maktob status'); }
+      success: function (r) { r.success ? location.reload() : (alert('Error: ' + r.message), $btn.prop('disabled', false), $btn.html(originalHtml)); },
+      error: function () { $btn.prop('disabled', false); $btn.html(originalHtml); alert('Error updating maktob status'); }
     });
   }
 });

@@ -969,7 +969,6 @@ $payments = $stmt->fetchAll();
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="../js/additional_payments/transactions.js"></script>
     <script src="../js/additional_payments/main.js"></script>
-    <script src="../js/additional_payments/button-protection.js"></script>
 
 <?php include '../includes/admin_footer.php'; ?>
 </body>

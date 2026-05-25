@@ -1019,7 +1019,6 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
 <div class="toast-container"></div>
 
 <!-- ALL ORIGINAL JS INCLUDES — untouched order -->
-<script src="../js/accounts/button_protection.js"></script>
 <script src="../assets/js/vendor-all.min.js"></script>
 <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
 <script src="../assets/js/pcoded.min.js"></script>

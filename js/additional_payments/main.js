@@ -109,6 +109,11 @@ $(document).ready(function() {
     // Save Payment button click handler - SINGLE HANDLER
     $('#savePayment').off('click').on('click', function(e) {
         e.preventDefault(); // Prevent any default behavior
+        var $btn = $(this);
+        var originalHtml = $btn.html();
+        $btn.prop('disabled', true);
+        $btn.html('<i class="fas fa-spinner fa-spin mr-1"></i>Saving Payment...');
+
         var form = $('#addPaymentForm');
         var formData = new FormData(form[0]);
         
@@ -135,8 +140,14 @@ $(document).ready(function() {
 
                     alert("Error: Invalid response from server.");
                 }
+                // Always reset button state after success handler
+                $btn.prop('disabled', false);
+                $btn.html(originalHtml);
             },
             error: function(xhr, status, error) {
+                // Always reset button state on error
+                $btn.prop('disabled', false);
+                $btn.html(originalHtml);
 
                 try {
                     var errorResponse = JSON.parse(xhr.responseText);
@@ -152,8 +163,10 @@ $(document).ready(function() {
     $('#updatePayment').click(function(e) {
         e.preventDefault();
         
-        // Disable the button to prevent multiple submissions
-        $('#updatePayment').prop('disabled', true);
+        var $btn = $(this);
+        var originalHtml = $btn.html();
+        $btn.prop('disabled', true);
+        $btn.html('<i class="fas fa-spinner fa-spin mr-1"></i>Updating Payment...');
         
         // Collect form data
         var formData = {
@@ -203,26 +216,19 @@ $(document).ready(function() {
                         $('#editPaymentModal').modal('hide');
                         location.reload();
                     } else {
-                        // Reset button state
-                        $('#updatePayment').prop('disabled', false);
-
                         alert("Error: " + (result.message || "An unknown error occurred."));
                     }
                 } catch (e) {
-                    // Reset button state
-                    $('#updatePayment').prop('disabled', false);
-
-
                     alert("Error: Invalid response from server.");
                 }
+                // Always reset button state after success handler
+                $btn.prop('disabled', false);
+                $btn.html(originalHtml);
             },
             error: function(xhr, status, error) {
-                // Reset button state
-                $('#updatePayment').prop('disabled', false);
-
-
-
-
+                // Always reset button state on error
+                $btn.prop('disabled', false);
+                $btn.html(originalHtml);
                 
                 // If we get a 404 error, try direct form submission as a fallback
                 if (xhr.status === 404) {
@@ -284,6 +290,11 @@ $(document).ready(function() {
     
     // Save transaction
      $('#AddTransaction').click(function() {
+         var $btn = $(this);
+         var originalHtml = $btn.html();
+         $btn.prop('disabled', true);
+         $btn.html('<i class="fas fa-spinner fa-spin mr-1"></i>Adding Transaction...');
+
          var selectedCurrency = $('#transaction_currency').val();
          var originalCurrency = $('#original_payment_currency').val();
          var description = $('#payment_description').val();
@@ -292,6 +303,8 @@ $(document).ready(function() {
          // Exchange rate is stored in separate field, no need to modify description
          if (selectedCurrency !== originalCurrency) {
              if (!exchangeRate) {
+                 $btn.prop('disabled', false);
+                 $btn.html(originalHtml);
                  alert("Please enter an exchange rate.");
                  return;
              }
@@ -343,11 +356,16 @@ $(document).ready(function() {
                         alert("Error: " + (result.message || "An unknown error occurred."));
                     }
                 } catch (e) {
-
                         alert("Error: Invalid response from server.");
                 }
+                // Always reset button state after success handler
+                $btn.prop('disabled', false);
+                $btn.html(originalHtml);
             },
             error: function(xhr, status, error) {
+                // Always reset button state on error
+                $btn.prop('disabled', false);
+                $btn.html(originalHtml);
 
                 try {
                     var errorResponse = JSON.parse(xhr.responseText);
@@ -467,6 +485,11 @@ $(document).ready(function() {
 
     // Update transaction
      $('#updateTransaction').click(function() {
+         var $btn = $(this);
+         var originalHtml = $btn.html();
+         $btn.prop('disabled', true);
+         $btn.html('<i class="fas fa-spinner fa-spin mr-1"></i>Updating Transaction...');
+
          var selectedCurrency = $('#edit_transaction_currency').val();
          var originalCurrency = $('#edit_original_payment_currency').val();
          var description = $('#edit_payment_description').val();
@@ -507,8 +530,14 @@ $(document).ready(function() {
 
                     alert("Error: Invalid response from server.");
                 }
+                // Always reset button state after success handler
+                $btn.prop('disabled', false);
+                $btn.html(originalHtml);
             },
             error: function(xhr, status, error) {
+                // Always reset button state on error
+                $btn.prop('disabled', false);
+                $btn.html(originalHtml);
 
                 try {
                     var errorResponse = JSON.parse(xhr.responseText);
@@ -522,18 +551,22 @@ $(document).ready(function() {
 
     // Delete transaction
     $(document).on('click', '.delete-transaction', function() {
+        var $btn = $(this);
+        var originalHtml = $btn.html();
         if (confirm("Are you sure you want to delete this transaction?")) {
-            var id = $(this).data('id');
+            $btn.prop('disabled', true);
+            $btn.html('<i class="fas fa-spinner fa-spin mr-1"></i>');
+            var id = $btn.data('id');
             var paymentId = $('#transaction_payment_id').val();
 
             // Get CSRF token from meta tag or hidden input
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
                              document.querySelector('input[name="csrf_token"]')?.value;
             
             $.ajax({
                 url: '../api/additional_payment/delete_additional_payment_transaction.php',
                 type: 'POST',
-                data: { 
+                data: {
                     transaction_id: id,
                     payment_id: paymentId,
                     csrf_token: csrfToken
@@ -551,8 +584,14 @@ $(document).ready(function() {
 
                         alert("Error: Invalid response from server.");
                     }
+                    // Always reset button state after success handler
+                    $btn.prop('disabled', false);
+                    $btn.html(originalHtml);
                 },
                 error: function(xhr, status, error) {
+                    // Always reset button state on error
+                    $btn.prop('disabled', false);
+                    $btn.html(originalHtml);
 
                     try {
                         var errorResponse = JSON.parse(xhr.responseText);
@@ -593,8 +632,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
-    // Save Payment button click handler
+    // Save Payment button click handler (DOMContentLoaded scope)
     $('#savePayment').click(function() {
+        var $btn = $(this);
+        var originalHtml = $btn.html();
+        $btn.prop('disabled', true);
+        $btn.html('<i class="fas fa-spinner fa-spin mr-1"></i>Saving Payment...');
+
         var form = $('#addPaymentForm');
         var formData = new FormData(form[0]);
         
@@ -621,8 +665,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     alert("Error: Invalid response from server.");
                 }
+                // Always reset button state after success handler
+                $btn.prop('disabled', false);
+                $btn.html(originalHtml);
             },
             error: function(xhr, status, error) {
+                // Always reset button state on error
+                $btn.prop('disabled', false);
+                $btn.html(originalHtml);
 
                 try {
                     var errorResponse = JSON.parse(xhr.responseText);
@@ -636,10 +686,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Delete Payment button click handler
     $('.delete-payment').click(function() {
-        var id = $(this).data('id');
+        var $btn = $(this);
+        var originalHtml = $btn.html();
+        var id = $btn.data('id');
         if (confirm("Are you sure you want to delete this payment?")) {
+            $btn.prop('disabled', true);
+            $btn.html('<i class="fas fa-spinner fa-spin mr-1"></i>Deleting...');
+
             // Get CSRF token from meta tag or hidden input
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
                              document.querySelector('input[name="csrf_token"]')?.value;
             
             $.ajax({
@@ -657,8 +712,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     } else {
                         alert(response.message || "Cannot delete payment. Please delete any associated transactions first.");
                     }
+                    // Always reset button state after success handler
+                    $btn.prop('disabled', false);
+                    $btn.html(originalHtml);
                 },
                 error: function(xhr) {
+                    // Always reset button state on error
+                    $btn.prop('disabled', false);
+                    $btn.html(originalHtml);
+
                     try {
                         var errorResponse = JSON.parse(xhr.responseText);
                             alert(errorResponse.message || "Error deleting payment. Please check if it has transactions.");

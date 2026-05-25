@@ -174,6 +174,13 @@ document.addEventListener('DOMContentLoaded', function() {
         fundSupplierForm.addEventListener('submit', function (e) {
             e.preventDefault();
             
+            const submitBtn = fundSupplierForm.querySelector('button[type="submit"]') || fundSupplierForm.querySelector('button');
+            const originalHtml = submitBtn ? submitBtn.innerHTML : '';
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Funding...';
+            }
+
             const formData = new FormData(e.target);
             // Add CSRF token to formData
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
@@ -197,6 +204,12 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(error => {
 
                 showErrorToast('An unexpected error occurred while funding the supplier.');
+            })
+            .finally(() => {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalHtml;
+                }
             });
         });
     }
@@ -218,14 +231,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Store the account details temporarily
             $('#submit-remarks-btn').off('click').on('click', function () {
+                const $btn = $(this);
+                const originalHtml = $btn.html();
+                $btn.prop('disabled', true);
+                $btn.html('<i class="fas fa-spinner fa-spin mr-1"></i>Submitting...');
+
                 const userRemarks = document.getElementById('user-remarks').value.trim();
                 const receiptNumber = document.getElementById('modalReceiptNumber').value.trim();
                 if (!userRemarks) {
+                    $btn.prop('disabled', false);
+                    $btn.html(originalHtml);
                     showWarningToast("Please add your remarks.");
                     return;
                 }
 
                 if (!receiptNumber) {
+                    $btn.prop('disabled', false);
+                    $btn.html(originalHtml);
                     showWarningToast("Please enter a receipt number.");
                     return;
                 }
@@ -261,6 +283,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .catch(error => {
                     showErrorToast("Error: " + error.message);
+                })
+                .finally(() => {
+                    $btn.prop('disabled', false);
+                    $btn.html(originalHtml);
                 });
 
                 // Close the modal
@@ -275,16 +301,24 @@ document.addEventListener('DOMContentLoaded', function() {
         const transferForm = document.getElementById('transferForm');
         
         transferBtn.addEventListener('click', function() {
+            const originalHtml = transferBtn.innerHTML;
+            transferBtn.disabled = true;
+            transferBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Transferring...';
+
             const formData = new FormData(transferForm);
             const data = Object.fromEntries(formData.entries());
             
             // Validate form
             if (!data.fromAccount || !data.fromCurrency || !data.toAccount || !data.toCurrency || !data.amount || !data.exchangeRate) {
+                transferBtn.disabled = false;
+                transferBtn.innerHTML = originalHtml;
                 showWarningToast('Please fill in all required fields');
                 return;
             }
             
             if (data.fromAccount === data.toAccount && data.fromCurrency === data.toCurrency) {
+                transferBtn.disabled = false;
+                transferBtn.innerHTML = originalHtml;
                 showWarningToast('Cannot transfer to the same account and currency');
                 return;
             }
@@ -314,6 +348,10 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(error => {
 
                 showErrorToast('An error occurred during the transfer');
+            })
+            .finally(() => {
+                transferBtn.disabled = false;
+                transferBtn.innerHTML = originalHtml;
             });
         });
     }
@@ -396,15 +434,24 @@ function showRemarksModal(clientId, mainAccountId, amount, currency, hasAfsPorti
 
     // Set up the event listener to process the funding when remarks are entered
     $('#submit-remarks-btn').off('click').on('click', function () {
+        const $btn = $(this);
+        const originalHtml = $btn.html();
+        $btn.prop('disabled', true);
+        $btn.html('<i class="fas fa-spinner fa-spin mr-1"></i>Submitting...');
+
         const userRemarks = document.getElementById('user-remarks').value.trim();
         const receiptNumber = document.getElementById('modalReceiptNumber').value.trim();
 
         if (!userRemarks) {
+            $btn.prop('disabled', false);
+            $btn.html(originalHtml);
             showWarningToast("Please add your remarks.");
             return;
         }
 
         if (!receiptNumber) {
+            $btn.prop('disabled', false);
+            $btn.html(originalHtml);
             showWarningToast("Please enter a receipt number.");
             return;
         }
@@ -444,6 +491,10 @@ function showRemarksModal(clientId, mainAccountId, amount, currency, hasAfsPorti
         })
         .catch(error => {
             showErrorToast("Error: " + error.message);
+        })
+        .finally(() => {
+            $btn.prop('disabled', false);
+            $btn.html(originalHtml);
         });
 
         // Close the modal after submitting

@@ -3,7 +3,10 @@ $(document).ready(function() {
     $(document).on('click', '.read-button', function() {
         var notificationId = $(this).data('id');
         var button = $(this);
+        var originalHtml = button.html();
         var notificationItem = button.closest('.tl-item');
+        button.prop('disabled', true);
+        button.html('<i class="fas fa-spinner fa-spin"></i>');
         
         $.ajax({
             url: '../api/dashboard/update_notification_status.php',
@@ -43,7 +46,8 @@ $(document).ready(function() {
                 }
             },
             error: function(xhr, status, error) {
-
+                button.prop('disabled', false);
+                button.html(originalHtml);
                 showToast('error', 'Error updating notification status');
             }
         });

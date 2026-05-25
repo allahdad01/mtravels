@@ -1435,13 +1435,17 @@ $(document).ready(function() {
   // Delete exchange
   $(document).on('click', '.delete-exchange', function(e) {
     e.preventDefault();
-    const id = $(this).data('id');
+    var $btn = $(this);
+    var originalHtml = $btn.html();
+    const id = $btn.data('id');
     if (!confirm('<?= __("confirm_delete_exchange") ?>')) return;
+    $btn.prop('disabled', true);
+    $btn.html('<i class="fas fa-spinner fa-spin"></i>');
     $.ajax({
       url: 'delete_sarafi_exchange.php', type: 'POST',
       data: { transaction_id: id }, dataType: 'json',
-      success: r => handleAjaxSuccess(r, '<?= __("exchange_deleted_successfully") ?>'),
-      error:   () => showToast('<?= __("error_deleting_exchange") ?>', 'error')
+      success: r => { handleAjaxSuccess(r, '<?= __("exchange_deleted_successfully") ?>'); $btn.prop('disabled', false); $btn.html(originalHtml); },
+      error:   () => { $btn.prop('disabled', false); $btn.html(originalHtml); showToast('<?= __("error_deleting_exchange") ?>', 'error'); }
     });
   });
 

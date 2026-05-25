@@ -71,6 +71,11 @@ $(document).ready(function() {
 
     // Save transaction
     $('#saveTransaction').click(function() {
+        var $btn = $(this);
+        var originalHtml = $btn.html();
+        $btn.prop('disabled', true);
+        $btn.html('<i class="fas fa-spinner fa-spin mr-1"></i>Saving...');
+
         var formData = {
             payment_id: $('#transaction_payment_id').val(),
             payment_type: $('#transaction_payment_type').val(),
@@ -107,8 +112,12 @@ $(document).ready(function() {
                     console.error('Error parsing response:', e);
                     alert('Error: Invalid response from server');
                 }
+                $btn.prop('disabled', false);
+                $btn.html(originalHtml);
             },
             error: function(xhr, status, error) {
+                $btn.prop('disabled', false);
+                $btn.html(originalHtml);
                 console.error('Error saving transaction:', error);
                 try {
                     var errorResponse = JSON.parse(xhr.responseText);
@@ -172,8 +181,12 @@ $(document).ready(function() {
 
     // Delete transaction
     $(document).on('click', '.delete-transaction', function() {
+        var $btn = $(this);
+        var originalHtml = $btn.html();
         if (confirm('Are you sure you want to delete this transaction?')) {
-            var id = $(this).data('id');
+            $btn.prop('disabled', true);
+            $btn.html('<i class="fas fa-spinner fa-spin"></i>');
+            var id = $btn.data('id');
             var paymentId = $('#transaction_payment_id').val();
             
             $.ajax({
@@ -191,8 +204,12 @@ $(document).ready(function() {
                     } else {
                         alert('Error: ' + result.message);
                     }
+                    $btn.prop('disabled', false);
+                    $btn.html(originalHtml);
                 },
                 error: function() {
+                    $btn.prop('disabled', false);
+                    $btn.html(originalHtml);
                     alert('Error deleting transaction');
                 }
             });

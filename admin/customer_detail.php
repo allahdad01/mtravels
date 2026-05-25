@@ -1891,9 +1891,13 @@ function deleteHawala(transactionId, amount) {
 // Handle delete exchange transaction
 $(document).on('click', '.delete-exchange', function(e) {
     e.preventDefault();
-    const transactionId = $(this).data('id');
+    var $btn = $(this);
+    var originalHtml = $btn.html();
+    const transactionId = $btn.data('id');
     
     if (confirm('<?= __("are_you_sure_you_want_to_delete_this_exchange_transaction_this_action_cannot_be_undone") ?>')) {
+        $btn.prop('disabled', true);
+        $btn.html('<i class="fas fa-spinner fa-spin"></i>');
         $.ajax({
             url: 'delete_sarafi_exchange.php',
             type: 'POST',
@@ -1908,8 +1912,12 @@ $(document).on('click', '.delete-exchange', function(e) {
                 } else {
                     showToast('error', response.message || '<?= __("failed_to_delete_exchange_transaction") ?>');
                 }
+                $btn.prop('disabled', false);
+                $btn.html(originalHtml);
             },
             error: function() {
+                $btn.prop('disabled', false);
+                $btn.html(originalHtml);
                 showToast('error', '<?= __("error_occurred_while_deleting_exchange_transaction") ?>');
             }
         });

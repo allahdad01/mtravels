@@ -42,12 +42,20 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Add event listener to the confirm button
         document.getElementById('confirmStatusChangeBtn').addEventListener('click', function() {
+            var confirmBtn = this;
+            var originalHtml = confirmBtn.innerHTML;
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Processing...';
+
             // Hide the modal
             $('#statusConfirmationModal').modal('hide');
             
             // Execute the callback after modal is hidden
             $('#statusConfirmationModal').on('hidden.bs.modal', function() {
                 confirmCallback();
+                // Reset button after callback completes (callback may reload page)
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = originalHtml;
             });
         });
     }

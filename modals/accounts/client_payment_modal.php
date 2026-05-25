@@ -567,6 +567,10 @@
                 return;
             }
 
+            var originalHtml = processPaymentBtn.innerHTML;
+            processPaymentBtn.disabled = true;
+            processPaymentBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Processing...';
+
             // Sync state to hidden inputs before submission
             // Get the actual INPUT elements, not the field containers
             const balEl = document.querySelector('input[name="payment_currency"]');
@@ -619,9 +623,13 @@
                 } else {
                     alert('Error: ' + (data.message || 'Unknown error'));
                 }
+                processPaymentBtn.disabled = false;
+                processPaymentBtn.innerHTML = originalHtml;
             })
             .catch(error => {
                 console.error('Error:', error);
+                processPaymentBtn.disabled = false;
+                processPaymentBtn.innerHTML = originalHtml;
                 alert('Failed to process payment');
             });
         });

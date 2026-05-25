@@ -37,12 +37,17 @@ document.querySelectorAll('.view-details').forEach(button => {
 // Approve Visa Button Handler
 document.getElementById('approveVisaBtn')?.addEventListener('click', function () {
     const visaId = $('#detailsModal').data('visa-id');
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
                      document.querySelector('input[name="csrf_token"]')?.value;
 
     if (!confirm('Are you sure you want to approve this visa application? This will process all transactions.')) {
         return;
     }
+
+    const btn = this;
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Approving...';
 
     const formData = new FormData();
     formData.append('visa_id', visaId);
@@ -61,9 +66,13 @@ document.getElementById('approveVisaBtn')?.addEventListener('click', function ()
         } else {
             showToast('Error: ' + (data.error || data.message), 'error');
         }
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
     })
     .catch(error => {
         console.error('Error:', error);
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
         showToast('An error occurred while approving visa', 'error');
     });
 });

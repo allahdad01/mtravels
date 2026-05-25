@@ -236,7 +236,6 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_ASSOC);
     <!-- Expense Management Scripts -->
 
     <script src="../js/expense/file_input_handler.js"></script>
-    <script src="../js/expense/button_protection.js"></script>
     <script src="../js/expense/expense_management.js"></script>
     <script src="../js/expense/event_handlers.js"></script>
 

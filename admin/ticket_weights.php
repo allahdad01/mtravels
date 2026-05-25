@@ -847,7 +847,6 @@ $weights  = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 <script src="../assets/js/pcoded.min.js"></script>
 <script src="../js/ticket_weight/transaction_manager.js"></script>
 <script src="../js/ticket_weight/weight_manager.js"></script>
-<script src="../js/ticket_weight/button_protection.js"></script>
 <script src="../js/ticket_weight/multi_ticket.js"></script>
 
 <script>

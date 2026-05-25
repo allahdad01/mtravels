@@ -828,7 +828,6 @@ function getRefundStatusDotColor($status) {
 <script src="../assets/js/pcoded.min.js"></script>
 <script src="../js/visa_refund/transaction_manager.js"></script>
 <script src="../js/visa_refund/refund_management.js"></script>
-<script src="../js/visa_refund/button_protection.js"></script>
 <script src="../js/visa_refund/visa_delete.js"></script>
 
 <!-- SweetAlert2 -->
