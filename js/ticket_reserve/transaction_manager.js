@@ -354,6 +354,13 @@ loadTransactionModal: function(ticketId) {
         e.preventDefault(); // Prevent default form submission
         e.stopPropagation(); // Stop event from bubbling up
 
+        const submitBtn = $('#hotelTransactionForm').find('button[type="submit"]');
+        const originalText = submitBtn.html();
+        
+        // Disable button and show loading state
+        submitBtn.prop('disabled', true);
+        submitBtn.html('<i class="feather icon-loader mr-2"></i>Processing...');
+
         // Gather form data manually to ensure all fields are captured
         const formData = {
             booking_id: $('#booking_id').val(),
@@ -375,6 +382,8 @@ loadTransactionModal: function(ticketId) {
         for (let field of requiredFields) {
             if (!formData[field]) {
                 alert(`Please fill in the ${field.replace('_', ' ')} field`);
+                submitBtn.prop('disabled', false);
+                submitBtn.html(originalText);
                 return;
             }
         }
@@ -426,9 +435,12 @@ loadTransactionModal: function(ticketId) {
                 }
             },
             error: function(xhr, status, error) {
-
-
                 alert('Error adding transaction');
+            },
+            complete: function() {
+                // Re-enable button and restore original text
+                submitBtn.prop('disabled', false);
+                submitBtn.html(originalText);
             }
         });
 
@@ -715,6 +727,17 @@ loadTransactionModal: function(ticketId) {
             return;
         }
 
+        // Get the button that was clicked
+        const clickedBtn = event?.target?.closest('button') || document.activeElement;
+        let originalContent = '';
+        
+        // Store original content and show loading state if button found
+        if (clickedBtn && clickedBtn.tagName === 'BUTTON') {
+            originalContent = clickedBtn.innerHTML;
+            clickedBtn.disabled = true;
+            clickedBtn.innerHTML = '<i class="feather icon-loader"></i>';
+        }
+
         // Send as form data instead of JSON
         $.ajax({
             url: '../api/ticket_reserve/delete_ticket_reserve_payment.php',
@@ -734,7 +757,6 @@ loadTransactionModal: function(ticketId) {
                         showToast('Error deleting transaction: ' + (result.message || 'Unknown error'), 'error');
                     }
                 } catch (e) {
-
                     showToast('Error processing the request', 'error');
                 }
             },
@@ -745,6 +767,13 @@ loadTransactionModal: function(ticketId) {
                     response: xhr.responseText
                 });
                 showToast('Error deleting transaction', 'error');
+            },
+            complete: function() {
+                // Restore button state if button was found
+                if (clickedBtn && clickedBtn.tagName === 'BUTTON' && originalContent) {
+                    clickedBtn.disabled = false;
+                    clickedBtn.innerHTML = originalContent;
+                }
             }
         });
     }

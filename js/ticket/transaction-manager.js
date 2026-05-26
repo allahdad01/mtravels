@@ -711,6 +711,17 @@ const transactionManager = {
             return;
         }
 
+        // Get the button that was clicked
+        const clickedBtn = event?.target?.closest('button') || document.activeElement;
+        let originalContent = '';
+        
+        // Store original content and show loading state if button found
+        if (clickedBtn && clickedBtn.tagName === 'BUTTON') {
+            originalContent = clickedBtn.innerHTML;
+            clickedBtn.disabled = true;
+            clickedBtn.innerHTML = '<i class="feather icon-loader"></i>';
+        }
+
         const ticketId = $('#booking_id').val();
 
         $.ajax({
@@ -731,7 +742,6 @@ const transactionManager = {
                         showToast('Error deleting transaction: ' + (result.message || 'Unknown error'), 'error');
                     }
                 } catch (e) {
-
                     showToast('Error processing the request', 'error');
                 }
             },
@@ -742,6 +752,13 @@ const transactionManager = {
                     response: xhr.responseText
                 });
                 showToast('Error deleting transaction', 'error');
+            },
+            complete: function() {
+                // Restore button state if button was found
+                if (clickedBtn && clickedBtn.tagName === 'BUTTON' && originalContent) {
+                    clickedBtn.disabled = false;
+                    clickedBtn.innerHTML = originalContent;
+                }
             }
         });
     }

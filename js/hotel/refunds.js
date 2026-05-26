@@ -48,6 +48,12 @@ $(document).ready(function() {
     $('#refundForm').on('submit', function(e) {
         e.preventDefault();
         
+        // Disable submit button to prevent multiple clicks
+        const submitBtn = $(this).find('button[type="submit"]');
+        const originalText = submitBtn.html();
+        submitBtn.prop('disabled', true);
+        submitBtn.html('<i class="feather icon-loader mr-2 spinner-border spinner-border-sm" role="status" aria-hidden="true"></i>Processing...');
+        
         const formData = new FormData(this);
         const refundType = formData.get('refund_type');
         const exchangeRate = parseFloat($('#exchange_rate').val());
@@ -57,6 +63,9 @@ $(document).ready(function() {
         if (refundType === 'partial') {
             const refundAmount = parseFloat(formData.get('refund_amount'));
             if (!refundAmount || refundAmount < 0 || refundAmount > originalAmount) {
+                // Re-enable button on validation error
+                submitBtn.prop('disabled', false);
+                submitBtn.html(originalText);
                 showToast('Please enter a valid refund amount between 0 and ' + originalAmount);
                 return;
             }
@@ -77,15 +86,22 @@ $(document).ready(function() {
                         $('#refundModal').modal('hide');
                         location.reload(); // Reload to show updated data
                     } else {
+                        // Re-enable button on error
+                        submitBtn.prop('disabled', false);
+                        submitBtn.html(originalText);
                         showToast('Error: ' + (result.message || 'Failed to process refund'));
                     }
                 } catch (e) {
-
+                    // Re-enable button on error
+                    submitBtn.prop('disabled', false);
+                    submitBtn.html(originalText);
                     showToast('Error processing the refund request');
                 }
             },
             error: function(xhr, status, error) {
-
+                // Re-enable button on error
+                submitBtn.prop('disabled', false);
+                submitBtn.html(originalText);
                 showToast('Error processing refund');
             }
         });

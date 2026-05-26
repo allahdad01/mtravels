@@ -860,12 +860,29 @@ function fetchSalaryDetails() {
 }
 
 // ── Absence deduction ─────────────────────────────
-function deductAbsence(userId, currency, baseSalary, absentDays, paymentMonth) {
+let isDeductingAbsence = false;
+function deductAbsence(userId, currency, baseSalary, absentDays, paymentMonth, btnElement) {
+    if (isDeductingAbsence) return;
+    isDeductingAbsence = true;
+    
+    const btn = btnElement || document.activeElement;
+    const originalHtml = btn ? btn.innerHTML : '';
+    
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    }
+    
     $.ajax({
         url: 'deduct_absence.php',
         type: 'POST',
         data: { user_id: userId, payment_for_month: paymentMonth, absent_days: absentDays, base_salary: baseSalary, currency: currency },
         success: function(res) {
+            isDeductingAbsence = false;
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
             try {
                 const r = JSON.parse(res);
                 if (r.success) {
@@ -876,7 +893,14 @@ function deductAbsence(userId, currency, baseSalary, absentDays, paymentMonth) {
                 }
             } catch(e) { showToast('Error processing response.', true); }
         },
-        error: function() { showToast('Network error.', true); }
+        error: function() {
+            isDeductingAbsence = false;
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+            showToast('Network error.', true);
+        }
     });
 }
 

@@ -381,6 +381,13 @@ $(document).ready(function() {
     // Handle form submission
     $('#addTransactionForm').on('submit', function(e) {
         e.preventDefault();
+        
+        // Disable submit button to prevent multiple clicks
+        const submitBtn = $(this).find('button[type="submit"]');
+        const originalText = submitBtn.html();
+        submitBtn.prop('disabled', true);
+        submitBtn.html('<i class="feather icon-loader mr-2 spinner-border spinner-border-sm" role="status" aria-hidden="true"></i>Saving...');
+        
         const formData = new FormData(this);
         $.ajax({
             url: '../api/ticket/save_weight.php',
@@ -395,13 +402,22 @@ $(document).ready(function() {
                         showToast('Weight saved successfully', 'success');
                         location.reload();
                     } else {
+                        // Re-enable submit button on business logic error
+                        submitBtn.prop('disabled', false);
+                        submitBtn.html(originalText);
                         showToast(result.message || 'Failed to save weight', 'error');
                     }
                 } catch (e) {
+                    // Re-enable submit button on parsing error
+                    submitBtn.prop('disabled', false);
+                    submitBtn.html(originalText);
                     showToast('Error processing request', 'error');
                 }
             },
             error: function() {
+                // Re-enable submit button on network error
+                submitBtn.prop('disabled', false);
+                submitBtn.html(originalText);
                 showToast('Error saving weight', 'error');
             }
         });

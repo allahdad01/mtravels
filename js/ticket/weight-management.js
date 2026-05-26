@@ -36,6 +36,13 @@ $(document).ready(function() {
     $('#addWeightForm').on('submit', function(e) {
         e.preventDefault();
 
+        const submitBtn = $(this).find('button[type="submit"]');
+        const originalText = submitBtn.html();
+        
+        // Disable button and show loading state
+        submitBtn.prop('disabled', true);
+        submitBtn.html('<i class="feather icon-loader mr-2"></i>Processing...');
+
         const formData = {
             ticket_id: $('#weight-ticket-id').val(),
             weight: $('#weight').val(),
@@ -71,6 +78,11 @@ $(document).ready(function() {
             },
             error: function() {
                 showToast('Something went wrong', 'error');
+            },
+            complete: function() {
+                // Re-enable button and restore original text
+                submitBtn.prop('disabled', false);
+                submitBtn.html(originalText);
             }
         });
     });

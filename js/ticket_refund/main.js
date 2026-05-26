@@ -9,6 +9,10 @@ function printRefundAgreement(ticketId) {
 }
 
 function deleteTicket(id) {
+    // Get the button that was clicked
+    const clickedBtn = event?.target?.closest('button') || document.activeElement;
+    let originalContent = '';
+    
     Swal.fire({
         title: 'Are you sure?',
         text: "You won't be able to revert this!",
@@ -19,6 +23,13 @@ function deleteTicket(id) {
         confirmButtonText: 'Yes, delete it!'
     }).then((result) => {
         if (result.isConfirmed) {
+            // Store original content and show loading state if button found
+            if (clickedBtn && clickedBtn.tagName === 'BUTTON') {
+                originalContent = clickedBtn.innerHTML;
+                clickedBtn.disabled = true;
+                clickedBtn.innerHTML = '<i class="feather icon-loader"></i>';
+            }
+            
             // Make the fetch request
             fetch('../api/ticket_refund/delete_ticket_rf.php', {
                 method: 'POST',
@@ -27,6 +38,12 @@ function deleteTicket(id) {
             })
             .then(response => response.json())
             .then(data => {
+                // Restore button state if button was found
+                if (clickedBtn && clickedBtn.tagName === 'BUTTON' && originalContent) {
+                    clickedBtn.disabled = false;
+                    clickedBtn.innerHTML = originalContent;
+                }
+                
                 if (data.success) {
                     Swal.fire({
                         icon: 'success',
@@ -44,7 +61,12 @@ function deleteTicket(id) {
                 }
             })
             .catch(error => {
-
+                // Restore button state if button was found
+                if (clickedBtn && clickedBtn.tagName === 'BUTTON' && originalContent) {
+                    clickedBtn.disabled = false;
+                    clickedBtn.innerHTML = originalContent;
+                }
+                
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',

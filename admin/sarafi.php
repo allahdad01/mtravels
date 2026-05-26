@@ -1494,22 +1494,82 @@ function handleAjaxSuccess(r, msg) {
   else showToast(r.message || '<?= __("operation_failed") ?>', 'error');
 }
 
-function deleteDeposit(id, amount) {
+function deleteDeposit(id, amount, btnElement) {
   if (!confirm('<?= __("confirm_delete_deposit") ?>')) return;
+  const btn = btnElement || document.activeElement;
+  const originalHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  }
   fetch('delete_sarafi_deposit.php', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:`transaction_id=${id}&amount=${amount}` })
-    .then(r => r.json()).then(d => handleAjaxSuccess(d, '<?= __("deposit_deleted_successfully") ?>')).catch(() => showToast('<?= __("error_deleting_deposit") ?>', 'error'));
+    .then(r => r.json())
+    .then(d => {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+      }
+      handleAjaxSuccess(d, '<?= __("deposit_deleted_successfully") ?>');
+    })
+    .catch(() => {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+      }
+      showToast('<?= __("error_deleting_deposit") ?>', 'error');
+    });
 }
 
-function deleteWithdrawal(id, amount) {
+function deleteWithdrawal(id, amount, btnElement) {
   if (!confirm('<?= __("confirm_delete_withdrawal") ?>')) return;
+  const btn = btnElement || document.activeElement;
+  const originalHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  }
   fetch('delete_sarafi_withdrawal.php', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:`transaction_id=${id}&amount=${amount}` })
-    .then(r => r.json()).then(d => handleAjaxSuccess(d, '<?= __("withdrawal_deleted_successfully") ?>')).catch(() => showToast('<?= __("error_deleting_withdrawal") ?>', 'error'));
+    .then(r => r.json())
+    .then(d => {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+      }
+      handleAjaxSuccess(d, '<?= __("withdrawal_deleted_successfully") ?>');
+    })
+    .catch(() => {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+      }
+      showToast('<?= __("error_deleting_withdrawal") ?>', 'error');
+    });
 }
 
-function deleteHawala(id, amount) {
+function deleteHawala(id, amount, btnElement) {
   if (!confirm('<?= __("confirm_delete_hawala") ?>')) return;
+  const btn = btnElement || document.activeElement;
+  const originalHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  }
   fetch('delete_sarafi_hawala.php', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:`transaction_id=${id}&amount=${amount}` })
-    .then(r => r.json()).then(d => handleAjaxSuccess(d, '<?= __("hawala_deleted_successfully") ?>')).catch(() => showToast('<?= __("error_deleting_hawala") ?>', 'error'));
+    .then(r => r.json())
+    .then(d => {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+      }
+      handleAjaxSuccess(d, '<?= __("hawala_deleted_successfully") ?>');
+    })
+    .catch(() => {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+      }
+      showToast('<?= __("error_deleting_hawala") ?>', 'error');
+    });
 }
 
 // ── View transaction details ───────────────────────────────────────────────

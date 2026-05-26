@@ -1,5 +1,9 @@
          // Function to delete weight
          function deleteWeight(weightId) {
+            // Get the button that was clicked
+            const clickedBtn = event?.target?.closest('button') || document.activeElement;
+            let originalContent = '';
+            
             Swal.fire({
                 title: 'Are you sure you want to delete this weight',
                 icon: 'warning',
@@ -10,11 +14,24 @@
                 cancelButtonText: 'Cancel'
             }).then((result) => {
                 if (result.isConfirmed) {
+                    // Store original content and show loading state if button found
+                    if (clickedBtn && clickedBtn.tagName === 'BUTTON') {
+                        originalContent = clickedBtn.innerHTML;
+                        clickedBtn.disabled = true;
+                        clickedBtn.innerHTML = '<i class="feather icon-loader"></i>';
+                    }
+                    
                     $.ajax({
                         url: '../api/ticket_weight/delete_weight.php',
                         type: 'POST',
                         data: { id: weightId },
                         success: function(response) {
+                            // Restore button state if button was found
+                            if (clickedBtn && clickedBtn.tagName === 'BUTTON' && originalContent) {
+                                clickedBtn.disabled = false;
+                                clickedBtn.innerHTML = originalContent;
+                            }
+                            
                             try {
                                 const result = JSON.parse(response);
                                 if (result.success) {
@@ -28,6 +45,11 @@
                             }
                         },
                         error: function() {
+                            // Restore button state if button was found
+                            if (clickedBtn && clickedBtn.tagName === 'BUTTON' && originalContent) {
+                                clickedBtn.disabled = false;
+                                clickedBtn.innerHTML = originalContent;
+                            }
                             showToast('Error deleting weight', 'error');
                         }
                     });
@@ -47,6 +69,13 @@
         $('#editWeightForm').on('submit', function(e) {
             e.preventDefault();
             
+            const submitBtn = $(this).find('button[type="submit"]');
+            const originalText = submitBtn.html();
+            
+            // Disable button and show loading state
+            submitBtn.prop('disabled', true);
+            submitBtn.html('<i class="feather icon-loader mr-2"></i>Processing...');
+            
             const formData = new FormData(this);
             
             $.ajax({
@@ -56,6 +85,10 @@
                 processData: false,
                 contentType: false,
                 success: function(response) {
+                    // Restore button state
+                    submitBtn.prop('disabled', false);
+                    submitBtn.html(originalText);
+                    
                     try {
                         const result = JSON.parse(response);
                         if (result.success) {
@@ -69,6 +102,9 @@
                     }
                 },
                 error: function() {
+                    // Restore button state
+                    submitBtn.prop('disabled', false);
+                    submitBtn.html(originalText);
                     showToast('Error updating weight', 'error');
                 }
             });
@@ -112,6 +148,10 @@
                 }
 
                 function deleteTransaction(transactionId, reference_id, amount) {
+                    // Get the button that was clicked
+                    const clickedBtn = event?.target?.closest('button') || document.activeElement;
+                    let originalContent = '';
+                    
                     Swal.fire({
                         title: 'Are you sure you want to delete this transaction',
                         icon: 'warning',
@@ -122,26 +162,42 @@
                         cancelButtonText: 'Cancel'
                     }).then((result) => {
                         if (result.isConfirmed) {
+                            // Store original content and show loading state if button found
+                            if (clickedBtn && clickedBtn.tagName === 'BUTTON') {
+                                originalContent = clickedBtn.innerHTML;
+                                clickedBtn.disabled = true;
+                                clickedBtn.innerHTML = '<i class="feather icon-loader"></i>';
+                            }
+                            
                             $.ajax({
                                 url: '../api/ticket_weight/delete_weight_transaction.php',
                                 type: 'POST',
-                                dataType: 'json',  // Let jQuery parse JSON automatically
-                                data: { 
+                                dataType: 'json',
+                                data: {
                                     transaction_id: transactionId,
                                     weight_id: reference_id,
                                     amount: amount
                                 },
                                 success: function(result) {
-                                    // jQuery has already parsed JSON
+                                    // Restore button state if button was found
+                                    if (clickedBtn && clickedBtn.tagName === 'BUTTON' && originalContent) {
+                                        clickedBtn.disabled = false;
+                                        clickedBtn.innerHTML = originalContent;
+                                    }
+                                    
                                     if (result && result.success) {
                                         showToast(result.message || 'Transaction deleted successfully', 'success');
-                                        // Reload transactions
-                                    location.reload();
+                                        location.reload();
                                     } else {
                                         showToast(result?.message || 'Failed to delete transaction', 'error');
                                     }
                                 },
                                 error: function(xhr, status, error) {
+                                    // Restore button state if button was found
+                                    if (clickedBtn && clickedBtn.tagName === 'BUTTON' && originalContent) {
+                                        clickedBtn.disabled = false;
+                                        clickedBtn.innerHTML = originalContent;
+                                    }
                                     showToast('Error processing request', 'error');
                                 }
                             });

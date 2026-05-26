@@ -1,7 +1,18 @@
-function deleteTicket(id) {
+function deleteTicket(id, btnElement) {
     if (confirm('Are you sure you want to delete this ticket?')) {
+        // Get the button that was clicked if not passed directly
+        const clickedBtn = btnElement || event?.target?.closest('button') || document.activeElement;
+        let originalContent = '';
+        
+        // Store original content and show loading state if button found
+        if (clickedBtn && clickedBtn.tagName === 'BUTTON') {
+            originalContent = clickedBtn.innerHTML;
+            clickedBtn.disabled = true;
+            clickedBtn.innerHTML = '<i class="feather icon-loader"></i>';
+        }
+        
         // Get CSRF token from meta tag or hidden input
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
                          document.querySelector('input[name="csrf_token"]')?.value;
         
         fetch('../api/ticket/delete_ticket.php', {
@@ -22,6 +33,13 @@ function deleteTicket(id) {
         })
         .catch(error => {
             showToast('An error occurred while deleting the ticket', 'error');
+        })
+        .finally(() => {
+            // Restore button state if button was found
+            if (clickedBtn && clickedBtn.tagName === 'BUTTON' && originalContent) {
+                clickedBtn.disabled = false;
+                clickedBtn.innerHTML = originalContent;
+            }
         });
     }
-} 
+}

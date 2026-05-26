@@ -12,8 +12,16 @@ function deleteRefund(refundId) {
         confirmButtonText: 'Yes, delete it!'
     }).then((result) => {
         if (result.isConfirmed) {
+            // Get the delete button that was clicked
+            const clickedBtn = $(`a[onclick="deleteRefund(${refundId})"]`);
+            const originalContent = clickedBtn.html();
+            
+            // Disable button and show loading state
+            clickedBtn.prop('disabled', true);
+            clickedBtn.html('<i class="feather icon-loader"></i>');
+            
             // Get CSRF token from meta tag or hidden input
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
                              document.querySelector('input[name="csrf_token"]')?.value;
             
             fetch('../api/visa/delete_visa_refund.php', {
@@ -34,6 +42,9 @@ function deleteRefund(refundId) {
                         location.reload();
                     });
                 } else {
+                    // Re-enable button on error
+                    clickedBtn.prop('disabled', false);
+                    clickedBtn.html(originalContent);
                     Swal.fire(
                         'Error!',
                         data.message,
@@ -42,7 +53,9 @@ function deleteRefund(refundId) {
                 }
             })
             .catch(error => {
-
+                // Re-enable button on error
+                clickedBtn.prop('disabled', false);
+                clickedBtn.html(originalContent);
                 Swal.fire(
                     'Error!',
                     'An error occurred while deleting the refund.',

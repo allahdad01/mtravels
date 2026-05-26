@@ -1553,29 +1553,45 @@ $(function () {
 });
 
 // Function to cancel Hawala transfer
-function cancelHawala(hawalaId) {
-    if (confirm('Are you sure you want to cancel this Hawala transfer?')) {
-        fetch('ajax/cancel_hawala.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ hawala_id: hawalaId })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showToast('success', 'Hawala transfer cancelled successfully');
-                setTimeout(() => window.location.reload(), 1000);
-            } else {
-                showToast('error', 'Error: ' + data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showToast('error', 'An error occurred while cancelling the transfer');
-        });
+function cancelHawala(hawalaId, btnElement) {
+    if (!confirm('Are you sure you want to cancel this Hawala transfer?')) return;
+    
+    const btn = btnElement || document.activeElement;
+    const originalHtml = btn ? btn.innerHTML : '';
+    
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cancelling...';
     }
+    
+    fetch('ajax/cancel_hawala.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ hawala_id: hawalaId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+        if (data.success) {
+            showToast('success', 'Hawala transfer cancelled successfully');
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            showToast('error', 'Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+        console.error('Error:', error);
+        showToast('error', 'An error occurred while cancelling the transfer');
+    });
 }
 
 // Auto-select customer in modals
@@ -1811,81 +1827,129 @@ function viewTransaction(transactionId) {
 }
 
 // Function to delete deposit
-function deleteDeposit(transactionId, amount) {
-    if (confirm('<?= __("are_you_sure_you_want_to_delete_this_deposit_transaction") ?>')) {
-        fetch('delete_sarafi_deposit.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `transaction_id=${transactionId}&amount=${amount}`
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showToast('success', 'Deposit deleted successfully');
-                setTimeout(() => window.location.reload(), 1000);
-            } else {
-                showToast('error', 'Error: ' + data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showToast('error', 'An error occurred while deleting the deposit');
-        });
+function deleteDeposit(transactionId, amount, btnElement) {
+    if (!confirm('<?= __("are_you_sure_you_want_to_delete_this_deposit_transaction") ?>')) return;
+    
+    const btn = btnElement || document.activeElement;
+    const originalHtml = btn ? btn.innerHTML : '';
+    
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
     }
+    
+    fetch('delete_sarafi_deposit.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `transaction_id=${transactionId}&amount=${amount}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+        if (data.success) {
+            showToast('success', 'Deposit deleted successfully');
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            showToast('error', 'Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+        console.error('Error:', error);
+        showToast('error', 'An error occurred while deleting the deposit');
+    });
 }
 
 // Function to delete withdrawal
-function deleteWithdrawal(transactionId, amount) {
-    if (confirm('<?= __("are_you_sure_you_want_to_delete_this_withdrawal_transaction") ?>')) {
-        fetch('delete_sarafi_withdrawal.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `transaction_id=${transactionId}&amount=${amount}`
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showToast('success', 'Withdrawal deleted successfully');
-                setTimeout(() => window.location.reload(), 1000);
-            } else {
-                showToast('error', 'Error: ' + data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showToast('error', 'An error occurred while deleting the withdrawal');
-        });
+function deleteWithdrawal(transactionId, amount, btnElement) {
+    if (!confirm('<?= __("are_you_sure_you_want_to_delete_this_withdrawal_transaction") ?>')) return;
+    
+    const btn = btnElement || document.activeElement;
+    const originalHtml = btn ? btn.innerHTML : '';
+    
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
     }
+    
+    fetch('delete_sarafi_withdrawal.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `transaction_id=${transactionId}&amount=${amount}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+        if (data.success) {
+            showToast('success', 'Withdrawal deleted successfully');
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            showToast('error', 'Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+        console.error('Error:', error);
+        showToast('error', 'An error occurred while deleting the withdrawal');
+    });
 }
 
 // Function to delete hawala transfer
-function deleteHawala(transactionId, amount) {
-    if (confirm('<?= __("are_you_sure_you_want_to_delete_this_hawala_transfer") ?>')) {
-        fetch('delete_sarafi_hawala.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `transaction_id=${transactionId}&amount=${amount}`
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showToast('success', 'Hawala transfer deleted successfully');
-                setTimeout(() => window.location.reload(), 1000);
-            } else {
-                showToast('error', 'Error: ' + data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showToast('error', 'An error occurred while deleting the hawala transfer');
-        });
+function deleteHawala(transactionId, amount, btnElement) {
+    if (!confirm('<?= __("are_you_sure_you_want_to_delete_this_hawala_transfer") ?>')) return;
+    
+    const btn = btnElement || document.activeElement;
+    const originalHtml = btn ? btn.innerHTML : '';
+    
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
     }
+    
+    fetch('delete_sarafi_hawala.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `transaction_id=${transactionId}&amount=${amount}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+        if (data.success) {
+            showToast('success', 'Hawala transfer deleted successfully');
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            showToast('error', 'Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+        console.error('Error:', error);
+        showToast('error', 'An error occurred while deleting the hawala transfer');
+    });
 }
 
 // Handle delete exchange transaction

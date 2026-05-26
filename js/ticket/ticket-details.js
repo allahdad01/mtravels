@@ -195,6 +195,13 @@ $(document).ready(function () {
     $('#dateChangeForm').submit(function (e) {
         e.preventDefault();
         
+        const submitBtn = $(this).find('button[type="submit"]');
+        const originalText = submitBtn.html();
+        
+        // Disable button and show loading state
+        submitBtn.prop('disabled', true);
+        submitBtn.html('<i class="feather icon-loader mr-2"></i>Processing...');
+        
         const dateType = $('input[name="dateType"]:checked').val();
         const departureDateVal = $('#dateChangeDepartureDate').val();
         const returnDateVal = $('#dateChangeReturnDate').val();
@@ -202,14 +209,20 @@ $(document).ready(function () {
         // Validate that at least one date is provided
         if (dateType === 'departure' && !departureDateVal) {
             showToast('Please enter the new departure date', 'error');
+            submitBtn.prop('disabled', false);
+            submitBtn.html(originalText);
             return;
         }
         if (dateType === 'return' && !returnDateVal) {
             showToast('Please enter the new return date', 'error');
+            submitBtn.prop('disabled', false);
+            submitBtn.html(originalText);
             return;
         }
         if (dateType === 'both' && (!departureDateVal || !returnDateVal)) {
             showToast('Please enter both departure and return dates', 'error');
+            submitBtn.prop('disabled', false);
+            submitBtn.html(originalText);
             return;
         }
         
@@ -233,12 +246,24 @@ $(document).ready(function () {
             error: function () {
                 showToast('An error occurred', 'error');
             },
+            complete: function () {
+                // Re-enable button and restore original text
+                submitBtn.prop('disabled', false);
+                submitBtn.html(originalText);
+            }
         });
     });
     
     // Submit Refund Form
     $('#refundForm').submit(function (e) {
         e.preventDefault();
+        
+        const submitBtn = $(this).find('button[type="submit"]');
+        const originalText = submitBtn.html();
+        
+        // Disable button and show loading state
+        submitBtn.prop('disabled', true);
+        submitBtn.html('<i class="feather icon-loader mr-2"></i>Processing...');
         
         // Get the selected calculation method and add it to the form data
         const calculationMethod = $('input[name="calculationMethod"]:checked').val();
@@ -270,6 +295,11 @@ $(document).ready(function () {
             error: function () {
                 showToast('An error occurred', 'error');
             },
+            complete: function () {
+                // Re-enable button and restore original text
+                submitBtn.prop('disabled', false);
+                submitBtn.html(originalText);
+            }
         });
     });
 }); 

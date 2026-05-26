@@ -28,6 +28,13 @@ $(document).ready(function() {
     $('#refundTicketForm').on('submit', function(e) {
         e.preventDefault();
         
+        const submitBtn = $(this).find('button[type="submit"]');
+        const originalText = submitBtn.html();
+        
+        // Disable button and show loading state
+        submitBtn.prop('disabled', true);
+        submitBtn.html('<i class="feather icon-loader mr-2"></i>Processing...');
+        
         const formData = new FormData(this);
         
         $.ajax({
@@ -37,6 +44,10 @@ $(document).ready(function() {
             processData: false,
             contentType: false,
             success: function(response) {
+                // Restore button state
+                submitBtn.prop('disabled', false);
+                submitBtn.html(originalText);
+                
                 try {
                     const result = JSON.parse(response);
                     if (result.success) {
@@ -50,6 +61,9 @@ $(document).ready(function() {
                 }
             },
             error: function() {
+                // Restore button state
+                submitBtn.prop('disabled', false);
+                submitBtn.html(originalText);
                 showToast('Failed to communicate with the server', 'error');
             }
         });
@@ -80,6 +94,13 @@ $(document).ready(function() {
 
     // Update penalties handler
     window.updatePenalties = function() {
+        const submitBtn = $('#editPenaltiesModal').find('button[type="submit"], button[onclick="updatePenalties()"]');
+        const originalText = submitBtn.html();
+        
+        // Disable button and show loading state
+        submitBtn.prop('disabled', true);
+        submitBtn.html('<i class="feather icon-loader mr-2"></i>Processing...');
+        
         const data = {
             ticket_id: $('#editTicketIdPenalties').val(),
             supplier_penalty: $('#editSupplierPenalty').val(),
@@ -92,6 +113,10 @@ $(document).ready(function() {
             type: 'POST',
             data: data,
             success: function(response) {
+                // Restore button state
+                submitBtn.prop('disabled', false);
+                submitBtn.html(originalText);
+                
                 try {
                     const result = JSON.parse(response);
                     if (result.success) {
@@ -105,6 +130,9 @@ $(document).ready(function() {
                 }
             },
             error: function() {
+                // Restore button state
+                submitBtn.prop('disabled', false);
+                submitBtn.html(originalText);
                 showToast('Failed to communicate with the server', 'error');
             }
         });
@@ -113,11 +141,28 @@ $(document).ready(function() {
     // Delete ticket handler
     window.deleteTicket = function(ticketId) {
         if (confirm(window.translations.are_you_sure_you_want_to_delete_this_ticket)) {
+            // Get the button that was clicked
+            const clickedBtn = event?.target?.closest('button') || document.activeElement;
+            let originalContent = '';
+            
+            // Store original content and show loading state if button found
+            if (clickedBtn && clickedBtn.tagName === 'BUTTON') {
+                originalContent = clickedBtn.innerHTML;
+                clickedBtn.disabled = true;
+                clickedBtn.innerHTML = '<i class="feather icon-loader"></i>';
+            }
+            
             $.ajax({
                 url: 'handlers/delete_refund_ticket.php',
                 type: 'POST',
                 data: { ticket_id: ticketId },
                 success: function(response) {
+                    // Restore button state if button was found
+                    if (clickedBtn && clickedBtn.tagName === 'BUTTON' && originalContent) {
+                        clickedBtn.disabled = false;
+                        clickedBtn.innerHTML = originalContent;
+                    }
+                    
                     try {
                         const result = JSON.parse(response);
                         if (result.success) {
@@ -131,6 +176,11 @@ $(document).ready(function() {
                     }
                 },
                 error: function() {
+                    // Restore button state if button was found
+                    if (clickedBtn && clickedBtn.tagName === 'BUTTON' && originalContent) {
+                        clickedBtn.disabled = false;
+                        clickedBtn.innerHTML = originalContent;
+                    }
                     showToast('Failed to communicate with the server', 'error');
                 }
             });

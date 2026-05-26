@@ -584,8 +584,16 @@
 
         const visaId = $('#visa_id').val();
 
+        // Get the delete button that was clicked
+        const clickedBtn = $(`button[onclick="transactionManager.deleteTransaction(${transactionId}, ${amount})"]`);
+        const originalContent = clickedBtn.html();
+        
+        // Disable button and show loading state
+        clickedBtn.prop('disabled', true);
+        clickedBtn.html('<i class="feather icon-loader"></i>');
+
         // Get CSRF token from meta tag or hidden input
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
                          document.querySelector('input[name="csrf_token"]')?.value;
 
         $.ajax({
@@ -604,10 +612,16 @@
                         transactionManager.loadTransactionHistory(visaId);
                         alert('transaction_deleted_successfully');
                     } else {
+                        // Re-enable button on error
+                        clickedBtn.prop('disabled', false);
+                        clickedBtn.html(originalContent);
                         alert('error_deleting_transaction: ' + (result.message || 'unknown_error'));
                     }
                 } catch (e) {
                     console.log(e);
+                    // Re-enable button on error
+                    clickedBtn.prop('disabled', false);
+                    clickedBtn.html(originalContent);
                     alert('error_processing_the_request');
                 }
             },
@@ -617,6 +631,9 @@
                     error: error,
                     response: xhr.responseText
                 });
+                // Re-enable button on error
+                clickedBtn.prop('disabled', false);
+                clickedBtn.html(originalContent);
                 alert('error_deleting_transaction');
             }
         });
@@ -629,6 +646,14 @@
         }
         
         const visaId = $('#visa_id').val();
+        
+        // Get the refund button that was clicked
+        const clickedBtn = $(`button[onclick="transactionManager.refundTransaction(${transactionId}, '${(description||'').replace(/'/g,"\\'")}', ${amount}, '${currency}')"]`);
+        const originalContent = clickedBtn.html();
+        
+        // Disable button and show loading state
+        clickedBtn.prop('disabled', true);
+        clickedBtn.html('<i class="feather icon-loader"></i>');
         
         // Prepare refund data
         const now = new Date();
@@ -663,15 +688,22 @@
                         alert('refund_processed_successfully');
                         transactionManager.loadTransactionHistory(visaId);
                     } else {
+                        // Re-enable button on error
+                        clickedBtn.prop('disabled', false);
+                        clickedBtn.html(originalContent);
                         alert('error_processing_refund: ' + (result.message || 'unknown_error'));
                     }
                 } catch (e) {
-
+                    // Re-enable button on error
+                    clickedBtn.prop('disabled', false);
+                    clickedBtn.html(originalContent);
                     alert('error_processing_the_refund_request');
                 }
             },
             error: function(xhr, status, error) {
-
+                // Re-enable button on error
+                clickedBtn.prop('disabled', false);
+                clickedBtn.html(originalContent);
                 alert('error_processing_refund');
             }
         });

@@ -523,8 +523,12 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('editTicketForm').addEventListener('submit', function(event) {
         event.preventDefault();
         
-        // Show loader
+        // Show loader and disable submit button
         document.getElementById('editLoader').style.display = 'block';
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalButtonText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="feather icon-loader mr-2"></i>Processing...';
         
         const formData = new FormData(this);
         
@@ -540,6 +544,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (field && !field.value) {
                     showToast(`Please fill in the ${field.previousElementSibling.textContent} field.`, 'error');
                     document.getElementById('editLoader').style.display = 'none';
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalButtonText;
                     return;
                 }
             }
@@ -551,8 +557,10 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => response.json())
         .then(data => {
-            // Hide loader
+            // Hide loader and restore button
             document.getElementById('editLoader').style.display = 'none';
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalButtonText;
             
             if (data.success) {
                 showToast('Ticket updated successfully', 'success');
@@ -566,6 +574,8 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => {
             document.getElementById('editLoader').style.display = 'none';
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalButtonText;
             showToast('An error occurred while updating the ticket', 'error');
         });
     });

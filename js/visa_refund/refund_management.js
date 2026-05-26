@@ -4,12 +4,20 @@
         return;
     }
 
-    // Show loading state
-    const row = $(`a[onclick="deleteRefund(${refundId})"]`).closest('tr');
+    // Get the delete button/link that was clicked
+    const clickedBtn = $(`a[onclick="deleteRefund(${refundId})"]`);
+    const originalContent = clickedBtn.html();
+    
+    // Disable button and show loading state
+    clickedBtn.prop('disabled', true);
+    clickedBtn.html('<i class="feather icon-loader"></i>');
+    
+    // Show loading state on row
+    const row = clickedBtn.closest('tr');
     row.addClass('loading');
 
     // Get CSRF token from meta tag or hidden input
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
                      document.querySelector('input[name="csrf_token"]')?.value;
 
     // Send delete request
@@ -27,12 +35,17 @@
             // Reload the page to refresh the table
             window.location.reload();
         } else {
+            // Re-enable button on error
+            clickedBtn.prop('disabled', false);
+            clickedBtn.html(originalContent);
             alert('error_deleting_refund: ' + (data.message || 'unknown_error'));
             row.removeClass('loading');
         }
     })
     .catch(error => {
-
+        // Re-enable button on error
+        clickedBtn.prop('disabled', false);
+        clickedBtn.html(originalContent);
         alert('error_deleting_refund');
         row.removeClass('loading');
     });

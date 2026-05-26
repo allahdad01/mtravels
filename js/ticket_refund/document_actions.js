@@ -26,6 +26,17 @@ function printRefundAgreement(ticketId) {
 // Delete ticket
 function deleteTicket(id) {
     if (confirm(window.translations.are_you_sure_you_want_to_delete_this_ticket)) {
+        // Get the button that was clicked
+        const clickedBtn = event?.target?.closest('button') || document.activeElement;
+        let originalContent = '';
+        
+        // Store original content and show loading state if button found
+        if (clickedBtn && clickedBtn.tagName === 'BUTTON') {
+            originalContent = clickedBtn.innerHTML;
+            clickedBtn.disabled = true;
+            clickedBtn.innerHTML = '<i class="feather icon-loader"></i>';
+        }
+        
         fetch('../api/ticket_refund/delete_ticket_rf.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -33,6 +44,12 @@ function deleteTicket(id) {
         })
         .then(response => response.json())
         .then(data => {
+            // Restore button state if button was found
+            if (clickedBtn && clickedBtn.tagName === 'BUTTON' && originalContent) {
+                clickedBtn.disabled = false;
+                clickedBtn.innerHTML = originalContent;
+            }
+            
             if (data.success) {
                 alert(data.message);
                 location.reload();
@@ -40,6 +57,13 @@ function deleteTicket(id) {
                 alert(window.translations.error + ': ' + data.message);
             }
         })
-
+        .catch(error => {
+            // Restore button state if button was found
+            if (clickedBtn && clickedBtn.tagName === 'BUTTON' && originalContent) {
+                clickedBtn.disabled = false;
+                clickedBtn.innerHTML = originalContent;
+            }
+            alert(window.translations.error + ': An unexpected error occurred');
+        });
     }
 }

@@ -495,8 +495,13 @@ const transactionManager = {
                 }
             },
             error: function(xhr, status, error) {
-
                 transactionManager.showToast('Error adding transaction', 'error');
+            },
+            complete: function() {
+                // Re-enable submit button and restore original text
+                transactionManager.isSubmitting = false;
+                submitBtn.prop('disabled', false);
+                submitBtn.html(originalText);
             }
         });
     },
@@ -546,34 +551,55 @@ const transactionManager = {
     
     // Perform the actual transaction deletion
     performDeleteTransaction: function(transactionId, ticketId, amount) {
-
-       $.ajax({
-    url: '../api/ticket_refund/delete_refund_ticket_transaction.php',
-    type: 'POST',
-    data: {
-        transaction_id: transactionId,
-        ticket_id: ticketId,
-        amount: amount
-    },
-    dataType: 'json', // 👈 ensures automatic JSON parsing
-    success: function(result) {
-        if (result.success) {
-            transactionManager.loadRefundTransactionHistory(ticketId);
-            transactionManager.showToast('Transaction deleted successfully', 'success');
-        } else {
-            transactionManager.showToast('Error deleting transaction: ' + (result.message || 'Unknown error'), 'error');
+        // Get the button that was clicked
+        const clickedBtn = event?.target?.closest('button') || document.activeElement;
+        let originalContent = '';
+        
+        // Store original content and show loading state if button found
+        if (clickedBtn && clickedBtn.tagName === 'BUTTON') {
+            originalContent = clickedBtn.innerHTML;
+            clickedBtn.disabled = true;
+            clickedBtn.innerHTML = '<i class="feather icon-loader"></i>';
         }
-    },
-    error: function(xhr, status, error) {
-        console.log({
-            status: xhr.status,
-            error: error,
-            response: xhr.responseText
-        });
-        transactionManager.showToast('Error deleting transaction', 'error');
-    }
-});
 
+        $.ajax({
+            url: '../api/ticket_refund/delete_refund_ticket_transaction.php',
+            type: 'POST',
+            data: {
+                transaction_id: transactionId,
+                ticket_id: ticketId,
+                amount: amount
+            },
+            dataType: 'json',
+            success: function(result) {
+                // Restore button state if button was found
+                if (clickedBtn && clickedBtn.tagName === 'BUTTON' && originalContent) {
+                    clickedBtn.disabled = false;
+                    clickedBtn.innerHTML = originalContent;
+                }
+                
+                if (result.success) {
+                    transactionManager.loadRefundTransactionHistory(ticketId);
+                    transactionManager.showToast('Transaction deleted successfully', 'success');
+                } else {
+                    transactionManager.showToast('Error deleting transaction: ' + (result.message || 'Unknown error'), 'error');
+                }
+            },
+            error: function(xhr, status, error) {
+                // Restore button state if button was found
+                if (clickedBtn && clickedBtn.tagName === 'BUTTON' && originalContent) {
+                    clickedBtn.disabled = false;
+                    clickedBtn.innerHTML = originalContent;
+                }
+                
+                console.log({
+                    status: xhr.status,
+                    error: error,
+                    response: xhr.responseText
+                });
+                transactionManager.showToast('Error deleting transaction', 'error');
+            }
+        });
     },
 
     // View receipt function

@@ -152,8 +152,16 @@ function deleteBooking(id) {
     }
 
     if (confirm('Are you sure you want to delete this booking?')) {
+        // Get the delete button that was clicked
+        const clickedBtn = $(`button[onclick="deleteBooking(${id})"]`);
+        const originalContent = clickedBtn.html();
+        
+        // Disable button and show loading state
+        clickedBtn.prop('disabled', true);
+        clickedBtn.html('<i class="feather icon-loader"></i>');
+        
         // Get CSRF token from meta tag or hidden input
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
                          document.querySelector('input[name="csrf_token"]')?.value;
         
         $.ajax({
@@ -167,11 +175,16 @@ function deleteBooking(id) {
                     showToast('Booking deleted successfully');
                     location.reload();
                 } else {
+                    // Re-enable button on error
+                    clickedBtn.prop('disabled', false);
+                    clickedBtn.html(originalContent);
                     showToast('Error deleting booking');
                 }
             },
             error: function(xhr, status, error) {
-
+                // Re-enable button on error
+                clickedBtn.prop('disabled', false);
+                clickedBtn.html(originalContent);
                 showToast('Error deleting booking');
             }
         });

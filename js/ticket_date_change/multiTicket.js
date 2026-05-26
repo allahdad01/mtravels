@@ -28,6 +28,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Generate the combined invoice
     document.getElementById('generateCombinedInvoice').addEventListener('click', function() {
+        const btn = this;
+        const originalText = btn.innerHTML;
+        
         const selectedTickets = getSelectedTickets();
         
         if (selectedTickets.length === 0) {
@@ -40,6 +43,10 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('please_select_a_client_for_the_invoice');
             return;
         }
+        
+        // Disable button and show loading state
+        btn.disabled = true;
+        btn.innerHTML = '<i class="feather icon-loader mr-2"></i>Generating...';
         
         const invoiceData = {
         
@@ -64,6 +71,10 @@ document.addEventListener('DOMContentLoaded', function() {
         document.body.appendChild(form);
         form.submit();
         document.body.removeChild(form);
+        
+        // Restore button state
+        btn.disabled = false;
+        btn.innerHTML = originalText;
         
         // Close the modal after generating the invoice
         $('#multiTicketInvoiceModal').modal('hide');

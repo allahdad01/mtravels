@@ -347,10 +347,18 @@ document.addEventListener('DOMContentLoaded', function() {
         editTicketForm.addEventListener('submit', function(event) {
             event.preventDefault();
             
-            // Show loader
+            // Show loader and disable submit button
             const editLoader = document.getElementById('editLoader');
             if (editLoader) {
                 editLoader.style.display = 'block';
+            }
+            
+            const submitBtn = this.querySelector('button[type="submit"]');
+            let originalButtonText = '';
+            if (submitBtn) {
+                originalButtonText = submitBtn.innerHTML;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="feather icon-loader mr-2"></i>Processing...';
             }
             
             const formData = new FormData(this);
@@ -370,6 +378,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (editLoader) {
                             editLoader.style.display = 'none';
                         }
+                        if (submitBtn) {
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = originalButtonText;
+                        }
                         return;
                     }
                 }
@@ -381,9 +393,13 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(response => response.json())
             .then(data => {
-                // Hide loader
+                // Hide loader and restore button
                 if (editLoader) {
                     editLoader.style.display = 'none';
+                }
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalButtonText;
                 }
                 
                 if (data.success) {
@@ -395,9 +411,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(error => {
-
                 if (editLoader) {
                     editLoader.style.display = 'none';
+                }
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalButtonText;
                 }
                 alert('error_occurred_while_updating_the_ticket');
             });

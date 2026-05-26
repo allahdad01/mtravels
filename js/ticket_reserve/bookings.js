@@ -84,6 +84,17 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 function deleteTicket(id) {
     if (confirm('Are you sure you want to delete this ticket?')) {
+        // Get the button that was clicked
+        const clickedBtn = event?.target?.closest('button') || document.activeElement;
+        let originalContent = '';
+        
+        // Store original content and show loading state if button found
+        if (clickedBtn && clickedBtn.tagName === 'BUTTON') {
+            originalContent = clickedBtn.innerHTML;
+            clickedBtn.disabled = true;
+            clickedBtn.innerHTML = '<i class="feather icon-loader"></i>';
+        }
+        
         fetch('../api/ticket_reserve/delete_ticket_reserve.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -98,7 +109,16 @@ function deleteTicket(id) {
                 alert('error: ' + data.message);
             }
         })
-
+        .catch(error => {
+            alert('An error occurred while deleting the ticket');
+        })
+        .finally(() => {
+            // Restore button state if button was found
+            if (clickedBtn && clickedBtn.tagName === 'BUTTON' && originalContent) {
+                clickedBtn.disabled = false;
+                clickedBtn.innerHTML = originalContent;
+            }
+        });
     }
 }
    // Trip type toggle for new booking form

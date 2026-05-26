@@ -560,12 +560,21 @@ const transactionManager = {
     handleEditTransactionSubmit: function(e) {
         e.preventDefault();
 
+        // Disable submit button to prevent multiple clicks
+        const submitBtn = $(e.target).find('button[type="submit"]');
+        const originalText = submitBtn.html();
+        submitBtn.prop('disabled', true);
+        submitBtn.html('<i class="feather icon-loader mr-2 spinner-border spinner-border-sm" role="status" aria-hidden="true"></i>Saving...');
+
         const form = e.target; // Get form from event target
         const formData = new FormData(form);
         const currentBookingId = $('#editBookingId').val();
         formData.set('booking_id', currentBookingId);
 
         if (!formData.get('transaction_id') || !formData.get('booking_id')) {
+            // Re-enable button on validation error
+            submitBtn.prop('disabled', false);
+            submitBtn.html(originalText);
             showToast('Error: Missing required information', 'error');
             return;
         }
@@ -597,18 +606,33 @@ const transactionManager = {
                         $('#editTransactionModal').modal('hide');
                         transactionManager.loadTransactionHistory(currentBookingId);
                     } else {
+                        // Re-enable button on error
+                        submitBtn.prop('disabled', false);
+                        submitBtn.html(originalText);
                         showToast('Error updating transaction: ' + (result.message || 'Unknown error'), 'error');
                     }
                 } catch (e) {
-
+                    // Re-enable button on error
+                    submitBtn.prop('disabled', false);
+                    submitBtn.html(originalText);
                     showToast('Error processing request', 'error');
                 }
             },
             error: function(xhr, status, error) {
-
+                // Re-enable button on error
+                submitBtn.prop('disabled', false);
+                submitBtn.html(originalText);
                 showToast('Error updating transaction', 'error');
             }
         });
+
+        // Re-enable submit button after 10 seconds as safety measure
+        setTimeout(function() {
+            if (submitBtn.prop('disabled')) {
+                submitBtn.prop('disabled', false);
+                submitBtn.html(originalText);
+            }
+        }, 10000);
     },
 
     // Delete transaction
@@ -617,8 +641,16 @@ const transactionManager = {
             return;
         }
 
+        // Get the delete button that was clicked
+        const clickedBtn = $(`button[onclick="transactionManager.deleteTransaction(${transactionId}, ${bookingId}, ${amount})"]`);
+        const originalContent = clickedBtn.html();
+        
+        // Disable button and show loading state
+        clickedBtn.prop('disabled', true);
+        clickedBtn.html('<i class="feather icon-loader"></i>');
+
         // Get CSRF token from meta tag or hidden input
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
                          document.querySelector('input[name="csrf_token"]')?.value;
 
         $.ajax({
@@ -637,10 +669,15 @@ const transactionManager = {
                         transactionManager.loadTransactionHistory(bookingId);
                         showToast('Transaction deleted successfully', 'success');
                     } else {
+                        // Re-enable button on error
+                        clickedBtn.prop('disabled', false);
+                        clickedBtn.html(originalContent);
                         showToast('Error deleting transaction: ' + (result.message || 'Unknown error'), 'error');
                     }
                 } catch (e) {
-
+                    // Re-enable button on error
+                    clickedBtn.prop('disabled', false);
+                    clickedBtn.html(originalContent);
                     showToast('Error processing request', 'error');
                 }
             },
@@ -650,6 +687,9 @@ const transactionManager = {
                     error: error,
                     response: xhr.responseText
                 });
+                // Re-enable button on error
+                clickedBtn.prop('disabled', false);
+                clickedBtn.html(originalContent);
                 showToast('Error deleting transaction', 'error');
             }
         });
