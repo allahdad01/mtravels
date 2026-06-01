@@ -97,9 +97,659 @@ if (!function_exists('h')) {
     <link rel="stylesheet" href="../assets/plugins/animation/css/animate.min.css">
     <link rel="stylesheet" href="../assets/css/style.css">
 
-    <!-- Header / sidebar / RTL styles -->
-    <link rel="stylesheet" href="../assets/css/header-styles.css">
+    <style>
+    :root {
+        --app-gradient: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+        --app-gradient-soft: linear-gradient(135deg, rgba(64,153,255,.12) 0%, rgba(46,216,182,.12) 100%);
+        --app-header-height: 64px;
+        --app-sidebar-width: 260px;
+        --app-sidebar-collapsed-width: 68px;
+        --app-bg-page: #f0f4f8;
+        --app-bg-sidebar: #0f1b2d;
+        --app-bg-header: #ffffff;
+        --app-text-primary: #1a2332;
+        --app-text-secondary: #6b7a90;
+        --app-text-sidebar: #a8b8cc;
+        --app-border: #e4eaf2;
+        --app-shadow-sm: 0 1px 4px rgba(0,0,0,.06);
+        --app-shadow-lg: 0 8px 32px rgba(64,153,255,.18);
+        --app-radius-sm: 6px;
+        --app-transition: .28s cubic-bezier(.4,0,.2,1);
+    }
+
+    body {
+        background: var(--app-bg-page) !important;
+        overflow-x: hidden;
+    }
+
+    /* ── App Shell Overlay ── */
+    .app-shell-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(10,20,40,.45);
+        backdrop-filter: blur(2px);
+        z-index: 1030;
+        opacity: 0;
+        transition: opacity var(--app-transition);
+    }
+    .app-shell-overlay.active {
+        display: block;
+        opacity: 1;
+    }
+
+    /* ── Header ── */
+    .app-header {
+        position: fixed;
+        top: 0;
+        left: var(--app-sidebar-width);
+        right: 0;
+        height: var(--app-header-height);
+        background: var(--app-bg-header);
+        border-bottom: 1px solid var(--app-border);
+        box-shadow: var(--app-shadow-sm);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0 1.5rem;
+        z-index: 1020;
+        transition: left var(--app-transition);
+    }
+
+    body.sidebar-collapsed .app-header {
+        left: var(--app-sidebar-collapsed-width) !important;
+    }
+
+    .app-header__toggle {
+        width: 38px;
+        height: 38px;
+        border-radius: var(--app-radius-sm);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        background: transparent;
+        border: 0;
+        cursor: pointer;
+        transition: background var(--app-transition);
+        flex-shrink: 0;
+    }
+
+    .app-header__toggle:hover {
+        background: var(--app-gradient-soft);
+    }
+
+    .app-header__toggle span {
+        display: block;
+        width: 20px;
+        height: 2px;
+        background: var(--app-text-secondary);
+        border-radius: 2px;
+        transition: var(--app-transition);
+    }
+
+    body.sidebar-open .app-header__toggle span:nth-child(1) {
+        transform: translateY(7px) rotate(45deg);
+    }
+
+    body.sidebar-open .app-header__toggle span:nth-child(2) {
+        opacity: 0;
+    }
+
+    body.sidebar-open .app-header__toggle span:nth-child(3) {
+        transform: translateY(-7px) rotate(-45deg);
+    }
+
+    .app-header__brand {
+        display: flex;
+        align-items: center;
+        gap: .625rem;
+        min-width: 0;
+        flex-shrink: 0;
+        color: var(--app-text-primary);
+        text-decoration: none;
+    }
+
+    .app-header__brand-logo {
+        width: 36px;
+        height: 36px;
+        border-radius: var(--app-radius-sm);
+        background: var(--app-gradient);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: var(--app-shadow-lg);
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+
+    .app-header__brand-logo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .app-header__brand-name {
+        font-size: 1.05rem;
+        font-weight: 700;
+        background: var(--app-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .app-header__search {
+        flex: 1;
+        max-width: 400px;
+        position: relative;
+    }
+
+    .app-header__search i {
+        position: absolute;
+        left: .85rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--app-text-secondary);
+        pointer-events: none;
+    }
+
+    .app-header__search input {
+        width: 100%;
+        height: 38px;
+        padding: 0 1rem 0 2.5rem;
+        border: 1.5px solid var(--app-border);
+        border-radius: 999px;
+        background: var(--app-bg-page);
+        font-size: .875rem;
+        color: var(--app-text-primary);
+        outline: none;
+        transition: border-color var(--app-transition), box-shadow var(--app-transition);
+    }
+
+    .app-header__search input:focus {
+        border-color: #4099ff;
+        box-shadow: 0 0 0 3px rgba(64,153,255,.15);
+        background: #fff;
+    }
+
+    .app-header__actions {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: .625rem;
+    }
+
+    .app-header__icon-btn {
+        width: 38px;
+        height: 38px;
+        border-radius: var(--app-radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--app-text-secondary);
+        background: transparent;
+        border: 0;
+        position: relative;
+        transition: background var(--app-transition), color var(--app-transition);
+    }
+
+    .app-header__icon-btn:hover {
+        background: var(--app-gradient-soft);
+        color: #4099ff;
+    }
+
+    .app-header__badge {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        width: 8px;
+        height: 8px;
+        background: #ff4d6d;
+        border-radius: 50%;
+        border: 2px solid #fff;
+    }
+
+    .app-header__avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--app-gradient);
+        box-shadow: var(--app-shadow-lg);
+        color: #fff;
+        font-weight: 700;
+        flex-shrink: 0;
+        cursor: pointer;
+    }
+
+    .app-header__avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    /* ── Sidebar ── */
+    .pcoded-navbar {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: var(--app-sidebar-width) !important;
+        height: 100vh !important;
+        background: var(--app-bg-sidebar) !important;
+        z-index: 1040 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        transform: translateX(0) !important;
+        transition: transform var(--app-transition), width var(--app-transition) !important;
+        overflow: hidden !important;
+        box-shadow: none !important;
+    }
+
+    body.sidebar-collapsed .pcoded-navbar {
+        width: var(--app-sidebar-collapsed-width) !important;
+    }
+
+    body.sidebar-collapsed .pcoded-navbar .pcoded-mtext,
+    body.sidebar-collapsed .pcoded-navbar .language-selector,
+    body.sidebar-collapsed .pcoded-navbar .pcoded-menu-caption label,
+    body.sidebar-collapsed .pcoded-navbar .user-profile-section div div:not(:first-child),
+    body.sidebar-collapsed .pcoded-navbar .user-profile-section a.nav-link {
+        display: none !important;
+    }
+
+    body.sidebar-collapsed .pcoded-navbar .pcoded-inner-navbar li > a.nav-link {
+        justify-content: center !important;
+        padding: .62rem 0 !important;
+    }
+
+    body.sidebar-collapsed .pcoded-navbar .navbar-brand.header-logo {
+        justify-content: center !important;
+    }
+
+    body.sidebar-collapsed .pcoded-navbar .navbar-brand.header-logo .b-title {
+        display: none !important;
+    }
+
+    body.sidebar-collapsed .pcoded-navbar:hover {
+        width: var(--app-sidebar-width) !important;
+    }
+
+    body.sidebar-collapsed .pcoded-navbar:hover .pcoded-mtext,
+    body.sidebar-collapsed .pcoded-navbar:hover .language-selector,
+    body.sidebar-collapsed .pcoded-navbar:hover .pcoded-menu-caption label,
+    body.sidebar-collapsed .pcoded-navbar:hover .user-profile-section div div:not(:first-child),
+    body.sidebar-collapsed .pcoded-navbar:hover .user-profile-section a.nav-link {
+        display: inline-block !important;
+    }
+
+    body.sidebar-collapsed .pcoded-navbar:hover .pcoded-inner-navbar li > a.nav-link {
+        justify-content: flex-start !important;
+        padding: .62rem .625rem !important;
+    }
+
+    body.sidebar-collapsed .pcoded-navbar:hover .navbar-brand.header-logo {
+        justify-content: flex-start !important;
+    }
+
+    body.sidebar-collapsed .pcoded-navbar:hover .navbar-brand.header-logo .b-title {
+        display: inline-block !important;
+    }
+
+    .pcoded-navbar .navbar-wrapper {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        height: 100%;
+    }
+
+    .pcoded-navbar .navbar-brand.header-logo {
+        height: var(--app-header-height);
+        display: flex !important;
+        align-items: center !important;
+        padding: 0 1.5rem !important;
+        margin: 0 !important;
+        gap: .625rem !important;
+        border-bottom: 1px solid rgba(255,255,255,.06);
+        background: transparent !important;
+        border-radius: 0 !important;
+        flex-shrink: 0;
+    }
+
+    .pcoded-navbar .b-brand {
+        display: flex !important;
+        align-items: center !important;
+        gap: .625rem !important;
+        min-width: 0;
+    }
+
+    .pcoded-navbar .b-bg {
+        width: 36px !important;
+        height: 36px !important;
+        border-radius: var(--app-radius-sm) !important;
+        background: var(--app-gradient) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        box-shadow: var(--app-shadow-lg) !important;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+
+    .pcoded-navbar .b-bg img {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover;
+    }
+
+    .pcoded-navbar .b-title {
+        font-size: 1.05rem !important;
+        font-weight: 700 !important;
+        color: #fff !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .pcoded-navbar .language-selector {
+        margin-left: auto;
+        padding: 0 !important;
+    }
+
+    .pcoded-navbar .language-selector select {
+        height: 28px;
+        border-radius: 999px !important;
+        padding: 0 8px !important;
+        font-size: 11px !important;
+    }
+
+    .pcoded-navbar .navbar-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1.5rem .625rem 6.5rem !important;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255,255,255,.12) transparent;
+    }
+
+    .pcoded-navbar .navbar-content::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .pcoded-navbar .navbar-content::-webkit-scrollbar-thumb {
+        background: rgba(255,255,255,.12);
+        border-radius: 4px;
+    }
+
+    .pcoded-navbar .pcoded-inner-navbar,
+    .pcoded-navbar .pcoded-inner-navbar > li {
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .pcoded-navbar .pcoded-inner-navbar li.pcoded-menu-caption {
+        padding: 1rem .625rem .375rem !important;
+        margin: 0 !important;
+        font-size: .67rem !important;
+        font-weight: 600 !important;
+        color: rgba(168,184,204,.45) !important;
+        text-transform: uppercase !important;
+        letter-spacing: .1em !important;
+    }
+
+    .pcoded-navbar .pcoded-menu-caption label {
+        font-size: .67rem !important;
+        font-weight: 600 !important;
+        letter-spacing: .1em !important;
+        text-transform: uppercase !important;
+        color: rgba(168,184,204,.45) !important;
+        margin: 0 !important;
+        display: inline-block !important;
+    }
+
+    .pcoded-navbar .pcoded-inner-navbar li > a.nav-link {
+        display: flex !important;
+        align-items: center !important;
+        gap: .625rem !important;
+        padding: .62rem .625rem !important;
+        border-radius: var(--app-radius-sm) !important;
+        margin: .125rem 0 !important;
+        color: var(--app-text-sidebar) !important;
+        background: transparent !important;
+        font-size: .875rem !important;
+        font-weight: 500 !important;
+        white-space: nowrap !important;
+        transition: background var(--app-transition), color var(--app-transition) !important;
+        text-decoration: none !important;
+        position: relative;
+        width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    .pcoded-navbar .pcoded-inner-navbar li > a.nav-link:hover {
+        background: rgba(255,255,255,.07) !important;
+        color: #fff !important;
+    }
+
+    .pcoded-navbar .pcoded-inner-navbar li.active > a.nav-link {
+        background: var(--app-gradient) !important;
+        color: #fff !important;
+    }
+
+    .pcoded-navbar .pcoded-inner-navbar li.active > a.nav-link .pcoded-micon i {
+        color: #fff !important;
+    }
+
+    .pcoded-navbar .pcoded-inner-navbar li > a > .pcoded-micon {
+        flex: 0 0 22px !important;
+        width: 22px !important;
+        min-width: 22px !important;
+        max-width: 22px !important;
+        height: 22px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        font-size: 18px !important;
+        position: static !important;
+    }
+
+    .pcoded-navbar .pcoded-inner-navbar li > a > .pcoded-micon i {
+        font-size: 18px !important;
+        color: var(--app-text-sidebar) !important;
+        transition: color var(--app-transition) !important;
+    }
+
+    .pcoded-navbar .pcoded-inner-navbar li > a.nav-link:hover .pcoded-micon i {
+        color: #fff !important;
+    }
+
+    .pcoded-navbar .pcoded-inner-navbar li > a > .pcoded-micon + .pcoded-mtext {
+        position: static !important;
+        top: auto !important;
+        flex: 1 1 auto !important;
+        font-size: .875rem !important;
+        font-weight: 500 !important;
+        color: var(--app-text-sidebar) !important;
+        min-width: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+    }
+
+    .pcoded-navbar .pcoded-inner-navbar li > a.nav-link:hover .pcoded-mtext {
+        color: #fff !important;
+    }
+
+    /* ── Submenu ── */
+    .pcoded-navbar .pcoded-submenu {
+        background: transparent !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .pcoded-navbar .pcoded-submenu li a {
+        padding-left: 2.5rem !important;
+    }
+
+    .pcoded-navbar .pcoded-hasmenu {
+        position: relative;
+    }
+
+    .pcoded-navbar .pcoded-hasmenu > a::after {
+        content: '';
+        position: absolute;
+        right: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        border: 4px solid transparent;
+        border-top-color: var(--app-text-sidebar);
+        transition: transform var(--app-transition);
+    }
+
+    .pcoded-navbar .pcoded-hasmenu.pcoded-trigger > a::after {
+        transform: translateY(-50%) rotate(180deg);
+    }
+
+    /* ── User profile in sidebar ── */
+    .pcoded-navbar .user-profile-section {
+        position: absolute;
+        bottom: 0;
+        width: 100%;
+        border-top: 1px solid rgba(255,255,255,.1);
+        background: rgba(0,0,0,.2) !important;
+        z-index: 10;
+    }
+
+    /* ── Main content area ── */
+    .pcoded-main-container {
+        margin-left: var(--app-sidebar-width) !important;
+        padding-top: var(--app-header-height);
+        min-height: 100vh;
+        transition: margin-left var(--app-transition);
+    }
+
+    body.sidebar-collapsed .pcoded-main-container {
+        margin-left: var(--app-sidebar-collapsed-width) !important;
+    }
+
+    /* ── RTL ── */
+    html[dir="rtl"] .app-header {
+        left: 0 !important;
+        right: var(--app-sidebar-width) !important;
+    }
+
+    html[dir="rtl"] body.sidebar-collapsed .app-header {
+        right: var(--app-sidebar-collapsed-width) !important;
+    }
+
+    html[dir="rtl"] .pcoded-navbar {
+        left: auto !important;
+        right: 0 !important;
+    }
+
+    html[dir="rtl"] .pcoded-main-container {
+        margin-left: 0 !important;
+        margin-right: var(--app-sidebar-width) !important;
+    }
+
+    html[dir="rtl"] body.sidebar-collapsed .pcoded-main-container {
+        margin-right: var(--app-sidebar-collapsed-width) !important;
+    }
+
+    html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar li > a.nav-link {
+        flex-direction: row-reverse !important;
+    }
+
+    html[dir="rtl"] .pcoded-navbar .pcoded-inner-navbar li > a.nav-link .pcoded-mtext {
+        text-align: right !important;
+    }
+
+    html[dir="rtl"] .pcoded-navbar .pcoded-hasmenu > a::after {
+        right: auto !important;
+        left: 1rem !important;
+    }
+
+    html[dir="rtl"] body.sidebar-collapsed .pcoded-navbar:hover .navbar-brand.header-logo,
+    html[dir="rtl"] body.sidebar-collapsed .pcoded-navbar:hover .pcoded-inner-navbar li > a.nav-link {
+        justify-content: flex-start !important;
+    }
+
+    /* ── Mobile ── */
+    @media (max-width: 1023px) {
+        .app-header {
+            left: 0;
+            right: 0;
+            padding: 0 1rem;
+        }
+
+        .app-header__brand-name {
+            max-width: 180px;
+        }
+
+        .pcoded-navbar {
+            transform: translateX(-100%) !important;
+            width: var(--app-sidebar-width) !important;
+            max-width: 85vw;
+        }
+
+        body.sidebar-open .pcoded-navbar {
+            transform: translateX(0) !important;
+        }
+
+        html[dir="rtl"] .pcoded-navbar {
+            transform: translateX(100%) !important;
+        }
+
+        html[dir="rtl"] body.sidebar-open .pcoded-navbar {
+            transform: translateX(0) !important;
+        }
+
+        .pcoded-main-container,
+        html[dir="rtl"] .pcoded-main-container,
+        body.sidebar-collapsed .pcoded-main-container,
+        html[dir="rtl"] body.sidebar-collapsed .pcoded-main-container {
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+
+        .mobile-menu-float {
+            display: none !important;
+        }
+    }
+
+    @media (max-width: 639px) {
+        .app-header__search {
+            display: none;
+        }
+
+        .app-header__brand-name {
+            max-width: 130px;
+        }
+
+        .app-header__actions {
+            gap: .25rem;
+        }
+
+        .app-header__icon-btn {
+            width: 34px;
+            height: 34px;
+        }
+    }
+    </style>
 </head>
+<body>
 
 <!-- [ Pre-loader ] start -->
 <div class="loader-bg">
@@ -109,13 +759,33 @@ if (!function_exists('h')) {
 </div>
 <!-- [ Pre-loader ] End -->
 
-<!-- Mobile Floating Hamburger Button -->
-<div class="mobile-menu-float">
-    <a class="mobile-menu" id="mobile-collapse" href="javascript:"><span></span></a>
-</div>
+<!-- App Shell Overlay (mobile) -->
+<div class="app-shell-overlay" id="appShellOverlay"></div>
+
+<!-- [ Header ] start -->
+<header class="app-header" role="banner">
+    <button class="app-header__toggle" id="mobile-collapse" type="button" aria-label="Toggle sidebar" aria-expanded="false">
+        <span></span><span></span><span></span>
+    </button>
+
+    <div class="app-header__search">
+        <i class="feather icon-search"></i>
+        <input type="search" id="m-search" placeholder="Search..." aria-label="Search">
+    </div>
+
+    <div class="app-header__actions">
+        <a class="app-header__icon-btn" href="platform_settings.php" aria-label="Settings">
+            <i class="feather icon-settings"></i>
+        </a>
+        <a class="app-header__avatar" href="dashboard.php" aria-label="Profile">
+            <img src="<?= $imagePath ?>" alt="<?= h($user['name'] ?? 'Admin') ?>">
+        </a>
+    </div>
+</header>
+<!-- [ Header ] end -->
 
 <!-- [ navigation menu ] start -->
-<nav class="pcoded-navbar">
+<aside class="pcoded-navbar" id="sidebar" role="navigation" aria-label="Main navigation">
     <div class="navbar-wrapper">
 
         <!-- Brand / logo -->
@@ -128,8 +798,6 @@ if (!function_exists('h')) {
                 </div>
                 <span class="b-title"><?= h($settings['platform_name'] ?? '') ?></span>
             </a>
-
-            <!-- Language switcher -->
             <div class="language-selector" style="padding:5px 15px;text-align:center;">
                 <select onchange="window.location.href='../language_switcher.php?lang='+this.value"
                         style="background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);color:#fff;border:none;border-radius:4px;padding:2px 5px;font-size:11px;cursor:pointer;">
@@ -138,8 +806,6 @@ if (!function_exists('h')) {
                     <option value="ps" <?= get_current_lang() === 'ps' ? 'selected' : '' ?> style="background:#4099ff;color:#fff;">پښتو</option>
                 </select>
             </div>
-
-            <a class="mobile-menu" id="mobile-collapse" href="javascript:"><span></span><span></span><span></span></a>
         </div>
         <!-- /brand -->
 
@@ -147,8 +813,9 @@ if (!function_exists('h')) {
         <div class="navbar-content scroll-div" style="padding-bottom:100px;">
             <ul class="nav pcoded-inner-navbar">
 
+                <!-- Navigation -->
                 <li class="nav-item pcoded-menu-caption">
-                    <label><?= __('navigation') ?></label>
+                    <label>Navigation</label>
                 </li>
                 <li data-username="dashboard" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'dashboard.php' ? 'active' : ''; ?>">
                     <a href="dashboard.php" class="nav-link">
@@ -157,66 +824,58 @@ if (!function_exists('h')) {
                     </a>
                 </li>
 
+                <!-- Tenant Management -->
                 <li class="nav-item pcoded-menu-caption">
-                    <label><?= __('super_admin') ?></label>
+                    <label>Tenant Management</label>
                 </li>
-
                 <li data-username="manage_tenants" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_tenants.php' ? 'active' : ''; ?>">
                     <a href="manage_tenants.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-users"></i></span>
                         <span class="pcoded-mtext"><?= __('manage_tenants') ?></span>
                     </a>
                 </li>
-
                 <li data-username="manage_plans" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_plans.php' ? 'active' : ''; ?>">
                     <a href="manage_plans.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-package"></i></span>
                         <span class="pcoded-mtext"><?= __('manage_plans') ?></span>
                     </a>
                 </li>
-
                 <li data-username="manage_subscriptions" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_subscriptions.php' ? 'active' : ''; ?>">
                     <a href="manage_subscriptions.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-credit-card"></i></span>
                         <span class="pcoded-mtext"><?= __('manage_subscriptions') ?></span>
                     </a>
                 </li>
-
                 <li data-username="manage_branch_addons" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_branch_addons.php' ? 'active' : ''; ?>">
                     <a href="manage_branch_addons.php" class="nav-link">
                         <span class="pcoded-micon"><i class="fas fa-gift"></i></span>
                         <span class="pcoded-mtext"><?= __('manage_branch_addons') ?></span>
                     </a>
                 </li>
-
                 <li data-username="manage_tenant_addon_pricing" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_tenant_addon_pricing.php' ? 'active' : ''; ?>">
                     <a href="manage_tenant_addon_pricing.php" class="nav-link">
                         <span class="pcoded-micon"><i class="fas fa-tag"></i></span>
                         <span class="pcoded-mtext">Branch Addon Pricing</span>
                     </a>
                 </li>
-
                 <li data-username="manage_user_addon_pricing" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_user_addon_pricing.php' ? 'active' : ''; ?>">
                     <a href="manage_user_addon_pricing.php" class="nav-link">
                         <span class="pcoded-micon"><i class="fas fa-users"></i></span>
                         <span class="pcoded-mtext">User Addon Pricing</span>
                     </a>
                 </li>
-
                 <li data-username="manage_user_addons" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_user_addons.php' ? 'active' : ''; ?>">
                     <a href="manage_user_addons.php" class="nav-link">
                         <span class="pcoded-micon"><i class="fas fa-user-plus"></i></span>
                         <span class="pcoded-mtext">User Addons</span>
                     </a>
                 </li>
-
                 <li data-username="manage_communication_addons" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_communication_addons.php' ? 'active' : ''; ?>">
                     <a href="manage_communication_addons.php" class="nav-link">
                         <span class="pcoded-micon"><i class="fas fa-comment-dots"></i></span>
                         <span class="pcoded-mtext">Communication Addons</span>
                     </a>
                 </li>
-
                 <li data-username="manage_communication_addon_pricing" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_communication_addon_pricing.php' ? 'active' : ''; ?>">
                     <a href="manage_communication_addon_pricing.php" class="nav-link">
                         <span class="pcoded-micon"><i class="fas fa-tags"></i></span>
@@ -224,34 +883,28 @@ if (!function_exists('h')) {
                     </a>
                 </li>
 
+                <!-- Finance & Sales -->
+                <li class="nav-item pcoded-menu-caption">
+                    <label>Finance &amp; Sales</label>
+                </li>
                 <li data-username="manage_sales_agents" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_sales_agents.php' ? 'active' : ''; ?>">
                     <a href="manage_sales_agents.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-briefcase"></i></span>
                         <span class="pcoded-mtext">Sales Agents</span>
                     </a>
                 </li>
-
                 <li data-username="manage_salary_payments" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_salary_payments.php' ? 'active' : ''; ?>">
                     <a href="manage_salary_payments.php" class="nav-link">
                         <span class="pcoded-micon"><i class="fas fa-money-bill-wave"></i></span>
                         <span class="pcoded-mtext">Salary Payments</span>
                     </a>
                 </li>
-
                 <li data-username="subscription_payments" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'subscription_payments.php' ? 'active' : ''; ?>">
                     <a href="subscription_payments.php" class="nav-link">
                         <span class="pcoded-micon"><i class="fas fa-dollar-sign"></i></span>
                         <span class="pcoded-mtext">Subscription Payments</span>
                     </a>
                 </li>
-
-                <li data-username="support_tickets" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'support_tickets_manage.php' || basename($_SERVER['PHP_SELF']) == 'support_ticket_manage.php' ? 'active' : ''; ?>">
-                    <a href="support_tickets_manage.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-headphones"></i></span>
-                        <span class="pcoded-mtext">Support Tickets</span>
-                    </a>
-                </li>
-
                 <li data-username="expense_management" class="nav-item pcoded-hasmenu <?php echo in_array(basename($_SERVER['PHP_SELF']), ['system_expenses.php', 'system_expense_categories.php', 'system_revenue.php', 'profit_loss_dashboard.php']) ? 'active' : ''; ?>">
                     <a href="javascript:void(0);" class="nav-link">
                         <span class="pcoded-micon"><i class="fas fa-chart-line"></i></span>
@@ -271,41 +924,28 @@ if (!function_exists('h')) {
                     </ul>
                 </li>
 
+                <!-- Support & Content -->
+                <li class="nav-item pcoded-menu-caption">
+                    <label>Support &amp; Content</label>
+                </li>
+                <li data-username="support_tickets" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'support_tickets_manage.php' || basename($_SERVER['PHP_SELF']) == 'support_ticket_manage.php' ? 'active' : ''; ?>">
+                    <a href="support_tickets_manage.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-headphones"></i></span>
+                        <span class="pcoded-mtext">Support Tickets</span>
+                    </a>
+                </li>
                 <li data-username="manage_demo_requests" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_demo_requests.php' ? 'active' : ''; ?>">
                     <a href="manage_demo_requests.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-calendar"></i></span>
                         <span class="pcoded-mtext">Demo Requests</span>
                     </a>
                 </li>
-
-                <li data-username="platform_settings" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'platform_settings.php' ? 'active' : ''; ?>">
-                    <a href="platform_settings.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-settings"></i></span>
-                        <span class="pcoded-mtext"><?= __('platform_settings') ?></span>
-                    </a>
-                </li>
-
-                <li data-username="audit_logs" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'audit_logs.php' ? 'active' : ''; ?>">
-                    <a href="audit_logs.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-activity"></i></span>
-                        <span class="pcoded-mtext"><?= __('audit_logs') ?></span>
-                    </a>
-                </li>
-
-                <li data-username="manage_users" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_users.php' ? 'active' : ''; ?>">
-                    <a href="manage_users.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-user-check"></i></span>
-                        <span class="pcoded-mtext"><?= __('manage_users') ?></span>
-                    </a>
-                </li>
-
                 <li data-username="manage_testimonials" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_testimonials.php' ? 'active' : ''; ?>">
                     <a href="manage_testimonials.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-star"></i></span>
                         <span class="pcoded-mtext">Manage Testimonials</span>
                     </a>
                 </li>
-
                 <li data-username="manage_blog_posts" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_blog_posts.php' ? 'active' : ''; ?>">
                     <a href="manage_blog_posts.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-edit"></i></span>
@@ -313,27 +953,46 @@ if (!function_exists('h')) {
                     </a>
                 </li>
 
+                <!-- System -->
+                <li class="nav-item pcoded-menu-caption">
+                    <label>System</label>
+                </li>
+                <li data-username="platform_settings" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'platform_settings.php' ? 'active' : ''; ?>">
+                    <a href="platform_settings.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-settings"></i></span>
+                        <span class="pcoded-mtext"><?= __('platform_settings') ?></span>
+                    </a>
+                </li>
+                <li data-username="audit_logs" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'audit_logs.php' ? 'active' : ''; ?>">
+                    <a href="audit_logs.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-activity"></i></span>
+                        <span class="pcoded-mtext"><?= __('audit_logs') ?></span>
+                    </a>
+                </li>
+                <li data-username="manage_users" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_users.php' ? 'active' : ''; ?>">
+                    <a href="manage_users.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-user-check"></i></span>
+                        <span class="pcoded-mtext"><?= __('manage_users') ?></span>
+                    </a>
+                </li>
                 <li data-username="backup_management" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'backup_management.php' ? 'active' : ''; ?>">
                     <a href="backup_management.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-save"></i></span>
                         <span class="pcoded-mtext">Manage Backup</span>
                     </a>
                 </li>
-
                 <li data-username="ssl_monitoring" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'ssl_monitoring.php' ? 'active' : ''; ?>">
                     <a href="ssl_monitoring.php" class="nav-link">
                         <span class="pcoded-micon"><i class="fas fa-shield-alt"></i></span>
                         <span class="pcoded-mtext">SSL Monitoring</span>
                     </a>
                 </li>
-
                 <li data-username="support_tickets_admin" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'support_tickets_list.php' || basename($_SERVER['PHP_SELF']) == 'support_ticket_view.php' ? 'active' : ''; ?>">
                     <a href="support_tickets_list.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-help-circle"></i></span>
                         <span class="pcoded-mtext">Support Tickets</span>
                     </a>
                 </li>
-
                 <li data-username="file_browser" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'file_browser.php' ? 'active' : ''; ?>">
                     <a href="file_browser.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-folder"></i></span>
@@ -346,8 +1005,7 @@ if (!function_exists('h')) {
         <!-- /sidebar menu -->
 
         <!-- Sticky user profile strip at the bottom of the sidebar -->
-        <div class="navbar-brand user-profile-section"
-             style="position:absolute;bottom:0;width:100%;border-top:1px solid rgba(255,255,255,0.1);background:#4099ff;z-index:10;">
+        <div class="navbar-brand user-profile-section">
             <div style="padding:8px 15px;display:flex;align-items:center;justify-content:space-between;">
                 <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
                     <a href="javascript:void(0)" style="text-decoration:none;flex-shrink:0;">
@@ -368,12 +1026,6 @@ if (!function_exists('h')) {
                     </div>
                 </div>
                 <div style="display:flex;gap:1px;flex-shrink:0;">
-                    <a href="javascript:void(0)" class="nav-link"
-                       style="padding:4px;border-radius:3px;color:#fff;transition:all 0.3s ease;"
-                       onmouseover="this.style.background='rgba(255,255,255,0.15)'"
-                       onmouseout="this.style.background='transparent'">
-                        <i class="feather icon-person" style="font-size:12px;"></i>
-                    </a>
                     <a href="logout.php" class="nav-link"
                        style="padding:4px;border-radius:3px;color:#fff;transition:all 0.3s ease;"
                        onmouseover="this.style.background='rgba(255,255,255,0.15)'"
@@ -386,7 +1038,7 @@ if (!function_exists('h')) {
         <!-- /user profile strip -->
 
     </div>
-</nav>
+</aside>
 <!-- [ navigation menu ] end -->
 
 <!-- ── Floating Tasks Widget ──────────────────────────────────── -->
@@ -396,55 +1048,67 @@ if (!function_exists('h')) {
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 
-    // ── Mobile sidebar ────────────────────────────────────────────
-    var mobileFloat = document.querySelector('.mobile-menu-float');
-    var mobileToggle = document.getElementById('mobile-collapse');
+    // ── Modern sidebar toggle ──
+    const body = document.body;
+    const toggleBtn = document.getElementById('mobile-collapse');
+    const overlay = document.getElementById('appShellOverlay');
 
-    function openSidebar() {
-        var navbar  = document.querySelector('.pcoded-navbar');
-        var overlay = document.querySelector('.mobile-menu-overlay');
-        if (!navbar) return;
-        navbar.classList.add('mobile-overlay', 'open');
-        mobileFloat && mobileFloat.classList.add('active');
-        if (!overlay) {
-            overlay = document.createElement('div');
-            overlay.className = 'mobile-menu-overlay';
-            overlay.addEventListener('click', closeSidebar);
-            document.body.appendChild(overlay);
-        }
-        overlay.classList.add('show');
+    function isDesktop() {
+        return window.innerWidth >= 1024;
     }
 
     function closeSidebar() {
-        var navbar  = document.querySelector('.pcoded-navbar');
-        var overlay = document.querySelector('.mobile-menu-overlay');
-        if (!navbar) return;
-        navbar.classList.remove('open');
-        mobileFloat && mobileFloat.classList.remove('active');
-        overlay && overlay.classList.remove('show');
+        body.classList.remove('sidebar-open');
+        if (overlay) overlay.classList.remove('active');
+        if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'false');
     }
 
-    function toggleSidebar(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        if (window.innerWidth >= 992) return; // desktop – let the theme handle it
-        var navbar = document.querySelector('.pcoded-navbar');
-        navbar && navbar.classList.contains('open') ? closeSidebar() : openSidebar();
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            if (isDesktop()) {
+                body.classList.toggle('sidebar-collapsed');
+                closeSidebar();
+                return;
+            }
+            const open = body.classList.toggle('sidebar-open');
+            if (overlay) overlay.classList.toggle('active', open);
+            toggleBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
     }
 
-    mobileFloat  && mobileFloat.addEventListener('click', toggleSidebar);
-    mobileToggle && mobileToggle.addEventListener('click', toggleSidebar);
+    if (overlay) {
+        overlay.addEventListener('click', closeSidebar);
+    }
 
-    // ── Session timeout ───────────────────────────────────────────
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeSidebar();
+    });
+
+    window.addEventListener('resize', function () {
+        if (isDesktop()) closeSidebar();
+    });
+
+    // ── Search functionality ──
+    var searchInput = document.getElementById('m-search');
+    if (searchInput) {
+        searchInput.addEventListener('keyup', function () {
+            var term = this.value.toLowerCase();
+            document.querySelectorAll('.table tbody tr').forEach(function (row) {
+                row.style.display = row.textContent.toLowerCase().indexOf(term) === -1 ? 'none' : '';
+            });
+        });
+    }
+
+    // ── Session timeout ──
     var remainingTime     = <?= (int) $remaining_time ?>;
     var SESSION_TIMEOUT   = <?= (int) $session_timeout ?>;
     var lastActivityTime  = Date.now();
     var warningShown5Min  = false;
     var warningShown1Min  = false;
-    var warningTimeout    = null; // non-blocking toast placeholder
+    var warningTimeout    = null;
 
     function showSessionWarning(message) {
-        // Use a non-blocking toast/banner instead of alert()
         var banner = document.getElementById('session-warning-banner');
         if (!banner) {
             banner = document.createElement('div');
@@ -492,7 +1156,6 @@ document.addEventListener('DOMContentLoaded', function () {
         .catch(function (err) { console.error('Session check error:', err); });
     }
 
-    // Re-validate with server whenever the tab becomes visible after a pause
     document.addEventListener('visibilitychange', function () {
         if (document.visibilityState === 'visible') {
             var away = (Date.now() - lastActivityTime) / 1000;
@@ -501,7 +1164,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Countdown tick
     setInterval(function () {
         if (remainingTime <= 0) {
             window.location.href = '../logout.php';
@@ -518,7 +1180,6 @@ document.addEventListener('DOMContentLoaded', function () {
         remainingTime--;
     }, 1000);
 
-    // Debounced activity reset (fires at most once per 10 s to avoid flooding)
     var activityDebounce;
     ['mousedown', 'keypress', 'scroll', 'touchstart', 'click'].forEach(function (ev) {
         document.addEventListener(ev, function () {
