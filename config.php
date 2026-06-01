@@ -19,14 +19,14 @@ $db_name = EnvLoader::get('DB_NAME');
 $app_env = EnvLoader::get('APP_ENV');
 
 $missing = [];
-if ($db_server === false) $missing[] = 'DB_SERVER';
-if ($db_username === false) $missing[] = 'DB_USERNAME';
-if ($db_password === false) $missing[] = 'DB_PASSWORD';
-if ($db_name === false) $missing[] = 'DB_NAME';
-if ($app_env === false) $missing[] = 'APP_ENV';
+if (empty($db_server)) { $db_server = 'localhost'; $missing[] = 'DB_SERVER'; }
+if (empty($db_username)) { $db_username = 'root'; $missing[] = 'DB_USERNAME'; }
+if ($db_password === null || $db_password === false) { $db_password = ''; $missing[] = 'DB_PASSWORD'; }
+if (empty($db_name)) { $db_name = 'travelagency_saas'; $missing[] = 'DB_NAME'; }
+if (empty($app_env)) { $app_env = 'development'; $missing[] = 'APP_ENV'; }
 
 if (!empty($missing)) {
-    die('ERROR: Missing required environment variables: ' . implode(', ', $missing) . '. Please configure your .env file.');
+    error_log('Missing environment variables: ' . implode(', ', $missing) . '. Using defaults.');
 }
 
 define('DB_SERVER', $db_server);

@@ -14,7 +14,20 @@ $nav_links = isset($nav_links) ? $nav_links : [
     ['href' => 'about.php', 'label' => 'About'],
     ['href' => 'index.php#contact', 'label' => 'Contact']
 ];
-?>
+?><!-- Page Preloader -->
+<div id="page-loader" class="page-loader">
+    <div class="loader-card">
+        <img src="uploads/logo/<?= htmlspecialchars(getSetting($platform_settings, 'platform_logo') ?? 'default-logo.png') ?>" alt="<?= htmlspecialchars(getSetting($platform_settings, 'platform_name') ?? 'MTravels') ?>" class="loader-logo">
+        <div class="loader-dots">
+            <span class="loader-dot"></span>
+            <span class="loader-dot"></span>
+            <span class="loader-dot"></span>
+        </div>
+    </div>
+</div>
+<script>
+(function(){var d=document.getElementById('page-loader');if(d){window.addEventListener('load',function(){setTimeout(function(){d.classList.add('loader-hidden');setTimeout(function(){d.style.display='none'},350)},300)})}})();
+</script>
 <!-- Navigation -->
 <nav class="navbar" id="navbar">
     <div class="container">

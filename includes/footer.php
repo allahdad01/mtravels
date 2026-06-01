@@ -52,6 +52,7 @@ if (!isset($platform_settings)) {
                 <h3><?php echo getSetting($platform_settings, 'footer_product_title', 'Product'); ?></h3>
                 <ul>
                     <li><a href="features.php"><?php echo getSetting($platform_settings, 'footer_features', 'Features'); ?></a></li>
+                    <li><a href="how-it-works.php"><?php echo getSetting($platform_settings, 'footer_how_it_works', 'How It Works'); ?></a></li>
                     <li><a href="pricing.php"><?php echo getSetting($platform_settings, 'footer_pricing', 'Pricing'); ?></a></li>
                     <li><a href="security.php"><?php echo getSetting($platform_settings, 'footer_security', 'Security'); ?></a></li>
                 </ul>
@@ -85,3 +86,4 @@ if (!isset($platform_settings)) {
         </div>
     </div>
 </footer>
+

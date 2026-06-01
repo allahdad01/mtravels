@@ -26,440 +26,314 @@ $platform_settings = $landingData['settings'];
     <link rel="stylesheet" href="assets/css/index.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --primary: #4099ff;
-            --secondary: #2ed8b6;
-            --accent: #25c6b4;
-            --danger: #ef4444;
-            --success: #10b981;
-            --dark: #0f172a;
-            --light: #f8fafc;
-            --border: #e2e8f0;
-        }
-
-        .how-it-works-wrapper {
-            min-height: 100vh;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            transition: background 0.3s ease, color 0.3s ease;
-        }
-
-        /* Hero Section */
         .hiw-hero {
             position: relative;
-            padding: 8rem 2rem 5rem 2rem;
+            padding: 7rem 2rem 5rem;
             background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-            color: white;
+            color: #fff;
             overflow: hidden;
             text-align: center;
-            margin-top: 120px;
-            z-index: 1;
         }
-
-        .hiw-hero::before {
-            content: '';
+        .hiw-hero-bg {
+            position: absolute; inset: 0;
+            background-image:
+                radial-gradient(circle at 20% 30%, rgba(255,255,255,.12) 0, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(255,255,255,.06) 0, transparent 40%);
+        }
+        .hiw-hero-deco {
+            position: absolute; inset: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        .hiw-hero-deco i {
             position: absolute;
-            width: 600px;
-            height: 600px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 50%;
-            top: -200px;
-            right: -200px;
+            color: rgba(255,255,255,.08);
         }
-
-        .hiw-hero::after {
-            content: '';
-            position: absolute;
-            width: 400px;
-            height: 400px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 50%;
-            bottom: -150px;
-            left: -150px;
-        }
-
-        .hiw-hero-content {
-            position: relative;
-            z-index: 1;
-            max-width: 900px;
-            margin: 0 auto;
-        }
-
+        .hiw-hero-deco i:nth-child(1) { top: 10%; left: 8%; font-size: 2.6rem; }
+        .hiw-hero-deco i:nth-child(2) { bottom: 15%; right: 10%; font-size: 2rem; }
+        .hiw-hero-deco i:nth-child(3) { top: 50%; left: 4%; font-size: 1.4rem; }
+        .hiw-hero-content { position: relative; z-index: 1; max-width: 780px; margin: 0 auto; }
         .hiw-hero h1 {
-            font-size: 3.2rem;
-            font-weight: 700;
+            font-size: clamp(2rem, 4.5vw, 3.4rem);
+            font-weight: 800;
+            line-height: 1.15;
             margin-bottom: 1rem;
-            letter-spacing: -1px;
-            line-height: 1.2;
         }
-
         .hiw-hero p {
-            font-size: 1.2rem;
-            opacity: 0.95;
+            font-size: 1.15rem;
+            opacity: .9;
             margin-bottom: 2rem;
             line-height: 1.6;
         }
-
-        .hiw-hero-tagline {
-            background: rgba(255, 255, 255, 0.15);
-            padding: 1.5rem;
-            border-radius: 12px;
-            font-size: 1rem;
-            line-height: 1.7;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+        .hiw-hero .btn { font-size: 1.05rem; padding: .9rem 2.5rem; }
+        .hiw-hero-steps-hint {
+            display: flex;
+            justify-content: center;
+            gap: .5rem;
+            margin-bottom: 1.5rem;
         }
+        .hiw-hero-steps-hint span {
+            width: 36px; height: 4px;
+            border-radius: 4px;
+            background: rgba(255,255,255,.2);
+        }
+        .hiw-hero-steps-hint span:nth-child(1) { background: rgba(255,255,255,.8); }
+        .hiw-hero-steps-hint span:nth-child(2) { background: rgba(255,255,255,.5); }
+        .hiw-hero-steps-hint span:nth-child(3) { background: rgba(255,255,255,.35); }
+        .hiw-hero-steps-hint span:nth-child(4) { background: rgba(255,255,255,.25); }
 
-        /* Steps Container */
-        .hiw-container {
+        .hiw-section {
+            padding: 5rem 2rem;
             max-width: 1100px;
             margin: 0 auto;
-            padding: 4rem 2rem;
         }
-
-        /* Step Card */
-        .step-card {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 3rem;
-            margin-bottom: 5rem;
+        .hiw-section-label {
+            display: inline-flex;
             align-items: center;
-            animation: fadeInUp 0.6s ease-out;
+            gap: .5rem;
+            font-size: .8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .12em;
+            color: var(--primary, #4099ff);
+            margin-bottom: .75rem;
+        }
+        .hiw-section-label i { font-size: .75rem; }
+        .hiw-section-title {
+            font-size: clamp(1.6rem, 3vw, 2.2rem);
+            font-weight: 800;
+            color: var(--text-primary);
+            line-height: 1.2;
+            margin-bottom: .75rem;
+        }
+        .hiw-section-sub {
+            color: var(--text-secondary);
+            font-size: 1.05rem;
+            max-width: 600px;
+            line-height: 1.6;
         }
 
-        .step-card:nth-child(even) {
-            direction: rtl;
+        /* Timeline */
+        .hiw-timeline {
+            position: relative;
+            padding: 2rem 0;
         }
-
-        .step-card:nth-child(even) > * {
-            direction: ltr;
+        .hiw-timeline::before {
+            content: '';
+            position: absolute;
+            top: 0; bottom: 0; left: 50%;
+            width: 2px;
+            background: linear-gradient(to bottom, var(--primary, #4099ff), var(--secondary, #2ed8b6));
+            transform: translateX(-50%);
         }
-
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .hiw-step {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 3rem;
+            position: relative;
         }
-
-        .step-number {
-            display: inline-block;
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, #4099ff, #2ed8b6);
-            color: white;
+        .hiw-step:last-child { margin-bottom: 0; }
+        .hiw-step:nth-child(odd) { flex-direction: row; }
+        .hiw-step:nth-child(even) { flex-direction: row-reverse; }
+        .hiw-step-card {
+            width: calc(50% - 40px);
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 2rem;
+            transition: all .35s ease;
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        .hiw-step.visible .hiw-step-card { opacity: 1; transform: translateY(0); }
+        .hiw-step:nth-child(odd) .hiw-step-card { transition-delay: .1s; }
+        .hiw-step:nth-child(even) .hiw-step-card { transition-delay: .2s; }
+        .hiw-step-card:hover {
+            border-color: var(--primary, #4099ff);
+            box-shadow: 0 8px 30px rgba(64,153,255,.1);
+        }
+        .hiw-step-marker {
+            position: absolute;
+            left: 50%; top: 2rem;
+            transform: translateX(-50%);
+            width: 44px; height: 44px;
+            background: linear-gradient(135deg, var(--primary, #4099ff), var(--secondary, #2ed8b6));
+            color: #fff;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2rem;
-            font-weight: 700;
-            margin-bottom: 1rem;
-        }
-
-        .step-title {
-            font-size: 2rem;
-            color: var(--text-primary);
-            margin-bottom: 1rem;
-            font-weight: 700;
-        }
-
-        .step-subtitle {
-            font-size: 1rem;
-            color: #4099ff;
-            font-weight: 600;
-            margin-bottom: 1.5rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .step-content {
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-        }
-
-        .step-section {
-            background: var(--bg-secondary);
-            padding: 1.5rem;
-            border-radius: 12px;
-            border-left: 4px solid #4099ff;
-            transition: all 0.3s ease;
-        }
-
-        .step-section h4 {
             font-size: 1.1rem;
-            color: var(--text-primary);
-            margin-bottom: 0.8rem;
-            font-weight: 700;
+            font-weight: 800;
+            z-index: 2;
+            box-shadow: 0 4px 14px rgba(64,153,255,.3);
+            transition: transform .3s ease;
+        }
+        .hiw-step-card:hover + .hiw-step-marker,
+        .hiw-step-marker:hover { transform: translateX(-50%) scale(1.1); }
+        .hiw-step-icon {
+            width: 48px; height: 48px;
+            background: linear-gradient(135deg, rgba(64,153,255,.1), rgba(46,216,182,.1));
+            border-radius: 14px;
             display: flex;
             align-items: center;
-            gap: 0.8rem;
-        }
-
-        .step-section ul {
-            list-style: none;
-            padding: 0;
-        }
-
-        .step-section li {
-            padding: 0.5rem 0;
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-            line-height: 1.6;
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-        }
-
-        .step-section li::before {
-            content: '✓';
-            color: #10b981;
-            font-weight: 700;
-            font-size: 1.1rem;
-            flex-shrink: 0;
-        }
-
-        .step-result {
-            background: linear-gradient(135deg, #10b98115, #4099ff15);
-            padding: 1.5rem;
-            border-radius: 12px;
-            border-left: 4px solid #10b981;
-            margin-top: 1rem;
-        }
-
-        .step-result h5 {
-            color: #10b981;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            letter-spacing: 0.5px;
-        }
-
-        .step-result p {
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-            line-height: 1.6;
-            margin: 0;
-        }
-
-        .step-problem {
-            background: linear-gradient(135deg, #ef444415, #ef444408);
-            padding: 1.5rem;
-            border-radius: 12px;
-            border-left: 4px solid #ef4444;
-            margin-top: 1rem;
-        }
-
-        .step-problem h5 {
-            color: #ef4444;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            letter-spacing: 0.5px;
-        }
-
-        .step-problem p {
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-            line-height: 1.6;
-            margin: 0;
-        }
-
-        .step-visual {
-            position: relative;
-        }
-
-        .step-visual-box {
-            background: var(--bg-secondary);
-            padding: 3rem 2rem;
-            border-radius: 16px;
-            border: 2px solid var(--border);
-            text-align: center;
-            transition: all 0.3s ease;
-        }
-
-        .step-visual-box:hover {
-            border-color: #4099ff;
-            box-shadow: 0 10px 30px rgba(64, 153, 255, 0.15);
-        }
-
-        .step-visual-icon {
-            font-size: 4rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .step-visual-text {
-            font-size: 1.1rem;
-            color: var(--text-primary);
-            font-weight: 600;
-            line-height: 1.6;
-        }
-
-        /* Growth Section */
-        .growth-section {
-            background: var(--bg-surface);
-            padding: 3rem 2rem;
-            border-radius: 16px;
-            margin-bottom: 4rem;
-            transition: all 0.3s ease;
-        }
-
-        html.dark-mode .growth-section {
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-        }
-
-        .growth-section h3 {
-            font-size: 2rem;
-            color: var(--text-primary);
-            margin-bottom: 2rem;
-            text-align: center;
-        }
-
-        .growth-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 2rem;
-        }
-
-        .growth-item {
-            text-align: center;
-            padding: 2rem;
-            background: var(--bg-secondary);
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            transition: all 0.3s ease;
-        }
-
-        .growth-item:hover {
-            transform: translateY(-8px);
-            border-color: #4099ff;
-        }
-
-        .growth-icon {
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
-        }
-
-        .growth-item h4 {
-            color: var(--text-primary);
-            margin-bottom: 0.5rem;
-            font-weight: 700;
-        }
-
-        .growth-item p {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-            line-height: 1.5;
-        }
-
-        /* Summary Section */
-        .summary-section {
-            background: linear-gradient(135deg, #4099ff, #2ed8b6);
-            color: white;
-            padding: 4rem 2rem;
-            border-radius: 16px;
-            text-align: center;
-            margin-bottom: 4rem;
-        }
-
-        .summary-section h3 {
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
-            opacity: 0.95;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-weight: 700;
-        }
-
-        .summary-tagline {
-            font-size: 2rem;
-            line-height: 1.5;
-            margin: 0;
-            font-weight: 700;
-        }
-
-        /* CTA Section */
-        .hiw-cta {
-            background: var(--bg-surface);
-            padding: 4rem 2rem;
-            border-radius: 16px;
-            text-align: center;
-            margin-bottom: 4rem;
-        }
-
-        .hiw-cta h3 {
-            font-size: 2rem;
-            color: var(--text-primary);
-            margin-bottom: 1rem;
-        }
-
-        .hiw-cta p {
-            font-size: 1.1rem;
-            color: var(--text-secondary);
-            margin-bottom: 2rem;
-        }
-
-        .cta-buttons {
-            display: flex;
             justify-content: center;
-            gap: 1rem;
+            font-size: 1.2rem;
+            color: var(--primary, #4099ff);
+            margin-bottom: 1rem;
+        }
+        .hiw-step-card h3 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: .4rem;
+        }
+        .hiw-step-card .hiw-step-tag {
+            display: inline-block;
+            font-size: .75rem;
+            font-weight: 600;
+            color: var(--primary, #4099ff);
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            margin-bottom: .75rem;
+        }
+        .hiw-step-card p {
+            color: var(--text-secondary);
+            font-size: .92rem;
+            line-height: 1.65;
+            margin-bottom: 1rem;
+        }
+        .hiw-step-features {
+            display: flex;
             flex-wrap: wrap;
+            gap: .5rem;
+        }
+        .hiw-step-features span {
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            font-size: .78rem;
+            padding: .3rem .75rem;
+            background: var(--bg-secondary);
+            border-radius: 20px;
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+        .hiw-step-features span i {
+            color: var(--primary, #4099ff);
+            font-size: .65rem;
         }
 
-        
+        /* Stats strip */
+        .hiw-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+            padding: 3rem 2rem;
+            max-width: 1100px;
+            margin: 0 auto 2rem;
+        }
+        .hiw-stat {
+            text-align: center;
+            padding: 1.5rem;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+        }
+        .hiw-stat-num {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--primary, #4099ff);
+            line-height: 1;
+            margin-bottom: .35rem;
+        }
+        .hiw-stat-label {
+            font-size: .85rem;
+            color: var(--text-secondary);
+        }
 
-        /* Responsive */
+        /* Capabilities */
+        .hiw-caps {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.25rem;
+        }
+        .hiw-cap {
+            padding: 1.75rem;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            transition: all .3s ease;
+        }
+        .hiw-cap:hover {
+            border-color: var(--primary, #4099ff);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(64,153,255,.08);
+        }
+        .hiw-cap-icon {
+            width: 44px; height: 44px;
+            background: linear-gradient(135deg, rgba(64,153,255,.1), rgba(46,216,182,.1));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            color: var(--primary, #4099ff);
+            margin-bottom: 1rem;
+        }
+        .hiw-cap h4 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: .35rem;
+        }
+        .hiw-cap p {
+            font-size: .85rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        /* Summary banner */
+        .hiw-summary {
+            max-width: 1100px;
+            margin: 2rem auto 3rem;
+            padding: 3.5rem 3rem;
+            background: linear-gradient(135deg, #4099ff, #2ed8b6);
+            border-radius: 24px;
+            text-align: center;
+            color: #fff;
+        }
+        .hiw-summary h3 {
+            font-size: .9rem;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            font-weight: 700;
+            opacity: .8;
+            margin-bottom: .5rem;
+        }
+        .hiw-summary p {
+            font-size: clamp(1.2rem, 2vw, 1.6rem);
+            font-weight: 700;
+            line-height: 1.5;
+            margin: 0;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
         @media (max-width: 768px) {
-            .hiw-hero {
-                margin-top: 80px;
-            }
-
-            .hiw-hero h1 {
-                font-size: 2.2rem;
-            }
-
-            .step-card {
-                grid-template-columns: 1fr;
-                gap: 2rem;
-            }
-
-            .step-card:nth-child(even) {
-                direction: ltr;
-            }
-
-            .step-title {
-                font-size: 1.5rem;
-            }
-
-            .summary-tagline {
-                font-size: 1.3rem;
-            }
-
-            .growth-grid {
-                grid-template-columns: 1fr;
-            }
+            .hiw-timeline::before { left: 24px; }
+            .hiw-step, .hiw-step:nth-child(even) { flex-direction: column; padding-left: 56px; }
+            .hiw-step-card { width: 100%; }
+            .hiw-step-marker { left: 24px; top: 0; transform: translateX(-50%); }
+            .hiw-stats { grid-template-columns: repeat(2, 1fr); }
+            .hiw-caps { grid-template-columns: 1fr; }
         }
     </style>
     <?php renderThemeStyles(); ?>
 </head>
 <body>
-    <!-- Animated Background -->
     <div class="animated-bg"></div>
-
-    <!-- Floating Elements -->
     <div class="floating-elements">
         <div class="floating-element"></div>
         <div class="floating-element"></div>
@@ -480,377 +354,209 @@ $platform_settings = $landingData['settings'];
     require_once 'includes/navbar.php'; 
     ?>
 
-    <div class="how-it-works-wrapper">
-        <!-- Hero -->
-        <section class="hiw-hero">
-            <div class="hiw-hero-content">
-                <h1>Run Your Travel Agency in 5 Simple Steps</h1>
-                <p>Start selling the same day, without technical knowledge</p>
-                <div class="hiw-hero-tagline">
-                    Our system is designed so any travel agency — small or multi-branch — can start working immediately, managing tickets, Umrah, visas, hotels, finance, and automation from one unified platform.
-                </div>
-            </div>
-        </section>
-
-        <!-- Steps -->
-        <div class="hiw-container">
-
-            <!-- Step 1 -->
-            <div class="step-card">
-                <div>
-                    <div class="step-number">1️⃣</div>
-                    <h2 class="step-title">Create Your Agency</h2>
-                    <p class="step-subtitle">Get started in minutes</p>
-                    
-                    <div class="step-content">
-                        <div class="step-section">
-                            <h4>🎯 What You Do</h4>
-                            <ul>
-                                <li>Register your travel agency</li>
-                                <li>Set agency name, logo, currency preferences</li>
-                                <li>Configure email (SMTP) and WhatsApp automation once</li>
-                                <li>Define financial base currencies (AFN, USD, AED, EUR)</li>
-                            </ul>
-                        </div>
-
-                        <div class="step-result">
-                            <h5>✓ Result</h5>
-                            <p>Your agency system is ready instantly — no complex setup, no IT dependency.</p>
-                        </div>
-
-                        <div class="step-problem">
-                            <h5>⚠️ Problem Solved</h5>
-                            <p>No more waiting weeks for IT setup or needing technical staff to get started.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="step-visual">
-                    <div class="step-visual-box">
-                        <div class="step-visual-icon">⚙️</div>
-                        <div class="step-visual-text">Setup takes minutes, not days</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Step 2 -->
-            <div class="step-card">
-                <div>
-                    <div class="step-number">2️⃣</div>
-                    <h2 class="step-title">Add Branches & Users</h2>
-                    <p class="step-subtitle">Scale without losing control</p>
-                    
-                    <div class="step-content">
-                        <div class="step-section">
-                            <h4>🏢 What You Do</h4>
-                            <ul>
-                                <li>Create unlimited branches</li>
-                                <li>Each branch works independently</li>
-                                <li>Add users with roles: Admin, Finance, Sales, Umrah</li>
-                                <li>Branch name & address auto-appear on emails, WhatsApp, invoices, PDFs</li>
-                            </ul>
-                        </div>
-
-                        <div class="step-result">
-                            <h5>✓ Result</h5>
-                            <p>Centralized control meets branch autonomy. Manage growth without chaos.</p>
-                        </div>
-
-                        <div class="step-problem">
-                            <h5>⚠️ Problem Solved</h5>
-                            <p>No more multi-branch chaos, duplicate data, or poor visibility across offices.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="step-visual">
-                    <div class="step-visual-box">
-                        <div class="step-visual-icon">🏢</div>
-                        <div class="step-visual-text">Multi-branch ready out of the box</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Step 3 -->
-            <div class="step-card">
-                <div>
-                    <div class="step-number">3️⃣</div>
-                    <h2 class="step-title">Start Selling (Operations Begin)</h2>
-                    <p class="step-subtitle">One system for everything you sell</p>
-                    
-                    <div class="step-content">
-                        <div class="step-section">
-                            <h4>✈️ Tickets & Reservations</h4>
-                            <ul>
-                                <li>Ticket booking with multi-currency pricing</li>
-                                <li>Refunds & date changes tracking</li>
-                                <li>Outstanding dues tracking</li>
-                                <li>OCR auto-fill from ticket PDFs</li>
-                            </ul>
-                        </div>
-
-                        <div class="step-section">
-                            <h4>🕋 Umrah & Family Management</h4>
-                            <ul>
-                                <li>Family-based bookings with member tracking</li>
-                                <li>Member-wise payments & family totals</li>
-                                <li>Bank receipt tracking</li>
-                                <li>Passport OCR for faster data entry</li>
-                            </ul>
-                        </div>
-
-                        <div class="step-section">
-                            <h4>🛂 Visa & 🏨 Hotel</h4>
-                            <ul>
-                                <li>Visa application & cancellation management</li>
-                                <li>Hotel bookings & vouchers</li>
-                                <li>Automated client notifications</li>
-                                <li>Financial impact tracking</li>
-                            </ul>
-                        </div>
-
-                        <div class="step-result">
-                            <h5>✓ Result</h5>
-                            <p>Faster selling, fewer errors, less manual work — your team is productive immediately.</p>
-                        </div>
-
-                        <div class="step-problem">
-                            <h5>⚠️ Problem Solved</h5>
-                            <p>No more disconnected systems, slow data entry, or manual follow-ups eating your time.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="step-visual">
-                    <div class="step-visual-box">
-                        <div class="step-visual-icon">🎯</div>
-                        <div class="step-visual-text">Sell everything from one dashboard</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Step 4 -->
-            <div class="step-card">
-                <div>
-                    <div class="step-number">4️⃣</div>
-                    <h2 class="step-title">System Automates Everything</h2>
-                    <p class="step-subtitle">This is where the magic happens</p>
-                    
-                    <div class="step-content">
-                        <div class="step-section">
-                            <h4>💰 Finance & Accounting</h4>
-                            <ul>
-                                <li>Multi-currency cash flow tracking</li>
-                                <li>Profit calculation (daily, monthly, yearly)</li>
-                                <li>Supplier & client reconciliation</li>
-                                <li>Outstanding dues tracking with reminders</li>
-                                <li>Main account tracking (safe, bank, bourse)</li>
-                            </ul>
-                        </div>
-
-                        <div class="step-section">
-                            <h4>🤖 Communication Automation</h4>
-                            <ul>
-                                <li>Branded emails with PDF attachments</li>
-                                <li>WhatsApp: tickets, invoices, reminders, updates</li>
-                                <li>Email & WhatsApp delivery logs</li>
-                                <li>To-do reminders for staff follow-ups</li>
-                                <li>No manual sending — automatic based on events</li>
-                            </ul>
-                        </div>
-
-                        <div class="step-section">
-                            <h4>🔐 Security & Control</h4>
-                            <ul>
-                                <li>Audit logs (who changed what & when)</li>
-                                <li>Role-based access control</li>
-                                <li>Branch-level data isolation</li>
-                                <li>Activity notifications & alerts</li>
-                                <li>Bank-level encryption</li>
-                            </ul>
-                        </div>
-
-                        <div class="step-result">
-                            <h5>✓ Result</h5>
-                            <p>You focus on business — finance, emails, payments, and follow-ups happen automatically.</p>
-                        </div>
-
-                        <div class="step-problem">
-                            <h5>⚠️ Problem Solved</h5>
-                            <p>No more manual follow-ups, missed payments, human mistakes, or lost communication logs.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="step-visual">
-                    <div class="step-visual-box">
-                        <div class="step-visual-icon">⚡</div>
-                        <div class="step-visual-text">Automation handles the heavy lifting</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Step 5 -->
-            <div class="step-card">
-                <div>
-                    <div class="step-number">5️⃣</div>
-                    <h2 class="step-title">Track Profit & Performance</h2>
-                    <p class="step-subtitle">Make decisions using real data</p>
-                    
-                    <div class="step-content">
-                        <div class="step-section">
-                            <h4>📊 Interactive Dashboards</h4>
-                            <ul>
-                                <li>Cash flow by currency & period</li>
-                                <li>Profit breakdown by source</li>
-                                <li>Outstanding dues overview</li>
-                                <li>Today's departures & bookings</li>
-                                <li>Real-time notifications</li>
-                            </ul>
-                        </div>
-
-                        <div class="step-section">
-                            <h4>👥 Staff Performance</h4>
-                            <ul>
-                                <li>Sales comparison & rankings</li>
-                                <li>Profit contribution per user</li>
-                                <li>Branch performance analysis</li>
-                                <li>Performance trends & forecasting</li>
-                            </ul>
-                        </div>
-
-                        <div class="step-section">
-                            <h4>📈 Advanced Reports</h4>
-                            <ul>
-                                <li>Airline sales reports with drill-down</li>
-                                <li>Client statements & invoices</li>
-                                <li>Branch comparison reports</li>
-                                <li>Export to PDF / Excel — print-ready layouts</li>
-                            </ul>
-                        </div>
-
-                        <div class="step-result">
-                            <h5>✓ Result</h5>
-                            <p>Full business visibility. Make fast decisions based on real data, not gut feeling.</p>
-                        </div>
-
-                        <div class="step-problem">
-                            <h5>⚠️ Problem Solved</h5>
-                            <p>No more running blind. See exactly where profit comes from and where it leaks.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="step-visual">
-                    <div class="step-visual-box">
-                        <div class="step-visual-icon">📊</div>
-                        <div class="step-visual-text">Real-time insights for smarter decisions</div>
-                    </div>
-                </div>
-            </div>
-
+    <!-- Hero -->
+    <section class="hiw-hero">
+        <div class="hiw-hero-bg"></div>
+        <div class="hiw-hero-deco">
+            <i class="fas fa-plane"></i>
+            <i class="fas fa-compass"></i>
+            <i class="fas fa-location-dot"></i>
         </div>
+        <div class="hiw-hero-content">
+            <div class="hiw-hero-steps-hint">
+                <span></span><span></span><span></span><span></span><span></span>
+            </div>
+            <h1>From Setup to Scale<br>in 5 Simple Steps</h1>
+            <p>Start selling the same day — no IT skills, no complex setup, no headaches.</p>
+            <a href="book-demo.php" class="btn btn-primary">Get Started Today</a>
+        </div>
+    </section>
 
-        <!-- Growth Section -->
-        <div class="hiw-container">
-            <div class="growth-section">
-                <h3>🚀 Grow Without Limits</h3>
-                <div class="growth-grid">
-                    <div class="growth-item">
-                        <div class="growth-icon">🏢</div>
-                        <h4>Multi-Branch Ready</h4>
-                        <p>Scale from 1 to 100+ branches without changing systems</p>
-                    </div>
-                    <div class="growth-item">
-                        <div class="growth-icon">🤝</div>
-                        <h4>Franchise-Friendly</h4>
-                        <p>Built to support franchise structures and multi-owner models</p>
-                    </div>
-                    <div class="growth-item">
-                        <div class="growth-icon">👥</div>
-                        <h4>Client Portal</h4>
-                        <p>Clients access their bookings 24/7 — reduce support calls</p>
-                    </div>
-                    <div class="growth-item">
-                        <div class="growth-icon">🎫</div>
-                        <h4>Support System</h4>
-                        <p>Built-in support tickets with SLA tracking & categorization</p>
-                    </div>
-                    <div class="growth-item">
-                        <div class="growth-icon">🎓</div>
-                        <h4>Learning Built-In</h4>
-                        <p>Tutorials, guides, & video onboarding included</p>
-                    </div>
-                    <div class="growth-item">
-                        <div class="growth-icon">📈</div>
-                        <h4>API & Integrations</h4>
-                        <p>Connect with 3rd-party tools — extensible architecture</p>
+    <!-- Steps -->
+    <div class="hiw-section">
+        <div class="hiw-section-label"><i class="fas fa-arrow-right"></i> The Process</div>
+        <h2 class="hiw-section-title">Your Journey to a Fully Automated Agency</h2>
+        <p class="hiw-section-sub">Five deliberate steps. No fluff. Each one builds on the last.</p>
+
+        <div class="hiw-timeline">
+            <div class="hiw-step">
+                <div class="hiw-step-card">
+                    <div class="hiw-step-icon"><i class="fas fa-user-plus"></i></div>
+                    <h3>Create Your Agency</h3>
+                    <div class="hiw-step-tag">Step 1 — Get started in minutes</div>
+                    <p>Register your travel agency, set your preferences, and configure email &amp; WhatsApp once. Define your base currencies — AFN, USD, AED, EUR — and you're live.</p>
+                    <div class="hiw-step-features">
+                        <span><i class="fas fa-check"></i> Agency registration</span>
+                        <span><i class="fas fa-check"></i> Logo &amp; branding</span>
+                        <span><i class="fas fa-check"></i> SMTP + WhatsApp setup</span>
+                        <span><i class="fas fa-check"></i> Multi-currency config</span>
                     </div>
                 </div>
+                <div class="hiw-step-marker">1</div>
+            </div>
+
+            <div class="hiw-step">
+                <div class="hiw-step-card">
+                    <div class="hiw-step-icon"><i class="fas fa-sitemap"></i></div>
+                    <h3>Add Branches &amp; Users</h3>
+                    <div class="hiw-step-tag">Step 2 — Scale without losing control</div>
+                    <p>Create unlimited branches — each works independently. Add team members with role-based access: Admin, Finance, Sales, Umrah. Branch details auto-appear on every email, invoice, and PDF.</p>
+                    <div class="hiw-step-features">
+                        <span><i class="fas fa-check"></i> Unlimited branches</span>
+                        <span><i class="fas fa-check"></i> Role-based access</span>
+                        <span><i class="fas fa-check"></i> Branch-level isolation</span>
+                        <span><i class="fas fa-check"></i> Auto-branded documents</span>
+                    </div>
+                </div>
+                <div class="hiw-step-marker">2</div>
+            </div>
+
+            <div class="hiw-step">
+                <div class="hiw-step-card">
+                    <div class="hiw-step-icon"><i class="fas fa-store"></i></div>
+                    <h3>Start Selling</h3>
+                    <div class="hiw-step-tag">Step 3 — One system for everything</div>
+                    <p>Manage tickets, Umrah packages, visa applications, and hotel bookings from one dashboard. Built-in OCR auto-fills data from ticket and passport PDFs — less typing, fewer errors.</p>
+                    <div class="hiw-step-features">
+                        <span><i class="fas fa-check"></i> Ticket booking &amp; refunds</span>
+                        <span><i class="fas fa-check"></i> Umrah &amp; family mgmt</span>
+                        <span><i class="fas fa-check"></i> Visa &amp; hotel bookings</span>
+                        <span><i class="fas fa-check"></i> OCR auto-fill</span>
+                        <span><i class="fas fa-check"></i> Multi-currency pricing</span>
+                    </div>
+                </div>
+                <div class="hiw-step-marker">3</div>
+            </div>
+
+            <div class="hiw-step">
+                <div class="hiw-step-card">
+                    <div class="hiw-step-icon"><i class="fas fa-brain"></i></div>
+                    <h3>Automate Everything</h3>
+                    <div class="hiw-step-tag">Step 4 — This is where the magic happens</div>
+                    <p>Finance tracks multi-currency cash flow automatically. Branded emails and WhatsApp messages send on every event. Audit logs record every change. Your team stops doing manual work.</p>
+                    <div class="hiw-step-features">
+                        <span><i class="fas fa-check"></i> Auto cash flow tracking</span>
+                        <span><i class="fas fa-check"></i> Profit calc (daily/monthly)</span>
+                        <span><i class="fas fa-check"></i> Email + WhatsApp auto</span>
+                        <span><i class="fas fa-check"></i> Audit logs</span>
+                        <span><i class="fas fa-check"></i> To-do reminders</span>
+                    </div>
+                </div>
+                <div class="hiw-step-marker">4</div>
+            </div>
+
+            <div class="hiw-step">
+                <div class="hiw-step-card">
+                    <div class="hiw-step-icon"><i class="fas fa-chart-line"></i></div>
+                    <h3>Track &amp; Grow</h3>
+                    <div class="hiw-step-tag">Step 5 — Data-driven decisions</div>
+                    <p>Interactive dashboards show cash flow, profit breakdown, and outstanding dues. Staff performance rankings and branch comparisons help you lead. Export any report to PDF or Excel.</p>
+                    <div class="hiw-step-features">
+                        <span><i class="fas fa-check"></i> Cash flow dashboards</span>
+                        <span><i class="fas fa-check"></i> Profit by source</span>
+                        <span><i class="fas fa-check"></i> Staff rankings</span>
+                        <span><i class="fas fa-check"></i> Branch comparison</span>
+                        <span><i class="fas fa-check"></i> PDF / Excel export</span>
+                    </div>
+                </div>
+                <div class="hiw-step-marker">5</div>
             </div>
         </div>
+    </div>
 
-        <!-- Summary Section -->
-        <div class="hiw-container">
-            <div class="summary-section">
-                <h3>Your Journey in One Line</h3>
-                <p class="summary-tagline">
-                    Sell faster, automate operations, control finance, and scale your travel agency — all from one powerful system.
-                </p>
+    <!-- Stats -->
+    <div class="hiw-stats">
+        <div class="hiw-stat"><div class="hiw-stat-num">10K+</div><div class="hiw-stat-label">Travel Agencies</div></div>
+        <div class="hiw-stat"><div class="hiw-stat-num">2M+</div><div class="hiw-stat-label">Bookings Processed</div></div>
+        <div class="hiw-stat"><div class="hiw-stat-num">$500M+</div><div class="hiw-stat-label">Revenue Managed</div></div>
+        <div class="hiw-stat"><div class="hiw-stat-num">99.9%</div><div class="hiw-stat-label">Uptime</div></div>
+    </div>
+
+    <!-- Capabilities -->
+    <div class="hiw-section">
+        <div class="hiw-section-label"><i class="fas fa-cube"></i> Built to Scale</div>
+        <h2 class="hiw-section-title">Capabilities That Grow With You</h2>
+        <p class="hiw-section-sub">From one branch to one hundred, the platform adapts.</p>
+        <div class="hiw-caps">
+            <div class="hiw-cap">
+                <div class="hiw-cap-icon"><i class="fas fa-building"></i></div>
+                <h4>Multi-Branch</h4>
+                <p>Branches operate independently under one central view. Add as many as you need.</p>
+            </div>
+            <div class="hiw-cap">
+                <div class="hiw-cap-icon"><i class="fas fa-handshake"></i></div>
+                <h4>Franchise-Ready</h4>
+                <p>Built to support franchise structures, multi-owner models, and revenue sharing.</p>
+            </div>
+            <div class="hiw-cap">
+                <div class="hiw-cap-icon"><i class="fas fa-user-circle"></i></div>
+                <h4>Client Portal</h4>
+                <p>Clients view bookings, invoices, and trip status 24/7 — fewer support calls.</p>
+            </div>
+            <div class="hiw-cap">
+                <div class="hiw-cap-icon"><i class="fas fa-headset"></i></div>
+                <h4>Support System</h4>
+                <p>Built-in ticketing with SLA tracking, categorization, and assignment.</p>
+            </div>
+            <div class="hiw-cap">
+                <div class="hiw-cap-icon"><i class="fas fa-graduation-cap"></i></div>
+                <h4>Onboarding Included</h4>
+                <p>Tutorials, video guides, and documentation — your team learns as they work.</p>
+            </div>
+            <div class="hiw-cap">
+                <div class="hiw-cap-icon"><i class="fas fa-plug"></i></div>
+                <h4>API &amp; Extensions</h4>
+                <p>Connect with third-party tools. Extensible architecture for custom needs.</p>
             </div>
         </div>
-            <!-- CTA Section -->
+    </div>
+
+    <!-- Summary -->
+    <div class="hiw-summary">
+        <h3>Your Journey in One Line</h3>
+        <p>Sell faster, automate operations, control finance, and scale your travel agency — all from one powerful system.</p>
+    </div>
+
+    <!-- CTA -->
     <section class="cta">
         <div class="container">
             <h2><?php echo getSetting($platform_settings, 'cta_title', 'Ready to Optimize Your Travel Operations?'); ?></h2>
             <p><?php echo getSetting($platform_settings, 'cta_subtitle', 'Join industry-leading travel agencies who have improved efficiency, reduced errors, and enhanced customer satisfaction with our comprehensive management platform.'); ?></p>
             <div class="cta-buttons">
-                <a href="book-demo.php" class="btn btn-primary">
-                    <?php echo getSetting($platform_settings, 'final_cta_primary', 'Get Started Today'); ?>
-                </a>
-                <a href="features.php" class="btn btn-outline">
-                    <?php echo getSetting($platform_settings, 'final_cta_secondary', 'Explore All Features'); ?>
-                </a>
+                <a href="book-demo.php" class="btn btn-primary"><?php echo getSetting($platform_settings, 'final_cta_primary', 'Get Started Today'); ?></a>
+                <a href="features.php" class="btn btn-outline"><?php echo getSetting($platform_settings, 'final_cta_secondary', 'Explore All Features'); ?></a>
             </div>
         </div>
     </section>
 
-    </div>
-
     <script>
-        // Parallax effect
-        window.addEventListener('scroll', () => {
-            const scrolled = window.pageYOffset;
-            const parallax = document.querySelectorAll('.floating-element');
-            parallax.forEach((element, index) => {
-                const speed = 0.5 + (index * 0.1);
-                element.style.transform = `translateY(${scrolled * speed}px)`;
-            });
-        });
+        document.addEventListener('DOMContentLoaded', function() {
+            // Timeline scroll animation
+            var observer = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.2 });
 
-        // Mobile menu
-        function toggleMobileMenu() {
-            const hamburger = document.getElementById('hamburger');
-            const navMenu = document.querySelector('.nav-menu');
+            document.querySelectorAll('.hiw-step').forEach(function(el) {
+                observer.observe(el);
+            });
+
+            // Mobile menu
+            var hamburger = document.getElementById('hamburger');
+            var navMenu = document.querySelector('.nav-menu');
             if (hamburger && navMenu) {
-                hamburger.addEventListener('click', function() {
-                    navMenu.classList.toggle('open');
+                hamburger.addEventListener('click', function() { navMenu.classList.toggle('open'); });
+                document.addEventListener('click', function(e) {
+                    if (!hamburger.contains(e.target) && !navMenu.contains(e.target)) navMenu.classList.remove('open');
                 });
-                document.addEventListener('click', function(event) {
-                    if (!hamburger.contains(event.target) && !navMenu.contains(event.target)) {
-                        navMenu.classList.remove('open');
-                    }
-                });
-                navMenu.addEventListener('click', function(event) {
-                    if (event.target.tagName === 'A') {
-                        navMenu.classList.remove('open');
-                    }
+                navMenu.addEventListener('click', function(e) {
+                    if (e.target.tagName === 'A') navMenu.classList.remove('open');
                 });
             }
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            toggleMobileMenu();
         });
     </script>
     <?php renderThemeScript(); ?>
