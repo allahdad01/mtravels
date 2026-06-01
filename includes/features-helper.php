@@ -140,3 +140,54 @@ function renderAllFeatureCards($features) {
     }
     return $html;
 }
+
+/**
+ * Render the split-screen feature showcase
+ * Left side: full-view feature visual, Right side: feature details
+ * Scroll-driven navigation between features
+ */
+function renderFeatureSplitSection($features) {
+    $total = count($features);
+    if ($total === 0) return '';
+
+    $icons = [];
+    $textHtml = '';
+
+    foreach ($features as $i => $f) {
+        $iconKey = $f['icon_key'] ?? 'dashboard';
+        $svg = getFeatureSvgIcon($iconKey);
+        $title = htmlspecialchars($f['title'] ?? '');
+        $desc = htmlspecialchars($f['description'] ?? '');
+        $active = $i === 0 ? ' active' : '';
+
+        $textHtml .= sprintf(
+            '<div class="ft-item%s" data-index="%d">
+                <div class="ft-item-inner">
+                    <h3 class="ft-title">%s</h3>
+                    <p class="ft-desc">%s</p>
+                    <a href="book-demo.php" class="feature-link">Try it now <span>→</span></a>
+                </div>
+            </div>',
+            $active, $i, $title, $desc
+        );
+        $icons[] = $svg;
+    }
+
+    $iconsJson = htmlspecialchars(json_encode($icons), ENT_QUOTES, 'UTF-8');
+    $totalStr = sprintf('%02d', $total);
+
+    return sprintf(
+        '<div class="features-scroll-wrap" data-icons=\'%s\'>
+            <div class="fv-sticky">
+                <div class="fv-bg" id="fvBg"></div>
+                <div class="fv-icon-wrap" id="fvIconWrap">
+                    <div class="fv-icon" id="fvIcon">%s</div>
+                </div>
+                <div class="fv-counter"><span class="fv-curnum" id="fvCurNum">01</span><span class="fv-sep">/</span><span class="fv-totalnum">%s</span></div>
+            </div>
+            <div class="ft-list" id="ftList">%s</div>
+            <div class="fv-progress" id="fvProgress"><div class="fv-progress-fill" id="fvProgressFill"></div></div>
+        </div>',
+        $iconsJson, $icons[0], $totalStr, $textHtml
+    );
+}

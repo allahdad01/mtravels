@@ -104,9 +104,7 @@ $blog_posts = $landingData['blog_posts'];
                 <h2><?php echo getSetting($platform_settings, 'features_title', 'Everything You Need to Scale'); ?></h2>
                 <p><?php echo getSetting($platform_settings, 'features_subtitle', 'Comprehensive tools designed specifically for travel agencies to manage, grow, and optimize their business operations.'); ?></p>
             </div>
-            <div class="features-grid">
-                <?php echo renderAllFeatureCards(getFeaturesList($platform_settings)); ?>
-            </div>
+            <?php echo renderFeatureSplitSection(getFeaturesList($platform_settings)); ?>
             <div style="text-align: center; margin-top: 3rem;">
                 <a href="features.php" class="btn btn-outline" style="font-size: 1.05rem; padding: 0.9rem 2.5rem;">
                     Explore All Features in Detail
@@ -118,24 +116,36 @@ $blog_posts = $landingData['blog_posts'];
     <!-- Stats Section -->
     <section class="stats">
         <div class="container">
+            <div class="section-header">
+                <h2><?php echo getSetting($platform_settings, 'stats_title', 'Trusted by Thousands'); ?></h2>
+                <p><?php echo getSetting($platform_settings, 'stats_subtitle', 'Our platform delivers measurable results for travel agencies worldwide.'); ?></p>
+            </div>
             <div class="stats-grid">
-                <div class="stat-item">
-                    <div class="stat-icon">🏢</div>
+                <div class="stat-card">
+                    <div class="stat-icon-wrap">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
+                    </div>
                     <div class="stat-number"><?php echo getSetting($platform_settings, 'stat_agencies', '10K+'); ?></div>
                     <div class="stat-label"><?php echo getSetting($platform_settings, 'stat_agencies_label', 'Travel Agencies'); ?></div>
                 </div>
-                <div class="stat-item">
-                    <div class="stat-icon">📊</div>
+                <div class="stat-card">
+                    <div class="stat-icon-wrap">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+                    </div>
                     <div class="stat-number"><?php echo getSetting($platform_settings, 'stat_bookings', '2M+'); ?></div>
                     <div class="stat-label"><?php echo getSetting($platform_settings, 'stat_bookings_label', 'Bookings Processed'); ?></div>
                 </div>
-                <div class="stat-item">
-                    <div class="stat-icon">💰</div>
+                <div class="stat-card">
+                    <div class="stat-icon-wrap">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    </div>
                     <div class="stat-number"><?php echo getSetting($platform_settings, 'stat_revenue', '$500M+'); ?></div>
                     <div class="stat-label"><?php echo getSetting($platform_settings, 'stat_revenue_label', 'Revenue Managed'); ?></div>
                 </div>
-                <div class="stat-item">
-                    <div class="stat-icon">⚡</div>
+                <div class="stat-card">
+                    <div class="stat-icon-wrap">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    </div>
                     <div class="stat-number"><?php echo getSetting($platform_settings, 'stat_uptime', '99.9%'); ?></div>
                     <div class="stat-label"><?php echo getSetting($platform_settings, 'stat_uptime_label', 'Uptime Guaranteed'); ?></div>
                 </div>
@@ -154,6 +164,7 @@ $blog_posts = $landingData['blog_posts'];
             <div class="pricing-grid">
                 <?php foreach ($plans as $index => $plan): ?>
                 <div class="pricing-card <?php echo strtolower($plan['name']) === 'enterprise' ? 'popular' : ''; ?>">
+                    <div class="pricing-badge">Most Popular</div>
                     <div class="pricing-name"><?php echo htmlspecialchars(formatFeatureName($plan['name'])); ?></div>
                     <div class="pricing-price"><?php echo formatCurrency($plan['price']); ?></div>
                     <div class="pricing-period"><?php echo htmlspecialchars(formatFeatureName('per_month')); ?></div>
@@ -177,30 +188,38 @@ $blog_posts = $landingData['blog_posts'];
             </div>
             <div class="contact-content">
                 <div class="contact-info">
-                    <div class="contact-item">
-                        <div class="contact-icon">📧</div>
-                        <div class="contact-details">
+                    <div class="contact-card">
+                        <div class="contact-card-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                        </div>
+                        <div class="contact-card-body">
                             <h4>Email Us</h4>
                             <p><?php echo getSetting($platform_settings, 'contact_email', 'allahdadmuhammadi01@gmail.com'); ?></p>
                         </div>
                     </div>
-                    <div class="contact-item">
-                        <div class="contact-icon">📞</div>
-                        <div class="contact-details">
+                    <div class="contact-card">
+                        <div class="contact-card-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                        </div>
+                        <div class="contact-card-body">
                             <h4>Call Us</h4>
                             <p><?php echo getSetting($platform_settings, 'support_phone', '+93780310431'); ?></p>
                         </div>
                     </div>
-                    <div class="contact-item">
-                        <div class="contact-icon">📍</div>
-                        <div class="contact-details">
+                    <div class="contact-card">
+                        <div class="contact-card-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                        </div>
+                        <div class="contact-card-body">
                             <h4>Visit Us</h4>
                             <p><?php echo getSetting($platform_settings, 'contact_address', 'Kabul, Afghanistan'); ?></p>
                         </div>
                     </div>
-                    <div class="contact-item">
-                        <div class="contact-icon">🌐</div>
-                        <div class="contact-details">
+                    <div class="contact-card">
+                        <div class="contact-card-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" x2="22" y1="12" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                        </div>
+                        <div class="contact-card-body">
                             <h4>Website</h4>
                             <p><a href="<?php echo getSetting($platform_settings, 'website_url', 'https://mtravels.com'); ?>" target="_blank"><?php echo getSetting($platform_settings, 'website_url', 'https://mtravels.com'); ?></a></p>
                         </div>
@@ -281,13 +300,12 @@ $blog_posts = $landingData['blog_posts'];
                                 <?php endif; ?>
                                 <div class="author-info">
                                     <h4><?php echo htmlspecialchars($testimonial['name']); ?></h4>
-                                    <div class="author-rating">
-                                        <?php
-                                        $rating = intval($testimonial['rating']);
-                                        for ($i = 1; $i <= 5; $i++) {
-                                            echo $i <= $rating ? '⭐' : '☆';
-                                        }
-                                        ?>
+                                    <div class="author-rating" data-rating="<?php echo intval($testimonial['rating']); ?>">
+                                        <?php $r = intval($testimonial['rating']); for ($i = 1; $i <= 5; $i++): ?>
+                                        <svg class="star<?php echo $i <= $r ? ' filled' : ''; ?>" width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                        </svg>
+                                        <?php endfor; ?>
                                     </div>
                                 </div>
                             </div>
@@ -513,6 +531,71 @@ $blog_posts = $landingData['blog_posts'];
             }
         }
 
+        // Feature sticky scroll - Apple-style
+        class FeatureStickyScroll {
+            constructor() {
+                this.wrap = document.querySelector('.features-scroll-wrap');
+                if (!this.wrap) return;
+
+                this.icons = JSON.parse(this.wrap.dataset.icons);
+                this.items = this.wrap.querySelectorAll('.ft-item');
+                this.iconWrap = document.getElementById('fvIconWrap');
+                this.iconEl = document.getElementById('fvIcon');
+                this.curNum = document.getElementById('fvCurNum');
+                this.progressFill = document.getElementById('fvProgressFill');
+                this.total = this.icons.length;
+                this.current = 0;
+                this.flipping = false;
+
+                this.init();
+            }
+
+            init() {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const idx = parseInt(entry.target.dataset.index);
+                            this.goTo(idx);
+                        }
+                    });
+                }, { threshold: 0.5 });
+
+                this.items.forEach(item => observer.observe(item));
+
+                window.addEventListener('scroll', () => this.updateProgress());
+                this.updateProgress();
+            }
+
+            goTo(index) {
+                if (index === this.current || this.flipping) return;
+
+                this.flipping = true;
+                this.current = index;
+
+                this.items.forEach((item, i) => item.classList.toggle('active', i === index));
+
+                this.curNum.textContent = String(index + 1).padStart(2, '0');
+
+                this.iconWrap.classList.add('flipping');
+                requestAnimationFrame(() => {
+                    setTimeout(() => {
+                        this.iconEl.innerHTML = this.icons[index];
+                        this.iconWrap.classList.remove('flipping');
+                        this.flipping = false;
+                    }, 250);
+                });
+            }
+
+            updateProgress() {
+                const rect = this.wrap.getBoundingClientRect();
+                const total = this.wrap.scrollHeight - window.innerHeight;
+                if (total <= 0) return;
+                const scrolled = window.innerHeight - rect.top;
+                const pct = Math.max(0, Math.min(100, (scrolled / total) * 100));
+                if (this.progressFill) this.progressFill.style.height = pct + '%';
+            }
+        }
+
         // Testimonial Slider Functionality
         class TestimonialSlider {
             constructor() {
@@ -677,8 +760,11 @@ $blog_posts = $landingData['blog_posts'];
             }
         }
 
-        // Initialize testimonial slider and mobile menu when DOM is loaded
+        // Initialize feature split slider, testimonial slider, and mobile menu
         document.addEventListener('DOMContentLoaded', function() {
+            if (document.querySelector('.features-scroll-wrap')) {
+                new FeatureStickyScroll();
+            }
             if (document.querySelector('.testimonials-slider')) {
                 new TestimonialSlider();
             }
