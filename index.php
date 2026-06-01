@@ -300,6 +300,9 @@ $blog_posts = $landingData['blog_posts'];
                                 <?php endif; ?>
                                 <div class="author-info">
                                     <h4><?php echo htmlspecialchars($testimonial['name']); ?></h4>
+                                    <?php if (!empty($testimonial['position'])): ?>
+                                    <span class="author-position"><?php echo htmlspecialchars($testimonial['position']); ?></span>
+                                    <?php endif; ?>
                                     <div class="author-rating" data-rating="<?php echo intval($testimonial['rating']); ?>">
                                         <?php $r = intval($testimonial['rating']); for ($i = 1; $i <= 5; $i++): ?>
                                         <svg class="star<?php echo $i <= $r ? ' filled' : ''; ?>" width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

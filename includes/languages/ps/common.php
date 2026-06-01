@@ -2047,7 +2047,7 @@ return [
 'manage_testimonials' => 'د نظرونو مدیریت',
 'add_new_testimonial' => 'نوی نظر اضافه کړئ',
 'customer_name' => 'د پېرودونکي نوم',
-'destination' => 'مقصد',
+'position' => 'موقعیت',
 'rating' => 'درجه بندي',
 'select_rating' => 'درجه بندي وټاکئ',
 'customer_photo' => 'د پېرودونکي عکس',

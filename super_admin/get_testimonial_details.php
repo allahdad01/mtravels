@@ -19,17 +19,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['id'])) {
 
     $stmt = $pdo->prepare("SELECT * FROM testimonials WHERE id = ?");
     $stmt->execute([$testimonial_id]);
-    $result = $stmt->get_result();
+    $testimonial = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if ($result->num_rows > 0) {
-        $testimonial = $result->fetch();
+    if ($testimonial) {
         echo json_encode($testimonial);
     } else {
         http_response_code(404);
         echo json_encode(['error' => 'Testimonial not found']);
     }
-
-    } else {
+} else {
     http_response_code(400);
     echo json_encode(['error' => 'Invalid request']);
 }

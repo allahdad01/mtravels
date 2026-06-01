@@ -152,7 +152,7 @@ function getTestimonials($pdo, $tenant_id, $limit = null) {
     }
     
     try {
-        $sql = "SELECT id, name, photo, testimonial, rating 
+        $sql = "SELECT id, name, photo, testimonial, rating, position 
                 FROM testimonials 
                 WHERE tenant_id = ? AND active = 1 
                 ORDER BY rating DESC, created_at DESC";

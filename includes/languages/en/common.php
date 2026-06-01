@@ -2156,7 +2156,7 @@ return [
     'manage_testimonials' => 'Manage Testimonials',
     'add_new_testimonial' => 'Add New Testimonial',
     'customer_name' => 'Customer Name',
-    'destination' => 'Destination',
+    'position' => 'Position',
     'rating' => 'Rating',
     'select_rating' => 'Select Rating',
     'customer_photo' => 'Customer Photo',

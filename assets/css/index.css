@@ -1397,8 +1397,16 @@ html.dark-mode .navbar.scrolled {
 .author-info h4 {
     font-weight: 700;
     color: var(--gray-900);
-    margin-bottom: 0.15rem;
+    margin-bottom: 0.1rem;
     font-size: 0.95rem;
+}
+
+.author-position {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--gray-600);
+    font-weight: 400;
+    margin-bottom: 0.1rem;
 }
 
 /* Rating */
@@ -2637,6 +2645,10 @@ html.dark-mode .testimonial-author {
 
 html.dark-mode .author-info h4 {
     color: #f8fafc;
+}
+
+html.dark-mode .author-position {
+    color: #94a3b8;
 }
 
 html.dark-mode .star {

@@ -1969,7 +1969,7 @@ return [
 'manage_testimonials' => 'مدیریت نظریات مشتریان',
 'add_new_testimonial' => 'افزودن نظر جدید مشتری',
 'customer_name' => 'نام مشتری',
-'destination' => 'مقصد',
+'position' => 'موقعیت',
 'rating' => 'امتیاز',
 'select_rating' => 'انتخاب امتیاز',
 'customer_photo' => 'عکس مشتری',

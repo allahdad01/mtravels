@@ -80,8 +80,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $photo_path = 'uploads/testimonials/' . $validation['safe_name'];
                 }
 
-                $stmt = $pdo->prepare("INSERT INTO testimonials (tenant_id, name, photo, testimonial, destination, rating, active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 1, NOW(), NOW())");
-                $stmt->execute([$_POST['tenant_id'], $_POST['name'], $photo_path, $_POST['testimonial'], $_POST['destination'], $_POST['rating']]);
+                $stmt = $pdo->prepare("INSERT INTO testimonials (tenant_id, name, photo, testimonial, position, rating, active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 1, NOW(), NOW())");
+                $stmt->execute([$_POST['tenant_id'], $_POST['name'], $photo_path, $_POST['testimonial'], $_POST['position'], $_POST['rating']]);
 
                 // Log audit
                 logAudit($pdo, $_SESSION['user_id'], 'create_testimonial', 'testimonials', $pdo->lastInsertId(), 'Created new testimonial for ' . $_POST['name']);
@@ -125,8 +125,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
-                $stmt = $pdo->prepare("UPDATE testimonials SET name = ?, photo = ?, testimonial = ?, destination = ?, rating = ?, updated_at = NOW() WHERE id = ?");
-                $stmt->execute([$_POST['name'], $photo_path, $_POST['testimonial'], $_POST['destination'], $_POST['rating'], $testimonial_id]);
+                $stmt = $pdo->prepare("UPDATE testimonials SET name = ?, photo = ?, testimonial = ?, position = ?, rating = ?, updated_at = NOW() WHERE id = ?");
+                $stmt->execute([$_POST['name'], $photo_path, $_POST['testimonial'], $_POST['position'], $_POST['rating'], $testimonial_id]);
 
                 // Log audit
                 logAudit($pdo, $_SESSION['user_id'], 'update_testimonial', 'testimonials', $testimonial_id, 'Updated testimonial for ' . $_POST['name']);
@@ -185,7 +185,7 @@ $search_query = $_GET['search'] ?? '';
 $count_query = "SELECT COUNT(*) as total FROM testimonials t WHERE 1=1";
 $filter_params = [];
 if (!empty($search_query)) {
-    $count_query .= " AND (t.name LIKE ? OR t.destination LIKE ? OR t.testimonial LIKE ?)";
+    $count_query .= " AND (t.name LIKE ? OR t.position LIKE ? OR t.testimonial LIKE ?)";
     $search_term = "%{$search_query}%";
     $filter_params[] = $search_term;
     $filter_params[] = $search_term;
@@ -205,7 +205,7 @@ $query = "
     LEFT JOIN tenants tn ON t.tenant_id = tn.id
     WHERE 1=1";
 if (!empty($search_query)) {
-    $query .= " AND (t.name LIKE ? OR t.destination LIKE ? OR t.testimonial LIKE ?)";
+    $query .= " AND (t.name LIKE ? OR t.position LIKE ? OR t.testimonial LIKE ?)";
 }
 $query .= " ORDER BY t.created_at DESC LIMIT ? OFFSET ?";
 $params = $filter_params;
@@ -222,367 +222,366 @@ $tenants = $stmt->fetchAll();
 
 // Audit logging function
 function logAudit($pdo, $user_id, $action, $entity_type, $entity_id, $details) {
-    $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
-    $stmt->execute([$user_id, $action, $entity_type, $entity_id, $details]);
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+    $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
+    $stmt->execute([$user_id, $action, $entity_type, $entity_id, $details, $ip]);
 }
 ?>
 
 <?php include '../includes/header_super_admin.php'; ?>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-/* ─── TOKENS ─────────────────────────────────────────────── */
 :root {
-  --bg:       #f8fafc;
+  --bg:       #f5f3ff;
   --surface:  #ffffff;
-  --surface2: #f1f5f9;
+  --surface2: #ede9fe;
   --border:   #e5e7eb;
   --text:     #1f2937;
   --muted:    #6b7280;
-  --accent:   #4099ff;
-  --accent2:  #2ed8b6;
+  --primary:  #7C3AED;
+  --primary-light: #a78bfa;
+  --cta:      #f97316;
   --green:    #10b981;
   --amber:    #f59e0b;
   --red:      #ef4444;
-  --blue:     #3b82f6;
-  --purple:   #8b5cf6;
-  --orange:   #f97316;
-  --radius:   14px;
+  --radius:   12px;
 }
 
-/* ─── RESET / BASE ───────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { font-size: 14px; }
 body {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Fira Sans', sans-serif;
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
 }
 
-/* ─── MAIN WRAPPER ───────────────────────────────────────── */
 .sa-wrap { display: flex; flex-direction: column; min-height: 100vh; }
+.sa-content { padding: 24px 28px; display: flex; flex-direction: column; gap: 20px; }
 
-/* ─── CONTENT ────────────────────────────────────────────── */
-.sa-content { 
-    padding: 24px 28px; 
-    display: flex; 
-    flex-direction: column; 
-    gap: 24px; 
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
 }
-
-/* ─── CARD ───────────────────────────────────────────────── */
-.sa-card {
-  background: var(--surface); 
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--accent);
-  border-radius: var(--radius); 
-  overflow: hidden;
-  transition: all .2s;
+.stat-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-  margin-bottom: 24px;
+  border: 1px solid var(--border);
+  transition: all .2s;
 }
-.sa-card:last-child { margin-bottom: 0; }
-.sa-card:hover { 
-    border-left-color: var(--accent2);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+.stat-card:hover {
+  box-shadow: 0 4px 12px rgba(124,58,237,0.08);
+  border-color: var(--primary-light);
 }
-.sa-card-hdr {
-  padding: 16px 24px; 
-  border-bottom: 1px solid var(--border);
-  display: flex; 
-  align-items: center; 
+.stat-icon {
+  width: 44px; height: 44px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+.stat-icon.total { background: rgba(124,58,237,0.12); color: var(--primary); }
+.stat-icon.active-count { background: rgba(16,185,129,0.12); color: var(--green); }
+.stat-icon.inactive-count { background: rgba(245,158,11,0.12); color: var(--amber); }
+.stat-info h4 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+.stat-info p {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
-  background: linear-gradient(135deg, rgba(108,99,255,0.04), rgba(46,216,182,0.02));
+  gap: 16px;
+  flex-wrap: wrap;
 }
-.sa-card-hdr h3 { 
-    font-size: .95rem; 
-    font-weight: 600; 
-    color: var(--text);
-    display: flex;
-    align-items: center;
-    letter-spacing: -0.01em;
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 200px;
+  max-width: 400px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 12px;
+  transition: all .2s;
 }
-.sa-card-body { 
-    padding: 24px; 
+.search-box:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(124,58,237,0.12);
 }
+.search-box i {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.search-box input {
+  border: none;
+  background: transparent;
+  padding: 10px 0;
+  font-size: 0.85rem;
+  font-family: 'Fira Sans', sans-serif;
+  color: var(--text);
+  outline: none;
+  width: 100%;
+}
+.search-box input::placeholder { color: var(--muted); }
 
-/* Card colors */
-.sa-card:nth-child(1) { border-left-color: #6366f1; }
-.sa-card:nth-child(2) { border-left-color: #10b981; }
-.sa-card:nth-child(3) { border-left-color: #f59e0b; }
-
-/* ─── BUTTON ─────────────────────────────────────────────── */
-.sa-btn {
-  font-size: .8rem; font-weight: 600; font-family: 'Sora', sans-serif;
-  padding: 8px 16px; border-radius: 20px; cursor: pointer; border: none;
+.btn {
+  font-size: .8rem; font-weight: 600; font-family: 'Fira Sans', sans-serif;
+  padding: 10px 18px; border-radius: 8px; cursor: pointer; border: none;
   display: inline-flex; align-items: center; gap: 6px; text-decoration: none;
   transition: all .15s;
 }
-.sa-btn-primary {
-  background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff;
+.btn:active { transform: scale(0.97); }
+.btn-primary {
+  background: var(--primary); color: #fff;
 }
-.sa-btn-primary:hover { opacity: .85; transform: translateY(-1px); }
-.sa-btn-ghost {
+.btn-primary:hover { background: #6d28d9; }
+.btn-ghost {
   background: var(--surface2); color: var(--muted); border: 1px solid var(--border);
 }
-.sa-btn-ghost:hover { color: var(--text); border-color: var(--accent); }
-.sa-btn-sm { padding: 6px 12px; font-size: .75rem; }
-.sa-btn-success { background: linear-gradient(135deg, var(--green), #34d399); color: white; }
-.sa-btn-warning { background: linear-gradient(135deg, var(--amber), #fbbf24); color: white; }
-.sa-btn-danger { background: linear-gradient(135deg, var(--red), #f87171); color: white; }
-
-/* ─── BADGE ─────────────────────────────────────────────── */
-.badge-num {
-  display: inline-flex; align-items: center; justify-content: center;
-  min-width: 20px; height: 20px; padding: 0 6px; border-radius: 20px;
-  font-size: .7rem; font-weight: 700;
-  background: rgba(108,99,255,.2); color: var(--accent);
-  font-family: 'JetBrains Mono', monospace;
+.btn-ghost:hover { color: var(--text); border-color: var(--primary-light); }
+.btn-sm { padding: 6px 12px; font-size: .75rem; }
+.btn-success { background: var(--green); color: white; }
+.btn-warning { background: var(--amber); color: white; }
+.btn-danger { background: var(--red); color: white; }
+.btn-cta {
+  background: linear-gradient(135deg, var(--primary), #6d28d9);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(124,58,237,0.25);
 }
+.btn-cta:hover { box-shadow: 0 4px 14px rgba(124,58,237,0.35); transform: translateY(-1px); }
 
-/* ─── FORM STYLES ────────────────────────────────────────── */
-.filter-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 16px;
-    align-items: end;
-}
-
-.form-group { position: relative; }
-
-.form-label {
-    display: block;
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: 6px;
-    font-size: 0.8rem;
-}
-
-.form-control {
-    width: 100%;
-    padding: 10px 14px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    font-size: 0.85rem;
-    transition: all .15s ease;
-    background: var(--surface2);
-    color: var(--text);
-    font-family: 'Sora', sans-serif;
-}
-
-.form-control:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(108,99,255,.15);
-    background: var(--surface);
-}
-
-/* ─── TESTIMONIAL CARD ───────────────────────────────────── */
 .testimonial-entry {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--muted);
-    border-radius: 10px;
-    padding: 20px;
-    margin-bottom: 16px;
-    transition: all .2s;
-    display: flex;
-    gap: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 14px;
+  display: flex;
+  gap: 18px;
+  transition: all .2s;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
 }
 .testimonial-entry:last-child { margin-bottom: 0; }
 .testimonial-entry:hover {
-    border-left-color: var(--accent);
-    background: rgba(108,99,255,.02);
+  border-color: var(--primary-light);
+  box-shadow: 0 4px 16px rgba(124,58,237,0.08);
 }
+.testimonial-entry.inactive {
+  border-left: 3px solid var(--amber);
+}
+.testimonial-entry.active {
+  border-left: 3px solid var(--green);
+}
+
 .testimonial-avatar {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-weight: 600;
-    font-size: 1.2rem;
-    flex-shrink: 0;
-    overflow: hidden;
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-weight: 600; font-size: 1.1rem;
+  flex-shrink: 0; overflow: hidden;
 }
 .testimonial-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+  width: 100%; height: 100%; object-fit: cover;
 }
-.testimonial-content {
-    flex: 1;
-    min-width: 0;
+
+.testimonial-body { flex: 1; min-width: 0; }
+
+.testimonial-row {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; margin-bottom: 8px;
 }
-.testimonial-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    margin-bottom: 8px;
-    flex-wrap: wrap;
-    gap: 8px;
+.testimonial-person {
+  display: flex; flex-direction: column; gap: 2px;
 }
 .testimonial-name {
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--text);
-    margin: 0;
+  font-size: 0.95rem; font-weight: 600; color: var(--text);
+}
+.testimonial-position {
+  font-size: 0.78rem; color: var(--muted);
 }
 .testimonial-meta {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-    font-size: 0.75rem;
-    color: var(--muted);
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  font-size: 0.73rem; color: var(--muted);
 }
 .testimonial-meta span {
-    display: flex;
-    align-items: center;
-    gap: 4px;
+  display: flex; align-items: center; gap: 4px;
 }
 .testimonial-rating {
-    color: var(--amber);
-    font-size: 0.85rem;
-    letter-spacing: 2px;
+  color: var(--amber);
+  font-size: 0.8rem;
+  letter-spacing: 2px;
 }
 .testimonial-text {
-    font-size: 0.85rem;
-    color: var(--muted);
-    line-height: 1.6;
-    margin-bottom: 12px;
-    font-style: italic;
+  font-size: 0.83rem;
+  color: #4b5563;
+  line-height: 1.6;
+  margin: 8px 0 12px;
+  font-style: italic;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
+.testimonial-entry:hover .testimonial-text {
+  -webkit-line-clamp: unset;
+}
+
 .testimonial-actions {
-    display: flex;
-    gap: 8px;
+  display: flex; gap: 6px;
 }
 .action-btn {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all .15s;
-    color: var(--muted);
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all .15s;
+  color: var(--muted); font-size: 0.85rem;
 }
 .action-btn:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-    background: rgba(108,99,255,.05);
+  border-color: var(--primary-light);
+  color: var(--primary);
+  background: var(--surface2);
 }
 .action-btn.delete:hover {
-    border-color: var(--red);
-    color: var(--red);
-    background: rgba(239,68,68,.05);
-}
-.action-btn.toggle-active {
-    border-color: var(--green);
-    color: var(--green);
-}
-.action-btn.toggle-active:hover {
-    background: rgba(16,185,129,.1);
-}
-.action-btn.toggle-inactive {
-    border-color: var(--amber);
-    color: var(--amber);
-}
-.action-btn.toggle-inactive:hover {
-    background: rgba(245,158,11,.1);
+  border-color: var(--red);
+  color: var(--red);
+  background: #fef2f2;
 }
 
-/* Status badge */
 .status-badge {
-    font-size: 0.7rem;
-    font-weight: 600;
-    padding: 4px 10px;
-    border-radius: 20px;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
+  font-size: 0.65rem; font-weight: 600;
+  padding: 3px 10px; border-radius: 20px;
+  text-transform: uppercase; letter-spacing: 0.04em;
 }
-.status-badge.active { background: rgba(16,185,129,.15); color: var(--green); }
-.status-badge.inactive { background: rgba(245,158,11,.15); color: var(--amber); }
+.status-badge.active { background: rgba(16,185,129,0.12); color: #059669; }
+.status-badge.inactive { background: rgba(245,158,11,0.12); color: #d97706; }
 
-/* ─── PAGINATION ─────────────────────────────────────────── */
 .pagination-wrap {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    margin-top: 24px;
-    padding-top: 24px;
-    border-top: 1px solid var(--border);
+  display: flex; flex-direction: column; align-items: center;
+  gap: 12px; margin-top: 24px; padding-top: 20px;
+  border-top: 1px solid var(--border);
 }
 .pagination {
-    display: flex;
-    gap: 6px;
-    list-style: none;
-    flex-wrap: wrap;
-    justify-content: center;
+  display: flex; gap: 4px; list-style: none;
+  flex-wrap: wrap; justify-content: center;
 }
-.page-item { display: flex; }
 .page-link {
-    padding: 8px 14px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--surface);
-    color: var(--text);
-    text-decoration: none;
-    font-size: 0.8rem;
-    font-weight: 500;
-    transition: all .15s;
+  padding: 8px 13px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.8rem;
+  font-weight: 500;
+  font-family: 'Fira Code', monospace;
+  transition: all .15s;
 }
 .page-link:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-    background: rgba(108,99,255,.05);
+  border-color: var(--primary-light);
+  color: var(--primary);
+  background: var(--surface2);
 }
 .page-item.active .page-link {
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    border-color: var(--accent);
-    color: white;
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
 }
 .page-item.disabled .page-link {
-    opacity: 0.5;
-    cursor: not-allowed;
-    pointer-events: none;
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 .pagination-info {
-    font-size: 0.75rem;
-    color: var(--muted);
+  font-size: 0.73rem;
+  color: var(--muted);
 }
 
-/* ─── EMPTY STATE ───────────────────────────────────────── */
 .empty-state {
-    text-align: center;
-    padding: 48px 24px;
-    color: var(--muted);
+  text-align: center; padding: 56px 24px; color: var(--muted);
 }
 .empty-state-icon {
-    font-size: 3rem;
-    margin-bottom: 12px;
-    opacity: 0.5;
+  font-size: 3rem; margin-bottom: 12px; opacity: 0.4;
 }
-.empty-state-text {
-    font-size: 0.9rem;
+.empty-state-text { font-size: 0.9rem; }
+
+.form-group { position: relative; }
+.form-label {
+  display: block; font-weight: 600;
+  color: var(--text); margin-bottom: 6px; font-size: 0.8rem;
+}
+.form-control {
+  width: 100%; padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px; font-size: 0.85rem;
+  transition: all .15s ease;
+  background: #f9fafb;
+  color: var(--text);
+  font-family: 'Fira Sans', sans-serif;
+}
+.form-control:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(124,58,237,0.12);
+  background: var(--surface);
+}
+select.form-control {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
 }
 
-/* ─── SCROLLBAR ──────────────────────────────────────────── */
+.modal-glass .modal-content {
+  border: none;
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px rgba(124,58,237,0.12);
+}
+.modal-glass .modal-header {
+  background: linear-gradient(135deg, var(--primary), #6d28d9);
+  border: none; padding: 20px 24px;
+}
+.modal-glass .modal-header .close { opacity: 0.8; }
+.modal-glass .modal-header .close span { color: white; font-size: 1.5rem; }
+.modal-glass .modal-title { color: white; font-weight: 600; }
+.modal-glass .modal-body { padding: 24px; }
+.modal-glass .modal-footer {
+  border-top: 1px solid var(--border);
+  padding: 16px 24px;
+}
+
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 10px; }
+::-webkit-scrollbar-thumb { background: #ddd6fe; border-radius: 10px; }
 
-/* ─── PCODED LAYOUT INTEGRATION ──────────────────────────── */
 body { background: var(--bg) !important; }
 .pcoded-main-container, .pcoded-wrapper, .pcoded-content, .pcoded-inner-content { background: var(--bg) !important; }
 .page-header { background: transparent !important; border: none !important; box-shadow: none !important; }
@@ -590,215 +589,212 @@ body { background: var(--bg) !important; }
 .breadcrumb { background: transparent !important; }
 .breadcrumb-item a, .breadcrumb-item.active { color: var(--muted) !important; }
 
-/* ─── RESPONSIVE ─────────────────────────────────────────── */
 @media (max-width: 768px) {
-    .sa-content { padding: 16px; }
-    .filter-grid { grid-template-columns: 1fr; }
-    .testimonial-entry { flex-direction: column; }
-    .testimonial-avatar { width: 50px; height: 50px; }
-    .testimonial-header { flex-direction: column; align-items: flex-start; }
-    .testimonial-actions { width: 100%; justify-content: flex-end; }
-    .pagination { gap: 4px; }
-    .page-link { padding: 6px 10px; font-size: 0.75rem; }
+  .sa-content { padding: 16px; }
+  .stats-row { grid-template-columns: 1fr; }
+  .toolbar { flex-direction: column; align-items: stretch; }
+  .search-box { max-width: 100%; }
+  .testimonial-entry { flex-direction: column; }
+  .testimonial-avatar { width: 44px; height: 44px; font-size: 0.95rem; }
+  .testimonial-row { flex-direction: column; }
+  .testimonial-actions { width: 100%; justify-content: flex-end; }
+  .page-link { padding: 6px 10px; font-size: 0.7rem; }
 }
 </style>
 
-<!-- [ Main Content ] start -->
-<div class="pcoded-main-container">
-    <div class="pcoded-wrapper">
-        <div class="pcoded-content">
-            <div class="pcoded-inner-content">
-                <!-- [ breadcrumb ] start -->
-                <div class="page-header">
-                    <div class="page-block">
-                        <div class="row align-items-center">
-                            <div class="col-md-12">
-                                <div class="page-header-title">
-                                    <h5 class="m-b-10">Manage Testimonials</h5>
-                                </div>
-                                <ul class="breadcrumb">
-                                    <li class="breadcrumb-item"><a href="dashboard.php"><i class="feather icon-home"></i></a></li>
-                                    <li class="breadcrumb-item"><a href="#!">Super Admin</a></li>
-                                    <li class="breadcrumb-item"><a href="#!">Testimonials</a></li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- [ breadcrumb ] end -->
-
-                <div class="sa-wrap">
-                    <div class="sa-content">
-
-                        <!-- Filter Card -->
-                        <div class="sa-card">
-                            <div class="sa-card-hdr">
-                                <h3><i class="feather icon-filter" style="margin-right:8px"></i>Filters</h3>
-                                <button class="sa-btn sa-btn-primary" data-toggle="modal" data-target="#addTestimonialModal">
-                                    <i class="feather icon-plus"></i>Add Testimonial
-                                </button>
-                            </div>
-                            <div class="sa-card-body">
-                                <form method="GET" action="manage_testimonials.php">
-                                    <div class="filter-grid">
-                                        <div class="form-group">
-                                            <label class="form-label" for="search">Search</label>
-                                            <input type="text" class="form-control" id="search" name="search" placeholder="Name, destination, testimonial..." value="<?= htmlspecialchars($search_query) ?>">
+                <!-- [ Main Content ] start -->
+                <div class="pcoded-main-container">
+                    <div class="pcoded-wrapper">
+                        <div class="pcoded-content">
+                            <div class="pcoded-inner-content">
+                                <div class="page-header">
+                                    <div class="page-block">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-12">
+                                                <div class="page-header-title">
+                                                    <h5 class="m-b-10">Manage Testimonials</h5>
+                                                </div>
+                                                <ul class="breadcrumb">
+                                                    <li class="breadcrumb-item"><a href="dashboard.php"><i class="feather icon-home"></i></a></li>
+                                                    <li class="breadcrumb-item"><a href="#!">Super Admin</a></li>
+                                                    <li class="breadcrumb-item"><a href="#!">Testimonials</a></li>
+                                                </ul>
+                                            </div>
                                         </div>
-                                        <div class="form-group">
-                                            <label class="form-label">&nbsp;</label>
-                                            <button type="submit" class="sa-btn sa-btn-primary" style="width:100%; justify-content:center;">
-                                                <i class="feather icon-search"></i> Search
+                                    </div>
+                                </div>
+
+                                <div class="sa-wrap">
+                                    <div class="sa-content">
+
+                                        <?php
+                                        $active_count = 0;
+                                        $inactive_count = 0;
+                                        foreach ($testimonials as $t) {
+                                            if ($t['active']) $active_count++; else $inactive_count++;
+                                        }
+                                        ?>
+                                        <div class="stats-row">
+                                            <div class="stat-card">
+                                                <div class="stat-icon total"><i class="feather icon-message-square"></i></div>
+                                                <div class="stat-info">
+                                                    <h4><?= $total_items ?></h4>
+                                                    <p>Total Testimonials</p>
+                                                </div>
+                                            </div>
+                                            <div class="stat-card">
+                                                <div class="stat-icon active-count"><i class="feather icon-check-circle"></i></div>
+                                                <div class="stat-info">
+                                                    <h4><?= $active_count ?></h4>
+                                                    <p>Active</p>
+                                                </div>
+                                            </div>
+                                            <div class="stat-card">
+                                                <div class="stat-icon inactive-count"><i class="feather icon-x-circle"></i></div>
+                                                <div class="stat-info">
+                                                    <h4><?= $inactive_count ?></h4>
+                                                    <p>Inactive</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="toolbar">
+                                            <form method="GET" action="manage_testimonials.php" style="display:flex;align-items:center;gap:8px;flex:1;flex-wrap:wrap">
+                                                <div class="search-box">
+                                                    <i class="feather icon-search"></i>
+                                                    <input type="text" name="search" placeholder="Search name, position, testimonial..." value="<?= htmlspecialchars($search_query) ?>">
+                                                </div>
+                                                <button type="submit" class="btn btn-primary btn-sm"><i class="feather icon-search"></i> Search</button>
+                                                <?php if (!empty($search_query)): ?>
+                                                <a href="manage_testimonials.php" class="btn btn-ghost btn-sm"><i class="feather icon-x"></i> Clear</a>
+                                                <?php endif; ?>
+                                            </form>
+                                            <button class="btn btn-cta" data-toggle="modal" data-target="#addTestimonialModal">
+                                                <i class="feather icon-plus"></i> Add Testimonial
                                             </button>
                                         </div>
-                                        <?php if (!empty($search_query)): ?>
-                                        <div class="form-group">
-                                            <label class="form-label">&nbsp;</label>
-                                            <a href="manage_testimonials.php" class="sa-btn sa-btn-ghost" style="width:100%; justify-content:center;">
-                                                <i class="feather icon-x"></i> Clear
-                                            </a>
-                                        </div>
-                                        <?php endif; ?>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
 
-                        <!-- Testimonials List Card -->
-                        <div class="sa-card">
-                            <div class="sa-card-hdr">
-                                <h3><i class="feather icon-message-square" style="margin-right:8px"></i>Testimonials</h3>
-                                <span class="badge-num"><?= $total_items ?> total</span>
-                            </div>
-                            <div class="sa-card-body">
-                                <?php if (!empty($testimonials)): ?>
-                                    <?php foreach ($testimonials as $testimonial): 
-                                        $initial = strtoupper(substr($testimonial['name'], 0, 1));
-                                        $stars = '';
-                                        for($i = 1; $i <= 5; $i++) {
-                                            $stars .= $i <= $testimonial['rating'] ? '★' : '☆';
-                                        }
-                                    ?>
-                                    <div class="testimonial-entry" style="border-left-color: <?= $testimonial['active'] ? 'var(--green)' : 'var(--amber)' ?>">
-                                        <div class="testimonial-avatar">
-                                            <?php if ($testimonial['photo']): ?>
-                                                <img src="../<?= htmlspecialchars($testimonial['photo']) ?>" alt="<?= htmlspecialchars($testimonial['name']) ?>">
-                                            <?php else: ?>
-                                                <?= $initial ?>
-                                            <?php endif; ?>
-                                        </div>
-                                        <div class="testimonial-content">
-                                            <div class="testimonial-header">
-                                                <div>
-                                                    <h4 class="testimonial-name"><?= htmlspecialchars($testimonial['name']) ?></h4>
+                                        <?php if (!empty($testimonials)): ?>
+                                            <?php foreach ($testimonials as $testimonial): 
+                                                $initial = strtoupper(substr($testimonial['name'], 0, 1));
+                                                $stars = '';
+                                                for($i = 1; $i <= 5; $i++) {
+                                                    $stars .= $i <= $testimonial['rating'] ? '★' : '☆';
+                                                }
+                                            ?>
+                                            <div class="testimonial-entry <?= $testimonial['active'] ? 'active' : 'inactive' ?>">
+                                                <div class="testimonial-avatar">
+                                                    <?php if ($testimonial['photo']): ?>
+                                                        <img src="../<?= htmlspecialchars($testimonial['photo']) ?>" alt="<?= htmlspecialchars($testimonial['name']) ?>">
+                                                    <?php else: ?>
+                                                        <?= $initial ?>
+                                                    <?php endif; ?>
+                                                </div>
+                                                <div class="testimonial-body">
+                                                    <div class="testimonial-row">
+                                                        <div class="testimonial-person">
+                                                            <div class="testimonial-name"><?= htmlspecialchars($testimonial['name']) ?></div>
+                                                            <div class="testimonial-position">
+                                                                <i class="feather icon-briefcase" style="margin-right:3px"></i><?= htmlspecialchars($testimonial['position'] ?: 'No position') ?>
+                                                            </div>
+                                                        </div>
+                                                        <div style="display:flex;align-items:center;gap:10px">
+                                                            <span class="testimonial-rating"><?= $stars ?></span>
+                                                            <span class="status-badge <?= $testimonial['active'] ? 'active' : 'inactive' ?>"><?= $testimonial['active'] ? 'Active' : 'Inactive' ?></span>
+                                                        </div>
+                                                    </div>
                                                     <div class="testimonial-meta">
                                                         <span><i class="feather icon-building"></i> <?= htmlspecialchars($testimonial['tenant_name'] ?? 'N/A') ?></span>
-                                                        <span><i class="feather icon-map-pin"></i> <?= htmlspecialchars($testimonial['destination'] ?: 'N/A') ?></span>
                                                         <span><i class="feather icon-calendar"></i> <?= date('M d, Y', strtotime($testimonial['created_at'])) ?></span>
                                                     </div>
-                                                </div>
-                                                <div style="display:flex;align-items:center;gap:8px">
-                                                    <span class="testimonial-rating"><?= $stars ?></span>
-                                                    <span class="status-badge <?= $testimonial['active'] ? 'active' : 'inactive' ?>">
-                                                        <?= $testimonial['active'] ? 'Active' : 'Inactive' ?>
-                                                    </span>
+                                                    <p class="testimonial-text">"<?= htmlspecialchars($testimonial['testimonial']) ?>"</p>
+                                                    <div class="testimonial-actions">
+                                                        <button class="action-btn edit-testimonial" data-id="<?= $testimonial['id'] ?>" title="Edit">
+                                                            <i class="feather icon-edit-2"></i>
+                                                        </button>
+                                                        <button class="action-btn toggle-status"
+                                                                data-id="<?= $testimonial['id'] ?>"
+                                                                data-active="<?= $testimonial['active'] ?>"
+                                                                title="<?= $testimonial['active'] ? 'Deactivate' : 'Activate' ?>">
+                                                            <i class="feather <?= $testimonial['active'] ? 'icon-eye-off' : 'icon-eye' ?>"></i>
+                                                        </button>
+                                                        <button class="action-btn delete delete-testimonial" data-id="<?= $testimonial['id'] ?>" data-name="<?= htmlspecialchars($testimonial['name']) ?>" title="Delete">
+                                                            <i class="feather icon-trash-2"></i>
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <p class="testimonial-text">"<?= htmlspecialchars($testimonial['testimonial']) ?>"</p>
-                                            <div class="testimonial-actions">
-                                                <button class="action-btn edit-testimonial" data-id="<?= $testimonial['id'] ?>" title="Edit">
-                                                    <i class="feather icon-edit-2"></i>
-                                                </button>
-                                                <button class="action-btn <?= $testimonial['active'] ? 'toggle-inactive' : 'toggle-active' ?> toggle-status"
-                                                        data-id="<?= $testimonial['id'] ?>"
-                                                        data-active="<?= $testimonial['active'] ?>"
-                                                        title="<?= $testimonial['active'] ? 'Deactivate' : 'Activate' ?>">
-                                                    <i class="feather <?= $testimonial['active'] ? 'icon-eye-off' : 'icon-eye' ?>"></i>
-                                                </button>
-                                                <button class="action-btn delete delete-testimonial" data-id="<?= $testimonial['id'] ?>" data-name="<?= htmlspecialchars($testimonial['name']) ?>" title="Delete">
-                                                    <i class="feather icon-trash-2"></i>
-                                                </button>
+                                            <?php endforeach; ?>
+                                        <?php else: ?>
+                                            <div class="empty-state">
+                                                <div class="empty-state-icon"><i class="feather icon-message-square"></i></div>
+                                                <div class="empty-state-text">No testimonials found</div>
+                                            </div>
+                                        <?php endif; ?>
+
+                                        <?php if ($total_pages > 1): ?>
+                                        <div class="pagination-wrap">
+                                            <ul class="pagination">
+                                                <li class="page-item <?= $current_page === 1 ? 'disabled' : '' ?>">
+                                                    <a class="page-link" href="?page=<?= $current_page - 1 ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">
+                                                        <i class="feather icon-chevron-left"></i>
+                                                    </a>
+                                                </li>
+                                                <?php 
+                                                $start_page = max(1, $current_page - 2);
+                                                $end_page = min($total_pages, $current_page + 2);
+                                                if ($start_page > 1): ?>
+                                                <li class="page-item">
+                                                    <a class="page-link" href="?page=1<?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">1</a>
+                                                </li>
+                                                <?php if ($start_page > 2): ?>
+                                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                <?php endif; ?>
+                                                <?php endif; ?>
+                                                <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
+                                                <li class="page-item <?= $i === $current_page ? 'active' : '' ?>">
+                                                    <a class="page-link" href="?page=<?= $i ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>"><?= $i ?></a>
+                                                </li>
+                                                <?php endfor; ?>
+                                                <?php if ($end_page < $total_pages): ?>
+                                                <?php if ($end_page < $total_pages - 1): ?>
+                                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                <?php endif; ?>
+                                                <li class="page-item">
+                                                    <a class="page-link" href="?page=<?= $total_pages ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>"><?= $total_pages ?></a>
+                                                </li>
+                                                <?php endif; ?>
+                                                <li class="page-item <?= $current_page === $total_pages ? 'disabled' : '' ?>">
+                                                    <a class="page-link" href="?page=<?= $current_page + 1 ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">
+                                                        <i class="feather icon-chevron-right"></i>
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                            <div class="pagination-info">
+                                                Page <?= $current_page ?> of <?= $total_pages ?> | Showing <?= count($testimonials) ?> of <?= $total_items ?> testimonials
                                             </div>
                                         </div>
-                                    </div>
-                                    <?php endforeach; ?>
-                                <?php else: ?>
-                                    <div class="empty-state">
-                                        <div class="empty-state-icon"><i class="feather icon-message-square"></i></div>
-                                        <div class="empty-state-text">No testimonials found</div>
-                                    </div>
-                                <?php endif; ?>
+                                        <?php endif; ?>
 
-                                <!-- Pagination -->
-                                <?php if ($total_pages > 1): ?>
-                                <div class="pagination-wrap">
-                                    <ul class="pagination">
-                                        <li class="page-item <?= $current_page === 1 ? 'disabled' : '' ?>">
-                                            <a class="page-link" href="?page=<?= $current_page - 1 ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">
-                                                <i class="feather icon-chevron-left"></i>
-                                            </a>
-                                        </li>
-                                        <?php 
-                                        $start_page = max(1, $current_page - 2);
-                                        $end_page = min($total_pages, $current_page + 2);
-                                        if ($start_page > 1): ?>
-                                        <li class="page-item">
-                                            <a class="page-link" href="?page=1<?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">1</a>
-                                        </li>
-                                        <?php if ($start_page > 2): ?>
-                                        <li class="page-item disabled"><span class="page-link">...</span></li>
-                                        <?php endif; ?>
-                                        <?php endif; ?>
-                                        <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
-                                        <li class="page-item <?= $i === $current_page ? 'active' : '' ?>">
-                                            <a class="page-link" href="?page=<?= $i ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>"><?= $i ?></a>
-                                        </li>
-                                        <?php endfor; ?>
-                                        <?php if ($end_page < $total_pages): ?>
-                                        <?php if ($end_page < $total_pages - 1): ?>
-                                        <li class="page-item disabled"><span class="page-link">...</span></li>
-                                        <?php endif; ?>
-                                        <li class="page-item">
-                                            <a class="page-link" href="?page=<?= $total_pages ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>"><?= $total_pages ?></a>
-                                        </li>
-                                        <?php endif; ?>
-                                        <li class="page-item <?= $current_page === $total_pages ? 'disabled' : '' ?>">
-                                            <a class="page-link" href="?page=<?= $current_page + 1 ?><?= !empty($search_query) ? '&search=' . urlencode($search_query) : '' ?>">
-                                                <i class="feather icon-chevron-right"></i>
-                                            </a>
-                                        </li>
-                                    </ul>
-                                    <div class="pagination-info">
-                                        Page <?= $current_page ?> of <?= $total_pages ?> | Showing <?= count($testimonials) ?> of <?= $total_items ?> testimonials
-                                    </div>
-                                </div>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-
-                    </div><!-- /sa-content -->
-                </div><!-- /sa-wrap -->
-            </div><!-- /.pcoded-inner-content -->
-        </div><!-- /.pcoded-content -->
-    </div><!-- /.pcoded-wrapper -->
-</div><!-- /.pcoded-main-container -->
+                                    </div><!-- /sa-content -->
+                                </div><!-- /sa-wrap -->
+                            </div><!-- /.pcoded-inner-content -->
+                        </div><!-- /.pcoded-content -->
+                    </div><!-- /.pcoded-wrapper -->
+                </div><!-- /.pcoded-main-container -->
 
 <!-- Add Testimonial Modal -->
-<div class="modal fade" id="addTestimonialModal" tabindex="-1" role="dialog">
+<div class="modal fade modal-glass" id="addTestimonialModal" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
         <form id="addTestimonialForm" enctype="multipart/form-data" method="POST">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
             <input type="hidden" name="action" value="add_testimonial">
-            <div class="modal-content" style="border:none;border-radius:14px;overflow:hidden">
-                <div class="modal-header" style="background: linear-gradient(135deg, #6366f1, #2ed8b6);border:none;padding:20px 24px">
-                    <h5 class="modal-title" style="color:white;font-weight:600">
-                        <i class="feather icon-plus" style="margin-right:8px"></i>Add New Testimonial
-                    </h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="opacity:0.8">
-                        <span style="color:white">&times;</span>
-                    </button>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="feather icon-plus" style="margin-right:8px"></i>Add New Testimonial</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button>
                 </div>
-                <div class="modal-body" style="padding:24px">
+                <div class="modal-body">
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
                         <div class="form-group" style="grid-column:span 2">
                             <label class="form-label">Tenant *</label>
@@ -814,8 +810,8 @@ body { background: var(--bg) !important; }
                             <input type="text" name="name" class="form-control" required>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Destination</label>
-                            <input type="text" name="destination" class="form-control" placeholder="e.g., Dubai, Tokyo">
+                            <label class="form-label">Position</label>
+                            <input type="text" name="position" class="form-control" placeholder="e.g., CEO, Travel Manager">
                         </div>
                         <div class="form-group" style="grid-column:span 2">
                             <label class="form-label">Photo</label>
@@ -838,9 +834,9 @@ body { background: var(--bg) !important; }
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer" style="border-top:1px solid var(--border);padding:16px 24px">
-                    <button type="button" class="sa-btn sa-btn-ghost" data-dismiss="modal">Cancel</button>
-                    <button type="submit" class="sa-btn sa-btn-primary">Add Testimonial</button>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-ghost" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Testimonial</button>
                 </div>
             </div>
         </form>
@@ -848,23 +844,19 @@ body { background: var(--bg) !important; }
 </div>
 
 <!-- Edit Testimonial Modal -->
-<div class="modal fade" id="editTestimonialModal" tabindex="-1" role="dialog">
+<div class="modal fade modal-glass" id="editTestimonialModal" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
         <form id="editTestimonialForm" enctype="multipart/form-data" method="POST">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
             <input type="hidden" name="action" value="update_testimonial">
             <input type="hidden" name="testimonial_id" id="edit_testimonial_id">
             <input type="hidden" name="existing_photo" id="edit_existing_photo">
-            <div class="modal-content" style="border:none;border-radius:14px;overflow:hidden">
-                <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b, #fbbf24);border:none;padding:20px 24px">
-                    <h5 class="modal-title" style="color:white;font-weight:600">
-                        <i class="feather icon-edit" style="margin-right:8px"></i>Edit Testimonial
-                    </h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="opacity:0.8">
-                        <span style="color:white">&times;</span>
-                    </button>
+            <div class="modal-content">
+                <div class="modal-header" style="background:linear-gradient(135deg,var(--amber),#d97706)">
+                    <h5 class="modal-title"><i class="feather icon-edit" style="margin-right:8px"></i>Edit Testimonial</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button>
                 </div>
-                <div class="modal-body" style="padding:24px">
+                <div class="modal-body">
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
                         <div class="form-group" style="grid-column:span 2">
                             <label class="form-label">Tenant *</label>
@@ -880,8 +872,8 @@ body { background: var(--bg) !important; }
                             <input type="text" name="name" id="edit_name" class="form-control" required>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Destination</label>
-                            <input type="text" name="destination" id="edit_destination" class="form-control" placeholder="e.g., Dubai, Tokyo">
+                            <label class="form-label">Position</label>
+                            <input type="text" name="position" id="edit_position" class="form-control" placeholder="e.g., CEO, Travel Manager">
                         </div>
                         <div class="form-group" style="grid-column:span 2">
                             <label class="form-label">Photo</label>
@@ -907,9 +899,9 @@ body { background: var(--bg) !important; }
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer" style="border-top:1px solid var(--border);padding:16px 24px">
-                    <button type="button" class="sa-btn sa-btn-ghost" data-dismiss="modal">Cancel</button>
-                    <button type="submit" class="sa-btn sa-btn-warning">Update Testimonial</button>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-ghost" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">Update Testimonial</button>
                 </div>
             </div>
         </form>
@@ -979,7 +971,7 @@ $('.edit-testimonial').on('click', function() {
             $('#edit_testimonial_id').val(testimonial.id);
             $('#edit_tenant_id').val(testimonial.tenant_id);
             $('#edit_name').val(testimonial.name);
-            $('#edit_destination').val(testimonial.destination || '');
+            $('#edit_position').val(testimonial.position || '');
             $('#edit_rating').val(testimonial.rating);
             $('#edit_testimonial').val(testimonial.testimonial);
             $('#edit_existing_photo').val(testimonial.photo || '');
