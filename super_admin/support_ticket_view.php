@@ -425,6 +425,17 @@ body { background: var(--bg) !important; }
                                 <div class="description-box">
                                     <?= nl2br(htmlspecialchars($ticket['description'] ?? 'No description')) ?>
                                 </div>
+
+                                <?php if (!empty($ticket['screenshot_path'])): ?>
+                                <div style="margin-top:16px">
+                                    <h6 style="font-size:0.8rem;color:var(--muted);text-transform:uppercase;margin-bottom:10px">Attached Screenshot</h6>
+                                    <a href="../<?= htmlspecialchars($ticket['screenshot_path']) ?>" target="_blank">
+                                        <img src="../<?= htmlspecialchars($ticket['screenshot_path']) ?>"
+                                             alt="Ticket Screenshot"
+                                             style="max-width:100%;max-height:320px;border-radius:10px;border:1px solid var(--border);cursor:zoom-in">
+                                    </a>
+                                </div>
+                                <?php endif; ?>
                             </div>
                         </div>
 
@@ -451,6 +462,15 @@ body { background: var(--bg) !important; }
                                         <div class="reply-text">
                                             <?= nl2br(htmlspecialchars($reply['reply_text'] ?? '')) ?>
                                         </div>
+                                        <?php if (!empty($reply['screenshot_path'])): ?>
+                                        <div style="margin-top:10px">
+                                            <a href="../<?= htmlspecialchars($reply['screenshot_path']) ?>" target="_blank">
+                                                <img src="../<?= htmlspecialchars($reply['screenshot_path']) ?>"
+                                                     alt="Reply Attachment"
+                                                     style="max-width:240px;max-height:160px;border-radius:8px;border:1px solid var(--border);cursor:zoom-in">
+                                            </a>
+                                        </div>
+                                        <?php endif; ?>
                                     </div>
                                     <?php endforeach; ?>
                                 <?php endif; ?>

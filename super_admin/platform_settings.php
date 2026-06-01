@@ -43,149 +43,53 @@ $settings_map = array_column($settings, 'value', 'key');
 
 <?php include '../includes/header_super_admin.php'; ?>
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-/* ─── TOKENS ─────────────────────────────────────────────── */
-:root {
-  --bg:       #f8fafc;
-  --surface:  #ffffff;
-  --surface2: #f1f5f9;
-  --border:   #e5e7eb;
-  --text:     #1f2937;
-  --muted:    #6b7280;
-  --accent:   #4099ff;
-  --accent2:  #2ed8b6;
-  --green:    #10b981;
-  --amber:    #f59e0b;
-  --red:      #ef4444;
-  --blue:     #3b82f6;
-  --purple:   #8b5cf6;
-  --radius:   14px;
+.sa-wrap {
+    max-width: 900px;
+    margin: 0 auto;
 }
 
-/* ─── RESET / BASE ───────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { font-size: 14px; }
-body {
-  font-family: 'Sora', sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
+.sa-content {
+    padding: 8px 4px;
 }
 
-/* ─── MAIN WRAPPER ───────────────────────────────────────── */
-.sa-wrap { display: flex; flex-direction: column; min-height: 100vh; }
-
-/* ─── TOP BAR ────────────────────────────────────────────── */
-.sa-topbar {
-  padding: 16px 28px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: space-between;
-  position: sticky; top: 0; z-index: 50;
-}
-.sa-topbar-left h1 { font-size: 1.05rem; font-weight: 600; letter-spacing: -.02em; }
-.sa-topbar-left p  { font-size: .75rem; color: var(--muted); margin-top: 2px; }
-.sa-topbar-right   { display: flex; align-items: center; gap: 10px; }
-.sa-avatar {
-  width: 34px; height: 34px; border-radius: 50%; overflow: hidden;
-  border: 2px solid var(--accent); cursor: pointer; flex-shrink: 0;
-}
-.sa-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.sa-btn {
-  font-size: .75rem; font-weight: 600; font-family: 'Sora', sans-serif;
-  padding: 6px 14px; border-radius: 20px; cursor: pointer; border: none;
-  display: inline-flex; align-items: center; gap: 5px; text-decoration: none;
-  transition: all .15s;
-}
-.sa-btn-ghost {
-  background: var(--surface2); color: var(--muted); border: 1px solid var(--border);
-}
-.sa-btn-ghost:hover { color: var(--text); border-color: rgba(255,255,255,.15); }
-.sa-btn-primary {
-  background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff;
-}
-.sa-btn-primary:hover { opacity: .85; transform: translateY(-1px); }
-.sa-btn-danger { background: var(--red); color: #fff; }
-.sa-btn-danger:hover { opacity: .85; transform: translateY(-1px); }
-
-/* ─── CONTENT ────────────────────────────────────────────── */
-.sa-content { 
-    padding: 24px 28px; 
-    display: flex; 
-    flex-direction: column; 
-    gap: 24px; 
-}
-
-/* ─── SECTION HEADER ─────────────────────────────────────── */
-.sa-shdr {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 14px;
-}
-.sa-shdr h2 {
-  font-size: .72rem; text-transform: uppercase; letter-spacing: .1em;
-  color: var(--muted); font-weight: 700;
-}
-
-/* ─── CARD ───────────────────────────────────────────────── */
 .sa-card {
-  background: var(--surface); 
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--accent);
-  border-radius: var(--radius); 
-  overflow: hidden;
-  transition: all .2s;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-  margin-bottom: 24px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,.04);
 }
+
 .sa-card:last-child { margin-bottom: 0; }
-.sa-card:hover { 
-    border-left-color: var(--accent2);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-}
+
 .sa-card-hdr {
-  padding: 16px 24px; 
-  border-bottom: 1px solid var(--border);
-  display: flex; 
-  align-items: center; 
-  justify-content: space-between;
-  background: linear-gradient(135deg, rgba(108,99,255,0.04), rgba(46,216,182,0.02));
-}
-.sa-card-hdr h3 { 
-    font-size: .95rem; 
-    font-weight: 600; 
-    color: var(--text);
+    padding: 18px 24px;
+    border-bottom: 1px solid #e5e7eb;
     display: flex;
     align-items: center;
-    letter-spacing: -0.01em;
-}
-.sa-card-body { 
-    padding: 24px; 
+    gap: 10px;
 }
 
-/* Card color variants for identification */
-.sa-card:nth-child(1) { border-left-color: #6366f1; }
-.sa-card:nth-child(2) { border-left-color: #ec4899; }
-.sa-card:nth-child(3) { border-left-color: #f59e0b; }
-.sa-card:nth-child(4) { border-left-color: #10b981; }
-.sa-card:nth-child(5) { border-left-color: #8b5cf6; }
-.sa-card:nth-child(6) { border-left-color: #3b82f6; }
+.sa-card-hdr h3 {
+    font-size: .95rem;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #1f2937;
+}
 
-/* Hover states for card colors */
-.sa-card:nth-child(1):hover { border-left-color: #818cf8; }
-.sa-card:nth-child(2):hover { border-left-color: #f472b6; }
-.sa-card:nth-child(3):hover { border-left-color: #fbbf24; }
-.sa-card:nth-child(4):hover { border-left-color: #34d399; }
-.sa-card:nth-child(5):hover { border-left-color: #a78bfa; }
-.sa-card:nth-child(6):hover { border-left-color: #60a5fa; }
+.sa-card-body {
+    padding: 24px;
+}
 
-/* ─── FORM STYLES ────────────────────────────────────────── */
 .form-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 18px;
 }
 
 .form-group {
@@ -195,93 +99,83 @@ body {
 .form-label {
     display: block;
     font-weight: 600;
-    color: var(--text);
+    color: #374151;
     margin-bottom: 6px;
-    font-size: 0.8rem;
+    font-size: .82rem;
 }
 
 .form-control {
     width: 100%;
-    padding: 10px 14px;
-    border: 1px solid var(--border);
+    padding: 9px 12px;
+    border: 1px solid #d1d5db;
     border-radius: 8px;
-    font-size: 0.85rem;
+    font-size: .88rem;
     transition: all .15s ease;
-    background: var(--surface2);
-    color: var(--text);
-    font-family: 'Sora', sans-serif;
+    background: #f9fafb;
+    color: #1f2937;
+    font-family: inherit;
 }
 
 .form-control:focus {
     outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(108,99,255,.15);
-    background: var(--surface);
+    border-color: #4099ff;
+    box-shadow: 0 0 0 3px rgba(64,153,255,.12);
+    background: #fff;
 }
 
 .form-control.is-invalid {
-    border-color: var(--red);
+    border-color: #ef4444;
     background-color: #fef2f2;
 }
 
 .form-control.is-valid {
-    border-color: var(--green);
+    border-color: #10b981;
     background-color: #f0fdf4;
 }
 
 .invalid-feedback {
-    color: var(--red);
-    font-size: 0.7rem;
+    color: #ef4444;
+    font-size: .72rem;
     margin-top: 4px;
-    display: block;
 }
 
-.valid-feedback {
-    color: var(--green);
-    font-size: 0.7rem;
-    margin-top: 4px;
-    display: block;
-}
-
-/* ─── IMAGE UPLOAD ──────────────────────────────────────── */
 .image-upload-area {
-    border: 2px dashed var(--border);
-    border-radius: var(--radius);
-    padding: 24px;
+    border: 2px dashed #d1d5db;
+    border-radius: 10px;
+    padding: 20px;
     text-align: center;
-    background: var(--surface2);
+    background: #f9fafb;
     transition: all .2s;
     cursor: pointer;
 }
 
 .image-upload-area:hover {
-    border-color: var(--accent);
-    background: rgba(108,99,255,.05);
+    border-color: #4099ff;
+    background: rgba(64,153,255,.04);
 }
 
 .image-upload-area.dragover {
-    border-color: var(--accent);
-    background: rgba(108,99,255,.1);
-    transform: scale(1.01);
+    border-color: #4099ff;
+    background: rgba(64,153,255,.08);
 }
 
 .upload-icon {
-    font-size: 2.5rem;
-    color: var(--muted);
-    margin-bottom: 8px;
+    font-size: 2rem;
+    color: #9ca3af;
+    margin-bottom: 6px;
 }
 
 .upload-text h5 {
-    margin: 0 0 4px 0;
-    color: var(--text);
+    margin: 0 0 2px 0;
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: .88rem;
+    color: #1f2937;
 }
 
 .upload-text p {
     margin: 0;
-    color: var(--muted);
-    font-size: 0.75rem;
+    font-size: .75rem;
+    color: #6b7280;
 }
 
 .preview-container {
@@ -292,29 +186,27 @@ body {
 }
 
 .preview-item {
-    background: var(--surface);
-    padding: 12px;
+    background: #fff;
+    padding: 10px;
     border-radius: 8px;
-    border: 1px solid var(--border);
+    border: 1px solid #e5e7eb;
     text-align: center;
-    min-width: 140px;
+    min-width: 130px;
 }
 
 .current-image {
     border-radius: 6px;
-    border: 2px solid var(--border);
-    max-width: 180px;
-    max-height: 100px;
+    border: 1px solid #e5e7eb;
+    max-width: 160px;
+    max-height: 90px;
     object-fit: contain;
 }
 
-/* ─── TOGGLE SWITCH ──────────────────────────────────────── */
 .toggle-switch {
     position: relative;
     display: inline-block;
     width: 44px;
     height: 24px;
-    margin-left: 10px;
 }
 
 .toggle-switch input {
@@ -326,96 +218,125 @@ body {
 .slider {
     position: absolute;
     cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #cbd5e1;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: #cbd5e1;
     transition: .3s;
     border-radius: 24px;
 }
 
 .slider:before {
-    position: absolute;
     content: "";
+    position: absolute;
     height: 18px;
     width: 18px;
     left: 3px;
     bottom: 3px;
-    background-color: white;
+    background: #fff;
     transition: .3s;
     border-radius: 50%;
-    box-shadow: 0 2px 4px rgba(0,0,0,.15);
+    box-shadow: 0 2px 4px rgba(0,0,0,.12);
 }
 
 input:checked + .slider {
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    background: linear-gradient(135deg, #4099ff, #2ed8b6);
 }
 
 input:checked + .slider:before {
     transform: translateX(20px);
 }
 
-/* ─── ALERTS ─────────────────────────────────────────────── */
 .alert {
-    padding: 14px 18px;
+    padding: 12px 16px;
     border-radius: 10px;
     margin-bottom: 16px;
     border: 1px solid transparent;
     display: flex;
     align-items: flex-start;
     gap: 10px;
-    font-size: 0.85rem;
+    font-size: .85rem;
 }
 
 .alert-success {
-    background: rgba(34,197,94,.1);
-    border-color: rgba(34,197,94,.2);
-    color: #166534;
+    background: rgba(16,185,129,.08);
+    border-color: rgba(16,185,129,.18);
+    color: #065f46;
 }
 
 .alert-danger {
-    background: rgba(239,68,68,.1);
-    border-color: rgba(239,68,68,.2);
+    background: rgba(239,68,68,.08);
+    border-color: rgba(239,68,68,.18);
     color: #991b1b;
 }
 
 .alert-icon {
     flex-shrink: 0;
-    font-size: 1.1rem;
+    font-size: 1rem;
 }
 
-/* ─── ACTION BUTTONS ────────────────────────────────────── */
 .action-buttons {
     display: flex;
     gap: 12px;
-    justify-content: center;
-    margin-top: 24px;
+    justify-content: flex-end;
+    margin-top: 28px;
     flex-wrap: wrap;
 }
 
-/* ─── LOADING OVERLAY ───────────────────────────────────── */
+.sa-btn {
+    font-size: .85rem;
+    font-weight: 600;
+    padding: 10px 22px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    transition: all .15s;
+    font-family: inherit;
+}
+
+.sa-btn-ghost {
+    background: #f3f4f6;
+    color: #6b7280;
+    border: 1px solid #d1d5db;
+}
+
+.sa-btn-ghost:hover {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.sa-btn-primary {
+    background: linear-gradient(135deg, #4099ff, #2ed8b6);
+    color: #fff;
+}
+
+.sa-btn-primary:hover {
+    opacity: .88;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(64,153,255,.25);
+}
+
 .loading-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,.6);
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,.5);
     display: none;
     justify-content: center;
     align-items: center;
     z-index: 9999;
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(3px);
 }
 
 .loading-spinner {
-    width: 3rem;
-    height: 3rem;
-    border: 4px solid rgba(255,255,255,.3);
-    border-top: 4px solid white;
+    width: 2.8rem;
+    height: 2.8rem;
+    border: 3px solid rgba(255,255,255,.3);
+    border-top: 3px solid #fff;
     border-radius: 50%;
-    animation: spin 1s linear infinite;
+    animation: spin .8s linear infinite;
 }
 
 @keyframes spin {
@@ -423,24 +344,10 @@ input:checked + .slider:before {
     100% { transform: rotate(360deg); }
 }
 
-/* ─── SCROLLBAR ──────────────────────────────────────────── */
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 10px; }
-
-/* ─── PCODED LAYOUT INTEGRATION ──────────────────────────── */
-body { background: var(--bg) !important; }
-.pcoded-main-container, .pcoded-wrapper, .pcoded-content, .pcoded-inner-content { background: var(--bg) !important; }
-.page-header { background: transparent !important; border: none !important; box-shadow: none !important; }
-.page-header h5 { color: var(--text) !important; }
-.breadcrumb { background: transparent !important; }
-.breadcrumb-item a, .breadcrumb-item.active { color: var(--muted) !important; }
-
-/* ─── RESPONSIVE ─────────────────────────────────────────── */
 @media (max-width: 768px) {
-    .sa-content { padding: 16px; }
+    .sa-card-body { padding: 16px; }
     .form-grid { grid-template-columns: 1fr; }
-    .action-buttons { flex-direction: column; }
+    .action-buttons { flex-direction: column; align-items: stretch; }
     .sa-btn { justify-content: center; }
 }
 </style>
@@ -489,7 +396,7 @@ body { background: var(--bg) !important; }
                         <form id="settingsForm" enctype="multipart/form-data" method="POST" action="update_settings.php">
                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
 
-                            <!-- Platform Identity Card -->
+                            <!-- Platform Identity Card (name + branding) -->
                             <div class="sa-card">
                                 <div class="sa-card-hdr">
                                     <h3><i class="feather icon-building" style="margin-right:8px"></i>Platform Identity</h3>
@@ -503,34 +410,13 @@ body { background: var(--bg) !important; }
                                                    placeholder="Enter your platform name" required>
                                         </div>
                                         <div class="form-group">
-                                            <label class="form-label" for="support_email">Support Email</label>
-                                            <input type="email" class="form-control" id="support_email" name="support_email"
-                                                   value="<?= htmlspecialchars($settings_map['support_email'] ?? '') ?>"
-                                                   placeholder="support@yourplatform.com" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label class="form-label" for="contact_email">Contact Email</label>
-                                            <input type="email" class="form-control" id="contact_email" name="contact_email"
-                                                   value="<?= htmlspecialchars($settings_map['contact_email'] ?? '') ?>"
-                                                   placeholder="contact@yourplatform.com">
-                                        </div>
-                                        <div class="form-group">
                                             <label class="form-label" for="website_url">Website URL</label>
                                             <input type="url" class="form-control" id="website_url" name="website_url"
                                                    value="<?= htmlspecialchars($settings_map['website_url'] ?? '') ?>"
                                                    placeholder="https://yourplatform.com">
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-
-                            <!-- Visual Branding Card -->
-                            <div class="sa-card">
-                                <div class="sa-card-hdr">
-                                    <h3><i class="feather icon-image" style="margin-right:8px"></i>Visual Branding</h3>
-                                </div>
-                                <div class="sa-card-body">
-                                    <div class="form-grid">
+                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:16px">
                                         <div class="form-group">
                                             <label class="form-label" for="platform_logo">Platform Logo</label>
                                             <div class="image-upload-area" onclick="document.getElementById('platform_logo').click()" role="button" tabindex="0" aria-label="Upload platform logo">
@@ -552,7 +438,6 @@ body { background: var(--bg) !important; }
                                                 </div>
                                             <?php endif; ?>
                                         </div>
-
                                         <div class="form-group">
                                             <label class="form-label" for="platform_favicon">Platform Favicon</label>
                                             <div class="image-upload-area" onclick="document.getElementById('platform_favicon').click()" role="button" tabindex="0" aria-label="Upload platform favicon">
@@ -578,18 +463,24 @@ body { background: var(--bg) !important; }
                                 </div>
                             </div>
 
-                            <!-- Contact Information Card -->
+                            <!-- Company Information Card (contact + social) -->
                             <div class="sa-card">
                                 <div class="sa-card-hdr">
-                                    <h3><i class="feather icon-phone" style="margin-right:8px"></i>Contact Information</h3>
+                                    <h3><i class="feather icon-phone" style="margin-right:8px"></i>Company Information</h3>
                                 </div>
                                 <div class="sa-card-body">
                                     <div class="form-grid">
                                         <div class="form-group">
-                                            <label class="form-label" for="contact_phone">Contact Phone</label>
-                                            <input type="tel" class="form-control" id="contact_phone" name="contact_phone"
-                                                   value="<?= htmlspecialchars($settings_map['contact_phone'] ?? '') ?>"
-                                                   placeholder="+1234567890">
+                                            <label class="form-label" for="support_email">Support Email</label>
+                                            <input type="email" class="form-control" id="support_email" name="support_email"
+                                                   value="<?= htmlspecialchars($settings_map['support_email'] ?? '') ?>"
+                                                   placeholder="support@yourplatform.com" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label" for="contact_email">Contact Email</label>
+                                            <input type="email" class="form-control" id="contact_email" name="contact_email"
+                                                   value="<?= htmlspecialchars($settings_map['contact_email'] ?? '') ?>"
+                                                   placeholder="contact@yourplatform.com">
                                         </div>
                                         <div class="form-group">
                                             <label class="form-label" for="support_phone">Support Phone</label>
@@ -597,45 +488,80 @@ body { background: var(--bg) !important; }
                                                    value="<?= htmlspecialchars($settings_map['support_phone'] ?? '') ?>"
                                                    placeholder="+1234567890">
                                         </div>
+                                        <div class="form-group">
+                                            <label class="form-label" for="contact_phone">Contact Phone</label>
+                                            <input type="tel" class="form-control" id="contact_phone" name="contact_phone"
+                                                   value="<?= htmlspecialchars($settings_map['contact_phone'] ?? '') ?>"
+                                                   placeholder="+1234567890">
+                                        </div>
                                     </div>
-                                    <div class="form-group" style="margin-top:16px">
+                                    <div class="form-group" style="margin-top:12px">
                                         <label class="form-label" for="contact_address">Contact Address</label>
-                                        <textarea class="form-control" id="contact_address" name="contact_address" rows="3"
+                                        <textarea class="form-control" id="contact_address" name="contact_address" rows="2"
                                                   placeholder="Enter your business address"><?= htmlspecialchars($settings_map['contact_address'] ?? '') ?></textarea>
+                                    </div>
+                                    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+                                        <div class="form-grid">
+                                            <div class="form-group">
+                                                <label class="form-label" for="contact_facebook">Facebook URL</label>
+                                                <input type="url" class="form-control" id="contact_facebook" name="contact_facebook"
+                                                       value="<?= htmlspecialchars($settings_map['contact_facebook'] ?? '') ?>"
+                                                       placeholder="https://facebook.com/yourpage">
+                                            </div>
+                                            <div class="form-group">
+                                                <label class="form-label" for="contact_twitter">Twitter URL</label>
+                                                <input type="url" class="form-control" id="contact_twitter" name="contact_twitter"
+                                                       value="<?= htmlspecialchars($settings_map['contact_twitter'] ?? '') ?>"
+                                                       placeholder="https://twitter.com/yourhandle">
+                                            </div>
+                                            <div class="form-group">
+                                                <label class="form-label" for="contact_linkedin">LinkedIn URL</label>
+                                                <input type="url" class="form-control" id="contact_linkedin" name="contact_linkedin"
+                                                       value="<?= htmlspecialchars($settings_map['contact_linkedin'] ?? '') ?>"
+                                                       placeholder="https://linkedin.com/company/yourcompany">
+                                            </div>
+                                            <div class="form-group">
+                                                <label class="form-label" for="contact_instagram">Instagram URL</label>
+                                                <input type="url" class="form-control" id="contact_instagram" name="contact_instagram"
+                                                       value="<?= htmlspecialchars($settings_map['contact_instagram'] ?? '') ?>"
+                                                       placeholder="https://instagram.com/yourhandle">
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Social Media Card -->
+                            <!-- Platform Configuration Card -->
                             <div class="sa-card">
                                 <div class="sa-card-hdr">
-                                    <h3><i class="feather icon-globe" style="margin-right:8px"></i>Social Media Links</h3>
+                                    <h3><i class="feather icon-settings" style="margin-right:8px"></i>Platform Configuration</h3>
                                 </div>
                                 <div class="sa-card-body">
                                     <div class="form-grid">
                                         <div class="form-group">
-                                            <label class="form-label" for="contact_facebook">Facebook URL</label>
-                                            <input type="url" class="form-control" id="contact_facebook" name="contact_facebook"
-                                                   value="<?= htmlspecialchars($settings_map['contact_facebook'] ?? '') ?>"
-                                                   placeholder="https://facebook.com/yourpage">
+                                            <label class="form-label" for="default_currency">Default Currency</label>
+                                            <input type="text" class="form-control" id="default_currency" name="default_currency"
+                                                   value="<?= htmlspecialchars($settings_map['default_currency'] ?? '') ?>"
+                                                   placeholder="USD" maxlength="3" required>
                                         </div>
                                         <div class="form-group">
-                                            <label class="form-label" for="contact_twitter">Twitter URL</label>
-                                            <input type="url" class="form-control" id="contact_twitter" name="contact_twitter"
-                                                   value="<?= htmlspecialchars($settings_map['contact_twitter'] ?? '') ?>"
-                                                   placeholder="https://twitter.com/yourhandle">
+                                            <label class="form-label" for="max_users_per_tenant">Max Users Per Tenant</label>
+                                            <input type="number" class="form-control" id="max_users_per_tenant" name="max_users_per_tenant"
+                                                   value="<?= htmlspecialchars($settings_map['max_users_per_tenant'] ?? '') ?>"
+                                                   placeholder="100" min="1" required>
                                         </div>
                                         <div class="form-group">
-                                            <label class="form-label" for="contact_linkedin">LinkedIn URL</label>
-                                            <input type="url" class="form-control" id="contact_linkedin" name="contact_linkedin"
-                                                   value="<?= htmlspecialchars($settings_map['contact_linkedin'] ?? '') ?>"
-                                                   placeholder="https://linkedin.com/company/yourcompany">
-                                        </div>
-                                        <div class="form-group">
-                                            <label class="form-label" for="contact_instagram">Instagram URL</label>
-                                            <input type="url" class="form-control" id="contact_instagram" name="contact_instagram"
-                                                   value="<?= htmlspecialchars($settings_map['contact_instagram'] ?? '') ?>"
-                                                   placeholder="https://instagram.com/yourhandle">
+                                            <label class="form-label" for="api_enabled">API Status</label>
+                                            <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+                                                <span style="font-size:0.85rem;color:var(--muted)">Disabled</span>
+                                                <label class="toggle-switch">
+                                                    <input type="hidden" name="api_enabled" value="false">
+                                                    <input type="checkbox" id="api_enabled" name="api_enabled" value="true"
+                                                           <?= ($settings_map['api_enabled'] ?? '') === 'true' ? 'checked' : '' ?>>
+                                                    <span class="slider"></span>
+                                                </label>
+                                                <span style="font-size:0.85rem;color:var(--muted)">Enabled</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -709,7 +635,6 @@ body { background: var(--bg) !important; }
                                             </div>
                                         </div>
                                     </div>
-                                    <!-- Test Email Section -->
                                     <div class="form-grid" style="margin-top:16px">
                                         <div class="form-group">
                                             <label class="form-label" for="test_email">Test Email Address</label>
@@ -721,42 +646,6 @@ body { background: var(--bg) !important; }
                                             <button type="button" class="sa-btn sa-btn-primary" id="testEmailBtn" style="width:100%;justify-content:center">
                                                 <i class="feather icon-send"></i> Send Test Email
                                             </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Platform Configuration Card -->
-                            <div class="sa-card">
-                                <div class="sa-card-hdr">
-                                    <h3><i class="feather icon-settings" style="margin-right:8px"></i>Platform Configuration</h3>
-                                </div>
-                                <div class="sa-card-body">
-                                    <div class="form-grid">
-                                        <div class="form-group">
-                                            <label class="form-label" for="default_currency">Default Currency</label>
-                                            <input type="text" class="form-control" id="default_currency" name="default_currency"
-                                                   value="<?= htmlspecialchars($settings_map['default_currency'] ?? '') ?>"
-                                                   placeholder="USD" maxlength="3" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label class="form-label" for="max_users_per_tenant">Max Users Per Tenant</label>
-                                            <input type="number" class="form-control" id="max_users_per_tenant" name="max_users_per_tenant"
-                                                   value="<?= htmlspecialchars($settings_map['max_users_per_tenant'] ?? '') ?>"
-                                                   placeholder="100" min="1" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label class="form-label" for="api_enabled">API Status</label>
-                                            <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
-                                                <span style="font-size:0.85rem;color:var(--muted)">Disabled</span>
-                                                <label class="toggle-switch">
-                                                    <input type="hidden" name="api_enabled" value="false">
-                                                    <input type="checkbox" id="api_enabled" name="api_enabled" value="true"
-                                                           <?= ($settings_map['api_enabled'] ?? '') === 'true' ? 'checked' : '' ?>>
-                                                    <span class="slider"></span>
-                                                </label>
-                                                <span style="font-size:0.85rem;color:var(--muted)">Enabled</span>
-                                            </div>
                                         </div>
                                     </div>
                                 </div>

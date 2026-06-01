@@ -242,40 +242,6 @@ if (!function_exists('h')) {
         text-overflow: ellipsis;
     }
 
-    .app-header__search {
-        flex: 1;
-        max-width: 400px;
-        position: relative;
-    }
-
-    .app-header__search i {
-        position: absolute;
-        left: .85rem;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--app-text-secondary);
-        pointer-events: none;
-    }
-
-    .app-header__search input {
-        width: 100%;
-        height: 38px;
-        padding: 0 1rem 0 2.5rem;
-        border: 1.5px solid var(--app-border);
-        border-radius: 999px;
-        background: var(--app-bg-page);
-        font-size: .875rem;
-        color: var(--app-text-primary);
-        outline: none;
-        transition: border-color var(--app-transition), box-shadow var(--app-transition);
-    }
-
-    .app-header__search input:focus {
-        border-color: #4099ff;
-        box-shadow: 0 0 0 3px rgba(64,153,255,.15);
-        background: #fff;
-    }
-
     .app-header__actions {
         margin-left: auto;
         display: flex;
@@ -730,10 +696,6 @@ if (!function_exists('h')) {
     }
 
     @media (max-width: 639px) {
-        .app-header__search {
-            display: none;
-        }
-
         .app-header__brand-name {
             max-width: 130px;
         }
@@ -767,11 +729,6 @@ if (!function_exists('h')) {
     <button class="app-header__toggle" id="mobile-collapse" type="button" aria-label="Toggle sidebar" aria-expanded="false">
         <span></span><span></span><span></span>
     </button>
-
-    <div class="app-header__search">
-        <i class="feather icon-search"></i>
-        <input type="search" id="m-search" placeholder="Search..." aria-label="Search">
-    </div>
 
     <div class="app-header__actions">
         <a class="app-header__icon-btn" href="platform_settings.php" aria-label="Settings">
@@ -1026,10 +983,18 @@ if (!function_exists('h')) {
                     </div>
                 </div>
                 <div style="display:flex;gap:1px;flex-shrink:0;">
+                    <a href="profile.php" class="nav-link"
+                       style="padding:4px;border-radius:3px;color:#fff;transition:all 0.3s ease;"
+                       onmouseover="this.style.background='rgba(255,255,255,0.15)'"
+                       onmouseout="this.style.background='transparent'"
+                       title="My Profile">
+                        <i class="feather icon-user" style="font-size:12px;"></i>
+                    </a>
                     <a href="logout.php" class="nav-link"
                        style="padding:4px;border-radius:3px;color:#fff;transition:all 0.3s ease;"
                        onmouseover="this.style.background='rgba(255,255,255,0.15)'"
-                       onmouseout="this.style.background='transparent'">
+                       onmouseout="this.style.background='transparent'"
+                       title="Logout">
                         <i class="feather icon-log-out" style="font-size:12px;"></i>
                     </a>
                 </div>
@@ -1088,17 +1053,6 @@ document.addEventListener('DOMContentLoaded', function () {
     window.addEventListener('resize', function () {
         if (isDesktop()) closeSidebar();
     });
-
-    // ── Search functionality ──
-    var searchInput = document.getElementById('m-search');
-    if (searchInput) {
-        searchInput.addEventListener('keyup', function () {
-            var term = this.value.toLowerCase();
-            document.querySelectorAll('.table tbody tr').forEach(function (row) {
-                row.style.display = row.textContent.toLowerCase().indexOf(term) === -1 ? 'none' : '';
-            });
-        });
-    }
 
     // ── Session timeout ──
     var remainingTime     = <?= (int) $remaining_time ?>;
