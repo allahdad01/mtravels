@@ -26,23 +26,6 @@ $platform_settings = $landingData['settings'];
     <link rel="stylesheet" href="assets/css/index.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --primary: #4099ff;
-            --secondary: #2ed8b6;
-            --accent: #25c6b4;
-            --danger: #ef4444;
-            --success: #10b981;
-            --dark: #0f172a;
-            --light: #f8fafc;
-            --border: #e2e8f0;
-        }
-
         .features-wrapper {
             min-height: 100vh;
             background: var(--bg-primary);
@@ -50,502 +33,471 @@ $platform_settings = $landingData['settings'];
             transition: background 0.3s ease, color 0.3s ease;
         }
 
-        /* Advanced Hero */
-        .advanced-hero {
+        .features-hero {
             position: relative;
-            padding: 8rem 2rem 5rem 2rem;
-            background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-            color: white;
+            padding: 8rem 2rem 5rem;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: #fff;
             overflow: hidden;
             text-align: center;
-            margin-top: 150px;
+            margin-top: 120px;
             z-index: 1;
         }
 
-        .advanced-hero::before {
+        .features-hero::before {
             content: '';
             position: absolute;
             width: 600px;
             height: 600px;
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.08);
             border-radius: 50%;
             top: -200px;
             right: -200px;
         }
 
-        .advanced-hero::after {
+        .features-hero::after {
             content: '';
             position: absolute;
             width: 400px;
             height: 400px;
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.04);
             border-radius: 50%;
             bottom: -150px;
             left: -150px;
         }
 
-        .hero-content {
+        .features-hero-content {
             position: relative;
             z-index: 1;
             max-width: 1000px;
             margin: 0 auto;
         }
 
-        .hero-content h1 {
+        .features-hero-content h1 {
             font-size: 3.5rem;
-            font-weight: 700;
+            font-weight: 800;
             margin-bottom: 1rem;
             letter-spacing: -1px;
             line-height: 1.2;
         }
 
-        .hero-subtitle {
+        .features-hero-subtitle {
             font-size: 1.3rem;
-            opacity: 0.95;
-            margin-bottom: 2rem;
+            opacity: .9;
+            font-weight: 500;
             line-height: 1.6;
+            margin-bottom: 2rem;
         }
 
-        .hero-tagline {
-            background: rgba(255, 255, 255, 0.2);
-            padding: 1.5rem;
-            border-radius: 12px;
-            font-size: 1.1rem;
+        .features-hero-tagline {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 1.2rem 2rem;
+            border-radius: 60px;
+            font-size: 1rem;
             font-weight: 600;
-            margin-top: 2rem;
+            display: inline-block;
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.25);
         }
 
-        /* Feature Navigation Tabs */
-        .feature-nav {
+        .features-layout {
             display: flex;
-            justify-content: center;
-            gap: 0.8rem;
-            flex-wrap: wrap;
+            gap: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
             padding: 3rem 2rem;
-            background: var(--bg-primary);
-            border-bottom: 1px solid var(--border);
-            transition: background 0.3s ease;
+            align-items: flex-start;
         }
 
-        .feature-nav button {
-            padding: 0.75rem 1.5rem;
-            border: 2px solid var(--border);
+        .features-sidebar {
+            width: 220px;
+            flex-shrink: 0;
+            position: sticky;
+            top: 150px;
+            max-height: calc(100vh - 180px);
+            overflow-y: auto;
+            padding: 1.2rem .8rem;
+            background: var(--bg-surface);
+            border: 1px solid var(--gray-200);
+            border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,.04);
+            transition: background .3s ease, border-color .3s ease;
+        }
+
+        html.dark-mode .features-sidebar {
+            border-color: var(--gray-700);
+        }
+
+        .features-sidebar::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .features-sidebar::-webkit-scrollbar-thumb {
+            background: var(--gray-300);
+            border-radius: 2px;
+        }
+
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: .7rem;
+            padding: .55rem .75rem;
+            border-radius: 10px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: .82rem;
+            font-weight: 600;
+            transition: all .25s ease;
+            cursor: pointer;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            font-family: inherit;
+        }
+
+        .sidebar-link svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+            color: var(--gray-400);
+            transition: color .25s ease;
+        }
+
+        .sidebar-link:hover {
             background: var(--bg-secondary);
             color: var(--text-primary);
-            border-radius: 50px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            font-size: 0.9rem;
         }
 
-        .feature-nav button:hover,
-        .feature-nav button.active {
-            background: linear-gradient(135deg, #4099ff, #2ed8b6);
-            color: white;
-            border-color: transparent;
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(64, 153, 255, 0.3);
+        .sidebar-link:hover svg {
+            color: var(--primary);
         }
 
-        /* Features Container */
-        .features-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
+        .sidebar-link.active {
+            background: linear-gradient(135deg, rgba(64,153,255,.1), rgba(46,216,182,.1));
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        .sidebar-link.active svg {
+            color: var(--primary);
+        }
+
+        .features-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .features-content .features-container {
+            padding: 0;
         }
 
         .feature-category {
             margin-bottom: 5rem;
-            animation: fadeInUp 0.6s ease-out;
-        }
-
-        .feature-category.hidden {
-            display: none;
+            scroll-margin-top: 100px;
         }
 
         @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        .category-header {
-            margin-bottom: 3rem;
-        }
-
-        .category-title {
+        .feat-header {
             display: flex;
             align-items: center;
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-
-        .category-icon {
-            font-size: 3rem;
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            flex-shrink: 0;
-        }
-
-        .category-title h2 {
-            font-size: 2.2rem;
-            color: var(--text-primary);
-            margin: 0;
-        }
-
-        .problem-solution {
-            background: var(--bg-surface);
-            padding: 2.5rem;
-            border-radius: 12px;
-            margin-bottom: 2.5rem;
-            border-left: 4px solid #ef4444;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-            transition: background 0.3s ease;
-        }
-
-        html.dark-mode .problem-solution {
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-        }
-
-        .problem-solution h3 {
-            font-size: 1.2rem;
-            color: #ef4444;
-            margin-bottom: 0.5rem;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-        }
-
-        .problem-solution h3::before {
-            content: '⚠️';
-            font-size: 1.3rem;
-        }
-
-        .problem-text {
-            color: var(--text-secondary);
-            font-size: 1rem;
-            line-height: 1.6;
+            gap: 1.2rem;
             margin-bottom: 1.5rem;
         }
 
-        .solution-heading {
-            font-size: 1.1rem;
-            color: #10b981;
-            margin-top: 1.5rem;
-            margin-bottom: 0.8rem;
-            font-weight: 700;
+        .feat-header-icon {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, rgba(64,153,255,.08), rgba(46,216,182,.08));
+            border-radius: 16px;
             display: flex;
             align-items: center;
-            gap: 0.8rem;
+            justify-content: center;
+            color: var(--primary);
+            flex-shrink: 0;
+            transition: all .4s ease;
         }
 
-        .solution-heading::before {
-            content: '✓';
-            font-size: 1.3rem;
+        .feat-header-icon svg {
+            width: 28px;
+            height: 28px;
         }
 
-        .solution-text {
+        .feat-header h2 {
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 0;
+            line-height: 1.2;
+        }
+
+        .feat-intro {
+            font-size: 1.05rem;
             color: var(--text-secondary);
-            font-size: 1rem;
-            line-height: 1.6;
+            line-height: 1.7;
+            margin-bottom: 2.5rem;
+            max-width: 800px;
         }
 
-        /* Capabilities Grid */
-        .capabilities-grid {
+        .feat-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-            margin-top: 2rem;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
         }
 
-        .capability-card {
-            background: var(--bg-secondary);
-            padding: 1.8rem;
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            transition: all 0.4s cubic-bezier(0.23, 1, 0.320, 1);
+        .feat-card {
+            background: var(--white);
+            border: 1px solid var(--gray-200);
+            border-radius: 20px;
+            padding: 2rem 1.8rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,.04);
+            transition: all .4s cubic-bezier(.175,.885,.32,1.275);
             position: relative;
             overflow: hidden;
         }
 
-        .capability-card::before {
+        html.dark-mode .feat-card {
+            background: var(--bg-surface);
+            border-color: var(--gray-700);
+        }
+
+        .feat-card::before {
             content: '';
             position: absolute;
-            width: 4px;
-            height: 0%;
-            background: linear-gradient(180deg, #4099ff, #2ed8b6);
-            left: 0;
             top: 0;
-            transition: height 0.4s ease;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform .5s ease;
         }
 
-        .capability-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 15px 40px rgba(64, 153, 255, 0.15);
-            border-color: #4099ff;
+        .feat-card:hover::before {
+            transform: scaleX(1);
         }
 
-        .capability-card:hover::before {
-            height: 100%;
+        .feat-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 20px 50px rgba(64,153,255,.1);
+            border-color: rgba(64,153,255,.2);
         }
 
-        .capability-icon {
-            font-size: 1.8rem;
-            margin-bottom: 0.8rem;
+        .feat-card-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, rgba(64,153,255,.08), rgba(46,216,182,.08));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            margin-bottom: 1rem;
+            transition: all .4s ease;
         }
 
-        .capability-card h4 {
+        .feat-card-icon svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        .feat-card:hover .feat-card-icon {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: #fff;
+            transform: scale(1.1) rotate(-5deg);
+            box-shadow: 0 10px 25px rgba(64,153,255,.2);
+        }
+
+        .feat-card h4 {
             font-size: 1.05rem;
             color: var(--text-primary);
-            margin-bottom: 0.5rem;
+            margin-bottom: .5rem;
             font-weight: 700;
         }
 
-        .capability-card p {
+        .feat-card p {
             color: var(--text-secondary);
-            font-size: 0.9rem;
+            font-size: .9rem;
             line-height: 1.6;
             margin: 0;
         }
 
-        /* Detailed Features List */
-        .features-list {
-            background: var(--bg-surface);
-            padding: 2rem;
-            border-radius: 12px;
-            margin-top: 2rem;
-            transition: background 0.3s ease;
+        .feat-section-title {
+            text-align: center;
+            font-size: 2.2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
         }
 
-        .features-list h4 {
-            font-size: 1.1rem;
-            color: var(--text-primary);
-            margin-bottom: 1.5rem;
-            font-weight: 700;
-        }
-
-        .features-list ul {
-            list-style: none;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1.2rem;
-        }
-
-        .features-list li {
-            display: flex;
-            align-items: flex-start;
-            gap: 0.8rem;
-            padding: 0.8rem;
-            background: var(--bg-secondary);
-            border-radius: 8px;
-            border-left: 3px solid #4099ff;
-            transition: background 0.3s ease;
-        }
-
-        .features-list li::before {
-            content: '✓';
-            color: #4099ff;
-            font-weight: 700;
-            font-size: 1.2rem;
-            flex-shrink: 0;
-            margin-top: -2px;
-        }
-
-        .features-list li span {
+        .feat-section-sub {
+            text-align: center;
             color: var(--text-secondary);
-            font-size: 0.95rem;
-            line-height: 1.5;
+            font-size: 1.1rem;
+            margin-bottom: 3rem;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
-        /* ROI Section */
         .roi-section {
-            background: linear-gradient(135deg, #4099ff, #2ed8b6);
-            color: white;
-            padding: 4rem 2rem;
-            border-radius: 16px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: #fff;
+            padding: 5rem 2rem;
+            border-radius: 24px;
             margin: 5rem 0;
             text-align: center;
         }
 
         .roi-section h3 {
-            font-size: 2rem;
+            font-size: 2.2rem;
+            font-weight: 800;
             margin-bottom: 3rem;
         }
 
         .roi-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 2rem;
-            margin-top: 2rem;
         }
 
         .roi-item {
             background: rgba(255, 255, 255, 0.1);
-            padding: 2rem;
-            border-radius: 12px;
+            padding: 2rem 1.5rem;
+            border-radius: 16px;
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: transform .3s ease;
+        }
+
+        .roi-item:hover {
+            transform: translateY(-4px);
         }
 
         .roi-number {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
+            font-size: 2.8rem;
+            font-weight: 900;
+            margin-bottom: .5rem;
+            letter-spacing: -1px;
         }
 
         .roi-label {
-            font-size: 0.95rem;
-            opacity: 0.95;
+            font-size: .95rem;
+            opacity: .9;
             line-height: 1.5;
         }
 
-        /* Investor Tagline */
-        .investor-tagline {
-            background: linear-gradient(135deg, #4099ff, #2ed8b6);
-            color: white;
-            padding: 3rem 2rem;
-            border-radius: 16px;
-            text-align: center;
-            margin: 5rem 0;
-            font-size: 1.3rem;
-            font-weight: 600;
-            line-height: 1.8;
-            box-shadow: 0 20px 50px rgba(64, 153, 255, 0.3);
-        }
-
-        /* Architecture Section */
-        .architecture-section {
-            background: var(--bg-surface);
-            padding: 3rem 2rem;
-            border-radius: 12px;
-            margin: 5rem 0;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-            transition: background 0.3s ease;
-        }
-
-        html.dark-mode .architecture-section {
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-        }
-
-        .architecture-section h3 {
-            font-size: 1.8rem;
-            color: var(--text-primary);
-            margin-bottom: 2rem;
-        }
-
-        .architecture-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 2rem;
-        }
-
-        .arch-item {
-            background: var(--bg-secondary);
-            padding: 2rem;
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            transition: background 0.3s ease;
-        }
-
-        .arch-item h4 {
-            font-size: 1.1rem;
-            color: #4099ff;
-            margin-bottom: 1rem;
-            font-weight: 700;
-        }
-
-        .arch-item p {
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-            line-height: 1.6;
-            margin: 0;
-        }
-
-        /* Roles Section */
         .roles-section {
-            background: var(--bg-surface);
-            padding: 3rem 2rem;
-            border-radius: 12px;
             margin: 5rem 0;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-            transition: background 0.3s ease;
-        }
-
-        html.dark-mode .roles-section {
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-        }
-
-        .roles-section h3 {
-            font-size: 1.8rem;
-            color: var(--text-primary);
-            margin-bottom: 2rem;
         }
 
         .roles-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 1.5rem;
         }
 
         .role-card {
-            background: linear-gradient(135deg, #4099ff, #2ed8b6);
-            color: white;
-            padding: 2rem;
-            border-radius: 12px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: #fff;
+            padding: 2rem 1.5rem;
+            border-radius: 20px;
             text-align: center;
+            transition: transform .4s ease, box-shadow .4s ease;
         }
 
-        .role-icon {
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
+        .role-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 20px 40px rgba(64,153,255,.3);
+        }
+
+        .role-card-icon {
+            width: 52px;
+            height: 52px;
+            background: rgba(255,255,255,.15);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+        }
+
+        .role-card-icon svg {
+            width: 24px;
+            height: 24px;
+            color: #fff;
         }
 
         .role-card h4 {
-            font-size: 1.1rem;
-            margin-bottom: 0.8rem;
+            font-size: 1.05rem;
+            margin-bottom: .4rem;
             font-weight: 700;
         }
 
         .role-card p {
-            font-size: 0.9rem;
-            opacity: 0.95;
+            font-size: .85rem;
+            opacity: .9;
             line-height: 1.5;
+            margin: 0;
         }
 
-        /* CTA Section */
-        .advanced-cta {
-            background: linear-gradient(135deg, #4099ff, #2ed8b6);
-            color: white;
-            padding: 4rem 2rem;
-            border-radius: 16px;
+        .role-card p small {
+            display: block;
+            font-size: .8rem;
+            opacity: .8;
+            margin-top: .3rem;
+        }
+
+        .investor-card {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: #fff;
+            padding: 3rem 2rem;
+            border-radius: 24px;
+            text-align: center;
+            margin: 5rem 0;
+            font-size: 1.15rem;
+            font-weight: 600;
+            line-height: 1.8;
+            box-shadow: 0 20px 50px rgba(64,153,255,.3);
+        }
+
+        .investor-card svg {
+            width: 28px;
+            height: 28px;
+            vertical-align: middle;
+            margin-right: .5rem;
+        }
+
+        .features-cta {
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+            color: #fff;
+            padding: 5rem 2rem;
+            border-radius: 24px;
             text-align: center;
             margin: 5rem 0;
         }
 
-        .advanced-cta h3 {
-            font-size: 2rem;
+        .features-cta h3 {
+            font-size: 2.2rem;
+            font-weight: 800;
             margin-bottom: 1rem;
         }
 
-        .advanced-cta p {
+        .features-cta p {
             font-size: 1.1rem;
-            margin-bottom: 2rem;
-            opacity: 0.95;
+            opacity: .9;
+            margin-bottom: 2.5rem;
         }
 
         .cta-buttons {
@@ -555,73 +507,131 @@ $platform_settings = $landingData['settings'];
             flex-wrap: wrap;
         }
 
-        .btn-primaryi, .btn-secondaryi {
-            padding: 0.9rem 2.5rem;
-            border: 2px solid transparent;
-            border-radius: 8px;
+        .cta-btn-primary {
+            padding: .9rem 2.5rem;
+            border-radius: 14px;
             font-size: 1rem;
-            font-weight: 600;
+            font-weight: 700;
             cursor: pointer;
             text-decoration: none;
-            transition: all 0.3s ease;
+            transition: all .3s ease;
             display: inline-block;
-        }
-
-        .btn-primaryi {
-            background: white;
+            background: #fff;
             color: var(--primary);
+            border: none;
         }
 
-        .btn-primaryi:hover {
+        .cta-btn-primary:hover {
             transform: translateY(-3px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 10px 25px rgba(0,0,0,.2);
         }
 
-        .btn-secondaryi {
+        .cta-btn-outline {
+            padding: .9rem 2.5rem;
+            border-radius: 14px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all .3s ease;
+            display: inline-block;
             background: transparent;
-            color: white;
-            border-color: white;
+            color: #fff;
+            border: 2px solid rgba(255,255,255,.6);
         }
 
-        .btn-secondaryi:hover {
-            background: rgba(255, 255, 255, 0.1);
+        .cta-btn-outline:hover {
+            background: rgba(255,255,255,.1);
+            border-color: #fff;
         }
 
-        /* Responsive */
-        @media (max-width: 768px) {
-            .advanced-hero {
-                margin-top: 80px;
+        @media (max-width: 1024px) {
+            .features-layout {
+                flex-direction: column;
+                padding: 2rem 1.2rem;
+                gap: 1rem;
             }
 
-            .advanced-hero h1 {
+            .features-sidebar {
+                width: 100%;
+                position: static;
+                max-height: none;
+                overflow-y: visible;
+                display: flex;
+                flex-wrap: nowrap;
+                gap: .4rem;
+                padding: .8rem .8rem;
+                border-radius: 16px;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .sidebar-link {
+                flex-shrink: 0;
+                white-space: nowrap;
+                padding: .45rem .7rem;
+                font-size: .78rem;
+                width: auto;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .features-hero {
+                margin-top: 80px;
+                padding: 6rem 1.5rem 4rem;
+            }
+
+            .features-hero-content h1 {
                 font-size: 2.2rem;
             }
 
-            .hero-subtitle {
-                font-size: 1rem;
+            .features-hero-subtitle {
+                font-size: 1.05rem;
             }
 
-            .category-title h2 {
+            .features-hero-tagline {
+                font-size: .85rem;
+                padding: .8rem 1.2rem;
+            }
+
+            .feat-header h2 {
+                font-size: 1.5rem;
+            }
+
+            .feat-header-icon {
+                width: 52px;
+                height: 52px;
+            }
+
+            .feat-header-icon svg {
+                width: 22px;
+                height: 22px;
+            }
+
+            .features-sidebar .sidebar-link span {
+                display: none;
+            }
+
+            .features-container {
+                padding: 2rem 1.2rem;
+            }
+
+            .feat-section-title {
                 font-size: 1.6rem;
             }
+        }
 
-            .category-icon {
-                width: 60px;
-                height: 60px;
-                font-size: 2rem;
+        @media (max-width: 480px) {
+            .feat-grid {
+                grid-template-columns: 1fr;
             }
 
-            .feature-nav button {
-                padding: 0.6rem 1rem;
-                font-size: 0.8rem;
+            .roles-grid {
+                grid-template-columns: 1fr;
             }
 
-            .problem-solution {
-                padding: 1.5rem;
-            }
-
-            .investor-tagline {
-                font-size: 1.1rem;
+            .roi-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -653,967 +663,800 @@ $platform_settings = $landingData['settings'];
     ?>
 
     <div class="features-wrapper">
-        <!-- Hero -->
-        <section class="advanced-hero">
-            <div class="hero-content">
+        <section class="features-hero">
+            <div class="features-hero-content">
                 <h1>Complete Feature Breakdown</h1>
-                <p class="hero-subtitle">An all-in-one, automation-first SaaS platform purpose-built for modern travel agencies</p>
-                <div class="hero-tagline">
-                    Covering ticketing, Umrah, visas, hotels, finance, automation, reporting, supplier, and client management
+                <p class="features-hero-subtitle">An all-in-one, automation-first SaaS platform purpose-built for modern travel agencies</p>
+                <div class="features-hero-tagline">
+                    Ticketing &middot; Umrah &middot; Visas &middot; Hotels &middot; Finance &middot; Automation &middot; Reporting &middot; Client Portal
                 </div>
             </div>
         </section>
 
-        <!-- Feature Navigation -->
-        <div class="feature-nav">
-            <button class="nav-tab active" data-category="ticketing">🎫 Ticketing</button>
-            <button class="nav-tab" data-category="umrah">🕋 Umrah</button>
-            <button class="nav-tab" data-category="visa">🛂 Visa & Hotels</button>
-            <button class="nav-tab" data-category="finance">💰 Finance</button>
-            <button class="nav-tab" data-category="dashboards">📊 Dashboards</button>
-            <button class="nav-tab" data-category="automation">🤖 Automation</button>
-            <button class="nav-tab" data-category="multibranch">🏢 Multi-Branch</button>
-            <button class="nav-tab" data-category="maktob">🧾 Maktob</button>
-            <button class="nav-tab" data-category="hr">🕒 HR & Attendance</button>
-            <button class="nav-tab" data-category="communication">💬 Communication</button>
-            <button class="nav-tab" data-category="security">🔐 Security</button>
-            <button class="nav-tab" data-category="portal">👥 Portal</button>
-            <button class="nav-tab" data-category="learning">🎓 Learning</button>
-        </div>
+        <div class="features-layout">
+            <aside class="features-sidebar" id="featuresSidebar">
+                <button class="sidebar-link active" data-target="ticketing">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 7V5"/><path d="M17 7V5"/></svg>
+                    <span>Ticketing</span>
+                </button>
+                <button class="sidebar-link" data-target="umrah">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                    <span>Umrah</span>
+                </button>
+                <button class="sidebar-link" data-target="visa">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                    <span>Visa &amp; Hotels</span>
+                </button>
+                <button class="sidebar-link" data-target="finance">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    <span>Finance</span>
+                </button>
+                <button class="sidebar-link" data-target="dashboards">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="20" x2="21" y2="20"/><line x1="5" y1="16" x2="5" y2="20"/><line x1="10" y1="12" x2="10" y2="20"/><line x1="15" y1="8" x2="15" y2="20"/><line x1="20" y1="4" x2="20" y2="20"/></svg>
+                    <span>Dashboards</span>
+                </button>
+                <button class="sidebar-link" data-target="automation">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    <span>Automation</span>
+                </button>
+                <button class="sidebar-link" data-target="multibranch">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l5-4v18"/><path d="M19 21V7l-5-4v18"/><path d="M9 21V11"/><path d="M15 21V11"/></svg>
+                    <span>Multi-Branch</span>
+                </button>
+                <button class="sidebar-link" data-target="maktob">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    <span>Maktob</span>
+                </button>
+                <button class="sidebar-link" data-target="hr">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <span>HR</span>
+                </button>
+                <button class="sidebar-link" data-target="communication">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    <span>Communication</span>
+                </button>
+                <button class="sidebar-link" data-target="security">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    <span>Security</span>
+                </button>
+                <button class="sidebar-link" data-target="portal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <span>Portal</span>
+                </button>
+                <button class="sidebar-link" data-target="learning">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+                    <span>Learning</span>
+                </button>
+            </aside>
 
-        <!-- Features Container -->
-        <div class="features-container">
+            <div class="features-content">
 
-            <!-- 1. Ticketing & Reservations -->
-            <section class="feature-category" data-category="ticketing">
-                <div class="category-header">
-                    <div class="category-title">
-                        <div class="category-icon">🧳</div>
-                        <h2>Ticketing & Reservations (Core Engine)</h2>
+            <div class="features-container">
+
+            <!-- Ticketing -->
+            <section class="feature-category" id="ticketing" data-category="ticketing">
+                <div class="feat-header">
+                    <div class="feat-header-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 7V5"/><path d="M17 7V5"/></svg>
                     </div>
-
-                    <div class="problem-solution">
-                        <h3>The Problem</h3>
-                        <p class="problem-text">Travel agencies struggle with scattered ticket records, manual tracking across different suppliers, unclear profitability per ticket, and difficulty managing date changes and refunds.</p>
-
-                        <h3 class="solution-heading">Our Solution</h3>
-                        <p class="solution-text">Complete ticket booking system with reservations, refunds, date changes, weight management, and automated profit calculation. Includes supplier, client, and internal account tracking with OCR document handling.</p>
-                    </div>
+                    <h2>Ticketing &amp; Reservations</h2>
                 </div>
-
-                <div class="capabilities-grid">
-                    <div class="capability-card">
-                        <div class="capability-icon">🎫</div>
+                <p class="feat-intro">Agencies juggle scattered ticket records across multiple suppliers with no central truth. MTravels gives you a complete booking engine with automated profit tracking, refunds, date changes, baggage management, and OCR-powered document processing.</p>
+                <div class="feat-grid">
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 7V5"/><path d="M17 7V5"/></svg>
+                        </div>
                         <h4>Ticket Bookings</h4>
                         <p>Complete ticket booking system with real-time availability</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📅</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        </div>
                         <h4>Ticket Reservations</h4>
                         <p>On-hold sales with automatic expiration and follow-up</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">🔄</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        </div>
                         <h4>Refunded Tickets</h4>
                         <p>Complete refund processing with financial reconciliation</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📆</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        </div>
                         <h4>Date Change Tickets</h4>
                         <p>Manage date changes with penalty calculations and notifications</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">⚖️</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        </div>
                         <h4>Ticket Weight Management</h4>
                         <p>Track baggage allowances and weight limits with pricing</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">💰</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        </div>
                         <h4>Automatic Profit Calculation</h4>
                         <p>Real-time profit calculation per ticket with margin tracking</p>
                     </div>
                 </div>
-
-                <div class="features-list">
-                    <h4>Key Capabilities Include:</h4>
-                    <ul>
-                        <li><span>Ticket bookings and reservations</span></li>
-                        <li><span>Refunded tickets processing</span></li>
-                        <li><span>Date change tickets with penalty management</span></li>
-                        <li><span>Ticket weight management and baggage tracking</span></li>
-                        <li><span>Automatic profit calculation per ticket</span></li>
-                        <li><span>Supplier, client, and internal account tracking</span></li>
-                        <li><span>Ticket PDF reader with auto-extract passenger & flight data</span></li>
-                        <li><span>Passport OCR reader for auto-fill passenger details</span></li>
-                        <li><span>Ticket-wise and period-wise reporting</span></li>
-                    </ul>
-                </div>
             </section>
 
-            <!-- 2. Umrah & Family Management -->
-            <section class="feature-category hidden" data-category="umrah">
-                <div class="category-header">
-                    <div class="category-title">
-                        <div class="category-icon">🕋</div>
-                        <h2>Umrah & Family Management</h2>
+            <!-- Umrah -->
+            <section class="feature-category" id="umrah" data-category="umrah">
+                <div class="feat-header">
+                    <div class="feat-header-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
                     </div>
-
-                    <div class="problem-solution">
-                        <h3>The Problem</h3>
-                        <p class="problem-text">Managing Umrah families, individual member tracking, separate payments per traveler, and handling cancellations is complex, error-prone, and impossible to do properly in spreadsheets.</p>
-
-                        <h3 class="solution-heading">Our Solution</h3>
-                        <p class="solution-text">Complete Umrah pilgrimage booking system with family-based management, member tracking, individual payments, refunds, agreements generation, ID card creation, and passport OCR for pilgrims.</p>
-                    </div>
+                    <h2>Umrah &amp; Family Management</h2>
                 </div>
-
-                <div class="capabilities-grid">
-                    <div class="capability-card">
-                        <div class="capability-icon">👨‍👩‍👧‍👦</div>
-                        <h4>Family-Based Umrah Booking</h4>
+                <p class="feat-intro">Managing family groups, individual member tracking, separate payments per traveler, and cancellations is chaotic in spreadsheets. MTravels handles the entire Umrah lifecycle — family bookings, member-level tracking, individual receipts, agreements, ID cards, and passport OCR.</p>
+                <div class="feat-grid">
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        </div>
+                        <h4>Family-Based Booking</h4>
                         <p>Group families and manage all members with individual preferences</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">👤</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        </div>
                         <h4>Member Management</h4>
-                        <p>Track each traveler within families with their own tickets, visas, and accommodations</p>
+                        <p>Track each traveler with their own tickets, visas, and accommodations</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">💳</div>
-                        <h4>Individual Payments & Receipts</h4>
-                        <p>Collect and track payments individually while maintaining family-level financial visibility</p>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                        </div>
+                        <h4>Individual Payments</h4>
+                        <p>Collect payments per member with family-level financial visibility</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📊</div>
-                        <h4>Family Transaction Tracking</h4>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="20" x2="21" y2="20"/><line x1="5" y1="16" x2="5" y2="20"/><line x1="10" y1="12" x2="10" y2="20"/><line x1="15" y1="8" x2="15" y2="20"/><line x1="20" y1="4" x2="20" y2="20"/></svg>
+                        </div>
+                        <h4>Family Transactions</h4>
                         <p>Complete financial tracking for each family unit</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">❌</div>
-                        <h4>Umrah Cancellations & Refunds</h4>
-                        <p>Manage cancellations and process refunds with automatic calculations</p>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                        </div>
+                        <h4>Cancellations &amp; Refunds</h4>
+                        <p>Manage cancellations with automatic refund calculations</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📄</div>
-                        <h4>Agreements & ID Cards</h4>
-                        <p>Generate Umrah agreements and ID cards automatically</p>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        </div>
+                        <h4>Agreements &amp; ID Cards</h4>
+                        <p>Generate Umrah agreements and pilgrim ID cards automatically</p>
                     </div>
-                </div>
-
-                <div class="features-list">
-                    <h4>Key Capabilities Include:</h4>
-                    <ul>
-                        <li><span>Family-based Umrah booking system</span></li>
-                        <li><span>Member management per family</span></li>
-                        <li><span>Individual member payments & receipts</span></li>
-                        <li><span>Family transaction tracking</span></li>
-                        <li><span>Umrah cancellations and refunds</span></li>
-                        <li><span>Umrah agreements generation</span></li>
-                        <li><span>ID card generation for pilgrims</span></li>
-                        <li><span>Passport OCR for Umrah pilgrims</span></li>
-                        <li><span>Multi-currency Umrah payments</span></li>
-                        <li><span>Bank receipt & payment tracking</span></li>
-                    </ul>
                 </div>
             </section>
 
-            <!-- 3. Visa & Hotel Management -->
-            <section class="feature-category hidden" data-category="visa">
-                <div class="category-header">
-                    <div class="category-title">
-                        <div class="category-icon">🛂</div>
-                        <h2>Visa Management</h2>
+            <!-- Visa & Hotels -->
+            <section class="feature-category" id="visa" data-category="visa">
+                <div class="feat-header">
+                    <div class="feat-header-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
                     </div>
-
-                    <div class="problem-solution">
-                        <h3>The Problem</h3>
-                        <p class="problem-text">Visa processes are often handled outside the system, causing data gaps, missed deadlines, and unclear financial impact on agency accounts.</p>
-
-                        <h3 class="solution-heading">Our Solution</h3>
-                        <p class="solution-text">Complete visa management system with applications, transactions, refunds, cancellations, client and supplier tracking, status tracking, and automated client notifications.</p>
-                    </div>
+                    <h2>Visa &amp; Hotel Management</h2>
                 </div>
-
-                <div class="capabilities-grid">
-                    <div class="capability-card">
-                        <div class="capability-icon">📋</div>
+                <p class="feat-intro">Visa and hotel processes handled outside the system create data gaps and reconciliation nightmares. MTravels brings everything in-house — visa applications, hotel bookings, refunds, cancellations, client/supplier account linkage, and automated financial impact tracking.</p>
+                <div class="feat-grid">
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        </div>
                         <h4>Visa Applications</h4>
                         <p>Complete visa application management with document tracking</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">💰</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        </div>
                         <h4>Visa Transactions</h4>
                         <p>Track all visa-related financial transactions</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">🔄</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        </div>
                         <h4>Visa Refunds</h4>
-                        <p>Process visa refunds with automatic financial reconciliation</p>
+                        <p>Process visa refunds with automatic reconciliation</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">❌</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                        </div>
                         <h4>Visa Cancellations</h4>
                         <p>Manage visa cancellations with status updates</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">👥</div>
-                        <h4>Client & Supplier Tracking</h4>
-                        <p>Track clients and suppliers for each visa application</p>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        </div>
+                        <h4>Client &amp; Supplier Tracking</h4>
+                        <p>Track clients and suppliers for each application</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📊</div>
-                        <h4>Visa Status Tracking</h4>
-                        <p>Monitor visa status with automated updates</p>
-                    </div>
-                </div>
-
-                <div class="features-list">
-                    <h4>Key Capabilities Include:</h4>
-                    <ul>
-                        <li><span>Visa applications management</span></li>
-                        <li><span>Visa transactions tracking</span></li>
-                        <li><span>Visa refunds processing</span></li>
-                        <li><span>Visa cancellations management</span></li>
-                        <li><span>Client and supplier tracking</span></li>
-                        <li><span>Visa status tracking</span></li>
-                        <li><span>Automated client notifications</span></li>
-                    </ul>
-                </div>
-            </section>
-
-            <!-- 4. Hotel Management -->
-            <section class="feature-category hidden" data-category="hotel">
-                <div class="category-header">
-                    <div class="category-title">
-                        <div class="category-icon">🏨</div>
-                        <h2>Hotel Management</h2>
-                    </div>
-
-                    <div class="problem-solution">
-                        <h3>The Problem</h3>
-                        <p class="problem-text">Hotel bookings are often managed separately, causing reconciliation issues and unclear financial impact.</p>
-
-                        <h3 class="solution-heading">Our Solution</h3>
-                        <p class="solution-text">Complete hotel booking and refund system with client & supplier account linkage and automated financial impact tracking.</p>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="20" x2="21" y2="20"/><line x1="5" y1="16" x2="5" y2="20"/><line x1="10" y1="12" x2="10" y2="20"/><line x1="15" y1="8" x2="15" y2="20"/><line x1="20" y1="4" x2="20" y2="20"/></svg>
+                        </div>
+                        <h4>Status Tracking</h4>
+                        <p>Monitor visa and hotel status with automated updates</p>
                     </div>
                 </div>
-
-                <div class="capabilities-grid">
-                    <div class="capability-card">
-                        <div class="capability-icon">🏨</div>
+                <div class="feat-grid" style="margin-top: 1.5rem;">
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M3 7v14"/><path d="M21 7v14"/><path d="M3 7l9-5 9 5"/></svg>
+                        </div>
                         <h4>Hotel Bookings</h4>
                         <p>Complete hotel booking management with room types and rates</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">🔄</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        </div>
                         <h4>Hotel Refunds</h4>
-                        <p>Process hotel refunds with automatic financial reconciliation</p>
+                        <p>Process hotel refunds with automatic reconciliation</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">👥</div>
-                        <h4>Client & Supplier Accounts</h4>
-                        <p>Link hotel bookings to client and supplier accounts</p>
-                    </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">💰</div>
-                        <h4>Automated Financial Impact</h4>
-                        <p>Automatically update accounts based on hotel transactions</p>
-                    </div>
-                </div>
-
-                <div class="features-list">
-                    <h4>Key Capabilities Include:</h4>
-                    <ul>
-                        <li><span>Hotel bookings management</span></li>
-                        <li><span>Hotel refunds processing</span></li>
-                        <li><span>Client & supplier account linkage</span></li>
-                        <li><span>Automated financial impact on accounts</span></li>
-                    </ul>
                 </div>
             </section>
 
-            <!-- 5. Finance & Accounting -->
-            <section class="feature-category hidden" data-category="finance">
-                <div class="category-header">
-                    <div class="category-title">
-                        <div class="category-icon">💰</div>
-                        <h2>Finance & Accounting (Very Strong)</h2>
+            <!-- Finance -->
+            <section class="feature-category" id="finance" data-category="finance">
+                <div class="feat-header">
+                    <div class="feat-header-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                     </div>
-
-                    <div class="problem-solution">
-                        <h3>The Problem</h3>
-                        <p class="problem-text">Agencies lose money due to poor visibility into cash flow, profit sources, outstanding dues, supplier reconciliation, and manual accounting errors that compound over time.</p>
-
-                        <h3 class="solution-heading">Our Solution</h3>
-                        <p class="solution-text">Complete financial management system with multi-currency support, real-time P&L calculation, main accounts, client/supplier tracking, JV payments, salary management, asset management, expense management, and comprehensive financial statements.</p>
-                    </div>
+                    <h2>Finance &amp; Accounting</h2>
                 </div>
-
-                <div class="capabilities-grid">
-                    <div class="capability-card">
-                        <div class="capability-icon">🌍</div>
+                <p class="feat-intro">Poor visibility into cash flow, profit sources, and outstanding dues costs agencies real money. MTravels provides multi-currency financial management with real-time P&amp;L, account tracking, debtor/creditor management, salary, asset, expense management, and comprehensive financial statements.</p>
+                <div class="feat-grid">
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                        </div>
                         <h4>Multi-Currency Support</h4>
-                        <p>Support for AFN, USD, AED, EUR with real-time conversion</p>
+                        <p>AFN, USD, AED, EUR with real-time conversion</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📊</div>
-                        <h4>Real-Time P&L Calculation</h4>
-                        <p>Automatic profit and loss calculation across all operations</p>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="20" x2="21" y2="20"/><line x1="5" y1="16" x2="5" y2="20"/><line x1="10" y1="12" x2="10" y2="20"/><line x1="15" y1="8" x2="15" y2="20"/><line x1="20" y1="4" x2="20" y2="20"/></svg>
+                        </div>
+                        <h4>Real-Time P&amp;L</h4>
+                        <p>Automatic profit and loss across all operations</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">🏦</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                        </div>
                         <h4>Main Accounts</h4>
-                        <p>Manage Safe, Bank, Sarafi accounts with complete tracking</p>
+                        <p>Safe, Bank, Sarafi accounts with complete tracking</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">👥</div>
-                        <h4>Client & Supplier Accounts</h4>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        </div>
+                        <h4>Client &amp; Supplier Ledgers</h4>
                         <p>Complete ledgers for clients and suppliers</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">💰</div>
-                        <h4>Debtors & Creditors</h4>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        </div>
+                        <h4>Debtors &amp; Creditors</h4>
                         <p>Track outstanding amounts and manage collections</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">🔄</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        </div>
                         <h4>Sarafi Management</h4>
                         <p>Money exchange management with rate tracking</p>
                     </div>
                 </div>
-
-                <div class="features-list">
-                    <h4>Key Capabilities Include:</h4>
-                    <ul>
-                        <li><span>Multi-currency support (AFN, USD, AED, EUR)</span></li>
-                        <li><span>Real-time profit & loss calculation</span></li>
-                        <li><span>Main accounts (Safe, Bank, Sarafi)</span></li>
-                        <li><span>Client accounts management</span></li>
-                        <li><span>Supplier accounts management</span></li>
-                        <li><span>Debtors management</span></li>
-                        <li><span>Creditors management</span></li>
-                        <li><span>Sarafi (money exchange) management</span></li>
-                        <li><span>JV (Joint Voucher) payments</span></li>
-                        <li><span>Additional service payments</span></li>
-                        <li><span>Salary management</span></li>
-                        <li><span>Asset management</span></li>
-                        <li><span>Expense management</span></li>
-                        <li><span>Financial statements (monthly, yearly, custom period)</span></li>
-                        <li><span>Cash flow analysis</span></li>
-                        <li><span>Outstanding dues tracking</span></li>
-                        <li><span>Automatic balance reconciliation</span></li>
-                    </ul>
-                </div>
             </section>
 
-            <!-- 6. Dashboards & Reporting -->
-            <section class="feature-category hidden" data-category="dashboards">
-                <div class="category-header">
-                    <div class="category-title">
-                        <div class="category-icon">📊</div>
-                        <h2>Dashboards & Reporting</h2>
+            <!-- Dashboards -->
+            <section class="feature-category" id="dashboards" data-category="dashboards">
+                <div class="feat-header">
+                    <div class="feat-header-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="20" x2="21" y2="20"/><line x1="5" y1="16" x2="5" y2="20"/><line x1="10" y1="12" x2="10" y2="20"/><line x1="15" y1="8" x2="15" y2="20"/><line x1="20" y1="4" x2="20" y2="20"/></svg>
                     </div>
-
-                    <div class="problem-solution">
-                        <h3>The Problem</h3>
-                        <p class="problem-text">Static reports don't help owners make fast decisions. Managers need real-time insights into what's making or losing money.</p>
-
-                        <h3 class="solution-heading">Our Solution</h3>
-                        <p class="solution-text">Complete dashboard and reporting system with admin dashboard, multi-currency charts, profit breakdowns, outstanding dues, and exportable reports.</p>
-                    </div>
+                    <h2>Dashboards &amp; Reporting</h2>
                 </div>
-
-                <div class="capabilities-grid">
-                    <div class="capability-card">
-                        <div class="capability-icon">📊</div>
+                <p class="feat-intro">Static reports don't help owners make fast decisions. MTravels gives you real-time dashboards with multi-currency charts, profit breakdowns, outstanding dues tracking, user performance metrics, and exportable Excel/PDF reports.</p>
+                <div class="feat-grid">
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="20" x2="21" y2="20"/><line x1="5" y1="16" x2="5" y2="20"/><line x1="10" y1="12" x2="10" y2="20"/><line x1="15" y1="8" x2="15" y2="20"/><line x1="20" y1="4" x2="20" y2="20"/></svg>
+                        </div>
                         <h4>Admin Dashboard</h4>
-                        <p>Comprehensive admin dashboard with all key metrics</p>
+                        <p>Comprehensive dashboard with all key metrics at a glance</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">💰</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        </div>
                         <h4>Multi-Currency Cash Flow</h4>
-                        <p>Cash flow charts with multi-currency support</p>
+                        <p>Cash flow visualisation with multi-currency support</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📅</div>
-                        <h4>Daily/Monthly/Yearly Filters</h4>
-                        <p>Filter data by different time periods</p>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        </div>
+                        <h4>Time Period Filters</h4>
+                        <p>Daily, monthly, and yearly data filtering</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">💎</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        </div>
                         <h4>Profit Cards</h4>
-                        <p>Profit cards showing today, month, and year performance</p>
+                        <p>Today, month, and year performance at a glance</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">🔍</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        </div>
                         <h4>Drill-Down Profit View</h4>
-                        <p>Drill down from profit sources to individual items</p>
+                        <p>Dig from profit sources to individual items</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📄</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        </div>
                         <h4>Outstanding Dues</h4>
-                        <p>Track client pending payments and outstanding dues</p>
+                        <p>Track client pending payments and overdue amounts</p>
                     </div>
-                </div>
-
-                <div class="features-list">
-                    <h4>Key Capabilities Include:</h4>
-                    <ul>
-                        <li><span>Admin Dashboard with comprehensive metrics</span></li>
-                        <li><span>Multi-currency cash flow charts</span></li>
-                        <li><span>Daily/monthly/yearly filters</span></li>
-                        <li><span>Profit cards (today, month, year)</span></li>
-                        <li><span>Drill-down profit source view</span></li>
-                        <li><span>Item-level profit printing</span></li>
-                        <li><span>Outstanding dues overview</span></li>
-                        <li><span>Client pending payments tracking</span></li>
-                        <li><span>Ticket booking periods overview</span></li>
-                        <li><span>Today's departures tracking</span></li>
-                        <li><span>User performance & sales tracking</span></li>
-                        <li><span>Notifications on money in/out</span></li>
-                        <li><span>Reports (airline sales, financial, branch-wise, user performance)</span></li>
-                        <li><span>Exportable data (Excel/PDF)</span></li>
-                    </ul>
                 </div>
             </section>
 
-            <!-- 7. Automation & Intelligence -->
-            <section class="feature-category hidden" data-category="automation">
-                <div class="category-header">
-                    <div class="category-title">
-                        <div class="category-icon">🤖</div>
-                        <h2>Automation & Intelligence</h2>
+            <!-- Automation -->
+            <section class="feature-category" id="automation" data-category="automation">
+                <div class="feat-header">
+                    <div class="feat-header-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                     </div>
-
-                    <div class="problem-solution">
-                        <h3>The Problem</h3>
-                        <p class="problem-text">Manual communication and data entry waste hours every day. Staff spend time copying/pasting passenger data, sending repetitive emails, and following up manually.</p>
-
-                        <h3 class="solution-heading">Our Solution</h3>
-                        <p class="solution-text">Complete automation system with profit calculation, real-time analytics, interactive charts, email/WhatsApp automation, OCR auto-fill, and reminder system.</p>
-                    </div>
+                    <h2>Automation &amp; Intelligence</h2>
                 </div>
-
-                <div class="capabilities-grid">
-                    <div class="capability-card">
-                        <div class="capability-icon">💰</div>
+                <p class="feat-intro">Manual data entry and repetitive communication consume hours daily. MTravels automates profit calculations, email/WhatsApp notifications, OCR document processing, and provides real-time analytics with interactive charts.</p>
+                <div class="feat-grid">
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        </div>
                         <h4>Automated Profit Calculation</h4>
-                        <p>Automatic profit calculation for tickets, visas, hotels, and Umrah</p>
+                        <p>Auto-calculated profit for tickets, visas, hotels, and Umrah</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📊</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="20" x2="21" y2="20"/><line x1="5" y1="16" x2="5" y2="20"/><line x1="10" y1="12" x2="10" y2="20"/><line x1="15" y1="8" x2="15" y2="20"/><line x1="20" y1="4" x2="20" y2="20"/></svg>
+                        </div>
                         <h4>Real-Time Analytics</h4>
-                        <p>Interactive dashboard with real-time data visualization</p>
+                        <p>Interactive dashboard with live data visualisation</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📈</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                        </div>
                         <h4>Interactive Charts</h4>
                         <p>Visual charts for financial and operational data</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📊</div>
-                        <h4>Source-Wise Profit Breakdown</h4>
-                        <p>Detailed profit analysis by source</p>
-                    </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📧</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg>
+                        </div>
                         <h4>Email Automation</h4>
-                        <p>Automated emails for tickets, visas, hotels, Umrah, and invoices</p>
+                        <p>Automated branded emails for tickets, visas, hotels, and invoices</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">💬</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        </div>
                         <h4>WhatsApp Automation</h4>
                         <p>Tenant-configurable WhatsApp messaging with templates</p>
                     </div>
-                </div>
-
-                <div class="features-list">
-                    <h4>Key Capabilities Include:</h4>
-                    <ul>
-                        <li><span>Automated profit calculation (ticket, visa, hotel, Umrah)</span></li>
-                        <li><span>Real-time analytics dashboard</span></li>
-                        <li><span>Interactive financial charts</span></li>
-                        <li><span>Source-wise profit breakdown</span></li>
-                        <li><span>Automated email notifications (tickets, visas, hotels, Umrah, invoices)</span></li>
-                        <li><span>Branded email templates</span></li>
-                        <li><span>PDF attachments in emails</span></li>
-                        <li><span>Email delivery logs</span></li>
-                        <li><span>WhatsApp automation (tenant-configurable)</span></li>
-                        <li><span>WhatsApp message templates</span></li>
-                        <li><span>WhatsApp delivery status tracking</span></li>
-                        <li><span>WhatsApp analytics</span></li>
-                        <li><span>Reminder & to-do system</span></li>
-                        <li><span>OCR auto-fill (tickets & passports)</span></li>
-                    </ul>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        </div>
+                        <h4>OCR &amp; Auto-Fill</h4>
+                        <p>Auto-extract passenger data from tickets and passports</p>
+                    </div>
                 </div>
             </section>
 
-            <!-- 8. Multi-Tenant & Multi-Branch System -->
-            <section class="feature-category hidden" data-category="multibranch">
-                <div class="category-header">
-                    <div class="category-title">
-                        <div class="category-icon">🏢</div>
-                        <h2>Multi-Tenant & Multi-Branch System</h2>
+            <!-- Multi-Branch -->
+            <section class="feature-category" id="multibranch" data-category="multibranch">
+                <div class="feat-header">
+                    <div class="feat-header-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l5-4v18"/><path d="M19 21V7l-5-4v18"/><path d="M9 21V11"/><path d="M15 21V11"/></svg>
                     </div>
-
-                    <div class="problem-solution">
-                        <h3>The Problem</h3>
-                        <p class="problem-text">Agencies with multiple branches lack centralized control, duplicate data, inconsistent processes, and no way to compare branch performance.</p>
-
-                        <h3 class="solution-heading">Our Solution</h3>
-                        <p class="solution-text">Full SaaS multi-tenant architecture with multi-branch support, separate data per tenant, branch-level operations, and tenant Super Admin dashboard for performance comparison.</p>
-                    </div>
+                    <h2>Multi-Branch Management</h2>
                 </div>
-
-                <div class="capabilities-grid">
-                    <div class="capability-card">
-                        <div class="capability-icon">🏢</div>
-                        <h4>Full SaaS Multi-Tenant</h4>
-                        <p>Complete multi-tenant architecture with data isolation</p>
+                <p class="feat-intro">Growing agencies duplicate chaos instead of scaling systems. MTravels lets you manage unlimited branches under one account — with separate users, permissions, branding, and performance tracking per branch.</p>
+                <div class="feat-grid">
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l5-4v18"/><path d="M19 21V7l-5-4v18"/><path d="M9 21V11"/><path d="M15 21V11"/></svg>
+                        </div>
+                        <h4>Unlimited Branches</h4>
+                        <p>Add unlimited branches under one account — each with its own users, clients, and operations</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">🌐</div>
-                        <h4>Multi-Branch Support</h4>
-                        <p>Support multiple branches per tenant</p>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        </div>
+                        <h4>Data Isolation</h4>
+                        <p>Complete data separation between branches — each branch sees only its own data</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">🔒</div>
-                        <h4>Separate Data Per Tenant</h4>
-                        <p>Complete data isolation between tenants</p>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="20" x2="21" y2="20"/><line x1="5" y1="16" x2="5" y2="20"/><line x1="10" y1="12" x2="10" y2="20"/><line x1="15" y1="8" x2="15" y2="20"/><line x1="20" y1="4" x2="20" y2="20"/></svg>
+                        </div>
+                        <h4>Branch Dashboard</h4>
+                        <p>Compare performance across branches and export reports per branch</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">🏢</div>
-                        <h4>Branch-Level Operations</h4>
-                        <p>Manage operations at branch level</p>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg>
+                        </div>
+                        <h4>Shared Communication</h4>
+                        <p>SMTP and WhatsApp settings are configured at the account level — all branches share the same channels with unified branding</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📊</div>
-                        <h4>Tenant Super Admin Dashboard</h4>
-                        <p>Compare branch performance and export reports</p>
-                    </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📧</div>
-                        <h4>Shared SMTP & WhatsApp</h4>
-                        <p>Shared communication channels with branch-specific branding</p>
-                    </div>
-                </div>
-
-                <div class="features-list">
-                    <h4>Key Capabilities Include:</h4>
-                    <ul>
-                        <li><span>Full SaaS multi-tenant architecture</span></li>
-                        <li><span>Multi-branch support per tenant</span></li>
-                        <li><span>Separate data per tenant</span></li>
-                        <li><span>Branch-level operations</span></li>
-                        <li><span>Tenant Super Admin dashboard</span></li>
-                        <li><span>Compare branch performance</span></li>
-                        <li><span>Export branch reports</span></li>
-                        <li><span>Shared SMTP & WhatsApp with branch-specific branding</span></li>
-                        <li><span>Branch name, address, phone appended automatically</span></li>
-                    </ul>
                 </div>
             </section>
 
-            <!-- 8. Maktob Management -->
-            <section class="feature-category hidden" data-category="maktob">
-                <div class="category-header">
-                    <div class="category-title">
-                        <div class="category-icon">🧾</div>
-                        <h2>Maktob (Official Letter) Management</h2>
+            <!-- Maktob -->
+            <section class="feature-category" id="maktob" data-category="maktob">
+                <div class="feat-header">
+                    <div class="feat-header-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                     </div>
-
-                    <div class="problem-solution">
-                        <h3>The Problem</h3>
-                        <p class="problem-text">Travel agencies struggle with managing official letters, agreements, and correspondence. Manual tracking leads to lost documents, version confusion, and compliance issues.</p>
-
-                        <h3 class="solution-heading">Our Solution</h3>
-                        <p class="solution-text">Complete Maktob management system with numbering, multi-language support, PDF generation, and audit logging for all official correspondence.</p>
-                    </div>
+                    <h2>Maktob Management</h2>
                 </div>
-
-                <div class="capabilities-grid">
-                    <div class="capability-card">
-                        <div class="capability-icon">📝</div>
-                        <h4>Issued & Received Letters</h4>
+                <p class="feat-intro">Lost official letters, version confusion, and compliance gaps are common when correspondence is managed manually. Maktob provides systematic numbering, multi-language support (English, Dari, Pashto), PDF generation, and full audit logging.</p>
+                <div class="feat-grid">
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        </div>
+                        <h4>Issued &amp; Received Letters</h4>
                         <p>Track both incoming and outgoing official correspondence</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">🔢</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                        </div>
                         <h4>Automatic Numbering</h4>
-                        <p>Systematic Maktob numbering for easy reference and tracking</p>
+                        <p>Systematic Maktob numbering for easy reference</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">🌐</div>
-                        <h4>Multi-Language Support</h4>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                        </div>
+                        <h4>Multi-Language</h4>
                         <p>Create letters in English, Dari, and Pashto</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📄</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        </div>
                         <h4>PDF Generation</h4>
-                        <p>Generate professional PDF documents with preview capability</p>
+                        <p>Professional PDF documents with preview capability</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📁</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                        </div>
                         <h4>Status Management</h4>
-                        <p>Track letters through Draft, Sent, and Archived statuses</p>
+                        <p>Draft, Sent, Archived tracking with search and filters</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">🏢</div>
-                        <h4>Branch-Aware Handling</h4>
-                        <p>Manage letters with branch-specific context and access</p>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l5-4v18"/><path d="M19 21V7l-5-4v18"/><path d="M9 21V11"/><path d="M15 21V11"/></svg>
+                        </div>
+                        <h4>Branch-Aware</h4>
+                        <p>Letters managed with branch-specific context and access</p>
                     </div>
-                </div>
-
-                <div class="features-list">
-                    <h4>Key Capabilities Include:</h4>
-                    <ul>
-                        <li><span>Issued and received official letters management</span></li>
-                        <li><span>Automatic Maktob numbering system</span></li>
-                        <li><span>Multi-language support (English, Dari, Pashto)</span></li>
-                        <li><span>PDF generation and download functionality</span></li>
-                        <li><span>PDF preview within the system</span></li>
-                        <li><span>Draft/Sent/Archived status tracking</span></li>
-                        <li><span>Branch-aware Maktob handling</span></li>
-                        <li><span>Search, pagination, and filtering capabilities</span></li>
-                        <li><span>Audit logging for all Maktob actions</span></li>
-                    </ul>
                 </div>
             </section>
 
-            <!-- 9. HR & Attendance Management -->
-            <section class="feature-category hidden" data-category="hr">
-                <div class="category-header">
-                    <div class="category-title">
-                        <div class="category-icon">🕒</div>
-                        <h2>HR & Attendance Management</h2>
+            <!-- HR -->
+            <section class="feature-category" id="hr" data-category="hr">
+                <div class="feat-header">
+                    <div class="feat-header-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                     </div>
-
-                    <div class="problem-solution">
-                        <h3>The Problem</h3>
-                        <p class="problem-text">Tracking employee attendance, calculating payroll, and managing performance across multiple branches is time-consuming and error-prone.</p>
-
-                        <h3 class="solution-heading">Our Solution</h3>
-                        <p class="solution-text">Complete HR management system with attendance tracking, payroll integration, and performance reporting for all branches.</p>
-                    </div>
+                    <h2>HR &amp; Attendance</h2>
                 </div>
-
-                <div class="capabilities-grid">
-                    <div class="capability-card">
-                        <div class="capability-icon">📅</div>
+                <p class="feat-intro">Tracking employee attendance, calculating payroll, and managing performance across multiple branches is time-consuming and error-prone. MTravels HR module handles attendance, branch-level tracking, salary integration, and performance analytics.</p>
+                <div class="feat-grid">
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        </div>
                         <h4>Employee Attendance</h4>
-                        <p>Track attendance per employee with check-in/check-out times</p>
+                        <p>Track check-in/check-out times per employee</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">🏢</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l5-4v18"/><path d="M19 21V7l-5-4v18"/></svg>
+                        </div>
                         <h4>Branch-Level Tracking</h4>
-                        <p>Manage attendance separately for each branch location</p>
+                        <p>Manage attendance separately per branch</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">💰</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        </div>
                         <h4>Salary Integration</h4>
-                        <p>Automatic salary calculation based on attendance and performance</p>
+                        <p>Auto-calculate salary based on attendance and performance</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📊</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="20" x2="21" y2="20"/><line x1="5" y1="16" x2="5" y2="20"/><line x1="10" y1="12" x2="10" y2="20"/><line x1="15" y1="8" x2="15" y2="20"/><line x1="20" y1="4" x2="20" y2="20"/></svg>
+                        </div>
                         <h4>Performance Reporting</h4>
-                        <p>Generate performance reports based on attendance and KPIs</p>
+                        <p>Generate reports based on attendance and KPIs</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">👤</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        </div>
                         <h4>Employee Records</h4>
-                        <p>Complete employee profiles with attendance history</p>
+                        <p>Complete profiles with attendance history</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📈</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                        </div>
                         <h4>Productivity Analytics</h4>
                         <p>Analyze attendance patterns and productivity trends</p>
                     </div>
                 </div>
-
-                <div class="features-list">
-                    <h4>Key Capabilities Include:</h4>
-                    <ul>
-                        <li><span>Employee attendance tracking system</span></li>
-                        <li><span>Branch-level attendance management</span></li>
-                        <li><span>Integration with salary calculation module</span></li>
-                        <li><span>Performance-based reporting</span></li>
-                        <li><span>Complete employee records management</span></li>
-                        <li><span>Attendance analytics and trends</span></li>
-                        <li><span>Leave management and approvals</span></li>
-                        <li><span>Overtime tracking and calculation</span></li>
-                    </ul>
-                </div>
             </section>
 
-            <!-- 10. Communication & Collaboration -->
-            <section class="feature-category hidden" data-category="communication">
-                <div class="category-header">
-                    <div class="category-title">
-                        <div class="category-icon">💬</div>
-                        <h2>Communication & Collaboration</h2>
+            <!-- Communication -->
+            <section class="feature-category" id="communication" data-category="communication">
+                <div class="feat-header">
+                    <div class="feat-header-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                     </div>
-
-                    <div class="problem-solution">
-                        <h3>The Problem</h3>
-                        <p class="problem-text">Agencies need seamless communication between branches and with other agencies. Manual coordination leads to delays and miscommunication.</p>
-
-                        <h3 class="solution-heading">Our Solution</h3>
-                        <p class="solution-text">Built-in inter-tenant chat and collaboration tools for ticket/visa selling between agencies with controlled access.</p>
-                    </div>
+                    <h2>Communication &amp; Collaboration</h2>
                 </div>
-
-                <div class="capabilities-grid">
-                    <div class="capability-card">
-                        <div class="capability-icon">💬</div>
+                <p class="feat-intro">Agencies need seamless communication between branches and with partner agencies. MTravels provides built-in inter-tenant chat, shared agreements with controlled access, and collaboration tools for cross-agency ticket/visa sales.</p>
+                <div class="feat-grid">
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        </div>
                         <h4>Inter-Tenant Chat</h4>
                         <p>Real-time messaging between different agencies</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">🤝</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        </div>
                         <h4>Business Collaboration</h4>
                         <p>Coordinate ticket, visa, and Umrah sales between agencies</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📄</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        </div>
                         <h4>Shared Agreements</h4>
-                        <p>Create and manage shared agreements with controlled access</p>
+                        <p>Create agreements with controlled access permissions</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">🔒</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        </div>
                         <h4>Controlled Access</h4>
-                        <p>Manage permissions for shared documents and communications</p>
+                        <p>Manage permissions for shared communications</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📊</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="20" x2="21" y2="20"/><line x1="5" y1="16" x2="5" y2="20"/><line x1="10" y1="12" x2="10" y2="20"/><line x1="15" y1="8" x2="15" y2="20"/><line x1="20" y1="4" x2="20" y2="20"/></svg>
+                        </div>
                         <h4>Collaboration Analytics</h4>
                         <p>Track collaboration activities and outcomes</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📱</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                        </div>
                         <h4>Mobile Collaboration</h4>
-                        <p>Access collaboration tools from mobile devices</p>
+                        <p>Access collaboration tools from any device</p>
                     </div>
-                </div>
-
-                <div class="features-list">
-                    <h4>Key Capabilities Include:</h4>
-                    <ul>
-                        <li><span>Inter-tenant chat functionality</span></li>
-                        <li><span>Tenant-to-tenant business collaboration</span></li>
-                        <li><span>Ticket, visa, and Umrah selling between tenants</span></li>
-                        <li><span>Shared agreements with controlled access</span></li>
-                        <li><span>Real-time communication tools</span></li>
-                        <li><span>Collaboration activity tracking</span></li>
-                        <li><span>Mobile-friendly collaboration interface</span></li>
-                        <li><span>Document sharing with access control</span></li>
-                    </ul>
                 </div>
             </section>
 
-            <!-- 11. Security & Audit Logs -->
-            <section class="feature-category hidden" data-category="security">
-                <div class="category-header">
-                    <div class="category-title">
-                        <div class="category-icon">🔐</div>
-                        <h2>Security & Audit Logs</h2>
+            <!-- Security -->
+            <section class="feature-category" id="security" data-category="security">
+                <div class="feat-header">
+                    <div class="feat-header-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                     </div>
-
-                    <div class="problem-solution">
-                        <h3>The Problem</h3>
-                        <p class="problem-text">Financial systems need complete accountability. Staff changes, financial adjustments, and critical operations must be traceable for compliance and fraud investigation.</p>
-
-                        <h3 class="solution-heading">Our Solution</h3>
-                        <p class="solution-text">Full auditability built into every transaction — track who changed what, when, and from where. Enterprise-grade security for sensitive data.</p>
-                    </div>
+                    <h2>Security &amp; Audit Logs</h2>
                 </div>
-
-                <div class="capabilities-grid">
-                    <div class="capability-card">
-                        <div class="capability-icon">📝</div>
+                <p class="feat-intro">Financial systems demand complete accountability. Every transaction in MTravels is fully auditable — who changed what, when, and from where. Enterprise-grade AES-256 encryption, role-based access, automated backups, and compliance reporting built in.</p>
+                <div class="feat-grid">
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        </div>
                         <h4>Comprehensive Audit Logs</h4>
-                        <p>Who changed what, when, and from where — full transaction history</p>
+                        <p>Full transaction history — who changed what and when</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">🔒</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        </div>
                         <h4>Role-Based Security</h4>
-                        <p>Secure actions only allowed by appropriate roles</p>
+                        <p>Secure actions only by appropriate roles</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📋</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        </div>
                         <h4>Change History</h4>
                         <p>Complete history of sensitive operations for compliance</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">🛡️</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        </div>
                         <h4>Data Encryption</h4>
-                        <p>Military-grade AES-256 encryption for all data</p>
+                        <p>AES-256 encryption for all data at rest and in transit</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">💾</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                        </div>
                         <h4>Automated Backups</h4>
-                        <p>Daily backups with point-in-time recovery capability</p>
+                        <p>Daily backups with point-in-time recovery</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📄</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        </div>
                         <h4>Compliance Reports</h4>
-                        <p>Generate compliance reports for audits automatically</p>
+                        <p>Generate audit-ready compliance reports automatically</p>
                     </div>
-                </div>
-
-                <div class="features-list">
-                    <h4>Key Capabilities Include:</h4>
-                    <ul>
-                        <li><span>Audit log (who changed what & when)</span></li>
-                        <li><span>Secure role-based actions</span></li>
-                        <li><span>Change history for sensitive operations</span></li>
-                        <li><span>Bank-level data encryption</span></li>
-                        <li><span>Automated daily backups</span></li>
-                        <li><span>Point-in-time recovery</span></li>
-                        <li><span>Compliance reports for audits</span></li>
-                        <li><span>GDPR-compliant data handling</span></li>
-                        <li><span>Tenant isolation and data protection</span></li>
-                        <li><span>Secure document handling and storage</span></li>
-                    </ul>
                 </div>
             </section>
 
-            <!-- 9. Client Portal -->
-            <section class="feature-category hidden" data-category="portal">
-                <div class="category-header">
-                    <div class="category-title">
-                        <div class="category-icon">👥</div>
-                        <h2>Client Portal</h2>
+            <!-- Portal -->
+            <section class="feature-category" id="portal" data-category="portal">
+                <div class="feat-header">
+                    <div class="feat-header-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                     </div>
-
-                    <div class="problem-solution">
-                        <h3>The Problem</h3>
-                        <p class="problem-text">Clients constantly ask for booking status, ticket copies, and invoices. Staff waste time on repetitive requests that should be self-service.</p>
-                        
-                        <h3 class="solution-heading">Our Solution</h3>
-                        <p class="solution-text">A dedicated client portal where customers access their booking history, download documents, and get real-time status updates 24/7.</p>
-                    </div>
+                    <h2>Client Portal</h2>
                 </div>
-
-                <div class="capabilities-grid">
-                    <div class="capability-card">
-                        <div class="capability-icon">🔐</div>
+                <p class="feat-intro">Clients constantly ask for booking status, ticket copies, and invoices — wasting staff time on repetitive requests. MTravels Client Portal gives customers 24/7 self-service access to their booking history, documents, and real-time status updates.</p>
+                <div class="feat-grid">
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        </div>
                         <h4>Client Login Access</h4>
-                        <p>Secure client login to view their accounts</p>
+                        <p>Secure authentication for clients to access their accounts</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">🎫</div>
-                        <h4>Ticket & Service History</h4>
-                        <p>Complete history of all bookings and services</p>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 7V5"/><path d="M17 7V5"/></svg>
+                        </div>
+                        <h4>Booking History</h4>
+                        <p>Complete history of all tickets and services</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">💳</div>
-                        <h4>Balance & Transactions</h4>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        </div>
+                        <h4>Balance &amp; Transactions</h4>
                         <p>View account balance and transaction history</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📥</div>
-                        <h4>Download Documents</h4>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        </div>
+                        <h4>Document Downloads</h4>
                         <p>Download invoices, tickets, and documents anytime</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📱</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                        </div>
                         <h4>Mobile Friendly</h4>
-                        <p>Fully responsive design for all devices</p>
+                        <p>Fully responsive design for phones and tablets</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">🔔</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                        </div>
                         <h4>Real-Time Notifications</h4>
-                        <p>Clients notified of booking updates automatically</p>
+                        <p>Automatic push notifications for booking updates</p>
                     </div>
-                </div>
-
-                <div class="features-list">
-                    <h4>Key Capabilities Include:</h4>
-                    <ul>
-                        <li><span>Client login access with secure authentication</span></li>
-                        <li><span>Ticket & service history view</span></li>
-                        <li><span>Balance & transaction viewing</span></li>
-                        <li><span>Downloadable invoices & documents</span></li>
-                        <li><span>Real-time booking status updates</span></li>
-                        <li><span>Mobile app access (iOS & Android)</span></li>
-                        <li><span>Push notifications for important updates</span></li>
-                        <li><span>Offline document access</span></li>
-                    </ul>
                 </div>
             </section>
 
-            <!-- 10. Onboarding & Learning -->
-            <section class="feature-category hidden" data-category="learning">
-                <div class="category-header">
-                    <div class="category-title">
-                        <div class="category-icon">🎓</div>
-                        <h2>Onboarding & Learning System</h2>
+            <!-- Learning -->
+            <section class="feature-category" id="learning" data-category="learning">
+                <div class="feat-header">
+                    <div class="feat-header-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
                     </div>
-
-                    <div class="problem-solution">
-                        <h3>The Problem</h3>
-                        <p class="problem-text">New users struggle to adopt complex systems. Teams need quick access to tutorials and guides to use features effectively.</p>
-                        
-                        <h3 class="solution-heading">Our Solution</h3>
-                        <p class="solution-text">Built-in learning system with Vimeo-hosted tutorials, step-by-step guides, role-based learning paths, and feature-specific help videos.</p>
-                    </div>
+                    <h2>Onboarding &amp; Learning</h2>
                 </div>
-
-                <div class="capabilities-grid">
-                    <div class="capability-card">
-                        <div class="capability-icon">🎥</div>
-                        <h4>Vimeo-Hosted Tutorials</h4>
-                        <p>Fast, reliable video hosting for training content</p>
+                <p class="feat-intro">New users struggle with complex systems. MTravels includes a built-in learning system with Vimeo-hosted tutorials, step-by-step guides, role-based learning paths, feature-specific help videos, and a support ticket system — all inside the platform.</p>
+                <div class="feat-grid">
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                        </div>
+                        <h4>Video Tutorials</h4>
+                        <p>Fast, reliable Vimeo-hosted training content</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">📚</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                        </div>
                         <h4>Step-by-Step Guides</h4>
                         <p>Written guides for every feature and workflow</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">🎯</div>
-                        <h4>Role-Based Learning Paths</h4>
-                        <p>Customized learning for each role (admin, sales, finance)</p>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                        </div>
+                        <h4>Role-Based Learning</h4>
+                        <p>Customized paths for admin, sales, and finance roles</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">🔍</div>
-                        <h4>Feature-Specific Help</h4>
-                        <p>Contextual help available right in the feature</p>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        </div>
+                        <h4>Contextual Help</h4>
+                        <p>Feature-specific help available right in the interface</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">⭐</div>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        </div>
                         <h4>Quick Wins Series</h4>
-                        <p>Short videos on getting started and common tasks</p>
+                        <p>Short getting-started videos for common tasks</p>
                     </div>
-                    <div class="capability-card">
-                        <div class="capability-icon">🤝</div>
-                        <h4>Support Ticket System</h4>
-                        <p>Lightweight built-in support for issues and questions</p>
+                    <div class="feat-card">
+                        <div class="feat-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        </div>
+                        <h4>Support Tickets</h4>
+                        <p>Lightweight built-in support with SLA tracking</p>
                     </div>
-                </div>
-
-                <div class="features-list">
-                    <h4>Key Capabilities Include:</h4>
-                    <ul>
-                        <li><span>Vimeo-hosted tutorials for fast loading</span></li>
-                        <li><span>Step-by-step guides for all features</span></li>
-                        <li><span>Role-based learning paths</span></li>
-                        <li><span>Feature-specific help videos</span></li>
-                        <li><span>Quick wins & getting started series</span></li>
-                        <li><span>Built-in support ticket system</span></li>
-                        <li><span>Issue categorization & SLA tracking</span></li>
-                        <li><span>Screenshot upload & ticket history</span></li>
-                    </ul>
                 </div>
             </section>
 
-            <!-- ROI Section -->
+            <!-- ROI -->
             <section class="roi-section">
                 <h3>Measurable Business Impact</h3>
                 <div class="roi-grid">
                     <div class="roi-item">
                         <div class="roi-number">80%</div>
-                        <div class="roi-label">Reduction in manual work & data entry errors</div>
+                        <div class="roi-label">Reduction in manual work &amp; data entry errors</div>
                     </div>
                     <div class="roi-item">
                         <div class="roi-number">40%</div>
@@ -1630,111 +1473,106 @@ $platform_settings = $landingData['settings'];
                 </div>
             </section>
 
-            <!-- Roles Section -->
+            <!-- Roles -->
             <section class="roles-section">
-                <h3>Roles & Permissions</h3>
-                <p style="text-align: center; color: #666; margin-bottom: 2rem;">Clear, role-based access aligned with real agency operations</p>
+                <h3 class="feat-section-title">Roles &amp; Permissions</h3>
+                <p class="feat-section-sub">Clear, role-based access aligned with real agency operations</p>
                 <div class="roles-grid">
                     <div class="role-card">
-                        <div class="role-icon">👔</div>
+                        <div class="role-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                        </div>
                         <h4>Tenant Super Admin</h4>
-                        <p>Agency Owner<br><span style="font-size: 0.85rem;">Global dashboard, branch comparison, export reports</span></p>
+                        <p>Agency Owner<small>Global dashboard, branch comparison, reports</small></p>
                     </div>
                     <div class="role-card">
-                        <div class="role-icon">⚙️</div>
+                        <div class="role-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        </div>
                         <h4>Admin</h4>
-                        <p>System Management<br><span style="font-size: 0.85rem;">User management, settings, audit logs</span></p>
+                        <p>System Management<small>Users, settings, audit logs</small></p>
                     </div>
                     <div class="role-card">
-                        <div class="role-icon">💼</div>
+                        <div class="role-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        </div>
                         <h4>Finance</h4>
-                        <p>Accounting<br><span style="font-size: 0.85rem;">Ledgers, invoices, payments, reports</span></p>
+                        <p>Accounting<small>Ledgers, invoices, payments, reports</small></p>
                     </div>
                     <div class="role-card">
-                        <div class="role-icon">🎯</div>
+                        <div class="role-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                        </div>
                         <h4>Sales</h4>
-                        <p>Booking Team<br><span style="font-size: 0.85rem;">Bookings, clients, availability, quotes</span></p>
+                        <p>Booking Team<small>Bookings, clients, quotes</small></p>
                     </div>
                     <div class="role-card">
-                        <div class="role-icon">🕋</div>
+                        <div class="role-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                        </div>
                         <h4>Umrah Team</h4>
-                        <p>Pilgrimage Ops<br><span style="font-size: 0.85rem;">Family bookings, members, payments, visas</span></p>
-                    </div>
-                </div>
-                <p style="text-align: center; color: #666; margin-top: 2rem; font-style: italic;">Each role only sees and edits what they are allowed to</p>
-            </section>
-
-            <!-- Architecture Section -->
-            <section class="architecture-section">
-                <h3>Platform & Infrastructure</h3>
-                <p style="text-align: center; color: #666; margin-bottom: 2rem;">Designed for scale, automation, and growth</p>
-                <div class="architecture-grid">
-                    <div class="arch-item">
-                        <h4>SaaS-Ready Architecture</h4>
-                        <p>Multi-tenant platform built on modern cloud infrastructure with automatic scaling</p>
-                    </div>
-                    <div class="arch-item">
-                        <h4>Multi-Tenant Support</h4>
-                        <p>Complete data isolation between tenants with shared infrastructure efficiency</p>
-                    </div>
-                    <div class="arch-item">
-                        <h4>Investor-Ready Structure</h4>
-                        <p>Built with growth and exit in mind — scalable, profitable, and expandable</p>
-                    </div>
-                    <div class="arch-item">
-                        <h4>Future-Ready for AI & Integrations</h4>
-                        <p>Architecture designed for easy integration of AI, third-party APIs, and new features</p>
-                    </div>
-                    <div class="arch-item">
-                        <h4>API-First Design</h4>
-                        <p>Complete REST API for custom integrations and third-party connections</p>
-                    </div>
-                    <div class="arch-item">
-                        <h4>Performance Optimized</h4>
-                        <p>Sub-second response times with caching, CDN, and database optimization</p>
+                        <p>Pilgrimage Ops<small>Families, members, payments, visas</small></p>
                     </div>
                 </div>
             </section>
 
-            <!-- Investor Tagline -->
-            <section class="investor-tagline">
-                ✅ An all-in-one, automation-first, multi-branch travel agency SaaS covering ticketing, Umrah, visas, hotels, finance, communication, reporting, and client management — built for real agency operations, not theory.
-            </section>
+
+
+            <!-- Investor -->
+            <div class="investor-card">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                An all-in-one, automation-first, multi-branch travel agency SaaS covering ticketing, Umrah, visas, hotels, finance, communication, reporting, and client management — built for real agency operations, not theory.
+            </div>
 
             <!-- CTA -->
-            <section class="advanced-cta">
+            <section class="features-cta">
                 <h3>Ready to Revolutionize Your Travel Agency?</h3>
                 <p>Start your free 14-day trial today. No credit card required. Full access to all features.</p>
                 <div class="cta-buttons">
-                    <a href="book-demo.php" class="btn-primaryi">Schedule Demo</a>
-                    <a href="index.php#pricing" class="btn-secondaryi">View Pricing</a>
+                    <a href="book-demo.php" class="cta-btn-primary">Schedule Demo</a>
+                    <a href="index.php#pricing" class="cta-btn-outline">View Pricing</a>
                 </div>
             </section>
 
+            </div>
         </div>
     </div>
+</div>
 
     <script>
-        // Feature Navigation
-        document.querySelectorAll('.nav-tab').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const category = this.dataset.category;
+        // Sidebar scroll-spy with IntersectionObserver
+        document.addEventListener('DOMContentLoaded', function() {
+            const sections = document.querySelectorAll('.feature-category');
+            const sidebarLinks = document.querySelectorAll('.sidebar-link');
 
-                // Update active button
-                document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
+            if (!sections.length || !sidebarLinks.length) return;
 
-                // Update visible categories
-                document.querySelectorAll('.feature-category').forEach(cat => {
-                    if (cat.dataset.category === category) {
-                        cat.classList.remove('hidden');
-                    } else {
-                        cat.classList.add('hidden');
+            const observer = new IntersectionObserver((entries) => {
+                let activeId = '';
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        activeId = entry.target.id;
                     }
                 });
+                if (activeId) {
+                    sidebarLinks.forEach(link => {
+                        link.classList.toggle('active', link.dataset.target === activeId);
+                    });
+                }
+            }, {
+                rootMargin: '-80px 0px -20% 0px',
+                threshold: 0
+            });
 
-                // Scroll to top
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+            sections.forEach(section => observer.observe(section));
+
+            sidebarLinks.forEach(link => {
+                link.addEventListener('click', function() {
+                    const target = document.getElementById(this.dataset.target);
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                });
             });
         });
 

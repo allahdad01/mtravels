@@ -46,685 +46,597 @@ $platform_settings = getPlatformSettings($pdo);
         <!-- Favicon -->
         <link rel="icon" href="uploads/logo/<?= htmlspecialchars(getSetting($platform_settings, 'platform_logo') ?? 'default-logo.png') ?>" type="image/x-icon">
         <link rel="stylesheet" href="assets/css/index.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
         <?php renderThemeStyles(); ?>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        .security-wrapper {
+            min-height: 100vh;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background 0.3s ease, color 0.3s ease;
         }
 
-        :root {
-            --primary: #4099ff;
-            --primary-dark: #2673cc;
-            --primary-light: #a0e6ff;
-            --secondary: #2ed8b6;
-            --secondary-dark: #24a88f;
-            --secondary-light: #8ef0e0;
-            --accent: #25c6b4;
-            --success: #10b981;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --dark: #0f172a;
-            --light: #f8fafc;
-            --white: #ffffff;
-            --gray-50: #f8fafc;
-            --gray-100: #f1f5f9;
-            --gray-200: #e2e8f0;
-            --gray-300: #cbd5e1;
-            --gray-400: #94a3b8;
-            --gray-500: #64748b;
-            --gray-600: #475569;
-            --gray-700: #334155;
-            --gray-800: #1e293b;
-            --gray-900: #0f172a;
+        .security-hero {
+            position: relative;
+            padding: 8rem 2rem 5rem;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: #fff;
+            overflow: hidden;
+            text-align: center;
+            margin-top: 120px;
+            z-index: 1;
         }
 
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            line-height: 1.6;
-            color: var(--gray-800);
-            background: var(--white);
-            overflow-x: hidden;
+        .security-hero::before {
+            content: '';
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 50%;
+            top: -200px;
+            right: -200px;
         }
 
-        .container {
+        .security-hero::after {
+            content: '';
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 50%;
+            bottom: -150px;
+            left: -150px;
+        }
+
+        .security-hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .security-hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            letter-spacing: -1px;
+            line-height: 1.2;
+        }
+
+        .security-hero p {
+            font-size: 1.3rem;
+            opacity: .9;
+            font-weight: 500;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .security-section {
+            padding: 5rem 2rem;
+        }
+
+        .security-container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 0 20px;
         }
 
-        /* Advanced Navbar */
-        .navbar {
-            position: fixed;
-            top: 30px;
-            left: 100px;
-            right: 100px;
-            padding: 1.5rem 2rem;
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(20px);
-            border-radius: 50px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-            z-index: 1000;
-            transition: all 0.3s ease;
+        .security-section-header {
+            text-align: center;
+            margin-bottom: 3.5rem;
         }
 
-        .navbar.scrolled {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 1rem 2rem;
-            border-radius: 50px;
-            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.2);
-        }
-
-        .nav-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .logo {
-            display: flex;
-            align-items: center;
-            text-decoration: none;
-        }
-
-        .logo img {
-            max-height: 40px;
-            width: auto;
-        }
-
-        .logo-text {
-            font-size: 1.8rem;
+        .security-section-header h2 {
+            font-size: 2.2rem;
             font-weight: 800;
-            text-decoration: none;
-            color: var(--primary);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: .8rem;
         }
 
-        .nav-menu {
-            display: flex;
-            align-items: center;
-            gap: 2rem;
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 2rem;
-            list-style: none;
-        }
-
-        .nav-links a {
-            color: var(--gray-700);
-            text-decoration: none;
-            font-weight: 600;
-            position: relative;
-            transition: color 0.3s;
-        }
-
-        .nav-links a:hover {
-            color: var(--primary);
-        }
-
-        .nav-actions {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 35px rgba(64, 153, 255, 0.4);
-        }
-
-        /* Hero Section */
-        .hero {
-            padding: 12rem 0 8rem;
-            position: relative;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            color: white;
-            text-align: center;
-        }
-
-        .hero h1 {
-            font-size: 4rem;
-            font-weight: 900;
-            margin-bottom: 1.5rem;
-            line-height: 1.1;
-        }
-
-        .hero p {
-            font-size: 1.25rem;
-            margin-bottom: 3rem;
+        .security-section-header p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
             max-width: 700px;
-            margin-left: auto;
-            margin-right: auto;
-            opacity: 0.9;
+            margin: 0 auto;
+            line-height: 1.7;
         }
 
-        /* Security Content */
-        .security-content {
-            padding: 6rem 0;
-            background: var(--white);
-        }
-
-        /* Security Overview */
-        .security-overview {
-            text-align: center;
-            margin-bottom: 6rem;
-        }
-
-        .overview-grid {
+        /* Overview grid */
+        .sec-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 3rem;
-            margin-top: 4rem;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
         }
 
-        .overview-item {
-            padding: 2rem;
-            background: var(--gray-50);
-            border-radius: 20px;
-            text-align: center;
-        }
-
-        .overview-icon {
-            font-size: 3rem;
-            margin-bottom: 1.5rem;
-            color: var(--primary);
-        }
-
-        .overview-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--gray-900);
-            margin-bottom: 1rem;
-        }
-
-        .overview-description {
-            color: var(--gray-600);
-            line-height: 1.6;
-        }
-
-        /* Security Features */
-        .security-features {
-            margin-bottom: 6rem;
-        }
-
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 3rem;
-        }
-
-        .feature-card {
+        .sec-card {
             background: var(--white);
-            border: 2px solid var(--gray-100);
-            border-radius: 20px;
-            padding: 3rem 2rem;
-            text-align: center;
-            transition: all 0.3s ease;
-        }
-
-        .feature-card:hover {
-            transform: translateY(-5px);
-            border-color: var(--primary);
-            box-shadow: 0 15px 35px rgba(64, 153, 255, 0.1);
-        }
-
-        .feature-icon {
-            font-size: 3rem;
-            margin-bottom: 1.5rem;
-            color: var(--primary);
-        }
-
-        .feature-title {
-            font-size: 1.4rem;
-            font-weight: 700;
-            color: var(--gray-900);
-            margin-bottom: 1rem;
-        }
-
-        .feature-description {
-            color: var(--gray-600);
-            line-height: 1.6;
-        }
-
-        /* Compliance Section */
-        .compliance {
-            background: var(--gray-50);
-            padding: 6rem 0;
-            margin: 6rem 0;
-        }
-
-        .compliance-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 3rem;
-        }
-
-        .compliance-item {
-            text-align: center;
-            padding: 2rem;
-            background: var(--white);
-            border-radius: 15px;
             border: 1px solid var(--gray-200);
-            transition: all 0.3s ease;
+            border-radius: 20px;
+            padding: 2.5rem 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,.04);
+            transition: all .4s cubic-bezier(.175,.885,.32,1.275);
+            position: relative;
+            overflow: hidden;
+            text-align: center;
         }
 
-        .compliance-item:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(64, 153, 255, 0.1);
+        html.dark-mode .sec-card {
+            background: var(--bg-surface);
+            border-color: var(--gray-700);
         }
 
-        .compliance-icon {
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
+        .sec-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform .5s ease;
+        }
+
+        .sec-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .sec-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 20px 50px rgba(64,153,255,.1);
+            border-color: rgba(64,153,255,.2);
+        }
+
+        .sec-card-icon {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, rgba(64,153,255,.08), rgba(46,216,182,.08));
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             color: var(--primary);
+            margin: 0 auto 1.2rem;
+            transition: all .4s ease;
         }
 
-        .compliance-title {
+        .sec-card-icon svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .sec-card:hover .sec-card-icon {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: #fff;
+            transform: scale(1.1) rotate(-5deg);
+            box-shadow: 0 10px 25px rgba(64,153,255,.2);
+        }
+
+        .sec-card h3 {
             font-size: 1.2rem;
             font-weight: 700;
-            color: var(--gray-900);
-            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            margin-bottom: .7rem;
         }
 
-        .compliance-description {
-            color: var(--gray-600);
-            font-size: 0.9rem;
-            line-height: 1.5;
+        .sec-card p {
+            color: var(--text-secondary);
+            font-size: .93rem;
+            line-height: 1.6;
+            margin: 0;
         }
 
-        /* Security Measures */
-        .security-measures {
-            margin-bottom: 6rem;
-        }
-
+        /* Measures list */
         .measures-list {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 1.5rem;
         }
 
-        .measure-item {
-            display: flex;
-            align-items: flex-start;
-            gap: 1.5rem;
+        .measure-card {
+            background: var(--white);
+            border: 1px solid var(--gray-200);
+            border-radius: 20px;
             padding: 2rem;
-            background: var(--gray-50);
-            border-radius: 15px;
-            border-left: 4px solid var(--primary);
-        }
-
-        .measure-icon {
-            font-size: 2rem;
-            color: var(--primary);
-            flex-shrink: 0;
-            margin-top: 0.25rem;
-        }
-
-        .measure-content h3 {
-            font-size: 1.2rem;
-            font-weight: 700;
-            color: var(--gray-900);
-            margin-bottom: 0.5rem;
-        }
-
-        .measure-content p {
-            color: var(--gray-600);
-            line-height: 1.6;
-        }
-
-        /* CTA Section */
-        .security-cta {
-            background: var(--gray-50);
-            padding: 6rem 0;
-            text-align: center;
-        }
-
-        .security-cta h2 {
-            font-size: 3rem;
-            font-weight: 800;
-            color: var(--gray-900);
-            margin-bottom: 1.5rem;
-        }
-
-        .security-cta p {
-            font-size: 1.2rem;
-            color: var(--gray-600);
-            margin-bottom: 3rem;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .security-cta-buttons {
+            box-shadow: 0 4px 20px rgba(0,0,0,.04);
+            transition: all .4s ease;
+            position: relative;
+            overflow: hidden;
             display: flex;
-            gap: 1.5rem;
-            justify-content: center;
-            flex-wrap: wrap;
+            gap: 1.2rem;
+            align-items: flex-start;
         }
 
-        /* Footer */
-        .footer {
-            background: var(--gray-50);
-            color: var(--gray-900);
-            padding: 4rem 0 2rem;
+        html.dark-mode .measure-card {
+            background: var(--bg-surface);
+            border-color: var(--gray-700);
         }
 
-        .footer-content {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 3rem;
-            margin-bottom: 2rem;
+        .measure-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--primary);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform .5s ease;
         }
 
-        .footer-section h3 {
-            font-size: 1.2rem;
+        .measure-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .measure-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 50px rgba(64,153,255,.1);
+            border-color: rgba(64,153,255,.2);
+        }
+
+        .measure-card .sec-card-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0;
+            flex-shrink: 0;
+        }
+
+        .measure-card .sec-card-icon svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .measure-card h3 {
+            font-size: 1.05rem;
             font-weight: 700;
-            margin-bottom: 1.5rem;
-            color: var(--gray-900);
+            color: var(--text-primary);
+            margin-bottom: .4rem;
         }
 
-        .footer-section ul {
-            list-style: none;
+        .measure-card p {
+            color: var(--text-secondary);
+            font-size: .9rem;
+            line-height: 1.6;
+            margin: 0;
         }
 
-        .footer-section li {
-            margin-bottom: 0.8rem;
+        /* Compliance section */
+        .compliance-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 2rem;
         }
 
-        .footer-section a {
-            color: var(--gray-600);
-            text-decoration: none;
-            transition: color 0.3s;
-        }
-
-        .footer-section a:hover {
-            color: var(--primary);
-        }
-
-        .footer-bottom {
-            padding-top: 2rem;
-            border-top: 1px solid var(--primary);
+        .compliance-badge {
+            background: var(--bg-surface);
+            border: 1px solid var(--gray-200);
+            border-radius: 12px;
+            padding: 1.5rem 1rem;
             text-align: center;
-            color: var(--gray-600);
+            transition: all .3s ease;
         }
 
-        /* Mobile Responsive */
+        html.dark-mode .compliance-badge {
+            border-color: var(--gray-700);
+        }
+
+        .compliance-badge:hover {
+            border-color: var(--primary);
+            transform: translateY(-3px);
+        }
+
+        .compliance-badge h4 {
+            font-size: .9rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: .3rem;
+        }
+
+        .compliance-badge p {
+            font-size: .78rem;
+            color: var(--text-secondary);
+            margin: 0;
+            line-height: 1.4;
+        }
+
+        /* Responsive */
         @media (max-width: 768px) {
-            .navbar {
-                left: 20px;
-                right: 20px;
-                padding: 1rem 1.5rem;
+            .security-hero {
+                margin-top: 80px;
+                padding: 6rem 1.5rem 4rem;
             }
 
-            .hero h1 {
-                font-size: 2.5rem;
+            .security-hero h1 {
+                font-size: 2.2rem;
             }
 
-            .overview-grid,
-            .features-grid,
-            .compliance-grid {
-                grid-template-columns: 1fr;
+            .security-hero p {
+                font-size: 1.1rem;
+            }
+
+            .security-section {
+                padding: 3rem 1.2rem;
+            }
+
+            .security-section-header h2 {
+                font-size: 1.6rem;
             }
 
             .measures-list {
                 grid-template-columns: 1fr;
             }
 
-            .measure-item {
+            .measure-card {
                 flex-direction: column;
                 text-align: center;
+                align-items: center;
+            }
+
+            .measure-card .sec-card-icon {
+                margin: 0 auto;
             }
 
             .security-cta h2 {
-                font-size: 2rem;
+                font-size: 1.6rem;
             }
 
-            .security-cta-buttons {
-                flex-direction: column;
-                align-items: center;
+            .compliance-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .compliance-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
 </head>
 <body>
-<?php 
+    <!-- Animated Background -->
+    <div class="animated-bg"></div>
+
+    <!-- Floating Elements -->
+    <div class="floating-elements">
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+        <div class="floating-element"></div>
+    </div>
+
+    <?php
     $nav_links = [
         ['href' => 'index.php', 'label' => 'Home'],
-        ['href' => '#features', 'label' => 'Features'],
-        ['href' => '#pricing', 'label' => 'Pricing'],
-        ['href' => '#testimonials', 'label' => 'Reviews'],
-        ['href' => '#contact', 'label' => 'Contact']
+        ['href' => 'features.php', 'label' => 'Features'],
+        ['href' => 'how-it-works.php', 'label' => 'How It Works'],
+        ['href' => 'about.php', 'label' => 'About'],
+        ['href' => 'index.php#contact', 'label' => 'Contact']
     ];
-    require_once 'includes/navbar.php'; 
+    require_once 'includes/navbar.php';
     ?>
 
-    <!-- Hero Section -->
-    <section class="hero">
-        <div class="container">
-            <h1>Security & Trust</h1>
-            <p>Your data security and privacy are our top priorities. Learn how we protect your travel business with enterprise-grade security measures.</p>
-        </div>
-    </section>
+    <div class="security-wrapper">
+        <section class="security-hero">
+            <div class="security-hero-content">
+                <h1>Security &amp; Trust</h1>
+                <p>Your data security and privacy are our top priorities. Learn how we protect your travel business with enterprise-grade security measures.</p>
+            </div>
+        </section>
 
-    <!-- Security Content -->
-    <section class="security-content">
-        <div class="container">
-            <!-- Security Overview -->
-            <div class="security-overview">
-                <h2 style="font-size: 2.5rem; font-weight: 800; color: var(--gray-900); margin-bottom: 1rem;">Why Security Matters</h2>
-                <p style="font-size: 1.1rem; color: var(--gray-600); max-width: 800px; margin: 0 auto 4rem;">In the travel industry, protecting sensitive customer data, payment information, and business operations is critical. We employ comprehensive security measures to ensure your data remains safe, compliant, and accessible only to authorized personnel.</p>
+        <!-- Overview -->
+        <section class="security-section">
+            <div class="security-container">
+                <div class="security-section-header">
+                    <h2>Why Security Matters</h2>
+                    <p>In the travel industry, protecting sensitive customer data, payment information, and business operations is critical. We employ comprehensive security measures to ensure your data remains safe, compliant, and accessible only to authorized personnel.</p>
+                </div>
 
-                <div class="overview-grid">
-                    <div class="overview-item">
-                        <div class="overview-icon">🔒</div>
-                        <h3 class="overview-title">Data Protection</h3>
-                        <p class="overview-description">Your customer data, payment information, and business records are protected with multiple layers of encryption and security protocols.</p>
+                <div class="sec-grid">
+                    <div class="sec-card">
+                        <div class="sec-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        </div>
+                        <h3>Data Protection</h3>
+                        <p>Your customer data, payment information, and business records are protected with multiple layers of encryption and security protocols.</p>
                     </div>
-                    <div class="overview-item">
-                        <div class="overview-icon">🛡️</div>
-                        <h3 class="overview-title">Compliance</h3>
-                        <p class="overview-description">We maintain compliance with international data protection standards and industry-specific regulations.</p>
+                    <div class="sec-card">
+                        <div class="sec-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        </div>
+                        <h3>Compliance</h3>
+                        <p>We maintain compliance with international data protection standards and industry-specific regulations.</p>
                     </div>
-                    <div class="overview-item">
-                        <div class="overview-icon">⚡</div>
-                        <h3 class="overview-title">Continuous Monitoring</h3>
-                        <p class="overview-description">24/7 security monitoring and automated threat detection to identify and respond to potential security incidents.</p>
+                    <div class="sec-card">
+                        <div class="sec-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                        </div>
+                        <h3>Continuous Monitoring</h3>
+                        <p>24/7 security monitoring and automated threat detection to identify and respond to potential security incidents.</p>
                     </div>
                 </div>
             </div>
+        </section>
 
-            <!-- Security Features -->
-            <div class="security-features">
-                <h2 style="text-align: center; font-size: 2.5rem; font-weight: 800; color: var(--gray-900); margin-bottom: 4rem;">Security Features</h2>
+        <!-- Security Features -->
+        <section class="security-section" style="padding-top: 0;">
+            <div class="security-container">
+                <div class="security-section-header">
+                    <h2>Security Features</h2>
+                </div>
 
-                <div class="features-grid">
-                    <div class="feature-card">
-                        <div class="feature-icon">🔐</div>
-                        <h3 class="feature-title">End-to-End Encryption</h3>
-                        <p class="feature-description">All data is encrypted in transit and at rest using industry-standard AES-256 encryption. Your sensitive information is protected from unauthorized access.</p>
+                <div class="sec-grid">
+                    <div class="sec-card">
+                        <div class="sec-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        </div>
+                        <h3>End-to-End Encryption</h3>
+                        <p>All data is encrypted in transit and at rest using industry-standard AES-256 encryption. Your sensitive information is protected from unauthorized access.</p>
                     </div>
-                    <div class="feature-card">
-                        <div class="feature-icon">🔑</div>
-                        <h3 class="feature-title">Multi-Factor Authentication</h3>
-                        <p class="feature-description">Enhanced account security with mandatory multi-factor authentication for all users, ensuring only authorized personnel can access your account.</p>
+                    <div class="sec-card">
+                        <div class="sec-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0-2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        </div>
+                        <h3>Multi-Factor Authentication</h3>
+                        <p>Enhanced account security with mandatory multi-factor authentication for all users, ensuring only authorized personnel can access your account.</p>
                     </div>
-                    <div class="feature-card">
-                        <div class="feature-icon">🛡️</div>
-                        <h3 class="feature-title">Advanced Firewall</h3>
-                        <p class="feature-description">Enterprise-grade firewall protection with intrusion detection and prevention systems to block malicious traffic and cyber threats.</p>
+                    <div class="sec-card">
+                        <div class="sec-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        </div>
+                        <h3>Advanced Firewall</h3>
+                        <p>Enterprise-grade firewall protection with intrusion detection and prevention systems to block malicious traffic and cyber threats.</p>
                     </div>
-                    <div class="feature-card">
-                        <div class="feature-icon">💾</div>
-                        <h3 class="feature-title">Regular Backups</h3>
-                        <p class="feature-description">Automated daily backups with secure off-site storage and quick recovery options to ensure business continuity.</p>
+                    <div class="sec-card">
+                        <div class="sec-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                        </div>
+                        <h3>Regular Backups</h3>
+                        <p>Automated daily backups with secure off-site storage and quick recovery options to ensure business continuity.</p>
                     </div>
-                    <div class="feature-card">
-                        <div class="feature-icon">👁️</div>
-                        <h3 class="feature-title">Security Monitoring</h3>
-                        <p class="feature-description">Real-time security monitoring with automated alerts for suspicious activities and comprehensive audit logging.</p>
+                    <div class="sec-card">
+                        <div class="sec-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="20" x2="21" y2="20"/><line x1="5" y1="16" x2="5" y2="20"/><line x1="10" y1="12" x2="10" y2="20"/><line x1="15" y1="8" x2="15" y2="20"/><line x1="20" y1="4" x2="20" y2="20"/></svg>
+                        </div>
+                        <h3>Security Monitoring</h3>
+                        <p>Real-time security monitoring with automated alerts for suspicious activities and comprehensive audit logging.</p>
                     </div>
-                    <div class="feature-card">
-                        <div class="feature-icon">🔄</div>
-                        <h3 class="feature-title">Regular Updates</h3>
-                        <p class="feature-description">Continuous security updates and patches to address emerging threats and maintain the highest security standards.</p>
+                    <div class="sec-card">
+                        <div class="sec-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        </div>
+                        <h3>Regular Updates</h3>
+                        <p>Continuous security updates and patches to address emerging threats and maintain the highest security standards.</p>
                     </div>
                 </div>
             </div>
+        </section>
 
-            <!-- Compliance Section -->
-            <div class="compliance">
-                <h2 style="text-align: center; font-size: 2.5rem; font-weight: 800; color: var(--gray-900); margin-bottom: 4rem;">Compliance & Certifications</h2>
+        <!-- Compliance -->
+        <section class="security-section" style="background: var(--bg-secondary);">
+            <div class="security-container">
+                <div class="security-section-header">
+                    <h2>Compliance &amp; Certifications</h2>
+                    <p>We adhere to international security standards and undergo regular audits to ensure the highest level of data protection.</p>
+                </div>
 
                 <div class="compliance-grid">
-                    <div class="compliance-item">
-                        <div class="compliance-icon">🔒</div>
-                        <h3 class="compliance-title">GDPR Compliant</h3>
-                        <p class="compliance-description">Full compliance with General Data Protection Regulation for EU data protection standards.</p>
+                    <div class="compliance-badge">
+                        <h4>GDPR Compliant</h4>
+                        <p>EU data protection standards</p>
                     </div>
-                    <div class="compliance-item">
-                        <div class="compliance-icon">💳</div>
-                        <h3 class="compliance-title">PCI DSS</h3>
-                        <p class="compliance-description">Payment Card Industry Data Security Standard compliance for secure payment processing.</p>
+                    <div class="compliance-badge">
+                        <h4>PCI DSS</h4>
+                        <p>Secure payment processing</p>
                     </div>
-                    <div class="compliance-item">
-                        <div class="compliance-icon">🔐</div>
-                        <h3 class="compliance-title">ISO 27001</h3>
-                        <p class="compliance-description">International standard for information security management systems.</p>
+                    <div class="compliance-badge">
+                        <h4>ISO 27001</h4>
+                        <p>Information security management</p>
                     </div>
-                    <div class="compliance-item">
-                        <div class="compliance-icon">🌐</div>
-                        <h3 class="compliance-title">SOC 2 Type II</h3>
-                        <p class="compliance-description">Service Organization Control for trust and security in cloud services.</p>
+                    <div class="compliance-badge">
+                        <h4>SOC 2 Type II</h4>
+                        <p>Cloud service trust &amp; security</p>
                     </div>
-                    <div class="compliance-item">
-                        <div class="compliance-icon">🇺🇸</div>
-                        <h3 class="compliance-title">HIPAA Ready</h3>
-                        <p class="compliance-description">Prepared for healthcare data protection standards when required.</p>
+                    <div class="compliance-badge">
+                        <h4>HIPAA Ready</h4>
+                        <p>Healthcare data protection</p>
                     </div>
-                    <div class="compliance-item">
-                        <div class="compliance-icon">📋</div>
-                        <h3 class="compliance-title">Regular Audits</h3>
-                        <p class="compliance-description">Annual third-party security audits and penetration testing.</p>
+                    <div class="compliance-badge">
+                        <h4>Regular Audits</h4>
+                        <p>Annual third-party penetration testing</p>
                     </div>
                 </div>
             </div>
+        </section>
 
-            <!-- Security Measures -->
-            <div class="security-measures">
-                <h2 style="text-align: center; font-size: 2.5rem; font-weight: 800; color: var(--gray-900); margin-bottom: 4rem;">Our Security Measures</h2>
+        <!-- Security Measures -->
+        <section class="security-section">
+            <div class="security-container">
+                <div class="security-section-header">
+                    <h2>Our Security Measures</h2>
+                </div>
 
                 <div class="measures-list">
-                    <div class="measure-item">
-                        <div class="measure-icon">🔐</div>
-                        <div class="measure-content">
+                    <div class="measure-card">
+                        <div class="sec-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        </div>
+                        <div>
                             <h3>Data Encryption</h3>
                             <p>All sensitive data is encrypted using AES-256 encryption both in transit (TLS 1.3) and at rest. Database fields containing personal information are additionally encrypted.</p>
                         </div>
                     </div>
-                    <div class="measure-item">
-                        <div class="measure-icon">🛡️</div>
-                        <div class="measure-content">
+                    <div class="measure-card">
+                        <div class="sec-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        </div>
+                        <div>
                             <h3>Network Security</h3>
                             <p>Multi-layered network security including Web Application Firewalls (WAF), DDoS protection, and intrusion detection systems to prevent unauthorized access.</p>
                         </div>
                     </div>
-                    <div class="measure-item">
-                        <div class="measure-icon">👤</div>
-                        <div class="measure-content">
+                    <div class="measure-card">
+                        <div class="sec-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        </div>
+                        <div>
                             <h3>Access Control</h3>
                             <p>Role-based access control (RBAC) ensures users only have access to the data and functions necessary for their role. All access is logged and monitored.</p>
                         </div>
                     </div>
-                    <div class="measure-item">
-                        <div class="measure-icon">💾</div>
-                        <div class="measure-content">
+                    <div class="measure-card">
+                        <div class="sec-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                        </div>
+                        <div>
                             <h3>Data Backup</h3>
                             <p>Automated daily backups with secure encryption and off-site storage. Backup integrity is verified regularly with quick recovery options available.</p>
                         </div>
                     </div>
-                    <div class="measure-item">
-                        <div class="measure-icon">🔍</div>
-                        <div class="measure-content">
+                    <div class="measure-card">
+                        <div class="sec-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        </div>
+                        <div>
                             <h3>Security Monitoring</h3>
                             <p>24/7 security monitoring with AI-powered threat detection, automated alerts, and incident response protocols to address security events promptly.</p>
                         </div>
                     </div>
-                    <div class="measure-item">
-                        <div class="measure-icon">📚</div>
-                        <div class="measure-content">
+                    <div class="measure-card">
+                        <div class="sec-card-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+                        </div>
+                        <div>
                             <h3>Security Training</h3>
                             <p>Regular security awareness training for all team members, along with simulated phishing exercises and security best practice education.</p>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
 
-    <!-- CTA Section -->
-    <section class="security-cta">
-        <div class="container">
-            <h2>Trust & Transparency</h2>
-            <p>Security is not just a feature—it's our commitment to protecting your business. Contact our security team to learn more about our measures.</p>
-            <div class="security-cta-buttons">
-                <a href="mailto:security@mtravels.com" class="btn btn-primary">Contact Security Team</a>
-                <a href="help.php" class="btn" style="background: transparent; color: var(--primary); border: 2px solid var(--primary);">Security FAQ</a>
-            </div>
-        </div>
-    </section>
+    </div>
 
     <?php require_once 'includes/footer.php'; ?>
 
     <script>
-        // Navbar scroll effect
-        window.addEventListener('scroll', function() {
-            const navbar = document.getElementById('navbar');
-            if (window.scrollY > 50) {
-                navbar.classList.add('scrolled');
-            } else {
-                navbar.classList.remove('scrolled');
-            }
+        // Parallax effect
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const parallax = document.querySelectorAll('.floating-element');
+            parallax.forEach((element, index) => {
+                const speed = 0.5 + (index * 0.1);
+                element.style.transform = `translateY(${scrolled * speed}px)`;
+            });
         });
-
-        // Smooth scroll for anchor links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                const href = this.getAttribute('href');
-                if (href !== '#' && href.length > 1) {
-                    e.preventDefault();
-                    const target = document.querySelector(href);
-                    if (target) {
-                        target.scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'start'
-                        });
-                    }
-                }
-                });
-                });
-                </script>
-                <script>
-    // Mobile menu functionality
-    document.addEventListener('DOMContentLoaded', function() {
-        const hamburger = document.getElementById('hamburger');
-        const navMenu = document.querySelector('.nav-menu');
-
-        if (hamburger && navMenu) {
-            hamburger.addEventListener('click', function() {
-                navMenu.classList.toggle('open');
-            });
-
-            // Close menu when clicking outside
-            document.addEventListener('click', function(event) {
-                if (!hamburger.contains(event.target) && !navMenu.contains(event.target)) {
-                    navMenu.classList.remove('open');
-                }
-            });
-        }
-    });
-</script>
-                <?php renderThemeScript(); ?>
-                </body>
-                </html>
+    </script>
+    <?php renderThemeScript(); ?>
+</body>
+</html>

@@ -9,8 +9,8 @@
 // Define default navigation links
 $nav_links = isset($nav_links) ? $nav_links : [
     ['href' => 'index.php', 'label' => 'Home'],
-    ['href' => 'index.php#features', 'label' => 'Features'],
-    ['href' => 'index.php#pricing', 'label' => 'Pricing'],
+    ['href' => 'features.php', 'label' => 'Features'],
+    ['href' => 'pricing.php', 'label' => 'Pricing'],
     ['href' => 'about.php', 'label' => 'About'],
     ['href' => 'index.php#contact', 'label' => 'Contact']
 ];
