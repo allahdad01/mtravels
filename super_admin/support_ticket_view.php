@@ -37,14 +37,14 @@ $user_name = $_SESSION['name'] ?? $_SESSION['email'];
 // Get ticket ID
 $ticket_id = intval($_GET['id'] ?? 0);
 if ($ticket_id <= 0) {
-    header('Location: support_tickets_list.php');
+    header('Location: support_tickets_manage.php');
     exit();
 }
 
 $ticket = $ticketManager->getTicketDetails($ticket_id);
 
 if (!$ticket) {
-    header('Location: support_tickets_list.php');
+    header('Location: support_tickets_manage.php');
     exit();
 }
 
@@ -372,7 +372,7 @@ body { background: var(--bg) !important; }
                         </div>
                         <ul class="breadcrumb">
                             <li class="breadcrumb-item"><a href="dashboard.php"><i class="feather icon-home"></i></a></li>
-                            <li class="breadcrumb-item"><a href="support_tickets_list.php">Support Tickets</a></li>
+                            <li class="breadcrumb-item"><a href="support_tickets_manage.php">Support Tickets</a></li>
                             <li class="breadcrumb-item"><a href="#!"><?= htmlspecialchars($ticket['ticket_number'] ?? '') ?></a></li>
                         </ul>
                     </div>
@@ -537,7 +537,7 @@ body { background: var(--bg) !important; }
                         </div>
 
                         <!-- Back Button -->
-                        <a href="support_tickets_list.php" class="sa-btn sa-btn-ghost" style="width:100%;justify-content:center">
+                        <a href="support_tickets_manage.php" class="sa-btn sa-btn-ghost" style="width:100%;justify-content:center">
                             <i class="feather icon-arrow-left"></i> Back to Tickets
                         </a>
                     </div>

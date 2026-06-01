@@ -42,6 +42,14 @@ try {
     $s->execute([$_SESSION['user_id']]); $recentActivity = $s->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {}
 
+// Platform settings for favicon
+$platformFavicon = 'logo.png';
+try {
+    $s = $pdo->query("SELECT `value` FROM platform_settings WHERE `key`='platform_logo'");
+    $v = $s->fetchColumn();
+    if ($v) $platformFavicon = $v;
+} catch (PDOException $e) {}
+
 function actIcon($action) {
     $a = strtolower($action);
     $map = [
@@ -55,16 +63,15 @@ function actIcon($action) {
     return '<svg width="16" height="16" fill="none" stroke="'.$d['color'].'" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="'.$d['icon'].'"/></svg>';
 }
 ?>
-<!DOCTYPE html>
-<html lang="<?= get_current_lang() ?>" dir="<?= get_lang_dir() ?>">
-<head>
+
+    <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profile — Super Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0, minimal-ui">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <link rel="icon" href="../uploads/logo/<?= htmlspecialchars($platformFavicon) ?>" type="image/x-icon">
     <link rel="stylesheet" href="../assets/fonts/fontawesome/css/fontawesome-all.min.css">
-    <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Serif+Display&display=swap" rel="stylesheet">
+    <title>Profile - <?= htmlspecialchars($user['name'] ?? 'Super Admin') ?></title>
+    </head>
     <style>
         :root {
             --brand: #4099ff;
@@ -221,7 +228,7 @@ function actIcon($action) {
         .empty-state svg { color: #d1d5db; margin-bottom: 12px; }
         .empty-state p { font-size: 14px; }
     </style>
-</head>
+
 <body>
 
 <div id="toast-container" aria-live="polite"></div>

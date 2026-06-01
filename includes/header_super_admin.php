@@ -563,10 +563,15 @@ if (!function_exists('h')) {
         border: none !important;
         padding: 0 !important;
         margin: 0 !important;
+        list-style: none !important;
     }
 
     .pcoded-navbar .pcoded-submenu li a {
         padding-left: 2.5rem !important;
+    }
+
+    .pcoded-navbar .pcoded-inner-navbar li.pcoded-hasmenu .pcoded-submenu li > a:before {
+        display: none !important;
     }
 
     .pcoded-navbar .pcoded-hasmenu {
@@ -781,33 +786,73 @@ if (!function_exists('h')) {
                     </a>
                 </li>
 
-                <!-- Tenant Management -->
+                <!-- Business Operations -->
                 <li class="nav-item pcoded-menu-caption">
-                    <label>Tenant Management</label>
+                    <label>Business Operations</label>
                 </li>
                 <li data-username="manage_tenants" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_tenants.php' ? 'active' : ''; ?>">
                     <a href="manage_tenants.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-users"></i></span>
-                        <span class="pcoded-mtext"><?= __('manage_tenants') ?></span>
+                        <span class="pcoded-mtext">Manage Tenants</span>
                     </a>
+                </li>
+                <li data-username="manage_sales_agents" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_sales_agents.php' ? 'active' : ''; ?>">
+                    <a href="manage_sales_agents.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-briefcase"></i></span>
+                        <span class="pcoded-mtext">Sales Agents</span>
+                    </a>
+                </li>
+                <li data-username="manage_demo_requests" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_demo_requests.php' ? 'active' : ''; ?>">
+                    <a href="manage_demo_requests.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-calendar"></i></span>
+                        <span class="pcoded-mtext">Demo Requests</span>
+                    </a>
+                </li>
+                <li data-username="support_tickets" class="nav-item <?php echo in_array(basename($_SERVER['PHP_SELF']), ['support_tickets_manage.php', 'support_ticket_view.php']) ? 'active' : ''; ?>">
+                    <a href="support_tickets_manage.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-headphones"></i></span>
+                        <span class="pcoded-mtext">Support Tickets</span>
+                    </a>
+                </li>
+
+                <!-- Subscription Management -->
+                <li class="nav-item pcoded-menu-caption">
+                    <label>Subscription Management</label>
                 </li>
                 <li data-username="manage_plans" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_plans.php' ? 'active' : ''; ?>">
                     <a href="manage_plans.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-package"></i></span>
-                        <span class="pcoded-mtext"><?= __('manage_plans') ?></span>
+                        <span class="pcoded-mtext">Plans</span>
                     </a>
                 </li>
                 <li data-username="manage_subscriptions" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_subscriptions.php' ? 'active' : ''; ?>">
                     <a href="manage_subscriptions.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-credit-card"></i></span>
-                        <span class="pcoded-mtext"><?= __('manage_subscriptions') ?></span>
+                        <span class="pcoded-mtext">Subscriptions</span>
                     </a>
                 </li>
                 <li data-username="manage_branch_addons" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_branch_addons.php' ? 'active' : ''; ?>">
                     <a href="manage_branch_addons.php" class="nav-link">
                         <span class="pcoded-micon"><i class="fas fa-gift"></i></span>
-                        <span class="pcoded-mtext"><?= __('manage_branch_addons') ?></span>
+                        <span class="pcoded-mtext">Branch Add-ons</span>
                     </a>
+                </li>
+                <li data-username="manage_user_addons" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_user_addons.php' ? 'active' : ''; ?>">
+                    <a href="manage_user_addons.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="fas fa-user-plus"></i></span>
+                        <span class="pcoded-mtext">User Add-ons</span>
+                    </a>
+                </li>
+                <li data-username="manage_communication_addons" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_communication_addons.php' ? 'active' : ''; ?>">
+                    <a href="manage_communication_addons.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="fas fa-comment-dots"></i></span>
+                        <span class="pcoded-mtext">Communication Add-ons</span>
+                    </a>
+                </li>
+
+                <!-- Pricing Management -->
+                <li class="nav-item pcoded-menu-caption">
+                    <label>Pricing Management</label>
                 </li>
                 <li data-username="manage_tenant_addon_pricing" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_tenant_addon_pricing.php' ? 'active' : ''; ?>">
                     <a href="manage_tenant_addon_pricing.php" class="nav-link">
@@ -821,18 +866,6 @@ if (!function_exists('h')) {
                         <span class="pcoded-mtext">User Addon Pricing</span>
                     </a>
                 </li>
-                <li data-username="manage_user_addons" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_user_addons.php' ? 'active' : ''; ?>">
-                    <a href="manage_user_addons.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="fas fa-user-plus"></i></span>
-                        <span class="pcoded-mtext">User Addons</span>
-                    </a>
-                </li>
-                <li data-username="manage_communication_addons" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_communication_addons.php' ? 'active' : ''; ?>">
-                    <a href="manage_communication_addons.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="fas fa-comment-dots"></i></span>
-                        <span class="pcoded-mtext">Communication Addons</span>
-                    </a>
-                </li>
                 <li data-username="manage_communication_addon_pricing" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_communication_addon_pricing.php' ? 'active' : ''; ?>">
                     <a href="manage_communication_addon_pricing.php" class="nav-link">
                         <span class="pcoded-micon"><i class="fas fa-tags"></i></span>
@@ -840,14 +873,14 @@ if (!function_exists('h')) {
                     </a>
                 </li>
 
-                <!-- Finance & Sales -->
+                <!-- Financial Management -->
                 <li class="nav-item pcoded-menu-caption">
-                    <label>Finance &amp; Sales</label>
+                    <label>Financial Management</label>
                 </li>
-                <li data-username="manage_sales_agents" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_sales_agents.php' ? 'active' : ''; ?>">
-                    <a href="manage_sales_agents.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-briefcase"></i></span>
-                        <span class="pcoded-mtext">Sales Agents</span>
+                <li data-username="subscription_payments" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'subscription_payments.php' ? 'active' : ''; ?>">
+                    <a href="subscription_payments.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="fas fa-dollar-sign"></i></span>
+                        <span class="pcoded-mtext">Subscription Payments</span>
                     </a>
                 </li>
                 <li data-username="manage_salary_payments" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_salary_payments.php' ? 'active' : ''; ?>">
@@ -856,86 +889,62 @@ if (!function_exists('h')) {
                         <span class="pcoded-mtext">Salary Payments</span>
                     </a>
                 </li>
-                <li data-username="subscription_payments" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'subscription_payments.php' ? 'active' : ''; ?>">
-                    <a href="subscription_payments.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="fas fa-dollar-sign"></i></span>
-                        <span class="pcoded-mtext">Subscription Payments</span>
-                    </a>
-                </li>
                 <li data-username="expense_management" class="nav-item pcoded-hasmenu <?php echo in_array(basename($_SERVER['PHP_SELF']), ['system_expenses.php', 'system_expense_categories.php', 'system_revenue.php', 'profit_loss_dashboard.php']) ? 'active' : ''; ?>">
                     <a href="javascript:void(0);" class="nav-link">
                         <span class="pcoded-micon"><i class="fas fa-chart-line"></i></span>
-                        <span class="pcoded-mtext"><?= __('expense_management') ?></span>
+                        <span class="pcoded-mtext">Expense Management</span>
                     </a>
                     <ul class="pcoded-submenu">
                         <li class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'system_expenses.php' ? 'active' : ''; ?>">
                             <a href="system_expenses.php" class="nav-link">
-                                <span class="pcoded-mtext"><?= __('system_expenses') ?></span>
+                                <span class="pcoded-mtext">Expenses</span>
                             </a>
                         </li>
                         <li class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'profit_loss_dashboard.php' ? 'active' : ''; ?>">
                             <a href="profit_loss_dashboard.php" class="nav-link">
-                                <span class="pcoded-mtext"><?= __('profit_loss_dashboard') ?></span>
+                                <span class="pcoded-mtext">Profit &amp; Loss</span>
                             </a>
                         </li>
                     </ul>
                 </li>
 
-                <!-- Support & Content -->
+                <!-- Content & Marketing -->
                 <li class="nav-item pcoded-menu-caption">
-                    <label>Support &amp; Content</label>
-                </li>
-                <li data-username="support_tickets" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'support_tickets_manage.php' || basename($_SERVER['PHP_SELF']) == 'support_ticket_manage.php' ? 'active' : ''; ?>">
-                    <a href="support_tickets_manage.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-headphones"></i></span>
-                        <span class="pcoded-mtext">Support Tickets</span>
-                    </a>
-                </li>
-                <li data-username="manage_demo_requests" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_demo_requests.php' ? 'active' : ''; ?>">
-                    <a href="manage_demo_requests.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-calendar"></i></span>
-                        <span class="pcoded-mtext">Demo Requests</span>
-                    </a>
+                    <label>Content &amp; Marketing</label>
                 </li>
                 <li data-username="manage_testimonials" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_testimonials.php' ? 'active' : ''; ?>">
                     <a href="manage_testimonials.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-star"></i></span>
-                        <span class="pcoded-mtext">Manage Testimonials</span>
+                        <span class="pcoded-mtext">Testimonials</span>
                     </a>
                 </li>
                 <li data-username="manage_blog_posts" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_blog_posts.php' ? 'active' : ''; ?>">
                     <a href="manage_blog_posts.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-edit"></i></span>
-                        <span class="pcoded-mtext">Manage Posts</span>
+                        <span class="pcoded-mtext">Posts</span>
                     </a>
                 </li>
 
-                <!-- System -->
+                <!-- Administration -->
                 <li class="nav-item pcoded-menu-caption">
-                    <label>System</label>
+                    <label>Administration</label>
+                </li>
+                <li data-username="manage_users" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_users.php' ? 'active' : ''; ?>">
+                    <a href="manage_users.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-user-check"></i></span>
+                        <span class="pcoded-mtext">Users</span>
+                    </a>
                 </li>
                 <li data-username="platform_settings" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'platform_settings.php' ? 'active' : ''; ?>">
                     <a href="platform_settings.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-settings"></i></span>
-                        <span class="pcoded-mtext"><?= __('platform_settings') ?></span>
+                        <span class="pcoded-mtext">Platform Settings</span>
                     </a>
                 </li>
                 <li data-username="audit_logs" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'audit_logs.php' ? 'active' : ''; ?>">
                     <a href="audit_logs.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-activity"></i></span>
-                        <span class="pcoded-mtext"><?= __('audit_logs') ?></span>
-                    </a>
-                </li>
-                <li data-username="manage_users" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_users.php' ? 'active' : ''; ?>">
-                    <a href="manage_users.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-user-check"></i></span>
-                        <span class="pcoded-mtext"><?= __('manage_users') ?></span>
-                    </a>
-                </li>
-                <li data-username="backup_management" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'backup_management.php' ? 'active' : ''; ?>">
-                    <a href="backup_management.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-save"></i></span>
-                        <span class="pcoded-mtext">Manage Backup</span>
+                        <span class="pcoded-mtext">Audit Logs</span>
                     </a>
                 </li>
                 <li data-username="ssl_monitoring" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'ssl_monitoring.php' ? 'active' : ''; ?>">
@@ -944,10 +953,10 @@ if (!function_exists('h')) {
                         <span class="pcoded-mtext">SSL Monitoring</span>
                     </a>
                 </li>
-                <li data-username="support_tickets_admin" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'support_tickets_list.php' || basename($_SERVER['PHP_SELF']) == 'support_ticket_view.php' ? 'active' : ''; ?>">
-                    <a href="support_tickets_list.php" class="nav-link">
-                        <span class="pcoded-micon"><i class="feather icon-help-circle"></i></span>
-                        <span class="pcoded-mtext">Support Tickets</span>
+                <li data-username="backup_management" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'backup_management.php' ? 'active' : ''; ?>">
+                    <a href="backup_management.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-save"></i></span>
+                        <span class="pcoded-mtext">Backups</span>
                     </a>
                 </li>
                 <li data-username="file_browser" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'file_browser.php' ? 'active' : ''; ?>">

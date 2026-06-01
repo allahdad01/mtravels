@@ -1312,7 +1312,7 @@ body { background: var(--bg) !important; }
     <div>
       <div class="sa-shdr">
         <h2>Operations &amp; Support</h2>
-        <a href="support_tickets_list.php">Manage Tickets →</a>
+        <a href="support_tickets_manage.php">Manage Tickets →</a>
       </div>
       <div class="sa-stat-grid">
         <div class="sa-stat">

@@ -652,8 +652,8 @@ require_once '../includes/header_super_admin.php';
                     </div>
                     
                     <div class="stc-actions">
-                        <a href="support_ticket_manage.php?id=<?php echo $ticket['id']; ?>" class="sa-btn sa-btn-small sa-btn-primary">
-                            <i class="feather icon-settings"></i> Manage
+                        <a href="support_ticket_view.php?id=<?php echo $ticket['id']; ?>" class="sa-btn sa-btn-small sa-btn-primary">
+                            <i class="feather icon-eye"></i> View
                         </a>
                     </div>
                 </div>
