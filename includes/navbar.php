@@ -6,6 +6,28 @@
  * Requires: $platform_settings to be defined
  */
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Role-to-dashboard routing (must match php_login.php redirect logic)
+$dashboardRoutes = [
+    'super_admin'         => 'super_admin/dashboard.php',
+    'tenant_super_admin'  => 'tenant_super_admin/dashboard.php',
+    'sales_agent'         => 'sales_agent/dashboard.php',
+    'client'              => 'client/dashboard.php',
+    'user'                => 'user/dashboard.php',
+];
+// These roles all map to the admin dashboard
+$adminRoleGroup = ['admin', 'sales', 'finance', 'umrah', 'staff'];
+$isLoggedIn = isset($_SESSION['user_id']);
+$dashboardUrl = null;
+if ($isLoggedIn) {
+    $role = $_SESSION['role'] ?? '';
+    $dashboardUrl = $dashboardRoutes[$role]
+        ?? (in_array($role, $adminRoleGroup) ? 'admin/dashboard.php' : 'user/dashboard.php');
+}
+
 // Define default navigation links
 $nav_links = isset($nav_links) ? $nav_links : [
     ['href' => 'index.php', 'label' => 'Home'],
@@ -47,7 +69,11 @@ $nav_links = isset($nav_links) ? $nav_links : [
                     <button class="theme-toggle" id="themeToggle" title="Toggle Dark Mode">
                         <span class="theme-icon">🌙</span>
                     </button>
-                    <a href="login.php" class="nav-login-link" style="color: var(--primary); text-decoration: none; font-weight: 600; transition: color 0.3s;">Login</a>
+                    <?php if ($isLoggedIn): ?>
+                        <a href="<?= htmlspecialchars($dashboardUrl) ?>" class="nav-login-link" style="color: var(--primary); text-decoration: none; font-weight: 600; transition: color 0.3s;">Dashboard</a>
+                    <?php else: ?>
+                        <a href="login.php" class="nav-login-link" style="color: var(--primary); text-decoration: none; font-weight: 600; transition: color 0.3s;">Login</a>
+                    <?php endif; ?>
                     <a href="book-demo.php" class="btn btn-primary">
                         <span>Book a Demo</span>
                     </a>
