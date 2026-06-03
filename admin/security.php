@@ -267,4 +267,4 @@ function security_log($message, $level = 'info') {
     
     $log_message = date('Y-m-d H:i:s') . " [$level] $message - User: $user_id, IP: $ip, Script: $script";
 }
-?> 
+?>

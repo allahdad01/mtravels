@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * WhatsApp Automation API Manager
  * Handles tenant-based WhatsApp notifications for ticket bookings
