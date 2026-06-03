@@ -164,25 +164,75 @@ include '../includes/header_super_admin.php';
 ?>
 
 <style>
-    .cp-wrap { padding: 20px; }
-    .cp-head { background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%); color: #fff; border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
-    .cp-head h4 { margin: 0; color: #fff; font-weight: 700; }
-    .cp-head p { margin: 6px 0 0; opacity: .9; font-size: 13px; }
-    .cp-card { background: #fff; border: 1px solid #e8edf5; border-radius: 12px; box-shadow: 0 2px 12px rgba(64,153,255,.08); }
-    .cp-card-head { padding: 14px 16px; border-bottom: 1px solid #e8edf5; }
-    .cp-card-head h5 { margin: 0; font-weight: 700; font-size: 15px; }
-    .cp-card-body { padding: 14px 16px; }
-    .cp-search { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; }
-    .cp-search input { width: 280px; max-width: 100%; }
-    .cp-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .cp-table thead th { background: #f4f7fe; color: #6b7a99; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; padding: 10px; border-bottom: 1px solid #e8edf5; }
-    .cp-table tbody td { padding: 10px; border-bottom: 1px solid #eef2f8; vertical-align: top; }
-    .cp-table tbody tr:last-child td { border-bottom: none; }
-    .cp-grid { display: grid; grid-template-columns: repeat(2, minmax(120px, 1fr)); gap: 6px; }
-    .cp-grid input { width: 100%; }
-    .cp-pill { display: inline-flex; align-items: center; border-radius: 16px; padding: 2px 9px; font-size: 11px; font-weight: 700; }
-    .cp-pill.active { background: rgba(34,197,94,.12); color: #166534; }
-    .cp-pill.other { background: rgba(107,122,153,.12); color: #475569; }
+/* ─── ROOT VARIABLES ──────────────────────────────────────────── */
+:root { --muted: #999; --red: #ef4444; --amber: #f59e0b; --blue: #4099ff; --grad-start: #4099ff; --grad-end: #2ed8b6; --grad: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%); --radius: 10px; }
+
+/* ─── PAGE HEADER ─────────────────────────────────────────── */
+.page-header.card { background: var(--grad) !important; color: #fff; border: none !important; margin-bottom: 24px; padding: 22px 28px !important; box-shadow: 0 4px 20px rgba(64,153,255,0.3); border-radius: 12px; position: relative; overflow: hidden; }
+.page-header.card::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 60%); pointer-events: none; }
+.page-header.card h5 { color: #fff !important; margin: 0; font-weight: 700; font-size: 1.15rem; position: relative; z-index: 1; }
+.page-header.card .row { display: flex; align-items: center; justify-content: space-between; width: 100%; position: relative; z-index: 2; }
+.page-header.card .col-md-6:last-child { text-align: right; margin-left: auto; }
+.page-desc { color: rgba(255,255,255,0.8); margin: 4px 0 0; font-size: 14px; }
+
+/* ─── ALERTS ──────────────────────────────────────────────── */
+.sa-alert { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; border-radius: var(--radius); border: 1px solid #e0e0e0; margin-bottom: 16px; }
+.sa-alert-success { background: #d4edda; color: #155724; border-color: #c3e6cb; }
+.sa-alert-danger { background: #f8d7da; color: #721c24; border-color: #f5c6cb; }
+.sa-alert-icon { flex-shrink: 0; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; }
+.sa-alert-icon svg { width: 20px; height: 20px; }
+.sa-alert-content { flex: 1; align-self: center; }
+.sa-alert-close { flex-shrink: 0; background: none; border: none; cursor: pointer; color: inherit; padding: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; }
+.sa-alert-close:hover { opacity: 0.7; }
+
+/* ─── BUTTONS ─────────────────────────────────────────────── */
+.sa-btn { padding: 0.6rem 1.2rem; border-radius: 8px; border: none; font-weight: 500; cursor: pointer; transition: all 0.3s ease; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; font-size: 0.85rem; }
+.sa-btn-primary { background: var(--grad); color: white; }
+.sa-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(64,153,255,0.3); color: #fff; }
+.sa-btn-success { background: #10b981; color: white; }
+.sa-btn-success:hover { background: #059669; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(16,185,129,0.3); color: #fff; }
+.sa-btn-ghost { background: #f0f0f0; color: #333; border: 1px solid #e0e0e0; }
+.sa-btn-ghost:hover { background: #e8e8e8; border-color: #d0d0d0; }
+.sa-btn-sm { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
+
+/* ─── TOOLBAR ─────────────────────────────────────────────── */
+.sa-toolbar { background: white; border: 1px solid #e0e0e0; border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; }
+.sa-toolbar-form { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.sa-search-box { position: relative; display: flex; align-items: center; }
+.sa-search-icon { position: absolute; left: 12px; color: #999; pointer-events: none; }
+.sa-search-input { padding: 0.5rem 0.75rem 0.5rem 2.2rem; border: 1px solid #ced4da; border-radius: 8px; font-size: 0.85rem; min-width: 240px; transition: border-color 0.15s; }
+.sa-search-input:focus { outline: none; border-color: #4099ff; box-shadow: 0 0 0 0.2rem rgba(64,153,255,0.25); }
+
+/* ─── DATA TABLE ──────────────────────────────────────────── */
+.sa-table-wrap { background: white; border: 1px solid #e0e0e0; border-radius: 10px; overflow-x: auto; }
+.sa-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.sa-table thead th { text-align: left; padding: 14px 16px; font-size: 0.65rem; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: 0.06em; background: #fafafa; border-bottom: 1px solid #e0e0e0; white-space: nowrap; }
+.sa-table tbody tr { transition: background 0.15s; }
+.sa-table tbody tr:hover { background: #f8faff; }
+.sa-table tbody td { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+.sa-table tbody tr:last-child td { border-bottom: none; }
+.sa-td-actions { white-space: nowrap; }
+
+/* ─── PILLS ───────────────────────────────────────────────── */
+.pill { font-size: 0.62rem; font-weight: 700; padding: 3px 8px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; display: inline-block; }
+.pill-green { background: rgba(16,185,129,0.12); color: #10b981; }
+.pill-gray { background: #f5f5f5; color: #999; }
+
+/* ─── PAGINATION ──────────────────────────────────────────── */
+.sa-pagination { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 16px; flex-wrap: wrap; }
+.sa-page-btn { min-width: 36px; height: 36px; padding: 0 10px; border-radius: 8px; border: 1px solid #e0e0e0; background: #f5f5f5; color: #333; text-decoration: none; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 500; transition: all 0.2s; }
+.sa-page-btn:hover { background: rgba(64,153,255,0.1); border-color: #4099ff; color: #4099ff; }
+.sa-page-active { background: var(--grad); border-color: #4099ff; color: white; }
+.sa-page-active:hover { color: white; }
+
+/* ─── FORM INPUTS ─────────────────────────────────────────── */
+.sa-pricing-input { width: 100%; padding: 0.4rem 0.5rem; border: 1px solid #ced4da; border-radius: 6px; font-size: 0.8rem; font-family: inherit; transition: border-color 0.15s; box-sizing: border-box; }
+.sa-pricing-input:focus { outline: none; border-color: #4099ff; box-shadow: 0 0 0 0.2rem rgba(64,153,255,0.25); }
+.sa-pricing-grid { display: grid; grid-template-columns: repeat(2, minmax(100px, 1fr)); gap: 6px; }
+.sa-pricing-label { font-size: 0.7rem; color: #999; font-weight: 600; }
+
+/* ─── EMPTY STATE ─────────────────────────────────────────── */
+.sa-empty { text-align: center; padding: 32px 20px; color: #ccc; font-size: 0.9rem; }
 </style>
 
 <div class="pcoded-main-container">
@@ -191,115 +241,145 @@ include '../includes/header_super_admin.php';
             <div class="pcoded-inner-content">
                 <div class="main-body">
                     <div class="page-wrapper">
-                        <div class="cp-wrap">
-                        <div class="cp-head">
-                            <h4><i class="feather icon-dollar-sign mr-1"></i>Communication Addon Pricing</h4>
-                            <p>Set tenant-wise monthly, quarterly, and yearly prices for WhatsApp/SMTP</p>
-                        </div>
-                        <div class="cp-card">
-                            <div class="cp-card-head">
-                                <h5>Pricing Configuration</h5>
-                            </div>
-                            <div class="cp-card-body">
-                                <?php if (isset($success)): ?>
-                                <div class="alert alert-success"><?= htmlspecialchars($success) ?></div>
-                                <?php endif; ?>
-
-                                <?php if (!empty($errors)): ?>
-                                <div class="alert alert-danger">
-                                    <ul class="mb-0">
-                                        <?php foreach ($errors as $error): ?>
-                                        <li><?= htmlspecialchars($error) ?></li>
-                                        <?php endforeach; ?>
-                                    </ul>
+                        <!-- [ breadcrumb ] start -->
+                        <div class="page-header card">
+                            <div class="row align-items-center">
+                                <div class="col-md-6">
+                                    <h5>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:8px"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Communication Addon Pricing
+                                    </h5>
+                                    <p class="page-desc">Set tenant-wise monthly, quarterly, and yearly prices for WhatsApp/SMTP</p>
                                 </div>
-                                <?php endif; ?>
+                                <div class="col-md-6 text-end">
+                                    <a href="manage_communication_addons.php" class="sa-btn" style="background:rgba(255,255,255,0.12);color:#fff;border:1px solid rgba(255,255,255,0.25);">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px"><polyline points="15 18 9 12 15 6"/></svg>Back to Add-ons
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- [ breadcrumb ] end -->
 
-                                <form method="GET" action="manage_communication_addon_pricing.php" class="cp-search">
-                                    <input type="text" class="form-control" name="search" placeholder="Search tenant..." value="<?= htmlspecialchars($search_query) ?>">
-                                    <button type="submit" class="btn btn-primary">Search</button>
-                                    <?php if ($search_query !== ''): ?>
-                                    <a href="manage_communication_addon_pricing.php" class="btn btn-light">Clear</a>
+                        <?php if (isset($success)): ?>
+                        <div class="sa-alert sa-alert-success">
+                            <div class="sa-alert-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+                            <div class="sa-alert-content"><?= htmlspecialchars($success) ?></div>
+                            <button type="button" class="sa-alert-close" onclick="this.parentElement.style.display='none';"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                        </div>
+                        <?php endif; ?>
+
+                        <?php if (!empty($errors)): ?>
+                        <div class="sa-alert sa-alert-danger">
+                            <div class="sa-alert-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+                            <div class="sa-alert-content">
+                                <ul style="margin:0;padding-left:18px;">
+                                    <?php foreach ($errors as $error): ?>
+                                    <li><?= htmlspecialchars($error) ?></li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            </div>
+                            <button type="button" class="sa-alert-close" onclick="this.parentElement.style.display='none';"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                        </div>
+                        <?php endif; ?>
+
+                        <!-- Search Toolbar -->
+                        <div class="sa-toolbar">
+                            <form method="GET" action="manage_communication_addon_pricing.php" class="sa-toolbar-form">
+                                <div class="sa-search-box" style="flex:1;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sa-search-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                    <input type="text" class="sa-search-input" name="search" placeholder="Search tenant..." value="<?= htmlspecialchars($search_query) ?>" style="min-width:280px;">
+                                </div>
+                                <button type="submit" class="sa-btn sa-btn-primary">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Search
+                                </button>
+                                <?php if ($search_query !== ''): ?>
+                                <a href="manage_communication_addon_pricing.php" class="sa-btn sa-btn-ghost">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Clear
+                                </a>
+                                <?php endif; ?>
+                            </form>
+                        </div>
+
+                        <!-- Pricing Table -->
+                        <div class="sa-table-wrap">
+                            <table class="sa-table">
+                                <thead>
+                                    <tr>
+                                        <th>Tenant</th>
+                                        <th>WhatsApp Pricing</th>
+                                        <th>SMTP Pricing</th>
+                                        <th class="sa-th-actions" style="text-align:center;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (empty($tenants)): ?>
+                                    <tr><td colspan="4" style="text-align:center;color:#999;padding:32px;">No tenants found.</td></tr>
                                     <?php endif; ?>
-                                </form>
-
-                                <div class="table-responsive">
-                                    <table class="cp-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Tenant</th>
-                                                <th>WhatsApp Pricing</th>
-                                                <th>SMTP Pricing</th>
-                                                <th>Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php if (empty($tenants)): ?>
-                                            <tr><td colspan="4" class="text-center text-muted">No tenants found.</td></tr>
-                                            <?php endif; ?>
-                                            <?php foreach ($tenants as $tenant): ?>
-                                            <?php
-                                                $currency = $tenant['currency'] ?: 'USD';
-                                                $symbol = getCommAddonCurrencySymbol($currency);
-                                                $wa_m = floatval($tenant['whatsapp_addon_monthly_price'] ?? 30);
-                                                $wa_q = floatval($tenant['whatsapp_addon_quarterly_price'] ?? 90);
-                                                $wa_y = floatval($tenant['whatsapp_addon_yearly_price'] ?? 360);
-                                                $sm_m = floatval($tenant['smtp_addon_monthly_price'] ?? 20);
-                                                $sm_q = floatval($tenant['smtp_addon_quarterly_price'] ?? 60);
-                                                $sm_y = floatval($tenant['smtp_addon_yearly_price'] ?? 240);
-                                            ?>
-                                            <tr>
-                                                <td>
-                                                    <strong><?= htmlspecialchars($tenant['name']) ?></strong><br>
-                                                    <small class="text-muted"><?= htmlspecialchars($tenant['subdomain']) ?></small><br>
-                                                    <span class="cp-pill <?= ($tenant['status'] ?? '') === 'active' ? 'active' : 'other' ?>"><?= htmlspecialchars($tenant['status']) ?></span>
-                                                </td>
-                                                <td>
-                                                    <div>Monthly: <?= $symbol . number_format($wa_m, 2) ?></div>
-                                                    <div>Quarterly: <?= $symbol . number_format($wa_q, 2) ?></div>
-                                                    <div>Yearly: <?= $symbol . number_format($wa_y, 2) ?></div>
-                                                </td>
-                                                <td>
-                                                    <div>Monthly: <?= $symbol . number_format($sm_m, 2) ?></div>
-                                                    <div>Quarterly: <?= $symbol . number_format($sm_q, 2) ?></div>
-                                                    <div>Yearly: <?= $symbol . number_format($sm_y, 2) ?></div>
-                                                </td>
-                                                <td style="min-width:260px;">
-                                                    <form method="POST" action="manage_communication_addon_pricing.php?page=<?= $current_page ?>&search=<?= urlencode($search_query) ?>">
-                                                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
-                                                        <input type="hidden" name="action" value="update_pricing">
-                                                        <input type="hidden" name="tenant_id" value="<?= intval($tenant['id']) ?>">
-                                                        <div class="cp-grid">
-                                                            <input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="whatsapp_addon_monthly_price" value="<?= htmlspecialchars($wa_m) ?>" title="WA Monthly">
-                                                            <input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="whatsapp_addon_quarterly_price" value="<?= htmlspecialchars($wa_q) ?>" title="WA Quarterly">
-                                                            <input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="whatsapp_addon_yearly_price" value="<?= htmlspecialchars($wa_y) ?>" title="WA Yearly">
-                                                            <input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="smtp_addon_monthly_price" value="<?= htmlspecialchars($sm_m) ?>" title="SMTP Monthly">
-                                                            <input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="smtp_addon_quarterly_price" value="<?= htmlspecialchars($sm_q) ?>" title="SMTP Quarterly">
-                                                            <input type="number" step="0.01" min="0.01" class="form-control form-control-sm" name="smtp_addon_yearly_price" value="<?= htmlspecialchars($sm_y) ?>" title="SMTP Yearly">
-                                                        </div>
-                                                        <button type="submit" class="btn btn-success btn-sm mt-1">Update Pricing</button>
-                                                    </form>
-                                                </td>
-                                            </tr>
-                                            <?php endforeach; ?>
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                <?php if ($total_pages > 1): ?>
-                                <nav class="mt-3">
-                                    <ul class="pagination">
-                                        <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                                        <li class="page-item <?= $i === $current_page ? 'active' : '' ?>">
-                                            <a class="page-link" href="?page=<?= $i ?>&search=<?= urlencode($search_query) ?>"><?= $i ?></a>
-                                        </li>
-                                        <?php endfor; ?>
-                                    </ul>
-                                </nav>
-                                <?php endif; ?>
-                            </div>
+                                    <?php foreach ($tenants as $tenant):
+                                        $currency = $tenant['currency'] ?: 'USD';
+                                        $symbol = getCommAddonCurrencySymbol($currency);
+                                        $wa_m = floatval($tenant['whatsapp_addon_monthly_price'] ?? 30);
+                                        $wa_q = floatval($tenant['whatsapp_addon_quarterly_price'] ?? 90);
+                                        $wa_y = floatval($tenant['whatsapp_addon_yearly_price'] ?? 360);
+                                        $sm_m = floatval($tenant['smtp_addon_monthly_price'] ?? 20);
+                                        $sm_q = floatval($tenant['smtp_addon_quarterly_price'] ?? 60);
+                                        $sm_y = floatval($tenant['smtp_addon_yearly_price'] ?? 240);
+                                        $status_pill = ($tenant['status'] ?? '') === 'active' ? 'pill-green' : 'pill-gray';
+                                    ?>
+                                    <tr>
+                                        <td style="min-width:140px;">
+                                            <div style="font-weight:600;color:#333;"><?= htmlspecialchars($tenant['name']) ?></div>
+                                            <div style="font-size:0.8rem;color:#999;margin:2px 0 4px;"><?= htmlspecialchars($tenant['subdomain']) ?></div>
+                                            <span class="pill <?= $status_pill ?>"><?= htmlspecialchars($tenant['status']) ?></span>
+                                        </td>
+                                        <td style="white-space:nowrap;">
+                                            <div><span class="sa-pricing-label">Monthly:</span> <?= $symbol . number_format($wa_m, 2) ?></div>
+                                            <div><span class="sa-pricing-label">Quarterly:</span> <?= $symbol . number_format($wa_q, 2) ?></div>
+                                            <div><span class="sa-pricing-label">Yearly:</span> <?= $symbol . number_format($wa_y, 2) ?></div>
+                                        </td>
+                                        <td style="white-space:nowrap;">
+                                            <div><span class="sa-pricing-label">Monthly:</span> <?= $symbol . number_format($sm_m, 2) ?></div>
+                                            <div><span class="sa-pricing-label">Quarterly:</span> <?= $symbol . number_format($sm_q, 2) ?></div>
+                                            <div><span class="sa-pricing-label">Yearly:</span> <?= $symbol . number_format($sm_y, 2) ?></div>
+                                        </td>
+                                        <td class="sa-td-actions" style="min-width:260px;vertical-align:top;">
+                                            <form method="POST" action="manage_communication_addon_pricing.php?page=<?= $current_page ?>&search=<?= urlencode($search_query) ?>">
+                                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+                                                <input type="hidden" name="action" value="update_pricing">
+                                                <input type="hidden" name="tenant_id" value="<?= intval($tenant['id']) ?>">
+                                                <div class="sa-pricing-grid">
+                                                    <input type="number" step="0.01" min="0.01" class="sa-pricing-input" name="whatsapp_addon_monthly_price" value="<?= htmlspecialchars($wa_m) ?>" title="WA Monthly" placeholder="WA Mo">
+                                                    <input type="number" step="0.01" min="0.01" class="sa-pricing-input" name="whatsapp_addon_quarterly_price" value="<?= htmlspecialchars($wa_q) ?>" title="WA Quarterly" placeholder="WA Qr">
+                                                    <input type="number" step="0.01" min="0.01" class="sa-pricing-input" name="whatsapp_addon_yearly_price" value="<?= htmlspecialchars($wa_y) ?>" title="WA Yearly" placeholder="WA Yr">
+                                                    <input type="number" step="0.01" min="0.01" class="sa-pricing-input" name="smtp_addon_monthly_price" value="<?= htmlspecialchars($sm_m) ?>" title="SMTP Monthly" placeholder="SMTP Mo">
+                                                    <input type="number" step="0.01" min="0.01" class="sa-pricing-input" name="smtp_addon_quarterly_price" value="<?= htmlspecialchars($sm_q) ?>" title="SMTP Quarterly" placeholder="SMTP Qr">
+                                                    <input type="number" step="0.01" min="0.01" class="sa-pricing-input" name="smtp_addon_yearly_price" value="<?= htmlspecialchars($sm_y) ?>" title="SMTP Yearly" placeholder="SMTP Yr">
+                                                </div>
+                                                <button type="submit" class="sa-btn sa-btn-success sa-btn-sm" style="margin-top:6px;width:100%;justify-content:center;">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Update Pricing
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
                         </div>
+
+                        <?php if ($total_pages > 1): ?>
+                        <div class="sa-pagination" style="justify-content:center;margin-top:16px;">
+                            <?php if ($current_page > 1): ?>
+                            <a href="?page=1&search=<?= urlencode($search_query) ?>" class="sa-page-btn" title="First"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg></a>
+                            <a href="?page=<?= $current_page - 1 ?>&search=<?= urlencode($search_query) ?>" class="sa-page-btn" title="Prev"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></a>
+                            <?php endif; ?>
+                            <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                            <a href="?page=<?= $i ?>&search=<?= urlencode($search_query) ?>" class="sa-page-btn <?= $i === $current_page ? 'sa-page-active' : '' ?>"><?= $i ?></a>
+                            <?php endfor; ?>
+                            <?php if ($current_page < $total_pages): ?>
+                            <a href="?page=<?= $current_page + 1 ?>&search=<?= urlencode($search_query) ?>" class="sa-page-btn" title="Next"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></a>
+                            <a href="?page=<?= $total_pages ?>&search=<?= urlencode($search_query) ?>" class="sa-page-btn" title="Last"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg></a>
+                            <?php endif; ?>
                         </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
