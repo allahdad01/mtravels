@@ -454,7 +454,7 @@ require_once '../includes/header_super_admin.php';
 <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
 <script src="../assets/js/pcoded.min.js"></script>
 <script>
-function showModal(id) { document.getElementById(id).style.display = 'block'; }
+function showModal(id) { document.getElementById(id).style.display = 'flex'; }
 
 const currencySymbols = {
     'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥',

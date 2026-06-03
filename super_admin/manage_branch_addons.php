@@ -1124,7 +1124,7 @@ $display_items = array_slice(array_values($filtered_items), $offset, $items_per_
 <script src="../assets/js/pcoded.min.js"></script>
 
 <script>
-function showModal(id) { document.getElementById(id).style.display = 'block'; }
+function showModal(id) { document.getElementById(id).style.display = 'flex'; }
 
 // Approve button click handler
 document.querySelectorAll('.approve-btn').forEach(btn => {
