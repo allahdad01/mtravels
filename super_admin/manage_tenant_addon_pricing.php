@@ -490,7 +490,10 @@ body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg);
         </div>
     </div>
 </div>
-
+<!-- Required Js -->
+<script src="../assets/js/vendor-all.min.js"></script>
+<script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+<script src="../assets/js/pcoded.min.js"></script>
 <script>
 function openModal(id) { document.getElementById(id).classList.add('active'); }
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
