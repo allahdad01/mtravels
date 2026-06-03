@@ -137,24 +137,18 @@ $display_items = array_slice(array_values($filtered_items), $offset, $items_per_
         <div class="pcoded-content">
             <div class="pcoded-inner-content">
                 <!-- [ breadcrumb ] start -->
-                <div class="page-header card" style="background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%); color: white;">
+                <div class="page-header card">
                     <div class="row align-items-center">
                         <div class="col-md-6">
-                            <div class="page-header-content">
-                                <h5 class="page-title mb-0" style="color: white;">
-                                    <i class="feather icon-layers mr-2"></i>Branch Add-on Requests
-                                </h5>
-                                <p class="page-subtitle mb-0 mt-2" style="color: white; opacity: 0.9;">
-                                    Manage branch add-on requests and active add-ons for your tenants
-                                </p>
-                            </div>
+                            <h5 class="mb-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:8px"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Branch Add-on Requests
+                            </h5>
+                            <p class="page-desc">Manage branch add-on requests and active add-ons for your tenants</p>
                         </div>
                         <div class="col-md-6 text-end">
-                            <div class="page-header-actions">
-                                <a href="branch_addon_payments.php" class="btn btn-header-primary">
-                                    <i class="feather icon-credit-card mr-1"></i>View Payments
-                                </a>
-                            </div>
+                            <a href="branch_addon_payments.php" class="sa-btn" style="background:rgba(255,255,255,0.12);color:#fff;border:1px solid rgba(255,255,255,0.25);">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>View Payments
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -167,7 +161,7 @@ $display_items = array_slice(array_values($filtered_items), $offset, $items_per_
                                 <!-- Success/Error Alerts -->
                                 <?php if (isset($success)): ?>
                                 <div class="sa-alert sa-alert-success">
-                                    <div class="sa-alert-icon">✓</div>
+                                    <div class="sa-alert-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
                                     <div class="sa-alert-content">
                                         <?php
                                         $msg = '';
@@ -190,178 +184,183 @@ $display_items = array_slice(array_values($filtered_items), $offset, $items_per_
                                         echo $msg;
                                         ?>
                                     </div>
-                                    <button type="button" class="sa-alert-close" onclick="this.parentElement.style.display='none';">×</button>
+                                    <button type="button" class="sa-alert-close" onclick="this.parentElement.style.display='none';"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                                 </div>
                                 <?php endif; ?>
                                 
                                 <?php if (isset($error)): ?>
                                 <div class="sa-alert sa-alert-danger">
-                                    <div class="sa-alert-icon">⚠</div>
+                                    <div class="sa-alert-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
                                     <div class="sa-alert-content">
                                         <?= htmlspecialchars($error) ?>
                                     </div>
-                                    <button type="button" class="sa-alert-close" onclick="this.parentElement.style.display='none';">×</button>
+                                    <button type="button" class="sa-alert-close" onclick="this.parentElement.style.display='none';"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                                 </div>
                                 <?php endif; ?>
                                 
-                                <!-- Search and Filter Bar -->
-                                <div class="sa-card" style="margin-bottom: 20px;">
-                                    <div class="sa-card-body">
-                                        <form method="GET" action="manage_branch_addons.php" class="sa-search-filter">
-                                            <div class="sa-search-group">
+                                <!-- Toolbar -->
+                                <div class="sa-toolbar">
+                                    <form method="GET" action="manage_branch_addons.php" class="sa-toolbar-form">
+                                        <div class="sa-toolbar-group">
+                                            <span class="sa-toolbar-label">Search</span>
+                                            <div class="sa-search-box">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sa-search-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                                                 <input type="text" class="sa-search-input" name="search" placeholder="Search tenant or plan..." value="<?= htmlspecialchars($search_query) ?>">
-                                                <select class="sa-search-input" name="status" style="flex: 0 0 auto;">
-                                                    <option value="">All Status</option>
-                                                    <option value="pending" <?= $status_filter === 'pending' ? 'selected' : '' ?>>Pending</option>
-                                                    <option value="approved" <?= $status_filter === 'approved' ? 'selected' : '' ?>>Approved</option>
-                                                    <option value="active" <?= $status_filter === 'active' ? 'selected' : '' ?>>Active</option>
-                                                    <option value="inactive" <?= $status_filter === 'inactive' ? 'selected' : '' ?>>Suspended</option>
-                                                    <option value="rejected" <?= $status_filter === 'rejected' ? 'selected' : '' ?>>Rejected</option>
-                                                    <option value="cancelled" <?= $status_filter === 'cancelled' ? 'selected' : '' ?>>Cancelled</option>
-                                                </select>
-                                                <button type="submit" class="sa-btn sa-btn-primary">Search</button>
-                                                <?php if (!empty($search_query) || !empty($status_filter)): ?>
-                                                <a href="manage_branch_addons.php" class="sa-btn sa-btn-ghost">Clear</a>
-                                                <?php endif; ?>
                                             </div>
-                                        </form>
-                                    </div>
+                                        </div>
+                                        <div class="sa-toolbar-group">
+                                            <span class="sa-toolbar-label">Status</span>
+                                            <select class="sa-filter-select" name="status">
+                                                <option value="">All Status</option>
+                                                <option value="pending" <?= $status_filter === 'pending' ? 'selected' : '' ?>>Pending</option>
+                                                <option value="approved" <?= $status_filter === 'approved' ? 'selected' : '' ?>>Approved</option>
+                                                <option value="active" <?= $status_filter === 'active' ? 'selected' : '' ?>>Active</option>
+                                                <option value="inactive" <?= $status_filter === 'inactive' ? 'selected' : '' ?>>Suspended</option>
+                                                <option value="rejected" <?= $status_filter === 'rejected' ? 'selected' : '' ?>>Rejected</option>
+                                                <option value="cancelled" <?= $status_filter === 'cancelled' ? 'selected' : '' ?>>Cancelled</option>
+                                            </select>
+                                        </div>
+                                        <button type="submit" class="sa-btn sa-btn-primary" style="align-self:flex-end;">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Filter
+                                        </button>
+                                        <?php if (!empty($search_query) || !empty($status_filter)): ?>
+                                        <a href="manage_branch_addons.php" class="sa-btn sa-btn-ghost" style="align-self:flex-end;">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Reset
+                                        </a>
+                                        <?php endif; ?>
+                                    </form>
                                 </div>
 
-                                <!-- Branch Add-ons Header -->
-                                <div class="sa-shdr" style="margin-bottom: 16px;">
+                                <!-- Section Header -->
+                                <div class="sa-section-header">
                                     <div>
                                         <h2>Branch Add-ons Overview</h2>
-                                        <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: var(--muted);">Total: <?= $total_items ?> requests</p>
+                                        <p><?= $total_items ?> requests</p>
                                     </div>
                                 </div>
 
-                                <div class="card">
-                                     <div class="card-body">
-                                         <!-- Branch Add-ons List -->
-                                         <?php if (empty($display_items)): ?>
-                                         <div class="sa-card">
-                                             <div class="sa-card-body" style="text-align: center; padding: 40px 20px; color: var(--muted);">
-                                                 <div style="font-size: 2rem; margin-bottom: 12px;">📦</div>
-                                                 <div style="font-weight: 600; margin-bottom: 4px;">No Branch Add-ons Found</div>
-                                                 <div style="font-size: 0.8rem;"><?= !empty($search_query) ? 'Try adjusting your search filters.' : 'No branch add-on requests at this time.' ?></div>
-                                             </div>
-                                         </div>
-                                         <?php else: ?>
-                                         <div class="sa-row-list">
-                                             <?php foreach ($display_items as $item):
-                                                 $status_color = match($item['status']) {
-                                                     'pending' => 'pill-amber',
-                                                     'approved', 'active' => 'pill-green',
-                                                     'inactive' => 'pill-red',
-                                                     'rejected', 'cancelled' => 'pill-muted',
-                                                     default => 'pill-muted'
-                                                 };
-                                                 $status_display = ($item['status'] === 'inactive') ? 'Suspended' : ucfirst($item['status']);
-                                             ?>
-                                             <div class="sa-row-card">
-                                                 <div class="src-header">
-                                                     <div class="src-title">
-                                                         <h3><?= htmlspecialchars($item['tenant_name']) ?></h3>
-                                                         <p class="src-subtitle"><?= htmlspecialchars($item['plan_name'] ?? 'N/A') ?></p>
-                                                     </div>
-                                                     <span class="pill <?= $status_color ?>"><?= $status_display ?></span>
-                                                 </div>
-                                                 
-                                                 <div class="src-content">
-                                                     <div class="src-col">
-                                                         <span class="src-label">Additional Branches</span>
-                                                         <span class="src-value">+<?= intval($item['additional_branches'] ?? $item['requested_additional_branches'] ?? 0) ?></span>
-                                                     </div>
-                                                     <div class="src-col">
-                                                         <span class="src-label">Price per Branch</span>
-                                                         <span class="src-value"><?= htmlspecialchars($item['currency']) ?> <?= isset($item['addon_price_per_branch']) ? number_format($item['addon_price_per_branch'], 2) : '-' ?></span>
-                                                     </div>
-                                                     <div class="src-col">
-                                                         <span class="src-label">Total Cost</span>
-                                                         <span class="src-value"><?= htmlspecialchars($item['currency']) ?> <?= isset($item['total_addon_cost']) ? number_format($item['total_addon_cost'], 2) : number_format($item['estimated_monthly_cost'] ?? 0, 2) ?></span>
-                                                     </div>
-                                                     <div class="src-col">
-                                                         <span class="src-label">Created</span>
-                                                         <span class="src-value"><?= date('M d, Y', strtotime($item['created_date'] ?? $item['requested_at'])) ?></span>
-                                                     </div>
-                                                 </div>
-
-                                                 <div class="src-actions">
-                                                     <?php if ($item['status'] === 'pending'): ?>
-                                                     <button class="sa-btn sa-btn-small sa-btn-primary approve-btn" 
-                                                             data-request-id="<?= $item['id'] ?>"
-                                                             data-tenant-name="<?= htmlspecialchars($item['tenant_name']) ?>"
-                                                             data-branches="<?= intval($item['requested_additional_branches']) ?>"
-                                                             data-cost="<?= number_format($item['estimated_monthly_cost'], 2) ?>">
-                                                         <i class="feather icon-check"></i> Approve
-                                                     </button>
-                                                     <button class="sa-btn sa-btn-small sa-btn-danger reject-btn"
-                                                             data-request-id="<?= $item['id'] ?>"
-                                                             data-tenant-name="<?= htmlspecialchars($item['tenant_name']) ?>">
-                                                         <i class="feather icon-x"></i> Reject
-                                                     </button>
-                                                     <?php elseif ($item['status'] === 'active'): ?>
-                                                     <button class="sa-btn sa-btn-small sa-btn-ghost suspend-btn"
-                                                             data-addon-id="<?= $item['id'] ?>"
-                                                             data-tenant-name="<?= htmlspecialchars($item['tenant_name']) ?>">
-                                                         <i class="feather icon-pause"></i> Suspend
-                                                     </button>
-                                                     <?php elseif ($item['status'] === 'inactive'): ?>
-                                                     <button class="sa-btn sa-btn-small sa-btn-primary reactivate-btn"
-                                                             data-addon-id="<?= $item['id'] ?>"
-                                                             data-tenant-name="<?= htmlspecialchars($item['tenant_name']) ?>">
-                                                         <i class="feather icon-play"></i> Reactivate
-                                                     </button>
-                                                     <?php endif; ?>
-                                                 </div>
-                                             </div>
-                                             <?php endforeach; ?>
-                                         </div>
-                                        
-                                        <!-- Pagination -->
-                                        <?php if ($total_pages > 1): ?>
-                                        <div class="sa-pagination">
-                                        <?php 
-                                        $query_string = '';
-                                        if (!empty($search_query)) $query_string .= '&search=' . urlencode($search_query);
-                                        if (!empty($status_filter)) $query_string .= '&status=' . urlencode($status_filter);
-                                        
-                                        $start_page = max(1, $current_page - 2);
-                                        $end_page = min($total_pages, $current_page + 2);
-                                        ?>
-                                        
-                                        <?php if ($current_page > 1): ?>
-                                        <a href="?page=1<?= $query_string ?>" class="sa-pagination-item">First</a>
-                                        <a href="?page=<?= $current_page - 1 ?><?= $query_string ?>" class="sa-pagination-item">← Prev</a>
-                                        <?php endif; ?>
-                                        
-                                        <?php if ($start_page > 1): ?>
-                                        <span class="sa-pagination-ellipsis">...</span>
-                                        <?php endif; ?>
-                                        
-                                        <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
-                                        <a href="?page=<?= $i ?><?= $query_string ?>" class="sa-pagination-item <?= $i === $current_page ? 'active' : '' ?>">
-                                        <?= $i ?>
-                                        </a>
-                                        <?php endfor; ?>
-                                        
-                                        <?php if ($end_page < $total_pages): ?>
-                                        <span class="sa-pagination-ellipsis">...</span>
-                                        <?php endif; ?>
-                                        
-                                        <?php if ($current_page < $total_pages): ?>
-                                        <a href="?page=<?= $current_page + 1 ?><?= $query_string ?>" class="sa-pagination-item">Next →</a>
-                                        <a href="?page=<?= $total_pages ?><?= $query_string ?>" class="sa-pagination-item">Last</a>
-                                        <?php endif; ?>
-                                        
-                                        <span class="sa-pagination-info">Page <?= $current_page ?> of <?= $total_pages ?></span>
-                                        </div>
-                                        <?php endif; ?>
-                                        </div>
-                                        <?php endif; ?>
-                                    </div>
+                                <!-- Data Table -->
+                                <?php if (!empty($display_items)): ?>
+                                <div class="sa-table-wrap">
+                                    <table class="sa-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Tenant / Plan</th>
+                                                <th>Additional Branches</th>
+                                                <th>Price / Branch</th>
+                                                <th>Total Cost</th>
+                                                <th>Status</th>
+                                                <th>Created</th>
+                                                <th class="sa-th-actions">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($display_items as $item):
+                                                $initial = strtoupper(substr($item['tenant_name'], 0, 1));
+                                                $status_color = match($item['status']) {
+                                                    'pending' => 'pill-amber',
+                                                    'approved', 'active' => 'pill-green',
+                                                    'inactive' => 'pill-red',
+                                                    default => 'pill-gray'
+                                                };
+                                                $status_display = ($item['status'] === 'inactive') ? 'Suspended' : ucfirst($item['status']);
+                                            ?>
+                                            <tr>
+                                                <td class="sa-td-tenant">
+                                                    <div class="sa-avatar" style="background:<?= match($item['status']) {
+                                                        'active', 'approved' => '#10b981',
+                                                        'pending' => '#f59e0b',
+                                                        'inactive', 'rejected', 'cancelled' => '#6b7280',
+                                                        default => '#6b7280'
+                                                    } ?>"><?= $initial ?></div>
+                                                    <div class="sa-tenant-meta">
+                                                        <div class="sa-tenant-name"><?= htmlspecialchars($item['tenant_name']) ?></div>
+                                                        <div class="sa-tenant-id"><?= htmlspecialchars($item['plan_name'] ?? 'N/A') ?></div>
+                                                    </div>
+                                                </td>
+                                                <td style="font-weight:600;">+<?= intval($item['additional_branches'] ?? $item['requested_additional_branches'] ?? 0) ?></td>
+                                                <td><?= htmlspecialchars($item['currency']) ?> <?= isset($item['addon_price_per_branch']) ? number_format($item['addon_price_per_branch'], 2) : '-' ?></td>
+                                                <td style="font-weight:600;"><?= htmlspecialchars($item['currency']) ?> <?= isset($item['total_addon_cost']) ? number_format($item['total_addon_cost'], 2) : number_format($item['estimated_monthly_cost'] ?? 0, 2) ?></td>
+                                                <td><span class="pill <?= $status_color ?>"><?= $status_display ?></span></td>
+                                                <td class="sa-td-date"><?= date('M d, Y', strtotime($item['created_date'] ?? $item['requested_at'])) ?></td>
+                                                <td class="sa-td-actions">
+                                                    <?php if ($item['status'] === 'pending'): ?>
+                                                    <button type="button" class="sa-icon-btn sa-icon-btn-success approve-btn"
+                                                            data-request-id="<?= $item['id'] ?>"
+                                                            data-tenant-name="<?= htmlspecialchars($item['tenant_name']) ?>"
+                                                            data-branches="<?= intval($item['requested_additional_branches']) ?>"
+                                                            data-cost="<?= number_format($item['estimated_monthly_cost'], 2) ?>" title="Approve">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                                    </button>
+                                                    <button type="button" class="sa-icon-btn sa-icon-btn-danger reject-btn"
+                                                            data-request-id="<?= $item['id'] ?>"
+                                                            data-tenant-name="<?= htmlspecialchars($item['tenant_name']) ?>" title="Reject">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                                    </button>
+                                                    <?php elseif ($item['status'] === 'active'): ?>
+                                                    <button type="button" class="sa-icon-btn suspend-btn"
+                                                            data-addon-id="<?= $item['id'] ?>"
+                                                            data-tenant-name="<?= htmlspecialchars($item['tenant_name']) ?>" title="Suspend">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                                                    </button>
+                                                    <?php elseif ($item['status'] === 'inactive'): ?>
+                                                    <button type="button" class="sa-icon-btn reactivate-btn"
+                                                            data-addon-id="<?= $item['id'] ?>"
+                                                            data-tenant-name="<?= htmlspecialchars($item['tenant_name']) ?>" title="Reactivate">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                                    </button>
+                                                    <?php endif; ?>
+                                                </td>
+                                            </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
                                 </div>
+                                <?php else: ?>
+                                <div class="sa-empty">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                                    <div class="sa-empty-title">No Branch Add-ons Found</div>
+                                    <div class="sa-empty-desc"><?= !empty($search_query) ? 'Try adjusting your search filters.' : 'No branch add-on requests at this time.' ?></div>
+                                </div>
+                                <?php endif; ?>
+
+                                <!-- Pagination -->
+                                <?php if ($total_pages > 1): ?>
+                                <div class="sa-pagination">
+                                <?php 
+                                $query_string = '';
+                                if (!empty($search_query)) $query_string .= '&search=' . urlencode($search_query);
+                                if (!empty($status_filter)) $query_string .= '&status=' . urlencode($status_filter);
+                                
+                                $start_page = max(1, $current_page - 2);
+                                $end_page = min($total_pages, $current_page + 2);
+                                ?>
+                                
+                                <?php if ($current_page > 1): ?>
+                                <a href="?page=1<?= $query_string ?>" class="sa-page-btn" title="First page"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg></a>
+                                <a href="?page=<?= $current_page - 1 ?><?= $query_string ?>" class="sa-page-btn" title="Previous"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></a>
+                                <?php endif; ?>
+                                
+                                <?php if ($start_page > 1): ?>
+                                <span class="sa-page-ellipsis">...</span>
+                                <?php endif; ?>
+                                
+                                <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
+                                <a href="?page=<?= $i ?><?= $query_string ?>" class="sa-page-btn <?= $i === $current_page ? 'sa-page-active' : '' ?>"><?= $i ?></a>
+                                <?php endfor; ?>
+                                
+                                <?php if ($end_page < $total_pages): ?>
+                                <span class="sa-page-ellipsis">...</span>
+                                <?php endif; ?>
+                                
+                                <?php if ($current_page < $total_pages): ?>
+                                <a href="?page=<?= $current_page + 1 ?><?= $query_string ?>" class="sa-page-btn" title="Next"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></a>
+                                <a href="?page=<?= $total_pages ?><?= $query_string ?>" class="sa-page-btn" title="Last page"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg></a>
+                                <?php endif; ?>
+                                
+                                <span class="sa-page-info">Page <?= $current_page ?> of <?= $total_pages ?></span>
+                                </div>
+                                <?php endif; ?>
                             </div>
                         </div>
                         <!-- [ Main Content ] end -->
@@ -372,142 +371,132 @@ $display_items = array_slice(array_values($filtered_items), $offset, $items_per_
     </div>
 
 <!-- Approve Modal -->
-<div class="modal fade" id="approveModal" tabindex="-1" role="dialog" aria-labelledby="approveModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" role="document">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title" id="approveModalLabel">Approve Branch Add-on Request</h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <form id="approveForm" method="POST">
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
-                    <input type="hidden" name="action" value="approve">
-                    <input type="hidden" name="request_id" id="approve_request_id">
-                    
-                    <div class="alert alert-info">
-                        <p><strong>Tenant:</strong> <span id="approve_tenant_name"></span></p>
-                        <p><strong>Additional Branches:</strong> <span id="approve_branches"></span></p>
-                        <p><strong>Estimated Monthly Cost:</strong> <span id="approve_cost"></span></p>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="approval_notes">Approval Notes (Optional)</label>
-                        <textarea class="form-control" id="approval_notes" name="approval_notes" rows="3" placeholder="Add any notes about this approval..."></textarea>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancel</button>
-                <button type="submit" form="approveForm" class="btn btn-success">
-                    <i class="feather icon-check mr-1"></i> Approve Request
-                </button>
-            </div>
+<div id="approveModal" class="sa-modal-overlay" style="display:none;">
+    <div class="sa-modal-wrap">
+        <div class="sa-modal-header">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <h3>Approve Branch Add-on Request</h3>
+            <button type="button" class="sa-modal-close" onclick="this.closest('.sa-modal-overlay').style.display='none'">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
         </div>
+        <form id="approveForm" method="POST">
+            <div class="sa-modal-body">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+                <input type="hidden" name="action" value="approve">
+                <input type="hidden" name="request_id" id="approve_request_id">
+                <div class="sa-info-box">
+                    <div class="sa-info-row"><span>Tenant:</span> <strong id="approve_tenant_name"></strong></div>
+                    <div class="sa-info-row"><span>Additional Branches:</span> <strong id="approve_branches"></strong></div>
+                    <div class="sa-info-row"><span>Estimated Monthly Cost:</span> <strong id="approve_cost"></strong></div>
+                </div>
+                <div class="sa-field">
+                    <label class="sa-field-label">Approval Notes (Optional)</label>
+                    <textarea class="sa-textarea" id="approval_notes" name="approval_notes" rows="3" placeholder="Add any notes about this approval..."></textarea>
+                </div>
+            </div>
+            <div class="sa-modal-footer">
+                <button type="button" class="sa-btn sa-btn-ghost" onclick="this.closest('.sa-modal-overlay').style.display='none'">Cancel</button>
+                <button type="submit" class="sa-btn sa-btn-success">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Approve Request
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
 <!-- Reject Modal -->
-<div class="modal fade" id="rejectModal" tabindex="-1" role="dialog" aria-labelledby="rejectModalLabel" aria-hidden="true">
-     <div class="modal-dialog modal-dialog-centered" role="document">
-         <div class="modal-content">
-             <div class="modal-header bg-danger text-white">
-                 <h5 class="modal-title" id="rejectModalLabel">Reject Branch Add-on Request</h5>
-                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                     <span aria-hidden="true">&times;</span>
-                 </button>
-             </div>
-             <div class="modal-body">
-                 <form id="rejectForm" method="POST">
-                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
-                     <input type="hidden" name="action" value="reject">
-                     <input type="hidden" name="request_id" id="reject_request_id">
-                     
-                     <div class="alert alert-warning">
-                         <p><strong>Tenant:</strong> <span id="reject_tenant_name"></span></p>
-                     </div>
-                     
-                     <div class="form-group">
-                         <label for="rejection_reason">Reason for Rejection *</label>
-                         <textarea class="form-control" id="rejection_reason" name="rejection_reason" rows="4" required placeholder="Please provide a reason for rejecting this request..."></textarea>
-                     </div>
-                 </form>
-             </div>
-             <div class="modal-footer">
-                 <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancel</button>
-                 <button type="submit" form="rejectForm" class="btn btn-danger">
-                     <i class="feather icon-x mr-1"></i> Reject Request
-                 </button>
-             </div>
-         </div>
-     </div>
- </div>
+<div id="rejectModal" class="sa-modal-overlay" style="display:none;">
+    <div class="sa-modal-wrap">
+        <div class="sa-modal-header">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            <h3>Reject Branch Add-on Request</h3>
+            <button type="button" class="sa-modal-close" onclick="this.closest('.sa-modal-overlay').style.display='none'">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <form id="rejectForm" method="POST">
+            <div class="sa-modal-body">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+                <input type="hidden" name="action" value="reject">
+                <input type="hidden" name="request_id" id="reject_request_id">
+                <div class="sa-info-box">
+                    <div class="sa-info-row"><span>Tenant:</span> <strong id="reject_tenant_name"></strong></div>
+                </div>
+                <div class="sa-field">
+                    <label class="sa-field-label">Reason for Rejection <span style="color:#ef4444;">*</span></label>
+                    <textarea class="sa-textarea" id="rejection_reason" name="rejection_reason" rows="4" required placeholder="Please provide a reason for rejecting this request..."></textarea>
+                </div>
+            </div>
+            <div class="sa-modal-footer">
+                <button type="button" class="sa-btn sa-btn-ghost" onclick="this.closest('.sa-modal-overlay').style.display='none'">Cancel</button>
+                <button type="submit" class="sa-btn sa-btn-danger">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Reject Request
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <!-- Suspend Modal -->
-<div class="modal fade" id="suspendModal" tabindex="-1" role="dialog" aria-labelledby="suspendModalLabel" aria-hidden="true">
-     <div class="modal-dialog modal-dialog-centered" role="document">
-         <div class="modal-content">
-             <div class="modal-header bg-warning text-dark">
-                 <h5 class="modal-title" id="suspendModalLabel">Suspend Branch Add-on</h5>
-                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                     <span aria-hidden="true">&times;</span>
-                 </button>
-             </div>
-             <div class="modal-body">
-                 <form id="suspendForm" method="POST">
-                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
-                     <input type="hidden" name="action" value="suspend">
-                     <input type="hidden" name="addon_id" id="suspend_addon_id">
-                     
-                     <div class="alert alert-warning">
-                         <p><strong>Tenant:</strong> <span id="suspend_tenant_name"></span></p>
-                         <p class="text-muted"><small>Suspending this add-on will temporarily disable the additional branches for this tenant.</small></p>
-                     </div>
-                 </form>
-             </div>
-             <div class="modal-footer">
-                 <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancel</button>
-                 <button type="submit" form="suspendForm" class="btn btn-warning">
-                     <i class="feather icon-pause mr-1"></i> Suspend Add-on
-                 </button>
-             </div>
-         </div>
-     </div>
- </div>
+<div id="suspendModal" class="sa-modal-overlay" style="display:none;">
+    <div class="sa-modal-wrap">
+        <div class="sa-modal-header">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <h3>Suspend Branch Add-on</h3>
+            <button type="button" class="sa-modal-close" onclick="this.closest('.sa-modal-overlay').style.display='none'">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <form id="suspendForm" method="POST">
+            <div class="sa-modal-body">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+                <input type="hidden" name="action" value="suspend">
+                <input type="hidden" name="addon_id" id="suspend_addon_id">
+                <div class="sa-info-box">
+                    <div class="sa-info-row"><span>Tenant:</span> <strong id="suspend_tenant_name"></strong></div>
+                </div>
+                <p style="margin:16px 0 0;font-size:0.85rem;color:var(--muted);">Suspending this add-on will temporarily disable the additional branches for this tenant.</p>
+            </div>
+            <div class="sa-modal-footer">
+                <button type="button" class="sa-btn sa-btn-ghost" onclick="this.closest('.sa-modal-overlay').style.display='none'">Cancel</button>
+                <button type="submit" class="sa-btn sa-btn-warning">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Suspend Add-on
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <!-- Reactivate Modal -->
-<div class="modal fade" id="reactivateModal" tabindex="-1" role="dialog" aria-labelledby="reactivateModalLabel" aria-hidden="true">
-     <div class="modal-dialog modal-dialog-centered" role="document">
-         <div class="modal-content">
-             <div class="modal-header bg-info text-white">
-                 <h5 class="modal-title" id="reactivateModalLabel">Reactivate Branch Add-on</h5>
-                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                     <span aria-hidden="true">&times;</span>
-                 </button>
-             </div>
-             <div class="modal-body">
-                 <form id="reactivateForm" method="POST">
-                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
-                     <input type="hidden" name="action" value="reactivate">
-                     <input type="hidden" name="addon_id" id="reactivate_addon_id">
-                     
-                     <div class="alert alert-info">
-                         <p><strong>Tenant:</strong> <span id="reactivate_tenant_name"></span></p>
-                         <p class="text-muted"><small>Reactivating this add-on will restore the additional branches for this tenant.</small></p>
-                     </div>
-                 </form>
-             </div>
-             <div class="modal-footer">
-                 <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancel</button>
-                 <button type="submit" form="reactivateForm" class="btn btn-info">
-                     <i class="feather icon-play mr-1"></i> Reactivate Add-on
-                 </button>
-             </div>
-         </div>
-     </div>
- </div>
+<div id="reactivateModal" class="sa-modal-overlay" style="display:none;">
+    <div class="sa-modal-wrap">
+        <div class="sa-modal-header">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4099ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+            <h3>Reactivate Branch Add-on</h3>
+            <button type="button" class="sa-modal-close" onclick="this.closest('.sa-modal-overlay').style.display='none'">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <form id="reactivateForm" method="POST">
+            <div class="sa-modal-body">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+                <input type="hidden" name="action" value="reactivate">
+                <input type="hidden" name="addon_id" id="reactivate_addon_id">
+                <div class="sa-info-box">
+                    <div class="sa-info-row"><span>Tenant:</span> <strong id="reactivate_tenant_name"></strong></div>
+                </div>
+                <p style="margin:16px 0 0;font-size:0.85rem;color:var(--muted);">Reactivating this add-on will restore the additional branches for this tenant.</p>
+            </div>
+            <div class="sa-modal-footer">
+                <button type="button" class="sa-btn sa-btn-ghost" onclick="this.closest('.sa-modal-overlay').style.display='none'">Cancel</button>
+                <button type="submit" class="sa-btn sa-btn-primary">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg> Reactivate Add-on
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <style>
 /* ─── ROOT VARIABLES ──────────────────────────────────────────── */
@@ -525,128 +514,6 @@ $display_items = array_slice(array_values($filtered_items), $offset, $items_per_
     --grad-end: #2ed8b6;
     --grad: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
     --radius: 10px;
-}
-
-/* ─── PAGE HEADER ────────────────────────────────────────────── */
-.page-header.card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-radius: 10px;
-    padding: 2rem 2.5rem;
-    border: none;
-    margin-bottom: 2rem;
-    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.25);
-    position: relative;
-    overflow: hidden;
-}
-
-.page-header.card::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -10%;
-    width: 400px;
-    height: 400px;
-    background: rgba(255,255,255,0.05);
-    border-radius: 50%;
-    pointer-events: none;
-}
-
-.page-header.card::after {
-    content: '';
-    position: absolute;
-    bottom: -30%;
-    left: -5%;
-    width: 300px;
-    height: 300px;
-    background: rgba(255,255,255,0.03);
-    border-radius: 50%;
-    pointer-events: none;
-}
-
-.page-header.card .row {
-    position: relative;
-    z-index: 1;
-}
-
-.page-header-content {
-    padding: 0.5rem 0;
-}
-
-.page-title {
-    font-size: 1.75rem;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-    display: flex;
-    align-items: center;
-    line-height: 1.2;
-}
-
-.page-title i {
-    font-size: 2rem;
-    margin-right: 0.75rem;
-    opacity: 0.95;
-}
-
-.page-subtitle {
-    font-size: 0.95rem;
-    opacity: 0.85;
-    font-weight: 400;
-    letter-spacing: 0.3px;
-}
-
-.page-header-actions {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    justify-content: flex-end;
-    width: 100%;
-}
-
-.btn-header-primary {
-    background: rgba(255,255,255,0.15) !important;
-    color: #ffffff !important;
-    border: 1.5px solid rgba(255,255,255,0.40) !important;
-    border-radius: 6px;
-    padding: 0.65rem 1.25rem !important;
-    font-size: 0.9rem !important;
-    font-weight: 600;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    z-index: 2;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    text-decoration: none;
-    white-space: nowrap;
-}
-
-.btn-header-primary:hover {
-    background: rgba(255,255,255,0.25) !important;
-    border-color: rgba(255,255,255,0.70) !important;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.15) !important;
-    color: #ffffff !important;
-}
-
-.btn-header-primary:active {
-    transform: translateY(0);
-}
-
-.page-header.card .btn {
-    background: rgba(255,255,255,0.10) !important;
-    color: #ffffff;
-    border: 1px solid rgba(255,255,255,0.30) !important;
-    border-radius: 25px;
-    transition: all 0.3s ease;
-    position: relative;
-    z-index: 1;
-}
-
-.page-header.card .btn:hover {
-    background: rgba(255,255,255,0.22) !important;
-    border-color: rgba(255,255,255,0.50) !important;
-    transform: translateY(-1px);
 }
 
 /* ─── ALERTS ──────────────────────────────────────────────── */
@@ -705,24 +572,6 @@ $display_items = array_slice(array_values($filtered_items), $offset, $items_per_
     opacity: 0.7;
 }
 
-/* ─── CARDS ───────────────────────────────────────────────── */
-.sa-card {
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    border: none;
-}
-
-.sa-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-}
-
-.sa-card-body {
-    padding: 1.5rem;
-}
-
 /* ─── BUTTONS ─────────────────────────────────────────────── */
 .sa-btn {
     padding: 0.75rem 1.5rem;
@@ -732,18 +581,30 @@ $display_items = array_slice(array_values($filtered_items), $offset, $items_per_
     cursor: pointer;
     transition: all 0.3s ease;
     text-decoration: none;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     font-size: 0.9rem;
 }
 
 .sa-btn-primary {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    background: var(--grad);
     color: white;
 }
 
 .sa-btn-primary:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+}
+
+.sa-btn-success {
+    background: #10b981;
+    color: white;
+}
+.sa-btn-success:hover {
+    background: #059669;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16,185,129,0.3);
 }
 
 .sa-btn-danger {
@@ -756,6 +617,15 @@ $display_items = array_slice(array_values($filtered_items), $offset, $items_per_
     background: #fecaca;
 }
 
+.sa-btn-warning {
+    background: #fef3c7;
+    color: #d97706;
+    border: 1px solid #fde68a;
+}
+.sa-btn-warning:hover {
+    background: #fde68a;
+}
+
 .sa-btn-ghost {
     background: #f0f0f0;
     color: #333;
@@ -765,145 +635,6 @@ $display_items = array_slice(array_values($filtered_items), $offset, $items_per_
 .sa-btn-ghost:hover {
     background: #e8e8e8;
     border-color: #d0d0d0;
-}
-
-.sa-btn-small {
-    padding: 6px 12px;
-    font-size: 0.75rem;
-}
-
-/* ─── SEARCH & FILTER ─────────────────────────────────────── */
-.sa-search-filter {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.sa-search-group {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-    flex: 1;
-    min-width: 300px;
-}
-
-.sa-search-input {
-    flex: 1;
-    min-width: 150px;
-    padding: 0.75rem;
-    border: 1px solid #ced4da;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-}
-
-.sa-search-input:focus {
-    outline: none;
-    border-color: #4099ff;
-    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
-}
-
-/* ─── SECTION HEADER ──────────────────────────────────────── */
-.sa-shdr {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
-}
-
-.sa-shdr h2 {
-    font-size: 1.5rem;
-    font-weight: 600;
-    margin: 0;
-    color: #333;
-}
-
-.sa-shdr p {
-    margin: 4px 0 0 0;
-    font-size: 0.75rem;
-    color: var(--muted);
-}
-
-/* ─── ROW CARD LIST ───────────────────────────────────────── */
-.sa-row-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.sa-row-card {
-    background: white;
-    border: 1px solid #e0e0e0;
-    border-radius: 10px;
-    padding: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    transition: all 0.2s ease;
-}
-
-.sa-row-card:hover {
-    border-color: rgba(64, 153, 255, 0.3);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(64, 153, 255, 0.15);
-}
-
-.src-header {
-    flex: 0 0 250px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    min-width: 250px;
-}
-
-.src-title h3 {
-    font-size: 0.95rem;
-    font-weight: 600;
-    margin: 0;
-    color: #333;
-}
-
-.src-subtitle {
-    font-size: 0.75rem;
-    color: #999;
-    margin: 4px 0 0 0;
-}
-
-.src-content {
-    flex: 1;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 16px;
-    min-width: 400px;
-}
-
-.src-col {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.src-label {
-    font-size: 0.7rem;
-    color: #999;
-    font-weight: 600;
-    text-transform: uppercase;
-}
-
-.src-value {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #333;
-}
-
-.src-actions {
-    flex: 0 0 auto;
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
 }
 
 /* ─── PILLS ───────────────────────────────────────────────── */
@@ -932,9 +663,266 @@ $display_items = array_slice(array_values($filtered_items), $offset, $items_per_
     color: #f59e0b;
 }
 
-.pill-muted {
+.pill-gray {
     background: #f5f5f5;
     color: #999;
+}
+
+/* ─── SECTION HEADER ──────────────────────────────────────── */
+.sa-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.sa-section-header h2 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin: 0;
+    color: #333;
+}
+
+.sa-section-header p {
+    margin: 4px 0 0 0;
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+
+/* ─── TOOLBAR ─────────────────────────────────────────────── */
+.sa-toolbar {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+}
+
+.sa-toolbar-form {
+    display: flex;
+    gap: 16px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.sa-toolbar-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.sa-toolbar-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.sa-search-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.sa-search-icon {
+    position: absolute;
+    left: 12px;
+    color: #999;
+    pointer-events: none;
+}
+
+.sa-search-input {
+    padding: 0.6rem 0.75rem 0.6rem 2.2rem;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    min-width: 240px;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.sa-search-input:focus {
+    outline: none;
+    border-color: #4099ff;
+    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+}
+
+.sa-filter-select {
+    padding: 0.6rem 0.75rem;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    background: white;
+    min-width: 140px;
+    cursor: pointer;
+}
+
+.sa-filter-select:focus {
+    outline: none;
+    border-color: #4099ff;
+    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+}
+
+/* ─── DATA TABLE ──────────────────────────────────────────── */
+.sa-table-wrap {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    overflow-x: auto;
+    margin-bottom: 0;
+}
+
+.sa-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.sa-table thead th {
+    text-align: left;
+    padding: 14px 16px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: #fafafa;
+    border-bottom: 1px solid #e0e0e0;
+    white-space: nowrap;
+}
+
+.sa-table tbody tr {
+    transition: background 0.15s;
+}
+
+.sa-table tbody tr:hover {
+    background: #f8faff;
+}
+
+.sa-table tbody td {
+    padding: 14px 16px;
+    border-bottom: 1px solid #f0f0f0;
+    vertical-align: middle;
+}
+
+.sa-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.sa-td-tenant {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.sa-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.sa-tenant-meta {
+    display: flex;
+    flex-direction: column;
+}
+
+.sa-tenant-name {
+    font-weight: 600;
+    color: #333;
+}
+
+.sa-tenant-id {
+    font-size: 0.75rem;
+    color: #999;
+    margin-top: 2px;
+}
+
+.sa-td-date {
+    white-space: nowrap;
+    color: #999;
+    font-size: 0.8rem;
+}
+
+.sa-th-actions {
+    width: 80px;
+    text-align: right;
+}
+
+.sa-td-actions {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.sa-icon-btn {
+    width: 32px;
+    height: 32px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background: white;
+    color: #999;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    vertical-align: middle;
+    margin-left: 4px;
+}
+
+.sa-icon-btn:hover {
+    background: #f5f5f5;
+    border-color: #ccc;
+    color: #333;
+}
+
+.sa-icon-btn-success {
+    color: #10b981;
+    border-color: rgba(16,185,129,0.2);
+}
+
+.sa-icon-btn-success:hover {
+    background: rgba(16,185,129,0.1);
+    border-color: #10b981;
+}
+
+.sa-icon-btn-danger {
+    color: #ef4444;
+    border-color: rgba(239,68,68,0.2);
+}
+
+.sa-icon-btn-danger:hover {
+    background: rgba(239,68,68,0.1);
+    border-color: #ef4444;
+}
+
+/* ─── EMPTY STATE ─────────────────────────────────────────── */
+.sa-empty {
+    text-align: center;
+    padding: 48px 20px;
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    color: #ccc;
+}
+
+.sa-empty-title {
+    font-weight: 600;
+    color: #999;
+    margin-top: 12px;
+    font-size: 1rem;
+}
+
+.sa-empty-desc {
+    font-size: 0.85rem;
+    color: #bbb;
+    margin-top: 4px;
 }
 
 /* ─── PAGINATION ──────────────────────────────────────────── */
@@ -951,7 +939,7 @@ $display_items = array_slice(array_values($filtered_items), $offset, $items_per_
     flex-wrap: wrap;
 }
 
-.sa-pagination-item {
+.sa-page-btn {
     min-width: 36px;
     height: 36px;
     padding: 0 10px;
@@ -963,70 +951,153 @@ $display_items = array_slice(array_values($filtered_items), $offset, $items_per_
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     font-weight: 500;
     transition: all 0.2s;
     cursor: pointer;
 }
 
-.sa-pagination-item:hover:not(.active) {
+.sa-page-btn:hover {
     background: rgba(64, 153, 255, 0.1);
     border-color: #4099ff;
     color: #4099ff;
 }
 
-.sa-pagination-item.active {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+.sa-page-active {
+    background: var(--grad);
     border-color: #4099ff;
     color: white;
 }
 
-.sa-pagination-ellipsis {
-    color: #999;
-    font-size: 0.8rem;
+.sa-page-active:hover {
+    color: white;
 }
 
-.sa-pagination-info {
+.sa-page-ellipsis {
+    color: #999;
+    font-size: 0.9rem;
+}
+
+.sa-page-info {
     font-size: 0.8rem;
     color: #999;
     margin-left: auto;
 }
 
-/* ─── RESPONSIVE ──────────────────────────────────────────── */
-@media (max-width: 1024px) {
-    .sa-row-card {
-        flex-wrap: wrap;
-    }
-    
-    .src-header {
-        flex: 1 1 100%;
-        min-width: 100%;
-    }
-    
-    .src-content {
-        flex: 1 1 100%;
-        min-width: 100%;
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .src-actions {
-        flex: 1 1 100%;
-    }
+/* ─── MODALS ──────────────────────────────────────────────── */
+.sa-modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
 }
 
-@media (max-width: 768px) {
-    .sa-row-card {
-        padding: 12px;
-        flex-direction: column;
-    }
-    
-    .src-header {
-        width: 100%;
-    }
-    
-    .src-content {
-        grid-template-columns: 1fr;
-    }
+.sa-modal-wrap {
+    background: white;
+    border-radius: 14px;
+    width: 480px;
+    max-width: 94vw;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.sa-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 24px 0;
+}
+
+.sa-modal-header h3 {
+    flex: 1;
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin: 0;
+    color: #333;
+}
+
+.sa-modal-close {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: #f5f5f5;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+    transition: all 0.2s;
+}
+
+.sa-modal-close:hover {
+    background: #e0e0e0;
+    color: #333;
+}
+
+.sa-modal-body {
+    padding: 16px 24px 0;
+}
+
+.sa-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 16px 24px 20px;
+}
+
+/* ─── FORM ELEMENTS ───────────────────────────────────────── */
+.sa-field {
+    margin-bottom: 16px;
+}
+
+.sa-field-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 6px;
+}
+
+.sa-textarea {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    resize: vertical;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    box-sizing: border-box;
+}
+
+.sa-textarea:focus {
+    outline: none;
+    border-color: #4099ff;
+    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+}
+
+.sa-info-box {
+    background: #f8faff;
+    border: 1px solid #e8f0fe;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+}
+
+.sa-info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 0.85rem;
+}
+
+.sa-info-row span {
+    color: #999;
 }
 </style>
 
@@ -1036,66 +1107,45 @@ $display_items = array_slice(array_values($filtered_items), $offset, $items_per_
 <script src="../assets/js/pcoded.min.js"></script>
 
 <script>
+function showModal(id) { document.getElementById(id).style.display = 'block'; }
+
 // Approve button click handler
 document.querySelectorAll('.approve-btn').forEach(btn => {
     btn.addEventListener('click', function() {
-        const requestId = this.getAttribute('data-request-id');
-        const tenantName = this.getAttribute('data-tenant-name');
-        const branches = this.getAttribute('data-branches');
-        const cost = this.getAttribute('data-cost');
-        
-        document.getElementById('approve_request_id').value = requestId;
-        document.getElementById('approve_tenant_name').textContent = tenantName;
-        document.getElementById('approve_branches').textContent = branches;
-        document.getElementById('approve_cost').textContent = cost;
-        
-        $('#approveModal').modal('show');
+        document.getElementById('approve_request_id').value = this.getAttribute('data-request-id');
+        document.getElementById('approve_tenant_name').textContent = this.getAttribute('data-tenant-name');
+        document.getElementById('approve_branches').textContent = this.getAttribute('data-branches');
+        document.getElementById('approve_cost').textContent = this.getAttribute('data-cost');
+        showModal('approveModal');
     });
 });
 
 // Reject button click handler
 document.querySelectorAll('.reject-btn').forEach(btn => {
-     btn.addEventListener('click', function() {
-         const requestId = this.getAttribute('data-request-id');
-         const tenantName = this.getAttribute('data-tenant-name');
-         
-         document.getElementById('reject_request_id').value = requestId;
-         document.getElementById('reject_tenant_name').textContent = tenantName;
-         
-         $('#rejectModal').modal('show');
-     });
- });
+    btn.addEventListener('click', function() {
+        document.getElementById('reject_request_id').value = this.getAttribute('data-request-id');
+        document.getElementById('reject_tenant_name').textContent = this.getAttribute('data-tenant-name');
+        showModal('rejectModal');
+    });
+});
 
 // Suspend button click handler
 document.querySelectorAll('.suspend-btn').forEach(btn => {
-     btn.addEventListener('click', function() {
-         const addonId = this.getAttribute('data-addon-id');
-         const tenantName = this.getAttribute('data-tenant-name');
-         
-         document.getElementById('suspend_addon_id').value = addonId;
-         document.getElementById('suspend_tenant_name').textContent = tenantName;
-         
-         $('#suspendModal').modal('show');
-     });
- });
+    btn.addEventListener('click', function() {
+        document.getElementById('suspend_addon_id').value = this.getAttribute('data-addon-id');
+        document.getElementById('suspend_tenant_name').textContent = this.getAttribute('data-tenant-name');
+        showModal('suspendModal');
+    });
+});
 
 // Reactivate button click handler
 document.querySelectorAll('.reactivate-btn').forEach(btn => {
-     btn.addEventListener('click', function() {
-         const addonId = this.getAttribute('data-addon-id');
-         const tenantName = this.getAttribute('data-tenant-name');
-         
-         document.getElementById('reactivate_addon_id').value = addonId;
-         document.getElementById('reactivate_tenant_name').textContent = tenantName;
-         
-         $('#reactivateModal').modal('show');
-     });
- });
- 
- // Clear forms on modal close
- $('#approveModal, #rejectModal, #suspendModal, #reactivateModal').on('hidden.bs.modal', function() {
-     $(this).find('form')[0].reset();
- });
+    btn.addEventListener('click', function() {
+        document.getElementById('reactivate_addon_id').value = this.getAttribute('data-addon-id');
+        document.getElementById('reactivate_tenant_name').textContent = this.getAttribute('data-tenant-name');
+        showModal('reactivateModal');
+    });
+});
 </script>
 </body>
 </html>
