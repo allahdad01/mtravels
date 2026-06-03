@@ -8,9 +8,8 @@
  * - Update tenant access based on payment status
  */
 
-// Include database connection
-require_once '../config.php';
-require_once '../includes/db.php';
+// Database connection (includes/db.php loads config.php internally)
+require_once __DIR__ . '/../includes/db.php';
 
 echo "Starting payment status check...\n";
 

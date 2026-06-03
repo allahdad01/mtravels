@@ -42,10 +42,7 @@ try {
             $whatsapp = new WhatsAppManager($tenant_id);
             
             // Process queue (limit to 20 messages per run to avoid timeouts)
-            $reflection = new ReflectionClass($whatsapp);
-            $processMethod = $reflection->getMethod('processQueue');
-            $processMethod->setAccessible(true);
-            $results = $processMethod->invoke($whatsapp, 20);
+            $results = $whatsapp->processQueue(20);
             
             $processed = count($results);
             $total_processed += $processed;

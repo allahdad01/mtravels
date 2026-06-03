@@ -8,10 +8,9 @@
  * - Log SLA violations for reporting
  */
 
-// Include database connection
-require_once '../config.php';
-require_once '../includes/db.php';
-require_once '../includes/SLACalculator.php';
+// Database connection (includes/db.php loads config.php internally)
+require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/SLACalculator.php';
 
 echo "Starting support ticket SLA status update...\n";
 

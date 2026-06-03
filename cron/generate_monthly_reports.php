@@ -15,11 +15,10 @@ if (php_sapi_name() !== 'cli' && php_sapi_name() !== 'cli-server') {
     exit("This script can only be run from command line.");
 }
 
-// Include configuration and database
-require_once dirname(dirname(__FILE__)) . "/config.php";
+// Database connection (includes/db.php loads config.php internally)
 require_once dirname(dirname(__FILE__)) . "/includes/db.php";
 require_once dirname(dirname(__FILE__)) . "/vendor/autoload.php";
-require_once dirname(__FILE__) . "/MonthlyReportGenerator.php";
+require_once __DIR__ . "/MonthlyReportGenerator.php";
 
 // Initialize report generator
 $reportGenerator = new MonthlyReportGenerator($pdo);
