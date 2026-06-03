@@ -516,6 +516,23 @@ $display_items = array_slice(array_values($filtered_items), $offset, $items_per_
     --radius: 10px;
 }
 
+/* ─── PAGE HEADER ─────────────────────────────────────────── */
+.page-header.card {
+    background: linear-gradient(135deg, #4099ff 0%, #2673cc 50%, #2ed8b6 100%) !important;
+    color: #fff; border: none !important; margin-bottom: 24px;
+    padding: 22px 28px !important; box-shadow: 0 4px 20px rgba(64,153,255,0.3);
+    border-radius: 12px; position: relative; overflow: hidden;
+}
+.page-header.card::after {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 60%);
+    pointer-events: none;
+}
+.page-header.card h5 { color: #fff !important; margin: 0; font-weight: 700; font-size: 1.15rem; position: relative; z-index: 1; }
+.page-header.card .row { display: flex; align-items: center; justify-content: space-between; width: 100%; position: relative; z-index: 2; }
+.page-header.card .col-md-6:last-child { text-align: right; margin-left: auto; }
+.page-desc { color: rgba(255,255,255,0.8); margin: 4px 0 0; font-size: 14px; }
+
 /* ─── ALERTS ──────────────────────────────────────────────── */
 .sa-alert {
     display: flex;
