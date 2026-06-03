@@ -307,6 +307,12 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
                     <h6><span class="ico"><i class="feather icon-user-plus"></i></span><?= __('request_additional_users') ?></h6>
                 </div>
                 <div class="dash-card-body">
+                    <?php if (!$usageStats['can_add_more']): ?>
+                    <div class="dash-alert dash-alert-warning" style="margin-bottom:16px;">
+                        <i class="feather icon-alert-triangle"></i>
+                        <div>You have reached your maximum user limit (<?= $usageStats['max_users'] ?> users). You can still submit a request below — our team will review it for approval.</div>
+                    </div>
+                    <?php endif; ?>
                     <form method="POST" action="">
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8') ?>">
                         <input type="hidden" name="request_addon" value="1">
@@ -319,7 +325,7 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
                                     </label>
                                     <input type="number" class="form-input" id="num_users" name="num_users"
                                            min="1" max="100" value="1" required onchange="updateEstimatedCost()">
-                                    <div class="form-hint"><i class="feather icon-info" style="margin-right:3px;"></i><?= __('max_100_users_per_request') ?></div>
+                                    <div class="form-hint"><i class="feather icon-info" style="margin-right:3px;"></i><?= __('max_100_users_per_request') ?> &middot; <span id="slotsHint"><?= max(0, $usageStats['available_slots']) ?> slots available before overage</span></div>
                                 </div>
                             </div>
                             <div class="col-md-6">

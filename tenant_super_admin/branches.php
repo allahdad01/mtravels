@@ -34,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $message = "You have reached the maximum number of branches (" . $max_allowed_branches . "). ";
                     $message .= ($additional_branches > 0)
                         ? "To create more branches, please contact support or request additional branches."
-                        : "Please <a href='../admin/request_branch_addon.php' style='font-weight:bold;text-decoration:underline;'>request additional branches</a> to exceed your plan limit.";
+                        : "Please <a href='request_branch_addon.php' style='font-weight:bold;text-decoration:underline;'>request additional branches</a> to exceed your plan limit.";
                     $messageType = 'danger';
                 } else {
                     try {

@@ -272,11 +272,11 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
                 </div>
                 <div class="dash-card-body">
                     <?php if (!$can_add): ?>
-                    <div class="dash-alert dash-alert-info" style="margin-bottom:0;">
-                        <i class="feather icon-info"></i>
-                        <div>You have reached the maximum number of branches. Please contact support to discuss plan upgrades.</div>
+                    <div class="dash-alert dash-alert-warning" style="margin-bottom:16px;">
+                        <i class="feather icon-alert-triangle"></i>
+                        <div>You have reached the maximum number of branches. You can still submit a request below — our team will review it for approval.</div>
                     </div>
-                    <?php else: ?>
+                    <?php endif; ?>
                     <form method="POST" id="requestForm">
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8') ?>">
                         <input type="hidden" name="action" value="request_branches">
@@ -286,8 +286,8 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
                                 <div style="margin-bottom:18px;">
                                     <label class="form-label"><i class="feather icon-hash" style="margin-right:5px;"></i>Number of Branches</label>
                                     <input type="number" class="form-input" id="num_branches" name="num_branches"
-                                           min="1" max="<?= $avail_slots ?>" value="1" required onchange="updateCost()">
-                                    <div class="form-hint"><i class="feather icon-info" style="margin-right:3px;"></i><?= $avail_slots ?> slots available</div>
+                                           min="1" max="999" value="1" required onchange="updateCost()">
+                                    <div class="form-hint"><i class="feather icon-info" style="margin-right:3px;"></i><span id="slotsHint"><?= max(0, $avail_slots) ?> slots available before overage — request any number for approval</span></div>
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -319,7 +319,6 @@ body, .pcoded-main-container { font-family: 'Plus Jakarta Sans', sans-serif !imp
                             <i class="feather icon-send"></i>Submit Request
                         </button>
                     </form>
-                    <?php endif; ?>
                 </div>
             </div>
 
