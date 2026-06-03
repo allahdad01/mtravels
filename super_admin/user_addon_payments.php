@@ -91,398 +91,83 @@ require_once '../includes/header_super_admin.php';
 
 <style>
 /* ─── ROOT VARIABLES ──────────────────────────────────────────── */
-:root {
-    --muted: #999;
-    --surface: #ffffff;
-    --surface2: #f5f5f5;
-    --border: #e0e0e0;
-    --text: #333333;
-    --green: #28a745;
-    --red: #dc3545;
-    --blue: #4099ff;
-    --amber: #ffc107;
-}
+:root { --muted: #999; --red: #ef4444; --amber: #f59e0b; --blue: #4099ff; --grad-start: #4099ff; --grad-end: #2ed8b6; --grad: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%); --radius: 10px; }
 
-/* ─── PAGE HEADER ────────────────────────────────────────────── */
-.page-header.card {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-    color: white;
-    border-radius: 10px;
-    padding: 2rem 2.5rem;
-    border: none;
-    margin-bottom: 2rem;
-    box-shadow: 0 8px 24px rgba(64, 153, 255, 0.25);
-    position: relative;
-    overflow: hidden;
-}
-
-.page-header.card::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -10%;
-    width: 400px;
-    height: 400px;
-    background: rgba(255,255,255,0.05);
-    border-radius: 50%;
-    pointer-events: none;
-}
-
-.page-header.card::after {
-    content: '';
-    position: absolute;
-    bottom: -30%;
-    left: -5%;
-    width: 300px;
-    height: 300px;
-    background: rgba(255,255,255,0.03);
-    border-radius: 50%;
-    pointer-events: none;
-}
-
-.page-header.card .row {
-    position: relative;
-    z-index: 1;
-}
-
-.page-header-content {
-    padding: 0.5rem 0;
-}
-
-.page-title {
-    font-size: 1.75rem;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-    display: flex;
-    align-items: center;
-    line-height: 1.2;
-}
-
-.page-title i {
-    font-size: 2rem;
-    margin-right: 0.75rem;
-    opacity: 0.95;
-}
-
-.page-subtitle {
-    font-size: 0.95rem;
-    opacity: 0.85;
-    font-weight: 400;
-    letter-spacing: 0.3px;
-}
-
-.page-header-actions {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    justify-content: flex-end;
-    width: 100%;
-}
-
-.btn-header-primary {
-    background: rgba(255,255,255,0.15) !important;
-    color: #ffffff !important;
-    border: 1.5px solid rgba(255,255,255,0.40) !important;
-    border-radius: 6px;
-    padding: 0.65rem 1.25rem !important;
-    font-size: 0.9rem !important;
-    font-weight: 600;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    z-index: 2;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.btn-header-primary:hover {
-    background: rgba(255,255,255,0.25) !important;
-    border-color: rgba(255,255,255,0.60) !important;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-}
+/* ─── PAGE HEADER ─────────────────────────────────────────── */
+.page-header.card { background: var(--grad) !important; color: #fff; border: none !important; margin-bottom: 24px; padding: 22px 28px !important; box-shadow: 0 4px 20px rgba(64,153,255,0.3); border-radius: 12px; position: relative; overflow: hidden; }
+.page-header.card::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 60%); pointer-events: none; }
+.page-header.card h5 { color: #fff !important; margin: 0; font-weight: 700; font-size: 1.15rem; position: relative; z-index: 1; }
+.page-header.card .row { display: flex; align-items: center; justify-content: space-between; width: 100%; position: relative; z-index: 2; }
+.page-header.card .col-md-6:last-child { text-align: right; margin-left: auto; }
+.page-desc { color: rgba(255,255,255,0.8); margin: 4px 0 0; font-size: 14px; }
 
 /* ─── ALERTS ──────────────────────────────────────────────── */
-.sa-alert {
-    display: flex;
-    align-items: flex-start;
-    gap: 1rem;
-    padding: 1rem 1.5rem;
-    border-radius: 10px;
-    border: none;
-    margin-bottom: 1.5rem;
-}
-
-.sa-alert-success {
-    background: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
-}
-
-.sa-alert-danger {
-    background: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
-}
-
-.sa-alert-icon {
-    flex-shrink: 0;
-    font-weight: bold;
-    font-size: 1.2rem;
-    width: 24px;
-    text-align: center;
-}
-
-.sa-alert-content {
-    flex: 1;
-    margin: 0;
-}
-
-.sa-alert-close {
-    flex-shrink: 0;
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    cursor: pointer;
-    padding: 0;
-    opacity: 0.7;
-}
-
-.sa-alert-close:hover {
-    opacity: 1;
-}
+.sa-alert { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; border-radius: var(--radius); border: 1px solid #e0e0e0; margin-bottom: 16px; }
+.sa-alert-success { background: #d4edda; color: #155724; border-color: #c3e6cb; }
+.sa-alert-danger { background: #f8d7da; color: #721c24; border-color: #f5c6cb; }
+.sa-alert-icon { flex-shrink: 0; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; }
+.sa-alert-icon svg { width: 20px; height: 20px; }
+.sa-alert-content { flex: 1; align-self: center; }
+.sa-alert-close { flex-shrink: 0; background: none; border: none; cursor: pointer; color: inherit; padding: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; }
+.sa-alert-close:hover { opacity: 0.7; }
 
 /* ─── BUTTONS ─────────────────────────────────────────────── */
-.sa-btn {
-    padding: 8px 16px;
-    border: 1px solid;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    text-decoration: none;
-}
-
-.sa-btn:hover {
-    transform: translateY(-1px);
-}
-
-.sa-btn-primary {
-    background: #4099ff;
-    border-color: #4099ff;
-    color: white;
-}
-
-.sa-btn-primary:hover {
-    background: #3a89ff;
-    border-color: #3a89ff;
-}
+.sa-btn { padding: 0.75rem 1.5rem; border-radius: 8px; border: none; font-weight: 500; cursor: pointer; transition: all 0.3s ease; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; font-size: 0.9rem; }
+.sa-btn-primary { background: var(--grad); color: white; }
+.sa-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(64,153,255,0.3); }
+.sa-btn-ghost { background: #f0f0f0; color: #333; border: 1px solid #e0e0e0; }
+.sa-btn-ghost:hover { background: #e8e8e8; border-color: #d0d0d0; }
 
 /* ─── SECTION HEADER ──────────────────────────────────────── */
-.sa-shdr {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
+.sa-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+.sa-section-header h2 { font-size: 1.35rem; font-weight: 700; margin: 0; color: #333; }
+.sa-section-header p { margin: 4px 0 0 0; font-size: 0.8rem; color: var(--muted); }
 
-.sa-shdr h2 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin: 0;
-    color: #333;
-}
+/* ─── DATA TABLE ──────────────────────────────────────────── */
+.sa-table-wrap { background: white; border: 1px solid #e0e0e0; border-radius: 10px; overflow-x: auto; }
+.sa-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.sa-table thead th { text-align: left; padding: 14px 16px; font-size: 0.65rem; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: 0.06em; background: #fafafa; border-bottom: 1px solid #e0e0e0; white-space: nowrap; }
+.sa-table tbody tr { transition: background 0.15s; }
+.sa-table tbody tr:hover { background: #f8faff; }
+.sa-table tbody td { padding: 14px 16px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+.sa-table tbody tr:last-child td { border-bottom: none; }
+.sa-td-tenant { display: flex; align-items: center; gap: 12px; }
+.sa-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.85rem; flex-shrink: 0; }
+.sa-tenant-meta { display: flex; flex-direction: column; }
+.sa-tenant-name { font-weight: 600; color: #333; }
+.sa-tenant-id { font-size: 0.75rem; color: #999; margin-top: 2px; }
+.sa-td-date { white-space: nowrap; color: #999; font-size: 0.8rem; }
 
-/* ─── PAYMENT CARDS ───────────────────────────────────────── */
-.sa-payment-list {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-.sa-payment-card {
-    background: white;
-    border: 1px solid #e0e0e0;
-    border-radius: 10px;
-    overflow: hidden;
-    transition: all 0.2s ease;
-}
-
-.sa-payment-card:hover {
-    border-color: rgba(64, 153, 255, 0.3);
-    box-shadow: 0 4px 16px rgba(64, 153, 255, 0.1);
-}
-
-.spc-header {
-    padding: 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    border-bottom: 1px solid #e0e0e0;
-    background: #f9f9f9;
-}
-
-.spc-title h4 {
-    font-size: 1rem;
-    font-weight: 600;
-    margin: 0;
-    color: #333;
-}
-
-.spc-subtitle {
-    font-size: 0.85rem;
-    color: #999;
-    margin: 4px 0 0 0;
-}
-
-.spc-stats {
-    display: flex;
-    gap: 24px;
-}
-
-.stat-item {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    text-align: right;
-}
-
-.stat-label {
-    font-size: 0.75rem;
-    color: #999;
-    font-weight: 600;
-    text-transform: uppercase;
-}
-
-.stat-value {
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: #333;
-}
-
-.spc-empty {
-    padding: 40px 20px;
-    text-align: center;
-    color: #999;
-}
-
-.spc-empty i {
-    font-size: 2rem;
-    margin-bottom: 8px;
-    opacity: 0.5;
-}
-
-.spc-empty p {
-    margin: 0;
-    font-size: 0.9rem;
-}
-
-.spc-payments {
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.payment-item {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr 2fr auto;
-    gap: 16px;
-    align-items: center;
-    padding: 12px;
-    background: #f9f9f9;
-    border-radius: 8px;
-    border: 1px solid #e0e0e0;
-}
-
-.pi-date, .pi-amount, .pi-method, .pi-txn {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.pi-label {
-    font-size: 0.7rem;
-    color: #999;
-    font-weight: 600;
-    text-transform: uppercase;
-}
-
-.pi-value {
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: #333;
-}
-
-.pi-status {
-    text-align: right;
-}
+/* ─── EMPTY STATE ─────────────────────────────────────────── */
+.sa-empty { text-align: center; padding: 48px 20px; background: white; border: 1px solid #e0e0e0; border-radius: 10px; color: #ccc; }
+.sa-empty-title { font-weight: 600; color: #999; margin-top: 12px; font-size: 1rem; }
+.sa-empty-desc { font-size: 0.85rem; color: #bbb; margin-top: 4px; }
 
 /* ─── PILLS ───────────────────────────────────────────────── */
-.pill {
-    font-size: 0.62rem;
-    font-weight: 700;
-    padding: 4px 10px;
-    border-radius: 20px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    white-space: nowrap;
-}
+.pill { font-size: 0.62rem; font-weight: 700; padding: 3px 8px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; display: inline-block; }
+.pill-green { background: rgba(16,185,129,0.12); color: #10b981; }
+.pill-amber { background: rgba(245,158,11,0.12); color: #f59e0b; }
+.pill-gray { background: #f5f5f5; color: #999; }
 
-.pill-green {
-    background: rgba(16,185,129,0.12);
-    color: #10b981;
-}
+/* ─── MODALS ──────────────────────────────────────────────── */
+.sa-modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center; }
+.sa-modal-wrap { background: white; border-radius: 14px; width: 480px; max-width: 94vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+.sa-modal-header { display: flex; align-items: center; gap: 12px; padding: 20px 24px 0; }
+.sa-modal-header h3 { flex: 1; font-size: 1.1rem; font-weight: 700; margin: 0; color: #333; }
+.sa-modal-close { width: 32px; height: 32px; border: none; background: #f5f5f5; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #999; transition: all 0.2s; }
+.sa-modal-close:hover { background: #e0e0e0; color: #333; }
+.sa-modal-body { padding: 16px 24px 0; }
+.sa-modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 16px 24px 20px; }
 
-.pill-amber {
-    background: rgba(245,158,11,0.12);
-    color: #f59e0b;
-}
-
-/* ─── RESPONSIVE ──────────────────────────────────────────── */
-@media (max-width: 1024px) {
-    .payment-item {
-        grid-template-columns: 1fr 1fr;
-    }
-}
-
-@media (max-width: 768px) {
-    .page-header.card {
-        padding: 1.5rem;
-    }
-    
-    .page-title {
-        font-size: 1.5rem;
-    }
-    
-    .page-header-actions {
-        margin-top: 16px;
-        justify-content: flex-start;
-    }
-    
-    .spc-header {
-        flex-direction: column;
-        gap: 12px;
-    }
-    
-    .spc-stats {
-        width: 100%;
-        justify-content: flex-start;
-    }
-    
-    .payment-item {
-        grid-template-columns: 1fr;
-        gap: 8px;
-    }
-    
-    .pi-status {
-        text-align: left;
-    }
-}
+/* ─── FORM ELEMENTS ───────────────────────────────────────── */
+.sa-field { margin-bottom: 16px; }
+.sa-field-label { display: block; font-size: 0.8rem; font-weight: 600; color: #555; margin-bottom: 6px; }
+.sa-form-input { width: 100%; padding: 0.6rem 0.75rem; border: 1px solid #ced4da; border-radius: 8px; font-size: 0.85rem; font-family: inherit; transition: border-color 0.15s; box-sizing: border-box; }
+.sa-form-input:focus { outline: none; border-color: #4099ff; box-shadow: 0 0 0 0.2rem rgba(64,153,255,0.25); }
+.sa-form-select { width: 100%; padding: 0.6rem 0.75rem; border: 1px solid #ced4da; border-radius: 8px; font-size: 0.85rem; font-family: inherit; background: white; cursor: pointer; box-sizing: border-box; }
+.sa-form-select:focus { outline: none; border-color: #4099ff; box-shadow: 0 0 0 0.2rem rgba(64,153,255,0.25); }
+.sa-textarea { width: 100%; padding: 0.6rem 0.75rem; border: 1px solid #ced4da; border-radius: 8px; font-size: 0.85rem; font-family: inherit; resize: vertical; transition: border-color 0.15s; box-sizing: border-box; }
+.sa-textarea:focus { outline: none; border-color: #4099ff; box-shadow: 0 0 0 0.2rem rgba(64,153,255,0.25); }
 </style>
 
 <!-- [ Main Content ] start -->
@@ -494,21 +179,15 @@ require_once '../includes/header_super_admin.php';
                 <div class="page-header card">
                     <div class="row align-items-center">
                         <div class="col-md-6">
-                            <div class="page-header-content">
-                                <h5 class="page-title mb-0">
-                                    <i class="feather icon-credit-card mr-2"></i>User Add-on Payments
-                                </h5>
-                                <p class="page-subtitle mb-0 mt-2">
-                                    Manage and track all user addon payments
-                                </p>
-                            </div>
+                            <h5>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:8px"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>User Add-on Payments
+                            </h5>
+                            <p class="page-desc">Manage and track all user addon payments</p>
                         </div>
                         <div class="col-md-6 text-end">
-                            <div class="page-header-actions">
-                                <a href="manage_user_addons.php" class="btn btn-header-primary">
-                                    <i class="feather icon-arrow-left mr-1"></i>Back to Addons
-                                </a>
-                            </div>
+                            <a href="manage_user_addons.php" class="sa-btn" style="background:rgba(255,255,255,0.12);color:#fff;border:1px solid rgba(255,255,255,0.25);">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px"><polyline points="15 18 9 12 15 6"/></svg>Back to Addons
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -521,107 +200,93 @@ require_once '../includes/header_super_admin.php';
                         <!-- Success/Error Alerts -->
                         <?php if (isset($_GET['success']) && $_GET['success'] == '1'): ?>
                         <div class="sa-alert sa-alert-success">
-                            <div class="sa-alert-icon">✓</div>
-                            <div class="sa-alert-content">
-                                Payment recorded successfully!
-                            </div>
-                            <button type="button" class="sa-alert-close" onclick="this.parentElement.style.display='none';">×</button>
+                            <div class="sa-alert-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+                            <div class="sa-alert-content">Payment recorded successfully!</div>
+                            <button type="button" class="sa-alert-close" onclick="this.parentElement.style.display='none';"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                         </div>
                         <?php endif; ?>
 
                         <?php if (isset($error_message)): ?>
                         <div class="sa-alert sa-alert-danger">
-                            <div class="sa-alert-icon">⚠</div>
-                            <div class="sa-alert-content">
-                                <?= htmlspecialchars($error_message) ?>
-                            </div>
-                            <button type="button" class="sa-alert-close" onclick="this.parentElement.style.display='none';">×</button>
+                            <div class="sa-alert-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+                            <div class="sa-alert-content"><?= htmlspecialchars($error_message) ?></div>
+                            <button type="button" class="sa-alert-close" onclick="this.parentElement.style.display='none';"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                         </div>
                         <?php endif; ?>
 
-                        <!-- Payment Section Header -->
-                        <div class="sa-shdr" style="margin-bottom: 20px;">
+                        <!-- Section Header -->
+                        <div class="sa-section-header">
                             <div>
                                 <h2>Payment Records</h2>
-                                <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: var(--muted);">Manage and track all user addon payments</p>
+                                <p>Manage and track all user addon payments</p>
                             </div>
-                            <button type="button" class="sa-btn sa-btn-primary" data-toggle="modal" data-target="#recordPaymentModal">
-                                <span style="margin-right: 6px;">+</span>Record Payment
+                            <button type="button" class="sa-btn sa-btn-primary" onclick="showModal('recordPaymentModal')">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Record Payment
                             </button>
                         </div>
 
-                        <!-- Active Addons with Payments -->
-                        <div class="sa-payment-list">
-                            <?php if (empty($active_addons)): ?>
-                            <div class="sa-payment-card">
-                                <div class="spc-empty">
-                                    <i class="feather icon-inbox"></i>
-                                    <p>No active user addons found</p>
-                                </div>
-                            </div>
-                            <?php else: ?>
-                            <?php foreach ($active_addons as $addon): ?>
-                            <?php 
-                            $symbol = getUserAddonCurrencySymbol($addon['currency'] ?? 'USD');
-                            $payments = $addon_payments[$addon['id']] ?? [];
-                            $total_paid = array_sum(array_column($payments, 'amount'));
-                            ?>
-                            <div class="sa-payment-card">
-                                <div class="spc-header">
-                                    <div class="spc-title">
-                                        <h4><?= htmlspecialchars($addon['tenant_name']) ?></h4>
-                                        <p class="spc-subtitle">+<?= intval($addon['additional_users']) ?> users • <?= $symbol . number_format($addon['total_addon_cost'], 2) ?>/month</p>
-                                    </div>
-                                    <div class="spc-stats">
-                                        <div class="stat-item">
-                                            <span class="stat-label">Total Paid</span>
-                                            <span class="stat-value"><?= $symbol . number_format($total_paid, 2) ?></span>
-                                        </div>
-                                        <div class="stat-item">
-                                            <span class="stat-label">Payments</span>
-                                            <span class="stat-value"><?= count($payments) ?></span>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <?php if (empty($payments)): ?>
-                                <div class="spc-empty">
-                                    <i class="feather icon-inbox"></i>
-                                    <p>No payments recorded yet</p>
-                                </div>
-                                <?php else: ?>
-                                <div class="spc-payments">
-                                    <?php foreach ($payments as $payment): ?>
-                                    <div class="payment-item">
-                                        <div class="pi-date">
-                                            <span class="pi-label">Date</span>
-                                            <span class="pi-value"><?= date('M d, Y', strtotime($payment['payment_date'])) ?></span>
-                                        </div>
-                                        <div class="pi-amount">
-                                            <span class="pi-label">Amount</span>
-                                            <span class="pi-value"><?= $symbol . number_format($payment['amount'], 2) ?></span>
-                                        </div>
-                                        <div class="pi-method">
-                                            <span class="pi-label">Method</span>
-                                            <span class="pi-value"><?= htmlspecialchars($payment['payment_method'] ?: '-') ?></span>
-                                        </div>
-                                        <div class="pi-txn">
-                                            <span class="pi-label">Transaction ID</span>
-                                            <span class="pi-value"><?= htmlspecialchars($payment['transaction_id'] ?: '-') ?></span>
-                                        </div>
-                                        <div class="pi-status">
-                                            <span class="pill <?= $payment['status'] === 'completed' ? 'pill-green' : 'pill-amber' ?>">
-                                                <?= ucfirst($payment['status']) ?>
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <?php endforeach; ?>
-                                </div>
-                                <?php endif; ?>
-                            </div>
-                            <?php endforeach; ?>
-                            <?php endif; ?>
+                        <!-- Data Table -->
+                        <?php if (empty($active_addons)): ?>
+                        <div class="sa-empty">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                            <div class="sa-empty-title">No Active User Addons</div>
+                            <div class="sa-empty-desc">Active add-ons with payments will appear here.</div>
                         </div>
+                        <?php else: ?>
+                        <div class="sa-table-wrap">
+                            <table class="sa-table">
+                                <thead>
+                                    <tr>
+                                        <th>Tenant</th>
+                                        <th>Users</th>
+                                        <th>Date</th>
+                                        <th>Amount</th>
+                                        <th>Method</th>
+                                        <th>Transaction ID</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($active_addons as $addon):
+                                        $symbol = getUserAddonCurrencySymbol($addon['currency'] ?? 'USD');
+                                        $payments = $addon_payments[$addon['id']] ?? [];
+                                        $initial = strtoupper(substr($addon['tenant_name'], 0, 1));
+                                        if (empty($payments)): ?>
+                                    <tr>
+                                        <td class="sa-td-tenant">
+                                            <div class="sa-avatar" style="background:#6b7280"><?= $initial ?></div>
+                                            <div class="sa-tenant-meta">
+                                                <div class="sa-tenant-name"><?= htmlspecialchars($addon['tenant_name'] ?? '') ?></div>
+                                            </div>
+                                        </td>
+                                        <td style="font-weight:600;">+<?= intval($addon['additional_users']) ?></td>
+                                        <td class="sa-td-date" colspan="4" style="color:#999;font-style:italic;">No payments recorded yet</td>
+                                        <td><span class="pill pill-gray">—</span></td>
+                                    </tr>
+                                    <?php else:
+                                        foreach ($payments as $payment): ?>
+                                    <tr>
+                                        <td class="sa-td-tenant">
+                                            <div class="sa-avatar" style="background:#10b981"><?= $initial ?></div>
+                                            <div class="sa-tenant-meta">
+                                                <div class="sa-tenant-name"><?= htmlspecialchars($addon['tenant_name'] ?? '') ?></div>
+                                                <div class="sa-tenant-id"><?= $symbol . number_format($addon['total_addon_cost'] ?? 0, 2) ?>/mo</div>
+                                            </div>
+                                        </td>
+                                        <td style="font-weight:600;">+<?= intval($addon['additional_users']) ?></td>
+                                        <td class="sa-td-date"><?= date('M d, Y', strtotime($payment['payment_date'])) ?></td>
+                                        <td style="font-weight:600;"><?= $symbol . number_format($payment['amount'], 2) ?></td>
+                                        <td><?= htmlspecialchars($payment['payment_method'] ?: '-') ?></td>
+                                        <td style="font-size:0.8rem;color:#666;"><?= htmlspecialchars($payment['transaction_id'] ?: '-') ?></td>
+                                        <td><span class="pill <?= $payment['status'] === 'completed' ? 'pill-green' : 'pill-amber' ?>"><?= ucfirst($payment['status']) ?></span></td>
+                                    </tr>
+                                    <?php endforeach;
+                                        endif;
+                                    endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                        <?php endif; ?>
 
                         <!-- [ Main Content ] end -->
                     </div>
@@ -632,101 +297,96 @@ require_once '../includes/header_super_admin.php';
 </div>
 
 <!-- Record Payment Modal -->
-<div class="modal fade" id="recordPaymentModal" tabindex="-1" role="dialog" aria-labelledby="recordPaymentModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="recordPaymentModalLabel">
-                    <i class="feather icon-credit-card mr-2"></i>Record User Addon Payment
-                </h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
+<div id="recordPaymentModal" class="sa-modal-overlay" style="display:none;">
+    <div class="sa-modal-wrap" style="width:520px;">
+        <div class="sa-modal-header">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4099ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            <h3>Record User Addon Payment</h3>
+            <button type="button" class="sa-modal-close" onclick="this.closest('.sa-modal-overlay').style.display='none'">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <form method="POST">
+            <div class="sa-modal-body">
+                <input type="hidden" name="action" value="record_payment">
+
+                <div class="sa-field">
+                    <label class="sa-field-label">User Addon <span style="color:#ef4444;">*</span></label>
+                    <select class="sa-form-select" id="addon_id" name="addon_id" required>
+                        <option value="">Select User Addon</option>
+                        <?php foreach ($active_addons as $addon): ?>
+                        <?php $symbol = getUserAddonCurrencySymbol($addon['currency'] ?? 'USD'); ?>
+                        <option value="<?= $addon['id'] ?>" data-currency="<?= htmlspecialchars($addon['currency'] ?? 'USD') ?>" data-amount="<?= $addon['total_addon_cost'] ?>">
+                            <?= htmlspecialchars($addon['tenant_name']) ?> - +<?= intval($addon['additional_users']) ?> users (<?= number_format($addon['total_addon_cost'], 2) . ' ' . $symbol ?>/month)
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="sa-field">
+                    <label class="sa-field-label">Amount <span style="color:#ef4444;">*</span></label>
+                    <div style="display:flex;gap:8px;">
+                        <span id="amountSymbol" style="padding:0.6rem 0.75rem;background:#f5f5f5;border:1px solid #ced4da;border-radius:8px;font-weight:700;color:#333;min-width:40px;text-align:center;">$</span>
+                        <input type="number" class="sa-form-input" id="amount" name="amount" step="0.01" min="0" required style="flex:1;">
+                    </div>
+                </div>
+
+                <div class="sa-field">
+                    <label class="sa-field-label">Currency <span style="color:#ef4444;">*</span></label>
+                    <select class="sa-form-select" id="currency" name="currency" required>
+                        <option value="USD">USD ($)</option>
+                        <option value="AFN">AFN (؋)</option>
+                        <option value="EUR">EUR (€)</option>
+                        <option value="GBP">GBP (£)</option>
+                        <option value="AED">AED (د.إ)</option>
+                        <option value="INR">INR (₹)</option>
+                        <option value="PKR">PKR (₨)</option>
+                    </select>
+                </div>
+
+                <div class="sa-field">
+                    <label class="sa-field-label">Payment Date <span style="color:#ef4444;">*</span></label>
+                    <input type="date" class="sa-form-input" id="payment_date" name="payment_date" value="<?= date('Y-m-d') ?>" required>
+                </div>
+
+                <div class="sa-field">
+                    <label class="sa-field-label">Payment Method</label>
+                    <select class="sa-form-select" id="payment_method" name="payment_method">
+                        <option value="">Select Method</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
+                        <option value="Credit Card">Credit Card</option>
+                        <option value="PayPal">PayPal</option>
+                        <option value="Cash">Cash</option>
+                        <option value="Check">Check</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div style="display:flex;gap:12px;">
+                    <div class="sa-field" style="flex:1;">
+                        <label class="sa-field-label">Transaction ID</label>
+                        <input type="text" class="sa-form-input" id="transaction_id" name="transaction_id" placeholder="Enter transaction ID">
+                    </div>
+                    <div class="sa-field" style="flex:1;">
+                        <label class="sa-field-label">Receipt Number</label>
+                        <input type="text" class="sa-form-input" id="receipt_number" name="receipt_number" placeholder="Enter receipt number">
+                    </div>
+                </div>
+
+                <div class="sa-field">
+                    <label class="sa-field-label">Notes</label>
+                    <textarea class="sa-textarea" id="notes" name="notes" rows="2" placeholder="Additional notes"></textarea>
+                </div>
+            </div>
+            <div class="sa-modal-footer">
+                <button type="button" class="sa-btn sa-btn-ghost" onclick="this.closest('.sa-modal-overlay').style.display='none'">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Cancel
+                </button>
+                <button type="submit" class="sa-btn sa-btn-primary">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Record Payment
                 </button>
             </div>
-            <form method="POST">
-                <div class="modal-body">
-                    <input type="hidden" name="action" value="record_payment">
-
-                    <div class="form-group">
-                        <label for="addon_id">User Addon *</label>
-                        <select class="form-control" id="addon_id" name="addon_id" required>
-                            <option value="">Select User Addon</option>
-                            <?php foreach ($active_addons as $addon): ?>
-                            <?php $symbol = getUserAddonCurrencySymbol($addon['currency'] ?? 'USD'); ?>
-                            <option value="<?= $addon['id'] ?>" data-currency="<?= htmlspecialchars($addon['currency'] ?? 'USD') ?>" data-amount="<?= $addon['total_addon_cost'] ?>">
-                                <?= htmlspecialchars($addon['tenant_name']) ?> - +<?= intval($addon['additional_users']) ?> users (<?= number_format($addon['total_addon_cost'], 2) . ' ' . $symbol ?>/month)
-                            </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="amount">Amount *</label>
-                        <div class="input-group">
-                            <div class="input-group-prepend">
-                                <span class="input-group-text" id="amountSymbol">$</span>
-                            </div>
-                            <input type="number" class="form-control" id="amount" name="amount" step="0.01" min="0" required>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="currency">Currency *</label>
-                        <select class="form-control" id="currency" name="currency" required>
-                            <option value="USD">USD ($)</option>
-                            <option value="AFN">AFN (؋)</option>
-                            <option value="EUR">EUR (€)</option>
-                            <option value="GBP">GBP (£)</option>
-                            <option value="AED">AED (د.إ)</option>
-                            <option value="INR">INR (₹)</option>
-                            <option value="PKR">PKR (₨)</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="payment_date">Payment Date *</label>
-                        <input type="date" class="form-control" id="payment_date" name="payment_date" value="<?= date('Y-m-d') ?>" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="payment_method">Payment Method</label>
-                        <select class="form-control" id="payment_method" name="payment_method">
-                            <option value="">Select Method</option>
-                            <option value="Bank Transfer">Bank Transfer</option>
-                            <option value="Credit Card">Credit Card</option>
-                            <option value="PayPal">PayPal</option>
-                            <option value="Cash">Cash</option>
-                            <option value="Check">Check</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group col-md-6">
-                            <label for="transaction_id">Transaction ID</label>
-                            <input type="text" class="form-control" id="transaction_id" name="transaction_id" placeholder="Enter transaction ID">
-                        </div>
-                        <div class="form-group col-md-6">
-                            <label for="receipt_number">Receipt Number</label>
-                            <input type="text" class="form-control" id="receipt_number" name="receipt_number" placeholder="Enter receipt number">
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="notes">Notes</label>
-                        <textarea class="form-control" id="notes" name="notes" rows="2" placeholder="Additional notes"></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">
-                        <i class="feather icon-x mr-1"></i>Cancel
-                    </button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="feather icon-check-circle mr-1"></i>Record Payment
-                    </button>
-                </div>
-            </form>
-        </div>
+        </form>
     </div>
 </div>
 
@@ -735,34 +395,27 @@ require_once '../includes/header_super_admin.php';
 <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
 <script src="../assets/js/pcoded.min.js"></script>
 <script>
+function showModal(id) { document.getElementById(id).style.display = 'flex'; }
+
 const currencySymbols = {
-    'USD': '$',
-    'EUR': '€',
-    'GBP': '£',
-    'JPY': '¥',
-    'AFN': '؋',
-    'AED': 'د.إ',
-    'INR': '₹',
-    'PKR': '₨',
+    'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥',
+    'AFN': '؋', 'AED': 'د.إ', 'INR': '₹', 'PKR': '₨',
 };
 
-$(document).ready(function() {
-    $('#addon_id').on('change', function() {
-        const option = $(this).find('option:selected');
-        const currency = option.data('currency') || 'USD';
-        const amount = option.data('amount') || '';
-        const symbol = currencySymbols[currency] || currency;
-        
-        $('#currency').val(currency);
-        $('#amount').val(amount);
-        $('#amountSymbol').text(symbol);
-    });
-    
-    $('#currency').on('change', function() {
-        const currency = $(this).val();
-        const symbol = currencySymbols[currency] || currency;
-        $('#amountSymbol').text(symbol);
-    });
+document.getElementById('addon_id').addEventListener('change', function() {
+    const option = this.options[this.selectedIndex];
+    const currency = option.getAttribute('data-currency') || 'USD';
+    const amount = option.getAttribute('data-amount') || '';
+    const symbol = currencySymbols[currency] || currency;
+    document.getElementById('currency').value = currency;
+    document.getElementById('amount').value = amount;
+    document.getElementById('amountSymbol').textContent = symbol;
+});
+
+document.getElementById('currency').addEventListener('change', function() {
+    const currency = this.value;
+    const symbol = currencySymbols[currency] || currency;
+    document.getElementById('amountSymbol').textContent = symbol;
 });
 </script>
 
