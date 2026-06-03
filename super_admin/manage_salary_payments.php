@@ -120,145 +120,79 @@ $all_agents = $stmt->fetchAll();
 <?php include '../includes/header_super_admin.php'; ?>
 
 <style>
-  :root {
-    --brand: #2563EB;
-    --success: #16A34A;
-    --warning: #D97706;
-    --border: #E2E8F0;
-    --bg: #F8FAFC;
-    --surface: #FFFFFF;
-    --text-primary: #0F172A;
-    --text-secondary: #64748B;
-    --text-muted: #94A3B8;
-    --radius: 12px;
-    --shadow-sm: 0 1px 3px rgba(0,0,0,.06);
-  }
+/* ─── ROOT VARIABLES ─────────────────────────────────────── */
+:root {
+    --muted: #999;
+    --surface: #ffffff;
+    --surface2: #f5f5f5;
+    --border: #e0e0e0;
+    --text: #333333;
+    --green: #28a745;
+    --red: #dc3545;
+}
 
-  .sa-page { background: var(--bg); padding: 24px; }
-  .section-label { font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px; }
-  
-  .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
-  @media (max-width: 992px) { .metric-grid { grid-template-columns: repeat(2,1fr); } }
-  @media (max-width: 576px) { .metric-grid { grid-template-columns: 1fr; } }
-
-  .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow-sm); position: relative; overflow: hidden; }
-  .metric-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; }
-  .metric-card.blue::before { background: var(--brand); }
-  .metric-card.green::before { background: var(--success); }
-  .metric-card.warning::before { background: var(--warning); }
-
-  .metric-value { font-size: 1.75rem; font-weight: 800; color: var(--text-primary); letter-spacing: -.02em; }
-  .metric-label { font-size: .83rem; color: var(--text-secondary); font-weight: 500; margin-top: 8px; }
-
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); margin-bottom: 24px; }
-  .card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-  .card-header h6 { margin: 0; font-size: .88rem; font-weight: 700; color: var(--text-primary); }
-  .card-body { padding: 20px; }
-
-  .form-group { margin-bottom: 16px; }
-  .form-group label { display: block; font-size: .85rem; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
-  .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: .85rem; font-family: inherit; }
-  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
-
-  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; border-radius: 8px; font-weight: 600; border: none; cursor: pointer; text-decoration: none; font-size: .85rem; transition: all .15s; }
-  .btn-primary { background: var(--brand); color: white; }
-  .btn-primary:hover { background: #1D4ED8; transform: translateY(-1px); }
-
-  .alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: .85rem; }
-  .alert-success { background: #F0FDF4; color: var(--success); border: 1px solid var(--success); }
-  .alert-danger { background: #FEE2E2; color: #DC2626; border: 1px solid #DC2626; }
-
-  table { width: 100%; border-collapse: collapse; }
-  th { background: var(--bg); padding: 12px; text-align: left; font-weight: 600; font-size: .85rem; color: var(--text-secondary); border-bottom: 1px solid var(--border); }
-  td { padding: 12px; border-bottom: 1px solid var(--border); font-size: .85rem; }
-  tr:hover { background: var(--bg); }
-
-  .pill { display: inline-block; font-size: .7rem; font-weight: 600; padding: 2px 9px; border-radius: 20px; }
-  .pill-paid { background: #F0FDF4; color: var(--success); }
-  .pill-processing { background: #FFFBEB; color: var(--warning); }
-
-  .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,.5); z-index: 1000; align-items: center; justify-content: center; }
-  .modal.show { display: flex; }
-  .modal-content { background: var(--surface); border-radius: var(--radius); padding: 24px; max-width: 500px; width: 90%; }
-  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-  .modal-header h5 { margin: 0; font-size: 1.2rem; font-weight: 700; }
-  .modal-close { background: none; border: none; cursor: pointer; font-size: 1.5rem; color: var(--text-muted); }
-
-  /* ─── PAGE HEADER ─────────────────────────────────────────── */
-  .page-header.card {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-    color: white;
-    border: none;
-    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.2);
-    padding: 24px;
-    margin-bottom: 24px;
-  }
-
-  .page-header-content { padding: 0.5rem 0; }
-
-  .page-title {
-    font-size: 1.75rem;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-    display: flex;
-    align-items: center;
-    line-height: 1.2;
-  }
-
-  .page-title i { font-size: 2rem; margin-right: 0.75rem; opacity: 0.95; }
-
-  .page-subtitle { font-size: 0.95rem; opacity: 0.85; font-weight: 400; letter-spacing: 0.3px; }
-
-  .page-header-actions { display: flex; gap: 10px; align-items: center; justify-content: flex-end; width: 100%; }
-
-  .btn-header-primary {
-    background: rgba(255,255,255,0.15) !important;
-    color: #ffffff !important;
-    border: 1.5px solid rgba(255,255,255,0.40) !important;
-    border-radius: 6px;
-    padding: 0.65rem 1.25rem !important;
-    font-size: 0.9rem !important;
-    font-weight: 600;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+/* ─── PAGE HEADER ────────────────────────────────────────── */
+.page-header.card {
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%) !important;
+    color: #fff; border: none !important;
+    margin-bottom: 20px; padding: 22px 28px !important;
+    box-shadow: 0 4px 20px rgba(64,153,255,0.3); border-radius: 12px;
+    position: relative; overflow: hidden;
+}
+.page-header.card::after {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 60%);
+    pointer-events: none;
+}
+.page-header.card h5 { color: #fff !important; margin: 0; font-weight: 700; font-size: 1.15rem; position: relative; z-index: 1; }
+.page-header.card .row { display: flex; align-items: center; justify-content: space-between; width: 100%; position: relative; z-index: 2; }
+.page-header.card .col-md-6:last-child { text-align: right; margin-left: auto; }
+.page-header.card .sa-btn:hover { background: rgba(255,255,255,0.2) !important; border-color: rgba(255,255,255,0.4) !important; transform: translateY(-1px); }
+/* ─── METRIC CARDS ───────────────────────────────────────── */
+.metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+@media (max-width: 992px) { .metric-grid { grid-template-columns: repeat(2,1fr); } }
+@media (max-width: 576px) { .metric-grid { grid-template-columns: 1fr; } }
+.metric-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
     position: relative;
-    z-index: 2;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }
+    overflow: hidden;
+}
+.metric-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; }
+.metric-card.blue::before { background: #4099ff; }
+.metric-card.green::before { background: #2ed8b6; }
+.metric-card.warning::before { background: #f59e0b; }
+.metric-value { font-size: 1.75rem; font-weight: 800; color: #333; letter-spacing: -0.02em; }
+.metric-label { font-size: 0.83rem; color: #999; margin-top: 8px; }
+.section-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #999; margin-bottom: 12px; }
 
-  .btn-header-primary:hover {
-    background: rgba(255,255,255,0.25) !important;
-    border-color: rgba(255,255,255,0.60) !important;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-  }
+/* ─── CARDS ──────────────────────────────────────────────── */
+.sa-card { background: white; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.sa-card-body { padding: 16px; }
 
-  /* ─── CARDS ───────────────────────────────────────────────── */
-  .sa-card { background: white; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
-  .sa-card-body { padding: 16px; }
-
-  /* ─── SEARCH FILTER ───────────────────────────────────────── */
-  .sa-search-filter { display: flex; }
-  .sa-search-group { display: flex; gap: 8px; width: 100%; flex-wrap: wrap; }
-  .sa-search-input {
+/* ─── SEARCH FILTER ──────────────────────────────────────── */
+.sa-search-filter { display: flex; }
+.sa-search-group { display: flex; gap: 8px; width: 100%; flex-wrap: wrap; }
+.sa-search-input {
     padding: 8px 12px;
     border: 1px solid var(--border);
     border-radius: 8px;
     font-size: 0.9rem;
     flex: 1;
     min-width: 150px;
-  }
-  .sa-search-input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px rgba(64, 153, 255, 0.1); }
+}
+.sa-search-input:focus { outline: none; border-color: #4099ff; box-shadow: 0 0 0 3px rgba(64,153,255,0.1); }
 
-  /* ─── SECTION HEADER ──────────────────────────────────────── */
-  .sa-shdr { display: flex; justify-content: space-between; align-items: center; }
-  .sa-shdr h2 { font-size: 1.25rem; font-weight: 600; margin: 0; color: var(--text-primary); }
+/* ─── SECTION HEADER ─────────────────────────────────────── */
+.sa-shdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.sa-shdr h2 { font-size: 1.25rem; font-weight: 600; margin: 0; color: #333; }
+.sa-shdr p { margin: 4px 0 0 0; font-size: 0.75rem; color: var(--muted); }
 
-  /* ─── BUTTONS ─────────────────────────────────────────────── */
-  .sa-btn {
+/* ─── BUTTONS ────────────────────────────────────────────── */
+.sa-btn {
     padding: 8px 12px;
-    border: 1px solid;
     border-radius: 8px;
     font-size: 0.9rem;
     font-weight: 500;
@@ -268,16 +202,59 @@ $all_agents = $stmt->fetchAll();
     align-items: center;
     gap: 6px;
     text-decoration: none;
-  }
-  .sa-btn:hover { transform: translateY(-1px); }
-  .sa-btn-primary { background: var(--brand); border-color: var(--brand); color: white; }
-  .sa-btn-primary:hover { background: #3a89ff; border-color: #3a89ff; }
-  .sa-btn-ghost { background: transparent; border-color: var(--border); color: var(--text-primary); }
-  .sa-btn-ghost:hover { background: var(--bg); border-color: #999; }
-  .sa-btn-small { padding: 6px 12px; font-size: 0.75rem; }
+    border: 1px solid;
+}
+.sa-btn:hover { transform: translateY(-1px); }
+.sa-btn-primary { background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%); border-color: transparent; color: white; }
+.sa-btn-ghost { background: transparent; border-color: var(--border); color: #333; }
+.sa-btn-ghost:hover { background: #f5f5f5; border-color: #999; }
+.sa-btn-small { padding: 6px 12px; font-size: 0.75rem; }
+.sa-td-actions { display: flex; gap: 6px; white-space: nowrap; }
+.sa-btn-icon {
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #f8f9fa;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center; justify-content: center;
+    transition: all 0.2s;
+}
+.sa-btn-icon:hover { background: rgba(64,153,255,0.1); border-color: #4099ff; }
+.sa-btn-icon svg { width: 16px; height: 16px; stroke: #666; }
+.sa-btn-icon:hover svg { stroke: #4099ff; }
 
-  /* ─── PAGINATION ──────────────────────────────────────────── */
-  .sa-pagination {
+/* ─── TABLE ──────────────────────────────────────────────── */
+.sa-table-wrap {
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    overflow-x: auto;
+}
+.sa-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; min-width: 600px; }
+.sa-table thead { background: #f8f9fa; }
+.sa-table th {
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 600;
+    color: #666;
+    border-bottom: 2px solid var(--border);
+    white-space: nowrap;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.sa-table td { padding: 12px 16px; border-bottom: 1px solid #eee; vertical-align: middle; }
+.sa-table tbody tr:hover { background: #f8f9fa; }
+.sa-table tbody tr:last-child td { border-bottom: none; }
+
+/* ─── PILLS ──────────────────────────────────────────────── */
+.pill { display: inline-block; font-size: 0.7rem; font-weight: 600; padding: 2px 9px; border-radius: 20px; }
+.pill-paid { background: rgba(16,185,129,0.12); color: #10b981; }
+.pill-processing { background: rgba(245,158,11,0.12); color: #f59e0b; }
+
+/* ─── PAGINATION ─────────────────────────────────────────── */
+.sa-pagination {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -288,361 +265,373 @@ $all_agents = $stmt->fetchAll();
     border: 1px solid var(--border);
     border-radius: 10px;
     flex-wrap: wrap;
-  }
-  .sa-pagination-item {
-    min-width: 36px;
-    height: 36px;
+}
+.sa-pagination-item {
+    min-width: 36px; height: 36px;
     padding: 0 10px;
     border-radius: 8px;
     border: 1px solid var(--border);
-    background: var(--bg);
-    color: var(--text-primary);
+    background: #f5f5f5;
+    color: #333;
     text-decoration: none;
     display: flex;
-    align-items: center;
-    justify-content: center;
+    align-items: center; justify-content: center;
     font-size: 0.8rem;
     font-weight: 500;
     transition: all 0.2s;
     cursor: pointer;
-  }
-  .sa-pagination-item:hover:not(.active):not(.disabled) {
-    background: rgba(64, 153, 255, 0.1);
-    border-color: var(--brand);
-    color: var(--brand);
-  }
-  .sa-pagination-item.active {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-    border-color: var(--brand);
-    color: white;
-  }
-  .sa-pagination-ellipsis { color: var(--text-muted); font-size: 0.8rem; }
-  .sa-pagination-info { font-size: 0.8rem; color: var(--text-muted); margin-left: auto; }
-
-  /* ─── PAYMENT LIST ─────────────────────────────────────────── */
-  .sa-payment-list { display: flex; flex-direction: column; gap: 16px; }
-
-  .sa-payment-card {
-    background: white;
+}
+.sa-pagination-item:hover:not(.active):not(.disabled) { background: rgba(64,153,255,0.1); border-color: #4099ff; color: #4099ff; }
+.sa-pagination-item.active { background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%); border-color: #4099ff; color: white; }
+.sa-pagination-ellipsis { color: #999; font-size: 0.8rem; }
+.sa-pagination-info { font-size: 0.8rem; color: #999; margin-left: auto; }
+.sa-page-btn {
+    background: none;
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 20px;
-    transition: all 0.2s ease;
-  }
-  .sa-payment-card:hover {
-    border-color: rgba(64, 153, 255, 0.3);
-    box-shadow: 0 4px 16px rgba(64, 153, 255, 0.15);
-  }
-
-  .spc-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 16px;
-  }
-
-  .spc-info h4 {
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin: 0 0 6px 0;
-    color: var(--text-primary);
-  }
-
-  .spc-date {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    margin: 0;
-    display: flex;
+    border-radius: 8px;
+    cursor: pointer;
+    padding: 6px 10px;
+    display: inline-flex;
     align-items: center;
     gap: 4px;
-  }
+    font-size: 0.8rem;
+    color: #555;
+    transition: all 0.2s;
+}
+.sa-page-btn:hover:not(:disabled) { background: rgba(64,153,255,0.1); border-color: #4099ff; color: #4099ff; }
+.sa-page-btn:disabled { opacity: 0.4; cursor: default; }
+.sa-page-btn svg { width: 16px; height: 16px; }
 
-  .spc-amount { text-align: right; }
-
-  .amount-value {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--success);
-  }
-
-  .spc-details {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 16px;
-    margin-bottom: 16px;
-  }
-
-  .spc-detail-item { display: flex; flex-direction: column; gap: 4px; }
-
-  .spc-detail-label {
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-
-  .spc-detail-value {
-    font-size: 0.95rem;
-    font-weight: 500;
-    color: var(--text-primary);
-  }
-
-  .spc-actions {
+/* ─── MODAL OVERLAY ──────────────────────────────────────── */
+.sa-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    overflow-y: auto;
+    padding: 20px;
+}
+.sa-modal-overlay.active { display: flex; }
+.sa-modal {
+    background: #fff;
+    border-radius: 12px;
+    max-width: 500px;
+    width: 100%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    animation: modalIn 0.2s ease;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+@keyframes modalIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.sa-modal-header {
+    padding: 16px 20px;
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    color: #fff;
     display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    padding-top: 12px;
+    align-items: center;
+    justify-content: space-between;
+    border-radius: 12px 12px 0 0;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+.sa-modal-header h5 { margin: 0; font-size: 1rem; display: flex; align-items: center; gap: 8px; }
+.sa-modal-close { background: none; border: none; color: #fff; cursor: pointer; padding: 4px; opacity: 0.8; display: flex; }
+.sa-modal-close:hover { opacity: 1; }
+.sa-modal-body { padding: 20px; }
+.sa-modal-footer {
+    padding: 16px 20px;
     border-top: 1px solid var(--border);
-  }
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
 
-  /* ─── RESPONSIVE ──────────────────────────────────────────── */
-  @media (max-width: 768px) {
-    .spc-header { flex-direction: column; }
-    .spc-amount { margin-top: 12px; text-align: left; }
-    .spc-details { grid-template-columns: repeat(2, 1fr); }
-    .spc-actions { flex-direction: column; }
-    .spc-actions .sa-btn { width: 100%; justify-content: center; }
-  }
+/* ─── ALERT ──────────────────────────────────────────────── */
+.sa-alert {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+}
+.sa-alert-success { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2); color: #065f46; }
+.sa-alert-danger { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); color: #991b1b; }
+.sa-alert-close { margin-left: auto; background: none; border: none; cursor: pointer; display: flex; padding: 2px; opacity: 0.5; }
+.sa-alert-close:hover { opacity: 0.8; }
+
+/* ─── FORM ───────────────────────────────────────────────── */
+.sa-form-group { margin-bottom: 16px; }
+.sa-form-group label { display: block; font-size: 0.85rem; font-weight: 600; color: #333; margin-bottom: 6px; }
+.sa-form-control {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+.sa-form-control:focus { outline: none; border-color: #4099ff; box-shadow: 0 0 0 3px rgba(64,153,255,0.15); }
+
+/* ─── RESPONSIVE ─────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .page-header.card { padding: 1.5rem; }
+    .page-header.card h5 { font-size: 1.25rem; }
+}
 </style>
 
 <div class="pcoded-main-container">
-  <div class="pcoded-wrapper">
-    <div class="pcoded-content">
-      <div class="pcoded-inner-content">
-        <div class="page-header card">
-            <div class="row align-items-center">
-                <div class="col-md-6">
-                    <div class="page-header-content">
-                        <h5 class="page-title mb-0">
-                            <i class="feather icon-dollar-sign mr-2"></i>Salary Payments
-                        </h5>
-                        <p class="page-subtitle mb-0 mt-2">
-                            Manage sales agent salary payments
-                        </p>
+    <div class="pcoded-wrapper">
+        <div class="pcoded-content">
+            <div class="pcoded-inner-content">
+                <!-- [ breadcrumb ] start -->
+                <div class="page-header card">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h5 class="mb-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:8px"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                                Salary Payments
+                            </h5>
+                            <p class="mb-0 mt-1" style="font-size: 14px; opacity: 0.9;">Manage sales agent salary payments</p>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <button type="button" class="sa-btn" onclick="showModal('addPaymentModal')" style="background:rgba(255,255,255,0.12);color:#fff;border:1px solid rgba(255,255,255,0.25);">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                Record Payment
+                            </button>
+                        </div>
                     </div>
                 </div>
-                <div class="col-md-6 text-end">
-                    <div class="page-header-actions">
-                        <button type="button" class="btn btn-header-primary" onclick="document.getElementById('addPaymentModal').classList.add('show');">
-                            <i class="feather icon-plus mr-1"></i>Record Payment
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
+                <!-- [ breadcrumb ] end -->
+                <div class="main-body">
+                    <div class="page-wrapper">
+                        <!-- [ Main Content ] start -->
 
+                        <?php if (!empty($message)): ?>
+                        <div class="sa-alert sa-alert-success">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                            <?= htmlspecialchars($message) ?>
+                        </div>
+                        <?php endif; ?>
 
-        <div class="main-body">
-          <div class="sa-page">
+                        <?php if (!empty($error)): ?>
+                        <div class="sa-alert sa-alert-danger">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                            <?= htmlspecialchars($error) ?>
+                        </div>
+                        <?php endif; ?>
 
-            <?php if (!empty($message)): ?>
-            <div class="alert alert-success">✓ <?= htmlspecialchars($message) ?></div>
-            <?php endif; ?>
+                        <!-- Summary Stats -->
+                        <p class="section-label">Summary</p>
+                        <div class="metric-grid">
+                            <div class="metric-card blue">
+                                <div class="metric-value">$<?= number_format($summary['total_paid'] ?? 0, 2) ?></div>
+                                <div class="metric-label">Total Paid</div>
+                            </div>
+                            <div class="metric-card warning">
+                                <div class="metric-value">$<?= number_format($summary['processing'] ?? 0, 2) ?></div>
+                                <div class="metric-label">Processing</div>
+                            </div>
+                            <div class="metric-card green">
+                                <div class="metric-value"><?= $summary['total_payments'] ?? 0 ?></div>
+                                <div class="metric-label">Total Payments</div>
+                            </div>
+                            <div class="metric-card blue">
+                                <div class="metric-value"><?= $summary['agents_paid'] ?? 0 ?></div>
+                                <div class="metric-label">Agents Paid</div>
+                            </div>
+                        </div>
 
-            <?php if (!empty($error)): ?>
-            <div class="alert alert-danger">✗ <?= htmlspecialchars($error) ?></div>
-            <?php endif; ?>
+                        <!-- Salary Payments Header -->
+                        <div class="sa-shdr">
+                            <div>
+                                <h2>All Payments</h2>
+                                <p>Total: <?= $total_items ?> payments</p>
+                            </div>
+                        </div>
 
-            <!-- Summary Stats -->
-            <p class="section-label">Summary</p>
-            <div class="metric-grid">
-              <div class="metric-card blue">
-                <div class="metric-value">$<?= number_format($summary['total_paid'] ?? 0, 2) ?></div>
-                <div class="metric-label">Total Paid</div>
-              </div>
-              <div class="metric-card warning">
-                <div class="metric-value">$<?= number_format($summary['processing'] ?? 0, 2) ?></div>
-                <div class="metric-label">Processing</div>
-              </div>
-              <div class="metric-card green">
-                <div class="metric-value"><?= $summary['total_payments'] ?? 0 ?></div>
-                <div class="metric-label">Total Payments</div>
-              </div>
-              <div class="metric-card blue">
-                <div class="metric-value"><?= $summary['agents_paid'] ?? 0 ?></div>
-                <div class="metric-label">Agents Paid</div>
-              </div>
-            </div>
+                        <!-- Filter Bar -->
+                        <div class="sa-card" style="margin-bottom: 20px;">
+                            <div class="sa-card-body">
+                                <form method="GET" action="manage_salary_payments.php" class="sa-search-filter">
+                                    <div class="sa-search-group">
+                                        <select class="sa-search-input" name="agent" style="flex: 0 0 auto;" onchange="this.form.submit()">
+                                            <option value="">All Agents</option>
+                                            <?php foreach ($all_agents as $agent): ?>
+                                            <option value="<?= $agent['id'] ?>" <?= $agent_filter == $agent['id'] ? 'selected' : '' ?>>
+                                                <?= htmlspecialchars($agent['name']) ?>
+                                            </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <select class="sa-search-input" name="status" style="flex: 0 0 auto;" onchange="this.form.submit()">
+                                            <option value="">All Status</option>
+                                            <option value="paid" <?= $status_filter == 'paid' ? 'selected' : '' ?>>Paid</option>
+                                            <option value="processing" <?= $status_filter == 'processing' ? 'selected' : '' ?>>Processing</option>
+                                        </select>
+                                        <?php if ($agent_filter > 0 || !empty($status_filter)): ?>
+                                        <a href="manage_salary_payments.php" class="sa-btn sa-btn-ghost">Clear</a>
+                                        <?php endif; ?>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
 
-            <!-- Salary Payments Header -->
-            <div class="sa-shdr" style="margin-bottom: 16px;">
-                <div>
-                    <h2>All Payments</h2>
-                    <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: var(--text-muted);">Total: <?= $total_items ?> payments</p>
-                </div>
-            </div>
+                        <!-- Salary Payments Table -->
+                        <?php if (empty($salary_payments)): ?>
+                        <div class="sa-card">
+                            <div class="sa-card-body" style="text-align: center; padding: 40px 20px; color: var(--muted);">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px; opacity: 0.4;"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                                <div style="font-weight: 600; margin-bottom: 4px;">No Salary Payments Found</div>
+                                <div style="font-size: 0.8rem;"><?= !empty($agent_filter) || !empty($status_filter) ? 'Try adjusting your filters.' : 'No salary payments recorded yet.' ?></div>
+                            </div>
+                        </div>
+                        <?php else: ?>
+                        <div class="sa-table-wrap">
+                            <table class="sa-table">
+                                <thead>
+                                    <tr>
+                                        <th>Agent</th>
+                                        <th>Date</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                        <th>Notes</th>
+                                        <th style="width: 80px;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($salary_payments as $payment): ?>
+                                    <tr>
+                                        <td><strong><?= htmlspecialchars($payment['agent_name']) ?></strong></td>
+                                        <td><?= date('M d, Y', strtotime($payment['payment_date'])) ?></td>
+                                        <td><strong style="color: #2ed8b6;">$<?= number_format($payment['amount'], 2) ?></strong></td>
+                                        <td><span class="pill pill-<?= $payment['status'] ?>"><?= ucfirst($payment['status']) ?></span></td>
+                                        <td style="color: var(--muted);"><?= $payment['notes'] ? htmlspecialchars($payment['notes']) : '—' ?></td>
+                                        <td>
+                                            <div class="sa-td-actions">
+                                                <a href="edit_salary_payment.php?id=<?= $payment['id'] ?>" class="sa-btn-icon" title="Edit">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                        <?php endif; ?>
 
-            <!-- Filter Bar -->
-            <div class="sa-card" style="margin-bottom: 20px;">
-                <div class="sa-card-body">
-                    <form method="GET" action="manage_salary_payments.php" class="sa-search-filter">
-                        <div class="sa-search-group">
-                            <select class="sa-search-input" name="agent" style="flex: 0 0 auto;" onchange="this.form.submit()">
-                                <option value="">All Agents</option>
-                                <?php foreach ($all_agents as $agent): ?>
-                                <option value="<?= $agent['id'] ?>" <?= $agent_filter == $agent['id'] ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($agent['name']) ?>
-                                </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <select class="sa-search-input" name="status" style="flex: 0 0 auto;" onchange="this.form.submit()">
-                                <option value="">All Status</option>
-                                <option value="paid" <?= $status_filter == 'paid' ? 'selected' : '' ?>>Paid</option>
-                                <option value="processing" <?= $status_filter == 'processing' ? 'selected' : '' ?>>Processing</option>
-                            </select>
-                            <?php if ($agent_filter > 0 || !empty($status_filter)): ?>
-                            <a href="manage_salary_payments.php" class="sa-btn sa-btn-ghost">Clear</a>
+                        <!-- Pagination -->
+                        <?php if ($total_pages > 1): ?>
+                        <div class="sa-pagination">
+                            <?php 
+                            $q = '';
+                            if ($agent_filter > 0) $q .= '&agent=' . $agent_filter;
+                            if (!empty($status_filter)) $q .= '&status=' . urlencode($status_filter);
+                            $start_page = max(1, $current_page - 2);
+                            $end_page = min($total_pages, $current_page + 2);
+                            ?>
+                            <button type="button" class="sa-page-btn" <?= $current_page <= 1 ? 'disabled' : '' ?> onclick="window.location='?page=1<?= $q ?>'">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
+                            </button>
+                            <button type="button" class="sa-page-btn" <?= $current_page <= 1 ? 'disabled' : '' ?> onclick="window.location='?page=<?= $current_page - 1 ?><?= $q ?>'">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                            </button>
+                            <?php if ($start_page > 1): ?>
+                            <span class="sa-pagination-ellipsis">...</span>
                             <?php endif; ?>
+                            <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
+                            <a href="?page=<?= $i ?><?= $q ?>" class="sa-pagination-item <?= $i === $current_page ? 'active' : '' ?>"><?= $i ?></a>
+                            <?php endfor; ?>
+                            <?php if ($end_page < $total_pages): ?>
+                            <span class="sa-pagination-ellipsis">...</span>
+                            <?php endif; ?>
+                            <button type="button" class="sa-page-btn" <?= $current_page >= $total_pages ? 'disabled' : '' ?> onclick="window.location='?page=<?= $current_page + 1 ?><?= $q ?>'">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                            </button>
+                            <button type="button" class="sa-page-btn" <?= $current_page >= $total_pages ? 'disabled' : '' ?> onclick="window.location='?page=<?= $total_pages ?><?= $q ?>'">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+                            </button>
+                            <span class="sa-pagination-info">Page <?= $current_page ?> of <?= $total_pages ?></span>
                         </div>
-                    </form>
-                </div>
-            </div>
+                        <?php endif; ?>
 
-            <!-- Salary Payments Cards -->
-            <?php if (empty($salary_payments)): ?>
-            <div class="sa-card">
-                <div class="sa-card-body" style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
-                    <div style="font-size: 2rem; margin-bottom: 12px;">💰</div>
-                    <div style="font-weight: 600; margin-bottom: 4px;">No Salary Payments Found</div>
-                    <div style="font-size: 0.8rem;"><?= !empty($agent_filter) || !empty($status_filter) ? 'Try adjusting your filters.' : 'No salary payments recorded yet.' ?></div>
-                </div>
-            </div>
-            <?php else: ?>
-            <div class="sa-payment-list">
-                <?php foreach ($salary_payments as $payment): ?>
-                <div class="sa-payment-card">
-                    <div class="spc-header">
-                        <div class="spc-info">
-                            <h4><?= htmlspecialchars($payment['agent_name']) ?></h4>
-                            <p class="spc-date">
-                                <i class="feather icon-calendar"></i>
-                                <?= date('M d, Y', strtotime($payment['payment_date'])) ?>
-                            </p>
-                        </div>
-                        <div class="spc-amount">
-                            <span class="amount-value">$<?= number_format($payment['amount'], 2) ?></span>
-                        </div>
-                    </div>
-                    
-                    <div class="spc-details">
-                        <div class="spc-detail-item">
-                            <span class="spc-detail-label">Status</span>
-                            <span class="pill pill-<?= $payment['status'] ?>"><?= ucfirst($payment['status']) ?></span>
-                        </div>
-                        <div class="spc-detail-item">
-                            <span class="spc-detail-label">Notes</span>
-                            <span class="spc-detail-value"><?= $payment['notes'] ? htmlspecialchars($payment['notes']) : '-' ?></span>
-                        </div>
-                    </div>
-                    
-                    <div class="spc-actions">
-                        <a href="edit_salary_payment.php?id=<?= $payment['id'] ?>" class="sa-btn sa-btn-small sa-btn-primary">
-                            <i class="feather icon-edit"></i> Edit
-                        </a>
                     </div>
                 </div>
-                <?php endforeach; ?>
+
             </div>
-            <?php endif; ?>
-
-            <!-- Pagination -->
-            <?php if ($total_pages > 1): ?>
-            <div class="sa-pagination">
-                <?php 
-                $query_string = '';
-                if ($agent_filter > 0) $query_string .= '&agent=' . $agent_filter;
-                if (!empty($status_filter)) $query_string .= '&status=' . urlencode($status_filter);
-                
-                $start_page = max(1, $current_page - 2);
-                $end_page = min($total_pages, $current_page + 2);
-                ?>
-                
-                <?php if ($current_page > 1): ?>
-                <a href="?page=1<?= $query_string ?>" class="sa-pagination-item">First</a>
-                <a href="?page=<?= $current_page - 1 ?><?= $query_string ?>" class="sa-pagination-item">← Prev</a>
-                <?php endif; ?>
-                
-                <?php if ($start_page > 1): ?>
-                <span class="sa-pagination-ellipsis">...</span>
-                <?php endif; ?>
-                
-                <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
-                <a href="?page=<?= $i ?><?= $query_string ?>" class="sa-pagination-item <?= $i === $current_page ? 'active' : '' ?>">
-                    <?= $i ?>
-                </a>
-                <?php endfor; ?>
-                
-                <?php if ($end_page < $total_pages): ?>
-                <span class="sa-pagination-ellipsis">...</span>
-                <?php endif; ?>
-                
-                <?php if ($current_page < $total_pages): ?>
-                <a href="?page=<?= $current_page + 1 ?><?= $query_string ?>" class="sa-pagination-item">Next →</a>
-                <a href="?page=<?= $total_pages ?><?= $query_string ?>" class="sa-pagination-item">Last</a>
-                <?php endif; ?>
-                
-                <span class="sa-pagination-info">Page <?= $current_page ?> of <?= $total_pages ?></span>
-            </div>
-            <?php endif; ?>
-
-
-          </div>
         </div>
-      </div>
     </div>
-  </div>
 </div>
 
 <!-- Add Payment Modal -->
-<div id="addPaymentModal" class="modal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h5>Record Salary Payment</h5>
-      <button type="button" class="modal-close" onclick="document.getElementById('addPaymentModal').classList.remove('show');">&times;</button>
+<div class="sa-modal-overlay" id="addPaymentModal">
+    <div class="sa-modal">
+        <div class="sa-modal-header">
+            <h5>Record Salary Payment</h5>
+            <button type="button" class="sa-modal-close" onclick="closeModal('addPaymentModal')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <form method="POST" action="">
+            <div class="sa-modal-body">
+                <div class="sa-form-group">
+                    <label for="agent_id">Sales Agent *</label>
+                    <select id="agent_id" name="agent_id" class="sa-form-control" required>
+                        <option value="">-- Select Agent --</option>
+                        <?php foreach ($all_agents as $agent): ?>
+                        <option value="<?= $agent['id'] ?>"><?= htmlspecialchars($agent['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="sa-form-group">
+                    <label for="amount">Amount *</label>
+                    <input type="number" id="amount" name="amount" class="sa-form-control" step="0.01" min="0" placeholder="0.00" required>
+                </div>
+                <div class="sa-form-group">
+                    <label for="payment_date">Payment Date *</label>
+                    <input type="date" id="payment_date" name="payment_date" class="sa-form-control" value="<?= date('Y-m-d') ?>" required>
+                </div>
+                <div class="sa-form-group">
+                    <label for="status">Status *</label>
+                    <select id="status" name="status" class="sa-form-control" required>
+                        <option value="paid">Paid</option>
+                        <option value="processing">Processing</option>
+                    </select>
+                </div>
+                <div class="sa-form-group">
+                    <label for="notes">Notes (Optional)</label>
+                    <textarea id="notes" name="notes" class="sa-form-control" rows="3" placeholder="Add any notes..."></textarea>
+                </div>
+                <input type="hidden" name="add_salary_payment" value="1">
+                <button type="submit" class="sa-btn sa-btn-primary" style="width: 100%; justify-content: center;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    Record Payment
+                </button>
+            </div>
+        </form>
     </div>
-    <form method="POST" action="">
-      <div class="form-group">
-        <label for="agent_id">Sales Agent *</label>
-        <select id="agent_id" name="agent_id" required>
-          <option value="">-- Select Agent --</option>
-          <?php foreach ($all_agents as $agent): ?>
-          <option value="<?= $agent['id'] ?>"><?= htmlspecialchars($agent['name']) ?></option>
-          <?php endforeach; ?>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label for="amount">Amount *</label>
-        <input type="number" id="amount" name="amount" step="0.01" min="0" placeholder="0.00" required>
-      </div>
-
-      <div class="form-group">
-        <label for="payment_date">Payment Date *</label>
-        <input type="date" id="payment_date" name="payment_date" value="<?= date('Y-m-d') ?>" required>
-      </div>
-
-      <div class="form-group">
-        <label for="status">Status *</label>
-        <select id="status" name="status" required>
-          <option value="paid">Paid</option>
-          <option value="processing">Processing</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label for="notes">Notes (Optional)</label>
-        <textarea id="notes" name="notes" rows="3" placeholder="Add any notes..."></textarea>
-      </div>
-
-      <input type="hidden" name="add_salary_payment" value="1">
-      <button type="submit" class="btn btn-primary" style="width: 100%;">Record Payment</button>
-    </form>
-  </div>
 </div>
-
+<!-- Required Js -->
 <script src="../assets/js/vendor-all.min.js"></script>
 <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
 <script src="../assets/js/pcoded.min.js"></script>
+<script>
+function showModal(id) { document.getElementById(id).classList.add('active'); document.body.style.overflow = 'hidden'; }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); document.body.style.overflow = ''; }
+document.querySelectorAll('.sa-modal-overlay').forEach(function(el) {
+    el.addEventListener('click', function(e) { if (e.target === this) { this.classList.remove('active'); document.body.style.overflow = ''; } });
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.sa-modal-overlay.active').forEach(function(el) { el.classList.remove('active'); document.body.style.overflow = ''; });
+    }
+});
+</script>
 </body>
 </html>

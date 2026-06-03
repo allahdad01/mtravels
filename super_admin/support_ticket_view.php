@@ -109,445 +109,308 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 include '../includes/header_super_admin.php';
 ?>
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-/* ─── TOKENS ─────────────────────────────────────────────── */
 :root {
-  --bg:       #f8fafc;
-  --surface:  #ffffff;
-  --surface2: #f1f5f9;
-  --border:   #e5e7eb;
-  --text:     #1f2937;
-  --muted:    #6b7280;
-  --accent:   #4099ff;
-  --accent2:  #2ed8b6;
-  --green:    #10b981;
-  --amber:    #f59e0b;
-  --red:      #ef4444;
-  --blue:     #3b82f6;
-  --purple:   #8b5cf6;
-  --orange:   #f97316;
-  --radius:   14px;
+    --primary: #4099ff; --primary-dark: #2673cc; --primary-glow: rgba(64,153,255,0.2);
+    --secondary: #2ed8b6; --grad: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    --bg: #f0f8ff; --surface: #ffffff; --surface2: #f3f8ff;
+    --text: #1a2332; --muted: #6b7280; --border: #e2e8f0;
+    --radius: 10px; --green: #10b981; --red: #ef4444; --amber: #f59e0b; --blue: #3b82f6; --purple: #8b5cf6;
 }
-
-/* ─── RESET / BASE ───────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { font-size: 14px; }
-body {
-  font-family: 'Sora', sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
+.stv-page-header {
+    background: linear-gradient(135deg, #4099ff 0%, #2673cc 50%, #2ed8b6 100%);
+    color: #fff; border: none; margin-bottom: 24px;
+    padding: 22px 28px; box-shadow: 0 4px 20px rgba(64,153,255,0.3);
+    border-radius: 12px; position: relative; overflow: hidden;
 }
-
-/* ─── MAIN WRAPPER ───────────────────────────────────────── */
-.sa-wrap { display: flex; flex-direction: column; min-height: 100vh; }
-
-/* ─── CONTENT ────────────────────────────────────────────── */
-.sa-content { 
-    padding: 24px 28px; 
-    display: flex; 
-    flex-direction: column; 
-    gap: 24px; 
+.stv-page-header::after {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 60%);
+    pointer-events: none;
 }
-
-/* ─── CARD ───────────────────────────────────────────────── */
-.sa-card {
-  background: var(--surface); 
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--accent);
-  border-radius: var(--radius); 
-  overflow: hidden;
-  transition: all .2s;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-  margin-bottom: 24px;
+.stv-page-header .stv-row { display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 2; }
+.stv-page-header h5 { color: #fff; margin: 0; font-weight: 700; font-size: 1.15rem; display: flex; align-items: center; gap: 8px; }
+.stv-breadcrumb { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 0.78rem; color: rgba(255,255,255,0.75); position: relative; z-index: 2; }
+.stv-breadcrumb a { color: rgba(255,255,255,0.85); text-decoration: none; }
+.stv-breadcrumb a:hover { text-decoration: underline; }
+.stv-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+@media (max-width: 992px) { .stv-layout { grid-template-columns: 1fr; } }
+.stv-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    margin-bottom: 24px;
 }
-.sa-card:last-child { margin-bottom: 0; }
-.sa-card:hover { 
-    border-left-color: var(--accent2);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+.stv-card-hdr {
+    padding: 14px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface2);
 }
-.sa-card-hdr {
-  padding: 16px 24px; 
-  border-bottom: 1px solid var(--border);
-  display: flex; 
-  align-items: center; 
-  justify-content: space-between;
-  background: linear-gradient(135deg, rgba(108,99,255,0.04), rgba(46,216,182,0.02));
+.stv-card-hdr h3 { font-size: 0.9rem; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; margin: 0; }
+.stv-card-body { padding: 20px; }
+.stv-section-title {
+    font-size: 0.7rem; color: var(--muted); font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin: 0 0 14px 0; padding-bottom: 10px; border-bottom: 2px solid var(--border);
 }
-.sa-card-hdr h3 { 
-    font-size: .95rem; 
-    font-weight: 600; 
-    color: var(--text);
-    display: flex;
-    align-items: center;
-    letter-spacing: -0.01em;
+.stv-info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+@media (max-width: 576px) { .stv-info-grid { grid-template-columns: 1fr; } }
+.stv-info-item { display: flex; flex-direction: column; gap: 3px; }
+.stv-info-item label { font-size: 0.65rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.stv-info-item p { margin: 0; font-size: 0.85rem; color: var(--text); }
+.stv-info-item a { color: var(--primary); text-decoration: none; }
+.stv-info-item a:hover { text-decoration: underline; }
+.stv-desc-box {
+    background: var(--surface2); padding: 16px; border-radius: 8px;
+    line-height: 1.7; font-size: 0.85rem; color: var(--text);
+    margin-top: 14px;
 }
-.sa-card-body { 
-    padding: 24px; 
+.stv-img-link { display: inline-block; margin-top: 12px; }
+.stv-img-link img { max-width: 100%; max-height: 320px; border-radius: 8px; border: 1px solid var(--border); cursor: zoom-in; }
+.stv-reply-item {
+    background: var(--surface); border: 1px solid var(--border);
+    border-left: 3px solid var(--primary); border-radius: 8px;
+    padding: 14px; margin-bottom: 12px;
 }
-
-/* Card colors */
-.sa-card:nth-child(1) { border-left-color: #6366f1; }
-.sa-card:nth-child(2) { border-left-color: #10b981; }
-.sa-card:nth-child(3) { border-left-color: #f59e0b; }
-
-/* ─── BUTTON ─────────────────────────────────────────────── */
+.stv-reply-item:last-child { margin-bottom: 0; }
+.stv-reply-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px; }
+.stv-reply-author { font-weight: 600; font-size: 0.85rem; color: var(--primary); }
+.stv-reply-time { font-size: 0.72rem; color: var(--muted); }
+.stv-reply-text { font-size: 0.85rem; color: var(--text); line-height: 1.6; }
+.stv-reply-img { margin-top: 10px; }
+.stv-reply-img img { max-width: 240px; max-height: 160px; border-radius: 6px; border: 1px solid var(--border); cursor: zoom-in; }
+.stv-divider { margin: 20px 0 0; padding-top: 20px; border-top: 1px solid var(--border); }
+.stv-no-replies { color: var(--muted); text-align: center; padding: 24px; font-size: 0.85rem; }
+.sa-alert {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 16px; border-radius: var(--radius); border: 1px solid var(--border);
+    margin-bottom: 20px; font-size: 0.85rem;
+    animation: slideIn 0.3s ease-out;
+}
+@keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+.sa-alert-icon { flex-shrink: 0; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; }
+.sa-alert-icon svg { width: 18px; height: 18px; }
+.sa-alert-success { background: #d1fae5; border-color: var(--green); color: #065f46; }
+.sa-alert-success .sa-alert-icon svg { color: var(--green); }
+.sa-alert-danger { background: #fee2e2; border-color: var(--red); color: #7f1d1d; }
+.sa-alert-danger .sa-alert-icon svg { color: var(--red); }
+.sa-form-group { display: flex; flex-direction: column; margin-bottom: 14px; }
+.sa-form-label { font-size: 0.82rem; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+.sa-form-input { padding: 9px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); font-size: 0.85rem; transition: all 0.2s; font-family: inherit; width: 100%; box-sizing: border-box; }
+.sa-form-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); }
+.sa-form-textarea { resize: vertical; min-height: 70px; }
 .sa-btn {
-  font-size: .8rem; font-weight: 600; font-family: 'Sora', sans-serif;
-  padding: 8px 16px; border-radius: 20px; cursor: pointer; border: none;
-  display: inline-flex; align-items: center; gap: 6px; text-decoration: none;
-  transition: all .15s;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 8px 18px; border-radius: 8px; border: none; cursor: pointer;
+    font-size: 0.82rem; font-weight: 600; transition: all 0.2s;
+    text-decoration: none; white-space: nowrap;
 }
-.sa-btn-primary {
-  background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff;
+.sa-btn-primary { background: var(--grad); color: white; }
+.sa-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 14px var(--primary-glow); }
+.sa-btn-ghost { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+.sa-btn-ghost:hover { background: rgba(64,153,255,0.08); border-color: var(--primary); color: var(--primary); }
+.sa-btn-warning { background: linear-gradient(135deg, var(--amber), #fbbf24); color: white; }
+.sa-btn-block { width: 100%; justify-content: center; }
+.pill {
+    font-size: 0.62rem; font-weight: 700; padding: 3px 8px; border-radius: 20px;
+    text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 4px;
 }
-.sa-btn-primary:hover { opacity: .85; transform: translateY(-1px); }
-.sa-btn-ghost {
-  background: var(--surface2); color: var(--muted); border: 1px solid var(--border);
-}
-.sa-btn-ghost:hover { color: var(--text); border-color: var(--accent); }
-.sa-btn-warning {
-  background: linear-gradient(135deg, var(--amber), #fbbf24); color: white;
-}
-
-/* ─── FORM STYLES ────────────────────────────────────────── */
-.form-group { margin-bottom: 16px; }
-
-.form-label {
-    display: block;
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: 6px;
-    font-size: 0.8rem;
-}
-
-.form-control {
-    width: 100%;
-    padding: 10px 14px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    font-size: 0.85rem;
-    transition: all .15s ease;
-    background: var(--surface2);
-    color: var(--text);
-    font-family: 'Sora', sans-serif;
-}
-
-.form-control:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(108,99,255,.15);
-    background: var(--surface);
-}
-
-/* ─── BADGES ─────────────────────────────────────────────── */
-.badge-custom {
-    font-size: 0.7rem;
-    font-weight: 600;
-    padding: 4px 10px;
-    border-radius: 20px;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-}
-.badge-priority.urgent { background: rgba(239,68,68,.15); color: var(--red); }
-.badge-priority.high { background: rgba(249,115,22,.15); color: var(--orange); }
-.badge-priority.medium { background: rgba(245,158,11,.15); color: var(--amber); }
-.badge-priority.low { background: rgba(16,185,129,.15); color: var(--green); }
-.badge-status.open { background: rgba(239,68,68,.15); color: var(--red); }
-.badge-status.in_progress { background: rgba(245,158,11,.15); color: var(--amber); }
-.badge-status.resolved { background: rgba(16,185,129,.15); color: var(--green); }
-.badge-status.closed { background: rgba(107,114,128,.15); color: var(--muted); }
-
-/* ─── INFO GRID ─────────────────────────────────────────── */
-.info-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20px;
-}
-@media (max-width: 576px) {
-    .info-grid { grid-template-columns: 1fr; }
-}
-.info-item label {
-    font-weight: 600;
-    color: var(--muted);
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    display: block;
-    margin-bottom: 4px;
-}
-.info-item p {
-    margin: 0;
-    color: var(--text);
-    font-size: 0.9rem;
-}
-
-/* ─── DESCRIPTION ─────────────────────────────────────────── */
-.description-box {
-    background: var(--surface2);
-    padding: 20px;
-    border-radius: 10px;
-    margin-top: 16px;
-    line-height: 1.7;
-    color: var(--text);
-}
-
-/* ─── REPLY ─────────────────────────────────────────────── */
-.reply-item {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--accent);
-    border-radius: 10px;
-    padding: 16px;
-    margin-bottom: 12px;
-}
-.reply-item:last-child { margin-bottom: 0; }
-.reply-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-.reply-author {
-    font-weight: 600;
-    color: var(--accent);
-}
-.reply-time {
-    font-size: 0.75rem;
-    color: var(--muted);
-    font-family: 'JetBrains Mono', monospace;
-}
-.reply-text {
-    color: var(--text);
-    line-height: 1.6;
-}
-
-/* ─── ALERT ─────────────────────────────────────────────── */
-.alert-box {
-    padding: 14px 18px;
-    border-radius: 10px;
-    margin-bottom: 20px;
-    font-size: 0.85rem;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-.alert-box.success {
-    background: rgba(16,185,129,.1);
-    border: 1px solid rgba(16,185,129,.3);
-    color: var(--green);
-}
-.alert-box.danger {
-    background: rgba(239,68,68,.1);
-    border: 1px solid rgba(239,68,68,.3);
-    color: var(--red);
-}
-
-/* ─── SCROLLBAR ──────────────────────────────────────────── */
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 10px; }
-
-/* ─── PCODED LAYOUT INTEGRATION ──────────────────────────── */
-body { background: var(--bg) !important; }
-.pcoded-main-container, .pcoded-wrapper, .pcoded-content, .pcoded-inner-content { background: var(--bg) !important; }
-.page-header { background: transparent !important; border: none !important; box-shadow: none !important; }
-.page-header h5 { color: var(--text) !important; }
-.breadcrumb { background: transparent !important; }
-.breadcrumb-item a, .breadcrumb-item.active { color: var(--muted) !important; }
+.pill-green { background: rgba(34,211,160,0.12); color: var(--green); }
+.pill-amber { background: rgba(245,158,11,0.12); color: var(--amber); }
+.pill-red { background: rgba(244,63,94,0.12); color: var(--red); }
+.pill-blue { background: rgba(56,189,248,0.12); color: var(--blue); }
+.pill-gray { background: rgba(107,114,128,0.12); color: var(--muted); }
+.pill-purple { background: rgba(139,92,246,0.12); color: var(--purple); }
 </style>
 
 <div class="pcoded-main-container">
     <div class="pcoded-content">
-        <div class="page-header">
-            <div class="page-block">
-                <div class="row align-items-center">
-                    <div class="col-md-12">
-                        <div class="page-header-title">
-                            <h5 class="m-b-10">Ticket: <?= htmlspecialchars($ticket['ticket_number'] ?? '') ?></h5>
-                        </div>
-                        <ul class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="dashboard.php"><i class="feather icon-home"></i></a></li>
-                            <li class="breadcrumb-item"><a href="support_tickets_manage.php">Support Tickets</a></li>
-                            <li class="breadcrumb-item"><a href="#!"><?= htmlspecialchars($ticket['ticket_number'] ?? '') ?></a></li>
-                        </ul>
+
+        <div class="stv-page-header">
+            <div class="stv-row">
+                <div>
+                    <h5>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        Ticket: <?= htmlspecialchars($ticket['ticket_number'] ?? '') ?>
+                    </h5>
+                    <div class="stv-breadcrumb">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                        <a href="dashboard.php">Dashboard</a>
+                        <span>/</span>
+                        <a href="support_tickets_manage.php">Support Tickets</a>
+                        <span>/</span>
+                        <span style="color:rgba(255,255,255,0.6)"><?= htmlspecialchars($ticket['ticket_number'] ?? '') ?></span>
                     </div>
                 </div>
+                <a href="support_tickets_manage.php" class="sa-btn" style="background:rgba(255,255,255,0.12);color:#fff;border:1px solid rgba(255,255,255,0.25);backdrop-filter:blur(4px);position:relative;z-index:2;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Back to Tickets
+                </a>
             </div>
         </div>
 
         <?php if (!empty($message)): ?>
-            <div class="alert-box <?= $alert_type ?>">
-                <i class="feather <?= $alert_type === 'success' ? 'icon-check-circle' : 'icon-alert-circle' ?>"></i>
-                <?= htmlspecialchars($message) ?>
+        <div class="sa-alert sa-alert-<?= $alert_type ?>">
+            <div class="sa-alert-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><?= $alert_type === 'success' ? '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>' : '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>' ?></svg>
             </div>
+            <?= htmlspecialchars($message) ?>
+        </div>
         <?php endif; ?>
 
-        <div class="sa-wrap">
-            <div class="sa-content">
-                <div style="display:grid;grid-template-columns:2fr 1fr;gap:24px">
-                    <div>
-                        <!-- Ticket Details Card -->
-                        <div class="sa-card">
-                            <div class="sa-card-hdr">
-                                <h3><i class="feather icon-file-text" style="margin-right:8px"></i><?= htmlspecialchars($ticket['title'] ?? 'No Title') ?></h3>
-                                <div>
-                                    <span class="badge-custom badge-priority <?= $ticket['priority'] ?? 'medium' ?>"><?= ucfirst($ticket['priority'] ?? 'medium') ?></span>
-                                    <span class="badge-custom badge-status <?= $ticket['status'] ?? 'open' ?>"><?= str_replace('_', ' ', ucfirst($ticket['status'] ?? 'open')) ?></span>
-                                </div>
-                            </div>
-                            <div class="sa-card-body">
-                                <h6 style="font-size:0.8rem;color:var(--muted);text-transform:uppercase;margin-bottom:16px">Ticket Information</h6>
-                                <div class="info-grid">
-                                    <div class="info-item">
-                                        <label>Category</label>
-                                        <p><?= htmlspecialchars($ticket['category_name'] ?? 'N/A') ?></p>
-                                    </div>
-                                    <div class="info-item">
-                                        <label>Submitted By</label>
-                                        <p><?= htmlspecialchars($ticket['created_by_name'] ?? 'Unknown') ?></p>
-                                    </div>
-                                    <div class="info-item">
-                                        <label>Email</label>
-                                        <p><a href="mailto:<?= htmlspecialchars($ticket['created_by_email'] ?? '') ?>" style="color:var(--accent)"><?= htmlspecialchars($ticket['created_by_email'] ?? 'N/A') ?></a></p>
-                                    </div>
-                                    <div class="info-item">
-                                        <label>Created</label>
-                                        <p><?= date('M d, Y H:i', strtotime($ticket['created_at'] ?? date('Y-m-d H:i:s'))) ?></p>
-                                    </div>
-                                </div>
+        <div class="stv-layout">
 
-                                <h6 style="font-size:0.8rem;color:var(--muted);text-transform:uppercase;margin-top:24px;margin-bottom:12px">Description</h6>
-                                <div class="description-box">
-                                    <?= nl2br(htmlspecialchars($ticket['description'] ?? 'No description')) ?>
-                                </div>
+            <!-- Left Column -->
+            <div>
 
-                                <?php if (!empty($ticket['screenshot_path'])): ?>
-                                <div style="margin-top:16px">
-                                    <h6 style="font-size:0.8rem;color:var(--muted);text-transform:uppercase;margin-bottom:10px">Attached Screenshot</h6>
-                                    <a href="../<?= htmlspecialchars($ticket['screenshot_path']) ?>" target="_blank">
-                                        <img src="../<?= htmlspecialchars($ticket['screenshot_path']) ?>"
-                                             alt="Ticket Screenshot"
-                                             style="max-width:100%;max-height:320px;border-radius:10px;border:1px solid var(--border);cursor:zoom-in">
-                                    </a>
-                                </div>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-
-                        <!-- Replies Card -->
-                        <div class="sa-card">
-                            <div class="sa-card-hdr">
-                                <h3><i class="feather icon-message-circle" style="margin-right:8px"></i>Replies</h3>
-                            </div>
-                            <div class="sa-card-body">
-                                <?php if (empty($replies)): ?>
-                                    <p style="color:var(--muted);text-align:center;padding:24px">No replies yet.</p>
-                                <?php else: ?>
-                                    <?php foreach ($replies as $reply): ?>
-                                    <div class="reply-item">
-                                        <div class="reply-header">
-                                            <div>
-                                                <span class="reply-author"><?= htmlspecialchars($reply['replied_by_name'] ?? 'Unknown') ?></span>
-                                            <?php if (!empty($reply['is_internal_note']) && $reply['is_internal_note']): ?>
-                                                <span class="badge-custom" style="background:rgba(139,92,246,.15);color:var(--purple)">Internal</span>
-                                            <?php endif; ?>
-                                            </div>
-                                            <span class="reply-time"><?= date('M d, Y H:i', strtotime($reply['created_at'] ?? date('Y-m-d H:i:s'))) ?></span>
-                                        </div>
-                                        <div class="reply-text">
-                                            <?= nl2br(htmlspecialchars($reply['reply_text'] ?? '')) ?>
-                                        </div>
-                                        <?php if (!empty($reply['screenshot_path'])): ?>
-                                        <div style="margin-top:10px">
-                                            <a href="../<?= htmlspecialchars($reply['screenshot_path']) ?>" target="_blank">
-                                                <img src="../<?= htmlspecialchars($reply['screenshot_path']) ?>"
-                                                     alt="Reply Attachment"
-                                                     style="max-width:240px;max-height:160px;border-radius:8px;border:1px solid var(--border);cursor:zoom-in">
-                                            </a>
-                                        </div>
-                                        <?php endif; ?>
-                                    </div>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-
-                                <div style="margin-top:24px;padding-top:24px;border-top:1px solid var(--border)">
-                                    <h6 style="font-size:0.8rem;color:var(--muted);text-transform:uppercase;margin-bottom:12px">Add Reply</h6>
-                                    <form method="POST">
-                                        <input type="hidden" name="action" value="add_reply">
-                                        <div class="form-group">
-                                            <textarea class="form-control" name="reply_text" rows="3" placeholder="Type your response..." required></textarea>
-                                        </div>
-                                        <button type="submit" class="sa-btn sa-btn-primary">
-                                            <i class="feather icon-send"></i> Send Reply
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
+                <!-- Ticket Details -->
+                <div class="stv-card">
+                    <div class="stv-card-hdr">
+                        <h3>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                            <?= htmlspecialchars($ticket['title'] ?? 'No Title') ?>
+                        </h3>
+                        <div style="display:flex;gap:6px">
+                            <span class="pill <?= ($ticket['priority'] ?? 'medium') === 'urgent' ? 'pill-red' : (($ticket['priority'] ?? 'medium') === 'high' ? 'pill-amber' : (($ticket['priority'] ?? 'medium') === 'medium' ? 'pill-blue' : 'pill-green')) ?>"><?= ucfirst($ticket['priority'] ?? 'medium') ?></span>
+                            <span class="pill <?= ($ticket['status'] ?? 'open') === 'open' ? 'pill-blue' : (($ticket['status'] ?? '') === 'in_progress' ? 'pill-amber' : (($ticket['status'] ?? '') === 'resolved' ? 'pill-green' : 'pill-gray')) ?>"><?= str_replace('_', ' ', ucfirst($ticket['status'] ?? 'open')) ?></span>
                         </div>
                     </div>
-
-                    <div>
-                        <!-- Status Management Card -->
-                        <div class="sa-card">
-                            <div class="sa-card-hdr">
-                                <h3><i class="feather icon-settings" style="margin-right:8px"></i>Status Management</h3>
+                    <div class="stv-card-body">
+                        <h6 class="stv-section-title">Ticket Information</h6>
+                        <div class="stv-info-grid">
+                            <div class="stv-info-item">
+                                <label>Category</label>
+                                <p><?= htmlspecialchars($ticket['category_name'] ?? 'N/A') ?></p>
                             </div>
-                            <div class="sa-card-body">
-                                <div style="margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border)">
-                                    <div class="form-label">Update Status</div>
-                                    <form method="POST">
-                                        <input type="hidden" name="action" value="update_status">
-                                        <div class="form-group">
-                                            <select name="status" class="form-control" required>
-                                                <option value="open" <?= ($ticket['status'] ?? '') === 'open' ? 'selected' : '' ?>>Open</option>
-                                                <option value="in_progress" <?= ($ticket['status'] ?? '') === 'in_progress' ? 'selected' : '' ?>>In Progress</option>
-                                                <option value="resolved" <?= ($ticket['status'] ?? '') === 'resolved' ? 'selected' : '' ?>>Resolved</option>
-                                                <option value="closed" <?= ($ticket['status'] ?? '') === 'closed' ? 'selected' : '' ?>>Closed</option>
-                                            </select>
-                                        </div>
-                                        <button type="submit" class="sa-btn sa-btn-primary" style="width:100%;justify-content:center">
-                                            <i class="feather icon-save"></i> Update Status
-                                        </button>
-                                    </form>
-                                </div>
-
-                                <div>
-                                    <div class="form-label">Update Priority</div>
-                                    <form method="POST">
-                                        <input type="hidden" name="action" value="update_priority">
-                                        <div class="form-group">
-                                            <select name="priority" class="form-control" required>
-                                                <option value="low" <?= ($ticket['priority'] ?? '') === 'low' ? 'selected' : '' ?>>Low</option>
-                                                <option value="medium" <?= ($ticket['priority'] ?? '') === 'medium' ? 'selected' : '' ?>>Medium</option>
-                                                <option value="high" <?= ($ticket['priority'] ?? '') === 'high' ? 'selected' : '' ?>>High</option>
-                                                <option value="urgent" <?= ($ticket['priority'] ?? '') === 'urgent' ? 'selected' : '' ?>>Urgent</option>
-                                            </select>
-                                        </div>
-                                        <button type="submit" class="sa-btn sa-btn-warning" style="width:100%;justify-content:center">
-                                            <i class="feather icon-alert-triangle"></i> Update Priority
-                                        </button>
-                                    </form>
-                                </div>
+                            <div class="stv-info-item">
+                                <label>Submitted By</label>
+                                <p><?= htmlspecialchars($ticket['created_by_name'] ?? 'Unknown') ?></p>
+                            </div>
+                            <div class="stv-info-item">
+                                <label>Email</label>
+                                <p><a href="mailto:<?= htmlspecialchars($ticket['created_by_email'] ?? '') ?>"><?= htmlspecialchars($ticket['created_by_email'] ?? 'N/A') ?></a></p>
+                            </div>
+                            <div class="stv-info-item">
+                                <label>Created</label>
+                                <p><?= date('M d, Y H:i', strtotime($ticket['created_at'] ?? date('Y-m-d H:i:s'))) ?></p>
                             </div>
                         </div>
 
-                        <!-- Back Button -->
-                        <a href="support_tickets_manage.php" class="sa-btn sa-btn-ghost" style="width:100%;justify-content:center">
-                            <i class="feather icon-arrow-left"></i> Back to Tickets
+                        <h6 class="stv-section-title" style="margin-top:20px">Description</h6>
+                        <div class="stv-desc-box"><?= nl2br(htmlspecialchars($ticket['description'] ?? 'No description')) ?></div>
+
+                        <?php if (!empty($ticket['screenshot_path'])): ?>
+                        <h6 class="stv-section-title" style="margin-top:16px">Attached Screenshot</h6>
+                        <a class="stv-img-link" href="../<?= htmlspecialchars($ticket['screenshot_path']) ?>" target="_blank">
+                            <img src="../<?= htmlspecialchars($ticket['screenshot_path']) ?>" alt="Ticket Screenshot">
                         </a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <!-- Replies -->
+                <div class="stv-card">
+                    <div class="stv-card-hdr">
+                        <h3>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                            Replies
+                        </h3>
+                    </div>
+                    <div class="stv-card-body">
+                        <?php if (empty($replies)): ?>
+                        <div class="stv-no-replies">No replies yet.</div>
+                        <?php else: ?>
+                        <?php foreach ($replies as $reply): ?>
+                        <div class="stv-reply-item">
+                            <div class="stv-reply-hdr">
+                                <div>
+                                    <span class="stv-reply-author"><?= htmlspecialchars($reply['replied_by_name'] ?? 'Unknown') ?></span>
+                                    <?php if (!empty($reply['is_internal_note']) && $reply['is_internal_note']): ?>
+                                    <span class="pill pill-purple" style="margin-left:6px">Internal</span>
+                                    <?php endif; ?>
+                                </div>
+                                <span class="stv-reply-time"><?= date('M d, Y H:i', strtotime($reply['created_at'] ?? date('Y-m-d H:i:s'))) ?></span>
+                            </div>
+                            <div class="stv-reply-text"><?= nl2br(htmlspecialchars($reply['reply_text'] ?? '')) ?></div>
+                            <?php if (!empty($reply['screenshot_path'])): ?>
+                            <div class="stv-reply-img">
+                                <a href="../<?= htmlspecialchars($reply['screenshot_path']) ?>" target="_blank">
+                                    <img src="../<?= htmlspecialchars($reply['screenshot_path']) ?>" alt="Reply Attachment">
+                                </a>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                        <?php endforeach; ?>
+                        <?php endif; ?>
+
+                        <div class="stv-divider">
+                            <h6 class="stv-section-title">Add Reply</h6>
+                            <form method="POST">
+                                <input type="hidden" name="action" value="add_reply">
+                                <div class="sa-form-group">
+                                    <textarea class="sa-form-input sa-form-textarea" name="reply_text" rows="3" placeholder="Type your response..." required></textarea>
+                                </div>
+                                <button type="submit" class="sa-btn sa-btn-primary">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Send Reply
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            <!-- Right Column -->
+            <div>
+                <div class="stv-card">
+                    <div class="stv-card-hdr">
+                        <h3>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                            Status Management
+                        </h3>
+                    </div>
+                    <div class="stv-card-body">
+                        <div style="margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid var(--border)">
+                            <div class="sa-form-label">Update Status</div>
+                            <form method="POST">
+                                <input type="hidden" name="action" value="update_status">
+                                <div class="sa-form-group">
+                                    <select name="status" class="sa-form-input" required>
+                                        <option value="open" <?= ($ticket['status'] ?? '') === 'open' ? 'selected' : '' ?>>Open</option>
+                                        <option value="in_progress" <?= ($ticket['status'] ?? '') === 'in_progress' ? 'selected' : '' ?>>In Progress</option>
+                                        <option value="resolved" <?= ($ticket['status'] ?? '') === 'resolved' ? 'selected' : '' ?>>Resolved</option>
+                                        <option value="closed" <?= ($ticket['status'] ?? '') === 'closed' ? 'selected' : '' ?>>Closed</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="sa-btn sa-btn-primary sa-btn-block">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Update Status
+                                </button>
+                            </form>
+                        </div>
+                        <div>
+                            <div class="sa-form-label">Update Priority</div>
+                            <form method="POST">
+                                <input type="hidden" name="action" value="update_priority">
+                                <div class="sa-form-group">
+                                    <select name="priority" class="sa-form-input" required>
+                                        <option value="low" <?= ($ticket['priority'] ?? '') === 'low' ? 'selected' : '' ?>>Low</option>
+                                        <option value="medium" <?= ($ticket['priority'] ?? '') === 'medium' ? 'selected' : '' ?>>Medium</option>
+                                        <option value="high" <?= ($ticket['priority'] ?? '') === 'high' ? 'selected' : '' ?>>High</option>
+                                        <option value="urgent" <?= ($ticket['priority'] ?? '') === 'urgent' ? 'selected' : '' ?>>Urgent</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="sa-btn sa-btn-warning sa-btn-block">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Update Priority
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 </div>
-    <!-- Required Js -->
-    <script src="../assets/js/vendor-all.min.js"></script>
-    <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-    <script src="../assets/js/pcoded.min.js"></script>
+<!-- Required Js -->
+<script src="../assets/js/vendor-all.min.js"></script>
+<script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+<script src="../assets/js/pcoded.min.js"></script>
 <?php include '../includes/admin_footer.php'; ?>

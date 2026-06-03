@@ -46,7 +46,7 @@ function getCurrencySymbol($currencyCode) {
 $subscription_id = intval($_GET['subscription_id'] ?? 0);
 
 if (!$subscription_id) {
-    echo '<div class="alert alert-danger">Invalid subscription ID</div>';
+    echo '<div class="sa-alert sa-alert-danger">Invalid subscription ID</div>';
     exit();
 }
 
@@ -64,7 +64,7 @@ try {
     $subscription = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$subscription) {
-         echo '<div class="alert alert-danger">Subscription not found</div>';
+         echo '<div class="sa-alert sa-alert-danger">Subscription not found</div>';
          exit();
      }
 
@@ -110,113 +110,103 @@ try {
     $payments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
-<div class="row mb-4">
-    <div class="col-md-12">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-light">
-                <h5 class="mb-0">
-                    <i class="feather icon-credit-card mr-2"></i>
-                    Subscription Details
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <p><strong>Tenant:</strong> <?= htmlspecialchars($subscription['tenant_name']) ?> (<?= htmlspecialchars($subscription['tenant_identifier']) ?>)</p>
-                        <p><strong>Plan:</strong> <?= htmlspecialchars($subscription['plan_name']) ?></p>
-                        <p><strong>Status:</strong>
-                            <span class="badge badge-<?= $subscription['status'] === 'active' ? 'success' : ($subscription['status'] === 'pending' ? 'warning' : 'danger') ?>">
-                                <?= ucfirst(htmlspecialchars($subscription['status'])) ?>
-                            </span>
-                        </p>
-                    </div>
-                    <div class="col-md-6">
-                         <p><strong>Billing Cycle:</strong> <?= ucfirst(htmlspecialchars($subscription['billing_cycle'])) ?></p>
-                         <p><strong>Amount:</strong>
-                             <div>
-                                 <?php $symbol = getCurrencySymbol($subscription['currency']); ?>
-                                 <span><?= $symbol . number_format($subscription['amount'], 2) ?></span>
-                                 <?php if ($totalAddonCost > 0): ?>
-                                 <br><small class="text-info">+ <?= $symbol . number_format($totalAddonCost, 2) ?> add-ons = <?= $symbol . number_format($totalAmount, 2) ?></small>
-                                 <?php endif; ?>
-                             </div>
-                         </p>
-                         <p><strong>Next Billing:</strong> <?= $subscription['next_billing_date'] ? date('M d, Y', strtotime($subscription['next_billing_date'])) : 'N/A' ?></p>
-                     </div>
+<div class="sa-card" style="margin-bottom: 20px;">
+    <div class="sa-card-body">
+        <h5 style="margin: 0 0 16px 0; font-size: 1rem; display: flex; align-items: center; gap: 8px; color: #333;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4099ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            Subscription Details
+        </h5>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 0.85rem;">
+            <div>
+                <div style="margin-bottom: 8px;"><strong>Tenant:</strong> <?= htmlspecialchars($subscription['tenant_name']) ?> (<?= htmlspecialchars($subscription['tenant_identifier']) ?>)</div>
+                <div style="margin-bottom: 8px;"><strong>Plan:</strong> <?= htmlspecialchars($subscription['plan_name']) ?></div>
+                <div style="margin-bottom: 8px;">
+                    <strong>Status:</strong>
+                    <span class="pill <?= $subscription['status'] === 'active' ? 'pill-green' : ($subscription['status'] === 'pending' ? 'pill-amber' : 'pill-red') ?>">
+                        <?= ucfirst(htmlspecialchars($subscription['status'])) ?>
+                    </span>
                 </div>
+            </div>
+            <div>
+                <div style="margin-bottom: 8px;"><strong>Billing Cycle:</strong> <?= ucfirst(htmlspecialchars($subscription['billing_cycle'])) ?></div>
+                <div style="margin-bottom: 8px;">
+                    <strong>Amount:</strong>
+                    <div>
+                        <?php $symbol = getCurrencySymbol($subscription['currency']); ?>
+                        <span style="font-weight: 600; color: #2ed8b6;"><?= $symbol . number_format($subscription['amount'], 2) ?></span>
+                        <?php if ($totalAddonCost > 0): ?>
+                        <br><small style="color: #4099ff;">+ <?= $symbol . number_format($totalAddonCost, 2) ?> add-ons = <?= $symbol . number_format($totalAmount, 2) ?></small>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <div style="margin-bottom: 8px;"><strong>Next Billing:</strong> <?= $subscription['next_billing_date'] ? date('M d, Y', strtotime($subscription['next_billing_date'])) : 'N/A' ?></div>
             </div>
         </div>
     </div>
 </div>
 
-<div class="row">
-    <div class="col-md-12">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">
-                    <i class="feather icon-list mr-2"></i>
-                    Payment History
-                </h5>
-                <span class="badge badge-info"><?= count($payments) ?> payments</span>
-            </div>
-            <div class="card-body p-0">
-                <?php if (empty($payments)): ?>
-                <div class="text-center py-4">
-                    <i class="feather icon-inbox text-muted mb-2" style="font-size: 2rem;"></i>
-                    <p class="text-muted">No payments recorded for this subscription</p>
-                </div>
-                <?php else: ?>
-                <div class="table-responsive">
-                    <table class="table table-hover table-striped mb-0">
-                        <thead class="bg-light">
-                            <tr>
-                                <th>Payment Date</th>
-                                <th>Amount</th>
-                                <th>Method</th>
-                                <th>Receipt</th>
-                                <th>Transaction ID</th>
-                                <th>Processed By</th>
-                                <th>Notes</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($payments as $payment): ?>
-                             <?php $paymentSymbol = getCurrencySymbol($payment['currency']); ?>
-                             <tr>
-                                 <td><?= date('M d, Y', strtotime($payment['payment_date'])) ?></td>
-                                 <td><?= $paymentSymbol . number_format($payment['amount'], 2) ?> <?= htmlspecialchars($payment['currency']) ?></td>
-                                <td><?= htmlspecialchars($payment['payment_method'] ?: 'N/A') ?></td>
-                                <td><?= htmlspecialchars($payment['receipt_number'] ?: 'N/A') ?></td>
-                                <td>
-                                    <?php if ($payment['transaction_id']): ?>
-                                    <code class="text-muted small"><?= htmlspecialchars($payment['transaction_id']) ?></code>
-                                    <?php else: ?>
-                                    <span class="text-muted">N/A</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td><?= htmlspecialchars($payment['processed_by_name'] ?: 'System') ?></td>
-                                <td>
-                                    <?php if ($payment['notes']): ?>
-                                    <span title="<?= htmlspecialchars($payment['notes']) ?>">
-                                        <?= strlen($payment['notes']) > 50 ? htmlspecialchars(substr($payment['notes'], 0, 50)) . '...' : htmlspecialchars($payment['notes']) ?>
-                                    </span>
-                                    <?php else: ?>
-                                    <span class="text-muted">No notes</span>
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-                <?php endif; ?>
-            </div>
-        </div>
+<div class="sa-card">
+    <div style="padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+        <h5 style="margin: 0; font-size: 1rem; display: flex; align-items: center; gap: 8px; color: #333;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4099ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            Payment History
+        </h5>
+        <span style="background: rgba(64,153,255,0.1); color: #4099ff; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;"><?= count($payments) ?> payments</span>
     </div>
+    <?php if (empty($payments)): ?>
+    <div style="text-align: center; padding: 40px 20px;">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 8px;"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+        <p style="margin: 0; color: var(--muted); font-size: 0.85rem;">No payments recorded for this subscription</p>
+    </div>
+    <?php else: ?>
+    <div class="sa-table-wrap" style="border: none; border-radius: 0;">
+        <table class="sa-table">
+            <thead>
+                <tr>
+                    <th>Payment Date</th>
+                    <th>Amount</th>
+                    <th>Method</th>
+                    <th>Receipt</th>
+                    <th>Transaction ID</th>
+                    <th>Processed By</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($payments as $payment): ?>
+                 <?php $paymentSymbol = getCurrencySymbol($payment['currency']); ?>
+                 <tr>
+                     <td><?= date('M d, Y', strtotime($payment['payment_date'])) ?></td>
+                     <td><strong style="color: #2ed8b6;"><?= $paymentSymbol . number_format($payment['amount'], 2) ?></strong> <span style="font-size: 0.75rem; color: var(--muted);"><?= htmlspecialchars($payment['currency']) ?></span></td>
+                    <td><?= htmlspecialchars($payment['payment_method'] ?: 'N/A') ?></td>
+                    <td><?= htmlspecialchars($payment['receipt_number'] ?: 'N/A') ?></td>
+                    <td>
+                        <?php if ($payment['transaction_id']): ?>
+                        <code style="color: var(--muted); font-size: 0.8rem;"><?= htmlspecialchars($payment['transaction_id']) ?></code>
+                        <?php else: ?>
+                        <span style="color: var(--muted);">N/A</span>
+                        <?php endif; ?>
+                    </td>
+                    <td><?= htmlspecialchars($payment['processed_by_name'] ?: 'System') ?></td>
+                    <td>
+                        <?php if ($payment['notes']): ?>
+                        <span title="<?= htmlspecialchars($payment['notes']) ?>">
+                            <?= strlen($payment['notes']) > 50 ? htmlspecialchars(substr($payment['notes'], 0, 50)) . '...' : htmlspecialchars($payment['notes']) ?>
+                        </span>
+                        <?php else: ?>
+                        <span style="color: var(--muted);">No notes</span>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+    <?php endif; ?>
 </div>
 
 <?php
 } catch (Exception $e) {
-    echo '<div class="alert alert-danger">Error loading payment history: ' . htmlspecialchars($e->getMessage()) . '</div>';
+    echo '<div class="sa-alert sa-alert-danger">Error loading payment history: ' . htmlspecialchars($e->getMessage()) . '</div>';
 }
 ?>

@@ -65,416 +65,117 @@ require_once '../includes/header_super_admin.php';
 ?>
 
 <style>
-/* Enhanced custom styles for better layout and design */
+:root {
+    --primary: #4099ff; --primary-dark: #2673cc; --primary-glow: rgba(64,153,255,0.2);
+    --secondary: #2ed8b6; --grad: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    --bg: #f0f8ff; --surface: #ffffff; --surface2: #f3f8ff;
+    --text: #1a2332; --muted: #6b7280; --border: #e2e8f0;
+    --radius: 10px; --green: #10b981; --red: #ef4444; --amber: #f59e0b; --blue: #3b82f6;
+}
 .page-header.card {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-    color: #ffffff;
-    border: none;
-    margin-bottom: 20px;
-    padding: 20px !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    border-radius: 10px;
+    background: linear-gradient(135deg, #4099ff 0%, #2673cc 50%, #2ed8b6 100%) !important;
+    color: #fff; border: none !important; margin-bottom: 24px;
+    padding: 22px 28px !important; box-shadow: 0 4px 20px rgba(64,153,255,0.3);
+    border-radius: 12px; position: relative; overflow: hidden;
 }
-
-.page-header.card .row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+.page-header.card::after {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 60%);
+    pointer-events: none;
 }
-
-.page-header.card h5 {
-    color: #ffffff;
-    margin: 0;
-    font-weight: 600;
-}
-
-.page-header.card .text-end {
-    text-align: right;
-}
-
+.page-header.card h5 { color: #fff !important; margin: 0; font-weight: 700; font-size: 1.15rem; position: relative; z-index: 1; }
 .page-header.card .btn {
-    background: rgba(255,255,255,0.2);
-    color: #ffffff;
-    border: 1px solid rgba(255,255,255,0.3);
-    border-radius: 25px;
-    transition: all 0.3s ease;
+    background: rgba(255,255,255,0.12) !important; color: #fff;
+    border: 1px solid rgba(255,255,255,0.25) !important; border-radius: 8px;
+    padding: 7px 16px; font-size: 0.8rem; font-weight: 500;
+    transition: all 0.2s; position: relative; z-index: 1;
+    backdrop-filter: blur(4px); text-decoration: none;
+    display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
 }
-
-.page-header.card .btn:hover {
-    background: rgba(255,255,255,0.3);
-    border-color: rgba(255,255,255,0.5);
-    transform: translateY(-1px);
+.page-header.card .btn:hover { background: rgba(255,255,255,0.2) !important; border-color: rgba(255,255,255,0.4) !important; transform: translateY(-1px); }
+.page-header.card .row { display: flex; align-items: center; justify-content: space-between; width: 100%; position: relative; z-index: 2; }
+.page-header.card .col-md-6:last-child { text-align: right; margin-left: auto; }
+.sa-stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 20px; }
+@media (max-width: 992px) { .sa-stats { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 576px) { .sa-stats { grid-template-columns: repeat(2, 1fr); } }
+.sa-stat-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px; display: flex; align-items: center; gap: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: box-shadow 0.2s, transform 0.2s;
 }
-
-.card {
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    border: none;
+.sa-stat-card:hover { box-shadow: 0 4px 16px var(--primary-glow); transform: translateY(-2px); }
+.sa-stat-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.sa-stat-icon svg { width: 20px; height: 20px; }
+.sa-stat-blue { background: rgba(64,153,255,0.1); color: var(--primary); }
+.sa-stat-green { background: rgba(16,185,129,0.1); color: var(--green); }
+.sa-stat-amber { background: rgba(245,158,11,0.1); color: var(--amber); }
+.sa-stat-red { background: rgba(239,68,68,0.1); color: var(--red); }
+.sa-stat-gray { background: rgba(107,114,128,0.1); color: var(--muted); }
+.sa-stat-body { display: flex; flex-direction: column; gap: 1px; }
+.sa-stat-value { font-size: 1.3rem; font-weight: 700; color: var(--text); line-height: 1.2; }
+.sa-stat-label { font-size: 0.68rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.sa-toolbar {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 18px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
-
-.card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+.sa-toolbar-inner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sa-filter-select {
+    padding: 8px 12px; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-size: 0.82rem; outline: none; cursor: pointer;
+    min-width: 140px;
 }
-
-.card-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-radius: 10px 10px 0 0;
-    padding: 1rem 1.5rem;
-    border: none;
-}
-
-.card-header h5 {
-    margin: 0;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-}
-
-.stats-card {
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    border: none;
-    height: 100%;
-}
-
-.stats-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-}
-
-.stats-card .card-body {
-    padding: 1.5rem;
-}
-
-.table-responsive {
-    border-radius: 10px;
-    overflow: hidden;
-}
-
-.table {
-    margin-bottom: 0;
-}
-
-.table thead th {
-    background-color: #f8f9fa;
-    border-bottom: 2px solid #dee2e6;
-    font-weight: 600;
-    color: #495057;
-    padding: 1rem;
-}
-
-.table tbody tr:hover {
-    background-color: #f1f3f4;
-}
-
-.table tbody td {
-    padding: 1rem;
-    vertical-align: middle;
-}
-
-.form-control {
-    border-radius: 8px;
-    border: 1px solid #ced4da;
-    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-    padding: 0.75rem;
-}
-
-.form-control:focus {
-    border-color: #4099ff;
-    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
-}
-
-.btn {
-    border-radius: 25px;
-    padding: 0.5rem 1.25rem;
-    font-weight: 500;
-    transition: all 0.3s ease;
-}
-
-.btn-primary {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-    border: none;
-}
-
-.btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
-}
-
-.badge {
-    font-size: 0.85em;
-    padding: 0.5em 0.75em;
-    border-radius: 20px;
-    font-weight: 500;
-}
-
-.h3 {
-    font-size: 2rem;
-}
-
-.h5 {
-    font-size: 1.25rem;
-}
-
-.text-muted {
-    font-size: 0.9rem;
-}
-
-/* ─── TICKET CARD STYLES ─────────────────────────────── */
-.sa-ticket-list {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-.sa-ticket-card {
-    background: white;
-    border: 1px solid #e0e0e0;
-    border-radius: 10px;
-    padding: 20px;
-    transition: all 0.2s ease;
-}
-
-.sa-ticket-card:hover {
-    border-color: rgba(64, 153, 255, 0.3);
-    box-shadow: 0 4px 16px rgba(64, 153, 255, 0.15);
-}
-
-.stc-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 16px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid #e0e0e0;
-}
-
-.stc-info h4 {
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin: 0 0 6px 0;
-    color: #333;
-}
-
-.stc-info .ticket-number {
-    color: #4099ff;
-    margin-right: 8px;
-}
-
-.stc-tenant {
-    font-size: 0.85rem;
-    color: #999;
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.stc-badges {
-    display: flex;
-    gap: 8px;
-}
-
-.stc-details {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 16px;
-    margin-bottom: 16px;
-}
-
-.stc-detail-item {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.stc-detail-label {
-    font-size: 0.75rem;
-    color: #999;
-    font-weight: 600;
-    text-transform: uppercase;
-}
-
-.stc-detail-value {
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: #444;
-}
-
-.stc-actions {
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
-}
-
-/* ─── PILLS ────────────────────────────────────────────── */
-.pill {
-    font-size: 0.62rem;
-    font-weight: 700;
-    padding: 3px 8px;
-    border-radius: 20px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    white-space: nowrap;
-}
-
-.pill-green {
-    background: rgba(16,185,129,0.12);
-    color: #10b981;
-}
-
-.pill-amber {
-    background: rgba(245,158,11,0.12);
-    color: #f59e0b;
-}
-
-.pill-red {
-    background: rgba(239,68,68,0.12);
-    color: #ef4444;
-}
-
-.pill-blue {
-    background: rgba(59,130,246,0.12);
-    color: #3b82f6;
-}
-
-.pill-gray {
-    background: rgba(107,114,128,0.12);
-    color: #6b7280;
-}
-
-/* ─── SECTION HEADER ───────────────────────────────────── */
-.sa-shdr {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
-}
-
-.sa-shdr h2 {
-    font-size: 1.5rem;
-    font-weight: 600;
-    margin: 0;
-    color: #333;
-}
-
-.sa-shdr p {
-    margin: 4px 0 0 0;
-    font-size: 0.75rem;
-    color: #999;
-}
-
-/* ─── CARDS ───────────────────────────────────────────── */
-.sa-card {
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    border: none;
-}
-
-.sa-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-}
-
-.sa-card-body {
-    padding: 1.5rem;
-}
-
-/* ─── BUTTONS ───────────────────────────────────────── */
+.sa-filter-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); }
 .sa-btn {
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    border: none;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    text-decoration: none;
-    display: inline-block;
-    font-size: 0.9rem;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 8px 18px; border-radius: 8px; border: none; cursor: pointer;
+    font-size: 0.82rem; font-weight: 600; transition: all 0.2s;
+    text-decoration: none; white-space: nowrap;
 }
-
-.sa-btn-primary {
-    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
-    color: white;
+.sa-btn-primary { background: var(--grad); color: white; }
+.sa-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 14px var(--primary-glow); }
+.sa-btn-ghost { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+.sa-btn-ghost:hover { background: rgba(64,153,255,0.08); border-color: var(--primary); color: var(--primary); }
+.sa-btn-sm { padding: 6px 12px; font-size: 0.75rem; }
+.sa-section-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+.sa-section-header h2 { font-size: 1.15rem; font-weight: 600; margin: 0; color: var(--text); }
+.sa-section-header p { margin: 2px 0 0 0; font-size: 0.75rem; color: var(--muted); }
+.sa-empty { text-align: center; padding: 60px 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+.sa-empty svg { color: var(--muted); opacity: 0.3; margin-bottom: 16px; }
+.sa-empty-title { font-weight: 600; margin-bottom: 6px; color: var(--text); font-size: 1.05rem; }
+.sa-empty-desc { font-size: 0.85rem; color: var(--muted); }
+.sa-table-wrap {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
-
-.sa-btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+.sa-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.sa-table thead { background: var(--surface2); }
+.sa-table th { padding: 12px 16px; text-align: left; font-weight: 600; color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.sa-table td { padding: 14px 16px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+.sa-table tr:last-child td { border-bottom: none; }
+.sa-table tr:hover td { background: rgba(64,153,255,0.03); }
+.sa-th-actions { text-align: right; width: 100px; }
+.sa-td-actions { text-align: right; white-space: nowrap; }
+.sa-icon-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 8px; border: 1px solid transparent;
+    background: var(--surface2); color: var(--muted); cursor: pointer;
+    transition: all 0.2s; text-decoration: none;
 }
-
-.sa-btn-small {
-    padding: 6px 12px;
-    font-size: 0.75rem;
+.sa-icon-btn:hover { background: rgba(64,153,255,0.08); border-color: var(--primary); color: var(--primary); }
+.sa-td-title { font-weight: 600; color: var(--text); }
+.sa-td-sub { font-size: 0.75rem; color: var(--muted); margin-top: 2px; display: flex; align-items: center; gap: 4px; }
+.sa-td-date { color: var(--muted); font-size: 0.8rem; white-space: nowrap; }
+.sa-na { color: var(--muted); font-size: 0.8rem; }
+.pill {
+    font-size: 0.62rem; font-weight: 700; padding: 3px 8px; border-radius: 20px;
+    text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 4px;
 }
-
-.sa-btn-ghost {
-    background: #f0f0f0;
-    color: #333;
-    border: 1px solid #e0e0e0;
-}
-
-.sa-btn-ghost:hover {
-    background: #e8e8e8;
-    border-color: #d0d0d0;
-}
-
-/* ─── SEARCH & FILTER ───────────────────────────────── */
-.sa-search-filter {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.sa-search-group {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-    flex: 1;
-    flex-wrap: wrap;
-}
-
-.sa-search-input {
-    flex: 1;
-    min-width: 120px;
-    padding: 0.75rem;
-    border: 1px solid #ced4da;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-}
-
-.sa-search-input:focus {
-    outline: none;
-    border-color: #4099ff;
-    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
-}
-
-/* ─── RESPONSIVE ──────────────────────────────────────── */
-@media (max-width: 768px) {
-    .stc-header {
-        flex-direction: column;
-    }
-    
-    .stc-badges {
-        margin-top: 12px;
-    }
-    
-    .stc-details {
-        grid-template-columns: 1fr;
-    }
-    
-    .stc-actions {
-        width: 100%;
-    }
-}
+.pill-green { background: rgba(34,211,160,0.12); color: var(--green); }
+.pill-amber { background: rgba(245,158,11,0.12); color: var(--amber); }
+.pill-red { background: rgba(244,63,94,0.12); color: var(--red); }
+.pill-blue { background: rgba(56,189,248,0.12); color: var(--blue); }
+.pill-gray { background: rgba(107,114,128,0.12); color: var(--muted); }
 </style>
 
 <div class="pcoded-main-container">
@@ -483,181 +184,126 @@ require_once '../includes/header_super_admin.php';
             <div class="page-header card">
                 <div class="row align-items-center">
                     <div class="col-md-6">
-                        <h5 class="mb-0">Support Tickets Management</h5>
+                        <h5 class="mb-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:8px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Support Tickets Management
+                        </h5>
                     </div>
                     <div class="col-md-6 text-end">
-                        <button onclick="location.reload()" class="btn btn-info btn-sm">
-                            <i class="fas fa-sync"></i> Refresh SLA Status
+                        <button type="button" onclick="location.reload()" class="btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>Refresh SLA Status
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Statistics Cards -->
-            <div class="row mb-4">
-                <div class="col-md-2">
-                    <div class="card stats-card text-center">
-                        <div class="card-body">
-                            <h3 class="text-primary"><?php echo $stats['total'] ?? 0; ?></h3>
-                            <p class="text-muted mb-0"><i class="feather icon-list mr-1"></i>Total</p>
-                        </div>
-                    </div>
+            <!-- Stats -->
+            <div class="sa-stats">
+                <div class="sa-stat-card">
+                    <div class="sa-stat-icon sa-stat-blue"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+                    <div class="sa-stat-body"><span class="sa-stat-value"><?php echo $stats['total'] ?? 0; ?></span><span class="sa-stat-label">Total</span></div>
                 </div>
-                <div class="col-md-2">
-                    <div class="card stats-card text-center">
-                        <div class="card-body">
-                            <h3 class="text-info"><?php echo $stats['open'] ?? 0; ?></h3>
-                            <p class="text-muted mb-0"><i class="feather icon-inbox mr-1"></i>Open</p>
-                        </div>
-                    </div>
+                <div class="sa-stat-card">
+                    <div class="sa-stat-icon sa-stat-blue"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></div>
+                    <div class="sa-stat-body"><span class="sa-stat-value"><?php echo $stats['open'] ?? 0; ?></span><span class="sa-stat-label">Open</span></div>
                 </div>
-                <div class="col-md-2">
-                    <div class="card stats-card text-center">
-                        <div class="card-body">
-                            <h3 class="text-warning"><?php echo $stats['in_progress'] ?? 0; ?></h3>
-                            <p class="text-muted mb-0"><i class="feather icon-clock mr-1"></i>In Progress</p>
-                        </div>
-                    </div>
+                <div class="sa-stat-card">
+                    <div class="sa-stat-icon sa-stat-amber"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+                    <div class="sa-stat-body"><span class="sa-stat-value"><?php echo $stats['in_progress'] ?? 0; ?></span><span class="sa-stat-label">In Progress</span></div>
                 </div>
-                <div class="col-md-2">
-                    <div class="card stats-card text-center">
-                        <div class="card-body">
-                            <h3 class="text-success"><?php echo $stats['resolved'] ?? 0; ?></h3>
-                            <p class="text-muted mb-0"><i class="feather icon-check-circle mr-1"></i>Resolved</p>
-                        </div>
-                    </div>
+                <div class="sa-stat-card">
+                    <div class="sa-stat-icon sa-stat-green"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+                    <div class="sa-stat-body"><span class="sa-stat-value"><?php echo $stats['resolved'] ?? 0; ?></span><span class="sa-stat-label">Resolved</span></div>
                 </div>
-                <div class="col-md-2">
-                    <div class="card stats-card text-center">
-                        <div class="card-body">
-                            <h3 class="text-danger"><?php echo $stats['breached'] ?? 0; ?></h3>
-                            <p class="text-muted mb-0"><i class="feather icon-alert-triangle mr-1"></i>SLA Breached</p>
-                        </div>
-                    </div>
+                <div class="sa-stat-card">
+                    <div class="sa-stat-icon sa-stat-red"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+                    <div class="sa-stat-body"><span class="sa-stat-value"><?php echo $stats['breached'] ?? 0; ?></span><span class="sa-stat-label">SLA Breached</span></div>
                 </div>
-                <div class="col-md-2">
-                    <div class="card stats-card text-center">
-                        <div class="card-body">
-                            <h3 class="text-danger"><?php echo $stats['at_risk'] ?? 0; ?></h3>
-                            <p class="text-muted mb-0"><i class="feather icon-alert-circle mr-1"></i>At Risk</p>
-                        </div>
-                    </div>
+                <div class="sa-stat-card">
+                    <div class="sa-stat-icon sa-stat-red"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+                    <div class="sa-stat-body"><span class="sa-stat-value"><?php echo $stats['at_risk'] ?? 0; ?></span><span class="sa-stat-label">At Risk</span></div>
                 </div>
             </div>
 
             <!-- Filters -->
-            <div class="sa-card" style="margin-bottom: 20px;">
-                <div class="sa-card-body">
-                    <form method="GET" class="sa-search-filter">
-                        <div class="sa-search-group">
-                            <select name="status" class="sa-search-input" onchange="this.form.submit()">
-                                <option value="">All Status</option>
-                                <option value="open" <?php echo $status_filter === 'open' ? 'selected' : ''; ?>>Open</option>
-                                <option value="in_progress" <?php echo $status_filter === 'in_progress' ? 'selected' : ''; ?>>In Progress</option>
-                                <option value="resolved" <?php echo $status_filter === 'resolved' ? 'selected' : ''; ?>>Resolved</option>
-                                <option value="closed" <?php echo $status_filter === 'closed' ? 'selected' : ''; ?>>Closed</option>
-                            </select>
-                            <select name="sla_status" class="sa-search-input" onchange="this.form.submit()">
-                                <option value="">All SLA</option>
-                                <option value="on_track" <?php echo $sla_status_filter === 'on_track' ? 'selected' : ''; ?>>On Track</option>
-                                <option value="at_risk" <?php echo $sla_status_filter === 'at_risk' ? 'selected' : ''; ?>>At Risk</option>
-                                <option value="breached" <?php echo $sla_status_filter === 'breached' ? 'selected' : ''; ?>>Breached</option>
-                            </select>
-                            <select name="priority" class="sa-search-input" onchange="this.form.submit()">
-                                <option value="">All Priorities</option>
-                                <option value="critical" <?php echo $priority_filter === 'critical' ? 'selected' : ''; ?>>Critical</option>
-                                <option value="high" <?php echo $priority_filter === 'high' ? 'selected' : ''; ?>>High</option>
-                                <option value="medium" <?php echo $priority_filter === 'medium' ? 'selected' : ''; ?>>Medium</option>
-                                <option value="low" <?php echo $priority_filter === 'low' ? 'selected' : ''; ?>>Low</option>
-                            </select>
-                            <select name="tenant" class="sa-search-input" onchange="this.form.submit()">
-                                <option value="">All Tenants</option>
-                                <?php foreach ($tenants as $tenant): ?>
-                                    <option value="<?php echo $tenant['id']; ?>" <?php echo $tenant_filter == $tenant['id'] ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($tenant['name']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <a href="support_tickets_manage.php" class="sa-btn sa-btn-ghost"><i class="feather icon-refresh-cw mr-1"></i>Reset</a>
-                        </div>
-                    </form>
-                </div>
+            <div class="sa-toolbar">
+                <form method="GET" class="sa-toolbar-inner">
+                    <select name="status" class="sa-filter-select" onchange="this.form.submit()">
+                        <option value="">All Status</option>
+                        <option value="open" <?php echo $status_filter === 'open' ? 'selected' : ''; ?>>Open</option>
+                        <option value="in_progress" <?php echo $status_filter === 'in_progress' ? 'selected' : ''; ?>>In Progress</option>
+                        <option value="resolved" <?php echo $status_filter === 'resolved' ? 'selected' : ''; ?>>Resolved</option>
+                        <option value="closed" <?php echo $status_filter === 'closed' ? 'selected' : ''; ?>>Closed</option>
+                    </select>
+                    <select name="sla_status" class="sa-filter-select" onchange="this.form.submit()">
+                        <option value="">All SLA</option>
+                        <option value="on_track" <?php echo $sla_status_filter === 'on_track' ? 'selected' : ''; ?>>On Track</option>
+                        <option value="at_risk" <?php echo $sla_status_filter === 'at_risk' ? 'selected' : ''; ?>>At Risk</option>
+                        <option value="breached" <?php echo $sla_status_filter === 'breached' ? 'selected' : ''; ?>>Breached</option>
+                        <option value="resolved" <?php echo $sla_status_filter === 'resolved' ? 'selected' : ''; ?>>Resolved</option>
+                    </select>
+                    <select name="priority" class="sa-filter-select" onchange="this.form.submit()">
+                        <option value="">All Priorities</option>
+                        <option value="critical" <?php echo $priority_filter === 'critical' ? 'selected' : ''; ?>>Critical</option>
+                        <option value="high" <?php echo $priority_filter === 'high' ? 'selected' : ''; ?>>High</option>
+                        <option value="medium" <?php echo $priority_filter === 'medium' ? 'selected' : ''; ?>>Medium</option>
+                        <option value="low" <?php echo $priority_filter === 'low' ? 'selected' : ''; ?>>Low</option>
+                    </select>
+                    <select name="tenant" class="sa-filter-select" onchange="this.form.submit()">
+                        <option value="">All Tenants</option>
+                        <?php foreach ($tenants as $tenant): ?>
+                        <option value="<?php echo $tenant['id']; ?>" <?php echo $tenant_filter == $tenant['id'] ? 'selected' : ''; ?>><?php echo htmlspecialchars($tenant['name']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <a href="support_tickets_manage.php" class="sa-btn sa-btn-ghost">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Reset
+                    </a>
+                </form>
             </div>
 
-            <!-- Tickets Header -->
-            <div class="sa-shdr" style="margin-bottom: 16px;">
-                <div>
-                    <h2>Support Tickets</h2>
-                    <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: var(--muted);">Manage and view all support tickets</p>
-                </div>
-            </div>
-
-            <!-- Tickets Cards -->
-            <?php if (empty($tickets)): ?>
-            <div class="sa-card">
-                <div class="sa-card-body" style="text-align: center; padding: 40px 20px; color: var(--muted);">
-                    <div style="font-size: 2rem; margin-bottom: 12px;">🎫</div>
-                    <div style="font-weight: 600; margin-bottom: 4px;">No Tickets Found</div>
-                    <div style="font-size: 0.8rem;">No support tickets match your filters.</div>
-                </div>
+            <!-- Data Table -->
+            <?php if (!empty($tickets)): ?>
+            <div class="sa-table-wrap">
+                <table class="sa-table">
+                    <thead>
+                        <tr>
+                            <th>Ticket</th>
+                            <th>Tenant</th>
+                            <th>Priority</th>
+                            <th>Status</th>
+                            <th>SLA</th>
+                            <th>Time Left</th>
+                            <th>Created</th>
+                            <th class="sa-th-actions">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($tickets as $ticket): ?>
+                        <tr>
+                            <td>
+                                <div class="sa-td-title">#<?= htmlspecialchars($ticket['ticket_number']) ?></div>
+                                <div class="sa-td-sub"><?= htmlspecialchars($ticket['title']) ?></div>
+                            </td>
+                            <td><span style="font-size:0.82rem;"><?= htmlspecialchars($ticket['tenant_name']) ?></span></td>
+                            <td><span class="pill <?= $ticket['priority'] === 'critical' ? 'pill-red' : ($ticket['priority'] === 'high' ? 'pill-amber' : ($ticket['priority'] === 'medium' ? 'pill-blue' : 'pill-gray')) ?>"><?= ucfirst($ticket['priority']) ?></span></td>
+                            <td><span class="pill <?= $ticket['status'] === 'open' ? 'pill-blue' : ($ticket['status'] === 'in_progress' ? 'pill-amber' : ($ticket['status'] === 'resolved' ? 'pill-green' : 'pill-gray')) ?>"><?= ucwords(str_replace('_', ' ', $ticket['status'])) ?></span></td>
+                            <td><span class="pill pill-<?= $ticket['sla_display']['color'] ?>"><?= $ticket['sla_display']['status'] ?></span></td>
+                            <td class="sa-td-date"><?= $ticket['sla_display']['hours_remaining'] ?>h</td>
+                            <td class="sa-td-date"><?= date('M d, Y', strtotime($ticket['created_at'])) ?></td>
+                            <td class="sa-td-actions">
+                                <a href="support_ticket_view.php?id=<?= $ticket['id'] ?>" class="sa-icon-btn" title="View">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </a>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
             </div>
             <?php else: ?>
-            <div class="sa-ticket-list">
-                <?php foreach ($tickets as $ticket): ?>
-                <div class="sa-ticket-card">
-                    <div class="stc-header">
-                        <div class="stc-info">
-                            <h4>
-                                <span class="ticket-number">#<?php echo htmlspecialchars($ticket['ticket_number']); ?></span>
-                                <?php echo htmlspecialchars($ticket['title']); ?>
-                            </h4>
-                            <p class="stc-tenant">
-                                <i class="feather icon-home"></i>
-                                <?php echo htmlspecialchars($ticket['tenant_name']); ?>
-                            </p>
-                        </div>
-                        <div class="stc-badges">
-                            <span class="pill <?php 
-                                echo $ticket['priority'] === 'critical' ? 'pill-red' : 
-                                    ($ticket['priority'] === 'high' ? 'pill-amber' : 
-                                    ($ticket['priority'] === 'medium' ? 'pill-blue' : 'pill-gray')); 
-                            ?>">
-                                <?php echo ucfirst($ticket['priority']); ?>
-                            </span>
-                            <span class="pill <?php 
-                                echo $ticket['status'] === 'open' ? 'pill-blue' : 
-                                    ($ticket['status'] === 'in_progress' ? 'pill-amber' : 
-                                    ($ticket['status'] === 'resolved' ? 'pill-green' : 'pill-gray')); 
-                            ?>">
-                                <?php echo ucwords(str_replace('_', ' ', $ticket['status'])); ?>
-                            </span>
-                        </div>
-                    </div>
-                    
-                    <div class="stc-details">
-                        <div class="stc-detail-item">
-                            <span class="stc-detail-label">SLA Status</span>
-                            <span class="pill <?php echo 'pill-' . $ticket['sla_display']['color']; ?>">
-                                <?php echo $ticket['sla_display']['status']; ?>
-                            </span>
-                        </div>
-                        <div class="stc-detail-item">
-                            <span class="stc-detail-label">Created</span>
-                            <span class="stc-detail-value"><?php echo date('M d, Y', strtotime($ticket['created_at'])); ?></span>
-                        </div>
-                        <div class="stc-detail-item">
-                            <span class="stc-detail-label">Time Left</span>
-                            <span class="stc-detail-value"><?php echo $ticket['sla_display']['hours_remaining']; ?>h</span>
-                        </div>
-                    </div>
-                    
-                    <div class="stc-actions">
-                        <a href="support_ticket_view.php?id=<?php echo $ticket['id']; ?>" class="sa-btn sa-btn-small sa-btn-primary">
-                            <i class="feather icon-eye"></i> View
-                        </a>
-                    </div>
-                </div>
-                <?php endforeach; ?>
+            <div class="sa-empty">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                <div class="sa-empty-title">No Tickets Found</div>
+                <div class="sa-empty-desc">No support tickets match your filters.</div>
             </div>
             <?php endif; ?>
         </div>
@@ -665,6 +311,6 @@ require_once '../includes/header_super_admin.php';
 </div>
 <!-- Required Js -->
 <script src="../assets/js/vendor-all.min.js"></script>
-    <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
-    <script src="../assets/js/pcoded.min.js"></script>
+<script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+<script src="../assets/js/pcoded.min.js"></script>
 <?php require_once '../includes/admin_footer.php'; ?>

@@ -287,7 +287,7 @@ $pay_total_pages = $payment_total_pages;
 ?>
 
 <style>
-/* ─── ROOT VARIABLES ──────────────────────────────────────────── */
+/* ─── ROOT VARIABLES ─────────────────────────────────────── */
 :root {
     --muted: #999;
     --surface: #ffffff;
@@ -298,230 +298,61 @@ $pay_total_pages = $payment_total_pages;
     --red: #dc3545;
 }
 
-/* ─── SUBSCRIPTION CARD STYLES ───────────────────────────── */
-.sa-subscription-list, .sa-payment-list {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-.sa-subscription-card, .sa-payment-card {
-    background: white;
-    border: 1px solid #e0e0e0;
-    border-radius: 10px;
-    padding: 20px;
-    transition: all 0.2s ease;
-}
-
-.sa-subscription-card:hover, .sa-payment-card:hover {
-    border-color: rgba(64, 153, 255, 0.3);
-    box-shadow: 0 4px 16px rgba(64, 153, 255, 0.15);
-}
-
-.ssc-header, .spc-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 16px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid #e0e0e0;
-}
-
-.ssc-info h4, .spc-info h4 {
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin: 0 0 6px 0;
-    color: #333;
-}
-
-.ssc-identifier, .spc-identifier {
-    font-size: 0.85rem;
-    color: #999;
-    margin: 0;
-}
-
-.ssc-plan, .spc-date {
-    font-size: 0.85rem;
-    color: #4099ff;
-    margin: 8px 0 0 0;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.ssc-plan i, .spc-date i {
-    font-size: 0.9rem;
-}
-
-.ssc-status, .spc-amount {
-    text-align: right;
-}
-
-.amount-value {
-    font-size: 1.4rem;
-    font-weight: 700;
-    color: #2ed8b6;
-}
-
-.amount-currency {
-    font-size: 0.85rem;
-    color: #888;
-    margin-left: 4px;
-}
-
-.ssc-details, .spc-details {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-    gap: 16px;
-    margin-bottom: 16px;
-}
-
-.ssc-detail-item, .spc-detail-item {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.ssc-detail-label, .spc-detail-label {
-    font-size: 0.75rem;
-    color: #999;
-    font-weight: 600;
-    text-transform: uppercase;
-}
-
-.ssc-detail-value, .spc-detail-value {
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: #444;
-}
-
-.ssc-addons {
-    font-size: 0.8rem;
-    color: #4099ff;
-}
-
-.ssc-total {
-    font-weight: 700;
-    color: #2ed8b6;
-}
-
-.ssc-actions, .spc-actions {
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
-}
-
-/* ─── PAGE HEADER ─────────────────────────────────────────── */
+/* ─── PAGE HEADER ────────────────────────────────────────── */
 .page-header.card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
     color: white;
     border-radius: 10px;
     padding: 2rem 2.5rem;
     border: none;
     margin-bottom: 2rem;
-    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.25);
+    box-shadow: 0 8px 24px rgba(64,153,255,0.25);
     position: relative;
     overflow: hidden;
 }
-
-.page-header.card::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -10%;
-    width: 400px;
-    height: 400px;
-    background: rgba(255,255,255,0.05);
-    border-radius: 50%;
-    pointer-events: none;
-}
-
-.page-header.card::after {
-    content: '';
-    position: absolute;
-    bottom: -30%;
-    left: -5%;
-    width: 300px;
-    height: 300px;
-    background: rgba(255,255,255,0.03);
-    border-radius: 50%;
-    pointer-events: none;
-}
-
-.page-header.card .row {
-    position: relative;
-    z-index: 1;
-}
-
-.page-header-content {
-    padding: 0.5rem 0;
-}
-
-.page-title {
+.page-header-content h5 {
     font-size: 1.75rem;
     font-weight: 700;
-    letter-spacing: -0.5px;
+    margin: 0;
     display: flex;
     align-items: center;
-    line-height: 1.2;
+    gap: 10px;
+    letter-spacing: -0.5px;
 }
-
-.page-title i {
-    font-size: 2rem;
-    margin-right: 0.75rem;
-    opacity: 0.95;
-}
-
-.page-subtitle {
+.page-header-content p {
     font-size: 0.95rem;
     opacity: 0.85;
-    font-weight: 400;
-    letter-spacing: 0.3px;
+    margin: 8px 0 0 0;
 }
-
 .page-header-actions {
     display: flex;
     gap: 10px;
     align-items: center;
     justify-content: flex-end;
-    width: 100%;
 }
-
-.page-header.card .btn {
-    background: rgba(255,255,255,0.10) !important;
-    color: #ffffff;
-    border: 1px solid rgba(255,255,255,0.30) !important;
+.page-header-actions .sa-btn {
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.3);
     border-radius: 25px;
-    transition: all 0.3s ease;
-    position: relative;
-    z-index: 1;
+    padding: 0.6rem 1.4rem;
 }
-
-.page-header.card .btn:hover {
-    background: rgba(255,255,255,0.22) !important;
-    border-color: rgba(255,255,255,0.50) !important;
+.page-header-actions .sa-btn:hover {
+    background: rgba(255,255,255,0.25);
+    border-color: rgba(255,255,255,0.5);
     transform: translateY(-1px);
 }
 
-/* ─── CARDS ───────────────────────────────────────────────── */
+/* ─── CARDS ──────────────────────────────────────────────── */
 .sa-card {
     background: white;
     border-radius: 10px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
     border: none;
 }
+.sa-card-body { padding: 1.5rem; }
 
-.sa-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-}
-
-.sa-card-body {
-    padding: 1.5rem;
-}
-
-/* ─── BUTTONS ─────────────────────────────────────────────── */
+/* ─── BUTTONS ────────────────────────────────────────────── */
 .sa-btn {
     padding: 0.75rem 1.5rem;
     border-radius: 8px;
@@ -530,54 +361,58 @@ $pay_total_pages = $payment_total_pages;
     cursor: pointer;
     transition: all 0.3s ease;
     text-decoration: none;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     font-size: 0.9rem;
 }
-
 .sa-btn-primary {
     background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
     color: white;
 }
-
 .sa-btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(64, 153, 255, 0.3);
+    box-shadow: 0 4px 12px rgba(64,153,255,0.3);
 }
-
-.sa-btn-small {
-    padding: 6px 12px;
-    font-size: 0.75rem;
-}
-
+.sa-btn-small { padding: 6px 12px; font-size: 0.75rem; }
 .sa-btn-ghost {
     background: #f0f0f0;
     color: #333;
     border: 1px solid #e0e0e0;
 }
-
-.sa-btn-ghost:hover {
-    background: #e8e8e8;
-    border-color: #d0d0d0;
-}
-
+.sa-btn-ghost:hover { background: #e8e8e8; border-color: #d0d0d0; }
 .sa-btn-info {
     background: linear-gradient(135deg, #11cdef 0%, #2dd4bf 100%);
     color: white;
 }
-
 .sa-btn-info:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(17, 207, 239, 0.3);
+    box-shadow: 0 4px 12px rgba(17,207,239,0.3);
 }
+.sa-btn-icon {
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #f8f9fa;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center; justify-content: center;
+    transition: all 0.2s;
+}
+.sa-btn-icon:hover {
+    background: rgba(64,153,255,0.1);
+    border-color: #4099ff;
+}
+.sa-btn-icon svg { width: 16px; height: 16px; stroke: #666; }
+.sa-btn-icon:hover svg { stroke: #4099ff; }
 
-/* ─── SEARCH & FILTER ─────────────────────────────────────── */
+/* ─── SEARCH & FILTER ────────────────────────────────────── */
 .sa-search-filter {
     display: flex;
     gap: 1rem;
     align-items: center;
     flex-wrap: wrap;
 }
-
 .sa-search-group {
     display: flex;
     gap: 1rem;
@@ -585,7 +420,6 @@ $pay_total_pages = $payment_total_pages;
     flex: 1;
     min-width: 300px;
 }
-
 .sa-search-input {
     flex: 1;
     min-width: 150px;
@@ -593,37 +427,80 @@ $pay_total_pages = $payment_total_pages;
     border: 1px solid #ced4da;
     border-radius: 8px;
     font-size: 0.9rem;
-    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    transition: border-color 0.15s;
 }
-
 .sa-search-input:focus {
     outline: none;
     border-color: #4099ff;
-    box-shadow: 0 0 0 0.2rem rgba(64, 153, 255, 0.25);
+    box-shadow: 0 0 0 0.2rem rgba(64,153,255,0.25);
 }
 
-/* ─── SECTION HEADER ──────────────────────────────────────── */
+/* ─── SECTION HEADER ─────────────────────────────────────── */
 .sa-shdr {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 1.5rem;
 }
+.sa-shdr h2 { font-size: 1.5rem; font-weight: 600; margin: 0; color: #333; }
+.sa-shdr p { margin: 4px 0 0 0; font-size: 0.75rem; color: var(--muted); }
 
-.sa-shdr h2 {
-    font-size: 1.5rem;
+/* ─── TABLE ──────────────────────────────────────────────── */
+.sa-table-wrap {
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    overflow-x: auto;
+}
+.sa-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    min-width: 700px;
+}
+.sa-table thead { background: #f8f9fa; }
+.sa-table th {
+    padding: 12px 16px;
+    text-align: left;
     font-weight: 600;
-    margin: 0;
-    color: #333;
-}
-
-.sa-shdr p {
-    margin: 4px 0 0 0;
+    color: #666;
+    border-bottom: 2px solid var(--border);
+    white-space: nowrap;
     font-size: 0.75rem;
-    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
 }
+.sa-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #eee;
+    vertical-align: middle;
+}
+.sa-table tbody tr { transition: background 0.15s; }
+.sa-table tbody tr:hover { background: #f8f9fa; }
+.sa-table tbody tr:last-child td { border-bottom: none; }
 
-/* ─── PILLS ───────────────────────────────────────────────── */
+/* ─── TENANT AVATAR ──────────────────────────────────────── */
+.sa-td-tenant {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.sa-avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.85rem;
+    color: #fff;
+    flex-shrink: 0;
+}
+.sa-avatar-active { background: #10b981; }
+.sa-avatar-pending { background: #f59e0b; }
+.sa-avatar-default { background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%); }
+.sa-tenant-name { font-weight: 600; color: var(--text); }
+.sa-tenant-id { font-size: 0.75rem; color: var(--muted); }
+
+/* ─── PILLS ──────────────────────────────────────────────── */
 .pill {
     font-size: 0.62rem;
     font-weight: 700;
@@ -633,18 +510,11 @@ $pay_total_pages = $payment_total_pages;
     letter-spacing: 0.04em;
     white-space: nowrap;
 }
+.pill-green { background: rgba(16,185,129,0.12); color: #10b981; }
+.pill-amber { background: rgba(245,158,11,0.12); color: #f59e0b; }
+.pill-red { background: rgba(239,68,68,0.12); color: #ef4444; }
 
-.pill-green {
-    background: rgba(16,185,129,0.12);
-    color: #10b981;
-}
-
-.pill-amber {
-    background: rgba(245,158,11,0.12);
-    color: #f59e0b;
-}
-
-/* ─── PAGINATION ──────────────────────────────────────────── */
+/* ─── PAGINATION ─────────────────────────────────────────── */
 .sa-pagination {
     display: flex;
     align-items: center;
@@ -657,10 +527,8 @@ $pay_total_pages = $payment_total_pages;
     border-radius: 10px;
     flex-wrap: wrap;
 }
-
 .sa-pagination-item {
-    min-width: 36px;
-    height: 36px;
+    min-width: 36px; height: 36px;
     padding: 0 10px;
     border-radius: 8px;
     border: 1px solid #e0e0e0;
@@ -668,59 +536,187 @@ $pay_total_pages = $payment_total_pages;
     color: #333;
     text-decoration: none;
     display: flex;
-    align-items: center;
-    justify-content: center;
+    align-items: center; justify-content: center;
     font-size: 0.8rem;
     font-weight: 500;
     transition: all 0.2s;
     cursor: pointer;
 }
-
 .sa-pagination-item:hover:not(.active) {
-    background: rgba(64, 153, 255, 0.1);
+    background: rgba(64,153,255,0.1);
     border-color: #4099ff;
     color: #4099ff;
 }
-
 .sa-pagination-item.active {
     background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
     border-color: #4099ff;
     color: white;
 }
-
-.sa-pagination-ellipsis {
-    color: #999;
+.sa-pagination-ellipsis { color: #999; font-size: 0.8rem; }
+.sa-pagination-info { font-size: 0.8rem; color: #999; margin-left: auto; }
+.sa-page-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    padding: 6px 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     font-size: 0.8rem;
+    color: #555;
+    transition: all 0.2s;
+}
+.sa-page-btn:hover:not(:disabled) {
+    background: rgba(64,153,255,0.1);
+    border-color: #4099ff;
+    color: #4099ff;
+}
+.sa-page-btn:disabled { opacity: 0.4; cursor: default; }
+.sa-page-btn svg { width: 16px; height: 16px; }
+
+/* ─── MODAL OVERLAY ──────────────────────────────────────── */
+.sa-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    overflow-y: auto;
+    padding: 20px;
+}
+.sa-modal-overlay.active { display: flex; }
+.sa-modal {
+    background: #fff;
+    border-radius: 12px;
+    max-width: 700px;
+    width: 100%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    animation: modalIn 0.2s ease;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+@keyframes modalIn {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+.sa-modal-header {
+    padding: 16px 20px;
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-radius: 12px 12px 0 0;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+.sa-modal-header h5 {
+    margin: 0;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.sa-modal-close {
+    background: none; border: none; color: #fff;
+    cursor: pointer; padding: 4px;
+    opacity: 0.8; display: flex;
+}
+.sa-modal-close:hover { opacity: 1; }
+.sa-modal-body { padding: 20px; }
+.sa-modal-footer {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
 }
 
-.sa-pagination-info {
-    font-size: 0.8rem;
-    color: #999;
+/* ─── ALERT ──────────────────────────────────────────────── */
+.sa-alert {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+}
+.sa-alert-success {
+    background: rgba(16,185,129,0.1);
+    border: 1px solid rgba(16,185,129,0.2);
+    color: #065f46;
+}
+.sa-alert-danger {
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.2);
+    color: #991b1b;
+}
+.sa-alert-close {
     margin-left: auto;
+    background: none; border: none;
+    cursor: pointer; display: flex;
+    padding: 2px; opacity: 0.5;
 }
+.sa-alert-close:hover { opacity: 0.8; }
 
-/* ─── RESPONSIVE ──────────────────────────────────────────── */
+/* ─── FORM ───────────────────────────────────────────────── */
+.sa-form-group { margin-bottom: 16px; }
+.sa-form-group label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 6px;
+}
+.sa-form-control {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+.sa-form-control:focus {
+    outline: none;
+    border-color: #4099ff;
+    box-shadow: 0 0 0 3px rgba(64,153,255,0.15);
+}
+.sa-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+.sa-input-group { display: flex; align-items: center; }
+.sa-input-group-text {
+    padding: 10px 12px;
+    background: #f0f0f0;
+    border: 1px solid var(--border);
+    border-right: none;
+    border-radius: 8px 0 0 8px;
+    font-size: 0.9rem;
+    color: #666;
+}
+.sa-input-group .sa-form-control { border-radius: 0 8px 8px 0; }
+.sa-select { appearance: auto; }
+
+/* ─── SPINNER ────────────────────────────────────────────── */
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── RESPONSIVE ─────────────────────────────────────────── */
 @media (max-width: 768px) {
-    .ssc-header, .spc-header {
-        flex-direction: column;
-    }
-    
-    .ssc-status, .spc-amount {
-        text-align: left;
-        margin-top: 12px;
-    }
-    
-    .ssc-details, .spc-details {
-        grid-template-columns: 1fr;
-    }
-    
-    .ssc-actions, .spc-actions {
-        width: 100%;
-    }
-    
-    .page-header.card {
-        padding: 1.5rem;
-    }
+    .page-header.card { padding: 1.5rem; }
+    .page-header-content h5 { font-size: 1.25rem; }
+    .sa-table { font-size: 0.8rem; }
+    .sa-table th, .sa-table td { padding: 8px 10px; }
+}
+@media (max-width: 600px) {
+    .sa-form-row { grid-template-columns: 1fr; }
 }
 </style>
 
@@ -734,18 +730,18 @@ $pay_total_pages = $payment_total_pages;
                     <div class="row align-items-center">
                         <div class="col-md-6">
                             <div class="page-header-content">
-                                <h5 class="page-title mb-0">
-                                    <i class="feather icon-credit-card mr-2"></i>Subscription Payments
+                                <h5>
+                                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                                    Subscription Payments
                                 </h5>
-                                <p class="page-subtitle mb-0 mt-2">
-                                    Manage subscription payments and billing
-                                </p>
+                                <p>Manage subscription payments and billing</p>
                             </div>
                         </div>
                         <div class="col-md-6 text-end">
                             <div class="page-header-actions">
-                                <button type="button" class="btn" data-toggle="modal" data-target="#recordPaymentModal">
-                                    <i class="feather icon-plus mr-1"></i>Record Payment
+                                <button type="button" class="sa-btn" onclick="showModal('recordPaymentModal')">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                    Record Payment
                                 </button>
                             </div>
                         </div>
@@ -758,23 +754,22 @@ $pay_total_pages = $payment_total_pages;
                         <!-- [ Main Content ] start -->
 
                         <?php if (isset($_GET['success']) && $_GET['success'] == '1'): ?>
-                        <div class="alert alert-success alert-dismissible fade show" role="alert">
-                            <i class="feather icon-check-circle"></i> Payment recorded successfully!
-                            <button type="button" class="close" data-dismiss="alert">&times;</button>
+                        <div class="sa-alert sa-alert-success">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                            Payment recorded successfully!
+                            <button type="button" class="sa-alert-close" onclick="this.parentElement.remove()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            </button>
                         </div>
                         <?php endif; ?>
 
                         <?php if (isset($error_message)): ?>
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            <i class="feather icon-alert-circle"></i> <?= htmlspecialchars($error_message) ?>
-                            <button type="button" class="close" data-dismiss="alert">&times;</button>
-                        </div>
-                        <?php endif; ?>
-
-                        <?php if (isset($error_message)): ?>
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            <i class="feather icon-alert-circle"></i> <?= htmlspecialchars($error_message) ?>
-                            <button type="button" class="close" data-dismiss="alert">&times;</button>
+                        <div class="sa-alert sa-alert-danger">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                            <?= htmlspecialchars($error_message) ?>
+                            <button type="button" class="sa-alert-close" onclick="this.parentElement.remove()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            </button>
                         </div>
                         <?php endif; ?>
 
@@ -783,7 +778,7 @@ $pay_total_pages = $payment_total_pages;
                         <div class="sa-shdr" style="margin-bottom: 16px;">
                             <div>
                                 <h2>All Subscriptions</h2>
-                                <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: var(--text-muted);">Total: <?= $sub_total_items ?> subscriptions</p>
+                                <p>Total: <?= $sub_total_items ?> subscriptions</p>
                             </div>
                         </div>
 
@@ -802,87 +797,79 @@ $pay_total_pages = $payment_total_pages;
                             </div>
                         </div>
 
-                        <!-- Subscriptions Cards -->
+                        <!-- Subscriptions Table -->
                         <?php if (empty($subscriptions)): ?>
                         <div class="sa-card">
-                            <div class="sa-card-body" style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
-                                <div style="font-size: 2rem; margin-bottom: 12px;">📋</div>
+                            <div class="sa-card-body" style="text-align: center; padding: 40px 20px; color: var(--muted);">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px; opacity: 0.4;"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
                                 <div style="font-weight: 600; margin-bottom: 4px;">No Subscriptions Found</div>
                                 <div style="font-size: 0.8rem;"><?= !empty($sub_search_query) ? 'Try adjusting your search.' : 'No subscriptions available.' ?></div>
                             </div>
                         </div>
                         <?php else: ?>
-                        <div class="sa-subscription-list">
-                            <?php foreach ($subscriptions as $sub): ?>
-                            <?php 
-                            $symbol = getCurrencySymbol($sub['currency'] ?? 'USD');
-                            $totalWithAddons = floatval($sub['amount']) + floatval($sub['total_addon_cost']);
-                            ?>
-                            <div class="sa-subscription-card">
-                                <div class="ssc-header">
-                                    <div class="ssc-info">
-                                        <h4><?= htmlspecialchars($sub['tenant_name']) ?></h4>
-                                        <p class="ssc-identifier"><?= htmlspecialchars($sub['tenant_identifier']) ?></p>
-                                        <p class="ssc-plan">
-                                            <i class="feather icon-credit-card"></i>
-                                            <?= htmlspecialchars($sub['plan_name'] ?? 'N/A') ?>
-                                        </p>
-                                    </div>
-                                    <div class="ssc-status">
-                                        <span class="pill <?= $sub['status'] === 'active' ? 'pill-green' : ($sub['status'] === 'pending' ? 'pill-amber' : 'pill-red') ?>">
-                                            <?= htmlspecialchars(ucfirst($sub['status'])) ?>
-                                        </span>
-                                    </div>
-                                </div>
-                                
-                                <div class="ssc-details">
-                                    <div class="ssc-detail-item">
-                                        <span class="ssc-detail-label">Billing Cycle</span>
-                                        <span class="ssc-detail-value"><?= htmlspecialchars(ucfirst($sub['billing_cycle'])) ?></span>
-                                    </div>
-                                    <div class="ssc-detail-item">
-                                        <span class="ssc-detail-label">Amount</span>
-                                        <span class="ssc-detail-value"><?= $symbol . number_format($sub['amount'], 2) ?></span>
-                                    </div>
-                                    <div class="ssc-detail-item">
-                                        <span class="ssc-detail-label">Add-ons</span>
-                                        <span class="ssc-detail-value ssc-addons">
+                        <div class="sa-table-wrap">
+                            <table class="sa-table">
+                                <thead>
+                                    <tr>
+                                        <th>Tenant</th>
+                                        <th>Plan</th>
+                                        <th>Cycle</th>
+                                        <th>Amount</th>
+                                        <th>Add-ons</th>
+                                        <th>Next Billing</th>
+                                        <th>Total Paid</th>
+                                        <th>Status</th>
+                                        <th style="width: 80px;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($subscriptions as $sub): ?>
+                                    <?php 
+                                    $symbol = getCurrencySymbol($sub['currency'] ?? 'USD');
+                                    $totalWithAddons = floatval($sub['amount']) + floatval($sub['total_addon_cost']);
+                                    ?>
+                                    <tr>
+                                        <td>
+                                            <div class="sa-td-tenant">
+                                                <div class="sa-avatar sa-avatar-<?= $sub['status'] === 'active' ? 'active' : 'pending' ?>"><?= strtoupper(substr($sub['tenant_name'], 0, 1)) ?></div>
+                                                <div>
+                                                    <div class="sa-tenant-name"><?= htmlspecialchars($sub['tenant_name']) ?></div>
+                                                    <div class="sa-tenant-id"><?= htmlspecialchars($sub['tenant_identifier']) ?></div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td><?= htmlspecialchars($sub['plan_name'] ?? 'N/A') ?></td>
+                                        <td><?= htmlspecialchars(ucfirst($sub['billing_cycle'])) ?></td>
+                                        <td><strong><?= $symbol . number_format($sub['amount'], 2) ?></strong></td>
+                                        <td style="font-size: 0.8rem;">
                                             <?php if ($sub['branch_addon_cost'] > 0 || $sub['user_addon_cost'] > 0 || $sub['communication_addon_cost'] > 0): ?>
                                                 <?php if ($sub['branch_addon_cost'] > 0): ?>
-                                                +<?= $symbol . number_format($sub['branch_addon_cost'], 2) ?> branch
+                                                <div>+<?= $symbol . number_format($sub['branch_addon_cost'], 2) ?> branch</div>
                                                 <?php endif; ?>
                                                 <?php if ($sub['user_addon_cost'] > 0): ?>
-                                                +<?= $symbol . number_format($sub['user_addon_cost'], 2) ?> users
+                                                <div>+<?= $symbol . number_format($sub['user_addon_cost'], 2) ?> users</div>
                                                 <?php endif; ?>
                                                 <?php if ($sub['communication_addon_cost'] > 0): ?>
-                                                +<?= $symbol . number_format($sub['communication_addon_cost'], 2) ?> communication
+                                                <div>+<?= $symbol . number_format($sub['communication_addon_cost'], 2) ?> comm.</div>
                                                 <?php endif; ?>
                                             <?php else: ?>
-                                            -
+                                            <span style="color: var(--muted);">—</span>
                                             <?php endif; ?>
-                                        </span>
-                                    </div>
-                                    <div class="ssc-detail-item">
-                                        <span class="ssc-detail-label">Last Payment</span>
-                                        <span class="ssc-detail-value"><?= $sub['last_payment_date'] ? date('M d, Y', strtotime($sub['last_payment_date'])) : 'Never' ?></span>
-                                    </div>
-                                    <div class="ssc-detail-item">
-                                        <span class="ssc-detail-label">Next Billing</span>
-                                        <span class="ssc-detail-value"><?= $sub['next_billing_date'] ? date('M d, Y', strtotime($sub['next_billing_date'])) : 'N/A' ?></span>
-                                    </div>
-                                    <div class="ssc-detail-item">
-                                        <span class="ssc-detail-label">Total Paid</span>
-                                        <span class="ssc-detail-value ssc-total"><?= $symbol . number_format($sub['total_paid'] ?? 0, 2) ?></span>
-                                    </div>
-                                </div>
-                                
-                                <div class="ssc-actions">
-                                    <button class="sa-btn sa-btn-small sa-btn-primary" onclick="viewSubscriptionPayments(<?= $sub['id'] ?>)">
-                                        <i class="feather icon-eye"></i> View Payments
-                                    </button>
-                                </div>
-                            </div>
-                            <?php endforeach; ?>
+                                        </td>
+                                        <td><?= $sub['next_billing_date'] ? date('M d, Y', strtotime($sub['next_billing_date'])) : 'N/A' ?></td>
+                                        <td><strong style="color: #2ed8b6;"><?= $symbol . number_format($sub['total_paid'] ?? 0, 2) ?></strong></td>
+                                        <td><span class="pill <?= $sub['status'] === 'active' ? 'pill-green' : ($sub['status'] === 'pending' ? 'pill-amber' : 'pill-red') ?>"><?= htmlspecialchars(ucfirst($sub['status'])) ?></span></td>
+                                        <td>
+                                            <div class="sa-td-actions">
+                                                <button type="button" class="sa-btn-icon" title="View Payments" onclick="viewSubscriptionPayments(<?= $sub['id'] ?>)">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
                         </div>
                         <?php endif; ?>
 
@@ -894,31 +881,27 @@ $pay_total_pages = $payment_total_pages;
                             $start_page = max(1, $sub_current_page - 2);
                             $end_page = min($sub_total_pages, $sub_current_page + 2);
                             ?>
-                            
-                            <?php if ($sub_current_page > 1): ?>
-                            <a href="?sub_page=1<?= $query_string ?>" class="sa-pagination-item">First</a>
-                            <a href="?sub_page=<?= $sub_current_page - 1 ?><?= $query_string ?>" class="sa-pagination-item">← Prev</a>
-                            <?php endif; ?>
-                            
+                            <button type="button" class="sa-page-btn" <?= $sub_current_page <= 1 ? 'disabled' : '' ?> onclick="window.location='?sub_page=1<?= $query_string ?>'">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
+                            </button>
+                            <button type="button" class="sa-page-btn" <?= $sub_current_page <= 1 ? 'disabled' : '' ?> onclick="window.location='?sub_page=<?= $sub_current_page - 1 ?><?= $query_string ?>'">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                            </button>
                             <?php if ($start_page > 1): ?>
                             <span class="sa-pagination-ellipsis">...</span>
                             <?php endif; ?>
-                            
                             <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
-                            <a href="?sub_page=<?= $i ?><?= $query_string ?>" class="sa-pagination-item <?= $i === $sub_current_page ? 'active' : '' ?>">
-                                <?= $i ?>
-                            </a>
+                            <a href="?sub_page=<?= $i ?><?= $query_string ?>" class="sa-pagination-item <?= $i === $sub_current_page ? 'active' : '' ?>"><?= $i ?></a>
                             <?php endfor; ?>
-                            
                             <?php if ($end_page < $sub_total_pages): ?>
                             <span class="sa-pagination-ellipsis">...</span>
                             <?php endif; ?>
-                            
-                            <?php if ($sub_current_page < $sub_total_pages): ?>
-                            <a href="?sub_page=<?= $sub_current_page + 1 ?><?= $query_string ?>" class="sa-pagination-item">Next →</a>
-                            <a href="?sub_page=<?= $sub_total_pages ?><?= $query_string ?>" class="sa-pagination-item">Last</a>
-                            <?php endif; ?>
-                            
+                            <button type="button" class="sa-page-btn" <?= $sub_current_page >= $sub_total_pages ? 'disabled' : '' ?> onclick="window.location='?sub_page=<?= $sub_current_page + 1 ?><?= $query_string ?>'">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                            </button>
+                            <button type="button" class="sa-page-btn" <?= $sub_current_page >= $sub_total_pages ? 'disabled' : '' ?> onclick="window.location='?sub_page=<?= $sub_total_pages ?><?= $query_string ?>'">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+                            </button>
                             <span class="sa-pagination-info">Page <?= $sub_current_page ?> of <?= $sub_total_pages ?></span>
                         </div>
                         <?php endif; ?>
@@ -927,7 +910,7 @@ $pay_total_pages = $payment_total_pages;
                         <div class="sa-shdr" style="margin-top: 30px; margin-bottom: 16px;">
                             <div>
                                 <h2>Recent Payments</h2>
-                                <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: var(--text-muted);">Total: <?= $pay_total_items ?> payments</p>
+                                <p>Total: <?= $pay_total_items ?> payments</p>
                             </div>
                         </div>
 
@@ -936,7 +919,7 @@ $pay_total_pages = $payment_total_pages;
                             <div class="sa-card-body">
                                 <form method="GET" action="subscription_payments.php" class="sa-search-filter">
                                     <div class="sa-search-group">
-                                        <input type="text" class="sa-search-input" name="pay_search" placeholder="Search payments..." value="<?= htmlspecialchars($pay_search_query) ?>">
+                                        <input type="text" class="sa-search-input" name="payment_search" placeholder="Search payments..." value="<?= htmlspecialchars($pay_search_query) ?>">
                                         <button type="submit" class="sa-btn sa-btn-primary">Search</button>
                                         <?php if (!empty($pay_search_query)): ?>
                                         <a href="subscription_payments.php" class="sa-btn sa-btn-ghost">Clear</a>
@@ -946,61 +929,58 @@ $pay_total_pages = $payment_total_pages;
                             </div>
                         </div>
 
-                        <!-- Recent Payments Cards -->
+                        <!-- Payments Table -->
                         <?php if (empty($recent_payments)): ?>
                         <div class="sa-card">
-                            <div class="sa-card-body" style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
-                                <div style="font-size: 2rem; margin-bottom: 12px;">💳</div>
+                            <div class="sa-card-body" style="text-align: center; padding: 40px 20px; color: var(--muted);">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px; opacity: 0.4;"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
                                 <div style="font-weight: 600; margin-bottom: 4px;">No Payments Found</div>
                                 <div style="font-size: 0.8rem;"><?= !empty($pay_search_query) ? 'Try adjusting your search.' : 'No payments recorded yet.' ?></div>
                             </div>
                         </div>
                         <?php else: ?>
-                        <div class="sa-payment-list">
-                            <?php foreach ($recent_payments as $payment): ?>
-                            <?php $paymentSymbol = getCurrencySymbol($payment['currency'] ?? 'USD'); ?>
-                            <div class="sa-payment-card">
-                                <div class="spc-header">
-                                    <div class="spc-info">
-                                        <h4><?= htmlspecialchars($payment['tenant_name']) ?></h4>
-                                        <p class="spc-identifier"><?= htmlspecialchars($payment['tenant_identifier']) ?></p>
-                                        <p class="spc-date">
-                                            <i class="feather icon-calendar"></i>
-                                            <?= date('M d, Y', strtotime($payment['payment_date'])) ?>
-                                        </p>
-                                    </div>
-                                    <div class="spc-amount">
-                                        <span class="amount-value"><?= $paymentSymbol . number_format($payment['amount'], 2) ?></span>
-                                        <span class="amount-currency"><?= htmlspecialchars($payment['currency'] ?? 'USD') ?></span>
-                                    </div>
-                                </div>
-                                
-                                <div class="spc-details">
-                                    <div class="spc-detail-item">
-                                        <span class="spc-detail-label">Plan</span>
-                                        <span class="spc-detail-value"><?= htmlspecialchars($payment['plan_id']) ?></span>
-                                    </div>
-                                    <div class="spc-detail-item">
-                                        <span class="spc-detail-label">Method</span>
-                                        <span class="spc-detail-value"><?= htmlspecialchars($payment['payment_method'] ?: 'N/A') ?></span>
-                                    </div>
-                                    <div class="spc-detail-item">
-                                        <span class="spc-detail-label">Receipt</span>
-                                        <span class="spc-detail-value"><?= htmlspecialchars($payment['receipt_number'] ?: 'N/A') ?></span>
-                                    </div>
-                                    <div class="spc-detail-item">
-                                        <span class="spc-detail-label">Processed By</span>
-                                        <span class="spc-detail-value"><?= htmlspecialchars($payment['processed_by_name'] ?: 'System') ?></span>
-                                    </div>
-                                </div>
-                                
-                                <div class="spc-actions">
-                                    <button class="sa-btn sa-btn-small sa-btn-info" onclick="downloadInvoice(<?= $payment['id'] ?>)">
-                                        <i class="feather icon-download"></i> Download Invoice
-                                    </button>
-                                </div>
-                            </div>
-                            <?php endforeach; ?>
+                        <div class="sa-table-wrap">
+                            <table class="sa-table">
+                                <thead>
+                                    <tr>
+                                        <th>Tenant</th>
+                                        <th>Date</th>
+                                        <th>Amount</th>
+                                        <th>Method</th>
+                                        <th>Receipt</th>
+                                        <th>Processed By</th>
+                                        <th style="width: 80px;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($recent_payments as $payment): ?>
+                                    <?php $paymentSymbol = getCurrencySymbol($payment['currency'] ?? 'USD'); ?>
+                                    <tr>
+                                        <td>
+                                            <div class="sa-td-tenant">
+                                                <div class="sa-avatar sa-avatar-default"><?= strtoupper(substr($payment['tenant_name'] ?? '?', 0, 1)) ?></div>
+                                                <div>
+                                                    <div class="sa-tenant-name"><?= htmlspecialchars($payment['tenant_name'] ?? 'Deleted') ?></div>
+                                                    <div class="sa-tenant-id"><?= htmlspecialchars($payment['tenant_identifier'] ?? '') ?></div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td><?= date('M d, Y', strtotime($payment['payment_date'])) ?></td>
+                                        <td><strong style="color: #2ed8b6;"><?= $paymentSymbol . number_format($payment['amount'], 2) ?></strong> <span style="color: var(--muted); font-size: 0.75rem;"><?= htmlspecialchars($payment['currency'] ?? 'USD') ?></span></td>
+                                        <td><?= htmlspecialchars($payment['payment_method'] ?: 'N/A') ?></td>
+                                        <td><?= htmlspecialchars($payment['receipt_number'] ?: 'N/A') ?></td>
+                                        <td><?= htmlspecialchars($payment['processed_by_name'] ?: 'System') ?></td>
+                                        <td>
+                                            <div class="sa-td-actions">
+                                                <button type="button" class="sa-btn-icon" title="Download Invoice" onclick="downloadInvoice(<?= $payment['id'] ?>)">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
                         </div>
                         <?php endif; ?>
 
@@ -1008,35 +988,31 @@ $pay_total_pages = $payment_total_pages;
                         <?php if ($pay_total_pages > 1): ?>
                         <div class="sa-pagination">
                             <?php 
-                            $query_string = !empty($pay_search_query) ? '&pay_search=' . urlencode($pay_search_query) : '';
+                            $query_string = !empty($pay_search_query) ? '&payment_search=' . urlencode($pay_search_query) : '';
                             $start_page = max(1, $pay_current_page - 2);
                             $end_page = min($pay_total_pages, $pay_current_page + 2);
                             ?>
-                            
-                            <?php if ($pay_current_page > 1): ?>
-                            <a href="?pay_page=1<?= $query_string ?>" class="sa-pagination-item">First</a>
-                            <a href="?pay_page=<?= $pay_current_page - 1 ?><?= $query_string ?>" class="sa-pagination-item">← Prev</a>
-                            <?php endif; ?>
-                            
+                            <button type="button" class="sa-page-btn" <?= $pay_current_page <= 1 ? 'disabled' : '' ?> onclick="window.location='?payment_page=1<?= $query_string ?>'">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
+                            </button>
+                            <button type="button" class="sa-page-btn" <?= $pay_current_page <= 1 ? 'disabled' : '' ?> onclick="window.location='?payment_page=<?= $pay_current_page - 1 ?><?= $query_string ?>'">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                            </button>
                             <?php if ($start_page > 1): ?>
                             <span class="sa-pagination-ellipsis">...</span>
                             <?php endif; ?>
-                            
                             <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
-                            <a href="?pay_page=<?= $i ?><?= $query_string ?>" class="sa-pagination-item <?= $i === $pay_current_page ? 'active' : '' ?>">
-                                <?= $i ?>
-                            </a>
+                            <a href="?payment_page=<?= $i ?><?= $query_string ?>" class="sa-pagination-item <?= $i === $pay_current_page ? 'active' : '' ?>"><?= $i ?></a>
                             <?php endfor; ?>
-                            
                             <?php if ($end_page < $pay_total_pages): ?>
                             <span class="sa-pagination-ellipsis">...</span>
                             <?php endif; ?>
-                            
-                            <?php if ($pay_current_page < $pay_total_pages): ?>
-                            <a href="?pay_page=<?= $pay_current_page + 1 ?><?= $query_string ?>" class="sa-pagination-item">Next →</a>
-                            <a href="?pay_page=<?= $pay_total_pages ?><?= $query_string ?>" class="sa-pagination-item">Last</a>
-                            <?php endif; ?>
-                            
+                            <button type="button" class="sa-page-btn" <?= $pay_current_page >= $pay_total_pages ? 'disabled' : '' ?> onclick="window.location='?payment_page=<?= $pay_current_page + 1 ?><?= $query_string ?>'">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                            </button>
+                            <button type="button" class="sa-page-btn" <?= $pay_current_page >= $pay_total_pages ? 'disabled' : '' ?> onclick="window.location='?payment_page=<?= $pay_total_pages ?><?= $query_string ?>'">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+                            </button>
                             <span class="sa-pagination-info">Page <?= $pay_current_page ?> of <?= $pay_total_pages ?></span>
                         </div>
                         <?php endif; ?>
@@ -1050,151 +1026,137 @@ $pay_total_pages = $payment_total_pages;
 </div>
 
 <!-- Record Payment Modal -->
-<div class="modal fade" id="recordPaymentModal" tabindex="-1" role="dialog" aria-labelledby="recordPaymentModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header text-white" style="background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);">
-                <h5 class="modal-title" id="recordPaymentModalLabel">
-                    <i class="feather icon-credit-card mr-2"></i>Record Subscription Payment
-                </h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
+<div class="sa-modal-overlay" id="recordPaymentModal">
+    <div class="sa-modal" style="max-width: 750px;">
+        <div class="sa-modal-header">
+            <h5>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                Record Subscription Payment
+            </h5>
+            <button type="button" class="sa-modal-close" onclick="closeModal('recordPaymentModal')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <form method="POST">
+            <div class="sa-modal-body">
+                <input type="hidden" name="action" value="record_payment">
+
+                <div class="sa-form-row">
+                    <div class="sa-form-group">
+                        <label for="subscription_id">Subscription *</label>
+                        <select class="sa-form-control" id="subscription_id" name="subscription_id" required>
+                            <option value="">Select Subscription</option>
+                             <?php foreach ($subscriptions as $sub): ?>
+                             <?php 
+                             $subSymbol = getCurrencySymbol($sub['currency'] ?? 'USD');
+                             $subTotal = floatval($sub['amount']) + floatval($sub['total_addon_cost']);
+                             $addonsText = '';
+                             if ($sub['branch_addon_cost'] > 0 || $sub['user_addon_cost'] > 0 || $sub['communication_addon_cost'] > 0) {
+                                 $addons = [];
+                                 if ($sub['branch_addon_cost'] > 0) {
+                                     $addons[] = $subSymbol . number_format($sub['branch_addon_cost'], 2) . ' branch';
+                                 }
+                                 if ($sub['user_addon_cost'] > 0) {
+                                     $addons[] = $subSymbol . number_format($sub['user_addon_cost'], 2) . ' users';
+                                 }
+                                 if ($sub['communication_addon_cost'] > 0) {
+                                     $addons[] = $subSymbol . number_format($sub['communication_addon_cost'], 2) . ' communication';
+                                 }
+                                 $addonsText = ' + ' . implode(', ', $addons);
+                             }
+                             ?>
+                             <option value="<?= $sub['id'] ?>" data-currency="<?= htmlspecialchars($sub['currency'] ?? 'USD') ?>" data-amount="<?= $subTotal ?>">
+                                 <?= htmlspecialchars($sub['tenant_name']) ?> - <?= htmlspecialchars($sub['plan_name']) ?> (<?= $subSymbol . number_format($sub['amount'], 2) ?><?= $addonsText ?>/<?= $sub['billing_cycle'] ?>)
+                             </option>
+                             <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="sa-form-group">
+                        <label for="amount">Amount *</label>
+                        <div class="sa-input-group">
+                            <span class="sa-input-group-text" id="amountSymbol">$</span>
+                            <input type="number" class="sa-form-control" id="amount" name="amount" step="0.01" min="0" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sa-form-row">
+                    <div class="sa-form-group">
+                        <label for="currency">Currency *</label>
+                        <select class="sa-form-control" id="currency" name="currency" required>
+                            <option value="USD">USD ($)</option>
+                            <option value="AFN">AFN (؋)</option>
+                            <option value="EUR">EUR (€)</option>
+                            <option value="GBP">GBP (£)</option>
+                            <option value="AED">AED (د.إ)</option>
+                            <option value="INR">INR (₹)</option>
+                            <option value="PKR">PKR (₨)</option>
+                        </select>
+                    </div>
+                    <div class="sa-form-group">
+                        <label for="payment_date">Payment Date *</label>
+                        <input type="date" class="sa-form-control" id="payment_date" name="payment_date" value="<?= date('Y-m-d') ?>" required>
+                    </div>
+                </div>
+
+                <div class="sa-form-row">
+                    <div class="sa-form-group">
+                        <label for="payment_method">Payment Method</label>
+                        <select class="sa-form-control" id="payment_method" name="payment_method">
+                            <option value="">Select Method</option>
+                            <option value="Bank Transfer">Bank Transfer</option>
+                            <option value="Credit Card">Credit Card</option>
+                            <option value="PayPal">PayPal</option>
+                            <option value="Cash">Cash</option>
+                            <option value="Check">Check</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="sa-form-group">
+                        <label for="receipt_number">Receipt Number</label>
+                        <input type="text" class="sa-form-control" id="receipt_number" name="receipt_number" placeholder="Enter receipt number">
+                    </div>
+                </div>
+
+                <div class="sa-form-group">
+                    <label for="transaction_id">Transaction ID</label>
+                    <input type="text" class="sa-form-control" id="transaction_id" name="transaction_id" placeholder="Enter transaction ID">
+                </div>
+
+                <div class="sa-form-group">
+                    <label for="notes">Notes</label>
+                    <textarea class="sa-form-control" id="notes" name="notes" rows="3" placeholder="Additional notes"></textarea>
+                </div>
+            </div>
+            <div class="sa-modal-footer">
+                <button type="button" class="sa-btn sa-btn-ghost" onclick="closeModal('recordPaymentModal')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    Cancel
+                </button>
+                <button type="submit" class="sa-btn sa-btn-primary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    Record Payment
                 </button>
             </div>
-            <form method="POST">
-                <div class="modal-body">
-                    <input type="hidden" name="action" value="record_payment">
-
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="subscription_id">Subscription *</label>
-                                <select class="form-control" id="subscription_id" name="subscription_id" required>
-                                    <option value="">Select Subscription</option>
-                                     <?php foreach ($subscriptions as $sub): ?>
-                                     <?php 
-                                     $subSymbol = getCurrencySymbol($sub['currency'] ?? 'USD');
-                                     $subTotal = floatval($sub['amount']) + floatval($sub['total_addon_cost']);
-                                     $addonsText = '';
-                                     if ($sub['branch_addon_cost'] > 0 || $sub['user_addon_cost'] > 0 || $sub['communication_addon_cost'] > 0) {
-                                         $addons = [];
-                                         if ($sub['branch_addon_cost'] > 0) {
-                                             $addons[] = $subSymbol . number_format($sub['branch_addon_cost'], 2) . ' branch';
-                                         }
-                                         if ($sub['user_addon_cost'] > 0) {
-                                             $addons[] = $subSymbol . number_format($sub['user_addon_cost'], 2) . ' users';
-                                         }
-                                         if ($sub['communication_addon_cost'] > 0) {
-                                             $addons[] = $subSymbol . number_format($sub['communication_addon_cost'], 2) . ' communication';
-                                         }
-                                         $addonsText = ' + ' . implode(', ', $addons);
-                                     }
-                                     ?>
-                                     <option value="<?= $sub['id'] ?>" data-currency="<?= htmlspecialchars($sub['currency'] ?? 'USD') ?>" data-amount="<?= $subTotal ?>">
-                                         <?= htmlspecialchars($sub['tenant_name']) ?> - <?= htmlspecialchars($sub['plan_name']) ?> (<?= $subSymbol . number_format($sub['amount'], 2) ?><?= $addonsText ?>/<?= $sub['billing_cycle'] ?>)
-                                     </option>
-                                     <?php endforeach; ?>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                             <div class="form-group">
-                                 <label for="amount">Amount *</label>
-                                 <div class="input-group">
-                                     <div class="input-group-prepend">
-                                         <span class="input-group-text" id="amountSymbol">$</span>
-                                     </div>
-                                     <input type="number" class="form-control" id="amount" name="amount" step="0.01" min="0" required>
-                                 </div>
-                             </div>
-                         </div>
-                        </div>
-
-                        <div class="row">
-                         <div class="col-md-6">
-                             <div class="form-group">
-                                 <label for="currency">Currency *</label>
-                                 <select class="form-control" id="currency" name="currency" required>
-                                     <option value="USD">USD ($)</option>
-                                     <option value="AFN">AFN (؋)</option>
-                                     <option value="EUR">EUR (€)</option>
-                                     <option value="GBP">GBP (£)</option>
-                                     <option value="AED">AED (د.إ)</option>
-                                     <option value="INR">INR (₹)</option>
-                                     <option value="PKR">PKR (₨)</option>
-                                 </select>
-                             </div>
-                         </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="payment_date">Payment Date *</label>
-                                <input type="date" class="form-control" id="payment_date" name="payment_date" value="<?= date('Y-m-d') ?>" required>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="payment_method">Payment Method</label>
-                                <select class="form-control" id="payment_method" name="payment_method">
-                                    <option value="">Select Method</option>
-                                    <option value="Bank Transfer">Bank Transfer</option>
-                                    <option value="Credit Card">Credit Card</option>
-                                    <option value="PayPal">PayPal</option>
-                                    <option value="Cash">Cash</option>
-                                    <option value="Check">Check</option>
-                                    <option value="Other">Other</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="receipt_number">Receipt Number</label>
-                                <input type="text" class="form-control" id="receipt_number" name="receipt_number" placeholder="Enter receipt number">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="transaction_id">Transaction ID</label>
-                        <input type="text" class="form-control" id="transaction_id" name="transaction_id" placeholder="Enter transaction ID">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="notes">Notes</label>
-                        <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="Additional notes"></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">
-                        <i class="feather icon-x mr-1"></i>Cancel
-                    </button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="feather icon-check-circle mr-1"></i>Record Payment
-                    </button>
-                </div>
-            </form>
-        </div>
+        </form>
     </div>
 </div>
 
 <!-- Subscription Payments Modal -->
-<div class="modal fade" id="subscriptionPaymentsModal" tabindex="-1" role="dialog" aria-labelledby="subscriptionPaymentsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl" role="document">
-        <div class="modal-content">
-            <div class="modal-header text-white" style="background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);">
-                <h5 class="modal-title" id="subscriptionPaymentsModalLabel">
-                    <i class="feather icon-list mr-2"></i>Subscription Payment History
-                </h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div id="subscriptionPaymentsContent">
-                    <!-- Content will be loaded here -->
-                </div>
+<div class="sa-modal-overlay" id="subscriptionPaymentsModal">
+    <div class="sa-modal" style="max-width: 900px;">
+        <div class="sa-modal-header">
+            <h5>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                Subscription Payment History
+            </h5>
+            <button type="button" class="sa-modal-close" onclick="closeModal('subscriptionPaymentsModal')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <div class="sa-modal-body">
+            <div id="subscriptionPaymentsContent">
+                <!-- Content will be loaded here -->
             </div>
         </div>
     </div>
@@ -1204,55 +1166,78 @@ $pay_total_pages = $payment_total_pages;
 <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
 <script src="../assets/js/pcoded.min.js"></script>
 <script>
-// Currency symbol mapping
 const currencySymbols = {
-    'USD': '$',
-    'EUR': '€',
-    'GBP': '£',
-    'JPY': '¥',
-    'AFN': '؋',
-    'AED': 'د.إ',
-    'INR': '₹',
-    'PKR': '₨',
+    'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥',
+    'AFN': '؋', 'AED': 'د.إ', 'INR': '₹', 'PKR': '₨',
 };
 
-$(document).ready(function() {
-    // Handle subscription selection - populate currency and amount
-    $('#subscription_id').on('change', function() {
-        const option = $(this).find('option:selected');
-        const currency = option.data('currency') || 'USD';
-        const amount = option.data('amount') || '';
-        const symbol = currencySymbols[currency] || currency;
-        
-        $('#currency').val(currency);
-        $('#amount').val(amount);
-        $('#amountSymbol').text(symbol);
-    });
-    
-    // Handle currency change - update symbol
-    $('#currency').on('change', function() {
-        const currency = $(this).val();
-        const symbol = currencySymbols[currency] || currency;
-        $('#amountSymbol').text(symbol);
+function showModal(id) {
+    document.getElementById(id).classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+document.querySelectorAll('.sa-modal-overlay').forEach(function(el) {
+    el.addEventListener('click', function(e) {
+        if (e.target === this) {
+            this.classList.remove('active');
+            document.body.style.overflow = '';
+        }
     });
 });
 
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.sa-modal-overlay.active').forEach(function(el) {
+            el.classList.remove('active');
+            document.body.style.overflow = '';
+        });
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    var subSelect = document.getElementById('subscription_id');
+    if (subSelect) {
+        subSelect.addEventListener('change', function() {
+            var option = this.options[this.selectedIndex];
+            var currency = option.getAttribute('data-currency') || 'USD';
+            var amount = option.getAttribute('data-amount') || '';
+            var currencyEl = document.getElementById('currency');
+            var amountEl = document.getElementById('amount');
+            var symbolEl = document.getElementById('amountSymbol');
+            if (currencyEl) currencyEl.value = currency;
+            if (amountEl) amountEl.value = amount;
+            if (symbolEl) symbolEl.textContent = currencySymbols[currency] || currency;
+        });
+    }
+    var currencyEl = document.getElementById('currency');
+    if (currencyEl) {
+        currencyEl.addEventListener('change', function() {
+            var symbolEl = document.getElementById('amountSymbol');
+            if (symbolEl) symbolEl.textContent = currencySymbols[this.value] || this.value;
+        });
+    }
+});
+
 function generateInvoicePreview() {
-    const subscriptionId = $('#subscription_id').val();
-    const amount = $('#amount').val();
-    const currency = $('#currency').val();
-    const paymentDate = $('#payment_date').val();
-    const paymentMethod = $('#payment_method').val();
-    const transactionId = $('#transaction_id').val();
-    const receiptNumber = $('#receipt_number').val();
-    const notes = $('#notes').val();
+    var subscriptionId = document.getElementById('subscription_id') ? document.getElementById('subscription_id').value : '';
+    var amount = document.getElementById('amount') ? document.getElementById('amount').value : '';
+    var currency = document.getElementById('currency') ? document.getElementById('currency').value : '';
+    var paymentDate = document.getElementById('payment_date') ? document.getElementById('payment_date').value : '';
+    var paymentMethod = document.getElementById('payment_method') ? document.getElementById('payment_method').value : '';
+    var transactionId = document.getElementById('transaction_id') ? document.getElementById('transaction_id').value : '';
+    var receiptNumber = document.getElementById('receipt_number') ? document.getElementById('receipt_number').value : '';
+    var notes = document.getElementById('notes') ? document.getElementById('notes').value : '';
 
     if (!subscriptionId || !amount) {
         alert('Please select a subscription and enter an amount');
         return;
     }
 
-    // Open PDF in new window or download
     window.open('generate_invoice_pdf.php?subscription_id=' + subscriptionId + 
                 '&amount=' + amount + 
                 '&currency=' + currency + 
@@ -1268,28 +1253,20 @@ function downloadInvoice(paymentId) {
         alert('Invalid payment ID');
         return;
     }
-    
-    // Open PDF for existing payment
     window.open('generate_invoice_pdf.php?payment_id=' + paymentId, 'invoice');
 }
 
 function viewSubscriptionPayments(subscriptionId) {
-    // Load subscription payment history
-    $('#subscriptionPaymentsContent').html('<div class="text-center"><div class="spinner-border text-info" role="status"><span class="visually-hidden">Loading...</span></div></div>');
-
-    $.ajax({
-        url: 'get_subscription_payments.php',
-        method: 'GET',
-        data: { subscription_id: subscriptionId },
-        success: function(response) {
-            $('#subscriptionPaymentsContent').html(response);
-        },
-        error: function() {
-            $('#subscriptionPaymentsContent').html('<div class="alert alert-danger">Error loading payment history.</div>');
-        }
-    });
-
-    $('#subscriptionPaymentsModal').modal('show');
+    var content = document.getElementById('subscriptionPaymentsContent');
+    if (!content) return;
+    content.innerHTML = '<div style="text-align: center; padding: 40px;"><div style="width: 3rem; height: 3rem; border: 0.25em solid #4099ff; border-right-color: transparent; border-radius: 50%; animation: spin 0.75s linear infinite; display: inline-block;"></div></div>';
+    
+    fetch('get_subscription_payments.php?subscription_id=' + subscriptionId)
+        .then(function(response) { return response.text(); })
+        .then(function(html) { content.innerHTML = html; })
+        .catch(function() { content.innerHTML = '<div class="sa-alert sa-alert-danger">Error loading payment history.</div>'; });
+    
+    showModal('subscriptionPaymentsModal');
 }
 </script>
 
