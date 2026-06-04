@@ -259,7 +259,7 @@
                         </div>
                         <div class="card-body p-0">
                             <div class="table-responsive">
-                                <table class="table table-hover mb-0" id="transactionsTable">
+                                <table class="table table-sm table-hover mb-0" id="transactionsTable">
                                     <thead class="thead-light">
                                         <tr>
                                             <th class="border-0">
@@ -267,17 +267,19 @@
                                                 <?= __('date') ?>
                                             </th>
                                             <th class="border-0">
-                                                <i class="feather icon-dollar-sign mr-1"></i>
+                                                <i class="feather icon-file-text mr-1"></i>
                                                 <?= __('remarks') ?>
-                                                
                                             </th>
-                                            
                                             <th class="border-0">
-                                                <i class="feather icon-refresh-cw mr-1"></i>
+                                                <i class="feather icon-hash mr-1"></i>
+                                                <?= __('receipt') ?>
+                                            </th>
+                                            <th class="border-0">
+                                                <i class="feather icon-dollar-sign mr-1"></i>
                                                 <?= __('amount') ?>
                                             </th>
                                             <th class="border-0">
-                                                <i class="feather icon-message-square mr-1"></i>
+                                                <i class="feather icon-refresh-cw mr-1"></i>
                                                 <?= __('exchange_rate') ?>
                                             </th>
                                             <th class="text-center border-0">

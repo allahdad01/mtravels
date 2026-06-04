@@ -196,14 +196,15 @@ function loadTransactions(weightId) {
                         tbody.append(`
                             <tr>
                                 <td>${formatDate(tx.created_at)}</td>
-                                <td>${tx.description || ''}</td>
+                                <td style="word-wrap:break-word;white-space:normal;max-width:200px">${tx.description || ''}</td>
+                                <td>${tx.receipt || '—'}</td>
                                 <td>${currency} ${amount.toFixed(2)}</td> 
                                 <td>${exchangeRate ? exchangeRate.toFixed(2) : 'N/A'}</td>
-                                <td class="text-center">
-                                    <button class="btn btn-primary btn-sm" onclick="editWeightTransaction(${tx.id}, '${(tx.description||'').replace(/'/g,"\\'")}', ${amount}, '${tx.created_at}', '${currency}', ${tx.exchange_rate || 'null'})">
+                                <td class="text-center" style="white-space:nowrap">
+                                    <button class="btn btn-primary btn-sm" onclick="editWeightTransaction(${tx.id}, '${(tx.description||'').replace(/'/g,"\\'")}', ${amount}, '${tx.created_at}', '${currency}', ${tx.exchange_rate || 'null'}, '${(tx.receipt||'').replace(/'/g,"\\'")}')">
                                         <i class="feather icon-edit"></i>
                                     </button>
-                                                                    <button class="btn btn-info btn-sm mr-1" title="Print Receipt"
+                                                                        <button class="btn btn-info btn-sm mr-1" title="Print Receipt"
                                         onclick="printReceipt(${tx.id})">
                                     <i class="feather icon-printer"></i>
                                 </button>
@@ -294,23 +295,9 @@ function loadTransactions(weightId) {
     });
 }
 
-function editWeightTransaction(id, remarks, amount, transaction_date, currency, exchange_rate) {
-    // Parse the datetime string
-    const dateTime = new Date(transaction_date);
-
-    // Format date for input field (YYYY-MM-DD)
-    const formattedDate = dateTime.toISOString().split('T')[0];
-
-    // Format time for input field (HH:MM:SS)
-    const hours = String(dateTime.getHours()).padStart(2, '0');
-    const minutes = String(dateTime.getMinutes()).padStart(2, '0');
-    const seconds = String(dateTime.getSeconds()).padStart(2, '0');
-    const formattedTime = `${hours}:${minutes}:${seconds}`;
-
+function editWeightTransaction(id, remarks, amount, transaction_date, currency, exchange_rate, receipt) {
     // Get the current weight ID from the weightId field
     const weightId = $('#weightId').val();
-
-
 
     // Create edit transaction modal if it doesn't exist
     if (!$('#editWeightTransactionModal').length) {
@@ -331,23 +318,7 @@ function editWeightTransaction(id, remarks, amount, transaction_date, currency, 
                                 <input type="hidden" id="originalAmount" name="original_amount">
 
                                 <div class="row">
-                                    <div class="col-md-3">
-                                        <div class="form-group">
-                                            <label for="editWeightDate">
-                                                <i class="feather icon-calendar mr-1"></i>Transaction Date
-                                            </label>
-                                            <input type="date" class="form-control" id="editWeightDate" name="transaction_date" required>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="form-group">
-                                            <label for="editWeightTime">
-                                                <i class="feather icon-clock mr-1"></i>Transaction Time
-                                            </label>
-                                            <input type="time" class="form-control" id="editWeightTime" name="transaction_time" step="1" required>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
+                                    <div class="col-md-4">
                                         <div class="form-group">
                                             <label for="editWeightAmount">
                                                 <i class="feather icon-dollar-sign mr-1"></i>Amount
@@ -359,13 +330,21 @@ function editWeightTransaction(id, remarks, amount, transaction_date, currency, 
                                             </small>
                                         </div>
                                     </div>
-                                    <div class="col-md-3">
+                                    <div class="col-md-4">
                                         <div class="form-group">
                                             <label for="editWeightRemarks">
                                                 <i class="feather icon-file-text mr-1"></i>Remarks
                                             </label>
                                             <textarea class="form-control" id="editWeightRemarks"
                                                       name="transaction_remarks" rows="2" required></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label for="editWeightReceipt">
+                                                <i class="feather icon-hash mr-1"></i>Receipt
+                                            </label>
+                                            <input type="text" class="form-control" id="editWeightReceipt" name="receipt_number" placeholder="Enter receipt number">
                                         </div>
                                     </div>
                                 </div>
@@ -381,6 +360,7 @@ function editWeightTransaction(id, remarks, amount, transaction_date, currency, 
                                                 <option value="EUR">EUR</option>
                                                 <option value="DARHAM">DARHAM</option>
                                             </select>
+                                            <input type="hidden" name="transaction_currency" id="editWeightCurrencyHidden">
                                         </div>
                                     </div>
                                     <div class="col-md-6">
@@ -435,7 +415,6 @@ function editWeightTransaction(id, remarks, amount, transaction_date, currency, 
 
             // Ensure transaction_id and weight_id are set
             if (!formData.get('transaction_id')) {
-                // Re-enable submit button on validation error
                 submitBtn.prop('disabled', false);
                 submitBtn.html(originalText);
                 alert('Error: Missing transaction ID');
@@ -443,30 +422,16 @@ function editWeightTransaction(id, remarks, amount, transaction_date, currency, 
             }
 
             if (!formData.get('weight_id')) {
-                // Re-enable submit button on validation error
                 submitBtn.prop('disabled', false);
                 submitBtn.html(originalText);
                 alert('Error: Missing weight ID');
                 return;
             }
 
-            // Combine date and time into a datetime string in MySQL format
-            const date = formData.get('transaction_date');
-            const time = formData.get('transaction_time');
-            if (date && time) {
-                formData.set('transaction_date', `${date} ${time}`);
-            }
-
             // Add exchange rate if provided
             const exchangeRate = $('#editWeightExchangeRate').val();
             if (exchangeRate && $('#editWeightExchangeRateField').is(':visible')) {
                 formData.set('transaction_exchange_rate', exchangeRate);
-            }
-
-            // Log the form data for debugging
-
-            for (let pair of formData.entries()) {
-
             }
 
             $.ajax({
@@ -483,23 +448,17 @@ function editWeightTransaction(id, remarks, amount, transaction_date, currency, 
                             $('#editWeightTransactionModal').modal('hide');
                             loadTransactions(currentWeightId);
                         } else {
-                            // Re-enable submit button on business logic error
                             submitBtn.prop('disabled', false);
                             submitBtn.html(originalText);
                             alert('Error updating transaction: ' + (result.message || 'Unknown error'));
                         }
                     } catch (e) {
-
-                        // Re-enable submit button on parsing error
                         submitBtn.prop('disabled', false);
                         submitBtn.html(originalText);
                         alert('Error processing the request');
                     }
                 },
                 error: function(xhr, status, error) {
-
-
-                    // Re-enable submit button on network error
                     submitBtn.prop('disabled', false);
                     submitBtn.html(originalText);
                     alert('Error updating transaction');
@@ -520,13 +479,13 @@ function editWeightTransaction(id, remarks, amount, transaction_date, currency, 
     $('#editWeightTransactionId').val(id);
     $('#editWeightId').val(weightId);
     $('#originalAmount').val(amount);
-    $('#editWeightDate').val(formattedDate);
-    $('#editWeightTime').val(formattedTime);
     $('#editWeightAmount').val(parseFloat(amount).toFixed(2));
     $('#editWeightRemarks').val(remarks);
+    $('#editWeightReceipt').val(receipt || '');
 
     // Set the currency from the transaction
     $('#editWeightCurrency').val(currency);
+    $('#editWeightCurrencyHidden').val(currency);
 
     // Show exchange rate field (always shown for edit)
     $('#editWeightExchangeRateField').show();
@@ -539,18 +498,6 @@ function editWeightTransaction(id, remarks, amount, transaction_date, currency, 
         $('#editWeightExchangeRateField').hide();
         $('#editWeightExchangeRate').val('');
     }
-
-    // Log values for debugging
-    console.log({
-        transactionId: id,
-        weightId: weightId,
-        amount: amount,
-        date: formattedDate,
-        time: formattedTime,
-        remarks: remarks,
-        currency: currency,
-        exchangeRate: exchange_rate
-    });
 
     // Show the modal
     $('#editWeightTransactionModal').modal('show');

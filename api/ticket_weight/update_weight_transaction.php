@@ -29,7 +29,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $weightId = $_POST['weight_id'] ?? 0;
     $originalAmount = floatval($_POST['original_amount'] ?? 0);
     $newAmount = floatval($_POST['transaction_amount'] ?? 0);
-    $newDate = $_POST['transaction_date'] ?? '';
     $newRemarks = $_POST['transaction_remarks'] ?? '';
 
     // Validate required fields first
@@ -55,6 +54,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Validate transaction_exchange_rate (optional)
     $transaction_exchange_rate = isset($_POST['transaction_exchange_rate']) ? DbSecurity::validateInput($_POST['transaction_exchange_rate'], 'float', ['min' => 0]) : null;
 
+    // Validate receipt_number (optional)
+    $receipt_number = isset($_POST['receipt_number']) ? DbSecurity::validateInput($_POST['receipt_number'], 'string', ['maxlength' => 100]) : null;
+
     // Exchange rate is now stored in separate column, no need to append to description
     if (!$transactionId || !$weightId) {
         echo json_encode(['success' => false, 'message' => 'Missing transaction or weight ID']);
@@ -66,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         // Get transaction details before update
-        $stmt = $pdo->prepare("SELECT amount, currency, type, main_account_id, created_at, description FROM main_account_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt = $pdo->prepare("SELECT amount, currency, type, main_account_id, created_at, description, receipt FROM main_account_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
         $stmt->bindParam(1, $transactionId, PDO::PARAM_INT);
         $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
         $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
@@ -80,7 +82,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $currency = $transaction['currency'];
         $type = $transaction['type'];
         $mainAccountId = $transaction['main_account_id'];
-        $originalDate = $transaction['created_at'];
 
         // Calculate the difference between original and new amount
         $amountDifference = $newAmount - $originalAmount;
@@ -149,11 +150,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // Update the transaction
-        $stmt = $pdo->prepare("UPDATE main_account_transactions SET amount = ?, description = ?, created_at = ?, exchange_rate = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt = $pdo->prepare("UPDATE main_account_transactions SET amount = ?, description = ?, exchange_rate = ?, receipt = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
         $stmt->bindParam(1, $newAmount, PDO::PARAM_STR);
         $stmt->bindParam(2, $newRemarks, PDO::PARAM_STR);
-        $stmt->bindParam(3, $newDate, PDO::PARAM_STR);
-        $stmt->bindParam(4, $transaction_exchange_rate, PDO::PARAM_STR);
+        $stmt->bindParam(3, $transaction_exchange_rate, PDO::PARAM_STR);
+        $stmt->bindParam(4, $receipt_number, PDO::PARAM_STR);
         $stmt->bindParam(5, $transactionId, PDO::PARAM_INT);
         $stmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
         $stmt->bindParam(7, $branch_id, PDO::PARAM_INT);
@@ -175,40 +176,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         }
 
-        // If date changed, we need to reorder transactions and recalculate all balances
-        if ($newDate != $originalDate) {
-            // Get all transactions for this account and currency, ordered by date
-            $stmt = $pdo->prepare("SELECT id, amount, type, created_at
-                                   FROM main_account_transactions
-                                   WHERE main_account_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ?
-                                   ORDER BY created_at ASC, id ASC");
-            $stmt->bindParam(1, $mainAccountId, PDO::PARAM_INT);
-            $stmt->bindParam(2, $currency, PDO::PARAM_STR);
-            $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-            $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
-            $stmt->execute();
-            $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            // Recalculate running balance for all transactions
-            $runningBalance = 0;
-            foreach ($transactions as $tx) {
-                $txAmount = floatval($tx['amount']);
-                if ($tx['type'] == 'credit') {
-                    $runningBalance += $txAmount;
-                } else {
-                    $runningBalance -= $txAmount;
-                }
-
-                // Update the balance for this transaction
-                $updateStmt = $pdo->prepare("UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                $updateStmt->bindParam(1, $runningBalance, PDO::PARAM_STR);
-                $updateStmt->bindParam(2, $tx['id'], PDO::PARAM_INT);
-                $updateStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-                $updateStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
-                $updateStmt->execute();
-            }
-        }
-
         // Add activity logging
         $user_id = $_SESSION['user_id'] ?? 0;
         $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
@@ -217,6 +184,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Get original exchange rate from the field
         $original_exchange_rate = $transaction['exchange_rate'] ?? null;
         $original_remarks = $transaction['description'] ?? '';
+        $original_receipt = $transaction['receipt'] ?? '';
 
         // Prepare old values
         $old_values = [
@@ -224,18 +192,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'weight_id' => $weightId,
             'amount' => $originalAmount,
             'description' => $original_remarks,
-            'created_at' => $originalDate,
+            'created_at' => $transaction['created_at'],
             'type' => $type,
             'currency' => $currency,
-            'exchange_rate' => $original_exchange_rate
+            'exchange_rate' => $original_exchange_rate,
+            'receipt' => $original_receipt
         ];
 
         // Prepare new values
         $new_values = [
             'amount' => $newAmount,
             'description' => $newRemarks,
-            'created_at' => $newDate,
-            'exchange_rate' => $transaction_exchange_rate
+            'exchange_rate' => $transaction_exchange_rate,
+            'receipt' => $receipt_number
         ];
         $action = 'update';
         $table_name = 'main_account_transactions';
