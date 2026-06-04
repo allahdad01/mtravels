@@ -256,6 +256,7 @@ const transactionManager = {
                         const currency = tx.currency;
                         const amount = parseFloat(tx.amount);
                         const exchangeRate = tx.exchange_rate ? parseFloat(tx.exchange_rate) : null;
+                        const receipt = tx.receipt || tx.receipt_number || '';
 
                         if (currency in hasCurrency) hasCurrency[currency] = true;
 
@@ -263,11 +264,11 @@ const transactionManager = {
                             <tr>
                                 <td>${transactionManager.formatDate(tx.created_at)}</td>
                                 <td>${tx.description || ''}</td>
-                                <td>${tx.type === 'credit' ? 'Received' : 'Paid'}</td>
+                                <td>${receipt || '\u2014'}</td>
                                 <td>${currency} ${amount.toFixed(2)}</td>
                                 <td>${exchangeRate || 'N/A'}</td>
                                 <td class="text-center">
-                                    <button class="btn btn-primary btn-sm" onclick="transactionManager.editTransaction(${tx.id}, '${(tx.description||'').replace(/'/g,"\\'")}', ${amount}, '${tx.created_at}', '${currency}', ${tx.exchange_rate || 'null'})">
+                                    <button class="btn btn-primary btn-sm" onclick="transactionManager.editTransaction(${tx.id}, '${(tx.description||'').replace(/'/g,"\\'")}', ${amount}, '${currency}', ${tx.exchange_rate || 'null'}, '${receipt.replace(/'/g,"\\'")}')">
                                         <i class="feather icon-edit"></i>
                                     </button>
                                                                     <button class="btn btn-info btn-sm mr-1" title="Print Receipt"
@@ -484,23 +485,9 @@ const transactionManager = {
     },
 
     // Edit transaction
-    editTransaction: function(transactionId, description, amount, createdAt, currency, exchangeRate) {
-        // Parse the datetime string
-        const dateTime = new Date(createdAt);
-
-        // Format date for input field (YYYY-MM-DD)
-        const formattedDate = dateTime.toISOString().split('T')[0];
-
-        // Format time for input field (HH:MM:SS)
-        const hours = String(dateTime.getHours()).padStart(2, '0');
-        const minutes = String(dateTime.getMinutes()).padStart(2, '0');
-        const seconds = String(dateTime.getSeconds()).padStart(2, '0');
-        const formattedTime = `${hours}:${minutes}:${seconds}`;
-
+    editTransaction: function(transactionId, description, amount, currency, exchangeRate, receipt) {
         // Get the current refund ID from the refund_id field
         const refundId = $('#refund_id').val();
-
-
 
         // Create edit transaction modal if it doesn't exist
         if (!$('#editTransactionModal').length) {
@@ -521,23 +508,7 @@ const transactionManager = {
                                     <input type="hidden" id="originalAmount" name="original_amount">
 
                                     <div class="row">
-                                        <div class="col-md-3">
-                                            <div class="form-group">
-                                                <label for="editPaymentDate">
-                                                    <i class="feather icon-calendar mr-1"></i>Payment Date
-                                                </label>
-                                                <input type="date" class="form-control" id="editPaymentDate" name="payment_date" required>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <div class="form-group">
-                                                <label for="editPaymentTime">
-                                                    <i class="feather icon-clock mr-1"></i>Payment Time
-                                                </label>
-                                                <input type="time" class="form-control" id="editPaymentTime" name="payment_time" step="1" required>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
+                                        <div class="col-md-6">
                                             <div class="form-group">
                                                 <label for="editPaymentAmount">
                                                     <i class="feather icon-dollar-sign mr-1"></i>Amount
@@ -549,17 +520,6 @@ const transactionManager = {
                                                 </small>
                                             </div>
                                         </div>
-                                        <div class="col-md-3">
-                                            <div class="form-group">
-                                                <label for="editPaymentDescription">
-                                                    <i class="feather icon-file-text mr-1"></i>Description
-                                                </label>
-                                                <textarea class="form-control" id="editPaymentDescription"
-                                                          name="payment_description" rows="2" required></textarea>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="row">
                                         <div class="col-md-6">
                                             <div class="form-group">
                                                 <label for="editPaymentCurrency">
@@ -571,17 +531,37 @@ const transactionManager = {
                                                     <option value="EUR">EUR</option>
                                                     <option value="DARHAM">DARHAM</option>
                                                 </select>
+                                                <input type="hidden" id="editPaymentCurrencyHidden" name="payment_currency_actual">
                                             </div>
                                         </div>
-                                        <div class="col-md-6">
-                                            <div class="form-group" id="editExchangeRateField" style="display: none;">
-                                                <label for="editTransactionExchangeRate">
-                                                    <i class="feather icon-refresh-cw mr-1"></i>Exchange Rate
-                                                </label>
-                                                <input type="number" class="form-control" id="editTransactionExchangeRate"
-                                                       name="exchange_rate" step="0.01" placeholder="Enter exchange rate">
-                                            </div>
-                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="editPaymentDescription">
+                                            <i class="feather icon-file-text mr-1"></i>Description
+                                        </label>
+                                        <textarea class="form-control" id="editPaymentDescription"
+                                                  name="payment_description" rows="2" required></textarea>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="editReceiptNumber">
+                                            <i class="feather icon-hash mr-1"></i>Receipt Number
+                                        </label>
+                                        <input type="text" class="form-control" id="editReceiptNumber"
+                                               name="receipt_number" placeholder="Enter receipt number">
+                                    </div>
+
+                                    <div class="form-group" id="editExchangeRateField" style="display: none;">
+                                        <label for="editTransactionExchangeRate">
+                                            <i class="feather icon-refresh-cw mr-1"></i>Exchange Rate
+                                        </label>
+                                        <input type="number" class="form-control" id="editTransactionExchangeRate"
+                                               name="exchange_rate" step="0.01" placeholder="Enter exchange rate">
+                                        <small class="form-text text-muted d-block mt-1">
+                                            Enter how many <span id="editExchangeRateTarget"></span> equals 1 <span id="editExchangeRateBase"></span>
+                                            <span id="editExchangeRateExample" class="d-block mt-1" style="color: #666;"></span>
+                                        </small>
                                     </div>
                                 </div>
                                 <div class="modal-footer">
@@ -622,7 +602,6 @@ const transactionManager = {
 
             // Ensure transaction_id and refund_id are set
             if (!formData.get('transaction_id')) {
-                // Re-enable submit button on validation error
                 submitBtn.prop('disabled', false);
                 submitBtn.html(originalText);
                 alert('Error: Missing transaction ID');
@@ -630,31 +609,16 @@ const transactionManager = {
             }
 
             if (!formData.get('refund_id')) {
-                // Re-enable submit button on validation error
                 submitBtn.prop('disabled', false);
                 submitBtn.html(originalText);
                 alert('Error: Missing refund ID');
                 return;
             }
 
-            // Combine date and time into a datetime string in MySQL format
-            const date = formData.get('payment_date');
-            const time = formData.get('payment_time');
-            if (date && time) {
-                formData.set('payment_date', `${date} ${time}`);
-            }
-
-            // Add exchange rate if provided
-            const exchangeRate = $('#editTransactionExchangeRate').val();
-            if (exchangeRate && $('#editExchangeRateField').is(':visible')) {
-                formData.set('payment_exchange_rate', exchangeRate);
-            }
-
-            // Log the form data for debugging
-
-            for (let pair of formData.entries()) {
-
-            }
+            // Use hidden currency for submit
+            formData.set('payment_currency', $('#editPaymentCurrencyHidden').val() || $('#editPaymentCurrency').val());
+            // Add receipt number
+            formData.set('receipt_number', ($('#editReceiptNumber').val() || '').trim());
 
             $.ajax({
                 url: '../api/hotel/update_refund_hotel_transaction.php',
@@ -670,23 +634,17 @@ const transactionManager = {
                             $('#editTransactionModal').modal('hide');
                             transactionManager.loadTransactionHistory(currentRefundId);
                         } else {
-                            // Re-enable submit button on business logic error
                             submitBtn.prop('disabled', false);
                             submitBtn.html(originalText);
                             showToast('Error updating transaction: ' + (result.message || 'Unknown error'));
                         }
                     } catch (e) {
-
-                        // Re-enable submit button on parsing error
                         submitBtn.prop('disabled', false);
                         submitBtn.html(originalText);
                         showToast('Error processing the request');
                     }
                 },
                 error: function(xhr, status, error) {
-
-
-                    // Re-enable submit button on network error
                     submitBtn.prop('disabled', false);
                     submitBtn.html(originalText);
                     showToast('Error updating transaction');
@@ -706,37 +664,20 @@ const transactionManager = {
         $('#editTransactionId').val(transactionId);
         $('#editRefundId').val(refundId);
         $('#originalAmount').val(amount);
-        $('#editPaymentDate').val(formattedDate);
-        $('#editPaymentTime').val(formattedTime);
         $('#editPaymentAmount').val(parseFloat(amount).toFixed(2));
         $('#editPaymentDescription').val(description);
-
-        // Set the currency from the transaction
         $('#editPaymentCurrency').val(currency);
+        $('#editPaymentCurrencyHidden').val(currency);
+        $('#editTransactionExchangeRate').val(exchangeRate || '');
+        $('#editReceiptNumber').val(receipt || '');
 
-        // Show exchange rate field (always shown for edit)
+        // Show exchange rate field
         transactionManager.toggleEditExchangeRateField();
-
-        // Set exchange rate from parameter
         if (exchangeRate && exchangeRate !== 'null') {
-            $('#editTransactionExchangeRate').val(exchangeRate);
             $('#editExchangeRateField').show();
         } else {
             $('#editExchangeRateField').hide();
-            $('#editTransactionExchangeRate').val('');
         }
-
-        // Log values for debugging
-        console.log({
-            transactionId: transactionId,
-            refundId: refundId,
-            amount: amount,
-            date: formattedDate,
-            time: formattedTime,
-            description: description,
-            currency: currency,
-            exchangeRate: exchangeRate
-        });
 
         // Show the modal
         $('#editTransactionModal').modal('show');

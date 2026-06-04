@@ -26,20 +26,9 @@ header('Content-Type: application/json');
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Get form data
     $transactionId = $_POST['transaction_id'] ?? 0;
-    // Handle both refund_id and refund_id for backward compatibility
-    $bookingId = $_POST['booking_id'] ?? $_POST['booking_id'] ?? 0;
+    $bookingId = $_POST['booking_id'] ?? $_POST['refund_id'] ?? 0;
     $originalAmount = floatval($_POST['original_amount'] ?? $_POST['payment_amount'] ?? 0);
     $newAmount = floatval($_POST['payment_amount'] ?? 0);
-    
-    // Combine date and time if they're separate
-    $paymentTime = $_POST['payment_time'] ?? '00:00:00';
-    $paymentDate = $_POST['payment_date'] ?? '';
-    if (strlen($paymentDate) <= 10) { // If date doesn't include time
-        $newDate = $paymentDate . ' ' . $paymentTime;
-    } else {
-        $newDate = $paymentDate; // Use as is if it already includes time
-    }
-    
     $newDescription = $_POST['payment_description'] ?? '';
     $newExchangeRate = isset($_POST['exchange_rate']) ? floatval($_POST['exchange_rate']) : null;
 
@@ -47,8 +36,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Validate payment_description
     $payment_description = isset($_POST['payment_description']) ? DbSecurity::validateInput($_POST['payment_description'], 'string', ['maxlength' => 255]) : null;
 
-    // Validate payment_date
-    $payment_date = isset($newDate) ? DbSecurity::validateInput($newDate, 'datetime') : null;
+    // Validate receipt_number
+    $receipt_number = isset($_POST['receipt_number']) ? DbSecurity::validateInput($_POST['receipt_number'], 'string', ['maxlength' => 255]) : '';
 
     // Validate payment_amount
     $payment_amount = isset($_POST['payment_amount']) ? DbSecurity::validateInput($_POST['payment_amount'], 'float', ['min' => 0]) : null;
@@ -57,9 +46,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $original_amount = isset($_POST['original_amount']) ? DbSecurity::validateInput($_POST['original_amount'], 'float', ['min' => 0]) : 
                       (isset($_POST['payment_amount']) ? DbSecurity::validateInput($_POST['payment_amount'], 'float', ['min' => 0]) : null);
 
-    // Validate refund_id - handle both refund_id and refund_id
+    // Validate booking_id
     $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['booking_id'], 'int', ['min' => 0]) : null;
-              
 
     // Validate transaction_id
     $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_POST['transaction_id'], 'int', ['min' => 0]) : null;
@@ -165,8 +153,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         // Update the transaction
-        $updateFields = "amount = ?, description = ?, created_at = ?";
-        $bindValues = [$newAmount, $newDescription, $newDate];
+        $updateFields = "amount = ?, description = ?, receipt = ?";
+        $bindValues = [$newAmount, $newDescription, $receipt_number];
         $paramTypes = [PDO::PARAM_STR, PDO::PARAM_STR, PDO::PARAM_STR];
 
         if ($newExchangeRate !== null) {
@@ -208,47 +196,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         
-        // If date changed, we need to reorder transactions and recalculate all balances
-        if ($newDate != $originalDate) {
-            // Get all transactions for this account and currency, ordered by date
-            $stmt = $pdo->prepare("SELECT id, amount, type, created_at
-                                   FROM main_account_transactions
-                                   WHERE main_account_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ?
-                                   ORDER BY created_at ASC, id ASC");
-            $stmt->bindParam(1, $mainAccountId, PDO::PARAM_INT);
-            $stmt->bindParam(2, $currency, PDO::PARAM_STR);
-            $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-            $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
-
-            if (!$stmt->execute()) {
-                throw new Exception("Failed to retrieve transactions for reordering");
-            }
-
-            $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            // Recalculate running balance for all transactions
-            $runningBalance = 0;
-            foreach ($transactions as $tx) {
-                $txAmount = floatval($tx['amount']);
-                if ($tx['type'] == 'credit') {
-                    $runningBalance += $txAmount;
-                } else {
-                    $runningBalance -= $txAmount;
-                }
-
-                // Update the balance for this transaction
-                $updateStmt = $pdo->prepare("UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                $updateStmt->bindParam(1, $runningBalance, PDO::PARAM_STR);
-                $updateStmt->bindParam(2, $tx['id'], PDO::PARAM_INT);
-                $updateStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-                $updateStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
-
-                if (!$updateStmt->execute()) {
-                    throw new Exception("Failed to update transaction balance during reordering");
-                }
-            }
-        }
-        
         // Add activity logging
         $user_id = $_SESSION['user_id'] ?? 0;
         $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
@@ -269,7 +216,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $new_values = [
             'amount' => $newAmount,
             'description' => $newDescription,
-            'created_at' => $newDate
+            'receipt_number' => $receipt_number
         ];
 
         if ($newExchangeRate !== null) {
