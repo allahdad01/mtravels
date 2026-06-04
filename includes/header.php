@@ -1473,12 +1473,12 @@ document.addEventListener('DOMContentLoaded', function () {
     }, true);
 
     // ── Receipt modal submit handler (vanilla JS, works on all pages) ──
-    var submitReceiptBtn = document.getElementById('submitReceipt');
+    var submitReceiptBtn = document.getElementById('dashboardSubmitReceipt');
     if (submitReceiptBtn) {
         submitReceiptBtn.addEventListener('click', function(e) {
             e.preventDefault();
-            var receiptNumber = document.getElementById('receiptNumber').value;
-            var remarks = document.getElementById('remarks').value;
+            var receiptNumber = document.getElementById('dashboardReceiptNumber').value;
+            var remarks = document.getElementById('dashboardRemarks').value;
             var notificationId = document.getElementById('hiddenNotificationId').value;
             var csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '<?= h($_SESSION['csrf_token'] ?? '') ?>';
 
@@ -1549,8 +1549,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
 
                     // Clear form fields
-                    document.getElementById('receiptNumber').value = '';
-                    document.getElementById('remarks').value = '';
+                    document.getElementById('dashboardReceiptNumber').value = '';
+                    document.getElementById('dashboardRemarks').value = '';
                 } else {
                     // Show error toast
                     var errorToast = document.createElement('div');

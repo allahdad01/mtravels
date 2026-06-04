@@ -12,9 +12,9 @@ $(document).ready(function() {
     });
 
     // Submit the receipt number and notification ID via AJAX
-    $("#submitReceipt").on("click", function() {
-        var receiptNumber = $("#receiptNumber").val();
-        var remarks = $("#remarks").val();
+    $("#dashboardSubmitReceipt").on("click", function() {
+        var receiptNumber = $("#dashboardReceiptNumber").val();
+        var remarks = $("#dashboardRemarks").val();
         var notificationId = $("#hiddenNotificationId").val();
         var csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
@@ -54,8 +54,8 @@ $(document).ready(function() {
                     }
                     
                     // Clear form fields
-                    $("#receiptNumber").val('');
-                    $("#remarks").val('');
+                    $("#dashboardReceiptNumber").val('');
+                    $("#dashboardRemarks").val('');
                 } else {
                     showToast('error', response.message || 'Failed to approve notification');
                 }

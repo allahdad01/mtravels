@@ -102,7 +102,7 @@ if (!function_exists('h')) {
     gap: 10px;
   }
 
-  #receiptModal #submitReceipt {
+  #receiptModal #dashboardSubmitReceipt {
     border-radius: 0;
     background-color: #1a6fc4;
     border: none;
@@ -114,7 +114,7 @@ if (!function_exists('h')) {
     transition: background-color 0.15s;
   }
 
-  #receiptModal #submitReceipt:hover {
+  #receiptModal #dashboardSubmitReceipt:hover {
     background-color: #155da0;
   }
 
@@ -159,11 +159,11 @@ if (!function_exists('h')) {
           <input type="hidden" id="hiddenNotificationId" name="notification_id">
 
           <div class="mb-3">
-            <label for="receiptNumber" class="form-label"><?= __('receipt_number') ?></label>
+            <label for="dashboardReceiptNumber" class="form-label"><?= __('receipt_number') ?></label>
             <input
               type="text"
               class="form-control"
-              id="receiptNumber"
+              id="dashboardReceiptNumber"
               name="receipt_number"
               placeholder="e.g. RCP-2024-00123"
               required
@@ -171,11 +171,11 @@ if (!function_exists('h')) {
           </div>
 
           <div class="mb-3">
-            <label for="remarks" class="form-label"><?= __('remarks') ?></label>
+            <label for="dashboardRemarks" class="form-label"><?= __('remarks') ?></label>
             <input
               type="text"
               class="form-control"
-              id="remarks"
+              id="dashboardRemarks"
               name="remarks"
               placeholder="<?= __('enter_remarks') ?>"
               required
@@ -186,7 +186,7 @@ if (!function_exists('h')) {
 
       <div class="modal-footer justify-content-end">
          <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('close') ?></button>
-         <button type="button" id="submitReceipt" class="btn btn-success"><?= __('submit') ?></button>
+         <button type="button" id="dashboardSubmitReceipt" class="btn btn-success"><?= __('submit') ?></button>
        </div>
 
     </div>
