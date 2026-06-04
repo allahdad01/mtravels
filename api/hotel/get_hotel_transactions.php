@@ -30,13 +30,10 @@ if (isset($_GET['booking_id'])) {
                 t.amount,
                 t.description,
                 t.created_at as transaction_date,
-                CASE
-                    WHEN LOWER(t.type) = 'credit' THEN 'payment'
-                    WHEN LOWER(t.type) = 'debit' THEN 'receipt'
-                    ELSE t.type
-                END as type,
+                t.type,
                 t.currency,
-                t.exchange_rate
+                t.exchange_rate,
+                t.receipt
             FROM main_account_transactions t
             LEFT JOIN main_account m ON t.main_account_id = m.id
             LEFT JOIN hotel_bookings hb ON t.reference_id = hb.id

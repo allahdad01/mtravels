@@ -308,6 +308,7 @@ const transactionManager = {
                         const currency = tx.currency;
                         const amount = parseFloat(tx.amount);
                         const exchangeRate = tx.exchange_rate ? parseFloat(tx.exchange_rate) : null;
+                        const receipt = tx.receipt || tx.receipt_number || '';
 
                         if (currency in hasCurrency) hasCurrency[currency] = true;
 
@@ -315,11 +316,11 @@ const transactionManager = {
                             <tr>
                                 <td>${transactionManager.formatDate(tx.transaction_date)}</td>
                                 <td>${tx.description || ''}</td>
-                                <td>${tx.type === 'credit' ? 'Received' : 'Paid'}</td>
+                                <td>${receipt || '\u2014'}</td>
                                 <td>${currency} ${amount.toFixed(2)}</td>
                                 <td>${exchangeRate || 'N/A'}</td>
                                 <td class="text-center">
-                                    <button class="btn btn-primary btn-sm" onclick="transactionManager.editTransaction(${tx.id}, '${(tx.description||'').replace(/'/g,"\\'")}', ${amount}, '${tx.transaction_date}', '${currency}', ${tx.exchange_rate || 'null'})">
+                                    <button class="btn btn-primary btn-sm" onclick="transactionManager.editTransaction(${tx.id}, '${(tx.description||'').replace(/'/g,"\\'")}', ${amount}, '${currency}', ${tx.exchange_rate || 'null'}, '${receipt.replace(/'/g,"\\'")}')">
                                         <i class="feather icon-edit"></i>
                                     </button>
                                                                     <button class="btn btn-info btn-sm mr-1" title="Print Receipt"
@@ -529,25 +530,16 @@ const transactionManager = {
     },
 
     // Edit transaction
-    editTransaction: function(transactionId, description, amount, transactionDate, currency, exchangeRate) {
-        const dateTime = new Date(transactionDate);
-        const formattedDate = dateTime.toISOString().split('T')[0];
-
-        // Format time as HH:MM:SS
-        const hours = String(dateTime.getHours()).padStart(2, '0');
-        const minutes = String(dateTime.getMinutes()).padStart(2, '0');
-        const seconds = String(dateTime.getSeconds()).padStart(2, '0');
-        const formattedTime = `${hours}:${minutes}:${seconds}`;
-
+    editTransaction: function(transactionId, description, amount, currency, exchangeRate, receipt) {
         // Populate the edit form
         $('#editTransactionId').val(transactionId);
         $('#originalAmount').val(amount);
-        $('#editPaymentDate').val(formattedDate);
-        $('#editPaymentTime').val(formattedTime);
         $('#editPaymentAmount').val(parseFloat(amount).toFixed(2));
         $('#editPaymentDescription').val(description);
         $('#editPaymentCurrency').val(currency);
+        $('#editPaymentCurrencyHidden').val(currency);
         $('#editTransactionExchangeRate').val(exchangeRate || '');
+        $('#editReceiptNumber').val(receipt || '');
 
         // Trigger change event to update exchange rate field visibility
         $('#editPaymentCurrency').trigger('change');
@@ -585,12 +577,10 @@ const transactionManager = {
             formData.set('csrf_token', metaCsrfToken);
         }
 
-        // Combine date and time
-        const date = formData.get('payment_date');
-        const time = formData.get('payment_time');
-        if (date && time) {
-            formData.set('payment_date', `${date} ${time}`);
-        }
+        // Use hidden currency for submit
+        formData.set('payment_currency', $('#editPaymentCurrencyHidden').val() || $('#editPaymentCurrency').val());
+        // Add receipt number
+        formData.set('receipt_number', ($('#editReceiptNumber').val() || '').trim());
 
         $.ajax({
             url: '../api/hotel/update_hotel_transaction.php',
