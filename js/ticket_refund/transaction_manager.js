@@ -200,7 +200,7 @@ const transactionManager = {
             tbody.empty();
 
             if (!Array.isArray(transactions) || transactions.length === 0) {
-                tbody.html('<tr><td colspan="6" class="text-center">No transactions found</td></tr>');
+                tbody.html('<tr><td colspan="7" class="text-center">No transactions found</td></tr>');
                 $('#exchangeRateDisplay').text('No exchange rates found');
                 $('#exchangedAmount').text('No conversions available');
                 return;
@@ -225,22 +225,24 @@ const transactionManager = {
                 }
 
                 const cleanDescription = (tx.description || '').replace(/ \(Exchange Rate: [0-9.]+\)/, '');
+                const receiptDisplay = tx.receipt || tx.receipt_number || '';
+                const receiptEscaped = receiptDisplay.replace(/'/g, "\\'");
                 tbody.append(`
                     <tr>
                         <td>${transactionManager.formatDate(tx.created_at)}</td>
-                        <td>${cleanDescription}</td>
-                        <td>${tx.type === 'credit' ? 'Received' : 'Paid'}</td>
-                        <td>${currency} ${amount.toFixed(2)}</td>
+                        <td style="word-wrap:break-word;white-space:normal;max-width:200px">${cleanDescription}</td>
+                        <td>${receiptDisplay || '—'}</td>
+                        <td>${tx.type === 'credit' ? 'Received' : 'Paid'} ${currency} ${amount.toFixed(2)}</td>
                         <td>${exchangeRate !== null ? exchangeRate : 'N/A'}</td>
-                        <td class="text-center">
+                        <td class="text-center" style="white-space:nowrap">
                             <button class="btn btn-primary btn-sm mr-1" title="Edit Transaction"
-                                onclick="transactionManager.editTransaction(${tx.id}, '${cleanDescription.replace(/'/g,"\\'")}', ${amount}, '${tx.created_at}')">
+                                onclick="transactionManager.editTransaction(${tx.id})">
                                 <i class="feather icon-edit"></i>
                             </button>
                                                             <button class="btn btn-info btn-sm mr-1" title="Print Receipt"
-                                        onclick="printReceipt(${tx.id})">
-                                    <i class="feather icon-printer"></i>
-                                </button>
+                                    onclick="printReceipt(${tx.id})">
+                                <i class="feather icon-printer"></i>
+                            </button>
                             <button class="btn btn-danger btn-sm" title="Delete Transaction"
                                 onclick="transactionManager.deleteTransaction(${tx.id})">
                                 <i class="feather icon-trash-2"></i>
@@ -307,7 +309,7 @@ const transactionManager = {
         },
         error: function(xhr, status, error) {
 
-            $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">Error loading transactions</td></tr>');
+            $('#transactionTableBody').html('<tr><td colspan="7" class="text-center">Error loading transactions</td></tr>');
             $('#exchangeRateDisplay').text('Error loading exchange rates');
             $('#exchangedAmount').text('Error calculating amounts');
         }
@@ -330,24 +332,13 @@ const transactionManager = {
                 if (response.success) {
                     const tx = response.transaction;
                     
-                    // Parse the datetime string
-                    const txDate = new Date(tx.transaction_date);
-                    const formattedDate = txDate.toISOString().split('T')[0];
-                    
-                    // Format time as HH:MM:SS
-                    const hours = String(txDate.getHours()).padStart(2, '0');
-                    const minutes = String(txDate.getMinutes()).padStart(2, '0');
-                    const seconds = String(txDate.getSeconds()).padStart(2, '0');
-                    const formattedTime = `${hours}:${minutes}:${seconds}`;
-                    
                     // Populate form fields
                     $('#editTransactionId').val(tx.id);
                     $('#editTicketId').val(ticketId);
                     $('#originalAmount').val(tx.amount);
-                    $('#editPaymentDate').val(formattedDate);
-                    $('#editPaymentTime').val(formattedTime);
                     $('#editPaymentAmount').val(tx.amount);
                     $('#editPaymentDescription').val(tx.description);
+                    $('#editReceiptNumber').val(tx.receipt || tx.receipt_number || '');
                     $('#editExchangeRate').val(tx.exchange_rate || '');
 
                     // Show exchange rate field if there's an exchange rate
@@ -392,13 +383,11 @@ const transactionManager = {
         const formData = new FormData(form[0]);
         const ticketId = formData.get('ticket_id');
         
-        // Combine date and time into a single datetime value
-        const date = formData.get('payment_date');
-        const time = formData.get('payment_time') || '00:00:00';
-        if (date) {
-            formData.set('payment_date', `${date} ${time}`);
+        const receiptNumber = $('#editReceiptNumber').val();
+        if (receiptNumber) {
+            formData.set('receipt_number', receiptNumber);
         }
-        
+
        $.ajax({
     url: '../api/ticket_refund/update_refund_transaction.php',
     type: 'POST',

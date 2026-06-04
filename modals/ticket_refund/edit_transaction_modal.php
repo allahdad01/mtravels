@@ -17,30 +17,20 @@
                     <input type="hidden" id="editTransactionId" name="transaction_id">
                     <input type="hidden" id="editTicketId" name="ticket_id">
                     <input type="hidden" id="originalAmount" name="original_amount">
-                    
-                    <div class="form-row">
-                        <div class="form-group col-md-6">
-                            <label for="editPaymentDate">
-                                <i class="feather icon-calendar mr-1"></i><?= __('date') ?>
-                            </label>
-                            <input type="date" class="form-control" id="editPaymentDate" name="payment_date" required>
-                        </div>
-                        <div class="form-group col-md-6">
-                            <label for="editPaymentTime">
-                                <i class="feather icon-clock mr-1"></i><?= __('time') ?>
-                            </label>
-                            <input type="text" class="form-control" id="editPaymentTime" name="payment_time" 
-                                placeholder="HH:MM:SS" pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]" 
-                                title="Format: HH:MM:SS" required>
-                            <small class="form-text text-muted"><?= __('format_hours_minutes_seconds_24_hour') ?></small>
-                        </div>
-                    </div>
+                    <input type="hidden" id="editPaymentCurrencyHidden" name="payment_currency_actual">
                     
                     <div class="form-group">
                         <label for="editPaymentAmount">
                             <i class="feather icon-dollar-sign mr-1"></i><?= __('amount') ?>
                         </label>
                         <input type="number" step="0.01" class="form-control" id="editPaymentAmount" name="payment_amount" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editPaymentDescription">
+                            <i class="feather icon-file-text mr-1"></i><?= __('description') ?>
+                        </label>
+                        <textarea class="form-control" id="editPaymentDescription" name="payment_description" rows="2" required></textarea>
                     </div>
 
                     <div class="form-group" id="editExchangeRateField" style="display: none;">
@@ -52,10 +42,11 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="editPaymentDescription">
-                            <i class="feather icon-file-text mr-1"></i><?= __('description') ?>
+                        <label for="editReceiptNumber">
+                            <i class="feather icon-hash mr-1"></i><?= __('receipt_number') ?>
                         </label>
-                        <textarea class="form-control" id="editPaymentDescription" name="payment_description" rows="2" required></textarea>
+                        <input type="text" class="form-control" id="editReceiptNumber"
+                               name="receipt_number" placeholder="<?= __('enter_receipt_number') ?>">
                     </div>
                 </form>
             </div>
