@@ -101,6 +101,14 @@ sort($categories);
     .search-box { margin-bottom: 30px; }
     .search-box input { width: 100%; padding: 12px 20px; border: 2px solid #e0e0e0; border-radius: 25px; font-size: 1rem; transition: all 0.3s ease; }
     .search-box input:focus { outline: none; border-color: #4680ff; box-shadow: 0 0 0 3px rgba(70, 128, 255, 0.1); }
+    .video-chapters { background: #1a1a2e; padding: 16px 20px; border-top: 1px solid #333; }
+    .video-chapters-title { color: #aaa; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+    .video-chapters-list { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chapter-item { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.08); border-radius: 6px; padding: 6px 12px; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; }
+    .chapter-item:hover { background: rgba(70, 128, 255, 0.2); border-color: #4680ff; }
+    .chapter-time { font-size: 0.8rem; font-weight: 700; color: #4680ff; font-family: monospace; white-space: nowrap; }
+    .chapter-label { font-size: 0.85rem; color: #e0e0e0; }
+    .chapter-item:hover .chapter-label { color: #fff; }
     @media (max-width: 768px) {
         .tutorials-grid { grid-template-columns: 1fr; }
         .category-filter { justify-content: center; }
@@ -177,6 +185,10 @@ sort($categories);
         <div class="video-container">
             <iframe id="videoPlayer" src="" allow="autoplay; fullscreen; picture-in-picture"></iframe>
         </div>
+        <div id="chaptersSection" class="video-chapters" style="display:none;">
+            <div class="video-chapters-title"><i class="feather icon-list mr-2"></i>Chapters</div>
+            <div id="chaptersList" class="video-chapters-list"></div>
+        </div>
     </div>
 </div>
 
@@ -189,12 +201,19 @@ sort($categories);
 <script>
     const tutorials = <?= json_encode($tutorials) ?>;
 
+    let currentVideoType = null;
+    let currentChapters = [];
+    let ytPlayer = null;
+    let vimeoPlayer = null;
+    let ytApiLoaded = false;
+    let vimeoApiLoaded = false;
+
     function getVideoUrl(tutorial) {
         const type = tutorial.video_type || 'vimeo';
         const id = tutorial.video_id || '';
         if (!id) return '';
         if (type === 'youtube') {
-            return 'https://www.youtube.com/embed/' + id + '?autoplay=1&rel=0';
+            return 'https://www.youtube.com/embed/' + id + '?autoplay=1&rel=0&enablejsapi=1';
         }
         return 'https://player.vimeo.com/video/' + id + '?autoplay=1';
     }
@@ -202,10 +221,98 @@ sort($categories);
     function playVideo(tutorial) {
         const modal = document.getElementById('videoModal');
         const iframe = document.getElementById('videoPlayer');
+
+        currentVideoType = tutorial.video_type || 'vimeo';
+        currentChapters = [];
+        try { currentChapters = JSON.parse(tutorial.chapters || '[]'); } catch(e) {}
+        ytPlayer = null;
+        vimeoPlayer = null;
+
         const url = getVideoUrl(tutorial);
         iframe.src = url;
         modal.classList.add('show');
         document.body.style.overflow = 'hidden';
+
+        renderChapters();
+        loadPlayerAPI();
+    }
+
+    function renderChapters() {
+        const section = document.getElementById('chaptersSection');
+        const list = document.getElementById('chaptersList');
+        if (!currentChapters.length) {
+            section.style.display = 'none';
+            return;
+        }
+        section.style.display = 'block';
+        list.innerHTML = currentChapters.map(function(ch, i) {
+            return '<div class="chapter-item" onclick="seekToChapter(' + i + ')">'
+                + '<span class="chapter-time">' + esc(ch.time) + '</span>'
+                + '<span class="chapter-label">' + esc(ch.label) + '</span>'
+                + '</div>';
+        }).join('');
+    }
+
+    function seekToChapter(index) {
+        const ch = currentChapters[index];
+        if (!ch) return;
+        const seconds = ch.seconds || 0;
+        if (currentVideoType === 'youtube' && ytPlayer && typeof ytPlayer.seekTo === 'function') {
+            ytPlayer.seekTo(seconds, true);
+        } else if (currentVideoType === 'vimeo' && vimeoPlayer && typeof vimeoPlayer.setCurrentTime === 'function') {
+            vimeoPlayer.setCurrentTime(seconds).catch(function() {});
+        }
+    }
+
+    function loadPlayerAPI() {
+        if (currentVideoType === 'youtube') {
+            if (!ytApiLoaded) {
+                ytApiLoaded = true;
+                var tag = document.createElement('script');
+                tag.src = 'https://www.youtube.com/iframe_api';
+                var first = document.getElementsByTagName('script')[0];
+                first.parentNode.insertBefore(tag, first);
+            }
+            // Wait for iframe to load then create player
+            var iframe = document.getElementById('videoPlayer');
+            var checkInterval = setInterval(function() {
+                if (typeof YT !== 'undefined' && YT.loaded) {
+                    clearInterval(checkInterval);
+                    if (!ytPlayer) {
+                        try {
+                            ytPlayer = new YT.Player('videoPlayer', {
+                                events: {
+                                    'onReady': function() {
+                                        if (currentChapters.length && currentChapters[0].seconds) {
+                                            // If first chapter time > 0, optionally seek to start
+                                        }
+                                    }
+                                }
+                            });
+                        } catch(e) {}
+                    }
+                }
+            }, 500);
+        } else if (currentVideoType === 'vimeo') {
+            if (!vimeoApiLoaded) {
+                vimeoApiLoaded = true;
+                var tag = document.createElement('script');
+                tag.src = 'https://player.vimeo.com/api/player.js';
+                var first = document.getElementsByTagName('script')[0];
+                first.parentNode.insertBefore(tag, first);
+            }
+            var iframe = document.getElementById('videoPlayer');
+            var checkInterval = setInterval(function() {
+                if (typeof Vimeo !== 'undefined' && Vimeo.Player) {
+                    clearInterval(checkInterval);
+                    if (!vimeoPlayer) {
+                        try {
+                            vimeoPlayer = new Vimeo.Player(iframe);
+                        } catch(e) {}
+                    }
+                }
+            }, 500);
+        }
     }
 
     function closeVideo() {
@@ -214,6 +321,9 @@ sort($categories);
         iframe.src = '';
         modal.classList.remove('show');
         document.body.style.overflow = 'auto';
+        currentChapters = [];
+        ytPlayer = null;
+        vimeoPlayer = null;
     }
 
     function filterByCategory(category) {

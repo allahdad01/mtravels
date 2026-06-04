@@ -123,6 +123,7 @@ include '../includes/header_super_admin.php';
                                                     <th>Category</th>
                                                     <th>Video</th>
                                                     <th>Duration</th>
+                                                    <th>Chapters</th>
                                                     <th>Level</th>
                                                     <th>Roles</th>
                                                     <th>Status</th>
@@ -130,7 +131,7 @@ include '../includes/header_super_admin.php';
                                                 </tr>
                                             </thead>
                                             <tbody id="tutorialsTableBody">
-                                                <tr><td colspan="9" class="sa-empty">Loading...</td></tr>
+                                                <tr><td colspan="10" class="sa-empty">Loading...</td></tr>
                                             </tbody>
                                         </table>
                                     </div>
@@ -222,6 +223,20 @@ include '../includes/header_super_admin.php';
                     </div>
 
                     <div class="sa-form-group">
+                        <label class="sa-form-label">Chapters / Timestamps</label>
+                        <div id="chaptersContainer">
+                            <div class="chapter-entry" style="display:flex;gap:8px;margin-bottom:6px;">
+                                <input type="text" class="sa-form-control" name="chapters[label][]" placeholder="Label (e.g. Add Ticket)" style="flex:1;">
+                                <input type="text" class="sa-form-control" name="chapters[time][]" placeholder="Time (e.g. 3:50)" style="width:100px;">
+                                <button type="button" class="sa-btn sa-btn-danger sa-btn-sm" onclick="this.parentElement.remove()" style="flex-shrink:0;">&times;</button>
+                            </div>
+                        </div>
+                        <button type="button" class="sa-btn sa-btn-sm" style="background:#e8ecf1;color:var(--sa-text);margin-top:4px;" onclick="addChapter()">
+                            <i class="feather icon-plus"></i> Add Chapter
+                        </button>
+                    </div>
+
+                    <div class="sa-form-group">
                         <label class="sa-form-label">Visible to Roles</label>
                         <div class="sa-checkbox-group">
                             <label class="sa-checkbox-label">
@@ -273,7 +288,7 @@ function loadTutorials() {
 function renderTable() {
     const tbody = document.getElementById('tutorialsTableBody');
     if (!tutorials.length) {
-        tbody.innerHTML = '<tr><td colspan="9" class="sa-empty"><div class="sa-empty-icon"><i class="feather icon-inbox"></i></div><div>No tutorials found. Click "Add Tutorial" to create one.</div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="sa-empty"><div class="sa-empty-icon"><i class="feather icon-inbox"></i></div><div>No tutorials found. Click "Add Tutorial" to create one.</div></td></tr>';
         return;
     }
     tbody.innerHTML = tutorials.map((t, i) => {
@@ -294,6 +309,7 @@ function renderTable() {
             <td><span class="sa-badge" style="background:#f0f0f0;color:#666;">${esc(t.category)}</span></td>
             <td>${videoBadge}</td>
             <td>${esc(t.duration)}</td>
+            <td style="font-size:.75rem;color:var(--sa-text-muted);">${(() => { try { const c = JSON.parse(t.chapters || '[]'); return c.length ? '<span class="sa-badge" style="background:#e8f0fe;color:#1967d2;">' + c.length + ' chapter' + (c.length > 1 ? 's' : '') + '</span>' : '-'; } catch(e) { return '-'; } })()}</td>
             <td>${esc(t.level)}</td>
             <td>${roleBadges}</td>
             <td>${statusBadge}</td>
@@ -312,6 +328,24 @@ function esc(s) {
     return d.innerHTML;
 }
 
+function timeToSeconds(t) {
+    const parts = t.split(':');
+    if (parts.length === 2) return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+    if (parts.length === 3) return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
+    return parseInt(t) || 0;
+}
+
+function addChapter(label, time) {
+    const container = document.getElementById('chaptersContainer');
+    const entry = document.createElement('div');
+    entry.className = 'chapter-entry';
+    entry.style.cssText = 'display:flex;gap:8px;margin-bottom:6px;';
+    entry.innerHTML = '<input type="text" class="sa-form-control" name="chapters[label][]" placeholder="Label (e.g. Add Ticket)" style="flex:1;" value="' + esc(label || '') + '">'
+        + '<input type="text" class="sa-form-control" name="chapters[time][]" placeholder="Time (e.g. 3:50)" style="width:100px;" value="' + esc(time || '') + '">'
+        + '<button type="button" class="sa-btn sa-btn-danger sa-btn-sm" onclick="this.parentElement.remove()" style="flex-shrink:0;">&times;</button>';
+    container.appendChild(entry);
+}
+
 function toggleAllRoles(checked) {
     document.querySelectorAll('.role-checkbox').forEach(cb => {
         cb.checked = !checked;
@@ -327,6 +361,7 @@ function openAddModal() {
     document.getElementById('roleAll').checked = false;
     toggleAllRoles(false);
     document.querySelectorAll('.role-checkbox').forEach(cb => cb.checked = false);
+    document.getElementById('chaptersContainer').innerHTML = '';
     document.getElementById('formSubmitBtn').innerHTML = '<i class="feather icon-save"></i> Save Tutorial';
     $('#tutorialModal').modal('show');
 }
@@ -356,6 +391,14 @@ function editTutorial(id) {
         cb.checked = isAll || roles.includes(cb.value);
     });
 
+    // Populate chapters
+    document.getElementById('chaptersContainer').innerHTML = '';
+    let chapters = [];
+    try { chapters = JSON.parse(t.chapters || '[]'); } catch(e) { chapters = []; }
+    if (chapters.length) {
+        chapters.forEach(function(ch) { addChapter(ch.label, ch.time); });
+    }
+
     document.getElementById('formSubmitBtn').innerHTML = '<i class="feather icon-save"></i> Update Tutorial';
     $('#tutorialModal').modal('show');
 }
@@ -375,6 +418,20 @@ document.getElementById('tutorialForm').addEventListener('submit', function(e) {
     }
 
     const formData = new FormData(this);
+    // Serialize chapters as JSON
+    const labelInputs = document.querySelectorAll('input[name="chapters[label][]"]');
+    const timeInputs = document.querySelectorAll('input[name="chapters[time][]"]');
+    const chapters = [];
+    for (let i = 0; i < labelInputs.length; i++) {
+        const label = labelInputs[i].value.trim();
+        const time = timeInputs[i].value.trim();
+        if (label && time) {
+            const seconds = timeToSeconds(time);
+            chapters.push({ label: label, time: time, seconds: seconds });
+        }
+    }
+    formData.set('chapters', JSON.stringify(chapters));
+
     if (document.getElementById('roleAll').checked) {
         formData.delete('roles[]');
         formData.append('roles[]', 'all');

@@ -29,6 +29,9 @@ $video_type = ($_POST['video_type'] ?? 'vimeo') === 'youtube' ? 'youtube' : 'vim
 $video_id = htmlspecialchars(trim($_POST['video_id'] ?? ''), ENT_QUOTES, 'UTF-8');
 $duration = htmlspecialchars(trim($_POST['duration'] ?? '5:00'), ENT_QUOTES, 'UTF-8');
 $level = in_array($_POST['level'] ?? 'Beginner', ['Beginner', 'Intermediate', 'Advanced']) ? $_POST['level'] : 'Beginner';
+$chapters_raw = $_POST['chapters'] ?? '[]';
+$chapters = is_string($chapters_raw) ? $chapters_raw : json_encode($chapters_raw);
+if (!json_decode($chapters)) { $chapters = '[]'; }
 $sort_order = intval($_POST['sort_order'] ?? 0);
 $status = isset($_POST['status']) ? 1 : 0;
 
@@ -44,8 +47,8 @@ if (empty($title)) {
 }
 
 try {
-    $stmt = $pdo->prepare("UPDATE tutorials SET title = ?, description = ?, category = ?, page = ?, video_type = ?, video_id = ?, duration = ?, level = ?, roles = ?, sort_order = ?, status = ?, updated_at = NOW() WHERE id = ?");
-    $stmt->execute([$title, $description, $category, $page, $video_type, $video_id, $duration, $level, $roles, $sort_order, $status, $id]);
+    $stmt = $pdo->prepare("UPDATE tutorials SET title = ?, description = ?, category = ?, page = ?, video_type = ?, video_id = ?, duration = ?, level = ?, roles = ?, sort_order = ?, status = ?, chapters = ?, updated_at = NOW() WHERE id = ?");
+    $stmt->execute([$title, $description, $category, $page, $video_type, $video_id, $duration, $level, $roles, $sort_order, $status, $chapters, $id]);
 
     echo json_encode(['success' => true]);
 } catch (PDOException $e) {
