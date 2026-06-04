@@ -382,7 +382,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                         <td class="td-date"><?= date('M d, Y', strtotime($user['created_at'])) ?></td>
                         <td>
                             <button class="act-btn edit" onclick="editUser(<?= $user['id'] ?>)" title="Edit User"><i class="feather icon-edit"></i></button>
-                            <button class="act-btn key" onclick="resetPassword(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name'],ENT_QUOTES) ?>')" title="Reset Password"><i class="feather icon-key"></i></button>
+                            <button class="act-btn key" onclick="resetPassword(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name'],ENT_QUOTES) ?>')" title="Reset Password"><i class="fas fa-key"></i></button>
                         </td>
                     </tr>
                     <?php endforeach; ?>
@@ -453,7 +453,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                                 <label>Branch</label>
                                 <select class="form-control" name="branch_id">
                                     <option value="">Select Branch (Optional)</option>
-                                    <?php foreach ($branches as $b): ?><option value="<?= $b['id'] ?>"><?= htmlspecialchars($b['name']) ?> Â· <?= htmlspecialchars($b['code']) ?></option><?php endforeach; ?>
+                                    <?php foreach ($branches as $b): ?><option value="<?= $b['id'] ?>"><?= htmlspecialchars($b['name']) ?> &middot; <?= htmlspecialchars($b['code']) ?></option><?php endforeach; ?>
                                 </select>
                             </div>
                         </div>
@@ -505,7 +505,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                                 <label>Branch</label>
                                 <select class="form-control" id="editUserBranch" name="branch_id">
                                     <option value="">Select Branch (Optional)</option>
-                                    <?php foreach ($branches as $b): ?><option value="<?= $b['id'] ?>"><?= htmlspecialchars($b['name']) ?> Â· <?= htmlspecialchars($b['code']) ?></option><?php endforeach; ?>
+                                    <?php foreach ($branches as $b): ?><option value="<?= $b['id'] ?>"><?= htmlspecialchars($b['name']) ?> &middot; <?= htmlspecialchars($b['code']) ?></option><?php endforeach; ?>
                                 </select>
                             </div>
                         </div>
@@ -540,7 +540,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header key-header">
-                <h5 class="modal-title"><i class="feather icon-key" style="margin-right:8px;"></i>Reset Password</h5>
+                <h5 class="modal-title"><i class="fas fa-key" style="margin-right:8px;"></i>Reset Password</h5>
                 <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <form method="POST" id="resetPasswordForm">
@@ -561,7 +561,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn-modal-secondary" data-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn-modal-amber"><i class="feather icon-key" style="margin-right:5px;"></i>Reset Password</button>
+                    <button type="submit" class="btn-modal-amber"><i class="fas fa-key" style="margin-right:5px;"></i>Reset Password</button>
                 </div>
             </form>
         </div>

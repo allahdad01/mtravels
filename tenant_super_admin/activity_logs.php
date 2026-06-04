@@ -319,7 +319,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
             <span class="ico"><i class="feather icon-clock"></i></span>
             <h6>Activity Logs</h6>
             <span style="margin-left:auto;font-size:12px;color:var(--text-sub);">
-                <?= number_format($total_logs) ?> records Â· page <?= $page ?> of <?= max(1,$total_pages) ?>
+                <?= number_format($total_logs) ?> records &middot; page <?= $page ?> of <?= max(1,$total_pages) ?>
             </span>
         </div>
         <div style="overflow-x:auto;">
@@ -377,7 +377,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
         <!-- Pagination -->
         <?php if ($total_pages > 1): ?>
         <div class="pag-row">
-            <div class="pag-info">Showing <?= min(($page-1)*$results_per_page+1,$total_logs) ?>â€“<?= min($page*$results_per_page,$total_logs) ?> of <?= number_format($total_logs) ?></div>
+            <div class="pag-info">Showing <?= min(($page-1)*$results_per_page+1,$total_logs) ?>&ndash;<?= min($page*$results_per_page,$total_logs) ?> of <?= number_format($total_logs) ?></div>
             <div class="pag-btns">
                 <?php if ($page>1): ?>
                 <a class="pag-btn" href="<?= buildPaginationUrl(1,$search,$user_filter,$action_filter,$table_filter) ?>"><i class="feather icon-chevrons-left"></i></a>
