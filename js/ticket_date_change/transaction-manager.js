@@ -347,8 +347,8 @@ const transactionManager = {
                     txArray = [];
                 }
     
-                if (!Array.isArray(txArray) || txArray.length === 0) {
-                    tbody.html('<tr><td colspan="6" class="text-center">no_transactions_found</td></tr>');
+                    if (!Array.isArray(txArray) || txArray.length === 0) {
+                    tbody.html('<tr><td colspan="7" class="text-center">no_transactions_found</td></tr>');
                     $('#exchangeRateDisplay').text('No exchange rates found');
                     $('#exchangedAmount').text('No conversions available');
                     return;
@@ -373,19 +373,22 @@ const transactionManager = {
                     }
 
                     const cleanDescription = (tx.description || '').replace(/ \(Exchange Rate: [0-9.]+\)/, '');
+                    const receiptDisplay = tx.receipt || tx.receipt_number || '';
+                    const receiptEscaped = receiptDisplay.replace(/'/g, "\\'");
+
                     tbody.append(`
                         <tr>
                             <td>${transactionManager.formatDate(tx.transaction_date)}</td>
-                            <td>${cleanDescription}</td>
-                            <td>${tx.type === 'credit' ? 'Received' : 'Paid'}</td>
-                            <td>${currency} ${amount.toFixed(2)}</td>
+                            <td style="word-wrap:break-word;white-space:normal;max-width:200px">${cleanDescription}</td>
+                            <td>${receiptDisplay || '—'}</td>
+                            <td>${tx.type === 'credit' ? 'Received' : 'Paid'} ${currency} ${amount.toFixed(2)}</td>
                             <td>${exchangeRate !== null ? exchangeRate : 'N/A'}</td>
-                            <td class="text-center">
+                            <td class="text-center" style="white-space:nowrap">
                                 <button class="btn btn-primary btn-sm mr-1" title="Edit Transaction"
-                                    onclick="transactionManager.editTransaction(${tx.id}, '${cleanDescription.replace(/'/g,"\\'")}', ${amount}, '${tx.created_at}')">
+                                    onclick="transactionManager.editTransaction(${tx.id})">
                                     <i class="feather icon-edit"></i>
                                 </button>
-                                                                <button class="btn btn-info btn-sm mr-1" title="Print Receipt"
+                                <button class="btn btn-info btn-sm mr-1" title="Print Receipt"
                                         onclick="printReceipt(${tx.id})">
                                     <i class="feather icon-printer"></i>
                                 </button>
@@ -455,7 +458,7 @@ const transactionManager = {
             },
             error: function(xhr, status, error) {
 
-                $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
+                $('#transactionTableBody').html('<tr><td colspan="7" class="text-center">error_loading_transactions</td></tr>');
                 $('#exchangeRateDisplay').text('Error loading exchange rates');
                 $('#exchangedAmount').text('Error calculating amounts');
             }
@@ -567,7 +570,6 @@ const transactionManager = {
     // Edit transaction
     editTransaction: function(transactionId) {
 
-
         $.ajax({
             url: '../api/ticket_date_change/get_date_change_transaction.php',
             type: 'GET',
@@ -577,26 +579,15 @@ const transactionManager = {
                 if (response.success) {
                     const tx = response.transaction;
 
-
-                    // Parse the datetime string
-                    const txDate = new Date(tx.transaction_date);
-                    const formattedDate = txDate.toISOString().split('T')[0];
-
-                    // Format time as HH:MM:SS
-                    const hours = String(txDate.getHours()).padStart(2, '0');
-                    const minutes = String(txDate.getMinutes()).padStart(2, '0');
-                    const seconds = String(txDate.getSeconds()).padStart(2, '0');
-                    const formattedTime = `${hours}:${minutes}:${seconds}`;
-
                     // Populate form fields
                     $('#editTransactionId').val(tx.id);
                     $('#editBookingId').val(tx.reference_id);
                     $('#originalAmount').val(tx.amount);
-                    $('#editPaymentDate').val(formattedDate);
-                    $('#editPaymentTime').val(formattedTime);
                     $('#editPaymentAmount').val(tx.amount);
                     $('#editPaymentCurrency').val(tx.currency || 'USD');
+                    $('#editPaymentCurrencyHidden').val(tx.currency || 'USD');
                     $('#editPaymentDescription').val(tx.description);
+                    $('#editReceiptNumber').val(tx.receipt || tx.receipt_number || '');
 
                     // Handle exchange rate - use transaction's exchange_rate field first, then fallback to description
                     if (tx.exchange_rate && parseFloat(tx.exchange_rate) > 0) {
@@ -657,11 +648,10 @@ const transactionManager = {
         const formData = new FormData(form[0]);
         const ticketId = formData.get('booking_id');
 
-        // Combine date and time into a single datetime value
-        const date = formData.get('payment_date');
-        const time = formData.get('payment_time') || '00:00:00';
-        if (date) {
-            formData.set('payment_date', `${date} ${time}`);
+        // Use hidden currency field since the select is disabled
+        const actualCurrency = $('#editPaymentCurrencyHidden').val();
+        if (actualCurrency) {
+            formData.set('payment_currency', actualCurrency);
         }
 
         // Add exchange rate if field is visible
@@ -670,6 +660,11 @@ const transactionManager = {
             if (exchangeRate) {
                 formData.set('exchange_rate', exchangeRate);
             }
+        }
+
+        const receiptNumber = $('#editReceiptNumber').val();
+        if (receiptNumber) {
+            formData.set('receipt_number', receiptNumber);
         }
 
         $.ajax({

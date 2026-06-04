@@ -29,16 +29,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $dateChangeId = $_POST['booking_id'] ?? 0;
     $originalAmount = floatval($_POST['original_amount'] ?? 0);
     $newAmount = floatval($_POST['payment_amount'] ?? 0);
-    $newDate = $_POST['payment_date'] ?? '';
     $newDescription = $_POST['payment_description'] ?? '';
     $exchange_rate = floatval($_POST['exchange_rate'] ?? 0);
     // Validate required fields
 
 // Validate payment_description
 $payment_description = isset($_POST['payment_description']) ? DbSecurity::validateInput($_POST['payment_description'], 'string', ['maxlength' => 255]) : null;
-
-// Validate payment_date
-$payment_date = isset($_POST['payment_date']) ? DbSecurity::validateInput($_POST['payment_date'], 'date') : null;
 
 // Validate payment_amount
 $payment_amount = isset($_POST['payment_amount']) ? DbSecurity::validateInput($_POST['payment_amount'], 'float', ['min' => 0]) : null;
@@ -51,6 +47,8 @@ $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['bo
 $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_POST['exchange_rate'], 'float', ['min' => 0]) : null;
 // Validate transaction_id
 $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_POST['transaction_id'], 'int', ['min' => 0]) : null;
+// Validate receipt_number (optional)
+$receipt_number = isset($_POST['receipt_number']) ? DbSecurity::validateInput($_POST['receipt_number'], 'string', ['maxlength' => 100]) : null;
     if (!$transactionId || !$dateChangeId) {
         echo json_encode(['success' => false, 'message' => 'Missing transaction or date change ID']);
         exit;
@@ -74,7 +72,6 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
 
         $type = $transaction['type'];
         $mainAccountId = $transaction['main_account_id'];
-        $originalDate = $transaction['created_at'];
 
         // Get currency from date_change_tickets
         $currencyStmt = $pdo->prepare("SELECT currency FROM date_change_tickets WHERE id = ? AND tenant_id = ? AND branch_id = ?");
@@ -155,11 +152,11 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
         }
 
         // Update the transaction
-        $stmt = $pdo->prepare("UPDATE main_account_transactions SET amount = ?, description = ?, exchange_rate = ?, created_at = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt = $pdo->prepare("UPDATE main_account_transactions SET amount = ?, description = ?, exchange_rate = ?, receipt = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
         $stmt->bindParam(1, $newAmount, PDO::PARAM_STR);
         $stmt->bindParam(2, $newDescription, PDO::PARAM_STR);
         $stmt->bindParam(3, $exchange_rate, PDO::PARAM_STR);
-        $stmt->bindParam(4, $newDate, PDO::PARAM_STR);
+        $stmt->bindParam(4, $receipt_number, PDO::PARAM_STR);
         $stmt->bindParam(5, $transactionId, PDO::PARAM_INT);
         $stmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
         $stmt->bindParam(7, $branch_id, PDO::PARAM_INT);
@@ -179,41 +176,6 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
             $stmt->execute();
         }
 
-        // If date changed, we need to reorder transactions and recalculate all balances
-        if ($newDate != $originalDate) {
-            // Get all transactions for this account, ordered by date
-            $stmt = $pdo->prepare("SELECT id, amount, type, created_at
-                                   FROM main_account_transactions
-                                   WHERE main_account_id = ?
-                                   AND tenant_id = ?
-                                   AND branch_id = ?
-                                   ORDER BY created_at ASC, id ASC");
-            $stmt->bindParam(1, $mainAccountId, PDO::PARAM_INT);
-            $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-            $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-            $stmt->execute();
-            $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            // Recalculate running balance for all transactions
-            $runningBalance = 0;
-            foreach ($transactions as $tx) {
-                $txAmount = floatval($tx['amount']);
-                if ($tx['type'] == 'credit') {
-                    $runningBalance += $txAmount;
-                } else {
-                    $runningBalance -= $txAmount;
-                }
-
-                // Update the balance for this transaction
-                $updateStmt = $pdo->prepare("UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                $updateStmt->bindParam(1, $runningBalance, PDO::PARAM_STR);
-                $updateStmt->bindParam(2, $tx['id'], PDO::PARAM_INT);
-                $updateStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-                $updateStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
-                $updateStmt->execute();
-            }
-        }
-
         // Add activity logging
         $user_id = $_SESSION['user_id'] ?? 0;
         $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
@@ -225,24 +187,19 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
             'booking_id' => $dateChangeId,
             'amount' => $originalAmount,
             'description' => $transaction['description'] ?? '',
-            'created_at' => $originalDate
+            'created_at' => $transaction['created_at'] ?? null
         ];
 
         // Prepare new values
         $new_values = [
             'amount' => $newAmount,
-            'description' => $newDescription,
-            'created_at' => $newDate
+            'description' => $newDescription
         ];
         $action = 'update';
         $table_name = 'main_account_transactions';
         $record_id = $transactionId;
         $old_values = json_encode($old_values);
         $new_values = json_encode($new_values);
-        $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
-        $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
-
-        // Insert activity log
         $activity_log_stmt = $pdo->prepare("INSERT INTO activity_log
             (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, tenant_id, branch_id)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");

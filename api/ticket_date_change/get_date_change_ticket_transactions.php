@@ -38,7 +38,7 @@ if (isset($_GET['ticket_id'])) {
         // Prepare a query to fetch all transactions for the given ticket ID
         $stmt = $pdo->prepare("
             SELECT t.id, t.amount, t.type, t.description, t.created_at as transaction_date,
-                   t.balance, t.main_account_id, t.reference_id, t.currency, t.exchange_rate
+                   t.balance, t.main_account_id, t.reference_id, t.currency, t.exchange_rate, t.receipt
             FROM main_account_transactions t
             LEFT JOIN main_account m ON t.main_account_id = m.id AND m.tenant_id = ? AND m.branch_id = ?
             WHERE t.reference_id = ? AND t.tenant_id = ? AND t.branch_id = ?
@@ -53,17 +53,18 @@ if (isset($_GET['ticket_id'])) {
         // Format transactions for the UI
         $formattedTransactions = [];
         foreach ($transactions as $tx) {
-            $formattedTransactions[] = [
-                'id' => $tx['id'],
-                'amount' => $tx['amount'],
-                'type' => $tx['type'], // 'credit' or 'debit'
-                'description' => $tx['description'],
-                'transaction_date' => $tx['transaction_date'],
-                'balance' => $tx['balance'],
-                'currency' => $tx['currency'],
-                'exchange_rate' => $tx['exchange_rate'],
-                'reference_id' => $tx['reference_id']
-            ];
+        $formattedTransactions[] = [
+            'id' => $tx['id'],
+            'amount' => $tx['amount'],
+            'type' => $tx['type'], // 'credit' or 'debit'
+            'description' => $tx['description'],
+            'transaction_date' => $tx['transaction_date'],
+            'balance' => $tx['balance'],
+            'currency' => $tx['currency'],
+            'exchange_rate' => $tx['exchange_rate'],
+            'reference_id' => $tx['reference_id'],
+            'receipt' => $tx['receipt']
+        ];
         }
 
         // Calculate total paid amount

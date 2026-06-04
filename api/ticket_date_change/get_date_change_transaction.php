@@ -38,7 +38,7 @@ try {
     $stmt = $pdo->prepare("
         SELECT t.id, t.reference_id, t.amount, t.type, t.description,
                t.created_at as transaction_date, t.balance, t.main_account_id,
-               t.currency, t.exchange_rate
+               t.currency, t.exchange_rate, t.receipt
         FROM main_account_transactions t
         LEFT JOIN main_account m ON t.main_account_id = m.id AND m.tenant_id = ? AND m.branch_id = ?
         LEFT JOIN date_change_tickets dct ON t.reference_id = dct.id AND dct.tenant_id = ? AND dct.branch_id = ?
@@ -66,7 +66,8 @@ try {
         'balance' => $transaction['balance'],
         'main_account_id' => $transaction['main_account_id'],
         'currency' => $transaction['currency'],
-        'exchange_rate' => $transaction['exchange_rate']
+        'exchange_rate' => $transaction['exchange_rate'],
+        'receipt' => $transaction['receipt']
     ];
     
     // Return success response with transaction data

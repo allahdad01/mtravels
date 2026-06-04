@@ -303,7 +303,7 @@
                         </div>
                         <div class="card-body p-0">
                             <div class="table-responsive">
-                                <table class="table table-hover mb-0">
+                                <table class="table table-sm table-hover mb-0">
                                     <thead class="thead-light">
                                         <tr>
                                             <th class="border-0">
@@ -313,7 +313,7 @@
                                                 <i class="feather icon-file-text mr-1"></i><?= __('description') ?>
                                             </th>
                                             <th class="border-0">
-                                                <i class="feather icon-tag mr-1"></i><?= __('type') ?>
+                                                <i class="feather icon-hash mr-1"></i><?= __('receipt') ?>
                                             </th>
                                             <th class="border-0">
                                                 <i class="feather icon-dollar-sign mr-1"></i><?= __('amount') ?>
@@ -328,7 +328,7 @@
                                     </thead>
                                     <tbody id="transactionTableBody">
                                         <tr>
-                                            <td colspan="6" class="text-center py-4">
+                                            <td colspan="7" class="text-center py-4">
                                                 <div class="text-muted">
                                                     <i class="feather icon-loader fa-spin fa-2x mb-3 d-block"></i>
                                                     <p class="mb-0"><?= __('loading_transactions') ?>...</p>

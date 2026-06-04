@@ -17,20 +17,7 @@
                         <input type="hidden" id="editTransactionId" name="transaction_id">
                         <input type="hidden" id="editBookingId" name="booking_id">
                         <input type="hidden" id="originalAmount" name="original_amount">
-                        
-                        <div class="form-row">
-                            <div class="form-group col-md-6">
-                                <label for="editPaymentDate"><?= __('date') ?></label>
-                                <input type="date" class="form-control" id="editPaymentDate" name="payment_date" required>
-                            </div>
-                            <div class="form-group col-md-6">
-                                <label for="editPaymentTime"><?= __('time') ?></label>
-                                <input type="text" class="form-control" id="editPaymentTime" name="payment_time" 
-                                       placeholder="HH:MM:SS" pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]" 
-                                       title="Format: HH:MM:SS" required>
-                                <small class="form-text text-muted"><?= __('format_hours_minutes_seconds_24_hour') ?></small>
-                            </div>
-                        </div>
+                        <input type="hidden" id="editPaymentCurrencyHidden" name="payment_currency_actual">
                         
                         <div class="form-row">
                             <div class="form-group col-md-6">
@@ -57,6 +44,12 @@
                                 Enter how many <span id="editExchangeRateTarget"></span> equals 1 <span id="editExchangeRateBase"></span>
                                 <span id="editExchangeRateExample" class="d-block mt-1" style="color: #666;"></span>
                             </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="editReceiptNumber"><?= __('receipt_number') ?></label>
+                            <input type="text" class="form-control" id="editReceiptNumber"
+                                   name="receipt_number" placeholder="<?= __('enter_receipt_number') ?>">
                         </div>
                         
                         <div class="form-group">
