@@ -2,71 +2,80 @@
                                         <div class="modal fade" id="editTransactionModal" tabindex="-1" role="dialog" aria-labelledby="editTransactionModalLabel" aria-hidden="true">
                                             <div class="modal-dialog" role="document">
                                                 <div class="modal-content">
-                                                    <div class="modal-header">
-                                                        <h5 class="modal-title" id="editTransactionModalLabel"><?= __('edit_transaction') ?></h5>
-                                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                    <div class="modal-header bg-primary text-white">
+                                                        <h5 class="modal-title" id="editTransactionModalLabel">
+                                                            <i class="feather icon-edit mr-2"></i><?= __('edit_transaction') ?>
+                                                        </h5>
+                                                        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                                                             <span aria-hidden="true">&times;</span>
                                                         </button>
                                                     </div>
                                                     <div class="modal-body">
                                                         <form id="editTransactionForm">
-                    <!-- CSRF Protection -->
-                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
-                                                            <!-- Hidden fields for IDs -->
+                                                            <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                                                             <input type="hidden" id="editTransactionId" name="transaction_id">
                                                             <input type="hidden" id="editVisaId" name="visa_id">
                                                             <input type="hidden" id="originalAmount" name="original_amount">
-                                                            
-                                                            <!-- Date and Time -->
-                                                            <div class="form-group">
-                                                                <label for="editPaymentDate"><?= __('payment_date') ?></label>
-                                                                <input type="date" class="form-control" id="editPaymentDate" name="payment_date" required>
-                                                            </div>
-                                                            <div class="form-group">
-                                                                <label for="editPaymentTime"><?= __('payment_time') ?></label>
-                                                                <input type="text" class="form-control" id="editPaymentTime" name="payment_time" 
-                                                                       pattern="([01]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]" 
-                                                                       placeholder="HH:MM:SS" required>
-                                                                <small class="form-text text-muted"><?= __('enter_time_in_24_hour_format') ?></small>
-                                                            </div>
-                                                            
-                                                            <!-- Amount -->
-                                                            <div class="form-group">
-                                                                <label for="editPaymentAmount"><?= __('amount') ?></label>
-                                                                <input type="number" step="0.01" class="form-control" id="editPaymentAmount" name="payment_amount" required>
-                                                                <small class="form-text text-muted"><?= __('changing_this_amount_will_update_all_subsequent_balances') ?></small>
+
+                                                            <div class="row">
+                                                                <div class="col-md-6">
+                                                                    <div class="form-group">
+                                                                        <label for="editPaymentAmount">
+                                                                            <i class="feather icon-dollar-sign mr-1"></i><?= __('amount') ?>
+                                                                        </label>
+                                                                        <input type="number" step="0.01" class="form-control" id="editPaymentAmount" name="payment_amount" required>
+                                                                        <small class="form-text text-muted"><?= __('changing_this_amount_will_update_all_subsequent_balances') ?></small>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-6">
+                                                                    <div class="form-group">
+                                                                        <label for="editPaymentCurrency">
+                                                                            <i class="feather icon-dollar-sign mr-1"></i><?= __('currency') ?>
+                                                                        </label>
+                                                                        <select class="form-control" id="editPaymentCurrency" name="payment_currency" required disabled>
+                                                                            <option value=""><?= __('select_currency') ?></option>
+                                                                            <option value="USD"><?= __('usd') ?></option>
+                                                                            <option value="AFS"><?= __('afs') ?></option>
+                                                                            <option value="EUR"><?= __('eur') ?></option>
+                                                                            <option value="DARHAM"><?= __('darham') ?></option>
+                                                                        </select>
+                                                                        <input type="hidden" id="editPaymentCurrencyHidden" name="payment_currency_actual">
+                                                                    </div>
+                                                                </div>
                                                             </div>
 
-                                                            <!-- Currency -->
                                                             <div class="form-group">
-                                                                <label for="editPaymentCurrency"><?= __('currency') ?></label>
-                                                                <select class="form-control" id="editPaymentCurrency" name="payment_currency" required>
-                                                                    <option value=""><?= __('select_currency') ?></option>
-                                                                    <option value="USD"><?= __('usd') ?></option>
-                                                                    <option value="AFS"><?= __('afs') ?></option>
-                                                                    <option value="EUR"><?= __('eur') ?></option>
-                                                                    <option value="DARHAM"><?= __('darham') ?></option>
-                                                                </select>
+                                                                <label for="editPaymentDescription">
+                                                                    <i class="feather icon-file-text mr-1"></i><?= __('description') ?>
+                                                                </label>
+                                                                <textarea class="form-control" id="editPaymentDescription" name="payment_description" rows="3" required></textarea>
                                                             </div>
 
-                                                            <!-- Exchange Rate -->
+                                                            <div class="form-group">
+                                                                <label for="editReceiptNumber">
+                                                                    <i class="feather icon-hash mr-1"></i><?= __('receipt_number') ?>
+                                                                </label>
+                                                                <input type="text" class="form-control" id="editReceiptNumber"
+                                                                       name="receipt_number" placeholder="<?= __('enter_receipt_number') ?>">
+                                                            </div>
+
                                                             <div class="form-group" id="editExchangeRateField" style="display: none;">
-                                                                <label for="editTransactionExchangeRate">
+                                                                <label id="editExchangeRateLabel" for="editTransactionExchangeRate">
                                                                     <i class="feather icon-refresh-cw mr-1"></i><?= __('exchange_rate') ?>
                                                                 </label>
                                                                 <input type="number" class="form-control" id="editTransactionExchangeRate"
                                                                        name="exchange_rate" step="0.01" placeholder="Enter exchange rate">
+                                                                <small class="form-text text-muted d-block mt-1">
+                                                                    Enter how many <span id="editExchangeRateTarget"></span> equals 1 <span id="editExchangeRateBase"></span>
+                                                                    <span id="editExchangeRateExample" class="d-block mt-1" style="color: #666;"></span>
+                                                                </small>
                                                             </div>
 
-                                                            <!-- Description -->
-                                                            <div class="form-group">
-                                                                <label for="editPaymentDescription"><?= __('description') ?></label>
-                                                                <textarea class="form-control" id="editPaymentDescription" name="payment_description" rows="3"></textarea>
-                                                            </div>
-                                                            
                                                             <div class="modal-footer">
                                                                 <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('cancel') ?></button>
-                                                                <button type="submit" class="btn btn-primary"><?= __('save_changes') ?></button>
+                                                                <button type="submit" class="btn btn-primary">
+                                                                    <i class="feather icon-check mr-1"></i><?= __('save_changes') ?>
+                                                                </button>
                                                             </div>
                                                         </form>
                                                     </div>

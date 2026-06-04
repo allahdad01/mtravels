@@ -182,7 +182,7 @@
                         const transactionList = transactions.transactions || transactions;
 
                         if (!Array.isArray(transactionList) || transactionList.length === 0) {
-                            tbody.html('<tr><td colspan="6" class="text-center">No transactions found</td></tr>');
+                            tbody.html('<tr><td colspan="7" class="text-center">No transactions found</td></tr>');
                             $('#exchangeRateDisplay').text('No exchange rates found');
                             $('#exchangedAmount').text('No conversions available');
                             return;
@@ -207,6 +207,7 @@
                             const currency = tx.currency;
                             const amount = parseFloat(tx.amount);
                             const exchangeRate = tx.exchange_rate ? parseFloat(tx.exchange_rate) : null;
+                            const receipt = tx.receipt || tx.receipt_number || '';
 
                             if (currency in hasCurrency) hasCurrency[currency] = true;
 
@@ -214,11 +215,12 @@
                                 <tr>
                                     <td>${transactionManager.formatDate(tx.created_at)}</td>
                                     <td>${tx.description || ''}</td>
+                                    <td>${receipt || '\u2014'}</td>
                                     <td>${tx.type === 'credit' ? 'Received' : 'Paid'}</td>
                                     <td>${currency} ${amount.toFixed(2)}</td>
                                     <td>${exchangeRate || 'N/A'}</td>
                                     <td class="text-center">
-                                        <button class="btn btn-primary btn-sm" onclick="transactionManager.editTransaction(${tx.id}, '${(tx.description||'').replace(/'/g,"\\'")}', ${amount}, '${tx.created_at}', '${currency}', ${tx.exchange_rate || 'null'})">
+                                        <button class="btn btn-primary btn-sm" onclick="transactionManager.editTransaction(${tx.id}, '${(tx.description||'').replace(/'/g,"\\'")}', ${amount}, '${currency}', ${tx.exchange_rate || 'null'}, '${receipt.replace(/'/g,"\\'")}')">
                                             <i class="feather icon-edit"></i>
                                         </button>
                                                                         <button class="btn btn-info btn-sm mr-1" title="Print Receipt"
@@ -293,14 +295,14 @@
 
                     } catch(e) {
                         console.log(e);
-                        $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
+                        $('#transactionTableBody').html('<tr><td colspan="7" class="text-center">error_loading_transactions</td></tr>');
                         $('#exchangeRateDisplay').text('Error loading exchange rates');
                         $('#exchangedAmount').text('Error calculating amounts');
                     }
                 },
                 error: function(xhr, status, error){
                     console.log({status, error});
-                    $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
+                    $('#transactionTableBody').html('<tr><td colspan="7" class="text-center">error_loading_transactions</td></tr>');
                     $('#exchangeRateDisplay').text('Error loading exchange rates');
                     $('#exchangedAmount').text('Error calculating amounts');
                 }
@@ -412,10 +414,10 @@
         },
 
         // Edit transaction
-        editTransaction: function(transactionId) {
+        editTransaction: function(transactionId, description, amount, currency, exchangeRate, receipt) {
             const refundId = $('#refund_id').val();
             
-            // Fetch transaction details
+            // Fetch transaction details to get full data
             $.ajax({
                 url: '../api/visa/get_visa_transaction.php',
                 type: 'GET',
@@ -425,29 +427,18 @@
                     if (response.success) {
                         const tx = response.transaction;
                         
-                        // Parse the datetime string
-                        const txDate = new Date(tx.created_at);
-                        const formattedDate = txDate.toISOString().split('T')[0];
-                        
-                        // Format time as HH:MM:SS
-                        const hours = String(txDate.getHours()).padStart(2, '0');
-                        const minutes = String(txDate.getMinutes()).padStart(2, '0');
-                        const seconds = String(txDate.getSeconds()).padStart(2, '0');
-                        const formattedTime = `${hours}:${minutes}:${seconds}`;
-                        
-                        // Store the original transaction amount
                         const originalAmount = Math.abs(parseFloat(tx.amount));
                         
                         // Populate form fields
                         $('#editTransactionId').val(tx.id);
                         $('#editRefundId').val(refundId);
-                        $('#editOriginalAmount').val(originalAmount);  // Set original transaction amount
-                        $('#originalAmount').val(originalAmount);      // Set backup of original amount
-                        $('#editPaymentDate').val(formattedDate);
-                        $('#editPaymentTime').val(formattedTime);
-                        $('#editPaymentAmount').val(Math.abs(tx.amount));  // Use absolute value of current amount
-                        $('#editPaymentCurrency').val(tx.currency || 'USD');  // Set currency
+                        $('#editOriginalAmount').val(originalAmount);
+                        $('#originalAmount').val(originalAmount);
+                        $('#editPaymentAmount').val(Math.abs(tx.amount));
+                        $('#editPaymentCurrency').val(tx.currency || 'USD');
+                        $('#editPaymentCurrencyHidden').val(tx.currency || 'USD');
                         $('#editPaymentDescription').val(tx.description);
+                        $('#editReceiptNumber').val(tx.receipt || tx.receipt_number || '');
 
                         // Set exchange rate if available
                         if (tx.exchange_rate && parseFloat(tx.exchange_rate) > 0) {
@@ -630,11 +621,10 @@
         const formData = new FormData(this);
         const refundId = $('#editRefundId').val();
         
-        // Combine date and time
-        const date = formData.get('payment_date');
-        const time = formData.get('payment_time') || '00:00:00';
-        if (date) {
-            formData.set('payment_date', `${date} ${time}`);
+        // Use hidden currency value since select is disabled
+        const actualCurrency = $('#editPaymentCurrencyHidden').val();
+        if (actualCurrency) {
+            formData.set('payment_currency', actualCurrency);
         }
         
         // Get the original transaction amount from the hidden field
@@ -646,6 +636,10 @@
         if (exchangeRate && $('#editExchangeRateField').is(':visible')) {
             formData.set('exchange_rate', exchangeRate);
         }
+
+        // Add receipt number
+        const receiptNumber = $('#editReceiptNumber').val().trim();
+        formData.set('receipt_number', receiptNumber);
         
         $.ajax({
             url: '../api/visa/update_visa_transaction.php',

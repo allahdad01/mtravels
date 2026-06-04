@@ -31,23 +31,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $visaId = $_POST['visa_id'] ?? 0;
     $originalAmount = floatval($_POST['original_amount'] ?? 0);
     $newAmount = floatval($_POST['payment_amount'] ?? 0);
-    $newDate = $_POST['payment_date'] ?? '';
-    $newTime = $_POST['payment_time'] ?? '00:00:00';
     $newDescription = $_POST['payment_description'] ?? '';
-
-    // Combine date and time
-    $newDateTime = $newDate . ' ' . $newTime;
 
     // Validate required fields
 
 // Validate payment_description
 $payment_description = isset($_POST['payment_description']) ? DbSecurity::validateInput($_POST['payment_description'], 'string', ['maxlength' => 255]) : null;
-
-// Validate payment_time
-$payment_time = isset($_POST['payment_time']) ? DbSecurity::validateInput($_POST['payment_time'], 'string', ['maxlength' => 255]) : null;
-
-// Validate payment_date
-$payment_date = isset($_POST['payment_date']) ? DbSecurity::validateInput($_POST['payment_date'], 'date') : null;
 
 // Validate payment_amount
 $payment_amount = isset($_POST['payment_amount']) ? DbSecurity::validateInput($_POST['payment_amount'], 'float', ['min' => 0]) : null;
@@ -60,6 +49,8 @@ $visa_id = isset($_POST['visa_id']) ? DbSecurity::validateInput($_POST['visa_id'
 $payment_exchange_rate = isset($_POST['payment_exchange_rate']) ? DbSecurity::validateInput($_POST['payment_exchange_rate'], 'float', ['min' => 0]) : null;
 // Validate transaction_id
 $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_POST['transaction_id'], 'int', ['min' => 0]) : null;
+// Validate receipt_number (optional)
+$receipt_number = isset($_POST['receipt_number']) ? DbSecurity::validateInput($_POST['receipt_number'], 'string', ['maxlength' => 100]) : null;
     if (!$transactionId || !$visaId) {
         echo json_encode(['success' => false, 'message' => 'Missing transaction or visa ID']);
         exit;
@@ -84,7 +75,6 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
         $currency = $transaction['currency'];
         $type = $transaction['type'];
         $mainAccountId = $transaction['main_account_id'];
-        $originalDateTime = $transaction['created_at'];
 
         // Store old values for activity log
         $oldValues = json_encode([
@@ -93,7 +83,7 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
             'amount' => $transaction['amount'],
             'currency' => $currency,
             'type' => $type,
-            'created_at' => $originalDateTime
+            'created_at' => $transaction['created_at']
         ]);
 
         // Calculate the difference between original and new amount
@@ -167,31 +157,18 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
         }
 
         // Update the transaction amount in main_account_transactions table
-        $updateTransactionQuery = "UPDATE main_account_transactions SET amount = ?, description = ?, created_at = ?, exchange_rate = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+        $updateTransactionQuery = "UPDATE main_account_transactions SET amount = ?, description = ?, exchange_rate = ?, receipt = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
         $updateTransactionStmt = $pdo->prepare($updateTransactionQuery);
         $updateTransactionStmt->bindParam(1, $newAmount, PDO::PARAM_STR);
         $updateTransactionStmt->bindParam(2, $newDescription, PDO::PARAM_STR);
-        $updateTransactionStmt->bindParam(3, $newDateTime, PDO::PARAM_STR);
-        $updateTransactionStmt->bindParam(4, $payment_exchange_rate, PDO::PARAM_STR);
+        $updateTransactionStmt->bindParam(3, $payment_exchange_rate, PDO::PARAM_STR);
+        $updateTransactionStmt->bindParam(4, $receipt_number, PDO::PARAM_STR);
         $updateTransactionStmt->bindParam(5, $transactionId, PDO::PARAM_INT);
         $updateTransactionStmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
         $updateTransactionStmt->bindParam(7, $branch_id, PDO::PARAM_INT);
 
         if (!$updateTransactionStmt->execute()) {
             throw new PDOException("Failed to update transaction: " . $updateTransactionStmt->error);
-        }
-
-        // Update the main account transaction if it exists
-        $stmt = $pdo->prepare("UPDATE main_account_transactions SET amount = ?, description = ?, created_at = ? WHERE reference_id = ? AND transaction_of = 'visa_sale' AND tenant_id = ? AND branch_id = ?");
-        $stmt->bindParam(1, $newAmount, PDO::PARAM_STR);
-        $stmt->bindParam(2, $newDescription, PDO::PARAM_STR);
-        $stmt->bindParam(3, $newDateTime, PDO::PARAM_STR);
-        $stmt->bindParam(4, $transactionId, PDO::PARAM_INT);
-        $stmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
-        $stmt->bindParam(6, $branch_id, PDO::PARAM_INT);
-
-        if (!$stmt->execute()) {
-            throw new PDOException("Failed to update main account transaction: " . $stmt->error);
         }
 
         // Update main account balance if amount changed
@@ -211,55 +188,12 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
             }
         }
 
-        // If date changed, we need to reorder transactions and recalculate all balances
-        if ($newDateTime != $originalDateTime) {
-            // Get all transactions for this account and currency, ordered by date
-            $stmt = $pdo->prepare("SELECT id, amount, type, created_at
-                                    FROM main_account_transactions
-                                    WHERE main_account_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ?
-                                    ORDER BY created_at ASC, id ASC");
-            $stmt->bindParam(1, $mainAccountId, PDO::PARAM_INT);
-            $stmt->bindParam(2, $currency, PDO::PARAM_STR);
-            $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-            $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
-
-            if (!$stmt->execute()) {
-                throw new PDOException("Failed to retrieve transactions for reordering: " . $stmt->error);
-            }
-
-            $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $transactions = $result;
-
-            // Recalculate running balance for all transactions
-            $runningBalance = 0;
-            foreach ($transactions as $tx) {
-                $txAmount = floatval($tx['amount']);
-                if ($tx['type'] == 'credit') {
-                    $runningBalance += $txAmount;
-                } else {
-                    $runningBalance -= $txAmount;
-                }
-
-                // Update the balance for this transaction
-                $updateStmt = $pdo->prepare("UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                $updateStmt->bindParam(1, $runningBalance, PDO::PARAM_STR);
-                $updateStmt->bindParam(2, $tx['id'], PDO::PARAM_INT);
-                $updateStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-                $updateStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
-
-                if (!$updateStmt->execute()) {
-                    throw new PDOException("Failed to update transaction balance during reordering: " . $updateStmt->error);
-                }
-            }
-        }
-
         // Create new values for activity log
         $newValues = json_encode([
             'transaction_id' => $transactionId,
             'visa_id' => $visaId,
             'amount' => $newAmount,
-            'description' => $newDescription,
-            'created_at' => $newDateTime
+            'description' => $newDescription
         ]);
 
         // Get user information for activity log

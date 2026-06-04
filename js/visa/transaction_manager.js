@@ -36,22 +36,20 @@
          return examples[key] || 'Enter the exchange rate';
      },
 
-     // Initialize transaction modal and form handlers
-     init: function() {
-         this.bindEvents();
-         this.setDefaultDateTime();
-     },
+    // Initialize transaction modal and form handlers
+    init: function() {
+        this.bindEvents();
+        this.setDefaultDateTime();
+    },
 
     // Bind all event listeners
     bindEvents: function() {
         // Remove any existing event handlers first
         $('#visaTransactionForm').off('submit');
         $('#editTransactionForm').off('submit');
-        $('#paymentCurrency').off('change');
 
         // Add new event handlers
         $('#visaTransactionForm').on('submit', this.handleTransactionSubmit);
-        $('#editTransactionForm').on('submit', this.handleEditTransactionSubmit);
         $('#paymentCurrency').on('change', this.toggleExchangeRateField.bind(this));
         $('#editPaymentCurrency').on('change', this.toggleEditExchangeRateField.bind(this));
     },
@@ -334,12 +332,12 @@
                    const tbody = $('#transactionTableBody');
                    tbody.empty();
 
-                   if (!Array.isArray(transactions) || transactions.length === 0) {
-                       tbody.html('<tr><td colspan="6" class="text-center">No transactions found</td></tr>');
-                       $('#exchangeRateDisplay').text('No exchange rates found');
-                       $('#exchangedAmount').text('No conversions available');
-                       return;
-                   }
+                    if (!Array.isArray(transactions) || transactions.length === 0) {
+                        tbody.html('<tr><td colspan="7" class="text-center">No transactions found</td></tr>');
+                        $('#exchangeRateDisplay').text('No exchange rates found');
+                        $('#exchangedAmount').text('No conversions available');
+                        return;
+                    }
 
                    const baseCurrency = $('#currency').text() || 'USD';
                    const totalAmount = parseFloat($('#totalAmount').text().split(' ')[1]) || 0;
@@ -355,36 +353,38 @@
                    // Track currencies present in transactions
                    let hasCurrency = { USD: false, AFS: false, EUR: false, DARHAM: false };
 
-                   // Render transactions table
-                   transactions.forEach(tx => {
-                       const currency = tx.currency;
-                       const amount = parseFloat(tx.amount);
-                       const exchangeRate = tx.exchange_rate ? parseFloat(tx.exchange_rate) : null;
+                    // Render transactions table
+                    transactions.forEach(tx => {
+                        const currency = tx.currency;
+                        const amount = parseFloat(tx.amount);
+                        const exchangeRate = tx.exchange_rate ? parseFloat(tx.exchange_rate) : null;
+                        const receipt = tx.receipt || tx.receipt_number || '';
 
-                       if (currency in hasCurrency) hasCurrency[currency] = true;
+                        if (currency in hasCurrency) hasCurrency[currency] = true;
 
-                       tbody.append(`
-                           <tr>
-                               <td>${transactionManager.formatDate(tx.created_at)}</td>
-                               <td>${tx.description || ''}</td>
-                               <td>${tx.type === 'credit' ? 'Received' : 'Paid'}</td>
-                               <td>${currency} ${amount.toFixed(2)}</td>
-                               <td>${exchangeRate || 'N/A'}</td>
-                               <td class="text-center">
-                                   <button class="btn btn-primary btn-sm" onclick="transactionManager.editTransaction(${tx.id}, '${(tx.description||'').replace(/'/g,"\\'")}', ${amount}, '${tx.created_at}', '${currency}', ${tx.exchange_rate || 'null'})">
-                                       <i class="feather icon-edit"></i>
-                                   </button>
-                                    <button class="btn btn-info btn-sm mr-1" title="Print Receipt"
-                                        onclick="printReceipt(${tx.id})">
-                                    <i class="feather icon-printer"></i>
-                                </button>
-                                   <button class="btn btn-danger btn-sm" onclick="transactionManager.deleteTransaction(${tx.id}, ${amount})">
-                                       <i class="feather icon-trash-2"></i>
-                                   </button>
-                               </td>
-                           </tr>
-                       `);
-                   });
+                        tbody.append(`
+                            <tr>
+                                <td>${transactionManager.formatDate(tx.created_at)}</td>
+                                <td>${tx.description || ''}</td>
+                                <td>${receipt || '\u2014'}</td>
+                                <td>${tx.type === 'credit' ? 'Received' : 'Paid'}</td>
+                                <td>${currency} ${amount.toFixed(2)}</td>
+                                <td>${exchangeRate || 'N/A'}</td>
+                                <td class="text-center">
+                                    <button class="btn btn-primary btn-sm" onclick="transactionManager.editTransaction(${tx.id}, '${(tx.description||'').replace(/'/g,"\\'")}', ${amount}, '${currency}', ${tx.exchange_rate || 'null'}, '${receipt.replace(/'/g,"\\'")}')">
+                                        <i class="feather icon-edit"></i>
+                                    </button>
+                                     <button class="btn btn-info btn-sm mr-1" title="Print Receipt"
+                                         onclick="printReceipt(${tx.id})">
+                                     <i class="feather icon-printer"></i>
+                                 </button>
+                                    <button class="btn btn-danger btn-sm" onclick="transactionManager.deleteTransaction(${tx.id}, ${amount})">
+                                        <i class="feather icon-trash-2"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `);
+                    });
 
                    // Display exchange rates
                    const exchangeText = Object.entries(rates).map(([cur,val]) => `${cur}: ${val}`).join(', ');
@@ -472,28 +472,19 @@
     },
 
     // Edit transaction function
-    editTransaction: function(transactionId, description, amount, createdAt, currency, exchangeRate) {
-        // Format the date and time
-        const dateTime = new Date(createdAt);
-        const formattedDate = dateTime.toISOString().split('T')[0];
-        const hours = String(dateTime.getHours()).padStart(2, '0');
-        const minutes = String(dateTime.getMinutes()).padStart(2, '0');
-        const seconds = String(dateTime.getSeconds()).padStart(2, '0');
-        const formattedTime = `${hours}:${minutes}:${seconds}`;
-
+    editTransaction: function(transactionId, description, amount, currency, exchangeRate, receipt) {
         // Get the visa ID from the transaction modal
         const currentVisaId = $('#transactionVisaIdInput').val();
 
-
         // Set the form values
         $('#editTransactionId').val(transactionId);
-        $('#editVisaId').val(currentVisaId); // Set the visa_id
+        $('#editVisaId').val(currentVisaId);
         $('#originalAmount').val(amount);
-        $('#editPaymentDate').val(formattedDate);
-        $('#editPaymentTime').val(formattedTime);
         $('#editPaymentAmount').val(parseFloat(amount).toFixed(2));
         $('#editPaymentDescription').val(description);
         $('#editPaymentCurrency').val(currency);
+        $('#editPaymentCurrencyHidden').val(currency);
+        $('#editReceiptNumber').val(receipt || '');
 
         // Trigger change event to update exchange rate field visibility
         $('#editPaymentCurrency').trigger('change');
@@ -526,11 +517,10 @@
                 transaction_id: transactionId,
                 visa_id: currentVisaId,
                 original_amount: amount,
-                payment_date: $('#editPaymentDate').val(),
-                payment_time: $('#editPaymentTime').val(),
                 payment_amount: $('#editPaymentAmount').val(),
-                payment_currency: $('#editPaymentCurrency').val(),
-                payment_description: $('#editPaymentDescription').val()
+                payment_currency: $('#editPaymentCurrencyHidden').val() || $('#editPaymentCurrency').val(),
+                payment_description: $('#editPaymentDescription').val(),
+                receipt_number: $('#editReceiptNumber').val().trim()
             };
 
             // Add exchange rate if provided
@@ -539,8 +529,6 @@
                 postData.payment_exchange_rate = exchangeRate;
             }
 
-
-
             $.post('../api/visa/update_visa_payment.php', postData)
                 .done(function(response) {
                     if (response.success) {
@@ -548,22 +536,17 @@
                         $('#editTransactionModal').modal('hide');
                         transactionManager.loadTransactionHistory(currentVisaId);
                     } else {
-                        // Re-enable submit button on business logic error
                         submitButton.prop('disabled', false);
                         submitButton.html(originalText);
                         alert('error: ' + (response.message || 'unknown_error'));
                     }
                 })
                 .fail(function(xhr, status, error) {
-
-
-                    // Re-enable submit button on network error
                     submitButton.prop('disabled', false);
                     submitButton.html(originalText);
                     alert('error_updating_transaction');
                 });
 
-            // Re-enable submit button after 10 seconds as safety measure
             setTimeout(function() {
                 if (submitButton.prop('disabled')) {
                     submitButton.prop('disabled', false);
