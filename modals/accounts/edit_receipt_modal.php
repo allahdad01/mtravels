@@ -20,6 +20,7 @@
                         <input type="text" class="form-control" id="editReceiptNumber" name="receipt" placeholder="Enter receipt number" required>
                         <small class="form-text text-muted">Enter or update the receipt number for this transaction</small>
                     </div>
+                    <div id="editReceiptError" class="alert alert-danger d-none mt-2 mb-0"></div>
                 </form>
             </div>
             <div class="modal-footer">

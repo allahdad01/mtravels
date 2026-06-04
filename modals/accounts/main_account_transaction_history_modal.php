@@ -69,7 +69,7 @@
                     </div>
                 
 
-                <div class="table-responsive rounded" style="max-height: 650px; overflow-y: auto; overflow-x: auto; border: 1px solid #ddd; border-radius: 4px;">
+                <div class="table-responsive rounded" style="max-height: calc(100vh - 280px); overflow-y: auto; overflow-x: auto; border: 1px solid #ddd; border-radius: 4px;">
                     <table class="table table-sm table-hover table-striped mb-0" id="transactionsTable" style="min-width: 100%; font-size: 0.75rem;">
                         <thead class="bg-light" style="position: sticky; top: 0; z-index: 10;">
                             <tr style="font-size: 0.7rem; padding: 2px;">

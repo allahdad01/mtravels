@@ -639,6 +639,21 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
 .pg-fab button:hover {
     background: #0C447C;
 }
+
+/* ─── Bootstrap-select dropdown text fix ───────────────── */
+.bootstrap-select .dropdown-menu .inner .dropdown-item {
+    color: #212529 !important;
+}
+.bootstrap-select .dropdown-menu .inner .dropdown-item:hover,
+.bootstrap-select .dropdown-menu .inner .dropdown-item:focus {
+    color: #16181b !important;
+    background-color: #f8f9fa !important;
+}
+.bootstrap-select .dropdown-menu .inner .dropdown-item.active,
+.bootstrap-select .dropdown-menu .inner .dropdown-item:active {
+    color: #fff !important;
+    background-color: #007bff !important;
+}
 </style>
 
 <!-- [ Main Content ] start -->

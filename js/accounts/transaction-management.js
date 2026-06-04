@@ -439,7 +439,7 @@ function attachEditReceiptButtonListeners() {
             set('editReceiptTransactionType', d.transactionType);
             set('editReceiptNumber',          d.receipt);
             $('#transactionHistoryModal').modal('hide');
-            setTimeout(() => new bootstrap.Modal(document.getElementById('editReceiptModal')).show(), 500);
+            setTimeout(() => $('#editReceiptModal').modal('show'), 500);
         });
     });
 }
@@ -557,11 +557,18 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     });
 
+    // Clear error when edit receipt modal opens
+    $('#editReceiptModal').on('show.bs.modal', function () {
+        document.getElementById('editReceiptError')?.classList.add('d-none');
+    });
+
     // Save edit receipt
     document.getElementById('saveEditReceiptBtn')?.addEventListener('click', function () {
         const id      = document.getElementById('editReceiptTransactionId').value;
         const type    = document.getElementById('editReceiptTransactionType').value;
         const receipt = document.getElementById('editReceiptNumber').value.trim();
+
+        document.getElementById('editReceiptError')?.classList.add('d-none');
 
         if (!receipt) { showErrorToast('please_enter_a_receipt_number'); return; }
 
@@ -584,25 +591,21 @@ document.addEventListener('DOMContentLoaded', function () {
              this.innerHTML = '<i class="feather icon-save mr-1"></i>Save Receipt';
              if (data.success) {
                  showSuccessToast('receipt_updated_successfully');
-                 setTimeout(() => {
-                     const modal = document.getElementById('editReceiptModal');
-                     if (modal) {
-                         const bootstrapModal = bootstrap.Modal.getInstance(modal);
-                         if (bootstrapModal) {
-                             bootstrapModal.hide();
-                         } else {
-                             $('#editReceiptModal').modal('hide');
-                         }
-                     }
+                 $('#editReceiptModal').off('hidden.bs.modal').on('hidden.bs.modal', function () {
+                     $(this).off('hidden.bs.modal');
                      loadTransactions(type, data.account_id, data.account_name);
-                 }, 300);
+                 }).modal('hide');
              } else {
+                 const errEl = document.getElementById('editReceiptError');
+                 if (errEl) { errEl.textContent = data.message; errEl.classList.remove('d-none'); }
                  showErrorToast('error: ' + data.message);
              }
          })
         .catch(err => {
             this.disabled  = false;
             this.innerHTML = '<i class="feather icon-save mr-1"></i>Save Receipt';
+            const errEl = document.getElementById('editReceiptError');
+            if (errEl) { errEl.textContent = err.message || err; errEl.classList.remove('d-none'); }
             showErrorToast('error_updating_receipt: ' + err);
         });
     });
