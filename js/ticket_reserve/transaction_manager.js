@@ -255,12 +255,12 @@ loadTransactionModal: function(ticketId) {
                         tbody.append(`
                             <tr>
                                 <td>${transactionManager.formatDate(tx.created_at)}</td>
-                                <td>${tx.description || ''}</td>
-                                <td>${tx.type === 'credit' ? 'Received' : 'Paid'}</td>
-                                <td>${currency} ${amount.toFixed(2)}</td>
-                                <td>${exchangeRate || 'N/A'}</td>
-                                <td class="text-center">
-                                    <button class="btn btn-primary btn-sm" onclick="transactionManager.editTransaction(${tx.id}, '${(tx.description||'').replace(/'/g,"\\'")}', ${amount}, '${tx.created_at}', '${currency}', ${tx.exchange_rate || 'null'})">
+                                <td style="word-wrap:break-word;white-space:normal;max-width:200px">${tx.description || ''}</td>
+                                <td>${tx.receipt || '—'}</td>
+                                <td>${tx.type === 'credit' ? 'Received' : 'Paid'} ${currency} ${amount.toFixed(2)}</td> 
+                                <td>${exchangeRate ? exchangeRate.toFixed(2) : 'N/A'}</td>
+                                <td class="text-center" style="white-space:nowrap">
+                                    <button class="btn btn-primary btn-sm" onclick="transactionManager.editTransaction(${tx.id}, '${(tx.description||'').replace(/'/g,"\\'")}', ${amount}, '${tx.created_at}', '${currency}', ${tx.exchange_rate || 'null'}, '${(tx.receipt||'').replace(/'/g,"\\'")}')">
                                         <i class="feather icon-edit"></i>
                                     </button>
                                     <button class="btn btn-info btn-sm mr-1" title="Print Receipt"
@@ -460,23 +460,9 @@ loadTransactionModal: function(ticketId) {
     },
 
     // Add edit transaction function
-    editTransaction: function(transactionId, description, amount, createdAt, currency, exchangeRate) {
-        // Parse the datetime string
-        const dateTime = new Date(createdAt);
-
-        // Format date for input field (YYYY-MM-DD)
-        const formattedDate = dateTime.toISOString().split('T')[0];
-
-        // Format time for input field (HH:MM:SS)
-        const hours = String(dateTime.getHours()).padStart(2, '0');
-        const minutes = String(dateTime.getMinutes()).padStart(2, '0');
-        const seconds = String(dateTime.getSeconds()).padStart(2, '0');
-        const formattedTime = `${hours}:${minutes}:${seconds}`;
-
+    editTransaction: function(transactionId, description, amount, createdAt, currency, exchangeRate, receipt) {
         // Get the current ticket ID from the booking_id field
         const ticketId = $('#booking_id').val();
-
-
 
         // Create edit transaction modal if it doesn't exist
         if (!$('#editTransactionModal').length) {
@@ -497,23 +483,7 @@ loadTransactionModal: function(ticketId) {
                                     <input type="hidden" id="originalAmount" name="original_amount">
 
                                     <div class="row">
-                                        <div class="col-md-3">
-                                            <div class="form-group">
-                                                <label for="editPaymentDate">
-                                                    <i class="feather icon-calendar mr-1"></i>Payment Date
-                                                </label>
-                                                <input type="date" class="form-control" id="editPaymentDate" name="payment_date" required>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <div class="form-group">
-                                                <label for="editPaymentTime">
-                                                    <i class="feather icon-clock mr-1"></i>Payment Time
-                                                </label>
-                                                <input type="time" class="form-control" id="editPaymentTime" name="payment_time" step="1" required>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
+                                        <div class="col-md-4">
                                             <div class="form-group">
                                                 <label for="editPaymentAmount">
                                                     <i class="feather icon-dollar-sign mr-1"></i>Amount
@@ -525,13 +495,21 @@ loadTransactionModal: function(ticketId) {
                                                 </small>
                                             </div>
                                         </div>
-                                        <div class="col-md-3">
+                                        <div class="col-md-4">
                                             <div class="form-group">
                                                 <label for="editPaymentDescription">
                                                     <i class="feather icon-file-text mr-1"></i>Description
                                                 </label>
                                                 <textarea class="form-control" id="editPaymentDescription"
                                                           name="payment_description" rows="2" required></textarea>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-group">
+                                                <label for="editPaymentReceipt">
+                                                    <i class="feather icon-hash mr-1"></i>Receipt
+                                                </label>
+                                                <input type="text" class="form-control" id="editPaymentReceipt" name="receipt_number" placeholder="Enter receipt number">
                                             </div>
                                         </div>
                                     </div>
@@ -547,6 +525,7 @@ loadTransactionModal: function(ticketId) {
                                                     <option value="EUR">EUR</option>
                                                     <option value="DARHAM">DARHAM</option>
                                                 </select>
+                                                <input type="hidden" name="payment_currency" id="editPaymentCurrencyHidden">
                                             </div>
                                         </div>
                                         <div class="col-md-6">
@@ -598,7 +577,6 @@ loadTransactionModal: function(ticketId) {
 
                 // Ensure transaction_id and ticket_id are set
                 if (!formData.get('transaction_id')) {
-                    // Re-enable submit button on validation error
                     submitBtn.prop('disabled', false);
                     submitBtn.html(originalText);
                     alert('Error: Missing transaction ID');
@@ -606,18 +584,10 @@ loadTransactionModal: function(ticketId) {
                 }
 
                 if (!formData.get('ticket_id')) {
-                    // Re-enable submit button on validation error
                     submitBtn.prop('disabled', false);
                     submitBtn.html(originalText);
                     alert('Error: Missing ticket ID');
                     return;
-                }
-
-                // Combine date and time into a datetime string in MySQL format
-                const date = formData.get('payment_date');
-                const time = formData.get('payment_time');
-                if (date && time) {
-                    formData.set('payment_date', `${date} ${time}`);
                 }
 
                 // Add exchange rate if provided
@@ -625,13 +595,6 @@ loadTransactionModal: function(ticketId) {
                 if (exchangeRate && $('#editExchangeRateField').is(':visible')) {
                     formData.set('payment_exchange_rate', exchangeRate);
                 }
-
-                // Log the form data for debugging
-                console.log('Form data:', {
-                    payment_method: $('#editPaymentMethod').val(),
-                    amount: $('#editAmount').val(),
-                    currency: $('#editPaymentCurrency').val()
-                });
 
                 $.ajax({
                     url: '../api/ticket_reserve/update_ticket_reserve_payment.php',
@@ -647,23 +610,17 @@ loadTransactionModal: function(ticketId) {
                                 $('#editTransactionModal').modal('hide');
                                 transactionManager.loadTransactionHistory(currentTicketId);
                             } else {
-                                // Re-enable submit button on business logic error
                                 submitBtn.prop('disabled', false);
                                 submitBtn.html(originalText);
                                 alert('Error updating transaction: ' + (result.message || 'Unknown error'));
                             }
                         } catch (e) {
-
-                            // Re-enable submit button on parsing error
                             submitBtn.prop('disabled', false);
                             submitBtn.html(originalText);
                             alert('Error processing the request');
                         }
                     },
                     error: function(xhr, status, error) {
-
-
-                        // Re-enable submit button on network error
                         submitBtn.prop('disabled', false);
                         submitBtn.html(originalText);
                         alert('Error updating transaction');
@@ -684,13 +641,13 @@ loadTransactionModal: function(ticketId) {
         $('#editTransactionId').val(transactionId);
         $('#editTicketId').val(ticketId);
         $('#originalAmount').val(amount);
-        $('#editPaymentDate').val(formattedDate);
-        $('#editPaymentTime').val(formattedTime);
         $('#editPaymentAmount').val(parseFloat(amount).toFixed(2));
         $('#editPaymentDescription').val(description);
+        $('#editPaymentReceipt').val(receipt || '');
 
         // Set the currency from the transaction
         $('#editPaymentCurrency').val(currency);
+        $('#editPaymentCurrencyHidden').val(currency);
 
         // Trigger change event to update exchange rate field visibility
         $('#editPaymentCurrency').trigger('change');
@@ -704,18 +661,6 @@ loadTransactionModal: function(ticketId) {
             $('#editExchangeRateField').hide();
             $('#editTransactionExchangeRate').val('');
         }
-
-        // Log values for debugging
-        console.log({
-            transactionId: transactionId,
-            ticketId: ticketId,
-            amount: amount,
-            date: formattedDate,
-            time: formattedTime,
-            description: description,
-            currency: currency,
-            exchangeRate: exchangeRate
-        });
 
         // Show the modal
         $('#editTransactionModal').modal('show');
