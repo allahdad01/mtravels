@@ -7,17 +7,31 @@ header('Content-Type: application/json');
 
 $user_role = $_SESSION['role'];
 $show_all = isset($_GET['all']) && $_GET['all'] === '1' && in_array($user_role, ['super_admin']);
+$page_filter = isset($_GET['page']) ? trim($_GET['page']) : '';
 
 try {
-    if ($show_all) {
-        $stmt = $pdo->prepare("SELECT * FROM tutorials ORDER BY sort_order ASC, id ASC");
-        $stmt->execute();
-        $tutorials = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } else {
-        $stmt = $pdo->prepare("SELECT * FROM tutorials WHERE status = 1 ORDER BY sort_order ASC, id ASC");
-        $stmt->execute();
-        $tutorials = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $sql = "SELECT * FROM tutorials";
+    $conditions = [];
+    $params = [];
 
+    if (!$show_all) {
+        $conditions[] = "status = 1";
+    }
+    if ($page_filter !== '') {
+        $conditions[] = "page = ?";
+        $params[] = $page_filter;
+    }
+
+    if (!empty($conditions)) {
+        $sql .= " WHERE " . implode(" AND ", $conditions);
+    }
+    $sql .= " ORDER BY sort_order ASC, id ASC";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $tutorials = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    if (!$show_all) {
         $filtered = [];
         foreach ($tutorials as $t) {
             $roles = json_decode($t['roles'], true);

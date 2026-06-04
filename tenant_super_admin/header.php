@@ -2199,6 +2199,24 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                 <span class="app-header__badge"></span>
             </a>
             <?php endif; ?>
+            <div class="app-header__help" id="pageHelpContainer">
+                <button class="app-header__icon-btn" type="button" id="pageHelpToggle" aria-label="Page tutorials" aria-expanded="false">
+                    <i class="feather icon-help-circle"></i>
+                </button>
+                <div class="app-help-menu" id="pageHelpMenu" aria-hidden="true">
+                    <div class="app-help-menu__head">
+                        <i class="feather icon-book mr-2"></i>
+                        <span>Tutorials</span>
+                    </div>
+                    <div class="app-help-menu__subhead" id="pageHelpSubhead">Loading...</div>
+                    <div class="app-help-menu__list" id="pageHelpList">
+                        <div class="app-help-menu__empty">No tutorials for this page</div>
+                    </div>
+                    <div class="app-help-menu__foot">
+                        <a href="../admin/tutorial.php">View All Tutorials <i class="feather icon-arrow-right"></i></a>
+                    </div>
+                </div>
+            </div>
             <a class="app-header__icon-btn" href="tenant_settings.php" aria-label="Settings">
                 <i class="feather icon-settings"></i>
             </a>
@@ -2722,6 +2740,52 @@ document.addEventListener('DOMContentLoaded', function() {
         .alq-chat-panel { width: calc(100% - 20px); height: 80vh; <?php echo is_rtl() ? 'left' : 'right'; ?>: 10px; bottom: 76px; }
         .alq-chat-fab { bottom: 12px; <?php echo is_rtl() ? 'left' : 'right'; ?>: 12px; }
     }
+.app-header__help { position: relative; }
+.app-help-menu {
+    position: absolute; top: calc(100% + 8px); right: 0; width: 360px; max-height: 420px;
+    background: #fff; border-radius: 10px; box-shadow: 0 8px 32px rgba(0,0,0,.15);
+    display: none; flex-direction: column; overflow: hidden; z-index: 1100;
+}
+.app-help-menu.open { display: flex; }
+.app-help-menu__head {
+    padding: 14px 16px; font-weight: 600; font-size: .9rem; color: #1a2332;
+    border-bottom: 1px solid #e4eaf2; display: flex; align-items: center;
+}
+.app-help-menu__subhead {
+    padding: 8px 16px; font-size: .8rem; color: #6b7a90;
+    background: #f8f9fa; border-bottom: 1px solid #e4eaf2;
+}
+.app-help-menu__list {
+    flex: 1; overflow-y: auto; padding: 8px;
+}
+.app-help-menu__empty {
+    text-align: center; padding: 24px 16px; color: #6b7a90; font-size: .85rem;
+}
+.app-help-menu__item {
+    display: flex; gap: 12px; padding: 10px 12px; border-radius: 8px; cursor: pointer;
+    transition: background .15s; border: 1px solid transparent; margin-bottom: 4px;
+}
+.app-help-menu__item:hover { background: rgba(64,153,255,.12); border-color: #4099ff; }
+.app-help-menu__item-icon {
+    width: 40px; height: 40px; border-radius: 8px; background: rgba(64,153,255,.12);
+    display: flex; align-items: center; justify-content: center; color: #4099ff; flex-shrink: 0;
+}
+.app-help-menu__item-body { flex: 1; min-width: 0; }
+.app-help-menu__item-title { font-weight: 600; font-size: .85rem; color: #1a2332; margin-bottom: 2px; }
+.app-help-menu__item-desc { font-size: .78rem; color: #6b7a90; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.app-help-menu__item-chapters { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.app-help-menu__chapter {
+    font-size: .7rem; padding: 2px 8px; border-radius: 4px; background: #e8f0fe; color: #1967d2;
+    font-family: monospace; white-space: nowrap;
+}
+.app-help-menu__item-play {
+    font-size: .75rem; color: #4099ff; display: flex; align-items: center; gap: 4px; margin-top: 4px; font-weight: 500;
+}
+.app-help-menu__foot {
+    padding: 10px 16px; border-top: 1px solid #e4eaf2; text-align: center;
+}
+.app-help-menu__foot a { font-size: .82rem; color: #4099ff; font-weight: 500; text-decoration: none; }
+.app-help-menu__foot a:hover { text-decoration: underline; }
 </style>
 
 <div id="alqChatFab" class="alq-chat-fab" title="Chat">
@@ -2856,5 +2920,246 @@ document.addEventListener('DOMContentLoaded', function() {
     openFull && openFull.addEventListener('click', function(e) { e.preventDefault(); window.location.href = '../chat.php'; });
     document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && panel.classList.contains('open')) togglePanel(false); });
 })();
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var helpToggle = document.getElementById('pageHelpToggle');
+    var helpMenu = document.getElementById('pageHelpMenu');
+    var helpList = document.getElementById('pageHelpList');
+    var helpSubhead = document.getElementById('pageHelpSubhead');
+    if (!helpToggle || !helpMenu) return;
+
+    var currentPage = window.location.pathname.split('/').pop();
+
+    function loadPageTutorials() {
+        helpSubhead.textContent = 'Loading tutorials for ' + currentPage + '...';
+        helpList.innerHTML = '<div class="app-help-menu__empty"><i class="feather icon-loader" style="animation:spin 1s linear infinite;display:inline-block;"></i> Loading...</div>';
+
+        fetch('../api/tutorials/list.php?page=' + encodeURIComponent(currentPage))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.success || !data.tutorials || !data.tutorials.length) {
+                    helpSubhead.textContent = currentPage;
+                    helpList.innerHTML = '<div class="app-help-menu__empty"><i class="feather icon-book-open" style="display:block;font-size:2rem;margin-bottom:8px;"></i>No tutorials for this page</div>';
+                    return;
+                }
+                helpSubhead.textContent = data.tutorials.length + ' tutorial' + (data.tutorials.length > 1 ? 's' : '') + ' for ' + currentPage;
+                helpList.innerHTML = data.tutorials.map(function(t) {
+                    var chapters = [];
+                    try { chapters = JSON.parse(t.chapters || '[]'); } catch(e) {}
+                    var chapterHtml = chapters.length ? '<div class="app-help-menu__item-chapters">'
+                        + chapters.map(function(c) { return '<span class="app-help-menu__chapter">' + esc(c.time) + ' ' + esc(c.label) + '</span>'; }).join('')
+                        + '</div>' : '';
+                    return '<div class="app-help-menu__item" data-tutorial="' + encodeURIComponent(JSON.stringify(t)) + '">'
+                        + '<div class="app-help-menu__item-icon"><i class="feather icon-play-circle"></i></div>'
+                        + '<div class="app-help-menu__item-body">'
+                        + '<div class="app-help-menu__item-title">' + esc(t.title) + '</div>'
+                        + '<div class="app-help-menu__item-desc">' + esc(t.description || '') + '</div>'
+                        + chapterHtml
+                        + '<div class="app-help-menu__item-play"><i class="feather icon-play"></i> Watch tutorial</div>'
+                        + '</div></div>';
+                }).join('');
+            })
+            .catch(function() {
+                helpSubhead.textContent = currentPage;
+                helpList.innerHTML = '<div class="app-help-menu__empty">Failed to load tutorials</div>';
+            });
+    }
+
+    helpToggle.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var isOpen = helpMenu.classList.toggle('open');
+        helpMenu.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+        helpToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        if (isOpen) loadPageTutorials();
+    });
+
+    helpList.addEventListener('click', function(e) {
+        var item = e.target.closest('.app-help-menu__item');
+        if (item) {
+            var tutorial = JSON.parse(decodeURIComponent(item.getAttribute('data-tutorial')));
+            openTutorialVideo(tutorial);
+        }
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!helpMenu.contains(e.target) && !helpToggle.contains(e.target)) {
+            helpMenu.classList.remove('open');
+            helpMenu.setAttribute('aria-hidden', 'true');
+            helpToggle.setAttribute('aria-expanded', 'false');
+        }
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            helpMenu.classList.remove('open');
+            helpMenu.setAttribute('aria-hidden', 'true');
+            helpToggle.setAttribute('aria-expanded', 'false');
+        }
+    });
+
+    function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+});
+</script>
+
+<div id="helpVideoModal" class="help-video-modal" style="display:none;">
+    <div class="help-video-modal-content">
+        <div class="help-video-modal-header">
+            <span class="help-video-modal-title" id="helpVideoTitle">Tutorial</span>
+            <span class="help-video-modal-close" onclick="closeHelpVideo()">&times;</span>
+        </div>
+        <div class="help-video-container">
+            <iframe id="helpVideoPlayer" src="" allow="autoplay; fullscreen; picture-in-picture"></iframe>
+        </div>
+        <div class="help-video-chapters" id="helpVideoChapters" style="display:none;">
+            <div class="help-video-chapters-title">Chapters</div>
+            <div class="help-video-chapters-list" id="helpVideoChaptersList"></div>
+        </div>
+    </div>
+</div>
+
+<style>
+.help-video-modal {
+    position: fixed; z-index: 12000; left: 0; top: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.7); align-items: center; justify-content: center;
+}
+.help-video-modal.show { display: flex !important; }
+.help-video-modal-content {
+    position: relative; background: #000; width: 90%; max-width: 900px; border-radius: 8px; overflow: hidden;
+}
+.help-video-modal-header {
+    background: #1a1a2e; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between;
+}
+.help-video-modal-title { color: #fff; font-weight: 600; font-size: .9rem; }
+.help-video-modal-close { color: #fff; font-size: 24px; cursor: pointer; line-height: 1; }
+.help-video-modal-close:hover { color: #ff5370; }
+.help-video-container { position: relative; width: 100%; padding-bottom: 56.25%; height: 0; }
+.help-video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
+.help-video-chapters { background: #1a1a2e; padding: 12px 16px; border-top: 1px solid #333; }
+.help-video-chapters-title { color: #aaa; font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+.help-video-chapters-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.help-video-chapter-item {
+    display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.08); border-radius: 5px;
+    padding: 5px 10px; cursor: pointer; transition: all .2s; border: 1px solid transparent;
+}
+.help-video-chapter-item:hover { background: rgba(70,128,255,0.2); border-color: #4680ff; }
+.help-video-chapter-time { font-size: .75rem; font-weight: 700; color: #4680ff; font-family: monospace; }
+.help-video-chapter-label { font-size: .8rem; color: #e0e0e0; }
+</style>
+
+<script>
+function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+var helpCurrentVideoId = null;
+var helpCurrentVideoType = null;
+var helpCurrentChapters = [];
+var helpYtPlayer = null;
+var helpVimeoPlayer = null;
+var helpYtApiLoaded = false;
+var helpVimeoApiLoaded = false;
+
+function openTutorialVideo(tutorial) {
+    var type = tutorial.video_type || 'vimeo';
+    var id = tutorial.video_id || '';
+    if (!id) return;
+
+    document.getElementById('helpVideoTitle').textContent = tutorial.title || 'Tutorial';
+    helpCurrentVideoId = id;
+    helpCurrentVideoType = type;
+    helpYtPlayer = null;
+    helpVimeoPlayer = null;
+    try { helpCurrentChapters = JSON.parse(tutorial.chapters || '[]'); } catch(e) { helpCurrentChapters = []; }
+
+    var url = type === 'youtube'
+        ? 'https://www.youtube.com/embed/' + id + '?autoplay=1&rel=0&enablejsapi=1'
+        : 'https://player.vimeo.com/video/' + id + '?autoplay=1';
+
+    document.getElementById('helpVideoPlayer').src = url;
+    document.getElementById('helpVideoModal').classList.add('show');
+    document.body.style.overflow = 'hidden';
+    renderHelpChapters();
+    loadHelpPlayerApi();
+}
+
+function loadHelpPlayerApi() {
+    var iframe = document.getElementById('helpVideoPlayer');
+    if (helpCurrentVideoType === 'youtube') {
+        if (!helpYtApiLoaded) {
+            helpYtApiLoaded = true;
+            var tag = document.createElement('script');
+            tag.src = 'https://www.youtube.com/iframe_api';
+            var first = document.getElementsByTagName('script')[0];
+            first.parentNode.insertBefore(tag, first);
+        }
+        var checkYt = setInterval(function() {
+            if (typeof YT !== 'undefined' && YT.loaded) {
+                clearInterval(checkYt);
+                if (!helpYtPlayer) {
+                    try { helpYtPlayer = new YT.Player('helpVideoPlayer', {}); } catch(e) {}
+                }
+            }
+        }, 500);
+    } else if (helpCurrentVideoType === 'vimeo') {
+        if (!helpVimeoApiLoaded) {
+            helpVimeoApiLoaded = true;
+            var tag = document.createElement('script');
+            tag.src = 'https://player.vimeo.com/api/player.js';
+            var first = document.getElementsByTagName('script')[0];
+            first.parentNode.insertBefore(tag, first);
+        }
+        var checkVimeo = setInterval(function() {
+            if (typeof Vimeo !== 'undefined' && Vimeo.Player) {
+                clearInterval(checkVimeo);
+                if (!helpVimeoPlayer) {
+                    try { helpVimeoPlayer = new Vimeo.Player(iframe); } catch(e) {}
+                }
+            }
+        }, 500);
+    }
+}
+
+function renderHelpChapters() {
+    var container = document.getElementById('helpVideoChapters');
+    var list = document.getElementById('helpVideoChaptersList');
+    if (!helpCurrentChapters.length) {
+        container.style.display = 'none';
+        return;
+    }
+    container.style.display = 'block';
+    list.innerHTML = helpCurrentChapters.map(function(ch, i) {
+        return '<div class="help-video-chapter-item" onclick="seekHelpVideo(' + i + ')">'
+            + '<span class="help-video-chapter-time">' + esc(ch.time) + '</span>'
+            + '<span class="help-video-chapter-label">' + esc(ch.label) + '</span>'
+            + '</div>';
+    }).join('');
+}
+
+function seekHelpVideo(index) {
+    var ch = helpCurrentChapters[index];
+    if (!ch) return;
+    var seconds = parseInt(ch.seconds, 10) || 0;
+    if (helpCurrentVideoType === 'youtube' && helpYtPlayer && typeof helpYtPlayer.seekTo === 'function') {
+        helpYtPlayer.seekTo(seconds, true);
+    } else if (helpCurrentVideoType === 'vimeo' && helpVimeoPlayer && typeof helpVimeoPlayer.setCurrentTime === 'function') {
+        helpVimeoPlayer.setCurrentTime(seconds).catch(function() {});
+    }
+}
+
+function closeHelpVideo() {
+    document.getElementById('helpVideoModal').classList.remove('show');
+    document.getElementById('helpVideoPlayer').src = '';
+    document.body.style.overflow = 'auto';
+    helpCurrentChapters = [];
+    helpYtPlayer = null;
+    helpVimeoPlayer = null;
+}
+
+document.addEventListener('click', function(e) {
+    if (e.target === document.getElementById('helpVideoModal')) closeHelpVideo();
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && document.getElementById('helpVideoModal').classList.contains('show')) closeHelpVideo();
+});
 </script>
 <?php endif; ?>

@@ -412,6 +412,18 @@ sort($categories);
             closeVideo();
         }
     });
+
+    // Auto-play tutorial if ?play=ID is in URL
+    (function() {
+        var params = new URLSearchParams(window.location.search);
+        var playId = params.get('play');
+        if (playId) {
+            var tutorial = tutorials.find(function(t) { return t.id == playId; });
+            if (tutorial) {
+                setTimeout(function() { playVideo(tutorial); }, 500);
+            }
+        }
+    })();
 </script>
 
 </body>
