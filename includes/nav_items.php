@@ -549,11 +549,11 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
     </ul>
 </li>
 
-<!-- ── Tutorials ──────────────────────────────────────────────────────── -->
+<?php endif; ?>
+<!-- ── Tutorials (visible to all roles) ──────────────────────────── -->
 <li class="nav-item <?= navActive('tutorial.php') ?>">
     <a href="tutorial.php" class="nav-link">
         <span class="pcoded-micon"><i class="feather icon-book"></i></span>
         <span class="pcoded-mtext"><?= __('tutorials') ?></span>
     </a>
 </li>
-<?php endif; ?>

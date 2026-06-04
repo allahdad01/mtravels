@@ -2556,6 +2556,17 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
                         <span class="pcoded-mtext">Activity Logs</span>
                     </a>
                 </li>
+
+                <!-- ── Tutorials ──────────────────────────────────────────────────────── -->
+                <li class="nav-item pcoded-menu-caption">
+                    <label>Support</label>
+                </li>
+                <li data-username="tutorials" class="nav-item <?php echo (basename($_SERVER['PHP_SELF']) == 'tutorial.php' && strpos($_SERVER['PHP_SELF'], '/admin/') !== false) ? 'active' : ''; ?>">
+                    <a href="../admin/tutorial.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-book"></i></span>
+                        <span class="pcoded-mtext">Tutorials</span>
+                    </a>
+                </li>
             </ul>
         </div>
         <div class="navbar-brand user-profile-section" style="position: absolute; bottom: 0; width: 100%; border-top: 1px solid rgba(255,255,255,0.1); background: #4099ff; z-index: 10;">

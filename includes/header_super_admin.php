@@ -965,6 +965,12 @@ if (!function_exists('h')) {
                         <span class="pcoded-mtext">File Browser</span>
                     </a>
                 </li>
+                <li data-username="manage_tutorials" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_tutorials.php' ? 'active' : ''; ?>">
+                    <a href="manage_tutorials.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-book"></i></span>
+                        <span class="pcoded-mtext">Manage Tutorials</span>
+                    </a>
+                </li>
 
             </ul>
         </div>
