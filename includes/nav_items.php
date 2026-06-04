@@ -85,27 +85,27 @@ $showTickets = hasFeature('ticket_bookings',     $allowed_features)
     <ul class="pcoded-submenu">
         <?php if (hasFeature('ticket_bookings', $allowed_features)): ?>
         <li class="<?= navActive('ticket.php') ?>">
-            <a href="ticket.php"><?= __('book_tickets') ?></a>
+            <a href="ticket.php"><i class="fas fa-ticket-alt mr-2"></i><?= __('book_tickets') ?></a>
         </li>
         <?php endif; ?>
         <?php if (hasFeature('refunded_tickets', $allowed_features)): ?>
         <li class="<?= navActive('refund_ticket.php') ?>">
-            <a href="refund_ticket.php"><?= __('refund_tickets') ?></a>
+            <a href="refund_ticket.php"><i class="fas fa-undo mr-2"></i><?= __('refund_tickets') ?></a>
         </li>
         <?php endif; ?>
         <?php if (hasFeature('date_change_tickets', $allowed_features)): ?>
         <li class="<?= navActive('date_change.php') ?>">
-            <a href="date_change.php"><?= __('date_changed_tickets') ?></a>
+            <a href="date_change.php"><i class="fas fa-calendar-alt mr-2"></i><?= __('date_changed_tickets') ?></a>
         </li>
         <?php endif; ?>
         <?php if (hasFeature('ticket_weights', $allowed_features)): ?>
         <li class="<?= navActive('ticket_weights.php') ?>">
-            <a href="ticket_weights.php"><?= __('ticket_weights') ?></a>
+            <a href="ticket_weights.php"><i class="fas fa-weight mr-2"></i><?= __('ticket_weights') ?></a>
         </li>
         <?php endif; ?>
         <?php if (hasFeature('ticket_reservations', $allowed_features)): ?>
         <li class="<?= navActive('ticket_reserve.php') ?>">
-            <a href="ticket_reserve.php"><?= __('ticket_reservations') ?></a>
+            <a href="ticket_reserve.php"><i class="fas fa-bookmark mr-2"></i><?= __('ticket_reservations') ?></a>
         </li>
         <?php endif; ?>
     </ul>
@@ -125,12 +125,12 @@ $showHotel = hasFeature('hotel_bookings', $allowed_features) || hasFeature('hote
     <ul class="pcoded-submenu">
         <?php if (hasFeature('hotel_bookings', $allowed_features)): ?>
         <li class="<?= navActive('hotel.php') ?>">
-            <a href="hotel.php"><?= __('hotel_bookings') ?></a>
+            <a href="hotel.php"><i class="fas fa-bed mr-2"></i><?= __('hotel_bookings') ?></a>
         </li>
         <?php endif; ?>
         <?php if (hasFeature('hotel_refunds', $allowed_features)): ?>
         <li class="<?= navActive('hotel_refunds.php') ?>">
-            <a href="hotel_refunds.php"><?= __('hotel_refund') ?></a>
+            <a href="hotel_refunds.php"><i class="fas fa-undo mr-2"></i><?= __('hotel_refund') ?></a>
         </li>
         <?php endif; ?>
     </ul>
@@ -146,18 +146,18 @@ $showHotel = hasFeature('hotel_bookings', $allowed_features) || hasFeature('hote
     </a>
     <ul class="pcoded-submenu">
         <li class="<?= navActive('umrah.php') ?>">
-            <a href="umrah.php"><?= __('umrah_bookings') ?></a>
+            <a href="umrah.php"><i class="fas fa-map mr-2"></i><?= __('umrah_bookings') ?></a>
         </li>
         <li class="<?= navActive('umrah_services.php') ?>">
-            <a href="umrah_services.php"><?= __('umrah_services') ?></a>
+            <a href="umrah_services.php"><i class="fas fa-bell mr-2"></i><?= __('umrah_services') ?></a>
         </li>
         <?php if (hasFeature('umrah_refunds', $allowed_features)): ?>
         <li class="<?= navActive('umrah_refunds.php') ?>">
-            <a href="umrah_refunds.php"><?= __('umrah_refunds') ?></a>
+            <a href="umrah_refunds.php"><i class="fas fa-undo mr-2"></i><?= __('umrah_refunds') ?></a>
         </li>
         <?php endif; ?>
         <li class="<?= navActive('umrah_date_changes.php') ?>">
-            <a href="umrah_date_changes.php"><?= __('umrah_date_changes') ?></a>
+            <a href="umrah_date_changes.php"><i class="fas fa-calendar-alt mr-2"></i><?= __('umrah_date_changes') ?></a>
         </li>
     </ul>
 </li>
@@ -176,12 +176,12 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
     <ul class="pcoded-submenu">
         <?php if (hasFeature('visa_applications', $allowed_features)): ?>
         <li class="<?= navActive('visa.php') ?>">
-            <a href="visa.php"><?= __('visa_bookings') ?></a>
+            <a href="visa.php"><i class="fas fa-id-card mr-2"></i><?= __('visa_bookings') ?></a>
         </li>
         <?php endif; ?>
         <?php if (hasFeature('visa_refunds', $allowed_features)): ?>
         <li class="<?= navActive('visa_refunds.php') ?>">
-            <a href="visa_refunds.php"><?= __('visa_refund') ?></a>
+            <a href="visa_refunds.php"><i class="fas fa-undo mr-2"></i><?= __('visa_refund') ?></a>
         </li>
         <?php endif; ?>
     </ul>
@@ -199,7 +199,7 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 <?php if (staffCanSeeMenu($user['role'])): ?>
 <li class="nav-item <?= navActive('accounts.php') ?>">
     <a href="accounts.php" class="nav-link">
-        <span class="pcoded-micon"><i class="feather icon-briefcase"></i></span>
+        <span class="pcoded-micon"><i class="fas fa-wallet"></i></span>
         <span class="pcoded-mtext"><?= __('accounts') ?></span>
     </a>
 </li>
@@ -239,7 +239,7 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 <?php if (staffCanSeeMenu($user['role'])): ?>
 <li class="nav-item pcoded-hasmenu <?= navTrigger('expense_management.php', 'budget_allocations.php', 'global_budget_allocation.php') ?>">
     <a href="javascript:" class="nav-link">
-        <span class="pcoded-micon"><i class="fas fa-dollar-sign"></i></span>
+        <span class="pcoded-micon"><i class="fas fa-receipt"></i></span>
         <span class="pcoded-mtext"><?= __('expense_management') ?></span>
     </a>
     <ul class="pcoded-submenu">
@@ -295,7 +295,7 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
     </a>
     <ul class="pcoded-submenu">
         <li class="<?= navActive('report.php') ?>">
-            <a href="report.php"><?= __('reports') ?></a>
+            <a href="report.php"><i class="fas fa-chart-bar mr-2"></i><?= __('reports') ?></a>
         </li>
         <?php if ($user['role'] === 'admin'): ?>
         <li class="<?= navActive('quarterly_tax_report.php') ?>">
@@ -328,13 +328,13 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
         </a>
         <ul class="pcoded-submenu">
             <li class="<?= navActive('hr.php') ?>">
-                <a href="hr.php"><?= __('hr_dashboard') ?></a>
+                <a href="hr.php"><i class="fas fa-tachometer-alt mr-2"></i><?= __('hr_dashboard') ?></a>
             </li>
             <li class="<?= navActive('employee_management.php') ?>">
-                <a href="employee_management.php"><?= __('employee_management') ?></a>
+                <a href="employee_management.php"><i class="fas fa-user-cog mr-2"></i><?= __('employee_management') ?></a>
             </li>
             <li class="<?= navActive('employee_performance.php') ?>">
-                <a href="employee_performance.php"><?= __('performance_reviews') ?></a>
+                <a href="employee_performance.php"><i class="fas fa-star mr-2"></i><?= __('performance_reviews') ?></a>
             </li>
             <?php if (hasFeature('attendance', $allowed_features)): ?>
             <li class="<?= navActive('attendance.php') ?>">
@@ -366,19 +366,19 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
     <!-- Admin / manager: full salary submenu -->
     <li class="nav-item pcoded-hasmenu <?= navTrigger('salary_management.php', 'salary_payment.php', 'salary_payments.php') ?>">
         <a href="javascript:" class="nav-link">
-            <span class="pcoded-micon"><i class="fas fa-dollar-sign"></i></span>
-            <span class="pcoded-mtext"><?= __('salary_management') ?></span>
-        </a>
-        <ul class="pcoded-submenu">
-            <li class="<?= navActive('salary_management.php') ?>">
-                <a href="salary_management.php"><?= __('employee_salaries') ?></a>
-            </li>
-            <li class="<?= navActive('salary_payment.php') ?>">
-                <a href="salary_payment.php"><?= __('process_payment') ?></a>
-            </li>
-            <li class="<?= navActive('salary_payments.php') ?>">
-                <a href="salary_payments.php"><i class="feather icon-user mr-2"></i><?= __('my_payments') ?></a>
-            </li>
+        <span class="pcoded-micon"><i class="fas fa-user-tie"></i></span>
+        <span class="pcoded-mtext"><?= __('salary_management') ?></span>
+    </a>
+    <ul class="pcoded-submenu">
+        <li class="<?= navActive('salary_management.php') ?>">
+            <a href="salary_management.php"><i class="fas fa-user-tie mr-2"></i><?= __('employee_salaries') ?></a>
+        </li>
+        <li class="<?= navActive('salary_payment.php') ?>">
+            <a href="salary_payment.php"><i class="fas fa-money-check-alt mr-2"></i><?= __('process_payment') ?></a>
+        </li>
+        <li class="<?= navActive('salary_payments.php') ?>">
+            <a href="salary_payments.php"><i class="fas fa-dollar-sign mr-2"></i><?= __('my_payments') ?></a>
+        </li>
         </ul>
     </li>
     <?php else: ?>
@@ -396,7 +396,7 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 <?php if (staffCanSeeMenu($user['role'])): ?>
 <li class="nav-item <?= navActive('supplier.php') ?>">
     <a href="supplier.php" class="nav-link">
-        <span class="pcoded-micon"><i class="feather icon-truck"></i></span>
+        <span class="pcoded-micon"><i class="fas fa-truck"></i></span>
         <span class="pcoded-mtext"><?= __('supplier') ?></span>
     </a>
 </li>
@@ -541,10 +541,10 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
     </a>
     <ul class="pcoded-submenu">
         <li class="<?= navActive('support_tickets.php', 'support_ticket_detail.php') ?>">
-            <a href="support_tickets.php"><?= __('my_tickets') ?></a>
+            <a href="support_tickets.php"><i class="fas fa-ticket-alt mr-2"></i><?= __('my_tickets') ?></a>
         </li>
         <li class="<?= navActive('support_ticket_create.php') ?>">
-            <a href="support_ticket_create.php"><?= __('submit_new_ticket') ?></a>
+            <a href="support_ticket_create.php"><i class="fas fa-plus-circle mr-2"></i><?= __('submit_new_ticket') ?></a>
         </li>
     </ul>
 </li>

@@ -978,7 +978,15 @@ if (sessionStorage.getItem('trialBannerClosed') === 'true') {
 body.has-trial-banner .app-header {
     top: 48px;
 }
-
+</style>
+<?php
+        }
+    } catch (Exception $e) {
+        // Silently ignore
+    }
+}
+?>
+<style>
 .app-header__help { position: relative; }
 .app-help-menu {
     position: absolute; top: calc(100% + 8px); right: 0; width: 360px; max-height: 420px;
@@ -1026,13 +1034,6 @@ body.has-trial-banner .app-header {
 .app-help-menu__foot a { font-size: .82rem; color: #4099ff; font-weight: 500; text-decoration: none; }
 .app-help-menu__foot a:hover { text-decoration: underline; }
 </style>
-<?php
-        }
-    } catch (Exception $e) {
-        // Silently ignore
-    }
-}
-?>
 
 <div class="app-shell-overlay" id="appShellOverlay"></div>
 
