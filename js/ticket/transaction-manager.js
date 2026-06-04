@@ -337,7 +337,7 @@ const transactionManager = {
                     tbody.empty();
 
                     if (!Array.isArray(transactions) || transactions.length === 0) {
-                        tbody.html('<tr><td colspan="6" class="text-center">No transactions found</td></tr>');
+                        tbody.html('<tr><td colspan="7" class="text-center">No transactions found</td></tr>');
                         $('#exchangeRateDisplay').text('No exchange rates found');
                         $('#exchangedAmount').text('No conversions available');
                         return;
@@ -362,18 +362,21 @@ const transactionManager = {
 
                         if (currency in hasCurrency) hasCurrency[currency] = true;
 
+                        const receiptDisplay = tx.receipt || tx.receipt_number || '';
+                        const receiptEscaped = receiptDisplay.replace(/'/g, "\\'");
+
                         tbody.append(`
                             <tr>
                                 <td>${transactionManager.formatDate(tx.created_at)}</td>
-                                <td>${tx.description || ''}</td>
-                                <td>${tx.type === 'credit' ? 'Received' : 'Paid'}</td>
-                                <td>${currency} ${amount.toFixed(2)}</td>
+                                <td style="word-wrap:break-word;white-space:normal;max-width:200px">${tx.description || ''}</td>
+                                <td>${receiptDisplay || '—'}</td>
+                                <td>${tx.type === 'credit' ? 'Received' : 'Paid'} ${currency} ${amount.toFixed(2)}</td>
                                 <td>${exchangeRate || 'N/A'}</td>
-                                <td class="text-center">
-                                    <button class="btn btn-primary btn-sm" onclick="transactionManager.editTransaction(${tx.id}, '${(tx.description||'').replace(/'/g,"\\'")}', ${amount}, '${tx.created_at}', '${currency}', ${tx.exchange_rate || 'null'})">
+                                <td class="text-center" style="white-space:nowrap">
+                                    <button class="btn btn-primary btn-sm" onclick="transactionManager.editTransaction(${tx.id}, '${(tx.description||'').replace(/'/g,"\\'")}', ${amount}, '${currency}', ${tx.exchange_rate || 'null'}, '${receiptEscaped}')">
                                         <i class="feather icon-edit"></i>
                                     </button>
-                                    <button class="btn btn-info btn-sm mr-1" title="Print Receipt"
+                                    <button class="btn btn-info btn-sm" title="Print Receipt"
                                             onclick="printReceipt(${tx.id})">
                                         <i class="feather icon-printer"></i>
                                     </button>
@@ -438,14 +441,14 @@ const transactionManager = {
 
                 } catch(e) {
 
-                    $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
+                    $('#transactionTableBody').html('<tr><td colspan="7" class="text-center">error_loading_transactions</td></tr>');
                     $('#exchangeRateDisplay').text('Error loading exchange rates');
                     $('#exchangedAmount').text('Error calculating amounts');
                 }
             },
             error: function(xhr, status, error){
 
-                $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
+                $('#transactionTableBody').html('<tr><td colspan="7" class="text-center">error_loading_transactions</td></tr>');
                 $('#exchangeRateDisplay').text('Error loading exchange rates');
                 $('#exchangedAmount').text('Error calculating amounts');
             }
@@ -462,13 +465,7 @@ const transactionManager = {
         });
     },
 
-    editTransaction: function(transactionId, description, amount, createdAt, currency, exchangeRate) {
-        const dateTime = new Date(createdAt);
-        const formattedDate = dateTime.toISOString().split('T')[0];
-        const hours = String(dateTime.getHours()).padStart(2, '0');
-        const minutes = String(dateTime.getMinutes()).padStart(2, '0');
-        const seconds = String(dateTime.getSeconds()).padStart(2, '0');
-        const formattedTime = `${hours}:${minutes}:${seconds}`;
+    editTransaction: function(transactionId, description, amount, currency, exchangeRate, receipt) {
         const ticketId = $('#booking_id').val();
 
         if (!$('#editTransactionModal').length) {
@@ -489,23 +486,7 @@ const transactionManager = {
                                     <input type="hidden" id="originalAmount" name="original_amount">
                                     
                                     <div class="row">
-                                        <div class="col-md-3">
-                                            <div class="form-group">
-                                                <label for="editPaymentDate">
-                                                    <i class="feather icon-calendar mr-1"></i>Payment Date
-                                                </label>
-                                                <input type="date" class="form-control" id="editPaymentDate" name="payment_date" required>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <div class="form-group">
-                                                <label for="editPaymentTime">
-                                                    <i class="feather icon-clock mr-1"></i>Payment Time
-                                                </label>
-                                                <input type="time" class="form-control" id="editPaymentTime" name="payment_time" step="1" required>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
+                                        <div class="col-md-6">
                                             <div class="form-group">
                                                 <label for="editPaymentAmount">
                                                     <i class="feather icon-dollar-sign mr-1"></i>Amount
@@ -517,7 +498,7 @@ const transactionManager = {
                                                 </small>
                                             </div>
                                         </div>
-                                        <div class="col-md-3">
+                                        <div class="col-md-6">
                                             <div class="form-group">
                                                 <label for="editPaymentDescription">
                                                     <i class="feather icon-file-text mr-1"></i>Description
@@ -533,7 +514,7 @@ const transactionManager = {
                                                 <label for="editPaymentCurrency">
                                                     <i class="feather icon-dollar-sign mr-1"></i>Currency
                                                 </label>
-                                                <select class="form-control" id="editPaymentCurrency" name="payment_currency" required>
+                                                <select class="form-control" id="editPaymentCurrency" name="payment_currency" required disabled>
                                                     <option value="USD">USD</option>
                                                     <option value="AFS">AFS</option>
                                                     <option value="EUR">EUR</option>
@@ -542,6 +523,17 @@ const transactionManager = {
                                                 <input type="hidden" id="editPaymentCurrencyHidden" name="payment_currency_actual">
                                             </div>
                                         </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="editReceiptNumber">
+                                                    <i class="feather icon-hash mr-1"></i>Receipt #
+                                                </label>
+                                                <input type="text" class="form-control" id="editReceiptNumber"
+                                                       name="receipt_number" placeholder="Receipt number">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
                                         <div class="col-md-6">
                                             <div class="form-group" id="editExchangeRateField" style="display: none;">
                                                 <label id="editExchangeRateLabel" for="editTransactionExchangeRate">
@@ -627,16 +619,14 @@ const transactionManager = {
                     $('#editTransactionExchangeRate').removeAttr('required');
                 }
                 
-                const date = formData.get('payment_date');
-                const time = formData.get('payment_time');
-                if (date && time) {
-                    formData.set('payment_date', `${date} ${time}`);
-                    formData.delete('payment_time'); // Remove separate time field
-                }
-
                 const exchangeRate = $('#editTransactionExchangeRate').val();
                 if (exchangeRate && $('#editExchangeRateField').is(':visible')) {
                     formData.set('payment_exchange_rate', exchangeRate);
+                }
+
+                const receiptNumber = $('#editReceiptNumber').val();
+                if (receiptNumber) {
+                    formData.set('receipt_number', receiptNumber);
                 }
                 
                 $.ajax({
@@ -687,11 +677,12 @@ const transactionManager = {
         $('#editTransactionId').val(transactionId);
         $('#editTicketId').val(ticketId);
         $('#originalAmount').val(amount);
-        $('#editPaymentDate').val(formattedDate);
-        $('#editPaymentTime').val(formattedTime);
         $('#editPaymentAmount').val(parseFloat(amount).toFixed(2));
         $('#editPaymentDescription').val(description);
         $('#editPaymentCurrency').val(currency);
+        $('#editPaymentCurrencyHidden').val(currency);
+
+        $('#editReceiptNumber').val(receipt || '');
 
         transactionManager.toggleEditExchangeRateField();
 

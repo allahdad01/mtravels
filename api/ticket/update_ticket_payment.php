@@ -55,7 +55,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Validate payment_exchange_rate (optional)
     $payment_exchange_rate = isset($_POST['payment_exchange_rate']) ? DbSecurity::validateInput($_POST['payment_exchange_rate'], 'float', ['min' => 0]) : null;
 
-    // Exchange rate is now stored in separate column, no need to append to description
+    // Validate receipt_number (optional)
+    $receipt_number = isset($_POST['receipt_number']) ? DbSecurity::validateInput($_POST['receipt_number'], 'string', ['maxlength' => 100]) : null;
+
     if (!$transactionId || !$ticketId) {
         echo json_encode(['success' => false, 'message' => 'Missing transaction or ticket ID']);
         exit;
@@ -158,11 +160,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         // Update the transaction
-        $stmt = $pdo->prepare("UPDATE main_account_transactions SET amount = ?, description = ?, created_at = ?, exchange_rate = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt = $pdo->prepare("UPDATE main_account_transactions SET amount = ?, description = ?, exchange_rate = ?, receipt = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
         $stmt->bindParam(1, $newAmount, PDO::PARAM_STR);
         $stmt->bindParam(2, $newDescription, PDO::PARAM_STR);
-        $stmt->bindParam(3, $newDate, PDO::PARAM_STR);
-        $stmt->bindParam(4, $payment_exchange_rate, PDO::PARAM_STR);
+        $stmt->bindParam(3, $payment_exchange_rate, PDO::PARAM_STR);
+        $stmt->bindParam(4, $receipt_number, PDO::PARAM_STR);
         $stmt->bindParam(5, $transactionId, PDO::PARAM_INT);
         $stmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
         $stmt->bindParam(7, $branch_id, PDO::PARAM_INT);

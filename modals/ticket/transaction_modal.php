@@ -90,12 +90,12 @@
                         </div>
                         <div class="card-body p-0">
                             <div class="table-responsive">
-                                <table class="table table-hover mb-0">
+                                <table class="table table-sm table-hover mb-0">
                                     <thead class="thead-light">
                                         <tr>
                                             <th><?= __('date') ?></th>
                                             <th><?= __('description') ?></th>
-                                            <th><?= __('payment') ?></th>
+                                            <th><?= __('receipt') ?></th>
                                             <th><?= __('amount') ?></th>
                                             <th><?= __('exchange_rate') ?></th>
                                             <th class="text-center"><?= __('actions') ?></th>
