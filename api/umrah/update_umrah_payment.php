@@ -31,20 +31,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $umrahId = $_POST['umrah_id'] ?? 0;
     $originalAmount = floatval($_POST['original_amount'] ?? 0);
     $newAmount = floatval($_POST['payment_amount'] ?? 0);
-    $newDate = $_POST['payment_date'] ?? '';
-    $newTime = $_POST['payment_time'] ?? '00:00:00';
     $newDescription = $_POST['payment_description'] ?? '';
-
-    // Combine date and time
-    $newDateTime = $newDate . ' ' . $newTime;
 
     // Validate required fields
 
 // Validate payment_description
 $payment_description = isset($_POST['payment_description']) ? DbSecurity::validateInput($_POST['payment_description'], 'string', ['maxlength' => 255]) : null;
 
-// Validate payment_time
-$payment_time = isset($_POST['payment_time']) ? DbSecurity::validateInput($_POST['payment_time'], 'string', ['maxlength' => 255]) : null;
+// Validate receipt
+$receipt = isset($_POST['receipt']) ? DbSecurity::validateInput($_POST['receipt'], 'string', ['maxlength' => 255]) : '';
 
 // Validate payment_date
 $payment_date = isset($_POST['payment_date']) ? DbSecurity::validateInput($_POST['payment_date'], 'date') : null;
@@ -72,7 +67,7 @@ $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_PO
 
     try {
         // Get umrah transaction details before update
-        $stmt = $pdo->prepare("SELECT payment_amount, payment_date, transaction_to, exchange_rate FROM umrah_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt = $pdo->prepare("SELECT payment_amount, payment_date, transaction_to, exchange_rate, receipt FROM umrah_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
         $stmt->bindParam(1, $transactionId, PDO::PARAM_INT);
         $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
         $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
@@ -83,7 +78,6 @@ $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_PO
             throw new Exception("Transaction not found");
         }
 
-        $originalDate = $transaction['payment_date'];
         $transactionTo = $transaction['transaction_to'] ?? 'Internal Account';
 
         // Get umrah booking details
@@ -109,15 +103,16 @@ $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_PO
             'payment_amount' => $transaction['payment_amount'],
             'payment_date' => $transaction['payment_date'],
             'transaction_to' => $transaction['transaction_to'],
-            'exchange_rate' => $transaction['exchange_rate']
+            'exchange_rate' => $transaction['exchange_rate'],
+            'receipt' => $transaction['receipt']
         ]);
 
         // Update the umrah transaction
-        $stmt = $pdo->prepare("UPDATE umrah_transactions SET payment_amount = ?, payment_description = ?, payment_date = ?, exchange_rate = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt = $pdo->prepare("UPDATE umrah_transactions SET payment_amount = ?, payment_description = ?, exchange_rate = ?, receipt = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
         $stmt->bindParam(1, $newAmount, PDO::PARAM_STR);
         $stmt->bindParam(2, $newDescription, PDO::PARAM_STR);
-        $stmt->bindParam(3, $newDateTime, PDO::PARAM_STR);
-        $stmt->bindParam(4, $exchange_rate, PDO::PARAM_STR);
+        $stmt->bindParam(3, $exchange_rate, PDO::PARAM_STR);
+        $stmt->bindParam(4, $receipt, PDO::PARAM_STR);
         $stmt->bindParam(5, $transactionId, PDO::PARAM_INT);
         $stmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
         $stmt->bindParam(7, $branch_id, PDO::PARAM_INT);
@@ -223,12 +218,12 @@ $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_PO
 
                     // Update the main account transaction
                     $updateMainTxStmt = $pdo->prepare("UPDATE main_account_transactions
-                                                      SET amount = amount + ?, created_at = ?, description = ?, exchange_rate = ?
+                                                      SET amount = amount + ?, created_at = NOW(), description = ?, exchange_rate = ?, receipt = ?
                                                       WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                     $updateMainTxStmt->bindParam(1, $mainTxAdjustment, PDO::PARAM_STR);
-                    $updateMainTxStmt->bindParam(2, $newDateTime, PDO::PARAM_STR);
-                    $updateMainTxStmt->bindParam(3, $newDescription, PDO::PARAM_STR);
-                    $updateMainTxStmt->bindParam(4, $exchange_rate, PDO::PARAM_STR);
+                    $updateMainTxStmt->bindParam(2, $newDescription, PDO::PARAM_STR);
+                    $updateMainTxStmt->bindParam(3, $exchange_rate, PDO::PARAM_STR);
+                    $updateMainTxStmt->bindParam(4, $receipt, PDO::PARAM_STR);
                     $updateMainTxStmt->bindParam(5, $mainTxId, PDO::PARAM_INT);
                     $updateMainTxStmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
                     $updateMainTxStmt->bindParam(7, $branch_id, PDO::PARAM_INT);
@@ -313,10 +308,10 @@ $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_PO
 
                         // Update the supplier transaction
                         $updateSupplierTxStmt = $pdo->prepare("UPDATE supplier_transactions
-                                                              SET amount = ?, transaction_date = ?
+                                                              SET amount = ?, transaction_date = NOW(), receipt = ?
                                                               WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                         $updateSupplierTxStmt->bindParam(1, $newAmount, PDO::PARAM_STR);
-                        $updateSupplierTxStmt->bindParam(2, $newDateTime, PDO::PARAM_STR);
+                        $updateSupplierTxStmt->bindParam(2, $receipt, PDO::PARAM_STR);
                         $updateSupplierTxStmt->bindParam(3, $supplierTxId, PDO::PARAM_INT);
                         $updateSupplierTxStmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
                         $updateSupplierTxStmt->bindParam(5, $branch_id, PDO::PARAM_INT);
@@ -434,14 +429,14 @@ $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_PO
                                  }
 
                                  // Update client transaction
-                                 $stmt_update_client_tx = $pdo->prepare("UPDATE client_transactions
-                                     SET amount = ?, balance = balance + ?
-                                     WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                                 $stmt_update_client_tx->bindParam(1, $newAmount, PDO::PARAM_STR);
-                                 $stmt_update_client_tx->bindParam(2, $clientAdjustment, PDO::PARAM_STR);
-                                 $stmt_update_client_tx->bindParam(3, $client_tx['id'], PDO::PARAM_INT);
-                                 $stmt_update_client_tx->bindParam(4, $tenant_id, PDO::PARAM_INT);
-                                 $stmt_update_client_tx->bindParam(5, $branch_id, PDO::PARAM_INT);
+                                  $stmt_update_client_tx = $pdo->prepare("UPDATE client_transactions
+                                      SET amount = ?, balance = balance + ?
+                                      WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                                  $stmt_update_client_tx->bindParam(1, $newAmount, PDO::PARAM_STR);
+                                  $stmt_update_client_tx->bindParam(2, $clientAdjustment, PDO::PARAM_STR);
+                                  $stmt_update_client_tx->bindParam(3, $client_tx['id'], PDO::PARAM_INT);
+                                  $stmt_update_client_tx->bindParam(4, $tenant_id, PDO::PARAM_INT);
+                                  $stmt_update_client_tx->bindParam(5, $branch_id, PDO::PARAM_INT);
                                  if (!$stmt_update_client_tx->execute()) {
                                      throw new PDOException("Failed to update client transaction");
                                  }
@@ -517,132 +512,24 @@ $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_PO
             }
         }
 
-        // If date changed, handle reordering based on transaction destination
-        if ($newDateTime != $originalDate) {
-            if (strtolower($transactionTo) === 'internal account' || empty($transactionTo)) {
-                // Handle internal account date change
-                $mainTxStmt = $pdo->prepare("SELECT id, main_account_id, currency FROM main_account_transactions
-                                             WHERE reference_id = ? AND transaction_of = 'umrah_transaction' AND tenant_id = ? AND branch_id = ?");
-                $mainTxStmt->bindParam(1, $umrahId, PDO::PARAM_INT);
-                $mainTxStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-                $mainTxStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-                $mainTxStmt->execute();
-                $mainTx = $mainTxStmt->fetch(PDO::FETCH_ASSOC);
-
-                if ($mainTx) {
-                    $mainTxId = $mainTx['id'];
-                    $mainAccountId = $mainTx['main_account_id'];
-                    $currency = $mainTx['currency'];
-
-                    // Get all transactions for this account and currency, ordered by date
-                    $stmt = $pdo->prepare("SELECT id, amount, type, created_at
-                                           FROM main_account_transactions
-                                           WHERE main_account_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ?
-                                           ORDER BY created_at ASC, id ASC");
-                    $stmt->bindParam(1, $mainAccountId, PDO::PARAM_INT);
-                    $stmt->bindParam(2, $currency, PDO::PARAM_STR);
-                    $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-                    $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
-
-                    if (!$stmt->execute()) {
-                        throw new PDOException("Failed to retrieve transactions for reordering");
-                    }
-
-                    $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                    $transactions = $result;
-
-                    // Recalculate running balance for all transactions
-                    $runningBalance = 0;
-                    foreach ($transactions as $tx) {
-                        $txAmount = floatval($tx['amount']);
-                        if ($tx['type'] == 'credit') {
-                            $runningBalance += $txAmount;
-                        } else {
-                            $runningBalance -= $txAmount;
-                        }
-
-                        // Update the balance for this transaction
-                        $updateStmt = $pdo->prepare("UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                        $updateStmt->bindParam(1, $runningBalance, PDO::PARAM_STR);
-                        $updateStmt->bindParam(2, $tx['id'], PDO::PARAM_INT);
-                        $updateStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-                        $updateStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
-
-                        if (!$updateStmt->execute()) {
-                            throw new PDOException("Failed to update transaction balance during reordering");
-                        }
-                    }
-                }
-            } else {
-                // Handle supplier transaction date change
-                $supplierStmt = $pdo->prepare("SELECT id FROM suppliers WHERE name = ? AND tenant_id = ? AND branch_id = ?");
-                $supplierStmt->bindParam(1, $transactionTo, PDO::PARAM_STR);
-                $supplierStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-                $supplierStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-                $supplierStmt->execute();
-                $supplier = $supplierStmt->fetch(PDO::FETCH_ASSOC);
-
-                if ($supplier) {
-                    $supplierId = $supplier['id'];
-
-                    // Check for existing supplier transaction
-                    $supplierTxStmt = $pdo->prepare("SELECT id FROM supplier_transactions
-                                                    WHERE reference_id = ? AND transaction_type = 'umrah_transaction' AND tenant_id = ? AND branch_id = ?");
-                    $supplierTxStmt->bindParam(1, $umrahId, PDO::PARAM_INT);
-                    $supplierTxStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-                    $supplierTxStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-                    $supplierTxStmt->execute();
-                    $supplierTx = $supplierTxStmt->fetch(PDO::FETCH_ASSOC);
-
-                    if ($supplierTx) {
-                        $supplierTxId = $supplierTx['id'];
-
-                        // Update the supplier transaction date
-                        $updateSupplierTxDateStmt = $pdo->prepare("UPDATE supplier_transactions SET transaction_date = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                        $updateSupplierTxDateStmt->bindParam(1, $newDateTime, PDO::PARAM_STR);
-                        $updateSupplierTxDateStmt->bindParam(2, $supplierTxId, PDO::PARAM_INT);
-                        $updateSupplierTxDateStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-                        $updateSupplierTxDateStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
-
-                        if (!$updateSupplierTxDateStmt->execute()) {
-                            throw new PDOException("Failed to update supplier transaction date");
-                        }
-
-                        // Get all transactions for this supplier, ordered by date
-                        $stmt = $pdo->prepare("SELECT id, amount, transaction_date
-                                               FROM supplier_transactions
-                                               WHERE supplier_id = ? AND tenant_id = ? AND branch_id = ?
-                                               ORDER BY transaction_date ASC, id ASC");
-                        $stmt->bindParam(1, $supplierId, PDO::PARAM_INT);
-                        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-                        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-
-                        if (!$stmt->execute()) {
-                            throw new PDOException("Failed to retrieve supplier transactions for reordering");
-                        }
-
-                        $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                        $transactions = $result;
-
-                        // Recalculate running balance for all supplier transactions
-                        $runningBalance = 0;
-                        foreach ($transactions as $tx) {
-                            $txAmount = floatval($tx['amount']);
-                            $runningBalance += $txAmount;
-
-                            // Update the balance for this transaction
-                            $updateStmt = $pdo->prepare("UPDATE supplier_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                            $updateStmt->bindParam(1, $runningBalance, PDO::PARAM_STR);
-                            $updateStmt->bindParam(2, $tx['id'], PDO::PARAM_INT);
-                            $updateStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-                            $updateStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
-
-                            if (!$updateStmt->execute()) {
-                                throw new PDOException("Failed to update supplier transaction balance during reordering");
-                            }
-                        }
-                    }
-                }
+        // Sync receipt to related tables
+        if (strtolower($transactionTo) === 'internal account' || empty($transactionTo)) {
+            $stmt = $pdo->prepare("UPDATE main_account_transactions SET receipt = ? WHERE reference_id = ? AND transaction_of = 'umrah_transaction' AND tenant_id = ? AND branch_id = ?");
+            $stmt->bindParam(1, $receipt, PDO::PARAM_STR);
+            $stmt->bindParam(2, $transactionId, PDO::PARAM_INT);
+            $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+            $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
+            if (!$stmt->execute()) {
+                throw new PDOException("Failed to sync receipt to main account transaction");
+            }
+        } else {
+            $stmt = $pdo->prepare("UPDATE supplier_transactions SET receipt = ? WHERE reference_id = ? AND transaction_of = 'umrah_transaction' AND tenant_id = ? AND branch_id = ?");
+            $stmt->bindParam(1, $receipt, PDO::PARAM_STR);
+            $stmt->bindParam(2, $transactionId, PDO::PARAM_INT);
+            $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+            $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
+            if (!$stmt->execute()) {
+                throw new PDOException("Failed to sync receipt to supplier transaction");
             }
         }
 
@@ -651,10 +538,11 @@ $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_PO
             'transaction_id' => $transactionId,
             'umrah_id' => $umrahId,
             'payment_amount' => $newAmount,
-            'payment_date' => $newDateTime,
+            'payment_date' => $transaction['payment_date'],
             'payment_description' => $newDescription,
             'transaction_to' => $transactionTo,
-            'exchange_rate' => $exchange_rate
+            'exchange_rate' => $exchange_rate,
+            'receipt' => $receipt
         ]);
 
         // Get user information for activity log

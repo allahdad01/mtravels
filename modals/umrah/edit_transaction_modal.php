@@ -15,25 +15,39 @@
                     <input type="hidden" id="editTransactionId" name="transaction_id">
                     <input type="hidden" id="editUmrahId" name="umrah_id">
                     <input type="hidden" id="originalAmount" name="original_amount">
+                    <input type="hidden" id="editPaymentCurrencyHidden" name="payment_currency">
                     
                     <div class="form-group">
-                        <label for="editPaymentDate"><?= __('payment_date') ?></label>
-                        <input type="date" class="form-control" id="editPaymentDate" name="payment_date" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="editPaymentTime"><?= __('payment_time') ?></label>
-                        <input type="time" class="form-control" id="editPaymentTime" name="payment_time" required step="any">
+                        <label for="editPaymentCurrency"><?= __('currency') ?></label>
+                        <select class="form-control" id="editPaymentCurrency" disabled>
+                            <option value="USD">USD</option>
+                            <option value="AFS">AFS</option>
+                            <option value="EUR">EUR</option>
+                            <option value="DARHAM">DARHAM</option>
+                        </select>
                     </div>
                     
                     <div class="form-group">
                         <label for="editPaymentAmount"><?= __('amount') ?></label>
                         <input type="number" step="0.01" class="form-control" id="editPaymentAmount" name="payment_amount" required>
                     </div>
-                    <div class="form-group">
+                    
+                    <div class="form-group" id="editExchangeRateField">
                         <label for="editExchangeRate"><?= __('exchange_rate') ?></label>
-                        <input type="number" step="0.01" class="form-control" id="editExchangeRate" name="exchange_rate" required>
+                        <input type="number" step="0.01" class="form-control" id="editExchangeRate" name="exchange_rate">
+                        <small class="form-text text-muted"><?= __('enter_exchange_rate_if_different') ?></small>
                     </div>
+                    
+                    <div class="form-group" id="editReceiptField">
+                        <label for="editReceipt"><?= __('receipt') ?></label>
+                        <input type="text" class="form-control" id="editReceipt" name="receipt" placeholder="<?= __('enter_receipt_number') ?>">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editTransactionTo"><?= __('transaction_to') ?></label>
+                        <input type="text" class="form-control" id="editTransactionTo" name="transaction_to" readonly>
+                    </div>
+                    
                     <div class="form-group">
                         <label for="editPaymentDescription"><?= __('description') ?></label>
                         <textarea class="form-control" id="editPaymentDescription" name="payment_description" rows="3"></textarea>

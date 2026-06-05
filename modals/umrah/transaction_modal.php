@@ -96,7 +96,7 @@
                                     <tr>
                                         <th><?= __('date') ?></th>
                                         <th><?= __('description') ?></th>
-                                        <th><?= __('payment_type') ?></th>
+                                        <th><?= __('receipt') ?></th>
                                         <th><?= __('transaction_to') ?></th>
                                         <th><?= __('amount') ?></th>
                                         <th><?= __('exchange_rate') ?></th>

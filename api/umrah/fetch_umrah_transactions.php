@@ -57,7 +57,8 @@ elseif (isset($_GET['umrah_id'])) {
                                 payment_amount, 
                                 currency as payment_currency, 
                                 payment_description, 
-                                transaction_to, exchange_rate 
+                                transaction_to, exchange_rate, 
+                                receipt 
                               FROM umrah_transactions 
                               WHERE umrah_booking_id = ? AND tenant_id = ? AND branch_id = ?
                               ORDER BY payment_date DESC, payment_time DESC");

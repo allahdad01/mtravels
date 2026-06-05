@@ -119,7 +119,8 @@ function loadTransactionHistory(umrahId) {
                 currency: transaction.payment_currency || 'USD',
                 amount: transaction.payment_amount || 0,
                 exchange_rate: transaction.exchange_rate,
-                to: transaction.transaction_to || 'Internal Account'
+                to: transaction.transaction_to || 'Internal Account',
+                receipt: transaction.receipt || ''
             }));
             
             try {
@@ -163,7 +164,7 @@ function loadTransactionHistory(umrahId) {
                         <tr>
                             <td>${tx.created_at}</td>
                             <td>${tx.description || ''}</td>
-                            <td>${tx.type === 'credit' ? 'Received' : 'Paid'}</td>
+                            <td>${tx.receipt || ''}</td>
                             <td>${tx.to || 'Internal Account'}</td>
                             <td>${currency} ${amount.toFixed(2)}</td>
                             <td>${exchangeRate || 'N/A'}</td>
@@ -516,29 +517,31 @@ function editTransaction(transactionId) {
             const transaction = data.transaction;
 
             
-            // Format date and time for form fields
-            const paymentDate = transaction.payment_date_only || transaction.payment_date || '';
-            const paymentTime = transaction.payment_time || '';
             const paymentAmount = parseFloat(transaction.payment_amount || transaction.amount || 0).toFixed(2);
             const paymentCurrency = transaction.payment_currency || transaction.currency || 'USD';
             const paymentDescription = transaction.payment_description || transaction.description || '';
             const transactionTo = transaction.transaction_to || 'Internal Account';
+            const receipt = transaction.receipt || '';
             const umrahId = transaction.umrah_booking_id || transaction.umrah_id || $('#transactionUmrahId').text();
             
             // Populate edit form fields
             $('#editTransactionId').val(transactionId);
             $('#editUmrahId').val(umrahId);
             $('#originalAmount').val(paymentAmount);
-            $('#editPaymentDate').val(paymentDate);
-            $('#editPaymentTime').val(paymentTime);
             $('#editPaymentAmount').val(paymentAmount);
             $('#editPaymentCurrency').val(paymentCurrency);
+            $('#editPaymentCurrencyHidden').val(paymentCurrency);
             $('#editPaymentDescription').val(paymentDescription);
             $('#editTransactionTo').val(transactionTo);
+            $('#editReceipt').val(receipt);
 
             // Populate exchange rate field
-            const exchangeRate = parseFloat(transaction.exchange_rate) || 1;
-            $('#editExchangeRate').val(exchangeRate.toFixed(2));
+            const exchangeRate = parseFloat(transaction.exchange_rate) || null;
+            if (exchangeRate) {
+                $('#editExchangeRate').val(exchangeRate.toFixed(2));
+            } else {
+                $('#editExchangeRate').val('');
+            }
 
             // Show/hide exchange rate field based on currency difference
             const bookingCurrency = window.bookingCurrency || 'USD';
@@ -554,9 +557,6 @@ function editTransaction(transactionId) {
 
             // Show the edit modal
             $('#editTransactionModal').modal('show');
-
-            // Trigger currency change event to show/hide exchange rate field
-            $('#editPaymentCurrency').trigger('change');
         })
         .catch(error => {
 
