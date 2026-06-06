@@ -312,6 +312,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pay'])) {
     $currency = $_POST['currency'];
     $payment_date = $_POST['payment_date'];
     $description = $_POST['description'];
+    $receipt = isset($_POST['receipt']) ? trim($_POST['receipt']) : '';
     $paid_to = $_POST['paid_to'];
     
     // Validate exchange rate is numeric
@@ -354,7 +355,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pay'])) {
         $updateStmt->execute([$new_balance, $debtor_id, $tenant_id, $branch_id]);
 
         // Create transaction record
-        $reference_number = 'PAY-' . date('YmdHis') . '-' . $debtor_id;
+        $reference_number = !empty($receipt) ? $receipt : 'PAY-' . date('YmdHis') . '-' . $debtor_id;
         $transStmt = $pdo->prepare("INSERT INTO debtor_transactions (debtor_id, amount, currency, transaction_type, description, payment_date, reference_number, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $transStmt->execute([$debtor_id, $amount_in_debtor_currency, $debtor['currency'], 'credit', $description, $payment_date, $reference_number, $tenant_id, $branch_id]);
         $transaction_id = $pdo->lastInsertId();
@@ -389,13 +390,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pay'])) {
          $main_transaction_id = $pdo->lastInsertId();
 
          // Create notification
+         $receipt_display = !empty($receipt) ? " - Receipt: $receipt" : '';
          $notificationMessage = sprintf(
-             "Payment of %s %s received from debtor %s. Remaining balance: %s %s",
+             "Payment of %s %s received from debtor %s. Remaining balance: %s %s%s",
              number_format($amount_in_debtor_currency, 2),
              $debtor['currency'],
              $debtor['name'],
              number_format($new_balance, 2),
-             $debtor['currency']
+             $debtor['currency'],
+             $receipt_display
          );
 
          $notifStmt = $pdo->prepare("INSERT INTO notifications (transaction_id, transaction_type, message, status, created_at, tenant_id, branch_id) VALUES (?, 'debtor', ?, 'Unread', NOW(), ?, ?)");

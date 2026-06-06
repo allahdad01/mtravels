@@ -279,11 +279,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pay'])) {
             $main_transaction_id = $pdo->lastInsertId();
 
             // Create notification
+            $receipt_display = !empty($receipt) ? " - Receipt: $receipt" : '';
             $notificationMessage = sprintf(
-                "Payment made to creditor: %s - Amount %s %.2f",
+                "Payment made to creditor: %s - Amount %s %.2f%s",
                 $creditor['name'],
                 $currency,
-                $amount
+                $amount,
+                $receipt_display
             );
 
             $notifStmt = $pdo->prepare("

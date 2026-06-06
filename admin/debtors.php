@@ -752,16 +752,20 @@ try {
                                                                <small class="form-text text-muted" id="exchangeRateHelp<?php echo h($debtor['id']); ?>"><?= __('enter_the_exchange_rate_to_convert_between_currencies') ?></small>
                                                          </div>
                                                          
-                                                         <div class="form-row">
-                                                             <div class="form-group col-md-6">
-                                                                 <label class="form-label"><?= __('description') ?></label>
-                                                                 <input type="text" class="form-control" name="description">
-                                                             </div>
-                                                             <div class="form-group col-md-6">
-                                                                 <label class="form-label"><?= __('payment_date') ?></label>
-                                                                 <input type="date" class="form-control" name="payment_date" value="<?php echo date('Y-m-d'); ?>" required>
-                                                             </div>
-                                                         </div>
+                                                          <div class="form-row">
+                                                              <div class="form-group col-md-4">
+                                                                  <label class="form-label"><?= __('description') ?></label>
+                                                                  <input type="text" class="form-control" name="description">
+                                                              </div>
+                                                              <div class="form-group col-md-4">
+                                                                  <label class="form-label"><?= __('receipt') ?></label>
+                                                                  <input type="text" class="form-control" name="receipt" placeholder="<?= __('receipt_number') ?>">
+                                                              </div>
+                                                              <div class="form-group col-md-4">
+                                                                  <label class="form-label"><?= __('payment_date') ?></label>
+                                                                  <input type="date" class="form-control" name="payment_date" value="<?php echo date('Y-m-d'); ?>" required>
+                                                              </div>
+                                                          </div>
                                                          
                                                          <!-- Paid To -->
                                                          <div class="form-group">
