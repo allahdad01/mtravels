@@ -750,6 +750,11 @@ $(document).ready(function() {
     // Add edit button to transaction rows
     updateTransactionTableRows();
 
+    // Fix modal stacking - ensure child modal backdrop appears above parent modal
+    $(document).on('shown.bs.modal', '#editTransactionModal, #refundModal, #memberDetailsModal, #memberDocumentsModal, #editMemberModal, #bankReciptModal, #umrahPresidencyModal, #dateChangeModal, #cancellationReapplyModal, #editFamilyModal, #groupTicketModal, #idCardModal', function() {
+        $('.modal-backdrop').last().css('z-index', 1065);
+    });
+
     // Show/Hide exchange rate field in edit form based on currency difference
     $('#editPaymentCurrency').on('change', function() {
         const selectedCurrency = $(this).val();

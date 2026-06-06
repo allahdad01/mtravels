@@ -73,7 +73,7 @@ function loadFamilyMembersTransactionTable(members) {
                 <td class="text-success">${member.paid || '0.00'}</td>
                 <td class="text-danger">${member.due || '0.00'}</td>
                 <td>
-                    <button class="btn btn-sm btn-outline-primary" onclick="openTransactionTab(${member.booking_id}, ${member.sold_price})">
+                    <button class="btn btn-sm btn-outline-primary" onclick="openTransactionTab(${member.booking_id}, ${(member.sold_price || '0').replace(/,/g, '')})">
                         <i class="feather icon-credit-card"></i> View
                     </button>
                 </td>

@@ -335,15 +335,15 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                                                      <a class="dropdown-item" href="javascript:void(0)" onclick="openBookingModal(<?= $familyId ?>, '<?= addslashes($row['package_type']) ?>')">
                                                          <i class="fas fa-user-plus"></i><?= __('add_member') ?>
                                                      </a>
-                                                     <a class="dropdown-item" href="javascript:void(0)" onclick="openEditFamilyModal(<?= $familyId ?>, '<?= htmlspecialchars($row['head_of_family']) ?>',
-                                                     '<?= htmlspecialchars($row['contact']) ?>', '<?= htmlspecialchars($row['address']) ?>',
-                                                     '<?= htmlspecialchars($row['package_type']) ?>', '<?= htmlspecialchars($row['location']) ?>',
-                                                     '<?= htmlspecialchars($row['tazmin']) ?>', '<?= htmlspecialchars($row['visa_status']) ?>',
-                                                     '<?= htmlspecialchars($row['province']) ?>', '<?= htmlspecialchars($row['district']) ?>')">
+                                                      <a class="dropdown-item" href="javascript:void(0)" onclick="openEditFamilyModal(<?= $familyId ?>, '<?= htmlspecialchars(addslashes($row['head_of_family']), ENT_QUOTES) ?>',
+                                                      '<?= htmlspecialchars(addslashes($row['contact']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($row['address']), ENT_QUOTES) ?>',
+                                                      '<?= htmlspecialchars(addslashes($row['package_type']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($row['location']), ENT_QUOTES) ?>',
+                                                      '<?= htmlspecialchars(addslashes($row['tazmin']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($row['visa_status']), ENT_QUOTES) ?>',
+                                                      '<?= htmlspecialchars(addslashes($row['province']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($row['district']), ENT_QUOTES) ?>')">
                                                          <i class="fas fa-edit"></i><?= __('edit') ?>
                                                      </a>
                                                      <?php if ($canEdit): ?>
-                                                     <a class="dropdown-item" href="javascript:void(0)" onclick="openFamilyTransactionModal(<?= $familyId ?>, '<?= htmlspecialchars($row['head_of_family']) ?>', '<?= htmlspecialchars($row['package_type']) ?>', <?= $row['total_members'] ?>)">
+                                                      <a class="dropdown-item" href="javascript:void(0)" onclick="openFamilyTransactionModal(<?= $familyId ?>, '<?= htmlspecialchars(addslashes($row['head_of_family']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($row['package_type']), ENT_QUOTES) ?>', <?= (int)$row['total_members'] ?>)">
                                                          <i class="fas fa-credit-card"></i><?= __('family_transaction') ?>
                                                      </a>
                                                      <?php endif; ?>
@@ -414,7 +414,7 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                                          <!-- Flight Details Button (if group ticket exists) -->
                                          <?php if ($row['has_group_tickets'] > 0): ?>
                                          <button class="btn btn-sm btn-info" 
-                                                 onclick="viewFamilyFlightDetails(<?= $familyId ?>, '<?= htmlspecialchars($row['head_of_family']) ?>')"
+                                                  onclick="viewFamilyFlightDetails(<?= $familyId ?>, '<?= htmlspecialchars(addslashes($row['head_of_family']), ENT_QUOTES) ?>')"
                                                  title="<?= __('view_flight_details') ?>"
                                                  style="margin-top: 8px;">
                                              <i class="fas fa-ticket-alt"></i> <?= __('flight_details') ?>

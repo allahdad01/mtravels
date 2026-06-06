@@ -68,7 +68,7 @@
 #editFamilyModal.show,
 #groupTicketModal.show,
 #idCardModal.show {
-    z-index: 1062;
+    z-index: 1070;
 }
 
 .modal-content {
