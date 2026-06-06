@@ -42,14 +42,13 @@ $isAdmin = $_SESSION['role'] === 'admin';
 
 // Fetch debtors list
 $status_filter = isset($_GET['status']) && $_GET['status'] === 'inactive' ? 'inactive' : 'active';
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+$page   = isset($_GET['page'])   ? intval($_GET['page']) : 1;
+$recordsPerPage = 10;
+$offset = ($page - 1) * $recordsPerPage;
 
 try {
-     // Get total count for current status
-     $countStmt = $pdo->prepare("SELECT COUNT(*) as total FROM debtors WHERE status = ? AND tenant_id = ? AND branch_id = ?");
-     $countStmt->execute([$status_filter, $tenant_id, $branch_id]);
-     $total_count = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
-     
-     // Get counts for both active and inactive debtors
+      // Get counts for both active and inactive debtors
      $activeCountStmt = $pdo->prepare("SELECT COUNT(*) as count FROM debtors WHERE status = 'active' AND tenant_id = ? AND branch_id = ?");
      $activeCountStmt->execute([$tenant_id, $branch_id]);
      $active_count = $activeCountStmt->fetch(PDO::FETCH_ASSOC)['count'];
@@ -58,15 +57,25 @@ try {
      $inactiveCountStmt->execute([$tenant_id, $branch_id]);
      $inactive_count = $inactiveCountStmt->fetch(PDO::FETCH_ASSOC)['count'];
      
-     // Pagination
-     $items_per_page = 10;
-     $current_page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
-     $offset = ($current_page - 1) * $items_per_page;
-     $total_pages = ceil($total_count / $items_per_page);
+     // Count with search
+     $searchCondition = "WHERE status = ? AND tenant_id = ? AND branch_id = ?";
+     $countParams = [$status_filter, $tenant_id, $branch_id];
+     if (!empty($search)) {
+         $searchCondition .= " AND (name LIKE ? OR email LIKE ? OR phone LIKE ?)";
+         for ($i = 0; $i < 3; $i++) { $countParams[] = "%$search%"; }
+     }
+     $countStmt = $pdo->prepare("SELECT COUNT(*) as total FROM debtors $searchCondition");
+     $countStmt->execute($countParams);
+     $totalRecords = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
+     $totalPages   = ceil($totalRecords / $recordsPerPage);
      
-     // Fetch debtors with pagination
-     $stmt = $pdo->prepare("SELECT * FROM debtors WHERE status = ? AND tenant_id = ? AND branch_id = ? ORDER BY id DESC LIMIT ? OFFSET ?");
-     $stmt->execute([$status_filter, $tenant_id, $branch_id, $items_per_page, $offset]);
+     // Fetch debtors with search + pagination
+     $query = "SELECT * FROM debtors $searchCondition ORDER BY id DESC LIMIT ? OFFSET ?";
+     $queryParams = $countParams;
+     $queryParams[] = $recordsPerPage;
+     $queryParams[] = $offset;
+     $stmt = $pdo->prepare($query);
+     $stmt->execute($queryParams);
      $debtors = $stmt->fetchAll(PDO::FETCH_ASSOC);
      
      // Fetch total debts by currency
@@ -83,10 +92,10 @@ try {
      $mainAcctStmt->execute([$tenant_id, $branch_id]);
      $main_accounts = $mainAcctStmt->fetchAll(PDO::FETCH_ASSOC);
  } catch (PDOException $e) {
-     $debtors = [];
-     $total_count = 0;
-     $total_pages = 0;
-     $main_accounts = [];
+    $debtors = [];
+    $totalRecords = 0;
+    $totalPages = 0;
+    $main_accounts = [];
      $currency_totals = [];
      $active_count = 0;
      $inactive_count = 0;
@@ -102,425 +111,458 @@ try {
 
 <style>
 :root {
-  --primary:#4099ff;--primary-dark:#2563eb;--primary-light:#60a5fa;
-  --accent:#2ed8b6;--accent-dark:#14b8a6;--accent-light:#5eead4;
-  --violet:#7c3aed;--violet-light:#a78bfa;--indigo:#4f46e5;
-  --sky:#0ea5e9;--emerald:#10b981;--amber:#f59e0b;
-  --rose:#f43f5e;--orange:#f97316;--pink:#ec4899;--teal:#14b8a6;
-  --bg:#f8fafc;--surface:#ffffff;--surface2:#f1f5f9;--surface3:#e2e8f0;
-  --border:rgba(0,0,0,0.08);
-  --text:#1e293b;--text-muted:#64748b;
-  --grad-start:#4099ff;--grad-end:#2ed8b6;--grad:linear-gradient(135deg,var(--grad-start) 0%,var(--grad-end) 100%);
+    --bg:        #f0f2f7;
+    --surface:   #ffffff;
+    --border:    #e4e8f0;
+    --text-1:    #111827;
+    --text-2:    #4b5563;
+    --text-3:    #9ca3af;
+    --blue:      #3b82f6;
+    --blue-lt:   #eff6ff;
+    --green:     #10b981;
+    --green-lt:  #ecfdf5;
+    --amber:     #f59e0b;
+    --amber-lt:  #fffbeb;
+    --red:       #ef4444;
+    --red-lt:    #fef2f2;
+    --grad:      linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.04);
+    --shadow-md: 0 4px 16px rgba(0,0,0,.08),0 2px 6px rgba(0,0,0,.05);
+    --r:         14px;
+    --r-sm:      8px;
 }
-.pcoded-main-container{background:var(--bg)!important;display:flex;flex-direction:column;min-height:100vh;}
-.pcoded-wrapper{display:flex;flex-direction:column;flex:1;}
-.pcoded-content,.pcoded-inner-content{background:transparent!important;flex:1;display:flex;flex-direction:column;}
-.main-body{flex:1;display:flex;flex-direction:column;}
-.page-wrapper{flex:1;display:flex;flex-direction:column;}
-.container{padding-left:20px;padding-right:20px;}
-.dash-wrap{font-family:'Plus Jakarta Sans',sans-serif;color:var(--text);padding:28px 20px;position:relative;}
+.pcoded-main-container{background:var(--bg)!important;}
+.main-body .page-wrapper{flex:1;display:flex;flex-direction:column;}
 
-@media (max-width: 768px) {
-  .container {
-    padding-left: 16px;
-    padding-right: 16px;
-  }
-  .dash-wrap {
-    padding: 20px 16px;
-  }
+/* Page header */
+.debtor-page-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 22px; flex-wrap: wrap; gap: 14px;
 }
-
-@media (max-width: 480px) {
-  .container {
-    padding-left: 12px;
-    padding-right: 12px;
-  }
-  .dash-wrap {
-    padding: 16px 12px;
-  }
+.debtor-page-title { display: flex; align-items: center; gap: 12px; }
+.debtor-page-title-icon {
+    width: 44px; height: 44px;
+    background: var(--grad); border-radius: var(--r-sm);
+    display: grid; place-items: center; color: #fff; font-size: 18px;
+    box-shadow: 0 4px 12px rgba(64,153,255,.35);
 }
-.dash-wrap::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 80% 60% at 10% 0%,rgba(124,58,237,.15) 0%,transparent 60%),radial-gradient(ellipse 60% 50% at 90% 10%,rgba(14,165,233,.12) 0%,transparent 55%),radial-gradient(ellipse 50% 40% at 50% 100%,rgba(16,185,129,.08) 0%,transparent 50%);}
-.dash-inner{position:relative;z-index:1;}
-.sec-label{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-muted);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
-.sec-label::after{content:'';flex:1;height:1px;background:var(--border);}
-.d-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px;margin-bottom:22px;}
-.d-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:12px;}
-.d-card-title{font-size:15px;font-weight:800;display:flex;align-items:center;gap:10px;color:var(--text);}
-.ci{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:13px;}
-.ci-violet{background:rgba(124,58,237,.2);color:var(--violet-light);}
-.ci-sky{background:rgba(14,165,233,.2);color:var(--sky);}
-.ci-emerald{background:rgba(16,185,129,.2);color:var(--emerald);}
-.ci-amber{background:rgba(245,158,11,.2);color:var(--amber);}
-.ci-rose{background:rgba(244,63,94,.2);color:var(--rose);}
-.dbtn{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:10px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;border:none;transition:all .2s;text-decoration:none;}
-.dbtn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
-.dbtn-ghost:hover{background:var(--surface3);transform:translateY(-1px);color:var(--text);}
-.dbtn-primary{background:var(--grad);color:#fff;box-shadow:0 4px 20px rgba(64,153,255,.35);}
-.dbtn-primary:hover{transform:translateY(-2px);color:#fff;}
-.d-alert{border-radius:14px;padding:16px 20px;margin-bottom:12px;display:flex;align-items:flex-start;gap:14px;border:1px solid;animation:slideIn .4s ease;}
-@keyframes slideIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
-.d-alert-warning{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);}
-.d-alert-danger{background:rgba(244,63,94,.1);border-color:rgba(244,63,94,.3);}
+.debtor-page-title h1 { font-size: 20px; font-weight: 700; color: var(--text-1); margin: 0; line-height: 1.2; }
+.debtor-page-title p { font-size: 13px; color: var(--text-3); margin: 2px 0 0; }
+.debtor-header-actions { display: flex; gap: 10px; align-items: center; }
 
-/* Debtor cards grid */
-.debtor-grid{display:flex;flex-direction:column;gap:12px;margin-bottom:22px;}
-.debtor-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;position:relative;overflow:hidden;transition:transform .2s,border-color .2s,box-shadow .2s;cursor:pointer;display:grid;grid-template-columns:auto 1fr auto auto auto 1fr auto;align-items:center;gap:16px;}
-.debtor-card:hover{transform:translateY(-2px);border-color:rgba(64,153,255,.4);box-shadow:0 8px 30px rgba(64,153,255,.12);}
-.debtor-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--grad);}
-
-/* Mobile Responsive */
-@media (max-width: 768px) {
-  .debtor-card{
-    grid-template-columns: auto 1fr;
-    gap: 12px;
-    padding: 14px;
-  }
-  .debtor-card > div:nth-child(2),
-  .debtor-card > div:nth-child(3),
-  .debtor-card > div:nth-child(4),
-  .debtor-card > div:nth-child(5),
-  .debtor-card > div:nth-child(6) {
-    grid-column: 1 / -1;
-  }
-  .dc-actions {
-    grid-column: 1 / -1;
-    margin-top: 8px;
-    justify-content: flex-start;
-  }
-  .dc-stats {
-    grid-column: 1 / -1;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
+/* Search bar */
+.debtor-search-bar {
+    background: var(--surface); border-radius: var(--r);
+    padding: 14px 18px; display: flex; align-items: center; gap: 12px;
+    box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+    margin-bottom: 18px; flex-wrap: wrap;
 }
-
-@media (max-width: 480px) {
-  .debtor-card{
-    grid-template-columns: 1fr;
-    gap: 10px;
-    padding: 12px;
-  }
-  .debtor-card > div {
-    grid-column: 1 / -1;
-  }
-  .dc-icon {
-    width: 32px;
-    height: 32px;
-    font-size: 14px;
-  }
-  .dc-label {
-    font-size: 9px;
-  }
-  .dc-name {
-    font-size: 13px;
-  }
-  .dc-balance {
-    font-size: 14px;
-  }
-  .dc-btn {
-    padding: 6px 10px;
-    font-size: 11px;
-  }
-  .dc-btn span {
-    display: none;
-  }
-  .dc-btn i {
-    margin-right: 0;
-  }
+.debtor-search-input-wrap { position: relative; flex: 1; min-width: 220px; }
+.debtor-search-input-wrap i {
+    position: absolute; left: 13px; top: 50%;
+    transform: translateY(-50%); color: var(--text-3); font-size: 13px;
 }
-.dc-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;background:rgba(64,153,255,.15);color:var(--sky);flex-shrink:0;}
-.dc-label{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px;}
-.dc-name{font-size:14px;font-weight:700;color:var(--text);word-break:break-word;}
-.dc-balance{font-size:16px;font-weight:800;font-family:'JetBrains Mono',monospace;letter-spacing:-.5px;white-space:nowrap;}
-.dc-currency{font-size:12px;color:var(--text-muted);font-weight:600;white-space:nowrap;}
-.dc-status{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;white-space:nowrap;}
-.dc-status.active{background:rgba(16,185,129,.15);color:var(--emerald);}
-.dc-status.inactive{background:rgba(244,63,94,.15);color:var(--rose);}
-.dc-actions{display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0;align-items:center;}
-.dc-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:inherit;flex-shrink:0;white-space:nowrap;}
-.dc-btn span{display:inline-block;}
-.dc-btn-primary{background:var(--grad);color:#fff;}
-.dc-btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(64,153,255,.3);}
-.dc-btn-info{background:rgba(14,165,233,.15);color:var(--sky);border:1px solid rgba(14,165,233,.3);}
-.dc-btn-info:hover{background:rgba(14,165,233,.25);border-color:rgba(14,165,233,.5);}
-.dc-btn-warning{background:rgba(245,158,11,.15);color:var(--amber);border:1px solid rgba(245,158,11,.3);}
-.dc-btn-warning:hover{background:rgba(245,158,11,.25);border-color:rgba(245,158,11,.5);}
-.dc-btn-danger{background:rgba(244,63,94,.15);color:var(--rose);border:1px solid rgba(244,63,94,.3);}
-.dc-btn-danger:hover{background:rgba(244,63,94,.25);border-color:rgba(244,63,94,.5);}
-
-.dc-stats{display:flex;gap:16px;font-size:12px;}
-.dc-stat{white-space:nowrap;}
-
-.dash-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;gap:20px;flex-wrap:wrap;}
-.dash-header h1{font-size:26px;font-weight:800;margin:0;display:flex;align-items:center;gap:12px;color:var(--text);}
-.dash-header p{font-size:14px;color:var(--text-muted);margin:8px 0 0 38px;line-height:1.4;}
-.header-actions{display:flex;gap:12px;flex-wrap:wrap;}
-
-@media (max-width: 768px) {
-  .dash-header{flex-direction:column;align-items:flex-start;}
-  .dash-header h1{font-size:20px;}
-  .header-actions{width:100%;}
-  .header-actions .dbtn{width:100%;justify-content:center;}
+.debtor-search-input {
+    width: 100%; padding: 9px 13px 9px 36px;
+    border: 1.5px solid var(--border); border-radius: var(--r-sm);
+    font-size: 14px; color: var(--text-1); background: var(--bg);
+    outline: none; transition: border-color .2s, box-shadow .2s; font-family: inherit;
 }
+.debtor-search-input:focus {
+    border-color: var(--blue); box-shadow: 0 0 0 3px rgba(59,130,246,.12);
+    background: var(--surface);
+}
+.debtor-search-input::placeholder { color: var(--text-3); }
 
-.d-alert-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;}
-.d-alert-title{font-size:13px;font-weight:700;margin-bottom:2px;}
-.dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;margin-bottom:28px;}
-.dash-stat-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;position:relative;overflow:hidden;}
-.dash-stat-card::before{content:'';position:absolute;top:0;right:0;width:80px;height:80px;border-radius:50%;background:radial-gradient(circle,rgba(64,153,255,.1) 0%,transparent 100%);pointer-events:none;}
-.dsc-title{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:12px;position:relative;z-index:1;}
-.dsc-value{font-size:24px;font-weight:800;color:var(--text);margin-bottom:8px;position:relative;z-index:1;}
-.dsc-change{font-size:12px;color:var(--emerald);display:flex;align-items:center;gap:4px;}
-.dsc-change.negative{color:var(--rose);}
+/* Results bar */
+.debtor-results-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px; flex-wrap: wrap; gap: 8px;
+}
+.debtor-results-count { font-size: 13px; color: var(--text-3); }
+.debtor-results-count strong { color: var(--text-2); font-weight: 600; }
 
-.status-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:24px;}
-.status-tab{flex:1;padding:14px 16px;text-align:center;font-size:13px;font-weight:600;color:var(--text-muted);text-decoration:none;border-bottom:3px solid transparent;transition:all .3s;position:relative;}
-.status-tab:hover{color:var(--text);background:var(--surface2);}
-.status-tab.active{color:var(--primary);border-bottom-color:var(--primary);}
-.status-tab i{margin-right:6px;}
+/* Buttons */
+.btn-debtor-primary {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 10px 18px; border-radius: var(--r-sm);
+    font-size: 14px; font-weight: 600; cursor: pointer; border: none;
+    background: var(--grad); color: #fff;
+    box-shadow: 0 4px 12px rgba(64,153,255,.3);
+    transition: all .18s; font-family: inherit; white-space: nowrap;
+}
+.btn-debtor-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(64,153,255,.4); }
 
-.cc-stat-label,.dc-stat-label{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);}
-.cc-stat-value,.dc-stat-value{font-size:13px;color:var(--text);margin-top:2px;word-break:break-word;}
+/* Debtor card */
+.debtor-card-list { display: flex; flex-direction: column; gap: 11px; }
+.debtor-card {
+    background: var(--surface); border-radius: var(--r);
+    border: 1.5px solid var(--border); box-shadow: var(--shadow-sm);
+    overflow: hidden; display: grid;
+    grid-template-columns: 5px 1fr;
+    transition: box-shadow .2s, transform .2s, border-color .2s;
+    animation: fadeUp .3s ease both;
+}
+.debtor-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); border-color: #d1d5e8; }
+.debtor-card__stripe { width: 5px; }
+.stripe--active   { background: var(--green); }
+.stripe--inactive { background: var(--red); }
+.debtor-card__body {
+    padding: 16px 18px;
+    display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: start;
+}
+.debtor-card__left { min-width: 0; }
+.debtor-card__top {
+    display: flex; align-items: center; gap: 9px; margin-bottom: 9px; flex-wrap: wrap;
+}
+.debtor-card__counter {
+    font-size: 11px; font-weight: 700; color: var(--text-3);
+    font-family: 'DM Mono','Courier New',monospace; letter-spacing: .5px;
+}
+.debtor-card__name {
+    font-size: 15px; font-weight: 700; color: var(--text-1);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px;
+}
+.dc-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px; border-radius: 99px; font-size: 11.5px; font-weight: 600;
+}
+.dc-badge-dot { width: 6px; height: 6px; border-radius: 50%; }
+.badge--active   { background: var(--green-lt); color: var(--green); }
+.badge--inactive { background: var(--red-lt);   color: var(--red); }
+
+/* Meta pills */
+.debtor-card__meta {
+    display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 9px; align-items: center;
+}
+.dc-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 6px; font-size: 12.5px; color: var(--text-2); font-weight: 500;
+}
+.dc-pill i { font-size: 11px; color: var(--text-3); }
+
+/* Right side */
+.debtor-card__right { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.dc-amount { text-align: right; }
+.dc-amount__label {
+    font-size: 10.5px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .6px; color: var(--text-3);
+}
+.dc-amount__value {
+    font-size: 18px; font-weight: 700; color: var(--text-1);
+    font-family: 'DM Mono','Courier New',monospace; letter-spacing: -.5px; line-height: 1.2;
+}
+.dc-amount__currency { font-size: 12px; color: var(--text-3); font-weight: 500; }
+
+/* Action buttons */
+.debtor-card__actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.dc-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 6px 11px; border-radius: 7px; font-family: inherit;
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    border: 1.5px solid var(--border); background: var(--surface);
+    color: var(--text-2); transition: all .15s; white-space: nowrap;
+}
+.dc-btn:hover          { border-color: var(--blue);  color: var(--blue);  background: var(--blue-lt); }
+.dc-btn--warn:hover    { border-color: var(--amber); color: #b45309;      background: var(--amber-lt); }
+.dc-btn--danger:hover  { border-color: var(--red);   color: var(--red);   background: var(--red-lt); }
+.dc-btn--success:hover { border-color: var(--green); color: var(--green); background: var(--green-lt); }
+
+/* Alerts */
+.debtor-alert {
+    border-radius: 14px; padding: 14px 18px; margin-bottom: 16px;
+    display: flex; align-items: flex-start; gap: 12px; border: 1px solid;
+    animation: fadeUp .3s ease both;
+}
+.debtor-alert--success { background: var(--green-lt); border-color: rgba(16,185,129,.3); }
+.debtor-alert--error   { background: var(--red-lt);   border-color: rgba(244,63,94,.3); }
+.debtor-alert-icon {
+    width: 36px; height: 36px; border-radius: 8px;
+    display: grid; place-items: center; font-size: 16px; flex-shrink: 0;
+}
+.debtor-alert-title { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+
+/* Pagination */
+.debtor-pagination-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 22px; flex-wrap: wrap; gap: 12px;
+}
+.debtor-pagination-info { font-size: 13px; color: var(--text-3); }
+.debtor-pagination { display: flex; gap: 4px; list-style: none; margin: 0; padding: 0; }
+.debtor-pagination li a,
+.debtor-pagination li span {
+    display: grid; place-items: center; width: 36px; height: 36px;
+    border-radius: 8px; font-size: 13px; font-weight: 600;
+    text-decoration: none; border: 1.5px solid var(--border);
+    background: var(--surface); color: var(--text-2);
+    transition: all .15s; cursor: pointer;
+}
+.debtor-pagination li a:hover {
+    border-color: var(--blue); color: var(--blue); background: var(--blue-lt);
+}
+.debtor-pagination li.active a {
+    background: var(--grad); color: #fff; border-color: transparent;
+    box-shadow: 0 3px 8px rgba(64,153,255,.3);
+}
+.debtor-pagination li.disabled span { color: var(--text-3); cursor: not-allowed; }
+
+/* Empty state */
+.debtor-empty {
+    background: var(--surface); border: 1.5px dashed var(--border);
+    border-radius: var(--r); text-align: center; padding: 60px 20px; color: var(--text-3);
+}
+.debtor-empty i { font-size: 40px; margin-bottom: 14px; opacity: .35; display: block; }
+.debtor-empty p { font-size: 14px; }
+
+/* Animations */
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+<?php for ($i = 1; $i <= 10; $i++): ?>
+.debtor-card:nth-child(<?= $i ?>) { animation-delay: <?= ($i * 0.035) ?>s; }
+<?php endfor; ?>
+
+@media (max-width: 640px) {
+    .debtor-card__body { grid-template-columns: 1fr; }
+    .debtor-card__right { align-items: flex-start; flex-direction: row; flex-wrap: wrap; }
+    .dc-amount { text-align: left; }
+    .dc-amount__value { font-size: 16px; }
+    .debtor-card__name { max-width: 200px; }
+}
 </style>
 
-                <!-- [ Main Content ] start -->
-                <div class="pcoded-main-container">
-                    <div class="main-body">
-                            <div class="container mt-4">
-                                <!-- Page Header -->
-                                <div class="dash-header">
-                                    <div>
-                                        <h1><i class="fas fa-people-arrows mr-2"></i><?= __('debtors_management') ?></h1>
-                                        <p><?= __('manage_your_debtors_and_track_payments') ?></p>
+<!-- [ Main Content ] start -->
+<div class="pcoded-main-container">
+    <div class="pcoded-wrapper">
+        <div class="pcoded-content">
+            <div class="pcoded-inner-content">
+                <div class="main-body">
+                    <div class="page-wrapper">
+
+                        <!-- PAGE HEADER -->
+                        <div class="debtor-page-header">
+                            <div class="debtor-page-title">
+                                <div class="debtor-page-title-icon">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                                <div>
+                                    <h1><?= __('debtors_management') ?></h1>
+                                    <p><?= __('manage_your_debtors_and_track_payments') ?></p>
+                                </div>
+                            </div>
+                            <div class="debtor-header-actions">
+                                <button class="btn-debtor-primary" data-toggle="modal" data-target="#addDebtorModal">
+                                    <i class="fas fa-plus"></i> <?= __('add_new_debtor') ?>
+                                </button>
+                            </div>
+                        </div>
+
+                        <?php if (isset($success_message)): ?>
+                        <div class="debtor-alert debtor-alert--success">
+                            <div class="debtor-alert-icon" style="background:rgba(16,185,129,.2);color:var(--green);"><i class="fas fa-check-circle"></i></div>
+                            <div>
+                                <div class="debtor-alert-title" style="color:var(--green);"><?= __('success') ?></div>
+                                <div style="font-size:13px;color:var(--text-1);"><?php echo h($success_message); ?></div>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <?php if (isset($error_message)): ?>
+                        <div class="debtor-alert debtor-alert--error">
+                            <div class="debtor-alert-icon" style="background:rgba(244,63,94,.2);color:var(--red);"><i class="fas fa-exclamation-circle"></i></div>
+                            <div>
+                                <div class="debtor-alert-title" style="color:var(--red);"><?= __('error') ?></div>
+                                <div style="font-size:13px;color:var(--text-1);"><?php echo h($error_message); ?></div>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
+                        <!-- SEARCH BAR -->
+                        <div class="debtor-search-bar">
+                            <div class="debtor-search-input-wrap">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="searchInput" class="debtor-search-input"
+                                       placeholder="<?= __('search_by_name_email_or_phone') ?>"
+                                       value="<?= htmlspecialchars($search) ?>">
+                            </div>
+                        </div>
+
+                        <!-- RESULTS BAR -->
+                        <div class="debtor-results-bar">
+                            <p class="debtor-results-count">
+                                <?php
+                                $start_record = min(($page - 1) * $recordsPerPage + 1, $totalRecords);
+                                $end_record = min($page * $recordsPerPage, $totalRecords);
+                                ?>
+                                <?= __('showing') ?>
+                                <strong><?= $totalRecords > 0 ? $start_record : 0 ?>–<?= $end_record ?></strong>
+                                <?= __('of') ?> <strong><?= $totalRecords ?></strong> <?= __('entries') ?>
+                            </p>
+                            <div style="display:flex;gap:8px;">
+                                <a href="debtors.php?status=active" class="dc-btn <?= $status_filter === 'active' ? '' : '' ?>" style="<?= $status_filter === 'active' ? 'border-color:var(--green);color:var(--green);background:var(--green-lt);' : '' ?>">
+                                    <i class="fas fa-user-check"></i> <?= __('active') ?> (<?= $active_count ?>)
+                                </a>
+                                <a href="debtors.php?status=inactive" class="dc-btn <?= $status_filter === 'inactive' ? '' : '' ?>" style="<?= $status_filter === 'inactive' ? 'border-color:var(--red);color:var(--red);background:var(--red-lt);' : '' ?>">
+                                    <i class="fas fa-user-minus"></i> <?= __('inactive') ?> (<?= $inactive_count ?>)
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- DEBTOR CARDS -->
+                        <?php if (empty($debtors)): ?>
+                        <div class="debtor-empty">
+                            <i class="fas fa-inbox"></i>
+                            <p><?= $status_filter === 'active' ? __('add_new_debtors_to_start_tracking_your_debts') : __('deactivated_debtors_will_appear_here') ?></p>
+                        </div>
+                        <?php else: ?>
+
+                        <div class="debtor-card-list" id="debtorList">
+                        <?php
+                        $counter = $start_record;
+                        foreach ($debtors as $debtor):
+                            $stripeClass = $debtor['status'] === 'active' ? 'stripe--active' : 'stripe--inactive';
+                            $badgeClass  = $debtor['status'] === 'active' ? 'badge--active' : 'badge--inactive';
+                            $statusIcon  = $debtor['status'] === 'active' ? 'fa-check-circle' : 'fa-times-circle';
+                        ?>
+                        <div class="debtor-card">
+                            <div class="debtor-card__stripe <?= $stripeClass ?>"></div>
+                            <div class="debtor-card__body">
+                                <div class="debtor-card__left">
+                                    <div class="debtor-card__top">
+                                        <span class="debtor-card__counter">#<?= str_pad($counter, 3, '0', STR_PAD_LEFT) ?></span>
+                                        <span class="debtor-card__name"><?= htmlspecialchars($debtor['name']) ?></span>
+                                        <span class="dc-badge <?= $badgeClass ?>">
+                                            <span class="dc-badge-dot" style="background:<?= $debtor['status'] === 'active' ? 'var(--green)' : 'var(--red)' ?>"></span>
+                                            <?= ucfirst(__($debtor['status'])) ?>
+                                        </span>
                                     </div>
-                                    <div class="header-actions">
-                                        <button type="button" class="dbtn dbtn-primary" data-toggle="modal" data-target="#addDebtorModal">
-                                            <i class="fas fa-plus"></i><?= __('add_new_debtor') ?>
-                                        </button>
+                                    <div class="debtor-card__meta">
+                                        <?php if (!empty($debtor['email'])): ?>
+                                        <span class="dc-pill">
+                                            <i class="fas fa-envelope"></i>
+                                            <?= htmlspecialchars($debtor['email']) ?>
+                                        </span>
+                                        <?php endif; ?>
+                                        <?php if (!empty($debtor['phone'])): ?>
+                                        <span class="dc-pill">
+                                            <i class="fas fa-phone"></i>
+                                            <?= htmlspecialchars($debtor['phone']) ?>
+                                        </span>
+                                        <?php endif; ?>
+                                        <span class="dc-pill">
+                                            <i class="fas fa-money-bill-wave"></i>
+                                            <?= htmlspecialchars($debtor['currency']) ?>
+                                        </span>
                                     </div>
                                 </div>
-    
-                                <?php if (isset($success_message)): ?>
-                                     <div class="d-alert d-alert-warning" style="background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.3);">
-                                        <div class="d-alert-icon" style="background:rgba(16,185,129,.2);color:var(--emerald);"><i class="fas fa-check-circle"></i></div>
-                                        <div>
-                                            <div class="d-alert-title" style="color:var(--emerald);"><?= __('success') ?></div>
-                                            <div style="font-size:13px;color:var(--text);"><?php echo h($success_message); ?></div>
+                                <div class="debtor-card__right">
+                                    <div class="dc-amount">
+                                        <div class="dc-amount__label"><?= __('balance') ?></div>
+                                        <div class="dc-amount__value">
+                                            <span class="dc-amount__currency"><?= htmlspecialchars($debtor['currency']) ?></span>
+                                            <?= number_format($debtor['balance'], 2) ?>
                                         </div>
-                                     </div>
-                                 <?php endif; ?>
-                                 
-                                 <?php if (isset($error_message)): ?>
-                                      <div class="d-alert d-alert-danger" style="background:rgba(244,63,94,.1);border-color:rgba(244,63,94,.3);">
-                                        <div class="d-alert-icon" style="background:rgba(244,63,94,.2);color:var(--rose);"><i class="fas fa-exclamation-circle"></i></div>
-                                        <div>
-                                            <div class="d-alert-title" style="color:var(--rose);"><?= __('error') ?></div>
-                                            <div style="font-size:13px;color:var(--text);"><?php echo h($error_message); ?></div>
-                                        </div>
-                                     </div>
-                                 <?php endif; ?>
-                                
-                                <!-- Status Toggle Tabs -->
-                                <div class="dash-wrap" style="padding:0;">
-                                <div class="dash-inner">
-                                       <div class="status-tabs">
-                                           <a href="debtors.php" class="status-tab <?php echo h($status_filter) === 'active' ? 'active' : ''; ?>">
-                                               <i class="fas fa-user-check mr-2"></i><?= __('active_debtors') ?> <span style="margin-left:6px;font-weight:700;"><?php echo $active_count; ?></span>
-                                           </a>
-                                           <a href="debtors.php?status=inactive" class="status-tab <?php echo h($status_filter) === 'inactive' ? 'active' : ''; ?>">
-                                               <i class="fas fa-user-minus mr-2"></i><?= __('inactive_debtors') ?> <span style="margin-left:6px;font-weight:700;"><?php echo $inactive_count; ?></span>
-                                           </a>
-                                       </div>
-                                
-                                <!-- Debtors Cards Grid -->
-                                <div class="sec-label"><i class="fas fa-people-arrows"></i> <?= __($status_filter . '_debtors') ?></div>
-                                
-                                <div class="debtor-grid">
-                                                    <?php if (!empty($debtors) && count($debtors) > 0): ?>
-                                                        <?php foreach ($debtors as $debtor): ?>
-                                                            <div class="debtor-card">
-                                                                <div class="dc-icon"><i class="fas fa-user-tie"></i></div>
-                                                                <div style="min-width:150px;">
-                                                                    <div class="dc-label"><?= __('name') ?></div>
-                                                                    <div class="dc-name"><?php echo htmlspecialchars($debtor['name']); ?></div>
-                                                                </div>
-                                                                <div style="min-width:120px;">
-                                                                    <div class="dc-label"><?= __('balance') ?></div>
-                                                                    <div class="dc-balance"><?php echo number_format($debtor['balance'], 2); ?></div>
-                                                                    <div class="dc-currency"><?php echo htmlspecialchars($debtor['currency']); ?></div>
-                                                                </div>
-                                                                <div style="min-width:110px;">
-                                                                    <div class="dc-label"><?= __('status') ?></div>
-                                                                    <div class="dc-status <?php echo h($debtor['status']); ?>">
-                                                                        <i class="fas <?php echo h($debtor['status']) === 'active' ? 'fa-check-circle' : 'fa-times-circle'; ?>"></i>
-                                                                        <?= ucfirst(__($debtor['status'])) ?>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="dc-stats">
-                                                                    <?php if (!empty($debtor['email'])): ?>
-                                                                    <div class="dc-stat">
-                                                                        <div class="dc-stat-label"><i class="fas fa-envelope"></i> <?= __('email') ?></div>
-                                                                        <div class="dc-stat-value"><?php echo htmlspecialchars($debtor['email']); ?></div>
-                                                                    </div>
-                                                                    <?php endif; ?>
-                                                                    <?php if (!empty($debtor['phone'])): ?>
-                                                                    <div class="dc-stat">
-                                                                        <div class="dc-stat-label"><i class="fas fa-phone"></i> <?= __('phone') ?></div>
-                                                                        <div class="dc-stat-value"><?php echo htmlspecialchars($debtor['phone']); ?></div>
-                                                                    </div>
-                                                                    <?php endif; ?>
-                                                                </div>
-                                                                <div class="dc-actions">
-                                                                    <button class="dc-btn dc-btn-primary" data-toggle="modal" data-target="#paymentModal<?php echo h($debtor['id']); ?>" title="<?= __('process_payment') ?>" data-bs-toggle="tooltip" data-placement="top">
-                                                                        <i class="fas fa-credit-card"></i>
-                                                                        <span><?= __('pay') ?></span>
-                                                                    </button>
-                                                                    <button class="dc-btn dc-btn-info" data-toggle="modal" data-target="#transactionsModal<?php echo h($debtor['id']); ?>" title="<?= __('view_transactions') ?>" data-bs-toggle="tooltip" data-placement="top">
-                                                                        <i class="fas fa-list"></i>
-                                                                        <span><?= __('transactions') ?></span>
-                                                                    </button>
-                                                                    <a href="../api/debtor/print_debtor_statement.php?id=<?php echo h($debtor['id']); ?>" class="dc-btn dc-btn-warning" target="_blank" title="<?= __('print_statement') ?>" data-bs-toggle="tooltip" data-placement="top">
-                                                                         <i class="fas fa-print"></i>
-                                                                         <span><?= __('print') ?></span>
-                                                                     </a>
-                                                                     <a href="../api/debtor/print_agreement.php?id=<?php echo h($debtor['id']); ?>" class="dc-btn dc-btn-warning" target="_blank" title="<?= __('print_agreement') ?>" data-bs-toggle="tooltip" data-placement="top">
-                                                                         <i class="fas fa-file-contract"></i>
-                                                                         <span><?= __('agreement') ?></span>
-                                                                     </a>
-                                                                     <button class="dc-btn dc-btn-info" data-toggle="modal" data-target="#editDebtorModal<?php echo h($debtor['id']); ?>" title="<?= __('edit_debtor') ?>" data-bs-toggle="tooltip" data-placement="top">
-                                                                        <i class="fas fa-edit"></i>
-                                                                        <span><?= __('edit') ?></span>
-                                                                     </button>
-                                                                     <?php if ($debtor['status'] === 'active'): ?>
-                                                                     <form method="POST" style="display:inline;">
-                                                                          <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
-                                                                          <input type="hidden" name="debtor_id" value="<?php echo h($debtor['id']); ?>">
-                                                                          <input type="hidden" name="action" value="deactivate_debtor">
-                                                                          <button type="submit" class="dc-btn dc-btn-warning" title="<?= __('deactivate_debtor') ?>" data-bs-toggle="tooltip" data-placement="top" onclick="return confirm('<?= __('are_you_sure_you_want_to_deactivate_this_debtor') ?>');">
-                                                                              <i class="fas fa-ban"></i>
-                                                                              <span><?= __('deactivate') ?></span>
-                                                                          </button>
-                                                                      </form>
-                                                                     <?php else: ?>
-                                                                     <form method="POST" style="display:inline;">
-                                                                          <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
-                                                                          <input type="hidden" name="debtor_id" value="<?php echo h($debtor['id']); ?>">
-                                                                          <input type="hidden" name="action" value="activate_debtor">
-                                                                          <button type="submit" class="dc-btn dc-btn-info" title="<?= __('activate_debtor') ?>" data-bs-toggle="tooltip" data-placement="top">
-                                                                              <i class="fas fa-check-circle"></i>
-                                                                              <span><?= __('activate') ?></span>
-                                                                          </button>
-                                                                      </form>
-                                                                     <?php endif; ?>
-                                                                     <?php if ($isAdmin): ?>
-                                                                     <button class="dc-btn dc-btn-danger" onclick="if(confirm('<?= __('are_you_sure') ?>')){ document.querySelector('form.delete-form-<?php echo h($debtor['id']); ?>').submit(); }" title="<?= __('delete_debtor') ?>" data-bs-toggle="tooltip" data-placement="top">
-                                                                         <i class="fas fa-trash"></i>
-                                                                         <span><?= __('delete') ?></span>
-                                                                     </button>
-                                                                     <form method="POST" action="../api/debtor/delete_debtor.php" class="d-none delete-form-<?php echo h($debtor['id']); ?>">
-                                                                         <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
-                                                                         <input type="hidden" name="debtor_id" value="<?php echo h($debtor['id']); ?>">
-                                                                     </form>
-                                                                     <?php endif; ?>
-                                                                </div>
-                                                            </div>
-                                                        <?php endforeach; ?>
-                                                    <?php else: ?>
-                                                        <div style="grid-column:1/-1;text-align:center;padding:40px 20px;">
-                                                            <i class="fas fa-inbox" style="font-size:48px;color:var(--text-muted);margin-bottom:16px;display:block;"></i>
-                                                            <p style="color:var(--text-muted);font-size:14px;">
-                                                                <?php if ($status_filter === 'active'): ?>
-                                                                    <?= __("add_new_debtors_to_start_tracking_your_debts") ?>
-                                                                <?php else: ?>
-                                                                    <?= __("deactivated_debtors_will_appear_here") ?>
-                                                                <?php endif; ?>
-                                                            </p>
-                                                        </div>
-                                                    <?php endif; ?>
-                                                    </div>
-                                                    
-                                                    <!-- Pagination -->
-                                                    <div class="mt-3 mt-md-4">
-                                            <nav aria-label="Page navigation">
-                                                <ul class="pagination pagination-sm justify-content-center flex-wrap">
-                                                    <?php
-                                                    // Previous button
-                                                    if ($current_page > 1): ?>
-                                                        <li class="page-item">
-                                                            <a class="page-link" href="?page=<?= $current_page - 1 ?><?= $status_filter === 'inactive' ? '&status=inactive' : '' ?>" aria-label="Previous">
-                                                                <span aria-hidden="true">&laquo;</span>
-                                                            </a>
-                                                        </li>
-                                                    <?php else: ?>
-                                                        <li class="page-item disabled">
-                                                            <a class="page-link" href="#" aria-label="Previous">
-                                                                <span aria-hidden="true">&laquo;</span>
-                                                            </a>
-                                                        </li>
-                                                    <?php endif;
-                                                    
-                                                    // Page numbers
-                                                    $start_page = max(1, $current_page - 2);
-                                                    $end_page = min($total_pages, $current_page + 2);
-                                                    
-                                                    if ($start_page > 1): ?>
-                                                        <li class="page-item">
-                                                            <a class="page-link" href="?page=1<?= $status_filter === 'inactive' ? '&status=inactive' : '' ?>">1</a>
-                                                        </li>
-                                                        <?php if ($start_page > 2): ?>
-                                                            <li class="page-item disabled">
-                                                                <a class="page-link" href="#">...</a>
-                                                            </li>
-                                                        <?php endif;
-                                                    endif;
-                                                    
-                                                    for ($i = $start_page; $i <= $end_page; $i++): ?>
-                                                        <li class="page-item <?= $i === $current_page ? 'active' : '' ?>">
-                                                            <a class="page-link" href="?page=<?= $i ?><?= $status_filter === 'inactive' ? '&status=inactive' : '' ?>"><?= $i ?></a>
-                                                        </li>
-                                                    <?php endfor;
-                                                    
-                                                    if ($end_page < $total_pages): 
-                                                        if ($end_page < $total_pages - 1): ?>
-                                                            <li class="page-item disabled">
-                                                                <a class="page-link" href="#">...</a>
-                                                            </li>
-                                                        <?php endif; ?>
-                                                        <li class="page-item">
-                                                            <a class="page-link" href="?page=<?= $total_pages ?><?= $status_filter === 'inactive' ? '&status=inactive' : '' ?>"><?= $total_pages ?></a>
-                                                        </li>
-                                                    <?php endif;
-                                                    
-                                                    // Next button
-                                                    if ($current_page < $total_pages): ?>
-                                                        <li class="page-item">
-                                                            <a class="page-link" href="?page=<?= $current_page + 1 ?><?= $status_filter === 'inactive' ? '&status=inactive' : '' ?>" aria-label="Next">
-                                                                <span aria-hidden="true">&raquo;</span>
-                                                            </a>
-                                                        </li>
-                                                    <?php else: ?>
-                                                        <li class="page-item disabled">
-                                                            <a class="page-link" href="#" aria-label="Next">
-                                                                <span aria-hidden="true">&raquo;</span>
-                                                            </a>
-                                                        </li>
-                                                    <?php endif; ?>
-                                                </ul>
-                                            </nav>
-                                            <div class="text-center mt-2">
-                                                <small class="text-muted">
-                                                    <?= __('showing') ?> <?= count($debtors) ?> <?= __('of') ?> <?= $total_count ?> <?= __('debtors') ?> |
-                                                    <?= __('page') ?> <?= $current_page ?> <?= __('of') ?> <?= $total_pages ?>
-                                                </small>
-                                                </div>
-                                                </div>
-                                                </div>
-                                                </div>
-                                                </div>
-                                                </div>
-                                                </div>
-                                                </div>
-                                                </div>
+                                    </div>
+                                    <div class="debtor-card__actions">
+                                        <button class="dc-btn dc-btn--success" data-toggle="modal" data-target="#paymentModal<?= h($debtor['id']) ?>" title="<?= __('process_payment') ?>">
+                                            <i class="fas fa-credit-card"></i> <?= __('pay') ?>
+                                        </button>
+                                        <button class="dc-btn" data-toggle="modal" data-target="#transactionsModal<?= h($debtor['id']) ?>" title="<?= __('view_transactions') ?>">
+                                            <i class="fas fa-list"></i> <?= __('transactions') ?>
+                                        </button>
+                                        <a href="../api/debtor/print_debtor_statement.php?id=<?= h($debtor['id']) ?>" class="dc-btn" target="_blank" title="<?= __('print_statement') ?>">
+                                            <i class="fas fa-print"></i>
+                                        </a>
+<a href="../api/debtor/print_agreement.php?id=<?= h($debtor['id']) ?>" class="dc-btn" target="_blank" title="<?= __('print_agreement') ?>">
+    <i class="fas fa-file-alt"></i>
+</a>
+                                        <button class="dc-btn" data-toggle="modal" data-target="#editDebtorModal<?= h($debtor['id']) ?>" title="<?= __('edit_debtor') ?>">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <?php if ($debtor['status'] === 'active'): ?>
+                                        <form method="POST" style="display:inline;">
+                                            <input type="hidden" name="csrf_token" value="<?= h($_SESSION['csrf_token']) ?>">
+                                            <input type="hidden" name="debtor_id" value="<?= h($debtor['id']) ?>">
+                                            <input type="hidden" name="action" value="deactivate_debtor">
+<button type="submit" class="dc-btn dc-btn--danger" title="<?= __('deactivate_debtor') ?>" onclick="return confirm('<?= __('are_you_sure_you_want_to_deactivate_this_debtor') ?>');">
+    <i class="fas fa-ban"></i>
+</button>
+                                        </form>
+                                        <?php else: ?>
+                                        <form method="POST" style="display:inline;">
+                                            <input type="hidden" name="csrf_token" value="<?= h($_SESSION['csrf_token']) ?>">
+                                            <input type="hidden" name="debtor_id" value="<?= h($debtor['id']) ?>">
+                                            <input type="hidden" name="action" value="activate_debtor">
+                                            <button type="submit" class="dc-btn dc-btn--success" title="<?= __('activate_debtor') ?>">
+                                                <i class="fas fa-check-circle"></i>
+                                            </button>
+                                        </form>
+                                        <?php endif; ?>
+                                        <?php if ($isAdmin): ?>
+                                        <button class="dc-btn dc-btn--danger" onclick="if(confirm('<?= __('are_you_sure') ?>')){ document.querySelector('form.delete-form-<?= h($debtor['id']) ?>').submit(); }" title="<?= __('delete_debtor') ?>">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                        <form method="POST" action="../api/debtor/delete_debtor.php" class="d-none delete-form-<?= h($debtor['id']) ?>">
+                                            <input type="hidden" name="csrf_token" value="<?= h($_SESSION['csrf_token']) ?>">
+                                            <input type="hidden" name="debtor_id" value="<?= h($debtor['id']) ?>">
+                                        </form>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <?php
+                            $counter++;
+                        endforeach;
+                        ?>
+                        </div>
+                        <?php endif; ?>
+
+                        <!-- PAGINATION -->
+                        <div class="debtor-pagination-bar">
+                            <p class="debtor-pagination-info">
+                                <?= __('showing') ?>
+                                <?= $totalRecords > 0 ? $start_record : 0 ?>
+                                <?= __('to') ?>
+                                <?= $end_record ?>
+                                <?= __('of') ?>
+                                <?= $totalRecords ?> <?= __('entries') ?>
+                            </p>
+                            <ul class="debtor-pagination">
+                                <li class="<?= $page <= 1 ? 'disabled' : '' ?>">
+                                    <?php if ($page <= 1): ?>
+                                    <span>&laquo;</span>
+                                    <?php else: ?>
+                                    <a href="?page=<?= $page - 1 ?>&status=<?= $status_filter ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?>">&laquo;</a>
+                                    <?php endif; ?>
+                                </li>
+                                <?php
+                                $startPage = max(1, $page - 2);
+                                $endPage   = min($totalPages, $page + 2);
+                                for ($i = $startPage; $i <= $endPage; $i++):
+                                ?>
+                                <li class="<?= $i == $page ? 'active' : '' ?>">
+                                    <a href="?page=<?= $i ?>&status=<?= $status_filter ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?>"><?= $i ?></a>
+                                </li>
+                                <?php endfor; ?>
+                                <li class="<?= $page >= $totalPages ? 'disabled' : '' ?>">
+                                    <?php if ($page >= $totalPages): ?>
+                                    <span>&raquo;</span>
+                                    <?php else: ?>
+                                    <a href="?page=<?= $page + 1 ?>&status=<?= $status_filter ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?>">&raquo;</a>
+                                    <?php endif; ?>
+                                </li>
+                            </ul>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
                                                 
                                                 <!-- Add Debtor Modal -->
                                 <div class="modal fade" id="addDebtorModal" tabindex="-1" role="dialog" aria-hidden="true">
@@ -931,6 +973,16 @@ try {
 <!-- SweetAlert2 JS -->
 <script src="../assets/plugins/sweetalert2/sweetalert2.min.js"></script>
 
+<script>
+// Search on Enter
+document.getElementById('searchInput').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+        const q = this.value.trim();
+        window.location.href = 'debtors.php?status=<?= $status_filter ?>&search=' + encodeURIComponent(q) + '&page=1';
+    }
+});
+</script>
+
 <!-- Custom JS for Debtors Page -->
 
 <script src="../js/debtor/debtors-interactions.js"></script>
@@ -995,6 +1047,46 @@ try {
 </div>
 
     <style>
+        /* Dropdown action styles */
+        .dropdown-icon {
+            width: 18px;
+            text-align: center;
+            margin-right: 8px;
+        }
+        .dropdown-item-form {
+            margin: 0;
+        }
+        .dropdown-item-btn {
+            display: block;
+            width: 100%;
+            padding: 4px 24px;
+            clear: both;
+            font-weight: 400;
+            color: #212529;
+            text-align: inherit;
+            white-space: nowrap;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .dropdown-item-btn:hover {
+            background-color: #f8f9fa;
+        }
+        .dropdown-item-btn.text-danger {
+            color: #dc3545;
+        }
+        .dropdown-item-btn.text-danger:hover {
+            background-color: #f8d7da;
+        }
+        #debtorsTable .btn-group .btn-sm {
+            padding: 3px 8px;
+            font-size: 12px;
+        }
+        #debtorsTable td {
+            vertical-align: middle;
+        }
         /* Enhanced custom styles for better layout and design */
         .page-header.card {
             background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
