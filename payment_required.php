@@ -13,6 +13,21 @@ if (isset($_GET['lang'])) {
 require_once 'config.php';
 require_once 'includes/db.php';
 
+// Fetch platform contact info from platform_settings table
+$platform_email = 'allahdadmuahmmadi01@gmail.com';
+$platform_phone = '+93 78 031 0431';
+try {
+    $stmt = $pdo->prepare("SELECT `key`, `value` FROM platform_settings WHERE `key` IN ('contact_email', 'contact_phone')");
+    $stmt->execute();
+    foreach ($stmt->fetchAll() as $row) {
+        if ($row['key'] === 'contact_email' && !empty($row['value'])) {
+            $platform_email = $row['value'];
+        } elseif ($row['key'] === 'contact_phone' && !empty($row['value'])) {
+            $platform_phone = $row['value'];
+        }
+    }
+} catch (Exception $e) {}
+
 $tenant_info   = null;
 $subscriptions = [];
 if (isset($_SESSION['tenant_id'])) {
@@ -520,16 +535,11 @@ $is_trial_expired = $tenant_info && $tenant_info['status'] === 'suspended' && !e
         <div class="contact-grid">
           <div class="contact-item">
             <span class="label">Email</span>
-            <?php
-              $email = ($tenant_info && $tenant_info['billing_email'])
-                ? $tenant_info['billing_email']
-                : 'allahdadmuahmmadi01@gmail.com';
-            ?>
-            <a href="mailto:<?= htmlspecialchars($email) ?>"><?= htmlspecialchars($email) ?></a>
+            <a href="mailto:<?= htmlspecialchars($platform_email) ?>"><?= htmlspecialchars($platform_email) ?></a>
           </div>
           <div class="contact-item">
             <span class="label">Phone</span>
-            <a href="tel:+93780310431">+93 78 031 0431</a>
+            <a href="tel:<?= htmlspecialchars(preg_replace('/[^0-9+]/', '', $platform_phone)) ?>"><?= htmlspecialchars($platform_phone) ?></a>
           </div>
         </div>
       </div>

@@ -438,7 +438,6 @@ $(document).ready(function() {
         var id = $(this).data('id');
         var amount = $(this).data('amount');
         var currency = $(this).data('currency');
-        var date = $(this).data('date');
         var description = $(this).data('description');
         var receipt = $(this).data('receipt');
         var paymentId = $('#transaction_payment_id').val();
@@ -449,19 +448,6 @@ $(document).ready(function() {
         $('#edit_original_payment_currency').val(originalCurrency);
         $('#edit_payment_amount').val(amount);
         $('#edit_transaction_currency').val(currency);
-        
-        // Parse the datetime string
-        var txDate = new Date(date);
-        var formattedDate = txDate.toISOString().split('T')[0];
-        
-        // Format time as HH:MM:SS
-        var hours = String(txDate.getHours()).padStart(2, '0');
-        var minutes = String(txDate.getMinutes()).padStart(2, '0');
-        var seconds = String(txDate.getSeconds()).padStart(2, '0');
-        var formattedTime = `${hours}:${minutes}:${seconds}`;
-        
-        $('#edit_payment_date').val(formattedDate);
-        $('#edit_payment_time').val(formattedTime);
         $('#edit_payment_description').val(description);
         $('#edit_receipt').val(receipt);
         
@@ -469,9 +455,6 @@ $(document).ready(function() {
         if (currency !== originalCurrency) {
             $('#edit_exchange_rate_group').show();
             $('#edit_exchange_rate').prop('required', true);
-            
-            // Exchange rate comes directly from the database field
-            // No need to extract from description
         } else {
             $('#edit_exchange_rate_group').hide();
             $('#edit_exchange_rate').prop('required', false);
@@ -507,19 +490,17 @@ $(document).ready(function() {
          // Get CSRF token
          var csrfToken = $('input[name="csrf_token"]').val();
          
-         var formData = {
-             transaction_id: $('#edit_transaction_id').val(),
-             payment_id: $('#edit_transaction_payment_id').val(),
-             payment_amount: $('#edit_payment_amount').val(),
-             currency: selectedCurrency,
-             original_currency: originalCurrency,
-             exchange_rate: exchangeRate,
-             payment_date: $('#edit_payment_date').val(),
-             payment_time: $('#edit_payment_time').val(),
-             payment_description: $('#edit_payment_description').val(),
-             receipt: $('#edit_receipt').val(),
-             csrf_token: csrfToken
-         };
+          var formData = {
+              transaction_id: $('#edit_transaction_id').val(),
+              payment_id: $('#edit_transaction_payment_id').val(),
+              payment_amount: $('#edit_payment_amount').val(),
+              currency: selectedCurrency,
+              original_currency: originalCurrency,
+              exchange_rate: exchangeRate,
+              payment_description: $('#edit_payment_description').val(),
+              receipt_number: $('#edit_receipt').val(),
+              csrf_token: csrfToken
+          };
 
         $.ajax({
             url: '../api/additional_payment/update_additional_payment_transaction.php',

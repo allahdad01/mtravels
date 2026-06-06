@@ -182,15 +182,15 @@
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
-                            <table class="table table-hover mb-0" id="transactionsTable">
+                            <table class="table table-sm table-hover mb-0" id="transactionsTable">
                                     <thead class="thead-light">
                                     <tr>
-                                        <th><?= __('date') ?></th>
-                                        <th><?= __('description') ?></th>
-                                        <th><?= __('type') ?></th>
-                                        <th><?= __('amount') ?></th>
-                                        <th><?= __('exchange_rate') ?></th>
-                                        <th class="text-center"><?= __('actions') ?></th>
+                                        <th class="border-0"><i class="feather icon-calendar mr-1"></i><?= __('date') ?></th>
+                                        <th class="border-0"><i class="feather icon-file-text mr-1"></i><?= __('description') ?></th>
+                                        <th class="border-0"><i class="feather icon-hash mr-1"></i><?= __('receipt') ?></th>
+                                        <th class="border-0"><i class="feather icon-dollar-sign mr-1"></i><?= __('amount') ?></th>
+                                        <th class="border-0"><i class="feather icon-refresh-cw mr-1"></i><?= __('exchange_rate') ?></th>
+                                        <th class="text-center border-0"><i class="feather icon-settings mr-1"></i><?= __('actions') ?></th>
                                     </tr>
                                 </thead>
                                 <tbody id="transactionsTableBody">

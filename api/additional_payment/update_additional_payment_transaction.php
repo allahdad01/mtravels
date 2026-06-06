@@ -22,7 +22,7 @@ $branch_id = $_SESSION['branch_id'];
 require_once('../../includes/db.php');
 
 // Validate receipt
-$receipt = isset($_POST['receipt']) ? DbSecurity::validateInput($_POST['receipt'], 'string', ['maxlength' => 255]) : null;
+$receipt = isset($_POST['receipt_number']) ? DbSecurity::validateInput($_POST['receipt_number'], 'string', ['maxlength' => 255]) : null;
 
 // Validate payment_time
 $payment_time = isset($_POST['payment_time']) ? DbSecurity::validateInput($_POST['payment_time'], 'string', ['maxlength' => 255]) : null;
@@ -54,11 +54,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $paymentId = intval($_POST['payment_id']);
         $amount = floatval($_POST['payment_amount']);
         $description = $_POST['payment_description'];
-        
-        $payment_date = $_POST['payment_date'] ?? date('Y-m-d');
-        $payment_time = $_POST['payment_time'] ?? date('H:i:s');
-        $payment_datetime = $payment_date . ' ' . $payment_time;
-        $receipt = $_POST['receipt'];
 
         // Begin transaction
         $pdo->beginTransaction();
@@ -119,12 +114,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Update the transaction
         $stmt = $pdo->prepare("
             UPDATE main_account_transactions
-            SET amount = ?, description = ?, created_at = ?, receipt = ?
+            SET amount = ?, description = ?, receipt = ?
             WHERE id = ?
             AND tenant_id = ?
             AND branch_id = ?
         ");
-        $stmt->execute([$amount, $description, $payment_datetime, $receipt, $transactionId, $tenant_id, $branch_id]);
+        $stmt->execute([$amount, $description, $receipt, $transactionId, $tenant_id, $branch_id]);
 
         // Update main account balance if amount changed
         if ($amountDifference != 0) {
@@ -158,7 +153,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $new_values = [
             'amount' => $amount,
             'description' => $description,
-            'created_at' => $payment_datetime,
             'receipt' => $receipt
         ];
         

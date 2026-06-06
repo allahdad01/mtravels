@@ -143,13 +143,13 @@
                                     const row = `
                                         <tr>
                                             <td>${transactionManager.formatDate(transaction.created_at)}</td>
-                                            <td>${description}</td>
-                                            <td>${transaction.type === 'credit' ? 'Received' : 'Paid'}</td>
-                                            <td>${parseFloat(transaction.amount).toFixed(2)} ${transaction.currency}</td>
+                                            <td style="word-wrap:break-word;white-space:normal;max-width:200px">${description}</td>
+                                            <td>${transaction.receipt || '—'}</td>
+                                            <td>${transaction.type === 'credit' ? 'Received' : 'Paid'} ${parseFloat(transaction.amount).toFixed(2)} ${transaction.currency}</td> 
                                             <td>${exchangeRateDisplay}</td>
-                                            <td class="text-center">
+                                            <td class="text-center" style="white-space:nowrap">
                                                 <button class="btn btn-primary btn-sm mr-1" title="Edit Transaction"
-                                                        onclick="transactionManager.editTransaction(${transaction.id}, '${description.replace(/'/g, "\\'")}', ${transaction.amount}, '${transaction.created_at}', '${transaction.currency}', ${transaction.exchange_rate || 'null'})">
+                                                        onclick="transactionManager.editTransaction(${transaction.id}, '${description.replace(/'/g, "\\'")}', ${transaction.amount}, '${transaction.created_at}', '${transaction.currency}', ${transaction.exchange_rate || 'null'}, '${(transaction.receipt||'').replace(/'/g,"\\'")}')">
                                                     <i class="feather icon-edit"></i>
                                                 </button>
                                                                                 <button class="btn btn-info btn-sm mr-1" title="Print Receipt"
@@ -413,7 +413,7 @@
                     });
                 },
     
-                editTransaction: function(id, description, amount, created_at, currency, exchange_rate) {
+                editTransaction: function(id, description, amount, created_at, currency, exchange_rate, receipt) {
                     // Populate edit modal with transaction data
                     $('#edit_transaction_id').val(id);
                     $('#edit_transaction_payment_id').val($('#transaction_payment_id').val());
@@ -421,18 +421,7 @@
                     $('#edit_payment_amount').val(amount);
                     $('#edit_transaction_currency').val(currency);
                     $('#edit_payment_description').val(description);
-                    $('#edit_receipt').val(''); // You may need to fetch this separately
-
-                    // Parse and set date/time
-                    const txDate = new Date(created_at);
-                    const formattedDate = txDate.toISOString().split('T')[0];
-                    const hours = String(txDate.getHours()).padStart(2, '0');
-                    const minutes = String(txDate.getMinutes()).padStart(2, '0');
-                    const seconds = String(txDate.getSeconds()).padStart(2, '0');
-                    const formattedTime = `${hours}:${minutes}:${seconds}`;
-
-                    $('#edit_payment_date').val(formattedDate);
-                    $('#edit_payment_time').val(formattedTime);
+                    $('#edit_receipt').val(receipt || '');
 
                     // Handle exchange rate - use the direct field from database
                     if (exchange_rate && exchange_rate !== 'null') {
