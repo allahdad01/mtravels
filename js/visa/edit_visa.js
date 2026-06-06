@@ -30,7 +30,6 @@ function editVisa(id) {
                 document.getElementById('editSold').value = visa.sold;
                 document.getElementById('editPro').value = visa.profit;
                 document.getElementById('editCurrency').value = visa.currency;
-                document.getElementById('editStatus').value = visa.status;
                 document.getElementById('editRemarks').value = visa.remarks;
                 
                 // Set the paid_to/main account dropdown
@@ -117,4 +116,23 @@ function editVisa(id) {
             submitButton.innerHTML = 'save_changes';
         });
     });
+
+    // Auto-update currency when supplier changes in edit modal
+    const editSupplierSelect = document.getElementById('editSupplier');
+    if (editSupplierSelect) {
+        editSupplierSelect.addEventListener('change', function () {
+            const supplierId = this.value;
+            const currencyInput = document.getElementById('editCurrency');
+            if (!supplierId || !currencyInput) return;
+
+            fetch(`../api/visa/get_supplier_currency.php?supplier_id=${supplierId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.currency) {
+                        currencyInput.value = data.currency;
+                    }
+                })
+                .catch(() => {});
+        });
+    }
 });

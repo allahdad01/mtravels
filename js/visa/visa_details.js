@@ -21,59 +21,52 @@ document.querySelectorAll('.view-details').forEach(button => {
 
         $('#detailsModal').data('visa-id', visa.id); // Storing visa id in the modal itself
 
-        // Show/hide approve button based on status
-        const approveBtn = document.getElementById('approveVisaBtn');
-        if (visa.status === 'Pending') {
-            approveBtn.style.display = 'inline-block';
-        } else {
-            approveBtn.style.display = 'none';
-        }
-
         // Show the modal
         $('#detailsModal').modal('show');
     });
 });
 
-// Approve Visa Button Handler
-document.getElementById('approveVisaBtn')?.addEventListener('click', function () {
-    const visaId = $('#detailsModal').data('visa-id');
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
-                     document.querySelector('input[name="csrf_token"]')?.value;
+// Approve Visa Button Handler (card-based)
+document.querySelectorAll('.approve-visa').forEach(button => {
+    button.addEventListener('click', function () {
+        const visaId = this.dataset.visaId;
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
+                         document.querySelector('input[name="csrf_token"]')?.value;
 
-    if (!confirm('Are you sure you want to approve this visa application? This will process all transactions.')) {
-        return;
-    }
-
-    const btn = this;
-    const originalHtml = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Approving...';
-
-    const formData = new FormData();
-    formData.append('visa_id', visaId);
-    formData.append('csrf_token', csrfToken);
-
-    fetch('../api/visa/approve_visa.php', {
-        method: 'POST',
-        body: formData,
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showToast('Visa approved successfully! Transactions processed.', 'success');
-            $('#detailsModal').modal('hide');
-            setTimeout(() => location.reload(), 1000);
-        } else {
-            showToast('Error: ' + (data.error || data.message), 'error');
+        if (!confirm('Are you sure you want to approve this visa application? This will process all transactions.')) {
+            return;
         }
-        btn.disabled = false;
-        btn.innerHTML = originalHtml;
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        btn.disabled = false;
-        btn.innerHTML = originalHtml;
-        showToast('An error occurred while approving visa', 'error');
+
+        const btn = this;
+        const originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Approving...';
+
+        const formData = new FormData();
+        formData.append('visa_id', visaId);
+        formData.append('csrf_token', csrfToken);
+
+        fetch('../api/visa/approve_visa.php', {
+            method: 'POST',
+            body: formData,
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Visa approved successfully! Transactions processed.', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast('Error: ' + (data.error || data.message), 'error');
+            }
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+            showToast('An error occurred while approving visa', 'error');
+        });
     });
 });
 

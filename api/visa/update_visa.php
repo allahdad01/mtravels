@@ -43,7 +43,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $sold = floatval($_POST['sold'] ?? 0);
     $profit = floatval($_POST['profit'] ?? 0);
     $currency = $_POST['currency'] ?? 'USD';
-    $status = $_POST['status'] ?? '';
     $remarks = $_POST['remarks'] ?? '';
     $phone = $_POST['phone'] ?? '';
 
@@ -641,35 +640,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
          } // End of: if ($visaStatus === 'Approved')
 
          // Prepare the SQL update statement for the visa application
-         $sql = "UPDATE visa_applications
-                 SET supplier = ?, sold_to = ?, title = ?, gender = ?, applicant_name = ?,
-                     passport_number = ?, country = ?, visa_type = ?, receive_date = ?,
-                     applied_date = ?, issued_date = ?, base = ?, sold = ?, profit = ?,
-                     currency = ?, status = ?, remarks = ?, phone = ?, updated_at = NOW()
-                 WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+          $sql = "UPDATE visa_applications
+                  SET supplier = ?, sold_to = ?, title = ?, gender = ?, applicant_name = ?,
+                      passport_number = ?, country = ?, visa_type = ?, receive_date = ?,
+                      applied_date = ?, issued_date = ?, base = ?, sold = ?, profit = ?,
+                      currency = ?, remarks = ?, phone = ?, updated_at = NOW()
+                  WHERE id = ? AND tenant_id = ? AND branch_id = ?";
 
-         $stmt = $pdo->prepare($sql);
-         $stmt->bindParam(1, $supplier, PDO::PARAM_INT);
-         $stmt->bindParam(2, $sold_to, PDO::PARAM_INT);
-         $stmt->bindParam(3, $title, PDO::PARAM_STR);
-         $stmt->bindParam(4, $gender, PDO::PARAM_STR);
-         $stmt->bindParam(5, $applicant_name, PDO::PARAM_STR);
-         $stmt->bindParam(6, $passport_number, PDO::PARAM_STR);
-         $stmt->bindParam(7, $country, PDO::PARAM_STR);
-         $stmt->bindParam(8, $visa_type, PDO::PARAM_STR);
-         $stmt->bindParam(9, $receive_date, PDO::PARAM_STR);
-         $stmt->bindParam(10, $applied_date, PDO::PARAM_STR);
-         $stmt->bindParam(11, $issued_date, PDO::PARAM_STR);
-         $stmt->bindParam(12, $base, PDO::PARAM_STR);
-         $stmt->bindParam(13, $sold, PDO::PARAM_STR);
-         $stmt->bindParam(14, $profit, PDO::PARAM_STR);
-         $stmt->bindParam(15, $currency, PDO::PARAM_STR);
-         $stmt->bindParam(16, $status, PDO::PARAM_STR);
-         $stmt->bindParam(17, $remarks, PDO::PARAM_STR);
-         $stmt->bindParam(18, $phone, PDO::PARAM_STR);
-         $stmt->bindParam(19, $id, PDO::PARAM_INT);
-         $stmt->bindParam(20, $tenant_id, PDO::PARAM_INT);
-         $stmt->bindParam(21, $branch_id, PDO::PARAM_INT);
+          $stmt = $pdo->prepare($sql);
+          $stmt->bindParam(1, $supplier, PDO::PARAM_INT);
+          $stmt->bindParam(2, $sold_to, PDO::PARAM_INT);
+          $stmt->bindParam(3, $title, PDO::PARAM_STR);
+          $stmt->bindParam(4, $gender, PDO::PARAM_STR);
+          $stmt->bindParam(5, $applicant_name, PDO::PARAM_STR);
+          $stmt->bindParam(6, $passport_number, PDO::PARAM_STR);
+          $stmt->bindParam(7, $country, PDO::PARAM_STR);
+          $stmt->bindParam(8, $visa_type, PDO::PARAM_STR);
+          $stmt->bindParam(9, $receive_date, PDO::PARAM_STR);
+          $stmt->bindParam(10, $applied_date, PDO::PARAM_STR);
+          $stmt->bindParam(11, $issued_date, PDO::PARAM_STR);
+          $stmt->bindParam(12, $base, PDO::PARAM_STR);
+          $stmt->bindParam(13, $sold, PDO::PARAM_STR);
+          $stmt->bindParam(14, $profit, PDO::PARAM_STR);
+          $stmt->bindParam(15, $currency, PDO::PARAM_STR);
+          $stmt->bindParam(16, $remarks, PDO::PARAM_STR);
+          $stmt->bindParam(17, $phone, PDO::PARAM_STR);
+          $stmt->bindParam(18, $id, PDO::PARAM_INT);
+          $stmt->bindParam(19, $tenant_id, PDO::PARAM_INT);
+          $stmt->bindParam(20, $branch_id, PDO::PARAM_INT);
 
          if ($stmt->execute()) {
              // Add activity log
@@ -704,9 +702,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                  'base' => $base,
                  'sold' => $sold,
                  'profit' => $profit,
-                 'currency' => $currency,
-                 'status' => $status,
-                 'remarks' => $remarks,
+                  'currency' => $currency,
+                  'status' => $originalData['status'],
+                  'remarks' => $remarks,
                  'phone' => $phone
              ]);
 

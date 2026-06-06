@@ -2486,10 +2486,14 @@ try {
             'margin_top' => 15,
             'margin_bottom' => 15,
             'default_font_size' => 10,
-            'debug' => true
         ];
     
         try {
+            // Clean any accidental output before sending PDF headers
+            while (ob_get_level()) {
+                ob_end_clean();
+            }
+    
             $pdf = new \Mpdf\Mpdf($mpdfConfig);
     
             // Map headers to data keys or closures for dynamic mapping
@@ -2641,9 +2645,12 @@ try {
             header('Content-Type: application/pdf');
             header('Content-Disposition: attachment; filename="report.pdf"');
             echo $pdf->Output('report.pdf', \Mpdf\Output\Destination::STRING_RETURN);
+            exit;
     
         } catch (\Exception $e) {
+            header('Content-Type: text/plain; charset=utf-8');
             echo 'Error generating PDF: ' . $e->getMessage();
+            exit;
         }
     }
     

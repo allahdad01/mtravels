@@ -908,6 +908,15 @@ function isCancelledEtc($status) {
                                             <i class="feather icon-eye"></i> <?= __('view') ?>
                                         </button>
 
+                                        <!-- Approve (Pending only) -->
+                                        <?php if ($statusLower === 'pending' && $canEdit): ?>
+                                        <button class="vc-btn vc-btn--success approve-visa"
+                                                data-visa-id="<?= $visa['id'] ?>"
+                                                title="<?= __('approve') ?>">
+                                            <i class="feather icon-check"></i> <?= __('approve') ?>
+                                        </button>
+                                        <?php endif; ?>
+
                                         <!-- Edit -->
                                         <?php if ($canEdit): ?>
                                         <button class="vc-btn" onclick="editVisa(<?= $visa['id'] ?>)">

@@ -210,52 +210,41 @@ $all_visa_types = [
                                                                                         <input type="number" class="form-control" id="editSold" name="sold" step="0.01" required>
                                                                                     </div>
                                                                                 </div>
-                                                                                <div class="col-md-12">
-                                                                                    <div class="form-group">
-                                                                                        <label for="editPro"><?= __('profit') ?></label>
-                                                                                        <input type="number" class="form-control" id="editPro" name="profit" step="0.01" readonly>
-                                                                                    </div>
+                                                                            <div class="col-md-12">
+                                                                                <div class="form-group">
+                                                                                    <label for="editPro"><?= __('profit') ?></label>
+                                                                                    <input type="number" class="form-control" id="editPro" name="profit" step="0.01" readonly>
                                                                                 </div>
                                                                             </div>
-                                                                            <div class="row">
-                                                                                
-                                                                                <div class="col-md-6">
-                                                                                    <div class="form-group">
-                                                                                        <label for="editCurrency"><?= __('currency') ?></label>
-                                                                                        <select class="form-control" id="editCurrency" name="currency" required>
-                                                                                            <option value="USD"><?= __('usd') ?></option>
-                                                                                            <option value="EUR"><?= __('eur') ?></option>
-                                                                                            <option value="DARHAM"><?= __('darham') ?></option>
-                                                                                            <option value="AFS"><?= __('afs') ?></option>
-                                                                                        </select>
-                                                                                    </div>
-                                                                                </div>
-                                                                                <div class="col-md-12">
-                                                                                    <div class="form-group">
-                                                                                        <label for="editStatus"><?= __('status') ?></label>
-                                                                                        <select class="form-control" id="editStatus" name="status">
-                                                                                            <option value="Pending"><?= __('pending') ?></option>
-                                                                                            <option value="Approved"><?= __('approved') ?></option>
-                                                                                            <option value="Rejected"><?= __('rejected') ?></option>
-                                                                                        </select>
-                                                                                    </div>
+                                                                        </div>
+                                                                        <div class="row">
+                                                                            <div class="col-md-6">
+                                                                                <div class="form-group">
+                                                                                    <label for="editCurrency"><?= __('currency') ?></label>
+                                                                                    <select class="form-control" id="editCurrency" name="currency" required disabled>
+                                                                                        <option value="USD"><?= __('usd') ?></option>
+                                                                                        <option value="EUR"><?= __('eur') ?></option>
+                                                                                        <option value="DARHAM"><?= __('darham') ?></option>
+                                                                                        <option value="AFS"><?= __('afs') ?></option>
+                                                                                    </select>
                                                                                 </div>
                                                                             </div>
                                                                         </div>
                                                                     </div>
                                                                 </div>
                                                             </div>
+                                                        </div>
 
-                                                            <div class="row">
-                                                                <div class="col-md-12">
+                                                        <div class="row">
+                                                            <div class="col-md-12">
                                                                     <div class="form-group">
                                                                         <label for="editRemarks"><?= __('remarks') ?></label>
-                                                                        <input type="text" class="form-control" id="editRemarks" name="remarks">
+                                                                        <textarea class="form-control" id="editRemarks" name="remarks" rows="3"></textarea>
                                                                     </div>
                                                                 </div>
-                                                            </div>
-                                                         </div>
-                                                         <div class="modal-footer">
+                                                             </div>
+
+                                                          <div class="modal-footer">
                                                              <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('close') ?></button>
                                                              <button type="submit" class="btn btn-primary"><?= __('save_changes') ?></button>
                                                          </div>
