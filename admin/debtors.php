@@ -749,7 +749,7 @@ try {
                                                          <div class="form-group" id="exchangeRateDiv<?php echo h($debtor['id']); ?>" style="display: none;">
                                                              <label class="form-label"><?= __('exchange_rate') ?> (1 <span id="selectedCurrency<?php echo h($debtor['id']); ?>"><?php echo h($debtor['currency']); ?></span> = ? <span id="debtorCurrency<?php echo h($debtor['id']); ?>"><?php echo h($debtor['currency']); ?></span>)</label>
                                                              <input type="number" class="form-control" name="exchange_rate" id="exchangeRate<?php echo h($debtor['id']); ?>" step="0.000001" placeholder="<?= __('enter_exchange_rate') ?>">
-                                                             <small class="form-text text-muted"><?= __('enter_the_exchange_rate_to_convert_from_payment_currency_to_debtor_s_currency') ?></small>
+                                                               <small class="form-text text-muted" id="exchangeRateHelp<?php echo h($debtor['id']); ?>"><?= __('enter_the_exchange_rate_to_convert_between_currencies') ?></small>
                                                          </div>
                                                          
                                                          <div class="form-row">

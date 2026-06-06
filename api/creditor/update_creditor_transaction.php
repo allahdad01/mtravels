@@ -22,45 +22,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $creditorId = $_POST['creditor_id'] ?? 0;
     $originalAmount = floatval($_POST['original_amount'] ?? 0);
     $newAmount = floatval($_POST['payment_amount'] ?? 0);
-    $paymentDate = $_POST['payment_date'] ?? '';
-    $paymentTime = $_POST['payment_time'] ?? '';
     $newDescription = $_POST['payment_description'] ?? '';
     $newReference = $_POST['reference_number'] ?? '';
-    
-    // Parse the separate date and time fields to YYYY-MM-DD HH:MM:SS
-    $newDateTime = '';
-    if (!empty($paymentDate)) {
-        // Parse date from DD/MM/YYYY format
-        $dateObj = DateTime::createFromFormat('d/m/Y', $paymentDate);
-        if ($dateObj === false) {
-            echo json_encode(['success' => false, 'message' => 'Invalid date format. Please use DD/MM/YYYY']);
-            exit;
-        }
-        
-        // Parse time or use default
-        if (!empty($paymentTime)) {
-            // Check if time has valid format
-            $timeObj = DateTime::createFromFormat('H:i:s', $paymentTime);
-            if ($timeObj === false) {
-                echo json_encode(['success' => false, 'message' => 'Invalid time format. Please use HH:MM:SS']);
-                exit;
-            }
-            // Combine date and time
-            $newDateTime = $dateObj->format('Y-m-d') . ' ' . $paymentTime;
-        } else {
-            // Use date with default time
-            $newDateTime = $dateObj->format('Y-m-d') . ' 00:00:00';
-        }
-    } else {
-        echo json_encode(['success' => false, 'message' => 'Payment date is required']);
-        exit;
-    }
     
     // Validate inputs
     $transaction_id = DbSecurity::validateInput($transactionId, 'int', ['min' => 0]);
     $creditor_id = DbSecurity::validateInput($creditorId, 'int', ['min' => 0]);
     $payment_amount = DbSecurity::validateInput($newAmount, 'float', ['min' => 0]);
-    $payment_date = DbSecurity::validateInput($newDateTime, 'datetime');
     $payment_description = DbSecurity::validateInput($newDescription, 'string', ['maxlength' => 255]);
     $reference_number = DbSecurity::validateInput($newReference, 'string', ['maxlength' => 255]);
     
@@ -74,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     try {
         // Get transaction details before update
-        $stmt = $pdo->prepare("SELECT * FROM creditor_transactions WHERE id = ? AND tenant_id = ? And branch_id = ?");
+        $stmt = $pdo->prepare("SELECT * FROM creditor_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
         $stmt->bindParam(1, $transaction_id, PDO::PARAM_INT);
         $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
         $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
@@ -87,12 +55,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
          $currency = $transaction['currency'];
          $originalPaymentDate = $transaction['created_at'];
          $transactionType = $transaction['transaction_type'];
+         
+         $newDateTime = $originalPaymentDate;
         
         // Calculate the difference between original and new amount
         $amountDifference = $newAmount - $originalAmount;
         
                  // Update the creditor transaction
-         $stmt = $pdo->prepare("UPDATE creditor_transactions SET amount = ?, created_at = ?, description = ?, reference_number = ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
+         $stmt = $pdo->prepare("UPDATE creditor_transactions SET amount = ?, created_at = ?, description = ?, reference_number = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
          $stmt->bindParam(1, $newAmount, PDO::PARAM_STR);
          $stmt->bindParam(2, $newDateTime, PDO::PARAM_STR);
          $stmt->bindParam(3, $newDescription, PDO::PARAM_STR);
@@ -106,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         // Get creditor information
-        $stmt = $pdo->prepare("SELECT balance FROM creditors WHERE id = ? AND tenant_id = ? And branch_id = ?");
+        $stmt = $pdo->prepare("SELECT balance FROM creditors WHERE id = ? AND tenant_id = ? AND branch_id = ?");
         $stmt->bindParam(1, $creditor_id, PDO::PARAM_INT);
         $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
         $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
@@ -128,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         // Update creditor balance
-        $stmt = $pdo->prepare("UPDATE creditors SET balance = ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
+        $stmt = $pdo->prepare("UPDATE creditors SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
         $stmt->bindParam(1, $newCreditorBalance, PDO::PARAM_STR);
         $stmt->bindParam(2, $creditor_id, PDO::PARAM_INT);
         $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
@@ -139,7 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         // Get the linked main account transaction
-        $stmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE transaction_of = 'creditor' AND reference_id = ? AND tenant_id = ? And branch_id = ?");
+        $stmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE transaction_of = 'creditor' AND reference_id = ? AND tenant_id = ? AND branch_id = ?");
         $stmt->bindParam(1, $transaction_id, PDO::PARAM_INT);
         $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
         $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
@@ -165,7 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $mainAccountId = $mainTransaction['main_account_id'];
             
             // Update main account transaction
-            $stmt = $pdo->prepare("UPDATE main_account_transactions SET amount = ?, description = ?, created_at = ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
+            $stmt = $pdo->prepare("UPDATE main_account_transactions SET amount = ?, description = ?, created_at = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
             $stmt->bindParam(1, $newAmount, PDO::PARAM_STR);
             $stmt->bindParam(2, $newDescription, PDO::PARAM_STR);
             $stmt->bindParam(3, $newDateTime, PDO::PARAM_STR);
@@ -180,7 +150,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // If amount changed, we need to update the current transaction balance first
             if ($amountDifference != 0) {
                 // Get the current balance of the transaction
-                $getCurrentBalanceQuery = "SELECT balance FROM main_account_transactions WHERE id = ? AND tenant_id = ? And branch_id = ?";
+                $getCurrentBalanceQuery = "SELECT balance FROM main_account_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                 $getCurrentBalanceStmt = $pdo->prepare($getCurrentBalanceQuery);
                 $getCurrentBalanceStmt->bindParam(1, $mainTransaction['id'], PDO::PARAM_INT);
                 $getCurrentBalanceStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
@@ -200,7 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $newBalance = $currentBalance + $balanceAdjustment;
                 
                 // Update the balance of the current transaction
-                $updateCurrentBalanceQuery = "UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ? And branch_id = ?";
+                $updateCurrentBalanceQuery = "UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                 $updateCurrentBalanceStmt = $pdo->prepare($updateCurrentBalanceQuery);
                 $updateCurrentBalanceStmt->bindParam(1, $newBalance, PDO::PARAM_STR);
                 $updateCurrentBalanceStmt->bindParam(2, $mainTransaction['id'], PDO::PARAM_INT);
@@ -217,7 +187,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                      WHERE main_account_id = ? 
                                      AND currency = ? 
                                      AND created_at > ? 
-                                     AND id != ? AND tenant_id = ? And branch_id = ?";
+                                     AND id != ? AND tenant_id = ? AND branch_id = ?";
              $updateSubsequentStmt = $pdo->prepare($updateSubsequentQuery);
              $updateSubsequentStmt->bindParam(1, $balanceAdjustment, PDO::PARAM_STR);
              $updateSubsequentStmt->bindParam(2, $mainTransaction['main_account_id'], PDO::PARAM_INT);
@@ -232,7 +202,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 // Update the main account balance directly
-                $stmt = $pdo->prepare("UPDATE main_account SET $balanceField = $balanceField + ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
+                $stmt = $pdo->prepare("UPDATE main_account SET $balanceField = $balanceField + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                 $stmt->bindParam(1, $balanceAdjustment, PDO::PARAM_STR);
                 $stmt->bindParam(2, $mainAccountId, PDO::PARAM_INT);
                 $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
@@ -251,7 +221,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmt = $pdo->prepare("SELECT id, amount, type, created_at
                                            FROM main_account_transactions
                                            WHERE main_account_id = ? AND currency = ?
-                                           ORDER BY created_at ASC, id ASC AND tenant_id = ? And branch_id = ?");
+                                           ORDER BY created_at ASC, id ASC AND tenant_id = ? AND branch_id = ?");
                     $stmt->bindParam(1, $mainAccountId, PDO::PARAM_INT);
                     $stmt->bindParam(2, $currency, PDO::PARAM_STR);
                     $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
@@ -274,7 +244,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                         
                         // Update the balance for this transaction
-                        $updateStmt = $pdo->prepare("UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
+                        $updateStmt = $pdo->prepare("UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                         $updateStmt->bindParam(1, $runningBalance, PDO::PARAM_STR);
                         $updateStmt->bindParam(2, $tx['id'], PDO::PARAM_INT);
                         $updateStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
@@ -286,7 +256,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     
                     // Update the final balance in the main account table
-                    $stmt = $pdo->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
+                    $stmt = $pdo->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                     $stmt->bindParam(1, $runningBalance, PDO::PARAM_STR);
                     $stmt->bindParam(2, $mainAccountId, PDO::PARAM_INT);
                     $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);

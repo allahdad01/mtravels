@@ -180,27 +180,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pay'])) {
                 throw new Exception(__("exchange_rate_is_required_when_currencies_are_different"));
             }
             $exchange_rate = floatval($_POST['exchange_rate']);
-            // Conversion logic: if payment is in AFS and creditor is USD, divide. If payment is USD and creditor is AFS, multiply.
-            if ($currency == 'AFS' && $creditor_currency == 'USD') {
-                $converted_amount = $amount / $exchange_rate;
-                $exchange_info = " (Converted from $amount $currency at rate $exchange_rate to $converted_amount $creditor_currency)";
-            } elseif ($currency == 'USD' && $creditor_currency == 'AFS') {
+            if ($creditor_currency === 'AFS') {
+                // 1 [payment] = X AFS → multiply
                 $converted_amount = $amount * $exchange_rate;
-                $exchange_info = " (Converted from $amount $currency at rate $exchange_rate to $converted_amount $creditor_currency)";
+            } elseif ($currency === 'AFS') {
+                // 1 [creditor] = X AFS → divide
+                $converted_amount = $amount / $exchange_rate;
             } else {
-                // General rule: if creditor currency is AFS, multiply; if payment currency is AFS, divide
-                if ($creditor_currency == 'AFS') {
-                    $converted_amount = $amount * $exchange_rate;
-                    $exchange_info = " (Converted from $amount $currency at rate $exchange_rate to $converted_amount $creditor_currency)";
-                } elseif ($currency == 'AFS') {
-                    $converted_amount = $amount / $exchange_rate;
-                    $exchange_info = " (Converted from $amount $currency at rate $exchange_rate to $converted_amount $creditor_currency)";
-                } else {
-                    // Fallback: multiply
-                    $converted_amount = $amount * $exchange_rate;
-                    $exchange_info = " (Converted from $amount $currency at rate $exchange_rate to $converted_amount $creditor_currency)";
-                }
+                // 1 [creditor] = X [payment] → divide
+                $converted_amount = $amount / $exchange_rate;
             }
+            $exchange_info = " (Converted from $amount $currency at rate $exchange_rate to $converted_amount $creditor_currency)";
             $description .= $exchange_info;
         }
         

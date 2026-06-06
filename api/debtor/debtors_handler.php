@@ -336,7 +336,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pay'])) {
         // Calculate amount in debtor's currency if different
         $amount_in_debtor_currency = $amount;
         if ($currency !== $debtor['currency']) {
-            $amount_in_debtor_currency = $amount * $exchange_rate;
+            if ($debtor['currency'] === 'AFS') {
+                // 1 [payment] = X AFS → multiply
+                $amount_in_debtor_currency = $amount * $exchange_rate;
+            } elseif ($currency === 'AFS') {
+                // 1 [debtor] = X AFS → divide
+                $amount_in_debtor_currency = $amount / $exchange_rate;
+            } else {
+                // 1 [debtor] = X [payment] → divide
+                $amount_in_debtor_currency = $amount / $exchange_rate;
+            }
         }
 
         // Update debtor balance
