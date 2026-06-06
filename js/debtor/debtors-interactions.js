@@ -23,17 +23,7 @@ document.addEventListener('DOMContentLoaded', function() {
              const currency = this.getAttribute('data-currency');
              const description = this.getAttribute('data-description');
              const paymentDate = this.getAttribute('data-payment-date');
-             const createdAt = this.getAttribute('data-created-at');
-
-             console.log({
-                 transactionId,
-                 debtorId,
-                 amount,
-                 currency,
-                 description,
-                 paymentDate,
-                 createdAt
-             });
+             const referenceNumber = this.getAttribute('data-reference-number');
 
             // Close any open modals first
             $('.modal').modal('hide');
@@ -48,16 +38,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('edit_amount').value = amount;
                 document.getElementById('edit_description').value = description;
                 document.getElementById('edit_payment_date').value = paymentDate;
-
-                // Handle created_at datetime
-                if (createdAt) {
-                    const createdAtObj = new Date(createdAt);
-                    // Format time as HH:MM
-                    const hours = createdAtObj.getHours().toString().padStart(2, '0');
-                    const minutes = createdAtObj.getMinutes().toString().padStart(2, '0');
-                    document.getElementById('edit_created_at_time').value = `${hours}:${minutes}`;
-                    document.getElementById('edit_created_at_date').value = paymentDate;
-                }
+                document.getElementById('edit_reference_number').value = referenceNumber || '';
 
                 // Show the modal
                 $('#editTransactionModal').modal('show');

@@ -672,66 +672,66 @@ try {
                                                      <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
                                                      
                                                      <div class="modal-body">
-                                                         <input type="hidden" name="pay" value="1">
-                                                         <input type="hidden" name="debtor_id" value="<?php echo h($debtor['id']); ?>">
-                                                         <input type="hidden" name="debtor_currency" value="<?php echo h($debtor['currency']); ?>">
-                                                        
-                                                        <div class="form-group">
-                                                            <label class="form-label"><?= __('debtor_name') ?></label>
-                                                            <input type="text" class="form-control" value="<?php echo htmlspecialchars($debtor['name']); ?>" readonly>
-                                                        </div>
-                                                        
-                                                        <div class="form-group">
-                                                            <label class="form-label"><?= __('current_balance') ?></label>
-                                                            <input type="text" class="form-control" value="<?php echo number_format($debtor['balance'], 2) . ' ' . $debtor['currency']; ?>" readonly>
-                                                        </div>
-                                                        
-                                                        <div class="form-group">
-                                                            <label class="form-label"><?= __('payment_amount') ?></label>
-                                                            <input type="number" class="form-control" name="amount" step="0.00001" required>
-                                                        </div>
-
-                                                        <!-- Payment Currency -->
-                                                        <div class="form-group">
-                                                            <label class="form-label"><?= __('payment_currency') ?></label>
-                                                            <select class="form-control" name="currency" required onchange="checkCurrency(this, '<?php echo h($debtor['currency']); ?>', '<?php echo h($debtor['id']); ?>')">
-                                                                <option value="USD" <?php echo h($debtor['currency']) == 'USD' ? 'selected' : ''; ?>><?= __('usd') ?></option>
-                                                                <option value="AFS" <?php echo h($debtor['currency']) == 'AFS' ? 'selected' : ''; ?>><?= __('afs') ?></option>
-                                                                <option value="EUR" <?php echo h($debtor['currency']) == 'EUR' ? 'selected' : ''; ?>><?= __('eur') ?></option>
-                                                                <option value="DARHAM" <?php echo h($debtor['currency']) == 'DARHAM' ? 'selected' : ''; ?>><?= __('darham') ?></option>
-                                                            </select>
-                                                        </div>
-                                                        
-                                                        <!-- Exchange Rate Field - Initially Hidden -->
-                                                        <div class="form-group" id="exchangeRateDiv<?php echo h($debtor['id']); ?>" style="display: none;">
-                                                            <label class="form-label"><?= __('exchange_rate') ?> (1 <span id="selectedCurrency<?php echo h($debtor['id']); ?>"><?php echo h($debtor['currency']); ?></span> = ? <span id="debtorCurrency<?php echo h($debtor['id']); ?>"><?php echo h($debtor['currency']); ?></span>)</label>
-                                                            <input type="number" class="form-control" name="exchange_rate" id="exchangeRate<?php echo h($debtor['id']); ?>" step="0.000001" placeholder="<?= __('enter_exchange_rate') ?>">
-                                                            <small class="form-text text-muted"><?= __('enter_the_exchange_rate_to_convert_from_payment_currency_to_debtor_s_currency') ?></small>
-                                                        </div>
-
-                                                        <!-- Payment Date -->
-                                                        <div class="form-group">
-                                                            <label class="form-label"><?= __('payment_date') ?></label>
-                                                            <input type="date" class="form-control" name="payment_date" required>
-                                                        </div>
-                                                        
-                                                        <!-- Description -->
-                                                        <div class="form-group">
-                                                            <label class="form-label"><?= __('description') ?></label>
-                                                            <input type="text" class="form-control" name="description">
-                                                        </div>
-                                                        
-                                                        <!-- Paid To -->
-                                                        <div class="form-group">
-                                                            <label class="form-label"><?= __('paid_to') ?></label>   
-                                                            <select class="form-control" name="paid_to" required>
-                                                                <option value=""><?= __('select_main_account') ?></option>
-                                                                <?php foreach ($main_accounts as $account): ?>
-                                                                    <option value="<?php echo h($account['id']); ?>"><?php echo h($account['name']); ?></option>
-                                                                <?php endforeach; ?>
-                                                            </select>
-                                                        </div>
-                                                    </div>
+                                                          <input type="hidden" name="pay" value="1">
+                                                          <input type="hidden" name="debtor_id" value="<?php echo h($debtor['id']); ?>">
+                                                          <input type="hidden" name="debtor_currency" value="<?php echo h($debtor['currency']); ?>">
+                                                         
+                                                         <div class="form-row">
+                                                             <div class="form-group col-md-6">
+                                                                 <label class="form-label"><?= __('debtor_name') ?></label>
+                                                                 <input type="text" class="form-control" value="<?php echo htmlspecialchars($debtor['name']); ?>" readonly>
+                                                             </div>
+                                                             <div class="form-group col-md-6">
+                                                                 <label class="form-label"><?= __('current_balance') ?></label>
+                                                                 <input type="text" class="form-control" value="<?php echo number_format($debtor['balance'], 2) . ' ' . $debtor['currency']; ?>" readonly>
+                                                             </div>
+                                                         </div>
+                                                         
+                                                         <div class="form-row">
+                                                             <div class="form-group col-md-6">
+                                                                 <label class="form-label"><?= __('payment_amount') ?></label>
+                                                                 <input type="number" class="form-control" name="amount" step="0.00001" required>
+                                                             </div>
+                                                             <div class="form-group col-md-6">
+                                                                 <label class="form-label"><?= __('payment_currency') ?></label>
+                                                                 <select class="form-control" name="currency" required onchange="checkCurrency(this, '<?php echo h($debtor['currency']); ?>', '<?php echo h($debtor['id']); ?>')">
+                                                                     <option value="USD" <?php echo h($debtor['currency']) == 'USD' ? 'selected' : ''; ?>><?= __('usd') ?></option>
+                                                                     <option value="AFS" <?php echo h($debtor['currency']) == 'AFS' ? 'selected' : ''; ?>><?= __('afs') ?></option>
+                                                                     <option value="EUR" <?php echo h($debtor['currency']) == 'EUR' ? 'selected' : ''; ?>><?= __('eur') ?></option>
+                                                                     <option value="DARHAM" <?php echo h($debtor['currency']) == 'DARHAM' ? 'selected' : ''; ?>><?= __('darham') ?></option>
+                                                                 </select>
+                                                             </div>
+                                                         </div>
+                                                         
+                                                         <!-- Exchange Rate Field - Initially Hidden -->
+                                                         <div class="form-group" id="exchangeRateDiv<?php echo h($debtor['id']); ?>" style="display: none;">
+                                                             <label class="form-label"><?= __('exchange_rate') ?> (1 <span id="selectedCurrency<?php echo h($debtor['id']); ?>"><?php echo h($debtor['currency']); ?></span> = ? <span id="debtorCurrency<?php echo h($debtor['id']); ?>"><?php echo h($debtor['currency']); ?></span>)</label>
+                                                             <input type="number" class="form-control" name="exchange_rate" id="exchangeRate<?php echo h($debtor['id']); ?>" step="0.000001" placeholder="<?= __('enter_exchange_rate') ?>">
+                                                             <small class="form-text text-muted"><?= __('enter_the_exchange_rate_to_convert_from_payment_currency_to_debtor_s_currency') ?></small>
+                                                         </div>
+                                                         
+                                                         <div class="form-row">
+                                                             <div class="form-group col-md-6">
+                                                                 <label class="form-label"><?= __('description') ?></label>
+                                                                 <input type="text" class="form-control" name="description">
+                                                             </div>
+                                                             <div class="form-group col-md-6">
+                                                                 <label class="form-label"><?= __('payment_date') ?></label>
+                                                                 <input type="date" class="form-control" name="payment_date" value="<?php echo date('Y-m-d'); ?>" required>
+                                                             </div>
+                                                         </div>
+                                                         
+                                                         <!-- Paid To -->
+                                                         <div class="form-group">
+                                                             <label class="form-label"><?= __('paid_to') ?></label>   
+                                                             <select class="form-control" name="paid_to" required>
+                                                                 <option value=""><?= __('select_main_account') ?></option>
+                                                                 <?php foreach ($main_accounts as $account): ?>
+                                                                     <option value="<?php echo h($account['id']); ?>"><?php echo h($account['name']); ?></option>
+                                                                 <?php endforeach; ?>
+                                                             </select>
+                                                         </div>
+                                                     </div>
                                                     <div class="modal-footer bg-light border-0">
                                                         <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('cancel') ?></button>
                                                         <button type="submit" name="pay" class="btn btn-primary"><?= __('process_payment') ?></button>
@@ -743,25 +743,24 @@ try {
 
                                     <!-- Transactions Modal -->
                                     <div class="modal fade" id="transactionsModal<?php echo h($debtor['id']); ?>" tabindex="-1" role="dialog" aria-hidden="true">
-                                        <div class="modal-dialog modal-lg" role="document">
-                                            <div class="modal-content">
+                                        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+                                            <div class="modal-content shadow-lg border-0">
                                                 <div class="modal-header bg-gradient-info text-white border-0">
                                                     <h5 class="modal-title"><?= __('transactions') ?> - <?php echo htmlspecialchars($debtor['name']); ?></h5>
-                                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                                                         <span aria-hidden="true">&times;</span>
                                                     </button>
                                                 </div>
-                                                <div class="modal-body">
+                                                <div class="modal-body p-0">
                                                     <div class="table-responsive">
-                                                        <table class="table table-bordered table-striped">
-                                                            <thead>
+                                                        <table class="table table-sm table-hover mb-0">
+                                                            <thead class="thead-light">
                                                                 <tr>
                                                                     <th><?= __('date') ?></th>
-                                                                    <th><?= __('amount') ?></th>
-                                                                    <th><?= __('type') ?></th>
                                                                     <th><?= __('description') ?></th>
                                                                     <th><?= __('receipt') ?></th>
-                                                                    <th><?= __('actions') ?></th>
+                                                                    <th><?= __('amount') ?></th>
+                                                                    <th class="text-center"><?= __('actions') ?></th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody>
@@ -777,11 +776,17 @@ try {
                                                                 if (count($transResult) > 0) {
                                                                     foreach ($transResult as $transaction) {
                                                                         echo '<tr>';
-                                                                        echo '<td>' . date('M d, Y H:i:s', strtotime($transaction['created_at'])) . '</td>';
-                                                                        echo '<td>' . number_format($transaction['amount'], 2) . ' ' . $transaction['currency'] . '</td>';
-                                                                        echo '<td>' . ($transaction['transaction_type'] == 'credit' ? '<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;background:rgba(16,185,129,.15);color:#10b981;">Payment</span>' : '<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;background:rgba(244,63,94,.15);color:#f43f5e;">Debt</span>') . '</td>';
-                                                                        echo '<td>' . htmlspecialchars($transaction['description']) . '</td>';
-                                                                        echo '<td>' . htmlspecialchars($transaction['reference_number']) . '</td>';
+                                                                        echo '<td>' . date('M d, Y', strtotime($transaction['payment_date'])) . '</td>';
+                                                                        $displayAmount = number_format($transaction['amount'], 2) . ' ' . $transaction['currency'];
+                                                                        if ($transaction['transaction_type'] == 'credit') {
+                                                                            echo '<td>' . htmlspecialchars($transaction['description']) . '</td>';
+                                                                            echo '<td>' . htmlspecialchars($transaction['reference_number']) . '</td>';
+                                                                            echo '<td>Received ' . $displayAmount . '</td>';
+                                                                        } else {
+                                                                            echo '<td>' . htmlspecialchars($transaction['description']) . '</td>';
+                                                                            echo '<td>' . htmlspecialchars($transaction['reference_number']) . '</td>';
+                                                                            echo '<td>Paid ' . $displayAmount . '</td>';
+                                                                        }
                                                                         echo '<td>';
                                                                         echo '<div class="btn-group" role="group">';
                                                                         // Edit button
@@ -792,7 +797,7 @@ try {
                                                                             data-currency="' . $transaction['currency'] . '"
                                                                             data-description="' . htmlspecialchars($transaction['description'], ENT_QUOTES) . '"
                                                                             data-payment-date="' . date('Y-m-d', strtotime($transaction['payment_date'])) . '"
-                                                                            data-created-at="' . date('Y-m-d\TH:i', strtotime($transaction['created_at'])) . '">
+                                                                            data-reference-number="' . htmlspecialchars($transaction['reference_number'], ENT_QUOTES) . '">
                                                                             <i class="feather icon-edit-2"></i> ' . __('edit') . '
                                                                         </button>';
                                                                         echo '<button class="btn btn-info btn-sm mr-1" title="Print Receipt"
@@ -814,14 +819,14 @@ try {
                                                                         echo '</tr>';
                                                                     }
                                                                 } else {
-                                                                    echo '<tr><td colspan="6" class="text-center">' . __('no_transactions_found') . '</td></tr>';
+                                                                    echo '<tr><td colspan="5" class="text-center">' . __('no_transactions_found') . '</td></tr>';
                                                                 }
                                                                 ?>
                                                             </tbody>
                                                         </table>
                                                     </div>
                                                 </div>
-                                                <div class="modal-footer bg-light border-0">
+                                                <div class="modal-footer">
                                                     <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('close') ?></button>
                                                 </div>
                                             </div>
@@ -954,48 +959,27 @@ try {
                     <input type="hidden" id="edit_original_amount" name="original_amount">
                     <input type="hidden" id="edit_currency" name="currency">
                     
-                    <div class="form-group">
-                        <div class="d-flex align-items-center mb-2">
-                            
-                            <label for="edit_amount" class="mb-0"><?= __('amount') ?></label>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="edit_amount"><?= __('amount') ?></label>
+                            <input type="number" class="form-control" id="edit_amount" name="amount" step="0.01" required>
                         </div>
-                        <input type="number" class="form-control" id="edit_amount" name="amount" step="0.01" required>
+                        <div class="form-group col-md-6">
+                            <label for="edit_reference_number"><?= __('receipt') ?></label>
+                            <input type="text" class="form-control" id="edit_reference_number" name="reference_number">
+                        </div>
                     </div>
                     
                     <div class="form-group">
-                        <div class="d-flex align-items-center mb-2">
-                            
-                            <label for="edit_description" class="mb-0"><?= __('description') ?></label>
-                        </div>
+                        <label for="edit_description"><?= __('description') ?></label>
                         <input type="text" class="form-control" id="edit_description" name="description" required>
                     </div>
                     
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <div class="d-flex align-items-center mb-2">
-                                    
-                                    <label for="edit_payment_date" class="mb-0"><?= __('payment_date') ?></label>
-                                </div>
-                                <input type="date" class="form-control" id="edit_payment_date" name="payment_date" required>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <div class="d-flex align-items-center mb-2">
-                                    
-                                    <label for="edit_created_at_time" class="mb-0"><?= __('transaction_time') ?></label>
-                                </div>
-                                <input type="time" class="form-control" id="edit_created_at_time" name="created_at_time">
-                                <small class="form-text text-muted mt-1">
-                                    <i class="feather icon-info mr-1"></i><?= __('time_the_transaction_was_created') ?>
-                                </small>
-                            </div>
-                        </div>
+                    <div class="form-group">
+                        <label for="edit_payment_date"><?= __('payment_date') ?></label>
+                        <input type="date" class="form-control" id="edit_payment_date" name="payment_date" required>
                     </div>
                     
-                    <input type="hidden" id="edit_created_at_date" name="created_at_date">
-                   
                 </form>
             </div>
             <div class="modal-footer bg-light border-0">
