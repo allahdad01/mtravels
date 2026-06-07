@@ -241,15 +241,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                   SET balance = balance + ?
                                                   WHERE supplier_id = ?
                                                   AND branch_id = ?
-                                                  AND id > (
-                                                      SELECT id FROM supplier_transactions
+                                                 AND id > (
+                                                       SELECT id FROM (SELECT id FROM supplier_transactions
                                                       WHERE supplier_id = ?
                                                       AND reference_id = ?
                                                       AND transaction_of = 'additional_payment'
                                                       AND tenant_id = ?
                                                       AND branch_id = ?
-                                                      LIMIT 1
-                                                  )";
+                                                       LIMIT 1
+                                                   ) AS tmp)";
                      $stmtUpdateNewSubsequent = $pdo->prepare($updateNewSubsequentQuery);
                      $stmtUpdateNewSubsequent->bindParam(1, $supplierBalanceDifference, PDO::PARAM_STR);
                      $stmtUpdateNewSubsequent->bindParam(2, $supplierId, PDO::PARAM_INT);
@@ -405,14 +405,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                             AND currency = ?
                                                             AND branch_id = ?
                                                             AND id > (
-                                                                SELECT id FROM client_transactions
+                                                                 SELECT id FROM (SELECT id FROM client_transactions
                                                                 WHERE client_id = ?
                                                                 AND reference_id = ?
                                                                 AND transaction_of = 'additional_payment'
                                                                 AND tenant_id = ?
                                                                 AND branch_id = ?
-                                                                LIMIT 1
-                                                            )";
+                                                                 LIMIT 1
+                                                             ) AS tmp)";
                          $stmtUpdateNewClientSubsequent = $pdo->prepare($updateNewClientSubsequentQuery);
                          $stmtUpdateNewClientSubsequent->bindParam(1, $clientBalanceDifference, PDO::PARAM_STR);
                          $stmtUpdateNewClientSubsequent->bindParam(2, $clientId, PDO::PARAM_INT);

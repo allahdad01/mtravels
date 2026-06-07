@@ -455,7 +455,7 @@ body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg);
                                         <td><?= date('Y-m-d H:i:s', $backup['date']) ?></td>
                                         <td><?= format_bytes($backup['size']) ?></td>
                                         <td class="sa-td-actions">
-                                            <a href="<?= htmlspecialchars($backup['path']) ?>"
+                                            <a href="download_backup.php?file=<?= urlencode($backup['name']) ?>"
                                                class="sa-btn-icon info" title="Download" download>
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                                             </a>

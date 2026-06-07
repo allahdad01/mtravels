@@ -200,15 +200,14 @@ if ($supplier != $originalSupplier) {
                                               WHERE supplier_id = ?
                                               AND branch_id = ?
                                               AND id > (
-                                                  SELECT id FROM supplier_transactions
+                                                   SELECT id FROM (SELECT id FROM supplier_transactions
                                                   WHERE supplier_id = ?
                                                   AND reference_id = ?
                                                   AND transaction_of = 'ticket_reserve'
                                                   AND tenant_id = ?
                                                   AND branch_id = ?
                                                   LIMIT 1
-                                              )";
-        $stmtUpdateOldSupplierSubsequent = $pdo->prepare($updateOldSupplierSubsequentQuery);
+                                               ) AS tmp)";
         $stmtUpdateOldSupplierSubsequent->bindParam(1, $totalAmount, PDO::PARAM_STR);
         $stmtUpdateOldSupplierSubsequent->bindParam(2, $originalSupplier, PDO::PARAM_INT);
         $stmtUpdateOldSupplierSubsequent->bindParam(3, $branch_id, PDO::PARAM_INT);
@@ -463,13 +462,13 @@ if ($supplier != $originalSupplier) {
                                                           SET balance = balance + ?
                                                           WHERE client_id = ?
                                                           AND branch_id = ?
-                                                          AND id > (SELECT id FROM client_transactions
+                                                           AND id > (SELECT id FROM (SELECT id FROM client_transactions
                                                                    WHERE client_id = ?
                                                                    AND reference_id = ?
                                                                    AND transaction_of = 'ticket_reserve'
                                                                    AND tenant_id = ?
                                                                    AND branch_id = ?
-                                                                   LIMIT 1)
+                                                                    LIMIT 1) AS tmp)
                                                           AND currency = ?
                                                           AND tenant_id = ?
                                                           ORDER BY created_at ASC, id ASC";
