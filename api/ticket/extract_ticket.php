@@ -92,14 +92,34 @@ if ($file['size'] > 10 * 1024 * 1024) {
 }
 
 try {
-    // Extract text from PDF
-    $parser = new Parser();
-    $pdf = $parser->parseFile($file['tmp_name']);
-    
-    // Extract text from all pages
+    // Extract text from PDF — prefer pdftotext -layout for column-aligned output
     $extractedText = '';
-    foreach ($pdf->getPages() as $page) {
-        $extractedText .= $page->getText() . "\n";
+    
+    // Find pdftotext binary (common Windows + Linux paths)
+    $pdftotextBin = '';
+    $candidates = ['C:\\xampp\\php\\pdftotext.exe', 'pdftotext', '/usr/bin/pdftotext', '/usr/local/bin/pdftotext'];
+    foreach ($candidates as $candidate) {
+        if (is_file($candidate)) { $pdftotextBin = $candidate; break; }
+        $test = trim(shell_exec("where $candidate 2>NUL || which $candidate 2>/dev/null"));
+        if (!empty($test)) { $pdftotextBin = $candidate; break; }
+    }
+    
+    if (!empty($pdftotextBin)) {
+        $tmpFile = $file['tmp_name'];
+        $escapedFile = escapeshellarg($tmpFile);
+        $output = shell_exec("$pdftotextBin -layout $escapedFile - 2>/dev/null");
+        if ($output !== null && strlen(trim($output)) > 0) {
+            $extractedText = $output;
+        }
+    }
+    
+    // Fallback: Smalot\PdfParser
+    if (empty(trim($extractedText))) {
+        $parser = new Parser();
+        $pdf = $parser->parseFile($file['tmp_name']);
+        foreach ($pdf->getPages() as $page) {
+            $extractedText .= $page->getText() . "\n";
+        }
     }
     
     if (empty(trim($extractedText))) {
@@ -108,8 +128,8 @@ try {
         exit;
     }
     
-    // Extract ticket data using patterns
-     $ticketData = extractTicketData($extractedText);
+     // Extract ticket data using patterns
+      $ticketData = extractTicketData($extractedText);
      
      // Ensure all values are JSON-serializable
      $ticketData = ensureJsonSerializable($ticketData);

@@ -218,7 +218,7 @@ async function processAndExtractPdf(file) {
  */
 function fillTicketForm(data) {
     // Handle group booking - use first passenger's data for common fields
-    const flightData = data.passengers ? data.passengers[0] : data;
+    const flightData = data.passengers && data.passengers.length > 0 ? data.passengers[0] : data;
     
     // Map extracted data to modal form field IDs
     // Must match IDs in modals/ticket/book_ticket_modal.php
@@ -347,7 +347,7 @@ function fillTicketForm(data) {
     }
     
     // Set passenger count if we have multiple passengers
-    if (data.passengers && Array.isArray(data.passengers)) {
+    if (data.passengers && Array.isArray(data.passengers) && data.passengers.length > 0) {
         const passengerCount = data.passengers.length;
 
         

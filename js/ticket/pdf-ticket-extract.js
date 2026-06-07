@@ -92,13 +92,13 @@ function populateTicketForm(data) {
 
     
     // Handle group booking - use first passenger for flight info
-    const flightData = data.passengers ? data.passengers[0] : data;
+    const flightData = data.passengers && data.passengers.length > 0 ? data.passengers[0] : data;
     
     // Fill flight information first
     fillFlightDetails(flightData);
     
     // Set passenger count if we have multiple passengers
-    if (data.passengers && Array.isArray(data.passengers)) {
+    if (data.passengers && Array.isArray(data.passengers) && data.passengers.length > 0) {
         const passengerCount = data.passengers.length;
 
         

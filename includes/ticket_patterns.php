@@ -475,6 +475,12 @@ function detectTicketFormat($text) {
         return 'salaamportal';
     }
     
+    // Kam Air specific indicators (check BEFORE tolotripportal — kamair.com tickets contain
+    // "Electronic Ticket PASSENGER ITINERARY RECEIPT" which would false-match tolotripportal)
+    if (preg_match('/kamair\.com|ALMOQADAS_TRAVEL|RQ\s+KBL|CARRIER CODE\s+RQ/i', $text)) {
+        return 'kamair';
+    }
+    
     // Tolotripportal e-ticket indicators (more specific pattern to avoid false matches)
     if (preg_match('/Order\s+no\s*:|Accounting\s+No|ELECTRONIC\s+TICKET\s+PASSENGER\s+ITINERARY\s+RECEIPT(?!.*voucherID|.*haditatrip)/is', $text)) {
         return 'tolotripportal';
@@ -491,19 +497,14 @@ function detectTicketFormat($text) {
         return 'flydubai';
     }
     
-    // Kam Air specific indicators
-    if (preg_match('/ALMOQADAS_TRAVEL|RQ\s+KBL|CARRIER CODE\s+RQ/i', $text)) {
-        return 'kamair';
+    // Skyportal e-ticket indicators (check before generic airline patterns)
+    if (preg_match('/warsaw\s+convention|itinerary.*receipt|passenger\s+ticket|article\s+3|conditions\s+of\s+carriage|iatatravelcentre/i', $text)) {
+        return 'skyportal';
     }
     
     // Ariana Afghan Airlines indicators
     if (preg_match('/e-ticket.*BOOKING\s*#|FG-\d+\s+ECONOMY|Ariana\s+Afghan|fare\s+family\s+fare\s+basis/i', $text)) {
         return 'ariana';
-    }
-    
-    // Skyportal e-ticket indicators
-    if (preg_match('/warsaw\s+convention|itinerary.*receipt|passenger\s+ticket|article\s+3|conditions\s+of\s+carriage|iatatravelcentre/i', $text)) {
-        return 'skyportal';
     }
     
     return 'standard';
@@ -1708,6 +1709,110 @@ function extractFlydubaiTicket($text) {
 }
 
 /**
+ * Extract departure/arrival date+time from a two-column Kam Air ticket block.
+ * Handles reversed linearization (ARR before DEP in raw text).
+ */
+function extractKamAirDateTime(string $ticketBlock): array
+{
+    $result = [
+        'departure_date' => null,
+        'departure_time' => null,
+        'arrival_date'   => null,
+        'arrival_time'   => null,
+    ];
+
+    // ── Step 1: find where each label starts and ends ──────────────────
+    $depLabelMatch = [];
+    $arrLabelMatch = [];
+    preg_match('/DEP[.\s]*TIME/i', $ticketBlock, $depLabelMatch, PREG_OFFSET_CAPTURE);
+    preg_match('/ARR[.\s]*TIME/i', $ticketBlock, $arrLabelMatch, PREG_OFFSET_CAPTURE);
+    
+
+
+    $depStart = isset($depLabelMatch[0])
+        ? $depLabelMatch[0][1] + strlen($depLabelMatch[0][0])
+        : -1;
+    $arrStart = isset($arrLabelMatch[0])
+        ? $arrLabelMatch[0][1] + strlen($arrLabelMatch[0][0])
+        : -1;
+
+    // ── Step 2: slice into non-overlapping windows ─────────────────────
+    $depWindow = '';
+    $arrWindow = '';
+
+    if ($depStart >= 0 && $arrStart >= 0) {
+        $depHeaderPos = $depLabelMatch[0][1];
+        $arrHeaderPos = $arrLabelMatch[0][1];
+
+        if ($depHeaderPos < $arrHeaderPos) {
+            $depWindow = substr($ticketBlock, $depStart, $arrHeaderPos - $depStart);
+            $arrWindow = substr($ticketBlock, $arrStart);
+        } else {
+            $arrWindow = substr($ticketBlock, $arrStart, $depHeaderPos - $arrStart);
+            $depWindow = substr($ticketBlock, $depStart);
+        }
+    } elseif ($depStart >= 0) {
+        $depWindow = substr($ticketBlock, $depStart);
+    } elseif ($arrStart >= 0) {
+        $arrWindow = substr($ticketBlock, $arrStart);
+    }
+
+    // ── Step 3: extract first valid time and date from each window ──────
+    $firstTime = static function (string $s): ?string {
+        if (preg_match('/\b(\d{2}):(\d{2})\b/', $s, $m) && (int)$m[1] <= 23 && (int)$m[2] <= 59) {
+            return $m[1] . ':' . $m[2];
+        }
+        return null;
+    };
+
+    $firstDate = static function (string $s): ?string {
+        if (preg_match('/\b(\d{2})\/(\d{2})\/(\d{4})\b/', $s, $m)) {
+            return sprintf('%s-%s-%s', $m[3], $m[2], $m[1]);
+        }
+        return null;
+    };
+
+    $result['departure_time'] = $firstTime($depWindow);
+    $result['departure_date'] = $firstDate($depWindow);
+    $result['arrival_time']   = $firstTime($arrWindow);
+    $result['arrival_date']   = $firstDate($arrWindow);
+
+    // ── Step 4: same-day cross-fill if one window had no date ──────────
+    if (!$result['departure_date'] && $result['arrival_date']) {
+        $result['departure_date'] = $result['arrival_date'];
+    }
+    if (!$result['arrival_date'] && $result['departure_date']) {
+        $result['arrival_date'] = $result['departure_date'];
+    }
+
+    // ── Step 5: last-resort positional fallback ─────────────────────────
+    if (!$result['departure_time'] || !$result['arrival_time']) {
+        $allTimes = [];
+        if (preg_match_all('/\b(\d{2}):(\d{2})\b/', $ticketBlock, $tm, PREG_SET_ORDER)) {
+            foreach ($tm as $t) {
+                if ((int)$t[1] <= 23 && (int)$t[2] <= 59) {
+                    $allTimes[] = $t[1] . ':' . $t[2];
+                }
+            }
+        }
+
+        $allDates = [];
+        if (preg_match_all('/\b(\d{2})\/(\d{2})\/(\d{4})\b/', $ticketBlock, $dm, PREG_SET_ORDER)) {
+            foreach ($dm as $d) {
+                $allDates[] = sprintf('%s-%s-%s', $d[3], $d[2], $d[1]);
+            }
+        }
+
+        if (!$result['departure_time']) $result['departure_time'] = $allTimes[0] ?? null;
+        if (!$result['arrival_time'])   $result['arrival_time']   = $allTimes[1] ?? null;
+        if (!$result['departure_date']) $result['departure_date'] = $allDates[0] ?? null;
+        if (!$result['arrival_date'])   $result['arrival_date']   = $allDates[1] ?? $allDates[0] ?? null;
+    }
+
+    return $result;
+}
+
+/**
  * Extract Kam Air specific format
  */
 function extractKamAirTicket($text) {
@@ -1731,10 +1836,12 @@ function extractKamAirTicket($text) {
         
         $passenger = [];
         
-        // Ticket Number - more flexible pattern to handle jumbled PDF text
+        // Ticket Number - flexible: 13 digits before or after label
         if (preg_match('/(\d{13})\s*TICKET\s+NUMBER/i', $ticketBlock, $match)) {
             $passenger['ticket_number'] = $match[1];
         } elseif (preg_match('/TICKET\s+NUMBER\s+(\d{13})/i', $ticketBlock, $match)) {
+            $passenger['ticket_number'] = $match[1];
+        } elseif (preg_match('/(\d{13})/', $ticketBlock, $match)) {
             $passenger['ticket_number'] = $match[1];
         }
         
@@ -1743,6 +1850,15 @@ function extractKamAirTicket($text) {
             $passenger['pnr'] = $match[1];
         } elseif (preg_match('/BOOKING\s+REFERENCE\s+([A-Z0-9]{6})/i', $ticketBlock, $match)) {
             $passenger['pnr'] = $match[1];
+        } elseif (preg_match('/^([A-Z0-9]{6})/', $ticketBlock, $match) && preg_match('/\d/', $match[1])) {
+            // Require at least one digit — avoids matching words like FLIGHT
+            $passenger['pnr'] = $match[1];
+        } elseif (preg_match('/^\s*([A-Z0-9]{6})\s*$/m', $ticketBlock, $match) && preg_match('/\d/', $match[1])) {
+            // On its own line: 6-char alphanumeric containing a digit
+            $passenger['pnr'] = strtoupper($match[1]);
+        } elseif (preg_match('/\b([A-Z0-9]{6})\b/', $ticketBlock, $match) && preg_match('/\d/', $match[1]) && !preg_match('/^\d{2}[A-Z]{3}\d{2}$/', $match[1])) {
+            // Anywhere in text: 6-char alphanumeric containing a digit (but not a date like 04JUN85)
+            $passenger['pnr'] = strtoupper($match[1]);
         }
         
         // Passenger Name - more flexible pattern
@@ -1759,53 +1875,88 @@ function extractKamAirTicket($text) {
             $passenger['date_of_birth'] = parseDateOfBirth($match[3]);
         }
         
-        // Carrier Code
+        // Carrier Code — fallback chain
+        // 1) Direct label match (label may be separated from code by jumbled text)
         if (preg_match('/CARRIER CODE\s+([A-Z]{2})/', $ticketBlock, $match)) {
             $passenger['airline_code'] = $match[1];
             $passenger['airline'] = getAirlineName($match[1]);
+        } elseif (preg_match('/FLIGHT NO\.\s*([A-Z]{2})\d+/', $ticketBlock, $match)) {
+            // 2) Extract from flight-number prefix: "FLIGHT NO. RQ901"
+            $passenger['airline_code'] = $match[1];
+            $passenger['airline'] = getAirlineName($match[1]);
+        } elseif (preg_match('/FLIGHT NO\..*?([A-Z]{2})\s*\d+/', $ticketBlock, $match)) {
+            // 3) Code separated from label by newlines/jumbled text
+            $passenger['airline_code'] = $match[1];
+            $passenger['airline'] = getAirlineName($match[1]);
+        }
+        // 4) Default to RQ when this is a Kam Air ticket
+        if (empty($passenger['airline_code'])) {
+            $passenger['airline_code'] = 'RQ';
+            $passenger['airline'] = getAirlineName('RQ');
         }
         
-        // Flight Number
-        if (preg_match('/FLIGHT NO\.\s+(\d+)/', $ticketBlock, $match)) {
-            $flightNum = $match[1];
+        // Flight Number (handles multi-line: FLIGHT NO.\nRQ\n9097)
+        if (preg_match('/FLIGHT NO\.\s*([A-Z]{0,2})\s*(\d+)/', $ticketBlock, $match)) {
             $airlineCode = $passenger['airline_code'] ?? '';
+            $flightNum = $match[2];
+            $passenger['flight_number'] = $airlineCode . $flightNum;
+        } elseif (preg_match('/FLIGHT NO\..*?[A-Z]{0,2}\s*(\d+)/is', $ticketBlock, $match)) {
+            $airlineCode = $passenger['airline_code'] ?? '';
+            $flightNum = $match[1];
             $passenger['flight_number'] = $airlineCode . $flightNum;
         }
         
-        // Route - Extract origin and destination - very flexible for jumbled text
-        // Look for airport codes in parentheses
-        if (preg_match('/\(([A-Z]{3})\).*?to.*?\(([A-Z]{3})\)/is', $ticketBlock, $match)) {
+        // Route - Extract origin and destination
+        // Kam Air PDFs have airport codes near DEP/ARR sections
+        if (preg_match('/DEP[.\s]*TIME.*?\(([A-Z]{3})\)/is', $ticketBlock, $match)) {
             $passenger['origin'] = $match[1];
             $passenger['origin_city'] = getAirportName($match[1]);
-            $passenger['destination'] = $match[2];
-            $passenger['destination_city'] = getAirportName($match[2]);
-        } elseif (preg_match('/\(([A-Z]{3})\).*?\(([A-Z]{3})\)/', $ticketBlock, $match)) {
-            // Last resort: just find two airport codes
-            $passenger['origin'] = $match[1];
-            $passenger['origin_city'] = getAirportName($match[1]);
-            $passenger['destination'] = $match[2];
-            $passenger['destination_city'] = getAirportName($match[2]);
+        }
+        if (preg_match('/ARR[.\s]*TIME.*?\(([A-Z]{3})\)/is', $ticketBlock, $match)) {
+            $passenger['destination'] = $match[1];
+            $passenger['destination_city'] = getAirportName($match[1]);
+        }
+        // Fallback: look for (XXX)...to...(YYY) pattern
+        if (empty($passenger['origin']) && empty($passenger['destination'])) {
+            if (preg_match('/\(([A-Z]{3})\).*?to.*?\(([A-Z]{3})\)/is', $ticketBlock, $match)) {
+                $passenger['origin'] = $match[1];
+                $passenger['origin_city'] = getAirportName($match[1]);
+                $passenger['destination'] = $match[2];
+                $passenger['destination_city'] = getAirportName($match[2]);
+            } elseif (preg_match('/\(([A-Z]{3})\).*?\(([A-Z]{3})\)/is', $ticketBlock, $match)) {
+                $passenger['origin'] = $match[1];
+                $passenger['origin_city'] = getAirportName($match[1]);
+                $passenger['destination'] = $match[2];
+                $passenger['destination_city'] = getAirportName($match[2]);
+            }
+        }
+        // If only one side found, try the other via fallback
+        if (empty($passenger['origin']) && !empty($passenger['destination'])) {
+            if (preg_match('/\(([A-Z]{3})\)/', $ticketBlock, $match)) {
+                $passenger['origin'] = $match[1];
+                $passenger['origin_city'] = getAirportName($match[1]);
+            }
+        }
+        if (empty($passenger['destination']) && !empty($passenger['origin'])) {
+            // Find the LAST parenthesized airport code
+            if (preg_match_all('/\(([A-Z]{3})\)/', $ticketBlock, $matches)) {
+                $last = end($matches[1]);
+                if ($last !== $passenger['origin']) {
+                    $passenger['destination'] = $last;
+                    $passenger['destination_city'] = getAirportName($last);
+                }
+            }
         }
         
-        // Departure Details - more flexible pattern
-        if (preg_match('/DEP[.\s]*TIME[^\d]*(\d{2})\/(\d{2})\/(\d{4})[^\d]*(\d{2}):(\d{2})/i', $ticketBlock, $match)) {
-            $passenger['departure_date'] = sprintf('%s-%s-%s', $match[3], $match[2], $match[1]);
-            $passenger['departure_time'] = sprintf('%s:%s', $match[4], $match[5]);
-        } elseif (preg_match('/(\d{2})\/(\d{2})\/(\d{4})[^\d]*(\d{2}):(\d{2})\s+DEP/i', $ticketBlock, $match)) {
-            $passenger['departure_date'] = sprintf('%s-%s-%s', $match[3], $match[2], $match[1]);
-            $passenger['departure_time'] = sprintf('%s:%s', $match[4], $match[5]);
-        }
+        // Departure + Arrival Details — window-sliced extraction
+        // Kam Air PDF is a two-column layout; linearized text may have ARR before DEP
+        $kmDt = extractKamAirDateTime($ticketBlock);
+        $passenger['departure_date'] = $kmDt['departure_date'];
+        $passenger['departure_time'] = $kmDt['departure_time'];
+        $passenger['arrival_date']   = $kmDt['arrival_date'];
+        $passenger['arrival_time']   = $kmDt['arrival_time'];
         
-        // Arrival Details - more flexible pattern
-        if (preg_match('/ARR[.\s]*TIME[^\d]*(\d{2})\/(\d{2})\/(\d{4})[^\d]*(\d{2}):(\d{2})/i', $ticketBlock, $match)) {
-            $passenger['arrival_date'] = sprintf('%s-%s-%s', $match[3], $match[2], $match[1]);
-            $passenger['arrival_time'] = sprintf('%s:%s', $match[4], $match[5]);
-        } elseif (preg_match('/(\d{2})\/(\d{2})\/(\d{4})[^\d]*(\d{2}):(\d{2})\s+ARR/i', $ticketBlock, $match)) {
-            $passenger['arrival_date'] = sprintf('%s-%s-%s', $match[3], $match[2], $match[1]);
-            $passenger['arrival_time'] = sprintf('%s:%s', $match[4], $match[5]);
-        }
-        
-        // Reservation Class - flexible
+        // Reservation Class
         if (preg_match('/REZ[.\s]*CLASS\s*([A-Z0-9]+)?/i', $ticketBlock, $match)) {
             if (isset($match[1]) && !empty($match[1])) {
                 $passenger['reservation_class'] = $match[1];
@@ -1816,7 +1967,7 @@ function extractKamAirTicket($text) {
             $passenger['cabin_class'] = mapReservationClass($match[1]);
         }
         
-        // Ticket Status - flexible
+        // Ticket Status
         if (preg_match('/TICKET\s+STATUS\s*([A-Z]+)?/i', $ticketBlock, $match)) {
             if (isset($match[1]) && !empty($match[1])) {
                 $passenger['ticket_status'] = $match[1];
@@ -1832,12 +1983,14 @@ function extractKamAirTicket($text) {
             $passenger['is_confirmed'] = ($match[1] === 'OK');
         }
         
-        // Baggage Allowance - flexible
+        // Baggage Allowance - accept both "KG" and "PC" units
         if (preg_match('/BAG\s+(\d+)\s*kg/i', $ticketBlock, $match)) {
             $passenger['baggage_allowance'] = $match[1] . ' kg';
+        } elseif (preg_match('/BAG\s+(\d+)\s*PC/i', $ticketBlock, $match)) {
+            $passenger['baggage_allowance'] = $match[1] . ' PC';
         }
         
-        // Terminals - flexible
+        // Terminals
         if (preg_match('/DEP\s+TERMINAL\s*([A-Z0-9]+)?/i', $ticketBlock, $match)) {
             if (isset($match[1]) && !empty($match[1])) {
                 $passenger['departure_terminal'] = $match[1];
@@ -1856,7 +2009,7 @@ function extractKamAirTicket($text) {
             $passenger['issue_date'] = parseIssueDateFormat($match[1]);
         }
         
-        // Issued By - flexible
+        // Issued By
         if (preg_match('/ISSUED\s+BY\s+([^\n]+?)(?:TICKET|$)/is', $ticketBlock, $match)) {
             $name = trim($match[1]);
             if (!empty($name) && strlen($name) < 50) {
@@ -1864,14 +2017,14 @@ function extractKamAirTicket($text) {
             }
         }
         
-        // Fare Basis - flexible
+        // Fare Basis
         if (preg_match('/FARE\s+BASIS\s+([A-Z0-9]+)/i', $ticketBlock, $match)) {
             $passenger['fare_basis'] = $match[1];
         } elseif (preg_match('/([A-Z0-9]+)\s+FARE\s+BASIS/i', $ticketBlock, $match)) {
             $passenger['fare_basis'] = $match[1];
         }
         
-        // Validity dates - flexible
+        // Validity dates
         if (preg_match('/NVB\s+([A-Z0-9]+)/i', $ticketBlock, $match)) {
             $passenger['not_valid_before'] = $match[1];
         } elseif (preg_match('/([0-9A-Z]+)\s+NVB/i', $ticketBlock, $match)) {
@@ -1884,7 +2037,7 @@ function extractKamAirTicket($text) {
             $passenger['not_valid_after'] = $match[1];
         }
         
-        // Seat - flexible
+        // Seat
         if (preg_match('/SEAT\s+([A-Z0-9]+)/i', $ticketBlock, $match)) {
             $passenger['seat_number'] = $match[1];
         } elseif (preg_match('/SEAT\s+NAME\s*([A-Z0-9]+)?/i', $ticketBlock, $match)) {
@@ -1898,7 +2051,61 @@ function extractKamAirTicket($text) {
         $passenger['extraction_confidence'] = calculateConfidenceScore($passenger);
         $passenger['format_detected'] = 'kamair';
         
+        if (!empty($passenger) && (isset($passenger['ticket_number']) || !empty($passenger['pnr']))) {
+            $passengers[] = $passenger;
+        }
+    }
+    
+    // Merge passengers sharing same PNR (flight info in Block[0], personal info in Block[1])
+    $merged = [];
+    foreach ($passengers as $p) {
+        $pnr = !empty($p['pnr']) ? $p['pnr'] : null;
+        if ($pnr && isset($merged[$pnr])) {
+            foreach ($p as $k => $v) {
+                if (($v !== null && $v !== '') && (empty($merged[$pnr][$k]) || $merged[$pnr][$k] === null)) {
+                    $merged[$pnr][$k] = $v;
+                }
+            }
+        } elseif ($pnr) {
+            $merged[$pnr] = $p;
+        } else {
+            $merged[] = $p;
+        }
+    }
+    $passengers = array_values($merged);
+    
+    // Deduplicate by ticket_number (Kam Air PDF has stub + receipt = 2 copies per passenger)
+    $seen = [];
+    $deduped = [];
+    foreach ($passengers as $p) {
+        $key = $p['ticket_number'] ?? $p['passenger_name'] ?? spl_object_id($p);
+        if (!isset($seen[$key])) {
+            $seen[$key] = true;
+            $deduped[] = $p;
+        }
+    }
+    $passengers = $deduped;
+    
+    // If no passenger extracted via normal method but we have ticket data, create one
+    if (empty($passengers)) {
+        $passenger = [];
+        
+        // Try fallback: first 13-digit number is ticket number
+        if (preg_match('/\b(\d{13})\b/', $text, $match)) {
+            $passenger['ticket_number'] = $match[1];
+        }
+        
+        // Try fallback: first 6-char alphanumeric is PNR
+        if (preg_match('/^([A-Z0-9]{6})/', trim($text), $match)) {
+            $passenger['pnr'] = $match[1];
+        } elseif (preg_match('/\b([A-Z0-9]{6})\b/', $text, $match)) {
+            $passenger['pnr'] = $match[1];
+        }
+        
         if (!empty($passenger) && isset($passenger['ticket_number'])) {
+            $passenger['trip_type'] = 'One Way';
+            $passenger['extraction_confidence'] = calculateConfidenceScore($passenger);
+            $passenger['format_detected'] = 'kamair';
             $passengers[] = $passenger;
         }
     }
