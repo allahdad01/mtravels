@@ -40,6 +40,14 @@ if ($visa_id === null || $visa_id <= 0) {
     exit;
 }
 
+// Check if visa has any associated main account transactions
+$stmt_check = $pdo->prepare("SELECT COUNT(*) FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'visa_sale' AND tenant_id = ? AND branch_id = ?");
+$stmt_check->execute([$visa_id, $tenant_id, $branch_id]);
+if ($stmt_check->fetchColumn() > 0) {
+    echo json_encode(['success' => false, 'message' => 'This visa application has associated main account transactions. Please delete the transactions first before deleting the visa.']);
+    exit;
+}
+
 // Start transaction
 $pdo->beginTransaction();
 

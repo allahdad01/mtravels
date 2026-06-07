@@ -37,6 +37,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $wantsJson = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
     
     $id = $_POST['id'];
+
+    // Check if payment has any associated main account transactions
+    $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'additional_payment' AND tenant_id = ? AND branch_id = ?");
+    $stmt_check->bindParam(1, $id, PDO::PARAM_INT);
+    $stmt_check->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmt_check->bindParam(3, $branch_id, PDO::PARAM_INT);
+    $stmt_check->execute();
+    if ($stmt_check->fetchColumn() > 0) {
+        if ($wantsJson) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'This additional payment has associated main account transactions. Please delete the transactions first before deleting the payment.']);
+            exit();
+        } else {
+            $_SESSION['error'] = 'This additional payment has associated main account transactions. Please delete the transactions first before deleting the payment.';
+            header("Location: ../additional_payments.php");
+            exit();
+        }
+    }
     
     // Begin transaction
     $pdo->beginTransaction();

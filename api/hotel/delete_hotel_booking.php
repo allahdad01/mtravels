@@ -50,6 +50,14 @@ if ($booking_id === null) {
     exit;
 }
 
+// Check if booking has any associated main account transactions
+$stmt_check = $pdo->prepare("SELECT COUNT(*) FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'hotel' AND tenant_id = ? AND branch_id = ?");
+$stmt_check->execute([$booking_id, $tenant_id, $branch_id]);
+if ($stmt_check->fetchColumn() > 0) {
+    echo json_encode(['success' => false, 'message' => 'This hotel booking has associated main account transactions. Please delete the transactions first before deleting the booking.']);
+    exit;
+}
+
 // Start transaction
 $pdo->beginTransaction();
 

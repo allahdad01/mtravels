@@ -37,6 +37,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
     $base = $refund['base_amount'];
     $profit = $sold - $base;
 
+    // Check if refund has any associated main account transactions
+    $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'hotel_refund' AND tenant_id = ? AND branch_id = ?");
+    $stmt_check->execute([$refundId, $tenant_id, $branch_id]);
+    if ($stmt_check->fetchColumn() > 0) {
+        echo json_encode(['success' => false, 'message' => 'This hotel refund has associated main account transactions. Please delete the transactions first before deleting the refund.']);
+        exit();
+    }
+
     // Start Transaction
     $pdo->beginTransaction();
 

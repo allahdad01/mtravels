@@ -70,6 +70,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
         $totalSoldPrice = array_sum(array_column($services, 'sold_price'));
         $totalProfit = array_sum(array_column($services, 'profit'));
 
+        // Check if refund has any associated main account transactions
+        $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'umrah_refund' AND tenant_id = ? AND branch_id = ?");
+        $stmt_check->bindParam(1, $refundId, PDO::PARAM_INT);
+        $stmt_check->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt_check->bindParam(3, $branch_id, PDO::PARAM_INT);
+        $stmt_check->execute();
+        if ($stmt_check->fetchColumn() > 0) {
+            echo json_encode(['success' => false, 'message' => 'This umrah refund has associated main account transactions. Please delete the transactions first before deleting the refund.']);
+            exit();
+        }
+
         // Start Transaction
         $pdo->beginTransaction();
 

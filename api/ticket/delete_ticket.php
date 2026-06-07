@@ -40,6 +40,22 @@ if ($ticket_id <= 0) {
     exit();
 }
 
+// Check if ticket has any associated main account transactions
+$stmt_check = $pdo->prepare("
+    SELECT COUNT(*) FROM main_account_transactions
+    WHERE reference_id = ? AND transaction_of = 'ticket_sale' AND tenant_id = ? AND branch_id = ?
+");
+$stmt_check->bindParam(1, $ticket_id, PDO::PARAM_INT);
+$stmt_check->bindParam(2, $tenant_id, PDO::PARAM_INT);
+$stmt_check->bindParam(3, $branch_id, PDO::PARAM_INT);
+$stmt_check->execute();
+$transaction_count = $stmt_check->fetchColumn();
+
+if ($transaction_count > 0) {
+    echo json_encode(["success" => false, "message" => "This ticket has associated main account transactions. Please delete the transactions first before deleting the ticket."]);
+    exit();
+}
+
 // Start transaction
 $pdo->beginTransaction();
 

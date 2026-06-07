@@ -64,6 +64,19 @@ if ($booking_id !== null) {
             exit();
         }
 
+        // Check if booking has any associated main account transactions
+        $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM main_account_transactions WHERE reference_id IN (SELECT id FROM umrah_transactions WHERE umrah_booking_id = ? AND tenant_id = ? AND branch_id = ?) AND transaction_of = 'umrah_transaction' AND tenant_id = ? AND branch_id = ?");
+        $stmt_check->bindParam(1, $booking_id, PDO::PARAM_INT);
+        $stmt_check->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt_check->bindParam(3, $branch_id, PDO::PARAM_INT);
+        $stmt_check->bindParam(4, $tenant_id, PDO::PARAM_INT);
+        $stmt_check->bindParam(5, $branch_id, PDO::PARAM_INT);
+        $stmt_check->execute();
+        if ($stmt_check->fetchColumn() > 0) {
+            echo json_encode(['success' => false, 'message' => 'This umrah booking has associated main account transactions. Please delete the transactions first before deleting the booking.']);
+            exit();
+        }
+
         // Get all services/suppliers for this booking
         $servicesQuery = "SELECT ubs.id as service_id, ubs.supplier_id, ubs.service_type, ubs.base_price, ubs.sold_price, ubs.profit, ubs.currency, s.supplier_type
                           FROM umrah_booking_services ubs

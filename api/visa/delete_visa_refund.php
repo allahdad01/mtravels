@@ -44,6 +44,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
         $base = $refund['base'];
         $profit = $sold - $base;
 
+        // Check if visa refund has any associated main account transactions
+        $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'visa_refund' AND tenant_id = ? AND branch_id = ?");
+        $stmt_check->bindParam(1, $refundId, PDO::PARAM_INT);
+        $stmt_check->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt_check->bindParam(3, $branch_id, PDO::PARAM_INT);
+        $stmt_check->execute();
+        if ($stmt_check->fetchColumn() > 0) {
+            echo json_encode(['success' => false, 'message' => 'This visa refund has associated main account transactions. Please delete the transactions first before deleting the refund.']);
+            exit();
+        }
+
         // Start Transaction
         $pdo->beginTransaction();
 
