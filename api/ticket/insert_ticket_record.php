@@ -53,6 +53,22 @@ if (!$ticketData) {
     exit;
 }
 
+// Prevent double refund: check if ticket is already refunded
+if ($ticketData['status'] === 'Refunded') {
+    echo json_encode(['status' => 'error', 'message' => 'This ticket has already been refunded.']);
+    exit;
+}
+
+$stmt_refund_check = $pdo->prepare("SELECT COUNT(*) FROM refunded_tickets WHERE ticket_id = ? AND tenant_id = ? AND branch_id = ?");
+$stmt_refund_check->bindParam(1, $ticketId, PDO::PARAM_INT);
+$stmt_refund_check->bindParam(2, $tenant_id, PDO::PARAM_INT);
+$stmt_refund_check->bindParam(3, $branch_id, PDO::PARAM_INT);
+$stmt_refund_check->execute();
+if ($stmt_refund_check->fetchColumn() > 0) {
+    echo json_encode(['status' => 'error', 'message' => 'A refund record already exists for this ticket.']);
+    exit;
+}
+
 // Extract ticket details
 $currency = $ticketData['currency'];
 $supplierId = $ticketData['supplier'];

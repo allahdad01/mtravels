@@ -40,6 +40,37 @@ if ($ticket_id <= 0) {
     exit();
 }
 
+// Check if ticket has associated refund, date change, or weight records
+$stmt_check_refund = $pdo->prepare("SELECT COUNT(*) FROM refunded_tickets WHERE ticket_id = ? AND tenant_id = ? AND branch_id = ?");
+$stmt_check_refund->bindParam(1, $ticket_id, PDO::PARAM_INT);
+$stmt_check_refund->bindParam(2, $tenant_id, PDO::PARAM_INT);
+$stmt_check_refund->bindParam(3, $branch_id, PDO::PARAM_INT);
+$stmt_check_refund->execute();
+if ($stmt_check_refund->fetchColumn() > 0) {
+    echo json_encode(["success" => false, "message" => "This ticket has associated refund records. Please delete the refund first before deleting the ticket."]);
+    exit();
+}
+
+$stmt_check_dc = $pdo->prepare("SELECT COUNT(*) FROM date_change_tickets WHERE ticket_id = ? AND tenant_id = ? AND branch_id = ?");
+$stmt_check_dc->bindParam(1, $ticket_id, PDO::PARAM_INT);
+$stmt_check_dc->bindParam(2, $tenant_id, PDO::PARAM_INT);
+$stmt_check_dc->bindParam(3, $branch_id, PDO::PARAM_INT);
+$stmt_check_dc->execute();
+if ($stmt_check_dc->fetchColumn() > 0) {
+    echo json_encode(["success" => false, "message" => "This ticket has associated date change records. Please delete the date change first before deleting the ticket."]);
+    exit();
+}
+
+$stmt_check_weight = $pdo->prepare("SELECT COUNT(*) FROM ticket_weights WHERE ticket_id = ? AND tenant_id = ? AND branch_id = ?");
+$stmt_check_weight->bindParam(1, $ticket_id, PDO::PARAM_INT);
+$stmt_check_weight->bindParam(2, $tenant_id, PDO::PARAM_INT);
+$stmt_check_weight->bindParam(3, $branch_id, PDO::PARAM_INT);
+$stmt_check_weight->execute();
+if ($stmt_check_weight->fetchColumn() > 0) {
+    echo json_encode(["success" => false, "message" => "This ticket has associated weight records. Please delete the weight first before deleting the ticket."]);
+    exit();
+}
+
 // Check if ticket has any associated main account transactions
 $stmt_check = $pdo->prepare("
     SELECT COUNT(*) FROM main_account_transactions

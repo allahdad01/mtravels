@@ -16,6 +16,11 @@ $(document).ready(function() {
 
     // Handle Add Weight button click
     $('#addWeightBtn').on('click', function() {
+        const ticketData = $('#detailsModal').data('ticket');
+        if (ticketData && ticketData.ticket && ticketData.ticket.status === 'Refunded') {
+            showToast('Cannot add weight to a refunded ticket.', 'error');
+            return;
+        }
         const ticketId = $('#detailsModal').data('ticket-id');
         if (!ticketId) {
             showToast('Ticket ID is missing', 'error');

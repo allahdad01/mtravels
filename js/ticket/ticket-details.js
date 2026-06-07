@@ -32,6 +32,15 @@ $(document).on('click', '.view-details', function() {
         $('#detailsModal #gender').text(ticketData.ticket.gender || 'N/A');
         $('#detailsModal #description').text(ticketData.ticket.description || 'N/A');
         
+        // Disable date change, weight, and refund buttons for refunded tickets
+        var isRefunded = ticketData.ticket.status === 'Refunded';
+        $('#dateChangeBtn, #addWeightBtn, #refundBtn').prop('disabled', isRefunded);
+        if (isRefunded) {
+            $('#dateChangeBtn, #addWeightBtn, #refundBtn').addClass('disabled').attr('title', 'Not available for refunded tickets');
+        } else {
+            $('#dateChangeBtn, #addWeightBtn, #refundBtn').removeClass('disabled').attr('title', '');
+        }
+        
         // Handle refund data...
         if (ticketData.refund_data) {
             $('#detailsModal #refund-supplier-penalty').text(ticketData.refund_data.supplier_penalty || 'N/A');
@@ -64,6 +73,11 @@ $(document).ready(function () {
         const ticketData = $('#detailsModal').data('ticket'); // Get ticket data
         if (!ticketData || !ticketData.ticket || !ticketData.ticket.id) {
             showToast('Ticket data or ID is missing!', 'error');
+            return;
+        }
+
+        if (ticketData.ticket.status === 'Refunded') {
+            showToast('Cannot add date change to a refunded ticket.', 'error');
             return;
         }
 
