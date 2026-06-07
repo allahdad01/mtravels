@@ -1,3 +1,54 @@
+// ── Button State Helper ─────────────────────────────────
+const HotelBtn = {
+  _store: new WeakMap(),
+
+  save(el) {
+    if (!el || this._store.has(el)) return;
+    this._store.set(el, {
+      html: el.innerHTML,
+      disabled: el.disabled,
+      class: el.className,
+    });
+  },
+
+  restore(el) {
+    const state = this._store.get(el);
+    if (!state) return;
+    el.innerHTML = state.html;
+    el.disabled = state.disabled;
+    this._store.delete(el);
+  },
+
+  loading(el, text) {
+    if (!el) return;
+    this.save(el);
+    el.disabled = true;
+    el.innerHTML = text || '<i class="fas fa-spinner fa-spin mr-1"></i> Loading...';
+  },
+
+  done(el) {
+    this.restore(el);
+  },
+
+  safetyTimer(el, ms) {
+    const t = setTimeout(() => {
+      if (el && el.disabled) this.restore(el);
+    }, ms || 20000);
+    const orig = this._store.get(el);
+    if (orig) orig._timer = t;
+  },
+
+  clearTimer(el) {
+    const state = this._store.get(el);
+    if (state && state._timer) { clearTimeout(state._timer); }
+  },
+
+  fromOnclick(pattern) {
+    const btn = document.querySelector(`button[onclick*="${pattern}"]`);
+    return btn;
+  }
+};
+
 // Hotel Module Initialization
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize Select2 dropdowns

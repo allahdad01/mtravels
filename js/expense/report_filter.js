@@ -132,8 +132,12 @@
     loadFinancialData();
 
     // Make sure category headers expand when clicked
-    $(document).on('click', '.category-header', function() {
-        $(this).closest('.category-section').find('.expense-list').slideToggle();
+    $(document).on('click', '.category-card-header', function() {
+        const $card = $(this).closest('.category-card');
+        const $list = $card.find('.expense-list');
+        const $icon = $card.find('.expand-icon');
+        $list.slideToggle();
+        $icon.toggleClass('icon-chevron-down icon-chevron-up');
     });
     
     // Attach click handler to the comprehensive export button

@@ -333,7 +333,7 @@ function filterExpenses() {
     const filterEndDate = $('#filterEndDate').val() ? new Date($('#filterEndDate').val() + 'T23:59:59') : null;
     
     // Make sure all categories are visible
-    $('.category-section').show();
+    $('.category-card').show();
     $('.expense-list').show();
     
     // Remove any previous "no matches" messages
@@ -383,7 +383,7 @@ function filterExpenses() {
     });
     
     // Always show all categories, even if they have no matching expenses
-    $('.category-section').each(function() {
+    $('.category-card').each(function() {
         const $section = $(this);
         const $visibleRows = $section.find('tbody tr:visible');
         

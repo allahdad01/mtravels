@@ -28,21 +28,15 @@ $(document).ready(function() {
         $('#filterEndDate').val(formatDateISO(lastDayOfMonth));
     }
     
-    // If filter is active, show a reset button at the top
+    // If filter is active, show filter badge
     if (urlStartDate && urlEndDate) {
-        // Add a visible indicator that a filter is active
-        $('.card-header h5').append(' <span class="badge-primary">Filtered</span>');
+        $('#filterBadge').addClass('active');
     }
     
     // Expense Filter Section Toggle
     $('#toggleExpenseFilter').on('click', function() {
         $('#expenseFilterBody').slideToggle();
-        const icon = $(this).find('i');
-        if (icon.hasClass('icon-chevron-down')) {
-            icon.removeClass('icon-chevron-down').addClass('icon-chevron-up');
-        } else {
-            icon.removeClass('icon-chevron-up').addClass('icon-chevron-down');
-        }
+        $('#filterChevron').toggleClass('icon-chevron-down icon-chevron-up');
     });
     
     // Expense Filter Form Submission

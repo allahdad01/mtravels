@@ -22,7 +22,7 @@ $missing = [];
 if (empty($db_server)) { $db_server = 'localhost'; $missing[] = 'DB_SERVER'; }
 if (empty($db_username)) { $db_username = 'root'; $missing[] = 'DB_USERNAME'; }
 if ($db_password === null || $db_password === false) { $db_password = ''; $missing[] = 'DB_PASSWORD'; }
-if (empty($db_name)) { $db_name = 'travelagency_saas'; $missing[] = 'DB_NAME'; }
+if (empty($db_name)) { $db_name = 'mtravels'; $missing[] = 'DB_NAME'; }
 if (empty($app_env)) { $app_env = 'development'; $missing[] = 'APP_ENV'; }
 
 if (!empty($missing)) {

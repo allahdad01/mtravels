@@ -990,40 +990,50 @@ $paginationPattern = empty($search)
 
                                         <!-- Actions -->
                                          <div class="hb-actions-cell">
-                                             <button class="hb-btn-icon hb-view"
-                                                     data-tip="<?= __('view_details') ?>"
-                                                     onclick="viewBooking(<?= $booking['id'] ?>)">
-                                                 <i class="feather icon-eye"></i>
-                                             </button>
+                                              <button class="hb-btn-icon hb-view"
+                                                      data-id="<?= $booking['id'] ?>"
+                                                      data-action="view"
+                                                      data-tip="<?= __('view_details') ?>"
+                                                      onclick="viewBooking(<?= $booking['id'] ?>)">
+                                                  <i class="feather icon-eye"></i>
+                                              </button>
 
-                                             <?php if ($canEdit && !$isCancelled): ?>
-                                             <button class="hb-btn-icon hb-edit"
-                                                     data-tip="<?= __('edit_booking') ?>"
-                                                     onclick="editBooking(<?= $booking['id'] ?>)">
-                                                 <i class="feather icon-edit-2"></i>
-                                             </button>
-                                             <?php endif; ?>
+                                              <?php if ($canEdit && !$isCancelled): ?>
+                                              <button class="hb-btn-icon hb-edit"
+                                                      data-id="<?= $booking['id'] ?>"
+                                                      data-action="edit"
+                                                      data-tip="<?= __('edit_booking') ?>"
+                                                      onclick="editBooking(<?= $booking['id'] ?>)">
+                                                  <i class="feather icon-edit-2"></i>
+                                              </button>
+                                              <?php endif; ?>
 
-                                             <?php if ($isAgencyClient && $canEdit): ?>
-                                             <button class="hb-btn-icon hb-trans"
-                                                     data-tip="<?= __('manage_transactions') ?>"
-                                                     onclick="manageTransactions(<?= $booking['id'] ?>)">
-                                                 <i class="fas fa-dollar-sign"></i>
-                                             </button>
-                                             <?php endif; ?>
+                                              <?php if ($isAgencyClient && $canEdit): ?>
+                                              <button class="hb-btn-icon hb-trans"
+                                                      data-id="<?= $booking['id'] ?>"
+                                                      data-action="transactions"
+                                                      data-tip="<?= __('manage_transactions') ?>"
+                                                      onclick="manageTransactions(<?= $booking['id'] ?>)">
+                                                  <i class="fas fa-dollar-sign"></i>
+                                              </button>
+                                              <?php endif; ?>
 
-                                             <button class="hb-btn-icon hb-refund"
-                                                     data-tip="<?= __('process_refund') ?>"
-                                                     onclick="openRefundModal(<?= $booking['id'] ?>, <?= $booking['sold_amount'] ?>, <?= $booking['profit'] ?>, '<?= $booking['currency'] ?>')">
-                                                 <i class="feather icon-refresh-ccw"></i>
-                                             </button>
+                                              <button class="hb-btn-icon hb-refund"
+                                                      data-id="<?= $booking['id'] ?>"
+                                                      data-action="refund"
+                                                      data-tip="<?= __('process_refund') ?>"
+                                                      onclick="openRefundModal(<?= $booking['id'] ?>, <?= $booking['sold_amount'] ?>, <?= $booking['profit'] ?>, '<?= $booking['currency'] ?>')">
+                                                  <i class="feather icon-refresh-ccw"></i>
+                                              </button>
 
-                                             <?php if ($canEdit): ?>
-                                             <button class="hb-btn-icon hb-delete"
-                                                     data-tip="<?= __('delete_booking') ?>"
-                                                     onclick="deleteBooking(<?= $booking['id'] ?>)">
-                                                 <i class="feather icon-trash-2"></i>
-                                             </button>
+                                              <?php if ($canEdit): ?>
+                                              <button class="hb-btn-icon hb-delete"
+                                                      data-id="<?= $booking['id'] ?>"
+                                                      data-action="delete"
+                                                      data-tip="<?= __('delete_booking') ?>"
+                                                      onclick="deleteBooking(<?= $booking['id'] ?>)">
+                                                  <i class="feather icon-trash-2"></i>
+                                              </button>
                                              <?php endif; ?>
                                          </div>
 

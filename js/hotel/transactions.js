@@ -202,11 +202,10 @@ const transactionManager = {
     // Load and display transaction modal
     loadTransactionModal: function(bookingId) {
         if (!bookingId) {
-
+            const btn = this._activeBtn;
+            if (btn) { HotelBtn.clearTimer(btn); HotelBtn.done(btn); delete this._activeBtn; }
             return;
         }
-
-
 
         // Store booking ID in the form
         $('#booking_id').val(bookingId);
@@ -223,6 +222,8 @@ const transactionManager = {
             data: { id: bookingId },
             dataType: 'json',
             success: function(response) {
+                const btn = transactionManager._activeBtn;
+                if (btn) { HotelBtn.clearTimer(btn); HotelBtn.done(btn); delete transactionManager._activeBtn; }
                 if (response.success && response.bookings && response.bookings.length > 0) {
                     const booking = response.bookings[0];
 
@@ -260,7 +261,8 @@ const transactionManager = {
                 }
             },
             error: function(xhr, status, error) {
-
+                const btn = transactionManager._activeBtn;
+                if (btn) { HotelBtn.clearTimer(btn); HotelBtn.done(btn); delete transactionManager._activeBtn; }
                 showToast('Failed to load booking details', 'error');
             }
         });
@@ -707,6 +709,11 @@ $(document).ready(function() {
 
 // Global function to manage transactions (called from HTML)
 function manageTransactions(bookingId) {
+    const btn = HotelBtn.fromOnclick(`manageTransactions(${bookingId})`);
+    btn && (transactionManager._activeBtn = btn);
+    HotelBtn.loading(btn, '<i class="fas fa-spinner fa-spin"></i>');
+    HotelBtn.safetyTimer(btn, 15000);
+
     transactionManager.loadTransactionModal(bookingId);
 }
 

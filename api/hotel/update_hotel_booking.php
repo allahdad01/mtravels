@@ -164,21 +164,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                          $stmtUpdateOldSupplier->execute([$totalAmount, $originalSupplier, $tenant_id, $branch_id]);
 
                          // Update subsequent transactions for old supplier - ADDING back the amount
-                         $updateOldSupplierSubsequentQuery = "UPDATE supplier_transactions
-                                                              SET balance = balance + ?
-                                                              WHERE supplier_id = ?
-                                                              AND branch_id = ?
-                                                              AND id > (
-                                                                  SELECT id
-                                                                  FROM supplier_transactions
-                                                                  WHERE supplier_id = ?
-                                                                  AND reference_id = ?
-                                                                  AND transaction_of = 'hotel'
-                                                                  AND tenant_id = ?
-                                                                  AND branch_id = ?
-                                                                  LIMIT 1
-                                                              )
-                                                              ORDER BY transaction_date ASC, id ASC";
+                          $updateOldSupplierSubsequentQuery = "UPDATE supplier_transactions
+                                                               SET balance = balance + ?
+                                                               WHERE supplier_id = ?
+                                                               AND branch_id = ?
+                                                               AND id > (
+                                                                   SELECT id FROM (
+                                                                       SELECT id
+                                                                       FROM supplier_transactions
+                                                                       WHERE supplier_id = ?
+                                                                       AND reference_id = ?
+                                                                       AND transaction_of = 'hotel'
+                                                                       AND tenant_id = ?
+                                                                       AND branch_id = ?
+                                                                       LIMIT 1
+                                                                   ) AS tmp
+                                                               )
+                                                               ORDER BY transaction_date ASC, id ASC";
                          $stmtUpdateOldSupplierSubsequent = $pdo->prepare($updateOldSupplierSubsequentQuery);
                          $stmtUpdateOldSupplierSubsequent->execute([$totalAmount, $originalSupplier, $branch_id, $originalSupplier, $booking_id, $tenant_id, $branch_id]);
                          
@@ -398,19 +400,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                          $stmtUpdateOldClientUsd->execute([$totalUsdAmount, $originalClient, $tenant_id, $branch_id]);
 
                          // Update subsequent USD transactions for old client
-                         $updateOldClientUsdSubsequentQuery = "UPDATE client_transactions
-                                                               SET balance = balance + ?
-                                                               WHERE client_id = ?
-                                                               AND branch_id = ?
-                                                               AND id > (SELECT id FROM client_transactions
-                                                                        WHERE client_id = ?
-                                                                        AND reference_id = ?
-                                                                        AND transaction_of = 'hotel'
-                                                                        AND branch_id = ?
-                                                                        LIMIT 1)
-                                                               AND currency = 'USD'
-                                                               AND tenant_id = ?
-                                                               ORDER BY created_at ASC, id ASC";
+                          $updateOldClientUsdSubsequentQuery = "UPDATE client_transactions
+                                                                SET balance = balance + ?
+                                                                WHERE client_id = ?
+                                                                AND branch_id = ?
+                                                                AND id > (SELECT id FROM (SELECT id FROM client_transactions
+                                                                         WHERE client_id = ?
+                                                                         AND reference_id = ?
+                                                                         AND transaction_of = 'hotel'
+                                                                         AND branch_id = ?
+                                                                         LIMIT 1) AS tmp)
+                                                                AND currency = 'USD'
+                                                                AND tenant_id = ?
+                                                                ORDER BY created_at ASC, id ASC";
                          $stmtUpdateOldClientUsdSubsequent = $pdo->prepare($updateOldClientUsdSubsequentQuery);
                          $stmtUpdateOldClientUsdSubsequent->execute([$totalUsdAmount, $originalClient, $branch_id, $originalClient, $booking_id, $branch_id, $tenant_id]);
                      }
@@ -422,19 +424,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                          $stmtUpdateOldClientAfs->execute([$totalAfsAmount, $originalClient, $tenant_id, $branch_id]);
 
                          // Update subsequent AFS transactions for old client
-                         $updateOldClientAfsSubsequentQuery = "UPDATE client_transactions
-                                                               SET balance = balance + ?
-                                                               WHERE client_id = ?
-                                                               AND branch_id = ?
-                                                               AND id > (SELECT id FROM client_transactions
-                                                                        WHERE client_id = ?
-                                                                        AND reference_id = ?
-                                                                        AND transaction_of = 'hotel'
-                                                                        AND branch_id = ?
-                                                                        LIMIT 1)
-                                                               AND currency = 'AFS'
-                                                              AND tenant_id = ?
-                                                              ORDER BY created_at ASC, id ASC";
+                          $updateOldClientAfsSubsequentQuery = "UPDATE client_transactions
+                                                                SET balance = balance + ?
+                                                                WHERE client_id = ?
+                                                                AND branch_id = ?
+                                                                AND id > (SELECT id FROM (SELECT id FROM client_transactions
+                                                                         WHERE client_id = ?
+                                                                         AND reference_id = ?
+                                                                         AND transaction_of = 'hotel'
+                                                                         AND branch_id = ?
+                                                                         LIMIT 1) AS tmp)
+                                                                AND currency = 'AFS'
+                                                               AND tenant_id = ?
+                                                               ORDER BY created_at ASC, id ASC";
                         $stmtUpdateOldClientAfsSubsequent = $pdo->prepare($updateOldClientAfsSubsequentQuery);
                         $stmtUpdateOldClientAfsSubsequent->execute([$totalAfsAmount, $originalClient, $branch_id, $originalClient, $booking_id, $branch_id, $tenant_id]);
                     }
@@ -501,19 +503,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                             // Update subsequent USD transactions for new client
                              if ($earliestTransactionDate) {
-                                 $updateNewClientUsdSubsequentQuery = "UPDATE client_transactions
-                                                                     SET balance = balance - ?
-                                                                     WHERE client_id = ?
-                                                                     AND branch_id = ?
-                                                                     AND id > (SELECT id FROM client_transactions
-                                                                               WHERE client_id = ?
-                                                                               AND reference_id = ?
-                                                                               AND transaction_of = 'hotel'
-                                                                               AND branch_id = ?
-                                                                               LIMIT 1)
-                                                                     AND currency = 'USD'
-                                                                     AND tenant_id = ?
-                                                                     ORDER BY created_at ASC, id ASC";
+                                  $updateNewClientUsdSubsequentQuery = "UPDATE client_transactions
+                                                                      SET balance = balance - ?
+                                                                      WHERE client_id = ?
+                                                                      AND branch_id = ?
+                                                                      AND id > (SELECT id FROM (SELECT id FROM client_transactions
+                                                                                WHERE client_id = ?
+                                                                                AND reference_id = ?
+                                                                                AND transaction_of = 'hotel'
+                                                                                AND branch_id = ?
+                                                                                LIMIT 1) AS tmp)
+                                                                      AND currency = 'USD'
+                                                                      AND tenant_id = ?
+                                                                      ORDER BY created_at ASC, id ASC";
                                  $stmtUpdateNewClientUsdSubsequent = $pdo->prepare($updateNewClientUsdSubsequentQuery);
                                  $stmtUpdateNewClientUsdSubsequent->execute([$negativeAmount, $_POST['sold_to'], $branch_id, $_POST['sold_to'], $booking_id, $branch_id, $tenant_id]);
                              }
@@ -534,19 +536,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                              // Update subsequent AFS transactions for new client
                              if ($earliestTransactionDate) {
-                                 $updateNewClientAfsSubsequentQuery = "UPDATE client_transactions
-                                                                     SET balance = balance - ?
-                                                                     WHERE client_id = ?
-                                                                     AND branch_id = ?
-                                                                     AND id > (SELECT id FROM client_transactions
-                                                                               WHERE client_id = ?
-                                                                               AND reference_id = ?
-                                                                               AND transaction_of = 'hotel'
-                                                                               AND branch_id = ?
-                                                                               LIMIT 1)
-                                                                     AND currency = 'AFS'
-                                                                     AND tenant_id = ?
-                                                                     ORDER BY created_at ASC, id ASC";
+                                  $updateNewClientAfsSubsequentQuery = "UPDATE client_transactions
+                                                                      SET balance = balance - ?
+                                                                      WHERE client_id = ?
+                                                                      AND branch_id = ?
+                                                                      AND id > (SELECT id FROM (SELECT id FROM client_transactions
+                                                                                WHERE client_id = ?
+                                                                                AND reference_id = ?
+                                                                                AND transaction_of = 'hotel'
+                                                                                AND branch_id = ?
+                                                                                LIMIT 1) AS tmp)
+                                                                      AND currency = 'AFS'
+                                                                      AND tenant_id = ?
+                                                                      ORDER BY created_at ASC, id ASC";
                                  $stmtUpdateNewClientAfsSubsequent = $pdo->prepare($updateNewClientAfsSubsequentQuery);
                                  $stmtUpdateNewClientAfsSubsequent->execute([$totalAfsAmount, $_POST['sold_to'], $branch_id, $_POST['sold_to'], $booking_id, $branch_id, $tenant_id]);
                              }

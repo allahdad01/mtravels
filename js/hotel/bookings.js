@@ -84,19 +84,12 @@ function addHotelBookingForm() {
     const formData = new FormData(form);
     const submitButton = $('#addBookingModal button[data-submit]')[0];
 
-    // Disable button immediately to prevent multiple clicks
-    if (submitButton) {
-        submitButton.disabled = true;
-        submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Adding Booking...';
-    }
+    HotelBtn.loading(submitButton, '<i class="fas fa-spinner fa-spin mr-1"></i>Adding Booking...');
+    HotelBtn.safetyTimer(submitButton, 30000);
 
     if (!formData.get('title') || !formData.get('first_name') || !formData.get('last_name')) {
+        HotelBtn.done(submitButton);
         showToast('Please fill in all required fields', 'error');
-        // Re-enable button on validation error
-        if (submitButton) {
-            submitButton.disabled = false;
-            submitButton.innerHTML = '<i class="feather icon-check mr-2"></i>Add Booking';
-        }
         return;
     }
 
@@ -107,6 +100,7 @@ function addHotelBookingForm() {
         processData: false,
         contentType: false,
         success: function(response) {
+            HotelBtn.clearTimer(submitButton);
             try {
                 const result = typeof response === 'string' ? JSON.parse(response) : response;
 
@@ -115,31 +109,20 @@ function addHotelBookingForm() {
                     showToast(result.message || 'Hotel booking added successfully', 'success');
                     setTimeout(() => window.location.reload(), 1000);
                 } else {
+                    HotelBtn.done(submitButton);
                     showToast(result.message || 'Failed to add hotel booking', 'error');
-                    // Re-enable button on error
-                    if (submitButton) {
-                        submitButton.disabled = false;
-                        submitButton.innerHTML = '<i class="feather icon-check mr-2"></i>Add Booking';
-                    }
                 }
             } catch (e) {
+                HotelBtn.done(submitButton);
 
                 showToast('An unexpected error occurred', 'error');
-                // Re-enable button on error
-                if (submitButton) {
-                    submitButton.disabled = false;
-                    submitButton.innerHTML = '<i class="feather icon-check mr-2"></i>Add Booking';
-                }
             }
         },
         error: function(xhr, status, error) {
+            HotelBtn.clearTimer(submitButton);
+            HotelBtn.done(submitButton);
 
             showToast('Failed to add hotel booking', 'error');
-            // Re-enable button on error
-            if (submitButton) {
-                submitButton.disabled = false;
-                submitButton.innerHTML = '<i class="feather icon-check mr-2"></i>Add Booking';
-            }
         }
     });
 }
@@ -152,13 +135,12 @@ function deleteBooking(id) {
     }
 
     if (confirm('Are you sure you want to delete this booking?')) {
-        // Get the delete button that was clicked
-        const clickedBtn = $(`button[onclick="deleteBooking(${id})"]`);
-        const originalContent = clickedBtn.html();
+        const btn = document.querySelector(`button[data-id="${id}"][data-action="delete"]`) ||
+                    HotelBtn.fromOnclick(`deleteBooking(${id})`);
+        HotelBtn.loading(btn, '<i class="fas fa-spinner fa-spin"></i>');
+        HotelBtn.safetyTimer(btn, 20000);
         
-        // Disable button and show loading state
-        clickedBtn.prop('disabled', true);
-        clickedBtn.html('<i class="feather icon-loader"></i>');
+        const $btn = $(btn);
         
         // Get CSRF token from meta tag or hidden input
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
@@ -171,20 +153,18 @@ function deleteBooking(id) {
             contentType: 'application/json',
             dataType: 'json',
             success: function(response) {
+                HotelBtn.clearTimer(btn);
                 if (response.success) {
                     showToast('Booking deleted successfully');
                     location.reload();
                 } else {
-                    // Re-enable button on error
-                    clickedBtn.prop('disabled', false);
-                    clickedBtn.html(originalContent);
+                    HotelBtn.done(btn);
                     showToast('Error deleting booking');
                 }
             },
             error: function(xhr, status, error) {
-                // Re-enable button on error
-                clickedBtn.prop('disabled', false);
-                clickedBtn.html(originalContent);
+                HotelBtn.clearTimer(btn);
+                HotelBtn.done(btn);
                 showToast('Error deleting booking');
             }
         });
@@ -209,12 +189,18 @@ window.viewBooking = function(id) {
         return;
     }
 
+    const btn = HotelBtn.fromOnclick(`viewBooking(${id})`);
+    HotelBtn.loading(btn, '<i class="fas fa-spinner fa-spin"></i>');
+    HotelBtn.safetyTimer(btn, 15000);
+
     $.ajax({
         url: '../api/hotel/get_hotel_bookings.php',
         type: 'GET',
         data: { id: id },
         dataType: 'json',
         success: function(response) {
+            HotelBtn.clearTimer(btn);
+            HotelBtn.done(btn);
             if (response.success && response.bookings && response.bookings.length > 0) {
                 const booking = response.bookings[0];
 
@@ -350,7 +336,8 @@ window.viewBooking = function(id) {
             }
         },
         error: function(xhr, status, error) {
-
+            HotelBtn.clearTimer(btn);
+            HotelBtn.done(btn);
 
             showToast('Error fetching booking details');
         }
@@ -359,6 +346,10 @@ window.viewBooking = function(id) {
 
 // Edit booking
 window.editBooking = function(id) {
+    const btn = HotelBtn.fromOnclick(`editBooking(${id})`);
+    HotelBtn.loading(btn, '<i class="fas fa-spinner fa-spin"></i>');
+    HotelBtn.safetyTimer(btn, 15000);
+
     $.ajax({
         url: '../api/hotel/get_hotel_booking.php',
         type: 'GET',
@@ -447,28 +438,40 @@ window.editBooking = function(id) {
                                             }
                                         });
 
+                                        HotelBtn.clearTimer(btn);
+                                        HotelBtn.done(btn);
                                         $('#editBookingModal').modal('show');
                                     },
                                     error: function() {
+                                        HotelBtn.clearTimer(btn);
+                                        HotelBtn.done(btn);
                                         showToast('Error loading account data');
                                     }
                                 });
                             },
                             error: function() {
+                                HotelBtn.clearTimer(btn);
+                                HotelBtn.done(btn);
                                 showToast('Error loading client data');
                             }
                         });
                     },
                     error: function() {
+                        HotelBtn.clearTimer(btn);
+                        HotelBtn.done(btn);
                         showToast('Error loading supplier data');
                     }
                 });
             } catch (e) {
+                HotelBtn.clearTimer(btn);
+                HotelBtn.done(btn);
 
                 showToast('Error loading booking details');
             }
         },
         error: function() {
+            HotelBtn.clearTimer(btn);
+            HotelBtn.done(btn);
             showToast('Error fetching booking details');
         }
     });
@@ -483,6 +486,10 @@ window.editBooking = function(id) {
 
 // Submit edit form
 function submitEditForm() {
+    const btn = document.querySelector('#editBookingModal .modal-footer .btn-primary');
+    HotelBtn.loading(btn, '<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
+    HotelBtn.safetyTimer(btn, 30000);
+
     const formData = new FormData($('#editBookingForm')[0]);
 
     $.ajax({
@@ -492,6 +499,7 @@ function submitEditForm() {
         processData: false,
         contentType: false,
         success: function(response) {
+            HotelBtn.clearTimer(btn);
             try {
                 const result = JSON.parse(response);
                 if (result.success) {
@@ -499,14 +507,18 @@ function submitEditForm() {
                     $('#editBookingModal').modal('hide');
                     location.reload();
                 } else {
+                    HotelBtn.done(btn);
                     showToast('Error updating booking');
                 }
             } catch (e) {
+                HotelBtn.done(btn);
 
                 showToast('Error processing update request');
             }
         },
         error: function() {
+            HotelBtn.clearTimer(btn);
+            HotelBtn.done(btn);
             showToast('Error updating booking');
         }
     });

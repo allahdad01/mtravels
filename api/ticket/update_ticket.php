@@ -219,13 +219,15 @@ if ($supplier != $originalSupplier) {
                                               WHERE supplier_id = ?
                                               AND branch_id = ?
                                               AND id > (
-                                                  SELECT id FROM supplier_transactions
-                                                  WHERE supplier_id = ?
-                                                  AND reference_id = ?
-                                                  AND transaction_of = 'ticket_sale'
-                                                  AND tenant_id = ?
-                                                  AND branch_id = ?
-                                                  LIMIT 1
+                                                  SELECT id FROM (
+                                                      SELECT id FROM supplier_transactions
+                                                      WHERE supplier_id = ?
+                                                      AND reference_id = ?
+                                                      AND transaction_of = 'ticket_sale'
+                                                      AND tenant_id = ?
+                                                      AND branch_id = ?
+                                                      LIMIT 1
+                                                  ) AS tmp
                                               )";
         $stmtUpdateOldSupplierSubsequent = $pdo->prepare($updateOldSupplierSubsequentQuery);
         $stmtUpdateOldSupplierSubsequent->bindParam(1, $totalAmount, PDO::PARAM_STR);
@@ -482,13 +484,13 @@ if ($supplier != $originalSupplier) {
                                                           SET balance = balance + ?
                                                           WHERE client_id = ?
                                                           AND branch_id = ?
-                                                          AND id > (SELECT id FROM client_transactions
+                                                          AND id > (SELECT id FROM (SELECT id FROM client_transactions
                                                                    WHERE client_id = ?
                                                                    AND reference_id = ?
                                                                    AND transaction_of = 'ticket_sale'
                                                                    AND tenant_id = ?
                                                                    AND branch_id = ?
-                                                                   LIMIT 1)
+                                                                   LIMIT 1) AS tmp)
                                                           AND currency = ?
                                                           AND tenant_id = ?
                                                           ORDER BY created_at ASC, id ASC";
