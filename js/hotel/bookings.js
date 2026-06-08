@@ -219,8 +219,6 @@ window.viewBooking = function(id) {
                 const baseAmount  = booking.base_amount  !== null && booking.base_amount  !== undefined && booking.base_amount  !== '' ? parseFloat(booking.base_amount).toFixed(2)  : '0.00';
                 const soldAmount  = booking.sold_amount  !== null && booking.sold_amount  !== undefined && booking.sold_amount  !== '' ? parseFloat(booking.sold_amount).toFixed(2)  : '0.00';
                 const profit      = booking.profit       !== null && booking.profit       !== undefined && booking.profit       !== '' ? parseFloat(booking.profit).toFixed(2)      : '0.00';
-                const exchange    = booking.exchange_rate || 'N/A';
-
                 const accommodation = booking.accommodation_details || 'N/A';
                 const remarks       = booking.remarks || 'No remarks';
 
@@ -305,10 +303,6 @@ window.viewBooking = function(id) {
                                             <div class="hdm-financial-item">
                                                 <span class="hdm-financial-label">Profit</span>
                                                 <span class="hdm-financial-value hdm-profit">${currency} ${profit}</span>
-                                            </div>
-                                            <div class="hdm-financial-item">
-                                                <span class="hdm-financial-label">Exchange Rate</span>
-                                                <span class="hdm-financial-value">${exchange}</span>
                                             </div>
                                         </div>
                                     </div>

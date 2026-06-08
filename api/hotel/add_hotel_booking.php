@@ -156,7 +156,7 @@ $title = isset($_POST['title']) ? DbSecurity::validateInput($_POST['title'], 'st
             throw new Exception("Client not found");
         }
 
-        // Handle client balance and transactions for regular clients
+        // Handle client balance and transactions based on client type
         if ($clientData['client_type'] === 'regular') {
             $currentBalance = ($currency === 'USD') ? $clientData['usd_balance'] : $clientData['afs_balance'];
             $newBalance = $currentBalance - $sold_amount;
@@ -183,6 +183,23 @@ $title = isset($_POST['title']) ? DbSecurity::validateInput($_POST['title'], 'st
             $stmtClientTrans->bindParam(2, $currency, PDO::PARAM_STR);
             $stmtClientTrans->bindParam(3, $sold_amount, PDO::PARAM_STR);
             $stmtClientTrans->bindParam(4, $newBalance, PDO::PARAM_STR);
+            $stmtClientTrans->bindParam(5, $description, PDO::PARAM_STR);
+            $stmtClientTrans->bindParam(6, $booking_id, PDO::PARAM_INT);
+            $stmtClientTrans->bindParam(7, $tenant_id, PDO::PARAM_INT);
+            $stmtClientTrans->bindParam(8, $branch_id, PDO::PARAM_INT);
+            if (!$stmtClientTrans->execute()) {
+                throw new Exception("Failed to create client transaction");
+            }
+        } elseif ($clientData['client_type'] === 'agency') {
+            // Insert client transaction for agency clients (without balance deduction)
+            $stmtClientTrans = $pdo->prepare("INSERT INTO client_transactions (client_id, type, currency, amount, balance, transaction_of, description, reference_id, created_at, tenant_id, branch_id)
+                                             VALUES (?, 'Debit', ?, ?, ?, 'hotel', ?, ?, NOW(), ?, ?)");
+            $description = "Hotel booking for $title $first_name $last_name";
+            $currentBalance = ($currency === 'USD') ? $clientData['usd_balance'] : $clientData['afs_balance'];
+            $stmtClientTrans->bindParam(1, $sold_to, PDO::PARAM_INT);
+            $stmtClientTrans->bindParam(2, $currency, PDO::PARAM_STR);
+            $stmtClientTrans->bindParam(3, $sold_amount, PDO::PARAM_STR);
+            $stmtClientTrans->bindParam(4, $currentBalance, PDO::PARAM_STR);
             $stmtClientTrans->bindParam(5, $description, PDO::PARAM_STR);
             $stmtClientTrans->bindParam(6, $booking_id, PDO::PARAM_INT);
             $stmtClientTrans->bindParam(7, $tenant_id, PDO::PARAM_INT);
