@@ -26,11 +26,8 @@ $(document).off('submit', '#umrahForm').on('submit', '#umrahForm', function(even
                  if (familyId && typeof loadFamilyMembers === 'function') {
                      loadFamilyMembers(familyId);
                  }
-                 // Also refresh the main families table for updated counts
-                 if (typeof refreshFamiliesTable === 'function') {
-                     refreshFamiliesTable();
-                 }
-             }, 500);
+                 location.reload();
+             }, 1500);
          } else {
              showToast('error', data.message || 'Failed to add record');
              submitBtn.disabled = false;
@@ -63,7 +60,7 @@ $('#editFamilyForm').off('submit').on('submit', function(e) {
                  showToast('success', response.message);
                  $('#editFamilyModal').modal('hide');
                  setTimeout(() => {
-                     refreshFamiliesTable();
+                     location.reload();
                  }, 1000);
              } else {
                  showToast('error', response.message);
@@ -107,9 +104,9 @@ $(document).ready(function() {
                          $('#addTransactionForm').collapse('hide');
                          $('#umrahTransactionForm')[0].reset();
                          fetchTransactions(umrahId, parseFloat($('#totalAmount').text().replace('$', '')));
-                         setTimeout(() => {
-                             refreshFamiliesTable();
-                         }, 1000);
+                          setTimeout(() => {
+                              location.reload();
+                          }, 1000);
                      } else {
                          showToast('error', result.message || 'Failed to add transaction');
                          submitBtn.prop('disabled', false);

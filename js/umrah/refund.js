@@ -105,10 +105,10 @@ $(document).ready(function() {
                     
                     if (result.status === 'success' || result.success) {
                          showToast('success', result.message || 'Refund processed successfully');
-                         setTimeout(() => {
-                             $('#refundModal').modal('hide');
-                             refreshFamiliesTable();
-                         }, 1500);
+                             setTimeout(() => {
+                              $('#refundModal').modal('hide');
+                              location.reload();
+                          }, 1500);
                      } else {
                          showToast('error', result.message || 'Failed to process refund');
                      }

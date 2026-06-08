@@ -36,15 +36,13 @@ $(document).off('submit', '#umrahForm').on('submit', '#umrahForm', function(even
             $('#umrahModal').modal('hide');
             
             setTimeout(() => {
-                // Reload the family members section
+                // Reload the family members section (if already expanded)
                 if (familyId && typeof loadFamilyMembers === 'function') {
                     loadFamilyMembers(familyId);
                 }
-                // Also refresh the main families table for updated counts
-                if (typeof refreshFamiliesTable === 'function') {
-                    refreshFamiliesTable();
-                }
-            }, 500);
+                // Reload the page to update family card counts & financials
+                location.reload();
+            }, 1500);
         } else {
             showToast('error', data.message || 'Failed to add members');
             submitBtn.disabled = false;

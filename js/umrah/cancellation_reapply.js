@@ -136,10 +136,10 @@ jQuery(document).ready(function($) {
                     // Check for success
                      if (result && (result.status === 'success' || result.success === true || result.success === 'true')) {
                          showToast('success', result.message || 'Action processed successfully');
-                         setTimeout(() => {
-                             $('#cancellationReapplyModal').modal('hide');
-                             refreshFamiliesTable();
-                         }, 1500);
+                          setTimeout(() => {
+                              $('#cancellationReapplyModal').modal('hide');
+                              location.reload();
+                          }, 1500);
                     } else {
                         showToast('error', result.message || 'Failed to process action');
                     }
