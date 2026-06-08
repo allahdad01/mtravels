@@ -250,7 +250,7 @@ const TXN_CONFIG = {
         tableBody:          'supplierTransactionsTableBody',
         loader:             'supplierTransactionsLoader',
         noMsg:              'noSupplierTransactionsMessage',
-        nameDisplay:        'supplierNameDisplay',
+        nameDisplay:        'supplierTransNameDisplay',
         idField:            'supplierTransactionId',
         modal:              'supplierTransactionHistoryModal',
         paginationList:     'supplierTransactionsPaginationList',

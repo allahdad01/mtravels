@@ -506,7 +506,7 @@ function filterSupplierTransactions() {
     
     // Reload transactions with filters - get supplier ID and name from the modal
     const supplierId = document.getElementById('supplierTransactionId')?.value;
-    const supplierName = document.getElementById('supplierNameDisplay')?.textContent;
+    const supplierName = document.getElementById('supplierTransNameDisplay')?.textContent;
     
     if (supplierId && supplierName) {
         // Reload transactions with new filters

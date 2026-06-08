@@ -1,20 +1,20 @@
                 <!-- Client Transaction History Modal -->
                 <div class="modal fade modern-modal" id="clientTransactionHistoryModal" tabindex="-1" aria-labelledby="clientTransactionHistoryModalLabel" aria-hidden="true">
-                    <div class="modal-dialog modal-xl">
-                        <div class="modal-content">
-                            <div class="modal-header bg-success text-white">
+                    <div class="modal-dialog modal-xl" style="max-height:98vh; display:flex; flex-direction:column; margin-top:1vh; margin-bottom:1vh;">
+                        <div class="modal-content" style="flex:1; display:flex; flex-direction:column;">
+                            <div class="modal-header bg-success text-white py-2">
                                 <h5 class="modal-title" id="clientTransactionHistoryModalLabel">
                                     <i class="feather icon-list mr-2"></i><?= __('client_transactions') ?>
                                 </h5>
-                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <div class="text-right" style="flex:1; margin-right:10px;">
+                                    <span id="clientNameDisplay" class="font-weight-bold text-white" style="font-size:13px"></span>
+                                    <br><small class="text-white-50" style="font-size:11px"><?= __('transaction_history') ?></small>
+                                </div>
+                                <button type="button" class="close py-0" data-dismiss="modal" aria-label="Close" style="font-size:1.1rem;line-height:1">
                                     <span aria-hidden="true">&times;</span>
                                 </button>
                             </div>
-                            <div class="modal-body">
-                                <div class="text-center mb-4">
-                                    <h5 id="clientNameDisplay" class="font-weight-bold text-success mb-0"></h5>
-                                    <p class="text-muted small"><?= __('transaction_history') ?></p>
-                                </div>
+                            <div class="modal-body" style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
                                 
                                                                 <!-- Currency and Search Filters -->
                                 <div class="row mb-4">
@@ -67,7 +67,7 @@
                                 </div>
                                 </div>
 
-                                <div class="table-responsive rounded" style="max-height: 650px; overflow-y: auto; overflow-x: auto; border: 1px solid #ddd; border-radius: 4px;">
+                                <div class="table-responsive rounded" style="flex:1; overflow-y: auto; overflow-x: auto; border: 1px solid #ddd; border-radius: 4px;">
                                     <table class="table table-sm table-hover table-striped mb-0" id="clientTransactionsTable" style="min-width: 100%; font-size: 0.75rem;">
                                         <thead class="bg-light" style="position: sticky; top: 0; z-index: 10;">
                                             <tr style="font-size: 0.7rem; padding: 2px;">
@@ -110,8 +110,8 @@
                                     <p class="mt-3"><?= __('loading_transactions') ?>...</p>
                                 </div>
                             </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('close') ?></button>
+                            <div class="modal-footer py-1">
+                                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal"><?= __('close') ?></button>
                             </div>
                         </div>
                     </div>

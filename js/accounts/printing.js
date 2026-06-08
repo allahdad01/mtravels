@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (printSupplierTransactionsBtn) {
         printSupplierTransactionsBtn.addEventListener('click', function() {
             const modal = $(this).closest('.modal');
-            const supplierName = modal.find('#supplierNameDisplay').text();
+            const supplierName = modal.find('#supplierTransNameDisplay').text();
             const table = modal.find('table').clone();
             
             // Remove action column for printing
