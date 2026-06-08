@@ -268,6 +268,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
         $stmt_delete_main_transactions->bindParam(3, $branch_id, PDO::PARAM_INT);
         $stmt_delete_main_transactions->execute();
 
+        // Restore ticket status to booked
+        $stmt_restore_status = $pdo->prepare("UPDATE ticket_bookings SET status = 'booked' WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt_restore_status->bindParam(1, $transaction['ticket_id'], PDO::PARAM_INT);
+        $stmt_restore_status->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt_restore_status->bindParam(3, $branch_id, PDO::PARAM_INT);
+        $stmt_restore_status->execute();
+
         // Step 5: Delete the Date Change Record
         $deleteTransaction = "DELETE FROM date_change_tickets WHERE id = ? AND tenant_id = ? AND branch_id = ?";
 
