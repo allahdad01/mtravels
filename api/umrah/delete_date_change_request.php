@@ -179,11 +179,11 @@ try {
         $updateFamilyStmt = $pdo->prepare("
             UPDATE families f
             SET
-                f.total_members = (SELECT COUNT(*) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ?),
-                f.total_price = (SELECT SUM(sold_price) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ?),
-                f.total_paid = (SELECT SUM(paid) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ?),
-                f.total_paid_to_bank = (SELECT SUM(received_bank_payment) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ?),
-                f.total_due = (SELECT SUM(due) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ?)
+                f.total_members = (SELECT COUNT(*) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ? AND status = 'active'),
+                f.total_price = (SELECT SUM(sold_price) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ? AND status = 'active'),
+                f.total_paid = (SELECT SUM(paid) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ? AND status = 'active'),
+                f.total_paid_to_bank = (SELECT SUM(received_bank_payment) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ? AND status = 'active'),
+                f.total_due = (SELECT SUM(due) FROM umrah_bookings WHERE family_id = f.family_id AND tenant_id = ? AND branch_id = ? AND status = 'active')
             WHERE f.family_id = ? AND f.tenant_id = ? AND f.branch_id = ?
         ");
         $updateFamilyStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
