@@ -16,6 +16,10 @@
         "allow-plugins": {
             "composer/installers": true,
             "oomphinc/composer-installers-extender": true
+        },
+        "platform-check": false,
+        "platform": {
+            "php": "8.3.31"
         }
     },
     "require-dev": {
