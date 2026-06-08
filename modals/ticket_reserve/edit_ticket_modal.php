@@ -167,6 +167,7 @@
                                                     <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('close') ?></button>
                                                     <button type="submit" class="btn btn-primary"><?= __('save_changes') ?></button>
                                                 </div>
+                                                </div>
                                             </form>
                                         </div>
                                     </div>

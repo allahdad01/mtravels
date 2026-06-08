@@ -327,6 +327,23 @@ function editTicket(ticketId) {
             window.originalBase = data.price;
             window.originalSold = data.sold;
 
+            // Disable supplier and client fields if ticket has refund, date change, or weight records
+            var hasRestrictions = data.has_refund || data.has_date_change || data.has_weight;
+            var supplierSelect = document.getElementById('editSupplier');
+            var clientSelect = document.getElementById('editSoldTo');
+            
+            if (hasRestrictions) {
+                supplierSelect.disabled = true;
+                clientSelect.disabled = true;
+                $(supplierSelect).selectpicker('refresh');
+                $(clientSelect).selectpicker('refresh');
+            } else {
+                supplierSelect.disabled = false;
+                clientSelect.disabled = false;
+                $(supplierSelect).selectpicker('refresh');
+                $(clientSelect).selectpicker('refresh');
+            }
+
             // Hide loader and show modal
             document.getElementById('editLoader').style.display = 'none';
             $('#editTicketModal').modal('show');

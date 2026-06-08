@@ -77,9 +77,10 @@
                                                                     </div>
                                                                 </div>
                                                             </div>
-                                                        </div>
+                                                             </div>
+                                                         </div>
 
-                                                        <!-- Transactions Table -->
+                                                         <!-- Transactions Table -->
                                                         <div class="card mb-4">
                                                             <div class="card-header bg-light d-flex justify-content-between align-items-center">
                                                                 <h6 class="mb-0"><?= __('transaction_history') ?></h6>

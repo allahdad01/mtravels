@@ -78,6 +78,7 @@
                         </select>
                     </div>
                     </div>
+                </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">
                         <i class="feather icon-x mr-1"></i><?= __('cancel') ?>

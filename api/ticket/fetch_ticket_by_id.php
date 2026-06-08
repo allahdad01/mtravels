@@ -32,6 +32,19 @@ $stmt->execute();
 $ticket = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if ($ticket) {
+    // Check for associated records
+    $hasRefund = $pdo->prepare("SELECT COUNT(*) FROM refunded_tickets WHERE ticket_id = ? AND tenant_id = ? AND branch_id = ?");
+    $hasRefund->execute([$ticketId, $tenant_id, $branch_id]);
+    $ticket['has_refund'] = $hasRefund->fetchColumn() > 0;
+
+    $hasDateChange = $pdo->prepare("SELECT COUNT(*) FROM date_change_tickets WHERE ticket_id = ? AND tenant_id = ? AND branch_id = ?");
+    $hasDateChange->execute([$ticketId, $tenant_id, $branch_id]);
+    $ticket['has_date_change'] = $hasDateChange->fetchColumn() > 0;
+
+    $hasWeight = $pdo->prepare("SELECT COUNT(*) FROM ticket_weights WHERE ticket_id = ? AND tenant_id = ? AND branch_id = ?");
+    $hasWeight->execute([$ticketId, $tenant_id, $branch_id]);
+    $ticket['has_weight'] = $hasWeight->fetchColumn() > 0;
+
     echo json_encode([
         'success' => true,
         'ticket' => $ticket

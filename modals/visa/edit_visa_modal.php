@@ -252,3 +252,4 @@ $all_visa_types = [
                                                  </form>
                                              </div>
                                          </div>
+                                     </div>

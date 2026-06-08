@@ -67,7 +67,7 @@
                             </div>
                         </div>
                     </div>
-                
+                    </div>
 
                 <div class="table-responsive rounded" style="max-height: calc(100vh - 280px); overflow-y: auto; overflow-x: auto; border: 1px solid #ddd; border-radius: 4px;">
                     <table class="table table-sm table-hover table-striped mb-0" id="transactionsTable" style="min-width: 100%; font-size: 0.75rem;">
@@ -112,10 +112,8 @@
                             </div>
                          <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('close') ?></button>
-                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
