@@ -110,6 +110,8 @@ try {
     <div class="members-list">
         <?php foreach ($members as $member): 
             $isRefunded = isset($member['status']) && $member['status'] === 'refunded';
+            $isCancelled = isset($member['status']) && $member['status'] === 'cancelled';
+            $isDisabled = $isRefunded || $isCancelled;
             
             // Get main account transactions
             $transactionSql = "SELECT SUM(payment_amount / COALESCE(exchange_rate, 1)) as main_account_total
@@ -196,12 +198,13 @@ try {
                                   <i class="fas fa-edit"></i><?= __('edit') ?>
                               </a>
                              <?php endif; ?>
-                             <?php if ($canEdit): ?>
+                             <?php if ($canEdit && !$isDisabled): ?>
                              <a class="dropdown-item" href="#" onclick="openTransactionTab(<?= $member['booking_id'] ?>, <?= $member['sold_price'] ?>); return false;">
                                  <i class="fas fa-credit-card"></i><?= __('transaction') ?>
                              </a>
                              <?php endif; ?>
                             
+                            <?php if (!$isDisabled): ?>
                             <div class="dropdown-divider"></div>
                             <h6 class="dropdown-header"><?= __('documents') ?></h6>
                             <a class="dropdown-item" href="#" onclick="generateTazminAgreement(<?= $member['booking_id'] ?>); return false;">
@@ -222,6 +225,7 @@ try {
                             <a class="dropdown-item" href="#" onclick="openMemberDocumentsModal(<?= $member['booking_id'] ?>, '<?= htmlspecialchars($member['name']) ?>'); return false;">
                                 <i class="fas fa-file-upload"></i>Photo & Passport & Visa
                             </a>
+                            <?php endif; ?>
                             
                             <?php if (empty($member['status']) || $member['status'] === 'pending'): ?>
                             <div class="dropdown-divider"></div>
@@ -241,9 +245,11 @@ try {
                               <a class="dropdown-item" href="#" onclick="openCancellationReapplyModal(<?= $member['booking_id'] ?>, <?= $member['price'] ?>, <?= $member['sold_price'] ?>, <?= $member['profit'] ?>, '<?= $member['currency'] ?>', '<?= $member['status'] ?>'); return false;">
                                   <i class="fas fa-cog"></i>Manage Booking Status
                               </a>
+                             <?php if (!$isDisabled): ?>
                              <a class="dropdown-item" href="#" onclick="openDateChangeModal(<?= $member['booking_id'] ?>, '<?= htmlspecialchars($member['name'] ?? '') ?>', '<?= htmlspecialchars($member['flight_date'] ?? '') ?>', '<?= htmlspecialchars($member['return_date'] ?? '') ?>', '<?= htmlspecialchars($member['duration'] ?? '') ?>', <?= $member['price'] ?>, '<?= $member['currency'] ?>'); return false;">
                                  <i class="fas fa-calendar"></i><?= __('request_date_change') ?>
                              </a>
+                             <?php endif; ?>
                              <a class="dropdown-item" href="#" onclick="generateCancellationForm(<?= $member['booking_id'] ?>); return false;">
                                  <i class="fas fa-times-circle"></i><?= __('generate_cancellation_form') ?>
                              </a>

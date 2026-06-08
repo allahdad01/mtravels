@@ -43,7 +43,7 @@ $pilgrim_ids = explode(',', $_GET['pilgrim_ids']);
 $pilgrims_info = [];
 
 foreach ($pilgrim_ids as $pilgrim_id) {
-    $stmt = $pdo->prepare("SELECT name, passport_number, duration FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt = $pdo->prepare("SELECT name, passport_number, duration FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? AND branch_id = ? AND status != 'cancelled'");
     $stmt->bindParam(1, $pilgrim_id, PDO::PARAM_INT);
     $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
     $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);

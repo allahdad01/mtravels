@@ -273,6 +273,12 @@ const transactionManager = {
 
     // Load transaction history
     loadTransactionHistory: function(bookingId) {
+        $('#transactionTableBody').html('<tr><td colspan="6" class="text-center"><i class="feather icon-loader spin"></i> Loading...</td></tr>');
+        $('#exchangeRateDisplay').text('Loading...');
+        $('#exchangedAmount').text('Loading...');
+        $('#usdSection,#afsSection,#eurSection,#aedSection').hide();
+        $('#paidAmountUSD,#paidAmountAFS,#paidAmountEUR,#paidAmountAED').text('0.00');
+        $('#remainingAmountUSD,#remainingAmountAFS,#remainingAmountEUR,#remainingAmountAED').text('0.00');
         $.ajax({
             url: '../api/hotel/get_hotel_transactions.php',
             type: 'GET',
@@ -288,6 +294,9 @@ const transactionManager = {
                         tbody.html('<tr><td colspan="6" class="text-center">No transactions found</td></tr>');
                         $('#exchangeRateDisplay').text('No exchange rates found');
                         $('#exchangedAmount').text('No conversions available');
+                        $('#usdSection,#afsSection,#eurSection,#aedSection').hide();
+                        $('#paidAmountUSD,#paidAmountAFS,#paidAmountEUR,#paidAmountAED').text('0.00');
+                        $('#remainingAmountUSD,#remainingAmountAFS,#remainingAmountEUR,#remainingAmountAED').text('0.00');
                         return;
                     }
 

@@ -123,7 +123,7 @@ try {
         $stmt->execute();
     } else {
         // Recalculate due for re-applied bookings
-        $calculateDueQuery = "UPDATE umrah_bookings SET due = sold_price - paid WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?";
+        $calculateDueQuery = "UPDATE umrah_bookings SET due = GREATEST(0, sold_price - COALESCE(paid, 0) - COALESCE(received_bank_payment, 0)) WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?";
         $stmt = $pdo->prepare($calculateDueQuery);
         $stmt->bindParam(1, $booking_id, PDO::PARAM_INT);
         $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);

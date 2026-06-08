@@ -68,7 +68,7 @@ try {
         LEFT JOIN clients c ON ub.sold_to = c.id
         LEFT JOIN umrah_booking_services ubs ON ub.booking_id = ubs.booking_id
         LEFT JOIN suppliers s ON ubs.supplier_id = s.id
-        WHERE ub.family_id = ? AND ub.tenant_id = ? AND ub.branch_id = ?
+        WHERE ub.family_id = ? AND ub.tenant_id = ? AND ub.branch_id = ? AND ub.status != 'cancelled'
         GROUP BY ub.booking_id
     ";
     $membersStmt = $pdo->prepare($membersQuery);
