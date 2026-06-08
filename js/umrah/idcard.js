@@ -237,9 +237,19 @@ function updatePhotoUploadContainer() {
                 <i class="feather icon-check-circle mr-1"></i>Visa from member documents
             </div>`;
         } else {
-            visaStatus = `<div class="alert alert-warning alert-sm mb-2">
-                <i class="feather icon-alert-triangle mr-1"></i>No visa document
-            </div>`;
+            visaStatus = `
+                <div class="mb-2">
+                    <div class="custom-file mb-1">
+                        <input type="file" class="custom-file-input" id="visa_file_${pilgrim.id}" accept="image/*,.pdf" onchange="previewVisaForIdCard(this, ${pilgrim.id})">
+                        <label class="custom-file-label" for="visa_file_${pilgrim.id}">Choose visa file</label>
+                    </div>
+                    <small class="text-muted d-block mb-1">Supported: JPG, PNG, PDF (Max 5MB)</small>
+                    <button type="button" class="btn btn-success btn-sm w-100" onclick="uploadVisaForIdCard(${pilgrim.id})">
+                        <i class="feather icon-upload mr-1"></i>Upload Visa
+                    </button>
+                    <div id="visaPreview_${pilgrim.id}" class="mt-1"></div>
+                </div>
+            `;
         }
         
         photoDiv.innerHTML = `
@@ -248,19 +258,16 @@ function updatePhotoUploadContainer() {
                     <h6 class="card-title">${pilgrim.name}</h6>
                     ${photoStatus}
                     ${visaStatus}
-                    <div class="form-group">
-                        <label for="photo_${pilgrim.id}" class="btn btn-outline-primary btn-sm btn-block">
-                            <i class="feather icon-camera mr-1"></i>Upload Photo (Optional)
-                        </label>
-                        <input type="file" 
-                               id="photo_${pilgrim.id}" 
-                               name="photo_${pilgrim.id}" 
-                               accept="image/*" 
-                               style="display: none;"
-                               onchange="previewPhoto(this, ${pilgrim.id})">
-                    </div>
-                    <div id="photoPreview_${pilgrim.id}" class="mt-2">
-                        <!-- Photo preview will appear here -->
+                    <div class="mb-2">
+                        <div class="custom-file mb-1">
+                            <input type="file" class="custom-file-input" id="photo_file_${pilgrim.id}" accept="image/*" onchange="previewPhotoForIdCard(this, ${pilgrim.id})">
+                            <label class="custom-file-label" for="photo_file_${pilgrim.id}">Choose photo file</label>
+                        </div>
+                        <small class="text-muted d-block mb-1">Supported: JPG, PNG (Max 5MB)</small>
+                        <button type="button" class="btn btn-primary btn-sm w-100" onclick="uploadPhotoForIdCard(${pilgrim.id})">
+                            <i class="feather icon-upload mr-1"></i>Upload Photo
+                        </button>
+                        <div id="photoPreview_${pilgrim.id}" class="mt-1"></div>
                     </div>
                 </div>
             </div>
@@ -290,6 +297,126 @@ function previewPhoto(input, pilgrimId) {
         };
         reader.readAsDataURL(input.files[0]);
     }
+}
+
+// Function to preview selected photo file
+function previewPhotoForIdCard(input, pilgrimId) {
+    const previewDiv = document.getElementById(`photoPreview_${pilgrimId}`);
+    if (!previewDiv) return;
+    if (!input.files || !input.files[0]) { previewDiv.innerHTML = ''; return; }
+    const file = input.files[0];
+    if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            previewDiv.innerHTML = `<img src="${e.target.result}" style="width:60px;height:60px;object-fit:cover;border-radius:4px;border:2px solid #28a745;">`;
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+// Function to upload photo for ID card pilgrim
+function uploadPhotoForIdCard(pilgrimId) {
+    const pilgrim = selectedPilgrims.find(p => p.id == pilgrimId);
+    if (!pilgrim) return;
+    const fileInput = document.getElementById(`photo_file_${pilgrimId}`);
+    if (!fileInput || !fileInput.files || !fileInput.files.length) {
+        showToast('warning', 'Please select a photo file first.');
+        return;
+    }
+    const file = fileInput.files[0];
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    const maxSize = 5 * 1024 * 1024;
+    if (!allowedTypes.includes(file.type)) {
+        showToast('error', 'Invalid file type. Allowed: JPG, PNG, GIF.');
+        return;
+    }
+    if (file.size > maxSize) {
+        showToast('error', 'File too large. Maximum 5MB.');
+        return;
+    }
+    const uploadBtn = document.querySelector(`button[onclick="uploadPhotoForIdCard(${pilgrimId})"]`);
+    if (uploadBtn) { uploadBtn.disabled = true; uploadBtn.innerHTML = '<i class="feather icon-loader mr-1"></i>Uploading...'; }
+    const formData = new FormData();
+    formData.append('booking_id', pilgrimId);
+    formData.append('document_type', 'photo');
+    formData.append('file', file);
+    fetch('../api/upload_member_documents.php', { method: 'POST', body: formData })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                pilgrim.photoPath = data.file_path;
+                updatePhotoUploadContainer();
+                showToast('success', 'Photo uploaded successfully!');
+            } else {
+                throw new Error(data.message || 'Upload failed');
+            }
+        })
+        .catch(err => showToast('error', 'Error uploading photo: ' + err.message))
+        .finally(() => {
+            if (uploadBtn) { uploadBtn.disabled = false; uploadBtn.innerHTML = '<i class="feather icon-upload mr-1"></i>Upload Photo'; }
+        });
+}
+
+// Function to preview selected visa file
+function previewVisaForIdCard(input, pilgrimId) {
+    const previewDiv = document.getElementById(`visaPreview_${pilgrimId}`);
+    if (!previewDiv) return;
+    if (!input.files || !input.files[0]) { previewDiv.innerHTML = ''; return; }
+    const file = input.files[0];
+    const fileSize = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+    const isPdf = file.name.toLowerCase().endsWith('.pdf');
+    if (isPdf) {
+        previewDiv.innerHTML = `<div class="alert alert-info py-1 px-2 mb-0" style="font-size:12px"><i class="feather icon-file-text mr-1"></i>PDF: ${file.name} (${fileSize})</div>`;
+    } else {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            previewDiv.innerHTML = `<img src="${e.target.result}" style="width:60px;height:60px;object-fit:cover;border-radius:4px;border:2px solid #28a745;">`;
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+// Function to upload visa for ID card pilgrim
+function uploadVisaForIdCard(pilgrimId) {
+    const pilgrim = selectedPilgrims.find(p => p.id == pilgrimId);
+    if (!pilgrim) return;
+    const fileInput = document.getElementById(`visa_file_${pilgrimId}`);
+    if (!fileInput || !fileInput.files || !fileInput.files.length) {
+        showToast('warning', 'Please select a visa file first.');
+        return;
+    }
+    const file = fileInput.files[0];
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
+    const maxSize = 5 * 1024 * 1024;
+    if (!allowedTypes.includes(file.type)) {
+        showToast('error', 'Invalid file type. Allowed: JPG, PNG, GIF, PDF.');
+        return;
+    }
+    if (file.size > maxSize) {
+        showToast('error', 'File too large. Maximum 5MB.');
+        return;
+    }
+    const uploadBtn = document.querySelector(`button[onclick="uploadVisaForIdCard(${pilgrimId})"]`);
+    if (uploadBtn) { uploadBtn.disabled = true; uploadBtn.innerHTML = '<i class="feather icon-loader mr-1"></i>Uploading...'; }
+    const formData = new FormData();
+    formData.append('booking_id', pilgrimId);
+    formData.append('document_type', 'visa');
+    formData.append('file', file);
+    fetch('../api/upload_member_documents.php', { method: 'POST', body: formData })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                pilgrim.visaPath = data.file_path;
+                updatePhotoUploadContainer();
+                showToast('success', 'Visa uploaded successfully!');
+            } else {
+                throw new Error(data.message || 'Upload failed');
+            }
+        })
+        .catch(err => showToast('error', 'Error uploading visa: ' + err.message))
+        .finally(() => {
+            if (uploadBtn) { uploadBtn.disabled = false; uploadBtn.innerHTML = '<i class="feather icon-upload mr-1"></i>Upload Visa'; }
+        });
 }
 
 // Event listener for floating button to show modal
@@ -342,17 +469,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            // Check if any photos are missing
+            // Check if any photos are missing from server documents
             let missingPhotos = [];
             selectedPilgrims.forEach(pilgrim => {
-                const photoInput = document.getElementById(`photo_${pilgrim.id}`);
-                if (!photoInput || !photoInput.files || !photoInput.files.length) {
+                const hasPhoto = pilgrim.photoPath !== null && pilgrim.photoPath !== undefined;
+                if (!hasPhoto) {
                     missingPhotos.push(pilgrim.name);
                 }
             });
             
             if (missingPhotos.length > 0) {
                 Swal.fire({
+                    target: document.getElementById('idCardModal'),
                     title: 'Missing Photos',
                     html: `The following pilgrims don't have photos:<br><strong>${missingPhotos.join(', ')}</strong><br><br>Continue with default photos?`,
                     icon: 'question',
@@ -429,7 +557,9 @@ document.addEventListener('DOMContentLoaded', function() {
     window.selectedPilgrims = selectedPilgrims;
     window.selectForIdCard = selectForIdCard;
     window.removeFromIdCardSelection = removeFromIdCardSelection;
-    window.previewPhoto = previewPhoto;
+    window.previewPhotoForIdCard = previewPhotoForIdCard;
+    window.uploadPhotoForIdCard = uploadPhotoForIdCard;
+    window.uploadVisaForIdCard = uploadVisaForIdCard;
     
     // Initialize UI
     updateIdCardSelection();

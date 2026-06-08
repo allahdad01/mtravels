@@ -233,29 +233,31 @@ header('Content-Type: text/html; charset=UTF-8');
         .id-card-header {
             background-color: <?php echo $borderColor; ?>;
             color: white;
-            padding: 3mm;
-            text-align: center;
+            padding: 1.5mm 2mm;
+            text-align: left;
             font-weight: bold;
-            font-size: 7pt;
+            font-size: 5.5pt;
+            line-height: 1.2;
             flex-shrink: 0;
             display: flex;
+            flex-direction: row;
             align-items: center;
             justify-content: space-between;
-            gap: 2mm;
-            min-height: 12mm;
+            gap: 1mm;
         }
 
         .id-card-header-text {
             flex: 1;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            font-size: 7pt;
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+            hyphens: auto;
+            font-size: 5.5pt;
+            line-height: 1.2;
         }
 
         .id-card-header-logo {
-            width: 10mm;
-            height: 10mm;
+            width: 8mm;
+            height: 8mm;
             display: flex;
             align-items: center;
             justify-content: center;
