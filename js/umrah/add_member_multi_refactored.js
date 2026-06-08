@@ -292,6 +292,12 @@ $(document).on('input', '.member-name', function() {
     const badge = $(this).closest('.card').find('.member-name-badge');
     const name = $(this).val() || '[Name]';
     badge.text(`- ${name}`);
+    updateMembersSummary();
+});
+
+// Update summary when passport number or DOB changes
+$(document).on('input', 'input[id*="_passport_number"], input[id*="_dob"]', function() {
+    updateMembersSummary();
 });
 
 // ============================================
