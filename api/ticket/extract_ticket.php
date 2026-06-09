@@ -8,8 +8,6 @@
 require_once '../../vendor/autoload.php';
 require_once '../../includes/ticket_patterns.php';
 
-use Smalot\PdfParser\Parser;
-
 header('Content-Type: application/json');
 
 /**
@@ -77,8 +75,8 @@ if ($fileExt !== 'pdf') {
     exit;
 }
 
-$mimeType = mime_content_type($file['tmp_name']);
-if ($mimeType !== 'application/pdf' && $mimeType !== 'application/x-pdf') {
+$mimeType = function_exists('mime_content_type') ? mime_content_type($file['tmp_name']) : 'application/pdf';
+if ($mimeType !== false && $mimeType !== 'application/pdf' && $mimeType !== 'application/x-pdf') {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'Invalid PDF file']);
     exit;
@@ -92,34 +90,29 @@ if ($file['size'] > 10 * 1024 * 1024) {
 }
 
 try {
-    // Extract text from PDF — prefer pdftotext -layout for column-aligned output
     $extractedText = '';
-    
-    // Find pdftotext binary (common Windows + Linux paths)
-    $pdftotextBin = '';
-    $candidates = ['C:\\xampp\\php\\pdftotext.exe', 'pdftotext', '/usr/bin/pdftotext', '/usr/local/bin/pdftotext'];
-    foreach ($candidates as $candidate) {
-        if (is_file($candidate)) { $pdftotextBin = $candidate; break; }
-        $test = trim(shell_exec("where $candidate 2>NUL || which $candidate 2>/dev/null"));
-        if (!empty($test)) { $pdftotextBin = $candidate; break; }
-    }
-    
-    if (!empty($pdftotextBin)) {
-        $tmpFile = $file['tmp_name'];
-        $escapedFile = escapeshellarg($tmpFile);
-        $output = shell_exec("$pdftotextBin -layout $escapedFile - 2>/dev/null");
-        if ($output !== null && strlen(trim($output)) > 0) {
-            $extractedText = $output;
-        }
-    }
-    
-    // Fallback: Smalot\PdfParser
-    if (empty(trim($extractedText))) {
-        $parser = new Parser();
+
+    try {
+        $parser = new \Smalot\PdfParser\Parser();
         $pdf = $parser->parseFile($file['tmp_name']);
+
         foreach ($pdf->getPages() as $page) {
             $extractedText .= $page->getText() . "\n";
         }
+
+        $extractedText = trim($extractedText);
+
+        if ($extractedText === '') {
+            throw new Exception("Empty PDF text");
+        }
+
+    } catch (Throwable $e) {
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'message' => 'PDF parsing failed: ' . $e->getMessage()
+        ]);
+        exit;
     }
     
     if (empty(trim($extractedText))) {
@@ -128,7 +121,7 @@ try {
         exit;
     }
     
-     // Extract ticket data using patterns
+      // Extract ticket data using patterns
       $ticketData = extractTicketData($extractedText);
      
      // Ensure all values are JSON-serializable
@@ -173,7 +166,7 @@ try {
      http_response_code(200);
      echo $json;
     
-} catch (Exception $e) {
+} catch (Throwable $e) {
     http_response_code(500);
     echo json_encode([
         'success' => false,
