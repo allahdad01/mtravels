@@ -2110,24 +2110,56 @@ function extractKamAirTicket($text) {
 function extractArianaFlightInfo($text) {
     $info = [];
     
-    // Departure time and terminal from itinerary
+    // Pattern 1: Departure time with terminal - "KBL 10:30 terminal a"
     if (preg_match('/([A-Z]{3})\s+(\d{1,2}):(\d{2})\s+terminal[:\s]*([a-z])/i', $text, $match)) {
         $info['departure_airport'] = $match[1];
         $info['departure_time'] = sprintf('%02d:%02d', $match[2], $match[3]);
         $info['departure_terminal'] = strtoupper($match[4]);
     }
     
-    // Arrival time and terminal
+    // Pattern 2: Departure time without terminal - "KBL 10:30"
+    if (!isset($info['departure_time']) && preg_match('/([A-Z]{3})\s+(\d{1,2}):(\d{2})(?:\s+terminal[:\s]*([a-z]))?/i', $text, $match)) {
+        if (isset(AIRPORTS[$match[1]])) {
+            $info['departure_airport'] = $match[1];
+            $info['departure_time'] = sprintf('%02d:%02d', $match[2], $match[3]);
+            if (!empty($match[4])) {
+                $info['departure_terminal'] = strtoupper($match[4]);
+            }
+        }
+    }
+    
+    // Pattern 3: Time on/or after the date line in itinerary - "07-JUN 10:30" or "07-JUN\n10:30"
+    if (!isset($info['departure_time']) && preg_match('/(\d{1,2})-([A-Z]{3})\s*\R?\s*(\d{1,2}):(\d{2})/i', $text, $match)) {
+        $info['departure_time'] = sprintf('%02d:%02d', $match[3], $match[4]);
+    }
+    
+    // Pattern 4: Time right after flight number line - "FG-261ECONOMY737" then next line or "FG-261 10:30"
+    if (!isset($info['departure_time']) && preg_match('/FG-\d+[A-Z]*\d*\s*\R?\s*(\d{1,2}):(\d{2})/i', $text, $match)) {
+        $info['departure_time'] = sprintf('%02d:%02d', $match[1], $match[2]);
+    }
+    
+    // Arrival time and terminal (same patterns)
     if (preg_match('/([A-Z]{3})\s+(\d{1,2}):(\d{2})\s+terminal[:\s]*([a-z])/i', $text, $match)) {
-        if (!isset($info['departure_airport']) || $info['departure_airport'] !== $match[1]) {
+        $originAirport = $info['departure_airport'] ?? null;
+        if ($originAirport !== $match[1]) {
             $info['arrival_airport'] = $match[1];
             $info['arrival_time'] = sprintf('%02d:%02d', $match[2], $match[3]);
             $info['arrival_terminal'] = strtoupper($match[4]);
         }
     }
+    if (!isset($info['arrival_time']) && preg_match('/([A-Z]{3})\s+(\d{1,2}):(\d{2})(?:\s+terminal[:\s]*([a-z]))?/i', $text, $match)) {
+        $originAirport = $info['departure_airport'] ?? null;
+        if ($originAirport !== $match[1] && isset(AIRPORTS[$match[1]])) {
+            $info['arrival_airport'] = $match[1];
+            $info['arrival_time'] = sprintf('%02d:%02d', $match[2], $match[3]);
+            if (!empty($match[4])) {
+                $info['arrival_terminal'] = strtoupper($match[4]);
+            }
+        }
+    }
     
     // Aircraft type
-    if (preg_match('/([A-Z]{3})\s+\d{1,2}:\d{2}.*?\n.*?(\d{3})\s+[A-Z]/i', $text, $match)) {
+    if (preg_match('/FG-\d+[A-Z]+(\d{3})/', $text, $match)) {
         $info['aircraft_type'] = $match[1];
     }
     
@@ -2250,6 +2282,86 @@ function extractArianaTicket($text) {
         }
     }
     
+    // Second pattern: handle single-line format where name and ticket number are on same line
+    // e.g. "MR KHALID LARAWAY 255 1020 164 189"
+    if (empty($passengers) && preg_match_all('/(?:^|\n)\s*((?:MRS?|MS|MISS|DR|PROF|MR)\s+[A-Z\s]+?)\s+(\d{3}\s+\d{4}\s+\d{3}\s+\d{3})(?:\s*$|\s*\n)/mi', $text, $nameMatches, PREG_SET_ORDER)) {
+        // Extract origin/destination from route pattern
+        $origin = null;
+        $destination = null;
+        if (preg_match('/([A-Z]{3})-([A-Z]{3})/', $text, $routeMatch)) {
+            $origin = $routeMatch[1];
+            $destination = $routeMatch[2];
+        }
+        
+        // Extract flight number from "FG-261" pattern
+        $flightNumber = null;
+        if (preg_match('/(FG-\d+)/', $text, $fnMatch)) {
+            $flightNumber = $fnMatch[1];
+        }
+        
+        // Extract cabin class and aircraft from itinerary line like "FG-261ECONOMY737"
+        $cabinClass = 'Economy';
+        $aircraftType = null;
+        if (preg_match('/FG-\d+([A-Z]+)(\d{3})/', $text, $detailMatch)) {
+            $cabinClass = ucfirst(strtolower($detailMatch[1]));
+            $aircraftType = $detailMatch[2];
+        }
+        
+        // Extract departure date from Travel Itinerary section
+        $departureDate = null;
+        if (preg_match('/(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+(\d{1,2})-([A-Z]{3})/i', $text, $dateMatch)) {
+            $departureDate = parseTicketDate($dateMatch[1], $dateMatch[2], date('Y'));
+        }
+        
+        // Extract departure time from flight info (may be null if not on ticket)
+        $departureTime = isset($flightInfo['departure_time']) ? $flightInfo['departure_time'] : null;
+        $arrivalTime = isset($flightInfo['arrival_time']) ? $flightInfo['arrival_time'] : null;
+        
+        foreach ($nameMatches as $nm) {
+            $passenger = [];
+            
+            // Passenger name
+            $fullName = trim($nm[1]);
+            if (preg_match('/(MRS?|MS|MISS|DR|PROF|MR)\s+(.+)/i', $fullName, $nameMatch)) {
+                $passenger['title'] = $nameMatch[1];
+                $passenger['passenger_name'] = $fullName;
+                $passenger['name'] = trim($nameMatch[2]);
+            }
+            
+            // Basic info
+            $passenger['pnr'] = $pnr;
+            $passenger['ticket_number'] = str_replace(' ', '', $nm[2]);
+            
+            // Flight details
+            $passenger['flight_number'] = $flightNumber;
+            $passenger['airline_code'] = 'FG';
+            $passenger['airline'] = getAirlineName('FG');
+            $passenger['cabin_class'] = $cabinClass;
+            $passenger['aircraft_type'] = $aircraftType;
+            
+            // Route
+            $passenger['origin'] = $origin;
+            $passenger['origin_city'] = $origin ? getAirportName($origin) : null;
+            $passenger['destination'] = $destination;
+            $passenger['destination_city'] = $destination ? getAirportName($destination) : null;
+            
+            // Times
+            $passenger['departure_date'] = $departureDate;
+            $passenger['departure_time'] = $departureTime;
+            $passenger['arrival_time'] = $arrivalTime;
+            
+            // Additional info
+            $passenger['ticket_status'] = 'Confirmed';
+            $passenger['is_confirmed'] = true;
+            $passenger['trip_type'] = 'One Way';
+            
+            $passenger['extraction_confidence'] = calculateConfidenceScore($passenger);
+            $passenger['format_detected'] = 'ariana';
+            
+            $passengers[] = $passenger;
+        }
+    }
+    
     // If no passengers extracted, try alternative parsing
     if (empty($passengers)) {
         // Fallback extraction logic
@@ -2281,6 +2393,14 @@ function extractArianaTicket($text) {
         
         if (preg_match('/(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+(\d{1,2})-([A-Z]{3})/i', $text, $match)) {
             $passenger['departure_date'] = parseTicketDate($match[1], $match[2], date('Y'));
+        }
+        
+        // Extract departure time from flightInfo in fallback too
+        if (isset($flightInfo['departure_time'])) {
+            $passenger['departure_time'] = $flightInfo['departure_time'];
+        }
+        if (isset($flightInfo['arrival_time'])) {
+            $passenger['arrival_time'] = $flightInfo['arrival_time'];
         }
         
         if (empty($passenger['passenger_name']) && !empty($passengerNames)) {
