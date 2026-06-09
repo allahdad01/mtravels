@@ -936,7 +936,7 @@ function isCancelledEtc($status) {
                                         <!-- Refund -->
                                         <?php if ($isApproved): ?>
                                         <button class="vc-btn vc-btn--warn"
-                                                onclick="openRefundModal(<?= $visa['id'] ?>, <?= htmlspecialchars($visa['sold']) ?>, <?= htmlspecialchars($visa['profit']) ?>, '<?= htmlspecialchars($visa['currency']) ?>')"
+                                                onclick="openRefundModal(<?= $visa['id'] ?>, <?= htmlspecialchars($visa['sold']) ?>, <?= htmlspecialchars($visa['base']) ?>, '<?= htmlspecialchars($visa['currency']) ?>')"
                                                 title="<?= __('refund_visa') ?>">
                                             <i class="feather icon-refresh-cw"></i>
                                         </button>

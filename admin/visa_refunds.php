@@ -741,11 +741,11 @@ function getRefundStatusDotColor($status) {
                                         </div>
                                     </div>
 
-                                    <div class="visa-card__actions">
-                                         <!-- Process -->
-                                         <?php if ($refund['processed'] == 0 && $canEdit && strtolower($refund['client_type'] ?? 'regular') !== 'regular'): ?>
-                                         <button class="vc-btn vc-btn--success" onclick="processRefundTransaction(<?= $refund['id'] ?>, '<?= htmlspecialchars($refund['applicant_name']) ?>')">
-                                             <i class="feather icon-check"></i> <?= __('process') ?>
+                                     <div class="visa-card__actions">
+                                         <!-- Manage Transactions -->
+                                          <?php if ($canEdit && strtolower($refund['client_type'] ?? 'regular') !== 'regular'): ?>
+                                         <button class="vc-btn vc-btn--success" onclick="processRefundTransaction(<?= $refund['id'] ?>)">
+                                             <i class="feather icon-credit-card"></i> <?= __('manage_transactions') ?>
                                          </button>
                                          <?php endif; ?>
 
@@ -756,9 +756,9 @@ function getRefundStatusDotColor($status) {
 
                                         <!-- Delete -->
                                         <?php if ($canEdit): ?>
-                                        <button class="vc-btn vc-btn--danger" onclick="deleteRefund(<?= $refund['id'] ?>, '<?= htmlspecialchars($refund['applicant_name']) ?>')">
-                                            <i class="feather icon-trash-2"></i> <?= __('delete') ?>
-                                        </button>
+<button class="vc-btn vc-btn--danger" onclick="deleteRefund(<?= $refund['id'] ?>)">
+    <i class="feather icon-trash-2"></i> <?= __('delete') ?>
+</button>
                                         <?php endif; ?>
                                     </div>
                                 </div>
@@ -827,7 +827,6 @@ function getRefundStatusDotColor($status) {
 <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
 <script src="../assets/js/pcoded.min.js"></script>
 <script src="../js/visa_refund/transaction_manager.js"></script>
-<script src="../js/visa_refund/refund_management.js"></script>
 <script src="../js/visa_refund/visa_delete.js"></script>
 
 <!-- SweetAlert2 -->

@@ -1,64 +1,47 @@
 
-// DataTables removed - using server-side PHP filtering instead
+function printRefundAgreement(refundId) {
+    window.open('../api/visa/print_visa_refund.php?id=' + refundId, '_blank');
+}
 
 function deleteRefund(refundId) {
     Swal.fire({
-        title: 'Are you sure?',
-        text: "You won't be able to revert this!",
+        title: 'are_you_sure',
+        text: 'you_cannot_revert_this_action',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
         cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Yes, delete it!'
+        confirmButtonText: 'yes_delete_it',
+        cancelButtonText: 'cancel'
     }).then((result) => {
         if (result.isConfirmed) {
-            // Get the delete button that was clicked
-            const clickedBtn = $(`a[onclick="deleteRefund(${refundId})"]`);
-            const originalContent = clickedBtn.html();
-            
-            // Disable button and show loading state
-            clickedBtn.prop('disabled', true);
-            clickedBtn.html('<i class="feather icon-loader"></i>');
-            
-            // Get CSRF token from meta tag or hidden input
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
-                             document.querySelector('input[name="csrf_token"]')?.value;
-            
             fetch('../api/visa/delete_visa_refund.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ id: refundId, csrf_token: csrfToken })
+                body: JSON.stringify({ id: refundId })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
                     Swal.fire(
-                        'Deleted!',
-                        data.message,
+                        'deleted',
+                        'refund_deleted_successfully',
                         'success'
-                    ).then(() => {
-                        location.reload();
-                    });
+                    ).then(() => location.reload());
                 } else {
-                    // Re-enable button on error
-                    clickedBtn.prop('disabled', false);
-                    clickedBtn.html(originalContent);
                     Swal.fire(
-                        'Error!',
-                        data.message,
+                        'error',
+                        data.message || 'failed_to_delete_refund',
                         'error'
                     );
                 }
             })
             .catch(error => {
-                // Re-enable button on error
-                clickedBtn.prop('disabled', false);
-                clickedBtn.html(originalContent);
                 Swal.fire(
-                    'Error!',
-                    'An error occurred while deleting the refund.',
+                    'error',
+                    'network_error_occurred',
                     'error'
                 );
             });

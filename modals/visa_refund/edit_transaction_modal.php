@@ -19,26 +19,11 @@
                         <input type="hidden" id="editOriginalAmount" name="original_amount">
                         <input type="hidden" id="originalAmount" name="original_amount">
 
-                        <div class="form-row">
-                            <div class="form-group col-md-6">
-                                <label for="editPaymentAmount">
-                                    <i class="feather icon-dollar-sign mr-1"></i><?= __('amount') ?>
-                                </label>
-                                <input type="number" step="0.01" class="form-control" id="editPaymentAmount" name="payment_amount" required>
-                            </div>
-                            <div class="form-group col-md-6">
-                                <label for="editPaymentCurrency">
-                                    <i class="feather icon-dollar-sign mr-1"></i><?= __('currency') ?>
-                                </label>
-                                <select class="form-control" id="editPaymentCurrency" name="payment_currency" required disabled>
-                                    <option value=""><?= __('select_currency') ?></option>
-                                    <option value="USD"><?= __('usd') ?></option>
-                                    <option value="AFS"><?= __('afs') ?></option>
-                                    <option value="EUR"><?= __('eur') ?></option>
-                                    <option value="DARHAM"><?= __('darham') ?></option>
-                                </select>
-                                <input type="hidden" id="editPaymentCurrencyHidden" name="payment_currency_actual">
-                            </div>
+                        <div class="form-group">
+                            <label for="editPaymentAmount">
+                                <i class="feather icon-dollar-sign mr-1"></i><?= __('amount') ?>
+                            </label>
+                            <input type="number" step="0.01" class="form-control" id="editPaymentAmount" name="payment_amount" required>
                         </div>
 
                         <div class="form-group">
@@ -48,24 +33,20 @@
                             <textarea class="form-control" id="editPaymentDescription" name="payment_description" rows="2" required></textarea>
                         </div>
 
+                        <div class="form-group" id="editExchangeRateField" style="display: none;">
+                            <label for="editExchangeRate">
+                                <i class="feather icon-refresh-cw mr-1"></i><?= __('exchange_rate') ?>
+                            </label>
+                            <input type="number" class="form-control" id="editExchangeRate"
+                                   name="exchange_rate" step="0.01" placeholder="Enter exchange rate">
+                        </div>
+
                         <div class="form-group">
                             <label for="editReceiptNumber">
                                 <i class="feather icon-hash mr-1"></i><?= __('receipt_number') ?>
                             </label>
                             <input type="text" class="form-control" id="editReceiptNumber"
                                    name="receipt_number" placeholder="<?= __('enter_receipt_number') ?>">
-                        </div>
-
-                        <div class="form-group" id="editExchangeRateField" style="display: none;">
-                            <label id="editExchangeRateLabel" for="editTransactionExchangeRate">
-                                <i class="feather icon-refresh-cw mr-1"></i><?= __('exchange_rate') ?>
-                            </label>
-                            <input type="number" class="form-control" id="editTransactionExchangeRate"
-                                   name="exchange_rate" step="0.01" placeholder="Enter exchange rate">
-                            <small class="form-text text-muted d-block mt-1">
-                                Enter how many <span id="editExchangeRateTarget"></span> equals 1 <span id="editExchangeRateBase"></span>
-                                <span id="editExchangeRateExample" class="d-block mt-1" style="color: #666;"></span>
-                            </small>
                         </div>
 
                         <div class="modal-footer">

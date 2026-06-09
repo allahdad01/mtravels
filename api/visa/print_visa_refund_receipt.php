@@ -320,11 +320,6 @@ try {
                 </div>
 
                 <div class="detail-row">
-                    <span class="detail-label"><?php echo __('payment_type'); ?>:</span>
-                    <span class="detail-value"><?php echo $transaction['type'] === 'credit' ? __('received') : __('paid'); ?></span>
-                </div>
-
-                <div class="detail-row">
                     <span class="detail-label"><?php echo __('description'); ?>:</span>
                     <span class="detail-value"><?php echo htmlspecialchars($transaction['description']); ?></span>
                 </div>
@@ -352,23 +347,6 @@ try {
                     <span class="detail-label"><?php echo __('visa_type'); ?>:</span>
                     <span class="detail-value"><?php echo htmlspecialchars($transaction['visa_type']); ?></span>
                 </div>
-
-                <div class="detail-row">
-                    <span class="detail-label"><?php echo __('refund_type'); ?>:</span>
-                    <span class="detail-value"><?php echo htmlspecialchars($transaction['refund_type']); ?></span>
-                </div>
-
-                <div class="detail-row">
-                    <span class="detail-label"><?php echo __('reason'); ?>:</span>
-                    <span class="detail-value"><?php echo htmlspecialchars($transaction['reason']); ?></span>
-                </div>
-
-                <?php if (!empty($transaction['exchange_rate']) && $transaction['exchange_rate'] != 1): ?>
-                <div class="detail-row">
-                    <span class="detail-label"><?php echo __('exchange_rate'); ?>:</span>
-                    <span class="detail-value"><?php echo number_format($transaction['exchange_rate'], 4); ?></span>
-                </div>
-                <?php endif; ?>
 
                 <?php endif; ?>
             </div>
