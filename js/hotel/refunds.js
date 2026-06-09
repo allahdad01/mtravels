@@ -1,113 +1,70 @@
-/**
- * Refund Management Module
- */
-// Toast notifications are handled by the global showToast function
-// Function to open refund modal
-function openRefundModal(bookingId, amount, profit, currency) {
-    // Set hidden fields
-    $('#refund_booking_id').val(bookingId);
-    $('#refund_original_amount').val(amount);
-    $('#refund_original_profit').val(profit);
-    $('#refund_currency').val(currency);
-    
-    // Display values in the modal
-    $('#displayOriginalAmount').text(currency + ' ' + amount.toFixed(2));
-    $('#displayOriginalProfit').text(currency + ' ' + profit.toFixed(2));
-    
-    // Set default exchange rate
-    $('#exchange_rate').val('89.5000').prop('readonly', false);
-    
-    // Reset form
-    $('#refundForm')[0].reset();
-    $('#refundAmountGroup').hide();
-    
-    // Show modal
-    $('#refundModal').modal('show');
-}
+$(document).ready(function () {
 
-// Function to toggle refund amount field
-function toggleRefundAmount() {
-    const refundType = $('#refund_type').val();
-    const amountGroup = $('#refundAmountGroup');
-    const amountInput = $('#refund_amount');
-    
-    if (refundType === 'partial') {
-        amountGroup.show();
-        amountInput.prop('required', true);
-        const maxAmount = parseFloat($('#refund_original_amount').val());
-        amountInput.attr('max', maxAmount);
-    } else {
-        amountGroup.hide();
-        amountInput.prop('required', false);
+    function calculateRefundAmount() {
+        const soldPrice = parseFloat($('#refundSold').val()) || 0;
+        const supplierPenalty = parseFloat($('#supplierRefundPenalty').val()) || 0;
+        const servicePenalty = parseFloat($('#serviceRefundPenalty').val()) || 0;
+        return Math.max(0, soldPrice - supplierPenalty - servicePenalty);
     }
-}
 
-// Initialize when document is ready
-$(document).ready(function() {
-    // Handle refund form submission
-    $('#refundForm').on('submit', function(e) {
+    $(document).on('input change', '#supplierRefundPenalty, #serviceRefundPenalty', function () {
+        $('#refundAmount').val(calculateRefundAmount().toFixed(2));
+    });
+
+    window.openRefundModal = function (bookingId, soldPrice, basePrice, currency) {
+        $('#refundBookingId').val(bookingId);
+        $('#refundSold').val(soldPrice);
+        $('#refundBase').val(basePrice);
+        $('#displaySoldPrice').text(currency + ' ' + parseFloat(soldPrice).toFixed(2));
+
+        $('#supplierRefundPenalty').val(0);
+        $('#serviceRefundPenalty').val(0);
+        $('#refundDescription').val('');
+        $('#refundAmount').val(calculateRefundAmount().toFixed(2));
+
+        $('#refundModal').modal('show');
+    };
+
+    $('#refundForm').submit(function (e) {
         e.preventDefault();
-        
-        // Disable submit button to prevent multiple clicks
+
         const submitBtn = $(this).find('button[type="submit"]');
         const originalText = submitBtn.html();
-        submitBtn.prop('disabled', true);
-        submitBtn.html('<i class="feather icon-loader mr-2 spinner-border spinner-border-sm" role="status" aria-hidden="true"></i>Processing...');
-        
-        const formData = new FormData(this);
-        const refundType = formData.get('refund_type');
-        const exchangeRate = parseFloat($('#exchange_rate').val());
-        const originalAmount = parseFloat($('#refund_original_amount').val());
-        
-        // Validate refund amount for partial refunds
-        if (refundType === 'partial') {
-            const refundAmount = parseFloat(formData.get('refund_amount'));
-            if (!refundAmount || refundAmount < 0 || refundAmount > originalAmount) {
-                // Re-enable button on validation error
-                submitBtn.prop('disabled', false);
-                submitBtn.html(originalText);
-                showToast('Please enter a valid refund amount between 0 and ' + originalAmount);
-                return;
-            }
-        }
-        
-        // Send AJAX request
+        submitBtn.prop('disabled', true).html('<i class="feather icon-loader mr-2"></i>Processing...');
+
+        const formData = $(this).serialize();
+
         $.ajax({
             url: '../api/hotel/process_hotel_refund.php',
-            type: 'POST',
+            method: 'POST',
             data: formData,
-            processData: false,
-            contentType: false,
-            success: function(response) {
+            success: function (response) {
                 try {
                     const result = typeof response === 'string' ? JSON.parse(response) : response;
-                    if (result.success) {
-                        showToast('Refund processed successfully');
+                    if (result.success || result.status === 'success') {
+                        showToast(result.message || 'Refund processed successfully', 'success');
                         $('#refundModal').modal('hide');
-                        location.reload(); // Reload to show updated data
+                        setTimeout(function () { location.reload(); }, 1500);
                     } else {
-                        // Re-enable button on error
-                        submitBtn.prop('disabled', false);
-                        submitBtn.html(originalText);
-                        showToast('Error: ' + (result.message || 'Failed to process refund'));
+                        showToast(result.message || 'Error processing refund', 'error');
                     }
                 } catch (e) {
-                    // Re-enable button on error
-                    submitBtn.prop('disabled', false);
-                    submitBtn.html(originalText);
-                    showToast('Error processing the refund request');
+                    if ($.trim(response) === 'success') {
+                        showToast('Refund processed successfully', 'success');
+                        $('#refundModal').modal('hide');
+                        setTimeout(function () { location.reload(); }, 1500);
+                    } else {
+                        showToast('Error processing refund', 'error');
+                    }
                 }
             },
-            error: function(xhr, status, error) {
-                // Re-enable button on error
-                submitBtn.prop('disabled', false);
-                submitBtn.html(originalText);
-                showToast('Error processing refund');
+            error: function () {
+                showToast('An error occurred', 'error');
+            },
+            complete: function () {
+                submitBtn.prop('disabled', false).html(originalText);
             }
         });
     });
-});
 
-// Export functions for global access
-window.openRefundModal = openRefundModal;
-window.toggleRefundAmount = toggleRefundAmount; 
+});

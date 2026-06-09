@@ -322,11 +322,6 @@ try {
                 </div>
 
                 <div class="detail-row">
-                    <span class="detail-label"><?php echo __('payment_type'); ?>:</span>
-                    <span class="detail-value"><?php echo $transaction['type'] === 'credit' ? __('refunded') : __('paid'); ?></span>
-                </div>
-
-                <div class="detail-row">
                     <span class="detail-label"><?php echo __('description'); ?>:</span>
                     <span class="detail-value"><?php echo htmlspecialchars($transaction['description']); ?></span>
                 </div>
@@ -358,11 +353,6 @@ try {
                 <div class="detail-row">
                     <span class="detail-label"><?php echo __('check_out_date'); ?>:</span>
                     <span class="detail-value"><?php echo htmlspecialchars($transaction['check_out_date']); ?></span>
-                </div>
-
-                <div class="detail-row">
-                    <span class="detail-label"><?php echo __('client'); ?>:</span>
-                    <span class="detail-value"><?php echo htmlspecialchars($transaction['client_name']); ?></span>
                 </div>
 
                 <?php endif; ?>

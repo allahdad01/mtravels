@@ -128,6 +128,10 @@ try {
         $updateResult = $updateStmt->execute([$adjustmentAmount, $transaction['main_account_id'], $tenant_id, $branch_id]);
 
         if ($updateResult) {
+            // Delete related notifications
+            $deleteNotifStmt = $pdo->prepare("DELETE FROM notifications WHERE transaction_id = ? AND transaction_type = 'visa' AND tenant_id = ? AND branch_id = ?");
+            $deleteNotifStmt->execute([$transaction_id, $tenant_id, $branch_id]);
+
             $pdo->commit();
             $message = 'Transaction deleted successfully and balances adjusted';
             

@@ -170,11 +170,17 @@
                                         </div>
                                          <div class="col-md-6">
                                               <div class="form-group" id="exchangeRateField" style="display: none;">
-                                                  <label for="exchangeRate">
-                                                      <i class="feather icon-refresh-cw mr-1"></i><?= __('exchange_rate') ?>
-                                                  </label>
-                                                  <input type="number" class="form-control" id="exchangeRate" name="exchange_rate" step="0.01" placeholder="0.00">
-                                              </div>
+                                                <label id="exchangeRateLabel" for="transactionExchangeRate">
+                                                    <i class="feather icon-refresh-cw mr-1"></i><?= __('exchange_rate') ?>
+                                                </label>
+                                                <input type="number" class="form-control" id="transactionExchangeRate" name="exchange_rate" step="0.01" placeholder="0.00">
+                                                <small class="form-text text-muted d-block mt-1">
+                                                    <span id="exchangeRateInstruction"></span>
+                                                    <span id="exchangeRateTarget" style="display:none;"></span>
+                                                    <span id="exchangeRateBase" style="display:none;"></span>
+                                                    <span id="exchangeRateExample" class="d-block mt-1" style="color: #666;"></span>
+                                                </small>
+                                            </div>
                                           </div>
                                     </div>
 

@@ -10,7 +10,7 @@
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
-                <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+                <div class="modal-body">
                     <!-- Hotel Refund Info Card -->
                     <div class="card mb-4 border-primary">
                         <div class="card-body">
@@ -23,26 +23,60 @@
                                     <p class="mb-1"><strong><?= __('hotel_name') ?>:</strong> <span id="refundHotel"></span></p>
                                 </div>
                                 <div class="col-md-6">
-                                    <h6 class="text-muted mb-2"><?= __('financial_summary') ?></h6>
-                                    <p class="mb-1"><strong><?= __('total_amount') ?>:</strong> <span id="totalAmount"></span></p>
-                                    <p class="mb-1"><strong><?= __('exchange_rate') ?>:</strong> <span id="exchangeRateDisplay"></span></p>
-                                    <p class="mb-1"><strong><?= __('exchanged_amount') ?>:</strong> <span id="exchangedAmount"></span></p>
-                                    <div id="usdSection" style="display: none;">
-                                        <p class="mb-1"><strong><?= __('paid_amount_usd') ?>:</strong> <span id="paidAmountUSD" class="text-success">USD 0.00</span></p>
-                                        <p class="mb-1"><strong><?= __('remaining_amount_usd') ?>:</strong> <span id="remainingAmountUSD" class="text-danger">USD 0.00</span></p>
-                                    </div>
-                                    <div id="afsSection" style="display: none;">
-                                        <p class="mb-1"><strong><?= __('paid_amount_afs') ?>:</strong> <span id="paidAmountAFS" class="text-success">AFS 0.00</span></p>
-                                        <p class="mb-1"><strong><?= __('remaining_amount_afs') ?>:</strong> <span id="remainingAmountAFS" class="text-danger">AFS 0.00</span></p>
-                                    </div>
-                                    <div id="eurSection" style="display: none;">
-                                        <p class="mb-1"><strong><?= __('paid_amount_eur') ?>:</strong> <span id="paidAmountEUR" class="text-success">EUR 0.00</span></p>
-                                        <p class="mb-1"><strong><?= __('remaining_amount_eur') ?>:</strong> <span id="remainingAmountEUR" class="text-danger">EUR 0.00</span></p>
-                                    </div>
-                                    <div id="aedSection" style="display: none;">
-                                        <p class="mb-1"><strong><?= __('paid_amount_aed') ?>:</strong> <span id="paidAmountAED" class="text-success">AED 0.00</span></p>
-                                        <p class="mb-1"><strong><?= __('remaining_amount_aed') ?>:</strong> <span id="remainingAmountAED" class="text-danger">AED 0.00</span></p>
-                                    </div>
+                                <div class="alert alert-info mb-0">
+                                                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                                                            <span><?= __('total_amount') ?>:</span>
+                                                                            <strong id="totalAmount"></strong>
+                                                                        </div>
+                                                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                                                            <span><?= __('exchange_rate') ?>:</span>
+                                                                            <strong id="exchangeRateDisplay"></strong>
+                                                                        </div>
+                                                                        <div class="d-flex justify-content-between align-items-center">
+                                                                            <span><?= __('exchanged_amount') ?>:</span>
+                                                                            <strong id="exchangedAmount"></strong>
+                                                                        </div>
+                                                                        <div id="usdSection" style="display: none;">
+                                                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                                                <span><?= __('paid_amount_usd') ?>:</span>
+                                                                                <strong id="paidAmountUSD" class="text-success">USD 0.00</strong>
+                                                                            </div>
+                                                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                                                <span><?= __('remaining_amount_usd') ?>:</span>
+                                                                                <strong id="remainingAmountUSD" class="text-danger">USD 0.00</strong>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div id="afsSection" style="display: none;">
+                                                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                                                <span><?= __('paid_amount_afs') ?>:</span>
+                                                                                <strong id="paidAmountAFS" class="text-success">AFS 0.00</strong>
+                                                                            </div>
+                                                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                                                <span><?= __('remaining_amount_afs') ?>:</span>
+                                                                                <strong id="remainingAmountAFS" class="text-danger">AFS 0.00</strong>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div id="eurSection" style="display: none;">
+                                                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                                                <span><?= __('paid_amount_eur') ?>:</span>
+                                                                                <strong id="paidAmountEUR" class="text-success">EUR 0.00</strong>
+                                                                            </div>
+                                                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                                                <span><?= __('remaining_amount_eur') ?>:</span>
+                                                                                <strong id="remainingAmountEUR" class="text-danger">EUR 0.00</strong>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div id="aedSection" style="display: none;">
+                                                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                                                <span><?= __('paid_amount_aed') ?>:</span>
+                                                                                <strong id="paidAmountAED" class="text-success">AED 0.00</strong>
+                                                                            </div>
+                                                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                                                <span><?= __('remaining_amount_aed') ?>:</span>
+                                                                                <strong id="remainingAmountAED" class="text-danger">AED 0.00</strong>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -64,6 +98,7 @@
                                             <th><?= __('date') ?></th>
                                             <th><?= __('description') ?></th>
                                             <th><?= __('receipt') ?></th>
+                                            <th><?= __('payment') ?></th>
                                             <th><?= __('amount') ?></th>
                                             <th><?= __('exchange_rate') ?></th>
                                             <th class="text-center"><?= __('actions') ?></th>
@@ -113,6 +148,7 @@
                                                 <input type="number" class="form-control" id="paymentAmount" 
                                                        name="payment_amount" step="0.01" min="0.01" required 
                                                        placeholder="<?= __('enter_amount') ?>">
+                                                <input type="hidden" id="originalAmount" name="original_amount">
                                             </div>
                                         </div>
                                         <div class="col-md-6">
@@ -129,20 +165,22 @@
                                                 </select>
                                             </div>
                                         </div>
-                                        
+                                        <div class="col-md-6">
+                                            <div class="form-group" id="exchangeRateField" style="display: none;">
+                                                 <label id="exchangeRateLabel" for="transactionExchangeRate">
+                                                     <i class="feather icon-refresh-cw mr-1"></i><?= __('exchange_rate') ?>
+                                                 </label>
+                                                 <input type="number" class="form-control" id="transactionExchangeRate"
+                                                        name="exchange_rate" step="0.01" placeholder="0.00">
+                                                 <small class="form-text text-muted d-block mt-1">
+                                                     <span id="exchangeRateInstruction"></span>
+                                                     <span id="exchangeRateTarget" style="display:none;"></span>
+                                                     <span id="exchangeRateBase" style="display:none;"></span>
+                                                     <span id="exchangeRateExample" class="d-block mt-1" style="color: #666;"></span>
+                                                 </small>
+                                             </div>
+                                         </div>
                                     </div>
-
-                                    <div class="form-group" id="exchangeRateField" style="display: none;">
-                                         <label id="exchangeRateLabel" for="transactionExchangeRate">
-                                             <i class="feather icon-refresh-cw mr-1"></i><?= __('exchange_rate') ?>
-                                         </label>
-                                         <input type="number" class="form-control" id="transactionExchangeRate"
-                                                name="exchange_rate" step="0.01" placeholder="0.00">
-                                         <small class="form-text text-muted d-block mt-1">
-                                             Enter how many <span id="exchangeRateTarget"></span> equals 1 <span id="exchangeRateBase"></span>
-                                             <span id="exchangeRateExample" class="d-block mt-1" style="color: #666;"></span>
-                                         </small>
-                                     </div>
                                     <div class="form-group">
                                         <label for="mainAccountId">
                                             <i class="feather icon-briefcase mr-1"></i><?= __('main_account') ?>

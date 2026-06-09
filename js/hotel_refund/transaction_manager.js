@@ -231,7 +231,7 @@ const transactionManager = {
                     tbody.empty();
 
                     if (!Array.isArray(transactions) || transactions.length === 0) {
-                        tbody.html('<tr><td colspan="6" class="text-center">No transactions found</td></tr>');
+                        tbody.html('<tr><td colspan="7" class="text-center">No transactions found</td></tr>');
                         $('#exchangeRateDisplay').text('No exchange rates found');
                         $('#exchangedAmount').text('No conversions available');
                         return;
@@ -265,6 +265,7 @@ const transactionManager = {
                                 <td>${transactionManager.formatDate(tx.created_at)}</td>
                                 <td>${tx.description || ''}</td>
                                 <td>${receipt || '\u2014'}</td>
+                                <td>${tx.type === 'credit' ? 'Received' : 'Paid'}</td>
                                 <td>${currency} ${amount.toFixed(2)}</td>
                                 <td>${exchangeRate || 'N/A'}</td>
                                 <td class="text-center">
@@ -343,14 +344,14 @@ const transactionManager = {
 
                 } catch(e) {
 
-                    $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
+                    $('#transactionTableBody').html('<tr><td colspan="7" class="text-center">error_loading_transactions</td></tr>');
                     $('#exchangeRateDisplay').text('Error loading exchange rates');
                     $('#exchangedAmount').text('Error calculating amounts');
                 }
             },
             error: function(xhr, status, error){
 
-                $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
+                $('#transactionTableBody').html('<tr><td colspan="7" class="text-center">error_loading_transactions</td></tr>');
                 $('#exchangeRateDisplay').text('Error loading exchange rates');
                 $('#exchangedAmount').text('Error calculating amounts');
             }
@@ -439,7 +440,7 @@ const transactionManager = {
         }, 35000); // 35 seconds (5 seconds after the main timeout)
         
         $.ajax({
-            url: '../api/hotel/add_hotel_refund_transactoin.php',
+            url: '../api/hotel/add_hotel_refund_transaction.php',
             type: 'POST',
             data: formData,
             processData: false,

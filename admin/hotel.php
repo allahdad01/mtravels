@@ -1022,7 +1022,7 @@ $paginationPattern = empty($search)
                                                       data-id="<?= $booking['id'] ?>"
                                                       data-action="refund"
                                                       data-tip="<?= __('process_refund') ?>"
-                                                      onclick="openRefundModal(<?= $booking['id'] ?>, <?= $booking['sold_amount'] ?>, <?= $booking['profit'] ?>, '<?= $booking['currency'] ?>')">
+                                                      onclick="openRefundModal(<?= $booking['id'] ?>, <?= $booking['sold_amount'] ?>, <?= $booking['base_amount'] ?>, '<?= $booking['currency'] ?>')">
                                                   <i class="feather icon-refresh-ccw"></i>
                                               </button>
 
@@ -1143,7 +1143,6 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="../js/hotel/init.js"></script>
 <script src="../js/hotel/toast.js"></script>
 <script src="../js/hotel/extra.js"></script>
-<script src="../js/hotel/refund_modal.js"></script>
 
 <?php include '../includes/admin_footer.php'; ?>
 </body>

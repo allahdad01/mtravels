@@ -173,7 +173,7 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
 /* ── Column Headers ──────────────────────────────────────── */
 .hb-list-header {
     display: grid;
-    grid-template-columns: 6px 1fr 190px 190px 150px 155px 140px;
+    grid-template-columns: 6px 1fr 190px 150px 155px 140px;
     align-items: center;
     padding: 0 0 8px;
 }
@@ -201,7 +201,7 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
 /* ── Booking Row ─────────────────────────────────────────── */
 .hb-row {
     display: grid;
-    grid-template-columns: 6px 1fr 190px 190px 150px 155px 140px;
+    grid-template-columns: 6px 1fr 190px 150px 155px 140px;
     align-items: center;
     background: var(--hb-surface);
     border-radius: var(--hb-radius);
@@ -538,8 +538,8 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
     .hb-list-header {
         grid-template-columns: 6px 1fr 140px auto;
     }
-    .hb-dates-cell,
-    .hb-list-header .lh-dates { display: none; }
+    .hb-price-cell,
+    .hb-list-header .lh-price { display: none; }
 }
 
 @media (max-width: 700px) {
@@ -547,10 +547,8 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
     .hb-list-header {
         grid-template-columns: 6px 1fr auto;
     }
-    .hb-room-cell,
-    .hb-price-cell,
-    .hb-list-header .lh-room,
-    .hb-list-header .lh-price { display: none; }
+    .hb-dates-cell,
+    .hb-list-header .lh-dates { display: none; }
     .hb-list-header { display: none; }
     .hb-actions-cell { border-left: none; }
 }
@@ -598,7 +596,6 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                         <div class="hb-list-header">
                             <div class="lh-bar"></div>
                             <div class="lh-guest">Guest</div>
-                            <div class="lh-room">Room</div>
                             <div class="lh-dates">Refund Info</div>
                             <div class="lh-price">Amount</div>
                             <div class="lh-status">Date</div>
@@ -633,20 +630,6 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                                         <!-- Guest -->
                                         <div class="hb-guest-cell">
                                             <div class="hb-guest-name"><?= htmlspecialchars(getValue($refund, 'title') . ' ' . getValue($refund, 'first_name') . ' ' . getValue($refund, 'last_name')) ?></div>
-                                            <div class="hb-guest-meta">
-                                                <?php if (!empty($refund['client_name'])): ?>
-                                                <span><i class="feather icon-briefcase"></i><?= htmlspecialchars($refund['client_name']) ?></span>
-                                                <?php endif; ?>
-                                                <?php if (!empty($refund['supplier_name'])): ?>
-                                                <span><i class="feather icon-home"></i><?= htmlspecialchars($refund['supplier_name']) ?></span>
-                                                <?php endif; ?>
-                                            </div>
-                                        </div>
-
-                                        <!-- Room -->
-                                        <div class="hb-room-cell">
-                                            <div class="hb-cell-label">Room</div>
-                                            <div class="hb-room-name"><?= htmlspecialchars(getValue($refund, 'accommodation_details')) ?></div>
                                         </div>
 
                                         <!-- Refund Info -->
@@ -668,11 +651,6 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                                                 <span class="hb-currency"><?= htmlspecialchars(getValue($refund, 'currency')) ?></span>
                                                 <?= number_format(getValue($refund, 'refund_amount', 0), 2) ?>
                                             </div>
-                                            <?php if (!empty($refund['exchange_rate']) && $refund['exchange_rate'] != 1): ?>
-                                            <div style="font-size: .73rem; color: #9ca3af; margin-top: 4px;">
-                                                <i class="feather icon-repeat"></i> Rate: <?= number_format($refund['exchange_rate'], 4) ?>
-                                            </div>
-                                            <?php endif; ?>
                                         </div>
 
                                         <!-- Date -->
@@ -680,41 +658,23 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                                             <div style="font-weight: 600; color: #111827;">
                                                 <i class="feather icon-calendar"></i> <?= date('M d, Y', strtotime($refund['created_at'])) ?>
                                             </div>
-                                            <div class="hb-created-by">
-                                                <i class="feather icon-clock"></i>
-                                                <?= date('h:i A', strtotime($refund['created_at'])) ?>
-                                            </div>
                                             <?php if ($refund['processed_by_name']): ?>
                                             <div class="hb-created-by">
-                                                <i class="feather icon-user"></i>
-                                                <?= htmlspecialchars($refund['processed_by_name']) ?>
+                                                <i class="feather icon-user-check"></i>
+                                                <?= __('by') ?> <?= htmlspecialchars($refund['processed_by_name']) ?>
                                             </div>
                                             <?php endif; ?>
                                         </div>
 
                                         <!-- Actions -->
                                         <div class="hb-actions-cell">
-                                            <button class="hb-btn-icon hb-view"
-                                                    data-tip="<?= __('view_booking') ?>"
-                                                    onclick="window.location.href='hotel.php?id=<?= $refund['booking_id'] ?>'">
-                                                <i class="feather icon-file-text"></i>
-                                            </button>
-
-                                            <?php if (!empty($refund['transaction_id']) && $canEdit): ?>
-                                            <button class="hb-btn-icon hb-trans"
-                                                    data-tip="<?= __('view_transaction') ?>"
-                                                    onclick="viewTransaction(<?= $refund['transaction_id'] ?>)">
+                                            <?php if ($canEdit && strtolower($refund['client_type'] ?? 'regular') !== 'regular'): ?>
+                                            <button class="hb-btn-icon hb-edit"
+                                                    data-tip="<?= __('manage_transactions') ?>"
+                                                    onclick="processRefundTransaction(<?= $refund['id'] ?>)">
                                                 <i class="feather icon-credit-card"></i>
                                             </button>
                                             <?php endif; ?>
-
-                                            <?php if ($refund['processed'] != 1 && $canEdit && strtolower($refund['client_type'] ?? 'regular') !== 'regular'): ?>
-                                             <button class="hb-btn-icon hb-edit"
-                                                     data-tip="<?= __('process_payment') ?>"
-                                                     onclick="processRefundTransaction(<?= $refund['id'] ?>)">
-                                                 <i class="feather icon-check-circle"></i>
-                                             </button>
-                                             <?php endif; ?>
 
                                             <button class="hb-btn-icon hb-view"
                                                     data-tip="<?= __('print_agreement') ?>"

@@ -201,18 +201,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
             $stmt->execute([$transaction_id, $tenant_id, $branch_id]);
             }
 
-        // Step 5: Update Hotel Booking Profit
-        if ($refund['refund_type'] === 'full') {
-            // For full refund, restore the original profit
-            $updateHotelQuery = "UPDATE hotel_bookings SET profit = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-            $stmt = $pdo->prepare($updateHotelQuery);
-            $stmt->execute([$profit, $hotelId, $tenant_id, $branch_id]);
-        } else {
-            // For partial refund, add back the refunded amount to profit
-            $updateHotelQuery = "UPDATE hotel_bookings SET profit = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-            $stmt = $pdo->prepare($updateHotelQuery);
-            $stmt->execute([$profit, $hotelId, $tenant_id, $branch_id]);
-        }
+        // Step 5: Update Hotel Booking Profit and Reset Status
+        $updateHotelQuery = "UPDATE hotel_bookings SET profit = ?, status = 'active' WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+        $stmt = $pdo->prepare($updateHotelQuery);
+        $stmt->execute([$profit, $hotelId, $tenant_id, $branch_id]);
 
         // Step 6: Delete the Refund Record
         $deleteRefund = "DELETE FROM hotel_refunds WHERE id = ? AND tenant_id = ? AND branch_id = ?";

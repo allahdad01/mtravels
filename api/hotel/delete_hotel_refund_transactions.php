@@ -5,23 +5,34 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Include security module
+require_once '../../admin/includes/db_security.php';
 require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
-$tenant_id = $_SESSION['tenant_id'];
-$branch_id = $_SESSION['branch_id'];
-require_once('../../includes/db.php');
 
-
-// Check if required parameters are present
-if (!isset($_POST['transaction_id']) || !isset($_POST['refund_id'])) {
-    echo json_encode(['success' => false, 'message' => 'Missing required parameters']);
+// ✅ CSRF Token Validation
+if (!verify_csrf_token()) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Security validation failed. Please try again.']);
     exit;
 }
 
-$transaction_id = intval($_POST['transaction_id']);
-$refund_id = intval($_POST['refund_id']);
+require_once('../../includes/db.php');
+$tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
+
+// Validate transaction_id
+$transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_POST['transaction_id'], 'int', ['min' => 0]) : null;
+
+// Validate refund_id
+$refund_id = isset($_POST['refund_id']) ? DbSecurity::validateInput($_POST['refund_id'], 'int', ['min' => 0]) : null;
+
+// Check if required parameters are present
+if (!$transaction_id || !$refund_id) {
+    echo json_encode(['success' => false, 'message' => 'Missing required parameters']);
+    exit;
+}
 
 try {
     // Start transaction
@@ -106,6 +117,10 @@ try {
         $updateResult = $updateStmt->execute([$amount, $transaction['main_account_id'], $tenant_id, $branch_id]);
 
         if ($updateResult) {
+            // Delete related notifications
+            $deleteNotifStmt = $pdo->prepare("DELETE FROM notifications WHERE transaction_id = ? AND transaction_type = 'hotel_refund' AND tenant_id = ? AND branch_id = ?");
+            $deleteNotifStmt->execute([$transaction_id, $tenant_id, $branch_id]);
+
             // Check if this was the last transaction and update the hotel_refunds processed status if needed
             $checkTransactionsStmt = $pdo->prepare("
                 SELECT COUNT(*) as count
