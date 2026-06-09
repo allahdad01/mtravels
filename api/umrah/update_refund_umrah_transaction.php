@@ -31,24 +31,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $bookingId = $_POST['booking_id'] ?? $_POST['booking_id'] ?? 0;
     $originalAmount = floatval($_POST['original_amount'] ?? $_POST['payment_amount'] ?? 0);
     $newAmount = floatval($_POST['payment_amount'] ?? 0);
-    $exchange_rate = floatval($_POST['exchange_rate'] ?? 1);
-    // Combine date and time if they're separate
-    $paymentTime = $_POST['payment_time'] ?? '00:00:00';
-    $paymentDate = $_POST['payment_date'] ?? '';
-    if (strlen($paymentDate) <= 10) { // If date doesn't include time
-        $newDate = $paymentDate . ' ' . $paymentTime;
-    } else {
-        $newDate = $paymentDate; // Use as is if it already includes time
-    }
-
+    $exchange_rate = isset($_POST['exchange_rate']) ? floatval($_POST['exchange_rate']) : null;
     $newDescription = $_POST['payment_description'] ?? '';
 
     // Validate required fields
     // Validate payment_description
     $payment_description = isset($_POST['payment_description']) ? DbSecurity::validateInput($_POST['payment_description'], 'string', ['maxlength' => 255]) : null;
-
-    // Validate payment_date
-    $payment_date = isset($newDate) ? DbSecurity::validateInput($newDate, 'datetime') : null;
 
     // Validate payment_amount
     $payment_amount = isset($_POST['payment_amount']) ? DbSecurity::validateInput($_POST['payment_amount'], 'float', ['min' => 0]) : null;
@@ -73,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         // Get transaction details before update
-        $stmt = $pdo->prepare("SELECT amount, currency, type, main_account_id, created_at FROM main_account_transactions WHERE id = ? AND transaction_of = 'umrah_refund' AND tenant_id = ? AND branch_id = ?");
+        $stmt = $pdo->prepare("SELECT amount, currency, type, main_account_id, created_at, receipt, exchange_rate FROM main_account_transactions WHERE id = ? AND transaction_of = 'umrah_refund' AND tenant_id = ? AND branch_id = ?");
         $stmt->bindParam(1, $transactionId, PDO::PARAM_INT);
         $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
         $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
@@ -87,7 +75,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $currency = $transaction['currency'];
         $type = $transaction['type'];
         $mainAccountId = $transaction['main_account_id'];
-        $originalDate = $transaction['created_at'];
 
         // Calculate the difference between original and new amount
         $amountDifference = $newAmount - $originalAmount;
@@ -164,12 +151,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
+        // Get receipt number
+        $receipt_number = isset($_POST['receipt_number']) ? trim($_POST['receipt_number']) : '';
+
         // Update the transaction
-        $stmt = $pdo->prepare("UPDATE main_account_transactions SET amount = ?, description = ?, created_at = ?, exchange_rate = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt = $pdo->prepare("UPDATE main_account_transactions SET amount = ?, description = ?, exchange_rate = ?, receipt = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
         $stmt->bindParam(1, $newAmount, PDO::PARAM_STR);
         $stmt->bindParam(2, $newDescription, PDO::PARAM_STR);
-        $stmt->bindParam(3, $newDate, PDO::PARAM_STR);
-        $stmt->bindParam(4, $exchange_rate, PDO::PARAM_STR);
+        $stmt->bindParam(3, $exchange_rate, PDO::PARAM_STR);
+        $stmt->bindParam(4, $receipt_number, PDO::PARAM_STR);
         $stmt->bindParam(5, $transactionId, PDO::PARAM_INT);
         $stmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
         $stmt->bindParam(7, $branch_id, PDO::PARAM_INT);
@@ -195,48 +185,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // If date changed, we need to reorder transactions and recalculate all balances
-        if ($newDate != $originalDate) {
-            // Get all transactions for this account and currency, ordered by date
-            $stmt = $pdo->prepare("SELECT id, amount, type, created_at
-                                   FROM main_account_transactions
-                                   WHERE main_account_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ?
-                                   ORDER BY created_at ASC, id ASC");
-            $stmt->bindParam(1, $mainAccountId, PDO::PARAM_INT);
-            $stmt->bindParam(2, $currency, PDO::PARAM_STR);
-            $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-            $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
-
-            if (!$stmt->execute()) {
-                throw new Exception("Failed to retrieve transactions for reordering: " . $stmt->error);
-            }
-
-            $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $transactions = $result;
-
-            // Recalculate running balance for all transactions
-            $runningBalance = 0;
-            foreach ($transactions as $tx) {
-                $txAmount = floatval($tx['amount']);
-                if ($tx['type'] == 'credit') {
-                    $runningBalance += $txAmount;
-                } else {
-                    $runningBalance -= $txAmount;
-                }
-
-                // Update the balance for this transaction
-                $updateStmt = $pdo->prepare("UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                $updateStmt->bindParam(1, $runningBalance, PDO::PARAM_STR);
-                $updateStmt->bindParam(2, $tx['id'], PDO::PARAM_INT);
-                $updateStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-                $updateStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
-
-                if (!$updateStmt->execute()) {
-                    throw new Exception("Failed to update transaction balance during reordering: " . $updateStmt->error);
-                }
-            }
-        }
-
         // Add activity logging
         $user_id = $_SESSION['user_id'] ?? 0;
         $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
@@ -248,16 +196,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'booking_id' => $bookingId,
             'amount' => $originalAmount,
             'description' => $transaction['description'] ?? '',
-            'created_at' => $originalDate,
             'currency' => $currency,
-            'type' => $type
+            'type' => $type,
+            'receipt' => $transaction['receipt'] ?? '',
+            'exchange_rate' => $transaction['exchange_rate'] ?? ''
         ];
 
         // Prepare new values
         $new_values = [
             'amount' => $newAmount,
             'description' => $newDescription,
-            'created_at' => $newDate
+            'receipt' => $receipt_number,
+            'exchange_rate' => $exchange_rate
         ];
 
         $action = 'update';

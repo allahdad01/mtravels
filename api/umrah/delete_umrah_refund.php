@@ -14,11 +14,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
 
     try {
         // Step 1: Fetch Refund Details
-        $query = "SELECT umr.*, um.sold_to, um.booking_id, um.price, um.sold_price, c.client_type
+        $query = "SELECT umr.*, um.sold_to, um.booking_id, um.price, um.sold_price, um.paid, c.client_type
                   FROM umrah_refunds umr
                   JOIN umrah_bookings um ON umr.booking_id = um.booking_id
-                  LEFT JOIN clients c ON um.sold_to = c.id
-                  WHERE umr.id = ? AND umr.tenant_id = ? AND umr.branch_id = ? AND um.tenant_id = ? AND um.branch_id = ? AND (c.tenant_id = ? AND c.branch_id = ? OR c.id IS NULL)";
+                  JOIN clients c ON um.sold_to = c.id
+                  WHERE umr.id = ? AND umr.tenant_id = ? AND umr.branch_id = ? AND um.tenant_id = ? AND um.branch_id = ? AND c.tenant_id = ? AND c.branch_id = ?";
         $stmt = $pdo->prepare($query);
         $stmt->bindParam(1, $refundId, PDO::PARAM_INT);
         $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
@@ -155,7 +155,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
             foreach ($clientResults as $row) {
                 $transaction_id = $row['id'];
 
-                // Delete Client Transaction
                 $deleteClientTransaction = "DELETE FROM client_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                 $stmt = $pdo->prepare($deleteClientTransaction);
                 $stmt->bindParam(1, $transaction_id, PDO::PARAM_INT);
@@ -218,9 +217,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
                 $stmtUpdate->bindParam(4, $tenant_id, PDO::PARAM_INT);
                 $stmtUpdate->bindParam(5, $branch_id, PDO::PARAM_INT);
                 $stmtUpdate->execute();
+
             }
 
-            // Delete Supplier Transaction
+            // Delete Supplier Transaction (all types)
             $deleteSupplierTransaction = "DELETE FROM supplier_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?";
             $stmtDelete = $pdo->prepare($deleteSupplierTransaction);
             $stmtDelete->bindParam(1, $transaction_id, PDO::PARAM_INT);
@@ -291,25 +291,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
             $stmt->execute();
         }
 
-        // Step 5: Restore Booking Profit
-        if ($refundType === 'full') {
-            $updateBookingQuery = "UPDATE umrah_bookings SET profit = ?, status = 'active' WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?";
-            $stmt = $pdo->prepare($updateBookingQuery);
-            $stmt->bindParam(1, $profit, PDO::PARAM_STR);
-            $stmt->bindParam(2, $umrahId, PDO::PARAM_INT);
-            $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-            $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
-            $stmt->execute();
-        } else {
-
-            $updateBookingQuery = "UPDATE umrah_bookings SET profit = ?, status = 'active' WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?";
-            $stmt = $pdo->prepare($updateBookingQuery);
-            $stmt->bindParam(1, $profit, PDO::PARAM_STR);
-            $stmt->bindParam(2, $umrahId, PDO::PARAM_INT);
-            $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-            $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
-            $stmt->execute();
-        }
+        // Step 5: Restore Booking Profit and Due
+        $restoredDue = max(0, floatval($refund['sold_price']) - floatval($refund['paid']));
+        $updateBookingQuery = "UPDATE umrah_bookings SET profit = ?, due = ?, status = 'active' WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?";
+        $stmt = $pdo->prepare($updateBookingQuery);
+        $stmt->bindParam(1, $profit, PDO::PARAM_STR);
+        $stmt->bindParam(2, $restoredDue, PDO::PARAM_STR);
+        $stmt->bindParam(3, $umrahId, PDO::PARAM_INT);
+        $stmt->bindParam(4, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(5, $branch_id, PDO::PARAM_INT);
+        $stmt->execute();
 
         // Step 6: Delete the Refund Record
         $deleteRefund = "DELETE FROM umrah_refunds WHERE id = ? AND tenant_id = ? AND branch_id = ?";
@@ -328,7 +319,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
         $stmt->execute();
         $bookingResult = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        if ($bookingResult && $bookingResult['status'] === 'confirmed') {
+        if ($bookingResult && $bookingResult['status'] === 'active') {
             // If booking is now confirmed/active, update family totals
             $familyId = $bookingResult['family_id'];
             $updateFamilyStmt = $pdo->prepare("

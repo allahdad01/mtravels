@@ -220,15 +220,24 @@ if ($tableExists) {
                                                                             </small>
                                                                         </div>
                                                                     </td>
-                                                                    <td>
-                                                                        <div class="d-flex flex-column">
-                                                                            <span class="font-weight-bold text-danger">
-                                                                                <?= htmlspecialchars($refund['currency']) ?> 
-                                                                                <?= number_format($refund['refund_amount'], 2) ?>
-                                                                            </span>
-                                                                           
-                                                                        </div>
-                                                                    </td>
+                                                                     <td>
+                                                                         <div class="d-flex flex-column">
+                                                                             <span class="font-weight-bold text-danger">
+                                                                                 <?= htmlspecialchars($refund['currency']) ?> 
+                                                                                 <?= number_format($refund['refund_amount'], 2) ?>
+                                                                             </span>
+                                                                             <?php if (isset($refund['supplier_penalty']) && $refund['supplier_penalty'] > 0): ?>
+                                                                             <small class="text-muted">
+                                                                                 <?= __('supplier_penalty') ?>: <?= number_format($refund['supplier_penalty'], 2) ?>
+                                                                             </small>
+                                                                             <?php endif; ?>
+                                                                             <?php if (isset($refund['service_penalty']) && $refund['service_penalty'] > 0): ?>
+                                                                             <small class="text-muted">
+                                                                                 <?= __('service_penalty') ?>: <?= number_format($refund['service_penalty'], 2) ?>
+                                                                             </small>
+                                                                             <?php endif; ?>
+                                                                         </div>
+                                                                     </td>
                                                                     <td>
                                                                         <?= date('M d, Y', strtotime($refund['created_at'])) ?>
                                                                         <br>
@@ -251,23 +260,18 @@ if ($tableExists) {
                                                                                 <a class="dropdown-item" href="umrah.php?id=<?= $refund['booking_id'] ?>">
                                                                                     <i class="feather icon-file-text text-info mr-2"></i><?= __('view_booking') ?>
                                                                                 </a>
-                                                                                <?php if (!empty($refund['transaction_id']) && $canEdit): ?>
-                                                                                    <a class="dropdown-item" href="javascript:void(0)" onclick="viewTransaction(<?= $refund['transaction_id'] ?>)">
-                                                                                        <i class="feather icon-credit-card text-success mr-2"></i><?= __('view_transaction') ?>
-                                                                                    </a>
-                                                                                <?php endif; ?>
-                                                                                <?php if ($refund['processed'] != 1 && $canEdit && strtolower($refund['client_type'] ?? 'regular') !== 'regular'): ?>
-                                                                                    <a class="dropdown-item" href="javascript:void(0)" 
-                                                                                       onclick="processRefundTransaction(<?= $refund['id'] ?>)">
-                                                                                        <i class="feather icon-check-circle text-primary mr-2"></i><?= __('process_payment') ?>
-                                                                                    </a>
-                                                                                <?php endif; ?>
                                                                                  <?php if ($canEdit): ?>
-                                                                                 <a class="dropdown-item text-danger" href="javascript:void(0)" 
-                                                                                    onclick="deleteRefund(<?= $refund['id'] ?>)">
-                                                                                     <i class="feather icon-trash-2 mr-2"></i><?= __('delete_refund') ?>
+                                                                                 <a class="dropdown-item" href="javascript:void(0)" onclick="openTransactionManager(<?= $refund['id'] ?>, <?= $refund['booking_id'] ?>, '<?= addslashes($refund['refund_type']) ?>', '<?= addslashes($refund['reason']) ?>', '<?= addslashes($refund['name']) ?>', '<?= addslashes($refund['package_type']) ?>', <?= $refund['refund_amount'] ?>, '<?= addslashes($refund['currency']) ?>')">
+                                                                                     <i class="feather icon-credit-card text-success mr-2"></i><?= __('manage_transactions') ?>
                                                                                  </a>
                                                                                  <?php endif; ?>
+
+                                                                                  <?php if ($canEdit): ?>
+                                                                                  <a class="dropdown-item text-danger" href="javascript:void(0)" 
+                                                                                     onclick="deleteRefund(<?= $refund['id'] ?>)">
+                                                                                      <i class="feather icon-trash-2 mr-2"></i><?= __('delete_refund') ?>
+                                                                                  </a>
+                                                                                  <?php endif; ?>
                                                                                 <a class="dropdown-item" href="javascript:void(0)" onclick="printRefundAgreement(<?= $refund['id'] ?>)">
                                                                                     <i class="fas fa-print text-info mr-2"></i><?= __('print_agreement') ?>
                                                                                 </a>
@@ -332,7 +336,7 @@ if ($tableExists) {
             </div>
         </div>
     </div>
-
+<?php include '../includes/admin_footer.php'; ?>
 
 <?php include '../modals/umrah_refund/transaction_modal.php'; ?>
 <?php include '../modals/umrah_refund/edit_transaction_modal.php'; ?>
@@ -367,8 +371,23 @@ if ($tableExists) {
             title: message
         });
     }
+
+    // Open transaction manager modal with refund data
+    function openTransactionManager(refundId, bookingId, refundType, reason, guestName, packageType, totalAmount, currency) {
+        $('#transactionBookingId').text(bookingId);
+        $('#refundType').text(refundType);
+        $('#refundReason').text(reason);
+        $('#refundGuest').text(guestName);
+        $('#refundUmrah').text(packageType);
+        $('#totalAmount').text(parseFloat(totalAmount).toFixed(2) + ' ' + currency);
+        $('#refund_id').val(refundId);
+        window.refundCurrency = currency;
+
+        transactionManager.loadTransactionHistory(refundId);
+        $('#refundTransactionModal').modal('show');
+    }
 </script>
-<?php include '../includes/admin_footer.php'; ?>
+
 
 
 </body>

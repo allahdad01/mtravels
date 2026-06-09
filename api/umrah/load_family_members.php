@@ -238,7 +238,7 @@ try {
                             <div class="dropdown-divider"></div>
                             <h6 class="dropdown-header"><?= __('advanced_actions') ?></h6>
                             <?php if ($member['status'] === 'active'): ?>
-                            <a class="dropdown-item" href="#" onclick="openRefundModal(<?= $member['booking_id'] ?>, <?= $member['sold_price'] ?>, <?= $member['profit'] ?>, '<?= $member['currency'] ?>'); return false;">
+                            <a class="dropdown-item" href="#" onclick="openRefundModal(<?= $member['booking_id'] ?>, <?= $member['sold_price'] ?>, <?= $member['price'] ?? 0 ?>, '<?= $member['currency'] ?>'); return false;">
                                  <i class="fas fa-undo"></i><?= __('process_refund') ?>
                               </a>
                             <?php endif; ?>

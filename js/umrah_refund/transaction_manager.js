@@ -153,23 +153,27 @@
 
                             if (currency in hasCurrency) hasCurrency[currency] = true;
 
+                            const receiptDisplay = tx.receipt || tx.receipt_number || '';
+
                             tbody.append(`
                                 <tr>
                                     <td>${transactionManager.formatDate(tx.created_at)}</td>
                                     <td>${tx.description || ''}</td>
-                                    <td>${tx.type === 'credit' ? 'Received' : 'Paid'}</td>
-                                    <td>${currency} ${amount.toFixed(2)}</td>
+                                    <td>${receiptDisplay || '—'}</td>
+                                    <td>${tx.type === 'credit' ? 'Received' : 'Paid'} ${currency} ${amount.toFixed(2)}</td>
                                     <td>${tx.account_name}</td>
-                                    <td>${exchangeRate || 'N/A'}</td>
+                                    <td>${exchangeRate !== null ? exchangeRate : 'N/A'}</td>
                                     <td class="text-center">
-                                        <button class="btn btn-primary btn-sm" onclick="transactionManager.editTransaction(${tx.id}, '${(tx.description||'').replace(/'/g,"\\'")}', ${amount}, '${tx.created_at}', '${currency}', ${tx.exchange_rate || 'null'})">
+                                        <button class="btn btn-primary btn-sm" title="Edit Transaction"
+                                            onclick="transactionManager.editTransaction(${tx.id})">
                                             <i class="feather icon-edit"></i>
                                         </button>
-                                                                        <button class="btn btn-info btn-sm mr-1" title="Print Receipt"
+                                        <button class="btn btn-info btn-sm mr-1" title="Print Receipt"
                                         onclick="printReceipt(${tx.id})">
                                     <i class="feather icon-printer"></i>
                                 </button>
-                                        <button class="btn btn-danger btn-sm" onclick="transactionManager.deleteTransaction(${tx.id}, ${amount})">
+                                        <button class="btn btn-danger btn-sm" title="Delete Transaction"
+                                            onclick="transactionManager.deleteTransaction(${tx.id}, ${amount})">
                                             <i class="feather icon-trash-2"></i>
                                         </button>
                                     </td>
@@ -236,7 +240,7 @@
                         $('#aedSection').toggle(hasCurrency.DARHAM);
 
                     } else {
-                        tbody.html('<tr><td colspan="6" class="text-center">No transactions found</td></tr>');
+                        tbody.html('<tr><td colspan="7" class="text-center">No transactions found</td></tr>');
                         $('#exchangeRateDisplay').text('No exchange rates found');
                         $('#exchangedAmount').text('No conversions available');
                         $('#usdSection, #afsSection, #eurSection, #aedSection').hide();
@@ -244,14 +248,14 @@
 
                 } catch(e) {
                     console.log(e);
-                    $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
+                    $('#transactionTableBody').html('<tr><td colspan="7" class="text-center">error_loading_transactions</td></tr>');
                     $('#exchangeRateDisplay').text('Error loading exchange rates');
                     $('#exchangedAmount').text('Error calculating amounts');
                 }
             },
             error: function(xhr, status, error){
                 console.log({status, error});
-                $('#transactionTableBody').html('<tr><td colspan="6" class="text-center">error_loading_transactions</td></tr>');
+                $('#transactionTableBody').html('<tr><td colspan="7" class="text-center">error_loading_transactions</td></tr>');
                 $('#exchangeRateDisplay').text('Error loading exchange rates');
                 $('#exchangedAmount').text('Error calculating amounts');
             }
@@ -322,47 +326,46 @@
     },
 
     // Edit transaction
-    editTransaction: function(transactionId, description, amount, createdAt, currency, exchangeRate) {
-        // Parse the datetime string
-        const dateTime = new Date(createdAt);
-        
-        // Format date for input field (YYYY-MM-DD)
-        const formattedDate = dateTime.toISOString().split('T')[0];
-        
-        // Format time for input field (HH:MM:SS)
-        const hours = String(dateTime.getHours()).padStart(2, '0');
-        const minutes = String(dateTime.getMinutes()).padStart(2, '0');
-        const seconds = String(dateTime.getSeconds()).padStart(2, '0');
-        const formattedTime = `${hours}:${minutes}:${seconds}`;
-        
-        // Get the current refund ID from the refund_id field
+    editTransaction: function(transactionId) {
         const refundId = $('#refund_id').val();
-        
-        // Populate the edit form with the current values
-        $('#editTransactionId').val(transactionId);
-        $('#editRefundId').val(refundId);
-        $('#editOriginalAmount').val(amount);
-        $('#editPaymentDate').val(formattedDate);
-        $('#editPaymentTime').val(formattedTime);
-        $('#editPaymentAmount').val(parseFloat(amount).toFixed(2));
-        $('#editPaymentDescription').val(description);
 
-        // Set the currency from the transaction
-        $('#editPaymentCurrency').val(currency);
+        // Fetch transaction details
+        $.ajax({
+            url: '../api/umrah/get_umrah_refund_transaction.php',
+            type: 'GET',
+            data: { transaction_id: transactionId },
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    const tx = response.transaction;
 
-        // Show exchange rate field (always shown for edit)
-        $('#editExchangeRateField').show();
-        $('#editExchangeRate').attr('required', true);
+                    // Populate form fields
+                    $('#editTransactionId').val(tx.id);
+                    $('#editRefundId').val(refundId);
+                    $('#originalAmount').val(tx.amount);
+                    $('#editPaymentAmount').val(tx.amount);
+                    $('#editPaymentDescription').val(tx.description);
+                    $('#editReceiptNumber').val(tx.receipt || tx.receipt_number || '');
+                    $('#editExchangeRate').val(tx.exchange_rate || '');
 
-        // Set exchange rate from parameter
-        if (exchangeRate && exchangeRate !== 'null') {
-            $('#editExchangeRate').val(exchangeRate);
-        } else {
-            $('#editExchangeRate').val('');
-        }
-        
-        // Show the modal
-        $('#editTransactionModal').modal('show');
+                    // Show exchange rate field only if currency differs from booking currency and exchange rate exists
+                    const bookingCurrency = window.refundCurrency || 'USD';
+                    if (tx.exchange_rate && tx.currency && tx.currency !== bookingCurrency) {
+                        $('#editExchangeRateField').show();
+                    } else {
+                        $('#editExchangeRateField').hide();
+                    }
+
+                    // Show edit modal
+                    $('#editTransactionModal').modal('show');
+                } else {
+                    alert('Error fetching transaction details: ' + (response.message || 'Unknown error'));
+                }
+            },
+            error: function(xhr, status, error) {
+                alert('Error fetching transaction details');
+            }
+        });
     },
     
     // Delete transaction
@@ -432,58 +435,6 @@ $(document).ready(function() {
         transactionManager.setDefaultDateTime();
     });
     
-    // Show/Hide exchange rate field in edit form based on currency difference
-    $('#editPaymentCurrency').on('change', function() {
-        const selectedCurrency = $(this).val();
-        const refundCurrency = window.refundCurrency || 'USD';
-        const exchangeRateField = $('#editExchangeRateField');
-
-        if (selectedCurrency && selectedCurrency !== refundCurrency) {
-            exchangeRateField.slideDown();
-            $('#editExchangeRate').attr('required', true);
-            
-            // Get display names for currencies
-            const baseDisplay = getCurrencyDisplay(refundCurrency);
-            const targetDisplay = getCurrencyDisplay(selectedCurrency);
-            
-            // Determine anchor currency (USD, EUR, AED, or AFS)
-            let anchorCurrency = refundCurrency;
-            const currencies = [selectedCurrency, refundCurrency];
-            if (currencies.includes('USD')) {
-                anchorCurrency = 'USD';
-            } else if (currencies.includes('EUR')) {
-                anchorCurrency = 'EUR';
-            } else if (currencies.includes('AED')) {
-                anchorCurrency = 'AED';
-            } else if (currencies.includes('AFS')) {
-                anchorCurrency = 'AFS';
-            }
-            
-            const anchorDisplay = getCurrencyDisplay(anchorCurrency);
-            const otherDisplay = anchorCurrency === refundCurrency ? targetDisplay : baseDisplay;
-            
-            // Update label to match example rule: "1 ANCHOR = OTHER"
-            const label = `<i class="feather icon-refresh-cw mr-1"></i>${anchorDisplay} to ${otherDisplay} Exchange Rate`;
-            exchangeRateField.find('label').html(label);
-            
-            // Update helper text to match anchor currency concept
-            const example = getExchangeRateExample(baseDisplay, targetDisplay);
-            const instructionText = `Enter how many ${otherDisplay} equals 1 ${anchorDisplay}`;
-            const helpText = `<small class="form-text text-muted d-block mt-1">
-                ${instructionText}
-                <span class="d-block mt-1" style="color: #666;">${example}</span>
-            </small>`;
-            
-            // Remove old help text and add new one
-            exchangeRateField.find('small').remove();
-            exchangeRateField.find('input').after(helpText);
-        } else {
-            exchangeRateField.slideUp();
-            $('#editExchangeRate').removeAttr('required').val('');
-            // Remove help text
-            exchangeRateField.find('small').remove();
-        }
-    });
 });
 
 // Add submit handler for the edit form
@@ -497,15 +448,13 @@ $(document).on('submit', '#editTransactionForm', function(e) {
     const formData = new FormData(this);
     const refundId = $('#editRefundId').val();
     
-    // Combine date and time
-    const date = formData.get('payment_date');
-    const time = formData.get('payment_time') || '00:00:00';
-    if (date) {
-        formData.set('payment_date', `${date} ${time}`);
+    const receiptNumber = $('#editReceiptNumber').val();
+    if (receiptNumber) {
+        formData.set('receipt_number', receiptNumber);
     }
 
     // Get the original transaction amount from the hidden field
-    const originalAmount = $('#editOriginalAmount').val();
+    const originalAmount = $('#originalAmount').val();
     formData.set('original_amount', originalAmount);
     
     $.ajax({

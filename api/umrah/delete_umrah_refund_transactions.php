@@ -129,6 +129,10 @@ try {
                 $updateRefundStmt->execute([$refund_id, $tenant_id, $branch_id]);
             }
 
+            // Delete associated notification
+            $deleteNotifStmt = $pdo->prepare("DELETE FROM notifications WHERE transaction_id = ? AND transaction_type = 'umrah_refund' AND tenant_id = ? AND branch_id = ?");
+            $deleteNotifStmt->execute([$transaction_id, $tenant_id, $branch_id]);
+
             $pdo->commit();
             
             // Log the activity

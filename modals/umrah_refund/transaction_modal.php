@@ -100,7 +100,7 @@
                                         <tr>
                                             <th><?= __('date') ?></th>
                                             <th><?= __('description') ?></th>
-                                            <th><?= __('payment') ?></th>
+                                            <th><?= __('receipt') ?></th>
                                             <th><?= __('amount') ?></th>
                                             <th><?= __('account') ?></th>
                                             <th><?= __('exchange_rate') ?></th>

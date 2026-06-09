@@ -28,22 +28,17 @@ $query = "
         ur.reason,
         ur.refund_amount as refund_amount,
         ur.currency as refund_currency,
-        ur.exchange_rate,
         ub.booking_id,
         ub.name as passenger_name,
         ub.flight_date as departure_date,
         ub.return_date,
         ub.sold_price as sold,
         ub.currency as booking_currency,
-        uc.name as client_name,
-        us.name as supplier_name,
         f.head_of_family as family_head,
         f.package_type
     FROM main_account_transactions mat
     LEFT JOIN umrah_refunds ur ON mat.reference_id = ur.id AND mat.transaction_of = 'umrah_refund'
     LEFT JOIN umrah_bookings ub ON ur.booking_id = ub.booking_id
-    LEFT JOIN clients uc ON ub.sold_to = uc.id
-    LEFT JOIN suppliers us ON ub.supplier = us.id
     LEFT JOIN families f ON ub.family_id = f.family_id
     WHERE mat.id = ? AND mat.transaction_of = 'umrah_refund' AND mat.tenant_id = ? AND mat.branch_id = ?
 ";
@@ -329,21 +324,9 @@ try {
                 </div>
 
                 <div class="detail-row">
-                    <span class="detail-label"><?php echo __('payment_type'); ?>:</span>
-                    <span class="detail-value"><?php echo $transaction['type'] === 'credit' ? __('refunded') : __('paid'); ?></span>
-                </div>
-
-                <div class="detail-row">
                     <span class="detail-label"><?php echo __('description'); ?>:</span>
                     <span class="detail-value"><?php echo htmlspecialchars($transaction['description']); ?></span>
                 </div>
-
-                <?php if (!empty($transaction['refund_type'])): ?>
-                <div class="detail-row">
-                    <span class="detail-label"><?php echo __('refund_type'); ?>:</span>
-                    <span class="detail-value"><?php echo htmlspecialchars($transaction['refund_type']); ?></span>
-                </div>
-                <?php endif; ?>
 
                 <?php if (!empty($transaction['reason'])): ?>
                 <div class="detail-row">
@@ -377,11 +360,6 @@ try {
                     <span class="detail-value"><?php echo htmlspecialchars($transaction['return_date']); ?></span>
                 </div>
                 <?php endif; ?>
-
-                <div class="detail-row">
-                    <span class="detail-label"><?php echo __('client'); ?>:</span>
-                    <span class="detail-value"><?php echo htmlspecialchars($transaction['client_name']); ?></span>
-                </div>
 
                 <?php endif; ?>
             </div>
