@@ -61,8 +61,8 @@ try {
             SUM(ur.refund_amount)                                               AS total_refunded,
             AVG(ur.refund_amount)                                               AS avg_refund,
             MAX(ur.refund_amount)                                               AS largest_refund,
-            SUM(CASE WHEN ur.processed = 1 THEN 1 ELSE 0 END)                  AS completed_count,
-            SUM(CASE WHEN ur.processed = 0 THEN 1 ELSE 0 END)                  AS pending_count
+            0 AS completed_count,
+            0 AS pending_count
         FROM umrah_refunds ur
         JOIN umrah_bookings ub ON ur.booking_id = ub.booking_id
         WHERE ub.sold_to = ? AND ur.tenant_id = ?
@@ -84,7 +84,7 @@ if ($table_exists) {
                 ur.booking_id,
                 ur.refund_amount,
                 ur.reason,
-                ur.processed,
+
                 ur.refund_type,
                 ur.created_at,
                 CONCAT(ub.name, ' b. ', ub.fname) AS passenger_name,
@@ -602,7 +602,7 @@ function statusBadgeClass(string $status): string {
                         <tbody>
                             <?php foreach ($refunds as $index => $refund):
                                 $rowNum    = $offset + $index + 1;
-                                $status    = ($refund['processed'] ?? 0) ? 'completed' : 'pending';
+                                $status    = 'completed';
                                 $badgeClass = statusBadgeClass($status);
                                 $createdAt  = strtotime($refund['created_at']);
                                 $reason     = trim($refund['reason'] ?? '');

@@ -180,7 +180,7 @@
             pointer-events: none;
             z-index: 100;
             font-weight: bold;
-            display: <?= $refund['processed'] ? 'block' : 'none' ?>;
+            display: block;
         }
         .footer {
             text-align: center;
@@ -260,16 +260,14 @@
                     <th>Reason for Refund</th>
                     <td><?= htmlspecialchars($refund['reason']) ?></td>
                 </tr>
-                <?php if ($refund['processed']): ?>
                 <tr>
                     <th>Processed By</th>
-                    <td><?= htmlspecialchars($refund['processed_by_name']) ?></td>
+                    <td><?= htmlspecialchars($refund['processed_by_name'] ?? '') ?></td>
                 </tr>
                 <tr>
                     <th>Processed Date</th>
-                    <td><?= date('F d, Y', strtotime($refund['processed_at'])) ?></td>
+                    <td><?= !empty($refund['processed_at']) ? date('F d, Y', strtotime($refund['processed_at'])) : '' ?></td>
                 </tr>
-                <?php endif; ?>
             </table>
         </div>
 

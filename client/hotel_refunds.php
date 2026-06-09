@@ -45,10 +45,10 @@ try {
         SELECT
             COUNT(*)                                                AS total_refunds,
             SUM(refund_amount)                                      AS total_refunded,
-            SUM(CASE WHEN processed = 1 THEN refund_amount ELSE 0 END) AS processed_amount,
-            SUM(CASE WHEN processed = 0 THEN refund_amount ELSE 0 END) AS pending_amount,
-            SUM(CASE WHEN processed = 1 THEN 1 ELSE 0 END)         AS processed_count,
-            SUM(CASE WHEN processed = 0 THEN 1 ELSE 0 END)         AS pending_count,
+            0 AS processed_amount,
+            0 AS pending_amount,
+            0 AS processed_count,
+            0 AS pending_count,
             MAX(refund_amount)                                      AS largest_refund,
             AVG(refund_amount)                                      AS avg_refund
         FROM hotel_refunds
@@ -82,7 +82,6 @@ try {
             refund_amount,
             reason,
             currency,
-            processed,
             created_at
         FROM hotel_refunds
         WHERE tenant_id = ?
@@ -93,11 +92,6 @@ try {
     $refunds = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     $refunds = [];
-}
-
-// Helper: processed badge class
-function processedBadgeClass(bool $processed): string {
-    return $processed ? 'badge-processed' : 'badge-pending';
 }
 
 // Helper: currency symbol
@@ -566,8 +560,7 @@ function currencySymbol(string $currency): string {
                         <tbody>
                             <?php foreach ($refunds as $index => $refund):
                                 $rowNum     = $offset + $index + 1;
-                                $processed  = (bool)($refund['processed'] ?? false);
-                                $badgeClass = processedBadgeClass($processed);
+                                $badgeClass = 'badge-processed';
                                 $createdAt  = strtotime($refund['created_at']);
                                 $currency   = strtoupper(trim($refund['currency'] ?? 'USD'));
                                 $symbol     = currencySymbol($currency);
@@ -599,7 +592,7 @@ function currencySymbol(string $currency): string {
                                 <td>
                                     <span class="status-badge <?= $badgeClass ?>">
                                         <span class="dot"></span>
-                                        <?= $processed ? 'Processed' : 'Pending' ?>
+                                        Processed
                                     </span>
                                 </td>
 
