@@ -438,6 +438,7 @@ return [
     'income' => 'Income',
     'expense' => 'Expense',
     'saving' => 'Saving',
+    'processing' => 'Processing...',
     'loading' => 'Loading',
     'loading_transactions' => 'Loading transactions...',
     'no_transactions_found_for_this_account' => 'No transactions found for this account',

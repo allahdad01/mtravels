@@ -76,6 +76,25 @@ try {
 
     $customer['wallet_balance'] = $wallet ? $wallet['balance'] : 0;
 
+    // Fetch main account details
+    $main_account = null;
+    $tx_type_map = ['deposit' => 'deposit_sarafi', 'withdrawal' => 'withdrawal_sarafi', 'hawala_send' => 'hawala_sarafi'];
+    $tx_of = $tx_type_map[$transaction['type']] ?? null;
+    if ($tx_of) {
+        $stmt = $pdo->prepare("
+            SELECT ma.id, ma.name FROM main_account_transactions mat
+            JOIN main_account ma ON mat.main_account_id = ma.id
+            WHERE mat.reference_id = ? AND mat.transaction_of = ? AND mat.tenant_id = ? AND mat.branch_id = ?
+            LIMIT 1
+        ");
+        $stmt->bindParam(1, $transaction_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tx_of, PDO::PARAM_STR);
+        $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
+        $stmt->execute();
+        $main_account = $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
     // Fetch hawala details if it's a hawala transfer
     $hawala = null;
     if ($transaction['type'] === 'hawala_send') {
@@ -104,6 +123,20 @@ try {
         }
     }
 
+    // Fetch exchange details if it's an exchange
+    $exchange = null;
+    if ($transaction['type'] === 'exchange') {
+        $stmt = $pdo->prepare("
+            SELECT * FROM exchange_transactions
+            WHERE transaction_id = ? AND tenant_id = ? AND branch_id = ?
+        ");
+        $stmt->bindParam(1, $transaction_id, PDO::PARAM_INT);
+        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+        $stmt->execute();
+        $exchange = $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
     // Return response
     header('Content-Type: application/json');
     echo json_encode([
@@ -111,7 +144,9 @@ try {
         'data' => [
             'transaction' => $transaction,
             'customer' => $customer,
-            'hawala' => $hawala
+            'main_account' => $main_account,
+            'hawala' => $hawala,
+            'exchange' => $exchange
         ]
     ]);
 

@@ -441,7 +441,7 @@ $currency_config = [
     'AED' => ['class' => 'aed', 'label' => 'AED Total Balance'],
 ];
 ?>
-<?php include '../includes/header.php'; ?>
+<?php require_once __DIR__ . '/../includes/auth_check.php'; ?>
 <!DOCTYPE html>
 <html lang="<?= get_current_lang() ?>">
 <head>
@@ -1030,7 +1030,7 @@ body,
 
 /* ── Spinner ── */
 @keyframes spin { to { transform: rotate(360deg); } }
-.btn-loading .feather { animation: spin 0.8s linear infinite; display: inline-block; }
+.btn-loading.feather { animation: spin 0.8s linear infinite; display: inline-block; }
 </style>
 </head>
 <body>
@@ -1218,6 +1218,13 @@ body,
                               <i class="feather icon-eye" style="font-size:12px;"></i>
                             </button>
 
+                            <?php if (in_array($tx['type'], ['deposit', 'withdrawal', 'hawala_send', 'exchange'])): ?>
+                            <button class="icon-btn"
+                                    onclick="editTransaction(<?= $tx['id'] ?>)"
+                                    title="<?= __('edit') ?>">
+                              <i class="feather icon-edit-2" style="font-size:12px;"></i>
+                            </button>
+                            <?php endif; ?>
                             <?php if ($tx['type'] === 'deposit'): ?>
                             <button class="icon-btn danger"
                                     onclick="deleteDeposit(<?= $tx['id'] ?>, <?= $tx['amount'] ?>)"
@@ -1348,6 +1355,54 @@ body,
               </div>
             </div>
           </div>
+          <div class="row" id="hawalaEditFields" style="display:none;">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label><?= __('secret_code') ?></label>
+                <input type="text" class="form-control" id="editSecretCode" name="secret_code">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label><?= __('commission') ?></label>
+                <div class="input-group">
+                  <input type="number" step="0.01" min="0" class="form-control" id="editCommissionAmount" name="commission_amount">
+                  <div class="input-group-append">
+                    <span class="input-group-text" id="editCommissionCurrencyDisplay">USD</span>
+                  </div>
+                </div>
+                <input type="hidden" id="editCommissionCurrency" name="commission_currency">
+              </div>
+            </div>
+          </div>
+          <div class="row" id="exchangeEditFields" style="display:none;">
+            <div class="col-md-4">
+              <div class="form-group">
+                <label><?= __('from_currency') ?></label>
+                <input type="text" class="form-control" id="editFromCurrency" readonly>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label><?= __('exchange_rate') ?></label>
+                <input type="number" step="0.0001" min="0" class="form-control" id="editRate" name="rate" required>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label><?= __('to_currency') ?></label>
+                <input type="text" class="form-control" id="editToCurrency" readonly>
+              </div>
+            </div>
+          </div>
+          <div class="row" id="exchangeAmountFields" style="display:none;">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label><?= __('to_amount') ?></label>
+                <input type="number" step="0.01" min="0" class="form-control" id="editToAmount" name="to_amount" required>
+              </div>
+            </div>
+          </div>
           <div class="form-group">
             <label><?= __('reference') ?></label>
             <input type="text" class="form-control" id="editReference" name="reference">
@@ -1453,7 +1508,7 @@ $(document).ready(function() {
   $(document).on('submit', '#editTransactionForm', function(e) {
     e.preventDefault();
     const type = $('#editTransactionType').val();
-    const urlMap = { deposit: 'update_sarafi_deposit_transaction.php', withdrawal: 'update_sarafi_withdrawal_transaction.php' };
+    const urlMap = { deposit: 'update_sarafi_deposit_transaction.php', withdrawal: 'update_sarafi_withdrawal_transaction.php', hawala_send: 'update_sarafi_hawala_transaction.php', exchange: 'update_sarafi_exchange_transaction.php' };
     if (!urlMap[type]) { showToast('<?= __("unsupported_transaction_type") ?>', 'error'); return; }
     const btn = $(this).find('button[type="submit"]');
     const orig = btn.html();
@@ -1479,12 +1534,13 @@ $(document).ready(function() {
     });
   });
 
-  // Button double-submit protection
+  // Button double-submit protection & loading state
   $('form').on('submit', function() {
     const btn = $(this).find('button[type="submit"]');
     if (btn.data('submitting')) return false;
-    btn.data('submitting', true);
-    setTimeout(() => btn.data('submitting', false), 5000);
+    btn.data('submitting', true).prop('disabled', true);
+    btn.data('original-html', btn.html());
+    btn.html('<i class="feather icon-loader btn-loading"></i> ' + '<?= __("processing") ?>');
   });
 });
 
@@ -1638,16 +1694,34 @@ function editTransaction(transactionId) {
     url: 'view_sarafi_transaction.php', type: 'GET', data: { id: transactionId }, dataType: 'json',
     success: r => {
       if (!r.success) { showToast(r.message, 'error'); return; }
-      const { transaction: tx, customer, main_account } = r.data;
+      const { transaction: tx, customer, main_account, hawala, exchange } = r.data;
       $('#editTransactionId').val(tx.id);
       $('#editTransactionType').val(tx.type);
       $('#editCustomerId').val(customer.id);
       $('#editCustomerName').val(customer.name);
-      $('#editMainAccountId').val(main_account.id);
+      $('#editMainAccountId').val(main_account ? main_account.id : '');
       $('#editAmount').val(parseFloat(tx.amount).toFixed(2));
       $('#editOriginalAmount').val(parseFloat(tx.amount).toFixed(2));
       $('#editReference').val(tx.reference_number || '');
       $('#editNotes').val(tx.notes || '');
+      if (tx.type === 'hawala_send' && hawala) {
+        $('#hawalaEditFields').show();
+        $('#editSecretCode').val(hawala.secret_code || '');
+        $('#editCommissionAmount').val(parseFloat(hawala.commission_amount || 0).toFixed(2));
+        $('#editCommissionCurrency').val(hawala.commission_currency || tx.currency);
+        $('#editCommissionCurrencyDisplay').text(hawala.commission_currency || tx.currency);
+      } else {
+        $('#hawalaEditFields').hide();
+      }
+      if (tx.type === 'exchange' && exchange) {
+        $('#exchangeEditFields, #exchangeAmountFields').show();
+        $('#editFromCurrency').val(exchange.from_currency || '');
+        $('#editToCurrency').val(exchange.to_currency || '');
+        $('#editToAmount').val(parseFloat(exchange.to_amount || 0).toFixed(2));
+        $('#editRate').val(parseFloat(exchange.rate || 0).toFixed(4));
+      } else {
+        $('#exchangeEditFields, #exchangeAmountFields').hide();
+      }
       $('#editTransactionModal').modal('show');
     },
     error: () => showToast('<?= __("error_loading_transaction_details") ?>', 'error')

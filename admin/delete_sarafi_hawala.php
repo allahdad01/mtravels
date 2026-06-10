@@ -131,6 +131,13 @@ try {
         throw new Exception('Failed to delete main account transaction');
     }
 
+    // Delete the associated notification
+    $deleteNotifStmt = $pdo->prepare("
+        DELETE FROM notifications 
+        WHERE transaction_id = ? AND transaction_type = ? AND tenant_id = ? AND branch_id = ?
+    ");
+    $deleteNotifStmt->execute([$mainTransaction['id'], 'hawala_sarafi', $tenant_id, $branch_id]);
+
     // Delete the sarafi transaction
     $deleteStmt = $pdo->prepare("
         DELETE FROM sarafi_transactions 
