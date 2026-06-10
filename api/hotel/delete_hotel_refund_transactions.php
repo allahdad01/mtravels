@@ -121,26 +121,6 @@ try {
             $deleteNotifStmt = $pdo->prepare("DELETE FROM notifications WHERE transaction_id = ? AND transaction_type = 'hotel_refund' AND tenant_id = ? AND branch_id = ?");
             $deleteNotifStmt->execute([$transaction_id, $tenant_id, $branch_id]);
 
-            // Check if this was the last transaction and update the hotel_refunds processed status if needed
-            $checkTransactionsStmt = $pdo->prepare("
-                SELECT COUNT(*) as count
-                FROM main_account_transactions
-                WHERE reference_id = ? AND transaction_of = 'hotel_refund'
-                AND tenant_id = ? AND branch_id = ?
-            ");
-            $checkTransactionsStmt->execute([$refund_id, $tenant_id, $branch_id]);
-            $transactionCount = $checkTransactionsStmt->fetch(PDO::FETCH_ASSOC)['count'];
-
-            if ($transactionCount === 0) {
-                // No more transactions, update hotel_refunds status
-                $updateRefundStmt = $pdo->prepare("
-                    UPDATE hotel_refunds
-                    SET processed = 0, processed_by = NULL
-                    WHERE id = ? AND tenant_id = ? AND branch_id = ?
-                ");
-                $updateRefundStmt->execute([$refund_id, $tenant_id, $branch_id]);
-            }
-
             $pdo->commit();
             
             // Log the activity

@@ -61,22 +61,17 @@ $refundsQuery = "SELECT r.*, v.applicant_name, v.passport_number, v.country, v.c
                 LEFT JOIN visa_applications v ON r.visa_id = v.id
                 LEFT JOIN clients c ON v.sold_to = c.id
                 LEFT JOIN users u ON r.processed_by = u.id
-                LEFT JOIN main_account_transactions t ON r.transaction_id = t.id
-                LEFT JOIN main_account m ON t.main_account_id = m.id
+                LEFT JOIN main_account m ON v.paid_to = m.id
                 $searchCondition
                 AND (v.id IS NULL OR v.branch_id = ?)
                 AND (c.id IS NULL OR c.branch_id = ?)
                 AND (u.id IS NULL OR u.branch_id = ?)
-                AND (t.id IS NULL OR t.branch_id = ?)
-                AND (m.id IS NULL OR m.branch_id = ?)
                 ORDER BY r.refund_date DESC
                 LIMIT ? OFFSET ?";
 
 $paramsWithLimit   = $params;
 $paramsWithLimit[] = $branch_id;
 $paramsWithLimit[] = $branch_id; // clients branch_id
-$paramsWithLimit[] = $branch_id;
-$paramsWithLimit[] = $branch_id;
 $paramsWithLimit[] = $branch_id;
 $paramsWithLimit[] = $recordsPerPage;
 $paramsWithLimit[] = $offset;

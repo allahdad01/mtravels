@@ -23,12 +23,10 @@ try {
     // Get refund details with related information
     $query = "
         SELECT r.*, v.applicant_name, v.passport_number, v.country, v.currency as visa_currency,
-               t.amount as transaction_amount, t.currency as transaction_currency,
-               m.name as account_name, u.name as processed_by_name
+               m.name as account_name
         FROM visa_refunds r
         LEFT JOIN visa_applications v ON r.visa_id = v.id
-        LEFT JOIN main_account_transactions t ON r.transaction_id = t.id
-        LEFT JOIN main_account m ON t.main_account_id = m.id
+        LEFT JOIN main_account m ON v.paid_to = m.id
         LEFT JOIN users u ON r.processed_by = u.id
         WHERE r.id = ? AND r.tenant_id = ? AND r.branch_id = ?
     ";
