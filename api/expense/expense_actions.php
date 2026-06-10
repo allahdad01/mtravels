@@ -89,7 +89,7 @@ try {
             $category = $getStmt->fetch(PDO::FETCH_ASSOC);
             
             $stmt = $pdo->prepare("DELETE FROM expense_categories WHERE id = ? AND tenant_id = ? And branch_id = ?");
-            $stmt->execute([$categoryId, $tenant_id, branch_id]);
+            $stmt->execute([$categoryId, $tenant_id, $branch_id]);
             
             // Log the activity
             $old_values = json_encode([
@@ -164,9 +164,17 @@ try {
 
             if($expenseId) {
                 // Get previous expense details if this is an update
-                $prevStmt = $pdo->prepare("SELECT amount, currency, main_account_id, allocation_id, receipt_file FROM expenses WHERE id = ? AND tenant_id = ? And branch_id = ?");
+                $prevStmt = $pdo->prepare("SELECT amount, currency, main_account_id, allocation_id, global_allocation_id, receipt_file FROM expenses WHERE id = ? AND tenant_id = ? And branch_id = ?");
                 $prevStmt->execute([$expenseId, $tenant_id, $branch_id]);
                 $prevExpense = $prevStmt->fetch(PDO::FETCH_ASSOC);
+
+                // Guard: allocation-linked expenses must use dedicated APIs
+                if ($prevExpense && (!empty($prevExpense['allocation_id']) || !empty($prevExpense['global_allocation_id']))) {
+                    throw new Exception("This expense is linked to an allocation. Manage it from the allocation page.");
+                }
+                if ($allocationId) {
+                    throw new Exception("Cannot link an expense to an allocation from here. Use the allocation page.");
+                }
                 
                 // If there's a previous receipt file and we're uploading a new one, delete the old file
                 if (!empty($prevExpense['receipt_file']) && $receiptFile) {
@@ -181,261 +189,93 @@ try {
                     $receiptFile = $prevExpense['receipt_file'];
                 }
                 
-                // Handle previous allocation if it exists
-                if ($prevExpense && $prevExpense['allocation_id']) {
-                    // Return the amount to the previous allocation
-                    $updatePrevAllocationStmt = $pdo->prepare("
-                        UPDATE budget_allocations 
-                        SET remaining_amount = remaining_amount + ? 
-                        WHERE id = ? AND tenant_id = ? And branch_id = ?
-                    ");
-                    $updatePrevAllocationStmt->execute([$prevExpense['amount'], $prevExpense['allocation_id'], $tenant_id, $branch_id]);
-                }
-                
-                // Get allocation details without checking remaining amount
-                if ($allocationId) {
-                    $allocationCheckStmt = $pdo->prepare("
-                        SELECT remaining_amount, currency, category_id, main_account_id FROM budget_allocations WHERE id = ? AND tenant_id = ? And branch_id = ?
-                    ");
-                    $allocationCheckStmt->execute([$allocationId, $tenant_id, $branch_id]);
-                    $allocation = $allocationCheckStmt->fetch(PDO::FETCH_ASSOC);
-                    
-                    if (!$allocation) {
-                        throw new Exception("Allocation not found");
-                    }
-                    
-                    if ($allocation['currency'] != $currency) {
-                        throw new Exception("Currency mismatch between expense and allocation");
-                    }
-                    
-                    // Removed check for remaining_amount to allow negative balance
-                    
-                    // Get main_account_id from the allocation
-                    $mainAccountId = $allocation['main_account_id'];
-                    
-                    // Deduct from the allocation (allowing negative balance)
-                    $updateAllocationStmt = $pdo->prepare("
-                        UPDATE budget_allocations 
-                        SET remaining_amount = remaining_amount - ? 
-                        WHERE id = ? AND tenant_id = ? And branch_id = ?
-                    ");
-                    $updateAllocationStmt->execute([$amount, $allocationId, $tenant_id, $branch_id]);
-                    
-                    // When using allocation, set main_account_id to NULL explicitly
-                    $mainAccountId = null;
-                } else {
-                    // Not using allocation - ensure main account is provided
-                    if (empty($mainAccountId)) {
-                        throw new Exception("Main account is required when not using a budget allocation");
-                    }
+                // Not using allocation - ensure main account is provided
+                if (empty($mainAccountId)) {
+                    throw new Exception("Main account is required");
                 }
                 
                 // Update expense with receipt fields
-                $stmt = $pdo->prepare("UPDATE expenses SET date = ?, description = ?, amount = ?, currency = ?, main_account_id = ?, allocation_id = ?, receipt_file = ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
-                $stmt->execute([$date, $description, $amount, $currency, $mainAccountId, $allocationId, $receiptFile, $expenseId, $tenant_id, $branch_id]);
+                $stmt = $pdo->prepare("UPDATE expenses SET date = ?, description = ?, amount = ?, currency = ?, main_account_id = ?, receipt_file = ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
+                $stmt->execute([$date, $description, $amount, $currency, $mainAccountId, $receiptFile, $expenseId, $tenant_id, $branch_id]);
                 
-                // If we're not using an allocation, we need to handle main account changes
-                if (!$allocationId) {
-                    // If amount, currency, or account changed, update main account balance
-                    if ($prevExpense && ($prevExpense['amount'] != $amount || $prevExpense['currency'] != $currency || $prevExpense['main_account_id'] != $mainAccountId)) {
-                        // If account changed or currency changed, handle differently
-                        if ($prevExpense['main_account_id'] != $mainAccountId || $prevExpense['currency'] != $currency) {
-                            // If account or currency changed, refund previous account and deduct from new account
-                            if ($prevExpense['main_account_id']) {
-                                // Determine previous balance column
-                                $prevBalanceColumn = 'usd_balance'; // Default
-                                if ($prevExpense['currency'] == 'AFS') {
-                                    $prevBalanceColumn = 'afs_balance';
-                                } elseif ($prevExpense['currency'] == 'EUR') {
-                                    $prevBalanceColumn = 'euro_balance';
-                                } elseif ($prevExpense['currency'] == 'DARHAM') {
-                                    $prevBalanceColumn = 'darham_balance';
-                                }
-                                
-                                // Refund previous account's appropriate currency balance
-                                $refundStmt = $pdo->prepare("UPDATE main_account SET $prevBalanceColumn = $prevBalanceColumn + ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
-                                $refundStmt->execute([$prevExpense['amount'], $prevExpense['main_account_id'], $tenant_id]);
-                                
-                                // Get transaction details to find created_at timestamp for subsequent balance updates
-                                $getTxnStmt = $pdo->prepare("SELECT id, created_at FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'expense' AND tenant_id = ? And branch_id = ?");
-                                $getTxnStmt->execute([$expenseId, $tenant_id, $branch_id]);
-                                $transaction = $getTxnStmt->fetch(PDO::FETCH_ASSOC);
-                                
-                                if ($transaction) {
-                                    // Update balances of all subsequent transactions in the previous account
-                                    $updateSubsequentStmt = $pdo->prepare("
-                                        UPDATE main_account_transactions 
-                                        SET balance = balance + ?
-                                        WHERE main_account_id = ? 
-                                        AND currency = ? 
-                                        AND created_at > ? 
-                                        AND tenant_id = ?
-                                        AND branch_id = ?
-                                    ");
-                                    $updateSubsequentStmt->execute([
-                                        $prevExpense['amount'], 
-                                        $prevExpense['main_account_id'], 
-                                        $prevExpense['currency'], 
-                                        $transaction['created_at'],
-                                        $tenant_id,
-                                        $branch_id
-                                    ]);
-                                    
-                                    // Delete the original transaction since we're moving to a new account/currency
-                                    $deleteStmt = $pdo->prepare("DELETE FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'expense' AND tenant_id = ? AND branch_id = ?");
-                                    $deleteStmt->execute([$expenseId, $tenant_id, $branch_id]);
-                                }
-                            }
-                            
-                            // Deduct from current account's appropriate currency balance
-                            if ($mainAccountId) {
-                                $updateBalanceStmt = $pdo->prepare("UPDATE main_account SET $balanceColumn = $balanceColumn - ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
-                                $updateBalanceStmt->execute([$amount, $mainAccountId, $tenant_id, $branch_id]);
-                                
-                                // Get updated balance for transaction record
-                                $balanceStmt = $pdo->prepare("SELECT $balanceColumn FROM main_account WHERE id = ? AND tenant_id = ? And branch_id = ?");
-                                $balanceStmt->execute([$mainAccountId, $tenant_id, $branch_id]);
-                                $updatedBalance = $balanceStmt->fetchColumn();
-                                
-                                // Add new transaction record with correct reference and receipt number
-                                $txnStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, description, balance, currency, transaction_of, reference_id, receipt, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                                $txnStmt->execute([
-                                    $mainAccountId,
-                                    'debit',
-                                    $amount,
-                                    $description,
-                                    $updatedBalance,
-                                    $currency,
-                                    'expense',
-                                    $expenseId,
-                                    $receiptNumber,
-                                    $tenant_id,
-                                    $branch_id
-                                ]);
-                            }
-                        } else {
-                            // Same account and currency, just update by the difference
-                            $amountDifference = $amount - $prevExpense['amount'];
-                            
-                            // Update main account balance by the difference
-                            if ($amountDifference != 0) {
-                                $updateBalanceStmt = $pdo->prepare("UPDATE main_account SET $balanceColumn = $balanceColumn - ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
-                                $updateBalanceStmt->execute([$amountDifference, $mainAccountId, $tenant_id, $branch_id]);
-                                
-                                // Get transaction details
-                                $getTxnStmt = $pdo->prepare("SELECT id, created_at FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'expense' AND tenant_id = ? AND branch_id = ?");
-                                $getTxnStmt->execute([$expenseId, $tenant_id, $branch_id]);
-                                $transaction = $getTxnStmt->fetch(PDO::FETCH_ASSOC);
-                                
-                                if ($transaction) {
-                                    // Update this transaction's amount, description and receipt number
-                                    $updateTxnStmt = $pdo->prepare("UPDATE main_account_transactions SET amount = ?, description = ?, receipt = ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
-                                    $updateTxnStmt->execute([$amount, $description, $receiptNumber, $transaction['id'], $tenant_id, $branch_id]);
-                                    
-                                    // Get current balance for this transaction
-                                    $currentBalanceStmt = $pdo->prepare("SELECT balance FROM main_account_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                                    $currentBalanceStmt->execute([$transaction['idi'], $tenant_id, $branch_id]);
-                                    $currentBalance = $currentBalanceStmt->fetchColumn();
-                                    
-                                    // Update this transaction's balance
-                                    $newBalance = $currentBalance - $amountDifference;
-                                    $updateBalanceStmt = $pdo->prepare("UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                                    $updateBalanceStmt->execute([$newBalance, $transaction['id'], $tenant_id, $branch_id]);
-                                    
-                                    // Update balances of all subsequent transactions
-                                    $updateSubsequentStmt = $pdo->prepare("
-                                        UPDATE main_account_transactions 
-                                        SET balance = balance - ?
-                                        WHERE main_account_id = ? 
-                                        AND currency = ? 
-                                        AND created_at > ? 
-                                        AND id != ?
-                                        AND tenant_id = ?
-                                        AND branch_id = ?
-                                    ");
-                                    $updateSubsequentStmt->execute([
-                                        $amountDifference, 
-                                        $mainAccountId, 
-                                        $currency, 
-                                        $transaction['created_at'],
-                                        $transaction['id'],
-                                        $tenant_id,
-                                        $branch_id
-                                    ]);
-                                }
-                            } else {
-                                // Only receipt number changed, update that
-                                $getTxnStmt = $pdo->prepare("SELECT id FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'expense' AND tenant_id = ? AND branch_id = ?");
-                                $getTxnStmt->execute([$expenseId, $tenant_id, $branch_id]);
-                                $transaction = $getTxnStmt->fetch(PDO::FETCH_ASSOC);
-                                
-                                if ($transaction) {
-                                    $updateTxnStmt = $pdo->prepare("UPDATE main_account_transactions SET receipt = ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
-                                    $updateTxnStmt->execute([$receiptNumber, $transaction['id'], $tenant_id, $branch_id]);
-                                }
-                            }
-                        }
-                    } else {
-                        // Only receipt number changed, update that
-                        $getTxnStmt = $pdo->prepare("SELECT id FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'expense' AND tenant_id = ? And branch_id = ?");
-                        $getTxnStmt->execute([$expenseId, $tenant_id, $branch_id]);
-                        $transaction = $getTxnStmt->fetch(PDO::FETCH_ASSOC);
-                        
-                        if ($transaction) {
-                            $updateTxnStmt = $pdo->prepare("UPDATE main_account_transactions SET receipt = ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
-                            $updateTxnStmt->execute([$receiptNumber, $transaction['id'], $tenant_id, $branch_id]);
-                        }
+                // Handle main account changes — only amount can change (account/currency locked in edit modal)
+                if ($prevExpense && $prevExpense['amount'] != $amount) {
+                    $amountDifference = $amount - $prevExpense['amount'];
+
+                    // Update main account balance by the difference
+                    $updateBalanceStmt = $pdo->prepare("UPDATE main_account SET $balanceColumn = $balanceColumn - ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
+                    $updateBalanceStmt->execute([$amountDifference, $mainAccountId, $tenant_id, $branch_id]);
+
+                    // Get transaction details
+                    $getTxnStmt = $pdo->prepare("SELECT id FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'expense' AND tenant_id = ? AND branch_id = ?");
+                    $getTxnStmt->execute([$expenseId, $tenant_id, $branch_id]);
+                    $transaction = $getTxnStmt->fetch(PDO::FETCH_ASSOC);
+
+                    if ($transaction) {
+                        // Update this transaction's amount, description and receipt number
+                        $updateTxnStmt = $pdo->prepare("UPDATE main_account_transactions SET amount = ?, description = ?, receipt = ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
+                        $updateTxnStmt->execute([$amount, $description, $receiptNumber, $transaction['id'], $tenant_id, $branch_id]);
+
+                        // Get current balance for this transaction
+                        $currentBalanceStmt = $pdo->prepare("SELECT balance FROM main_account_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                        $currentBalanceStmt->execute([$transaction['id'], $tenant_id, $branch_id]);
+                        $currentBalance = $currentBalanceStmt->fetchColumn();
+
+                        // Update this transaction's balance
+                        $newBalance = $currentBalance - $amountDifference;
+                        $updateTxnStmt = $pdo->prepare("UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                        $updateTxnStmt->execute([$newBalance, $transaction['id'], $tenant_id, $branch_id]);
+
+                        // Update balances of all subsequent transactions
+                        $updateSubsequentStmt = $pdo->prepare("
+                            UPDATE main_account_transactions
+                            SET balance = balance - ?
+                            WHERE main_account_id = ?
+                            AND currency = ?
+                            AND id > ?
+                            AND tenant_id = ?
+                            AND branch_id = ?
+                        ");
+                        $updateSubsequentStmt->execute([
+                            $amountDifference,
+                            $mainAccountId,
+                            $currency,
+                            $transaction['id'],
+                            $tenant_id,
+                            $branch_id
+                        ]);
                     }
-                    
+                } else {
+                    // Only receipt/description/date changed — just update receipt on the transaction
+                    $getTxnStmt = $pdo->prepare("SELECT id FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'expense' AND tenant_id = ? AND branch_id = ?");
+                    $getTxnStmt->execute([$expenseId, $tenant_id, $branch_id]);
+                    $transaction = $getTxnStmt->fetch(PDO::FETCH_ASSOC);
+
+                    if ($transaction) {
+                        $updateTxnStmt = $pdo->prepare("UPDATE main_account_transactions SET receipt = ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
+                        $updateTxnStmt->execute([$receiptNumber, $transaction['id'], $tenant_id, $branch_id]);
+                    }
                 }
             } else {
                 // INSERTING A NEW EXPENSE
                 
-                // If using an allocation, get allocation details without checking remaining amount
-                    if ($allocationId) {
-                        $allocationCheckStmt = $pdo->prepare("
-                            SELECT remaining_amount, currency, category_id, main_account_id FROM budget_allocations WHERE id = ? AND tenant_id = ? And branch_id = ?
-                        ");
-                        $allocationCheckStmt->execute([$allocationId, $tenant_id, $branch_id]);
-                        $allocation = $allocationCheckStmt->fetch(PDO::FETCH_ASSOC);
-                        
-                        if (!$allocation) {
-                            throw new Exception("Allocation not found");
-                        }
-                        
-                        if ($allocation['currency'] != $currency) {
-                            throw new Exception("Currency mismatch between expense and allocation");
-                        }
-                        
-                        // Removed check for remaining_amount to allow negative balance
-                        
-                        // Ensure category matches allocation's category
-                        $categoryId = $allocation['category_id'];
-                        
-                        // Get main_account_id from the allocation
-                        $mainAccountId = $allocation['main_account_id'];
-                        
-                        // Deduct from the allocation (allowing negative balance)
-                        $updateAllocationStmt = $pdo->prepare("
-                            UPDATE budget_allocations 
-                            SET remaining_amount = remaining_amount - ? 
-                            WHERE id = ? AND tenant_id = ? And branch_id = ?
-                        ");
-                        $updateAllocationStmt->execute([$amount, $allocationId, $tenant_id, $branch_id]);
-                } else {
-                    // Not using allocation - ensure main account is provided
-                    if (empty($mainAccountId)) {
-                        throw new Exception("Main account is required when not using a budget allocation");
-                    }
+                // Guard: allocation-linked expenses must use dedicated APIs
+                if ($allocationId) {
+                    throw new Exception("Cannot link an expense to an allocation from here. Use the allocation page.");
+                }
+                
+                // Ensure main account is provided
+                if (empty($mainAccountId)) {
+                    throw new Exception("Main account is required");
                 }
                 
                 // Insert new expense with receipt fields
-                $stmt = $pdo->prepare("INSERT INTO expenses (category_id, date, description, amount, currency, main_account_id, allocation_id, receipt_file, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmt->execute([$categoryId, $date, $description, $amount, $currency, $mainAccountId, $allocationId, $receiptFile, $tenant_id, $branch_id]);
+                $stmt = $pdo->prepare("INSERT INTO expenses (category_id, date, description, amount, currency, main_account_id, receipt_file, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$categoryId, $date, $description, $amount, $currency, $mainAccountId, $receiptFile, $tenant_id, $branch_id]);
                 $ExpenseId = $pdo->lastInsertId();
                 
-                // If not using an allocation, deduct from main account if specified
-                if (!$allocationId && $mainAccountId) {
+                // Deduct from main account
+                if ($mainAccountId) {
                     // Update appropriate currency balance in main account
                     $updateBalanceStmt = $pdo->prepare("UPDATE main_account SET $balanceColumn = $balanceColumn - ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
                     $updateBalanceStmt->execute([$amount, $mainAccountId, $tenant_id, $branch_id]);
@@ -467,7 +307,7 @@ try {
             if (!$expenseId) {
                 // Get the last inserted transaction ID for notification (if applicable)
                 $transaction_id = null;
-                if (!$allocationId && $mainAccountId) {
+                if ($mainAccountId) {
                     $txnIdStmt = $pdo->prepare("SELECT id FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'expense' AND tenant_id = ? And branch_id = ? ORDER BY id DESC LIMIT 1");
                     $txnIdStmt->execute([$ExpenseId, $tenant_id, $branch_id]);
                     $transaction_id = $txnIdStmt->fetchColumn();
@@ -556,9 +396,18 @@ try {
             $pdo->beginTransaction();
             
             // Get expense details before deleting
-            $getExpenseStmt = $pdo->prepare("SELECT amount, currency, main_account_id, description, date, allocation_id, receipt_file FROM expenses WHERE id = ? AND tenant_id = ? And branch_id = ?");
+            $getExpenseStmt = $pdo->prepare("SELECT amount, currency, main_account_id, description, date, allocation_id, global_allocation_id, receipt_file FROM expenses WHERE id = ? AND tenant_id = ? And branch_id = ?");
             $getExpenseStmt->execute([$expenseId, $tenant_id, $branch_id]);
             $expense = $getExpenseStmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$expense) {
+                throw new Exception("Expense not found");
+            }
+            
+            // Guard: allocation-linked expenses must use dedicated APIs
+            if (!empty($expense['allocation_id']) || !empty($expense['global_allocation_id'])) {
+                throw new Exception("This expense is linked to an allocation. Manage it from the allocation page.");
+            }
             
             // Delete associated receipt file if exists
             if (!empty($expense['receipt_file'])) {
@@ -568,17 +417,8 @@ try {
                 }
             }
             
-            // If expense has an associated allocation, return the amount to the allocation
-            if ($expense && $expense['allocation_id']) {
-                $updateAllocationStmt = $pdo->prepare("
-                    UPDATE budget_allocations 
-                    SET remaining_amount = remaining_amount + ? 
-                    WHERE id = ? AND tenant_id = ? And branch_id = ?
-                ");
-                $updateAllocationStmt->execute([$expense['amount'], $expense['allocation_id'], $tenant_id, $branch_id]);
-            }
-            // If expense has an associated main account, refund the amount
-            elseif ($expense && $expense['main_account_id']) {
+            // Refund the main account
+            if ($expense['main_account_id']) {
                 // Determine which balance column to update based on currency
                 $balanceColumn = 'usd_balance'; // Default
                 if ($expense['currency'] == 'AFS') {

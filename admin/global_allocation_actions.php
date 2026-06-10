@@ -68,15 +68,21 @@ if (isset($_POST['action'])) {
          case 'get_global_expenses':
               getGlobalExpenses($pdo, $tenant_id, $branch_id);
               break;
-          case 'delete_global_expense':
-               deleteGlobalExpense($pdo, $tenant_id, $branch_id);
-               break;
+           case 'delete_global_expense':
+                deleteGlobalExpense($pdo, $tenant_id, $branch_id);
+                break;
+           case 'edit_global_expense':
+                editGlobalExpense($pdo, $tenant_id, $branch_id);
+                break;
           case 'get_fund_transactions':
                getFundTransactions($pdo, $tenant_id, $branch_id);
                break;
-          case 'delete_fund_transaction':
-               deleteFundTransaction($pdo, $tenant_id, $branch_id);
-               break;
+           case 'delete_fund_transaction':
+                deleteFundTransaction($pdo, $tenant_id, $branch_id);
+                break;
+           case 'edit_fund_transaction':
+                editFundTransaction($pdo, $tenant_id, $branch_id);
+                break;
           default:
               sendResponse(false, 'Invalid action');
               break;
@@ -174,7 +180,7 @@ function createGlobalAllocation($pdo, $tenant_id, $branch_id) {
              $mainAccountId,
              'debit',
              $amount,
-             "Global budget allocation",
+              $description,
              $updatedBalance,
              $currency,
              'global_budget_allocation',
@@ -462,12 +468,13 @@ function addFundsGlobal($pdo, $tenant_id, $branch_id) {
             (main_account_id, type, amount, description, balance, currency, transaction_of, reference_id, tenant_id, branch_id)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $description = "Additional funding to global budget allocation" . ($note ? " - " . $note : "");
+        $globalAllocDesc = $allocation['description'] ?? "Additional funding to global budget allocation";
+        $finalDesc = $globalAllocDesc . ($note ? " - " . $note : "");
         $transactionStmt->execute([
             $mainAccountId,
             'debit',
             $amount,
-            $description,
+            $finalDesc,
             $updatedBalance,
             $currency,
             'global_budget_allocation',
@@ -704,6 +711,75 @@ function deleteGlobalExpense($pdo, $tenant_id, $branch_id) {
     }
 }
 
+// Edit expense from global allocation
+function editGlobalExpense($pdo, $tenant_id, $branch_id) {
+    try {
+        $expenseId   = isset($_POST['expense_id'])   ? intval($_POST['expense_id'])   : 0;
+        $categoryId  = isset($_POST['category_id'])  ? intval($_POST['category_id'])  : 0;
+        $date        = isset($_POST['date'])          ? $_POST['date']                  : '';
+        $description = isset($_POST['description'])   ? $_POST['description']           : '';
+        $amount      = isset($_POST['amount'])         ? floatval($_POST['amount'])      : 0;
+
+        if ($expenseId <= 0 || $categoryId <= 0 || $amount <= 0) {
+            sendResponse(false, 'Invalid input data');
+            return;
+        }
+
+        // Get old expense
+        $prevStmt = $pdo->prepare("SELECT * FROM expenses WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $prevStmt->execute([$expenseId, $tenant_id, $branch_id]);
+        $prev = $prevStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$prev) {
+            sendResponse(false, 'Expense not found');
+            return;
+        }
+
+        $allocationId = $prev['global_allocation_id'];
+        $oldAmount = (float) $prev['amount'];
+        $diff = $amount - $oldAmount;
+
+        $pdo->beginTransaction();
+
+        // Adjust allocation remaining_amount
+        $updateAllocStmt = $pdo->prepare("
+            UPDATE global_budget_allocations
+            SET remaining_amount = remaining_amount - ?
+            WHERE id = ? AND tenant_id = ? AND branch_id = ?
+        ");
+        $updateAllocStmt->execute([$diff, $allocationId, $tenant_id, $branch_id]);
+
+        // Update expense
+        $updateStmt = $pdo->prepare("
+            UPDATE expenses
+            SET category_id = ?, date = ?, description = ?, amount = ?
+            WHERE id = ? AND tenant_id = ? AND branch_id = ?
+        ");
+        $updateStmt->execute([$categoryId, $date, $description, $amount, $expenseId, $tenant_id, $branch_id]);
+
+        $pdo->commit();
+
+        // Activity log
+        $old_values = json_encode($prev);
+        $new_values = json_encode([
+            'category_id' => $categoryId,
+            'date' => $date,
+            'description' => $description,
+            'amount' => $amount
+        ]);
+        $user_id = $_SESSION['user_id'] ?? 0;
+        $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
+        $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        $activityStmt = $pdo->prepare("INSERT INTO activity_log (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id) VALUES (?, 'update', 'expenses', ?, ?, ?, ?, ?, NOW(), ?, ?)");
+        $activityStmt->execute([$user_id, $expenseId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id]);
+
+        sendResponse(true, 'Expense updated successfully');
+    } catch (PDOException $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        sendResponse(false, 'Database error: ' . $e->getMessage());
+    }
+}
+
 // Delete a fund transaction for global allocation
 function deleteFundTransaction($pdo, $tenant_id, $branch_id) {
     try {
@@ -872,6 +948,144 @@ function deleteFundTransaction($pdo, $tenant_id, $branch_id) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
         }
+        sendResponse(false, 'Database error: ' . $e->getMessage());
+    }
+}
+
+// Edit a fund transaction for global allocation
+function editFundTransaction($pdo, $tenant_id, $branch_id) {
+    try {
+        $transactionId = isset($_POST['transaction_id']) ? intval($_POST['transaction_id']) : 0;
+        $allocationId = isset($_POST['allocation_id']) ? intval($_POST['allocation_id']) : 0;
+        $newAmount = isset($_POST['amount']) ? floatval($_POST['amount']) : 0;
+        $newDescription = isset($_POST['description']) ? $_POST['description'] : '';
+
+        if ($transactionId <= 0 || $allocationId <= 0 || $newAmount <= 0) {
+            sendResponse(false, 'Invalid input data');
+            return;
+        }
+
+        $pdo->beginTransaction();
+
+        // Get old transaction
+        $txStmt = $pdo->prepare("
+            SELECT * FROM main_account_transactions
+            WHERE id = ? AND transaction_of = 'global_budget_allocation' AND reference_id = ? AND tenant_id = ? AND branch_id = ?
+        ");
+        $txStmt->execute([$transactionId, $allocationId, $tenant_id, $branch_id]);
+        $transaction = $txStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$transaction) {
+            $pdo->rollBack();
+            sendResponse(false, 'Transaction not found');
+            return;
+        }
+
+        // Get allocation
+        $allocStmt = $pdo->prepare("
+            SELECT ga.*, ma.id as main_account_id
+            FROM global_budget_allocations ga
+            JOIN main_account ma ON ga.main_account_id = ma.id
+            WHERE ga.id = ? AND ga.tenant_id = ? AND ga.branch_id = ?
+        ");
+        $allocStmt->execute([$allocationId, $tenant_id, $branch_id]);
+        $allocation = $allocStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$allocation) {
+            $pdo->rollBack();
+            sendResponse(false, 'Allocation not found');
+            return;
+        }
+
+        $mainAccountId = $transaction['main_account_id'];
+        $currency = $transaction['currency'];
+        $oldAmount = (float) $transaction['amount'];
+        $oldBalance = (float) $transaction['balance'];
+        $type = $transaction['type'];
+        $diff = $newAmount - $oldAmount;
+
+        // Determine balance column
+        $balanceColumn = 'usd_balance';
+        if ($currency == 'AFS') $balanceColumn = 'afs_balance';
+        elseif ($currency == 'EUR') $balanceColumn = 'euro_balance';
+        elseif ($currency == 'DARHAM') $balanceColumn = 'darham_balance';
+
+        if ($type === 'debit') {
+            // Net main account change: -diff (more debit = lower balance)
+            $updateAccountStmt = $pdo->prepare("
+                UPDATE main_account SET $balanceColumn = $balanceColumn - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?
+            ");
+            $updateAccountStmt->execute([$diff, $mainAccountId, $tenant_id, $branch_id]);
+
+            // Allocation amounts change by +diff
+            $updateAllocStmt = $pdo->prepare("
+                UPDATE global_budget_allocations
+                SET allocated_amount = allocated_amount + ?,
+                    remaining_amount = remaining_amount + ?,
+                    updated_at = NOW()
+                WHERE id = ? AND tenant_id = ? AND branch_id = ?
+            ");
+            $updateAllocStmt->execute([$diff, $diff, $allocationId, $tenant_id, $branch_id]);
+        } else {
+            $updateAccountStmt = $pdo->prepare("
+                UPDATE main_account SET $balanceColumn = $balanceColumn + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?
+            ");
+            $updateAccountStmt->execute([$diff, $mainAccountId, $tenant_id, $branch_id]);
+
+            $updateAllocStmt = $pdo->prepare("
+                UPDATE global_budget_allocations
+                SET allocated_amount = allocated_amount - ?,
+                    remaining_amount = remaining_amount - ?,
+                    updated_at = NOW()
+                WHERE id = ? AND tenant_id = ? AND branch_id = ?
+            ");
+            $updateAllocStmt->execute([$diff, $diff, $allocationId, $tenant_id, $branch_id]);
+        }
+
+        // Calculate new balance for this transaction
+        $newBalance = $type === 'debit' ? $oldBalance - $diff : $oldBalance + $diff;
+
+        // Update the transaction
+        $updateTxStmt = $pdo->prepare("
+            UPDATE main_account_transactions
+            SET amount = ?, description = ?, balance = ?
+            WHERE id = ? AND tenant_id = ? AND branch_id = ?
+        ");
+        $updateTxStmt->execute([$newAmount, $newDescription, $newBalance, $transactionId, $tenant_id, $branch_id]);
+
+        // Update subsequent transaction balances
+        $balanceAdjustment = $type === 'debit' ? -$diff : $diff;
+        $updateSubseqStmt = $pdo->prepare("
+            UPDATE main_account_transactions
+            SET balance = balance + ?
+            WHERE main_account_id = ? AND currency = ? AND id > ? AND tenant_id = ? AND branch_id = ?
+        ");
+        $updateSubseqStmt->execute([$balanceAdjustment, $mainAccountId, $currency, $transactionId, $tenant_id, $branch_id]);
+
+        // Log activity
+        $old_values = json_encode($transaction);
+        $new_values = json_encode([
+            'amount' => $newAmount,
+            'description' => $newDescription,
+            'balance' => $newBalance
+        ]);
+
+        $user_id = $_SESSION['user_id'] ?? 0;
+        $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
+        $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+
+        $activityStmt = $pdo->prepare("
+            INSERT INTO activity_log
+            (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+            VALUES (?, 'edit', 'main_account_transactions', ?, ?, ?, ?, ?, NOW(), ?, ?)
+        ");
+        $activityStmt->execute([$user_id, $transactionId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id]);
+
+        $pdo->commit();
+
+        sendResponse(true, 'Fund transaction updated successfully');
+    } catch (PDOException $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
         sendResponse(false, 'Database error: ' . $e->getMessage());
     }
 }

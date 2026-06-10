@@ -336,59 +336,52 @@ body {
   gap: 4px;
 }
 
-.category-card-header .category-meta .category-card-actions .btn {
-  width: 30px;
-  height: 30px;
+.category-card-actions button,
+.category-card-actions a {
+  width: 32px;
+  height: 32px;
   padding: 0;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
-  border: none;
-  font-size: 0;
+  border-radius: 7px;
+  border: 1.5px solid var(--exp-border-strong);
   cursor: pointer;
-  transition: all 0.2s;
-  opacity: 0.6;
+  transition: all 0.15s;
+  background: var(--exp-card-bg);
+  color: var(--exp-text-secondary);
+  user-select: none;
+  text-decoration: none;
+  font-size: 0;
 }
 
-.category-card-header .category-meta .category-card-actions .btn i {
+.category-card-actions button i,
+.category-card-actions a i {
   font-size: 16px;
   line-height: 1;
 }
 
-.category-card:hover .category-card-actions .btn {
-  opacity: 1;
-}
-
-.category-card-actions .btn:hover {
+.category-card-actions button:hover,
+.category-card-actions a:hover {
   transform: translateY(-1px);
 }
 
-.category-card-actions .btn-print {
-  background: #e8f5e9;
-  color: #2e7d32;
-}
-
 .category-card-actions .btn-print:hover {
-  background: #c8e6c9;
-}
-
-.category-card-actions .btn-edit {
-  background: #e3f2fd;
-  color: #1565c0;
+  border-color: #10b981;
+  color: #10b981;
+  background: #ecfdf5;
 }
 
 .category-card-actions .btn-edit:hover {
-  background: #bbdefb;
-}
-
-.category-card-actions .btn-delete {
-  background: #fce4ec;
-  color: #c62828;
+  border-color: var(--exp-blue);
+  color: var(--exp-blue);
+  background: #eff6ff;
 }
 
 .category-card-actions .btn-delete:hover {
-  background: #f8bbd0;
+  border-color: #ef4444;
+  color: #ef4444;
+  background: #fef2f2;
 }
 
 .category-card-header .category-meta .expand-icon {
@@ -487,58 +480,83 @@ body {
   gap: 4px;
 }
 
-.expense-list .table .actions-col .btn {
-  width: 28px;
-  height: 28px;
+.expense-list .table .actions-col .btn-group-wrap button,
+.expense-list .table .actions-col .btn-group-wrap a {
+  width: 32px;
+  height: 32px;
   padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
-  border: none;
-  font-size: 0;
+  border-radius: 7px;
+  border: 1.5px solid var(--exp-border-strong);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
+  background: var(--exp-card-bg);
+  color: var(--exp-text-secondary);
+  user-select: none;
+  text-decoration: none;
+  font-size: 0;
 }
 
-.expense-list .table .actions-col .btn i {
-  font-size: 14px;
+.expense-list .table .actions-col .btn-group-wrap button i,
+.expense-list .table .actions-col .btn-group-wrap a i {
+  font-size: 16px;
   line-height: 1;
 }
 
-.expense-list .table .actions-col .btn:hover {
+.expense-list .table .actions-col .btn-group-wrap button:hover,
+.expense-list .table .actions-col .btn-group-wrap a:hover {
   transform: translateY(-1px);
 }
 
-.expense-list .table .actions-col .btn-action-edit {
-  background: #e3f2fd;
-  color: #1565c0;
+.expense-list .table .actions-col .allocation-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--exp-text-secondary);
+  background: var(--exp-bg-light);
+  border: 1.5px solid var(--exp-border);
+  border-radius: 7px;
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+
+.expense-list .table .actions-col .allocation-link a {
+  color: var(--exp-blue);
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.15s;
+  font-size: 12px;
+}
+
+.expense-list .table .actions-col .allocation-link a:hover {
+  text-decoration: underline;
+}
+
+.expense-list .table .actions-col .allocation-link i {
+  font-size: 12px;
+  color: var(--exp-text-muted);
 }
 
 .expense-list .table .actions-col .btn-action-edit:hover {
-  background: #bbdefb;
-}
-
-.expense-list .table .actions-col .btn-action-delete {
-  background: #fce4ec;
-  color: #c62828;
+  border-color: var(--exp-blue);
+  color: var(--exp-blue);
+  background: #eff6ff;
 }
 
 .expense-list .table .actions-col .btn-action-delete:hover {
-  background: #f8bbd0;
-}
-
-.expense-list .table .actions-col .btn-action-view {
-  background: #f3e5f5;
-  color: #7b1fa2;
-  font-size: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  border-color: #ef4444;
+  color: #ef4444;
+  background: #fef2f2;
 }
 
 .expense-list .table .actions-col .btn-action-view:hover {
-  background: #e1bee7;
+  border-color: #7b1fa2;
+  color: #7b1fa2;
+  background: #f5f0ff;
 }
 
 /* ── Empty State ── */

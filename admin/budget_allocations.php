@@ -453,6 +453,47 @@ body { background: var(--surface); }
     background: var(--border);
 }
 
+/* ── Custom badges for fund transaction type ────────────────────────────── */
+.ba-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 50px;
+    font-size: .72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+}
+.ba-badge.debit {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+}
+.ba-badge.credit {
+    background: #f0fdf4;
+    color: #16a34a;
+    border: 1px solid #bbf7d0;
+}
+
+/* ── Action buttons in fund table ──────────────────────────────────────── */
+.ba-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+    background: transparent;
+    cursor: pointer;
+    color: #555;
+    font-size: 0;
+    transition: background .12s, color .12s;
+}
+.ba-action-btn:hover { background: #f5f5f5; color: #1a1a1a; }
+.ba-action-btn.danger { color: #A32D2D; border-color: #f0c5c5; }
+.ba-action-btn.danger:hover { background: #fdf0f0; }
+.ba-action-btn i { font-size: 14px; }
+
 @media (max-width: 640px) {
     .ba-header { flex-direction: column; align-items: stretch; }
     .ba-header-actions { justify-content: flex-end; }
@@ -503,6 +544,10 @@ body { background: var(--surface); }
                         <?php endif; ?>
                     </a>
 
+                    <button type="button" class="btn-brand" style="background:linear-gradient(135deg,#2ed8b6,#4099ff);" data-toggle="modal" data-target="#addAllocationExpenseModal">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                        <?= __('add_expense') ?>
+                    </button>
                     <button type="button" class="btn-brand" data-toggle="modal" data-target="#allocationModal">
                         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                         <?= __('new_allocation') ?>
@@ -681,6 +726,76 @@ body { background: var(--surface); }
 <?php include '../modals/allocation/expense_modal.php'; ?>
 <?php include '../modals/allocation/fund_modal.php'; ?>
 <?php include '../modals/allocation/view_fund_modal.php'; ?>
+
+<?php
+// Get unique currencies from current allocations
+$allocCurrenciesStmt = $pdo->prepare("SELECT DISTINCT currency FROM budget_allocations WHERE tenant_id = ? AND branch_id = ? ORDER BY currency");
+$allocCurrenciesStmt->execute([$tenant_id, $branch_id]);
+$allocCurrencies = $allocCurrenciesStmt->fetchAll(PDO::FETCH_ASSOC);
+$availableAllocCurrencies = array_column($allocCurrencies, 'currency');
+?>
+
+<!-- Top-level Add Expense Modal -->
+<div class="modal fade" id="addAllocationExpenseModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><?= __('add_expense_from_budget_allocation') ?></h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <form id="addAllocationExpenseForm">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label><?= __('expense_category') ?></label>
+                        <select class="form-control" id="topExpenseCategory" name="categoryId" required>
+                            <option value=""><?= __('select_category') ?></option>
+                            <?php foreach ($categories as $category): ?>
+                                <option value="<?= $category['id'] ?>"><?= htmlspecialchars($category['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label><?= __('date') ?></label>
+                        <input type="date" class="form-control" id="topExpenseDate" name="date" value="<?= date('Y-m-d') ?>" required>
+                    </div>
+                    <div class="form-group">
+                        <label><?= __('description') ?></label>
+                        <textarea class="form-control" id="topExpenseDescription" name="description" rows="3" required></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label><?= __('amount') ?></label>
+                                <input type="number" step="0.01" class="form-control" id="topExpenseAmount" name="amount" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label><?= __('currency') ?></label>
+                                <select class="form-control" id="topExpenseCurrency" name="currency" required>
+                                    <?php if (count($availableAllocCurrencies) === 0): ?>
+                                        <option value=""><?= __('no_currencies_available') ?></option>
+                                    <?php elseif (count($availableAllocCurrencies) === 1): ?>
+                                        <option value="<?= htmlspecialchars($availableAllocCurrencies[0]) ?>" selected><?= htmlspecialchars($availableAllocCurrencies[0]) ?></option>
+                                    <?php else: ?>
+                                        <option value=""><?= __('select_currency') ?></option>
+                                        <?php foreach ($availableAllocCurrencies as $curr): ?>
+                                            <option value="<?= htmlspecialchars($curr) ?>"><?= htmlspecialchars($curr) ?></option>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('cancel') ?></button>
+                    <button type="submit" class="btn btn-success"><?= __('add_expense') ?></button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 <script src="../assets/js/vendor-all.min.js"></script>
 <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>

@@ -98,6 +98,24 @@ function deleteFundTransaction(transactionId, allocationId) {
     });
 }
 
+// Update fund transaction
+function updateFundTransaction(transactionId, allocationId, amount, description) {
+    const csrfToken = $('input[name="csrf_token"]').val();
+    return $.ajax({
+        url: '../api/allocation/allocation_actions.php',
+        type: 'POST',
+        data: {
+            action: 'update_fund_transaction',
+            transaction_id: transactionId,
+            allocation_id: allocationId,
+            amount: amount,
+            description: description,
+            csrf_token: csrfToken
+        },
+        dataType: 'json'
+    });
+}
+
 // Delete expense
 function deleteExpense(expenseId) {
     // Get CSRF token from meta tag or hidden input
@@ -110,6 +128,64 @@ function deleteExpense(expenseId) {
         data: {
             action: 'delete_expense',
             expenseId: expenseId,
+            csrf_token: csrfToken
+        },
+        dataType: 'json'
+    });
+}
+
+// Add expense to allocation
+function addAllocationExpense(allocationId, categoryId, date, description, amount, currency) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
+                     document.querySelector('input[name="csrf_token"]')?.value;
+    return $.ajax({
+        url: '../api/allocation/allocation_actions.php',
+        type: 'POST',
+        data: {
+            action: 'add_allocation_expense',
+            allocation_id: allocationId,
+            category_id: categoryId,
+            date: date,
+            description: description,
+            amount: amount,
+            currency: currency,
+            csrf_token: csrfToken
+        },
+        dataType: 'json'
+    });
+}
+
+// Update expense in allocation
+function updateAllocationExpense(expenseId, allocationId, date, description, amount, currency) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
+                     document.querySelector('input[name="csrf_token"]')?.value;
+    return $.ajax({
+        url: '../api/allocation/allocation_actions.php',
+        type: 'POST',
+        data: {
+            action: 'update_allocation_expense',
+            expense_id: expenseId,
+            allocation_id: allocationId,
+            date: date,
+            description: description,
+            amount: amount,
+            currency: currency,
+            csrf_token: csrfToken
+        },
+        dataType: 'json'
+    });
+}
+
+// Delete expense from allocation
+function deleteAllocationExpense(expenseId) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
+                     document.querySelector('input[name="csrf_token"]')?.value;
+    return $.ajax({
+        url: '../api/allocation/allocation_actions.php',
+        type: 'POST',
+        data: {
+            action: 'delete_allocation_expense',
+            expense_id: expenseId,
             csrf_token: csrfToken
         },
         dataType: 'json'

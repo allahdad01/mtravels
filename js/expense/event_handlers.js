@@ -173,15 +173,6 @@ $(document).ready(function() {
         // Add action field
         formData.append('action', 'save_expense');
         
-        // Get allocation info if present
-        const selectedAllocation = $('#expenseAllocation').find('option:selected');
-        if (selectedAllocation.val()) {
-            const allocationCurrency = selectedAllocation.data('currency');
-            // Ensure the currency matches the allocation
-            formData.set('expenseCurrency', allocationCurrency);
-
-        }
-        
         // Re-enable any disabled fields to ensure their values are included in the form
         $('#expenseCurrency').prop('disabled', false);
         $('#expenseCategory').prop('disabled', false);
@@ -216,6 +207,44 @@ $(document).ready(function() {
 
                 alert('An error occurred while saving the expense');
                 // Reset button
+                submitBtn.html(originalText);
+                submitBtn.prop('disabled', false);
+            }
+        });
+    });
+    
+    // Edit expense form submission
+    $('#editExpenseForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        formData.append('action', 'save_expense');
+        
+        const submitBtn = $(this).find('button[type="submit"]');
+        const originalText = submitBtn.html();
+        submitBtn.html('<i class="feather icon-loader spinner"></i> Processing...');
+        submitBtn.prop('disabled', true);
+        
+        $.ajax({
+            url: '../api/expense/expense_actions.php',
+            type: 'POST',
+            data: formData,
+            dataType: 'json',
+            contentType: false,
+            processData: false,
+            success: function(response) {
+                if (response.success) {
+                    $('#editExpenseModal').modal('hide');
+                    alert('Expense updated successfully');
+                    location.reload();
+                } else {
+                    alert('Error: ' + response.message);
+                    submitBtn.html(originalText);
+                    submitBtn.prop('disabled', false);
+                }
+            },
+            error: function(xhr, status, error) {
+                alert('An error occurred while updating the expense');
                 submitBtn.html(originalText);
                 submitBtn.prop('disabled', false);
             }
@@ -272,17 +301,18 @@ $(document).ready(function() {
         const currency = $(this).data('currency');
         const mainAccountId = $(this).data('main-account');
         
-        $('#expenseId').val(expenseId);
-        $('#expenseCategory').val(categoryId);
-        $('#expenseDate').val(date);
-        $('#expenseDescription').val(description);
-        $('#expenseAmount').val(amount);
-        $('#expenseCurrency').val(currency);
-        $('#expenseMainAccount').val(mainAccountId);
+        $('#editExpenseId').val(expenseId);
+        $('#editExpenseCategory').val(categoryId);
+        $('#editExpenseCurrency').val(currency);
+        $('#editExpenseMainAccount').val(mainAccountId);
+        $('#editExpenseDate').val(date);
+        $('#editExpenseDescription').val(description);
+        $('#editExpenseAmount').val(amount);
         
         // Reset receipt fields
-        $('#expenseReceiptNumber').val('');
-        $('.custom-file-label').text('Choose File');
+        $('#editExpenseReceiptNumber').val('');
+        $('#editExpenseReceiptFile').siblings('.custom-file-label').text('Choose File');
+        $('#editReceiptFileViewBtn').remove();
         
         // Fetch additional expense details like receipt number and file
         $.ajax({
@@ -295,30 +325,13 @@ $(document).ready(function() {
             dataType: 'json',
             success: function(response) {
                 if (response.success && response.expense) {
-                    // Set main account if available
-                    if (response.expense.main_account_id) {
-                        $('#expenseMainAccount').val(response.expense.main_account_id);
-                    }
-                    
-                    // Set allocation if available
-                    if (response.expense.allocation_id) {
-                        $('#expenseAllocation').val(response.expense.allocation_id);
-                        // Trigger the change event to update related fields
-                        $('#expenseAllocation').trigger('change');
-                    }
-                    
-                    // Set receipt number if available
                     if (response.expense.receipt_number) {
-                        $('#expenseReceiptNumber').val(response.expense.receipt_number);
+                        $('#editExpenseReceiptNumber').val(response.expense.receipt_number);
                     }
-                    
-                    // Display existing receipt file information if available
                     if (response.expense.receipt_file) {
-                        $('.custom-file-label').text(response.expense.receipt_file);
-                        // Remove any existing view button first
-                        $('#receiptFileViewBtn').remove();
-                        $('<div id="receiptFileViewBtn" class="mt-2"><a href="../uploads/expense_receipt/' + response.expense.receipt_file + '" target="_blank" class="btn btn-sm btn-info"><i class="feather icon-eye"></i> View Receipt</a></div>')
-                            .insertAfter('#expenseReceiptFile').parent();
+                        $('#editExpenseReceiptFile').siblings('.custom-file-label').text(response.expense.receipt_file);
+                        $('<div id="editReceiptFileViewBtn" class="mt-2"><a href="../uploads/expense_receipt/' + response.expense.receipt_file + '" target="_blank" class="btn btn-sm btn-info"><i class="feather icon-eye"></i> View Receipt</a></div>')
+                            .insertAfter('#editExpenseReceiptFile').parent();
                     }
                 }
             },
@@ -327,7 +340,7 @@ $(document).ready(function() {
             }
         });
         
-        $('#expenseModal').modal('show');
+        $('#editExpenseModal').modal('show');
     });
     
     // Delete expense button click handler
@@ -477,44 +490,6 @@ $(document).ready(function() {
         $('#receiptFileViewBtn').remove();
     });
 
-    // Handle allocation selection
-    $('#expenseAllocation').on('change', function() {
-        const selectedOption = $(this).find('option:selected');
-        if (selectedOption.val()) {
-            // Set currency to match allocation currency
-            const currency = selectedOption.data('currency');
-            $('#expenseCurrency').val(currency);
-            $('#expenseCurrency').prop('disabled', true);
-            
-            // Set max amount to remaining amount
-            const remaining = selectedOption.data('remaining');
-            $('#expenseAmount').attr('max', remaining);
-            
-            // If category is selected, update the category selection
-            const category = selectedOption.data('category');
-            const categoryOption = $('#expenseCategory option').filter(function() {
-                return $(this).text().trim() === category;
-            });
-            
-            if (categoryOption.length) {
-                $('#expenseCategory').val(categoryOption.val());
-                $('#expenseCategory').prop('disabled', true);
-            }
-            
-            // When using allocation, the main account should be disabled
-            $('#expenseMainAccount').val('');
-            $('#expenseMainAccount').prop('disabled', true);
-
-
-        } else {
-            // Reset fields
-            $('#expenseCurrency').prop('disabled', false);
-            $('#expenseCategory').prop('disabled', false);
-            $('#expenseMainAccount').prop('disabled', false);
-            $('#expenseAmount').removeAttr('max');
-        }
-    });
-
     // Make sure we reset everything properly when the modal is hidden
     $('#expenseModal').on('hidden.bs.modal', function() {
         // Re-enable all fields that might have been disabled
@@ -523,54 +498,8 @@ $(document).ready(function() {
         $('#expenseMainAccount').prop('disabled', false);
     });
     
-    // Check URL parameters for allocation references
-    const searchParams = new URLSearchParams(window.location.search);
-    const allocationId = searchParams.get('allocation_id');
-    const currency = searchParams.get('currency');
-    const categoryId = searchParams.get('category_id');
-    
-    if (allocationId) {
-
-        
-        // First, set the expense form to defaults
-        $('#expenseForm')[0].reset();
-        $('#expenseId').val('');
-        
-        // Then set the allocation dropdown
-        $('#expenseAllocation').val(allocationId);
-        
-        // Manually set fields based on allocation data
-        const selectedOption = $('#expenseAllocation').find('option:selected');
-        if (selectedOption.val()) {
-            // Get currency from the allocation data
-            const allocationCurrency = selectedOption.data('currency');
-
-            
-            // Set and lock currency field
-            $('#expenseCurrency').val(allocationCurrency);
-            $('#expenseCurrency').prop('disabled', true);
-            
-            // Set and lock category field
-            const category = selectedOption.data('category');
-            const categoryOption = $('#expenseCategory option').filter(function() {
-                return $(this).text().trim() === category;
-            });
-            
-            if (categoryOption.length) {
-                $('#expenseCategory').val(categoryOption.val());
-                $('#expenseCategory').prop('disabled', true);
-            }
-            
-            // Disable main account field
-            $('#expenseMainAccount').val('');
-            $('#expenseMainAccount').prop('disabled', true);
-        }
-        
-        // Open the expense modal automatically
-        $('#expenseModal').modal('show');
-    }
-    
     // Check for edit_expense parameter
+    const searchParams = new URLSearchParams(window.location.search);
     const editExpenseId = searchParams.get('edit_expense');
     if (editExpenseId) {
         // Fetch expense details and open the modal
@@ -618,31 +547,6 @@ $(document).ready(function() {
                         $('#receiptFileViewBtn').remove();
                         $('<div id="receiptFileViewBtn" class="mt-2"><a href="../uploads/expense_receipt/' + expense.receipt_file + '" target="_blank" class="btn btn-sm btn-info"><i class="feather icon-eye"></i> View Receipt</a></div>')
                             .insertAfter('#expenseReceiptFile').parent();
-                    }
-                    
-                    // Handle allocation last as it may disable other fields
-                    if (expense.allocation_id) {
-                        // First select the allocation
-                        $('#expenseAllocation').val(expense.allocation_id);
-                        
-                        // Then manually update the fields based on the allocation data
-                        const selectedOption = $('#expenseAllocation').find('option:selected');
-                        if (selectedOption.val()) {
-                            // Get the currency from the allocation data
-                            const currency = selectedOption.data('currency');
-
-                            
-                            // Ensure currency matches the allocation
-                            $('#expenseCurrency').val(currency);
-                            $('#expenseCurrency').prop('disabled', true);
-                            
-                            // Disable the category field
-                            $('#expenseCategory').prop('disabled', true);
-                            
-                            // Disable main account as we're using allocation
-                            $('#expenseMainAccount').val('');
-                            $('#expenseMainAccount').prop('disabled', true);
-                        }
                     }
                     
                     // Update modal title

@@ -85,8 +85,23 @@ if (isset($_POST['action'])) {
         case 'delete_fund_transaction':
             deleteFundTransaction($pdo);
             break;
+        case 'update_fund_transaction':
+            updateFundTransaction($pdo);
+            break;
         case 'filter_allocations_by_month':
             filterAllocationsByMonth($pdo);
+            break;
+        case 'add_allocation_expense':
+            addAllocationExpense($pdo);
+            break;
+        case 'add_auto_allocation_expense':
+            addAutoAllocationExpense($pdo);
+            break;
+        case 'update_allocation_expense':
+            updateAllocationExpense($pdo);
+            break;
+        case 'delete_allocation_expense':
+            deleteAllocationExpense($pdo);
             break;
         default:
             sendResponse(false, 'Invalid action');
@@ -190,7 +205,7 @@ function createAllocation($pdo) {
             $mainAccountId,
             'debit',
             $amount,
-            "Budget allocation for " . getCategoryName($pdo, $categoryId),
+            $description,
             
             $updatedBalance,
             $currency,
@@ -617,12 +632,13 @@ function addFunds($pdo) {
             (main_account_id, type, amount, description, balance, currency, transaction_of, reference_id, tenant_id, branch_id)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $description = "Additional funding to budget allocation: " . $allocation['category_name'] . ($note ? " - " . $note : "");
+        $allocDesc = $allocation['description'] ?: $allocation['category_name'];
+        $fundDesc = $allocDesc . ($note ? " - " . $note : "");
         $transactionStmt->execute([
             $mainAccountId,
             'debit',
             $amount,
-            $description,
+            $fundDesc,
             $updatedBalance,
             $currency,
             'budget_allocation',
@@ -884,6 +900,127 @@ function deleteFundTransaction($pdo) {
     }
 }
 
+// Update a fund transaction
+function updateFundTransaction($pdo) {
+    $tenant_id = $_SESSION['tenant_id'];
+    $branch_id = $_SESSION['branch_id'];
+    try {
+        $transactionId = isset($_POST['transaction_id']) ? intval($_POST['transaction_id']) : 0;
+        $allocationId = isset($_POST['allocation_id']) ? intval($_POST['allocation_id']) : 0;
+        $newAmount = isset($_POST['amount']) ? floatval($_POST['amount']) : 0;
+        $newDescription = isset($_POST['description']) ? $_POST['description'] : '';
+
+        if ($transactionId <= 0 || $allocationId <= 0 || $newAmount <= 0) {
+            sendResponse(false, 'Invalid input data');
+            return;
+        }
+
+        $pdo->beginTransaction();
+
+        // Get old transaction
+        $txStmt = $pdo->prepare("
+            SELECT * FROM main_account_transactions
+            WHERE id = ? AND transaction_of = 'budget_allocation' AND reference_id = ? AND tenant_id = ? AND branch_id = ?
+        ");
+        $txStmt->execute([$transactionId, $allocationId, $tenant_id, $branch_id]);
+        $transaction = $txStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$transaction) {
+            $pdo->rollBack();
+            sendResponse(false, 'Transaction not found');
+            return;
+        }
+
+        // Get allocation
+        $allocStmt = $pdo->prepare("
+            SELECT ba.*, ma.id as main_account_id
+            FROM budget_allocations ba
+            JOIN main_account ma ON ba.main_account_id = ma.id
+            WHERE ba.id = ? AND ba.tenant_id = ? AND ba.branch_id = ?
+        ");
+        $allocStmt->execute([$allocationId, $tenant_id, $branch_id]);
+        $allocation = $allocStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$allocation) {
+            $pdo->rollBack();
+            sendResponse(false, 'Allocation not found');
+            return;
+        }
+
+        $mainAccountId = $transaction['main_account_id'];
+        $currency = $transaction['currency'];
+        $oldAmount = (float) $transaction['amount'];
+        $oldBalance = (float) $transaction['balance'];
+        $type = $transaction['type'];
+        $diff = $newAmount - $oldAmount;
+
+        // Determine balance column
+        $balanceColumn = 'usd_balance';
+        if ($currency == 'AFS') $balanceColumn = 'afs_balance';
+        elseif ($currency == 'EUR') $balanceColumn = 'euro_balance';
+        elseif ($currency == 'DARHAM') $balanceColumn = 'darham_balance';
+
+        if ($type === 'debit') {
+            $colQ = "`{$balanceColumn}`";
+            $pdo->prepare("UPDATE main_account SET {$colQ} = {$colQ} - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
+                ->execute([$diff, $mainAccountId, $tenant_id, $branch_id]);
+
+            $pdo->prepare("
+                UPDATE budget_allocations
+                SET allocated_amount = allocated_amount + ?,
+                    remaining_amount = remaining_amount + ?,
+                    updated_at = NOW()
+                WHERE id = ? AND tenant_id = ? AND branch_id = ?
+            ")->execute([$diff, $diff, $allocationId, $tenant_id, $branch_id]);
+        } else {
+            $colQ = "`{$balanceColumn}`";
+            $pdo->prepare("UPDATE main_account SET {$colQ} = {$colQ} + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
+                ->execute([$diff, $mainAccountId, $tenant_id, $branch_id]);
+
+            $pdo->prepare("
+                UPDATE budget_allocations
+                SET allocated_amount = allocated_amount - ?,
+                    remaining_amount = remaining_amount - ?,
+                    updated_at = NOW()
+                WHERE id = ? AND tenant_id = ? AND branch_id = ?
+            ")->execute([$diff, $diff, $allocationId, $tenant_id, $branch_id]);
+        }
+
+        // Calculate new balance
+        $newBalance = $type === 'debit' ? $oldBalance - $diff : $oldBalance + $diff;
+
+        // Update transaction
+        $pdo->prepare("
+            UPDATE main_account_transactions
+            SET amount = ?, description = ?, balance = ?
+            WHERE id = ? AND tenant_id = ? AND branch_id = ?
+        ")->execute([$newAmount, $newDescription, $newBalance, $transactionId, $tenant_id, $branch_id]);
+
+        // Update subsequent balances
+        $balanceAdjustment = $type === 'debit' ? -$diff : $diff;
+        $pdo->prepare("
+            UPDATE main_account_transactions
+            SET balance = balance + ?
+            WHERE main_account_id = ? AND currency = ? AND id > ? AND tenant_id = ? AND branch_id = ?
+        ")->execute([$balanceAdjustment, $mainAccountId, $currency, $transactionId, $tenant_id, $branch_id]);
+
+        // Log activity
+        $old_values = json_encode($transaction);
+        $new_values = json_encode(['amount' => $newAmount, 'description' => $newDescription, 'balance' => $newBalance]);
+        $user_id = $_SESSION['user_id'] ?? 0;
+        $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
+        $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        $pdo->prepare("INSERT INTO activity_log (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id) VALUES (?, 'update', 'main_account_transactions', ?, ?, ?, ?, ?, NOW(), ?, ?)")
+            ->execute([$user_id, $transactionId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id]);
+
+        $pdo->commit();
+        sendResponse(true, 'Fund transaction updated successfully');
+    } catch (PDOException $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        sendResponse(false, 'Database error: ' . $e->getMessage());
+    }
+}
+
 // Filter allocations by month and year
 function filterAllocationsByMonth($pdo) {
     $tenant_id = $_SESSION['tenant_id'];
@@ -972,6 +1109,259 @@ function filterAllocationsByMonth($pdo) {
             ]
         ]);
     } catch (PDOException $e) {
+        sendResponse(false, 'Database error: ' . $e->getMessage());
+    }
+}
+
+// ── Auto-find allocation & add expense (for top-level modal) ──────────────
+function addAutoAllocationExpense($pdo) {
+    $tenant_id = $_SESSION['tenant_id'];
+    $branch_id = $_SESSION['branch_id'];
+    try {
+        $categoryId  = isset($_POST['categoryId']) ? intval($_POST['categoryId']) : 0;
+        $date        = isset($_POST['date'])        ? $_POST['date']               : date('Y-m-d');
+        $description = isset($_POST['description']) ? $_POST['description']        : '';
+        $amount      = isset($_POST['amount'])       ? floatval($_POST['amount'])   : 0;
+        $currency    = isset($_POST['currency'])     ? $_POST['currency']           : 'USD';
+
+        if ($categoryId <= 0 || $amount <= 0) {
+            sendResponse(false, 'Invalid input data');
+            return;
+        }
+
+        // Find matching budget allocation for this category + currency + month
+        $monthStart = date('Y-m-01', strtotime($date));
+        $monthEnd   = date('Y-m-t', strtotime($date));
+        $allocStmt = $pdo->prepare("
+            SELECT id, remaining_amount, main_account_id, currency
+            FROM budget_allocations
+            WHERE category_id = ? AND currency = ? AND allocation_date BETWEEN ? AND ? AND tenant_id = ? AND branch_id = ?
+            LIMIT 1
+        ");
+        $allocStmt->execute([$categoryId, $currency, $monthStart, $monthEnd, $tenant_id, $branch_id]);
+        $allocation = $allocStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$allocation) {
+            sendResponse(false, 'No budget allocation found for this category and currency in the selected month');
+            return;
+        }
+
+        // Delegate to addAllocationExpense logic
+        $_POST['allocation_id'] = $allocation['id'];
+        $_POST['category_id']   = $categoryId;
+        // Re-call the standard add function
+        addAllocationExpense($pdo);
+    } catch (PDOException $e) {
+        sendResponse(false, 'Database error: ' . $e->getMessage());
+    }
+}
+
+// ── Add expense to a budget allocation ─────────────────────────────────────
+function addAllocationExpense($pdo) {
+    $tenant_id = $_SESSION['tenant_id'];
+    $branch_id = $_SESSION['branch_id'];
+    try {
+        $allocationId = isset($_POST['allocation_id']) ? intval($_POST['allocation_id']) : 0;
+        $categoryId   = isset($_POST['category_id'])   ? intval($_POST['category_id'])   : 0;
+        $date         = isset($_POST['date'])           ? $_POST['date']                  : date('Y-m-d');
+        $description  = isset($_POST['description'])    ? $_POST['description']           : '';
+        $amount       = isset($_POST['amount'])          ? floatval($_POST['amount'])      : 0;
+        $currency     = isset($_POST['currency'])        ? $_POST['currency']              : 'USD';
+
+        if ($allocationId <= 0 || $amount <= 0) {
+            sendResponse(false, 'Invalid input data');
+            return;
+        }
+
+        // Get allocation details
+        $allocStmt = $pdo->prepare("SELECT * FROM budget_allocations WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $allocStmt->execute([$allocationId, $tenant_id, $branch_id]);
+        $allocation = $allocStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$allocation) {
+            sendResponse(false, 'Allocation not found');
+            return;
+        }
+
+        if ($allocation['currency'] != $currency) {
+            sendResponse(false, 'Currency mismatch between expense and allocation');
+            return;
+        }
+
+        $pdo->beginTransaction();
+
+        // Deduct from allocation (allowing negative)
+        $updateAlloc = $pdo->prepare("UPDATE budget_allocations SET remaining_amount = remaining_amount - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $updateAlloc->execute([$amount, $allocationId, $tenant_id, $branch_id]);
+
+        // Insert expense
+        $stmt = $pdo->prepare("INSERT INTO expenses (category_id, date, description, amount, currency, main_account_id, allocation_id, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$categoryId, $date, $description, $amount, $currency, $allocation['main_account_id'], $allocationId, $tenant_id, $branch_id]);
+        $expenseId = $pdo->lastInsertId();
+
+        // Notification
+        $catStmt = $pdo->prepare("SELECT name FROM expense_categories WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $catStmt->execute([$categoryId, $tenant_id, $branch_id]);
+        $categoryName = $catStmt->fetchColumn() ?: 'Unknown';
+
+        $notifMsg = sprintf("New expense added from budget allocation for category %s: Amount %s %.2f - %s", $categoryName, $currency, $amount, $description);
+        $notifStmt = $pdo->prepare("INSERT INTO notifications (transaction_type, message, status, created_at, tenant_id, branch_id) VALUES ('expense', ?, 'Unread', NOW(), ?, ?)");
+        $notifStmt->execute([$notifMsg, $tenant_id, $branch_id]);
+
+        $pdo->commit();
+
+        // Activity log
+        $old_values = json_encode([]);
+        $new_values = json_encode(['category_id' => $categoryId, 'date' => $date, 'description' => $description, 'amount' => $amount, 'currency' => $currency, 'allocation_id' => $allocationId]);
+        $user_id = $_SESSION['user_id'] ?? 0;
+        $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
+        $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        $activityStmt = $pdo->prepare("INSERT INTO activity_log (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id) VALUES (?, 'add', 'expenses', ?, ?, ?, ?, ?, NOW(), ?, ?)");
+        $activityStmt->execute([$user_id, $expenseId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id]);
+
+        sendResponse(true, 'Expense added successfully from budget allocation');
+    } catch (PDOException $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        sendResponse(false, 'Database error: ' . $e->getMessage());
+    }
+}
+
+// ── Update expense in a budget allocation ──────────────────────────────────
+function updateAllocationExpense($pdo) {
+    $tenant_id = $_SESSION['tenant_id'];
+    $branch_id = $_SESSION['branch_id'];
+    try {
+        $expenseId    = isset($_POST['expense_id'])    ? intval($_POST['expense_id'])    : 0;
+        $allocationId = isset($_POST['allocation_id']) ? intval($_POST['allocation_id']) : 0;
+        $date         = isset($_POST['date'])           ? $_POST['date']                  : '';
+        $description  = isset($_POST['description'])    ? $_POST['description']           : '';
+        $amount       = isset($_POST['amount'])          ? floatval($_POST['amount'])      : 0;
+        $currency     = isset($_POST['currency'])        ? $_POST['currency']              : 'USD';
+
+        if ($expenseId <= 0 || $allocationId <= 0 || $amount <= 0) {
+            sendResponse(false, 'Invalid input data');
+            return;
+        }
+
+        // Get previous expense
+        $prevStmt = $pdo->prepare("SELECT amount, currency, allocation_id FROM expenses WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $prevStmt->execute([$expenseId, $tenant_id, $branch_id]);
+        $prev = $prevStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$prev) {
+            sendResponse(false, 'Expense not found');
+            return;
+        }
+
+        // Get allocation
+        $allocStmt = $pdo->prepare("SELECT * FROM budget_allocations WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $allocStmt->execute([$allocationId, $tenant_id, $branch_id]);
+        $allocation = $allocStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$allocation) {
+            sendResponse(false, 'Allocation not found');
+            return;
+        }
+
+        if ($allocation['currency'] != $currency) {
+            sendResponse(false, 'Currency mismatch');
+            return;
+        }
+
+        $pdo->beginTransaction();
+
+        // Refund old amount to old allocation
+        if ($prev['allocation_id']) {
+            $refundStmt = $pdo->prepare("UPDATE budget_allocations SET remaining_amount = remaining_amount + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $refundStmt->execute([$prev['amount'], $prev['allocation_id'], $tenant_id, $branch_id]);
+        }
+
+        // Deduct new amount from new allocation
+        $deductStmt = $pdo->prepare("UPDATE budget_allocations SET remaining_amount = remaining_amount - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $deductStmt->execute([$amount, $allocationId, $tenant_id, $branch_id]);
+
+        // Update expense
+        $updateStmt = $pdo->prepare("UPDATE expenses SET date = ?, description = ?, amount = ?, currency = ?, allocation_id = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $updateStmt->execute([$date, $description, $amount, $currency, $allocationId, $expenseId, $tenant_id, $branch_id]);
+
+        $pdo->commit();
+
+        // Activity log
+        $old_values = json_encode(['expense_id' => $expenseId, 'previous' => $prev]);
+        $new_values = json_encode(['date' => $date, 'description' => $description, 'amount' => $amount, 'currency' => $currency, 'allocation_id' => $allocationId]);
+        $user_id = $_SESSION['user_id'] ?? 0;
+        $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
+        $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        $activityStmt = $pdo->prepare("INSERT INTO activity_log (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id) VALUES (?, 'update', 'expenses', ?, ?, ?, ?, ?, NOW(), ?, ?)");
+        $activityStmt->execute([$user_id, $expenseId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id]);
+
+        sendResponse(true, 'Expense updated successfully');
+    } catch (PDOException $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        sendResponse(false, 'Database error: ' . $e->getMessage());
+    }
+}
+
+// ── Delete expense from a budget allocation ────────────────────────────────
+function deleteAllocationExpense($pdo) {
+    $tenant_id = $_SESSION['tenant_id'];
+    $branch_id = $_SESSION['branch_id'];
+    try {
+        $expenseId = isset($_POST['expense_id']) ? intval($_POST['expense_id']) : 0;
+
+        if ($expenseId <= 0) {
+            sendResponse(false, 'Invalid expense ID');
+            return;
+        }
+
+        // Get expense
+        $expStmt = $pdo->prepare("SELECT * FROM expenses WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $expStmt->execute([$expenseId, $tenant_id, $branch_id]);
+        $expense = $expStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$expense) {
+            sendResponse(false, 'Expense not found');
+            return;
+        }
+
+        $allocationId = $expense['allocation_id'];
+        $amount = $expense['amount'];
+
+        $pdo->beginTransaction();
+
+        // Refund allocation
+        if ($allocationId) {
+            $refundStmt = $pdo->prepare("UPDATE budget_allocations SET remaining_amount = remaining_amount + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $refundStmt->execute([$amount, $allocationId, $tenant_id, $branch_id]);
+        }
+
+        // Delete expense
+        $deleteStmt = $pdo->prepare("DELETE FROM expenses WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $deleteStmt->execute([$expenseId, $tenant_id, $branch_id]);
+
+        // Notification
+        $catStmt = $pdo->prepare("SELECT name FROM expense_categories WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $catStmt->execute([$expense['category_id'], $tenant_id, $branch_id]);
+        $categoryName = $catStmt->fetchColumn() ?: 'Unknown';
+
+        $notifMsg = sprintf("Expense deleted from budget allocation for category %s: Amount %s %.2f - %s", $categoryName, $expense['currency'], $amount, $expense['description']);
+        $notifStmt = $pdo->prepare("INSERT INTO notifications (transaction_type, message, status, created_at, tenant_id, branch_id) VALUES ('expense_delete', ?, 'Unread', NOW(), ?, ?)");
+        $notifStmt->execute([$notifMsg, $tenant_id, $branch_id]);
+
+        $pdo->commit();
+
+        // Activity log
+        $old_values = json_encode($expense);
+        $new_values = json_encode([]);
+        $user_id = $_SESSION['user_id'] ?? 0;
+        $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
+        $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        $activityStmt = $pdo->prepare("INSERT INTO activity_log (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id) VALUES (?, 'delete', 'expenses', ?, ?, ?, ?, ?, NOW(), ?, ?)");
+        $activityStmt->execute([$user_id, $expenseId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id]);
+
+        sendResponse(true, 'Expense deleted successfully and allocation refunded');
+    } catch (PDOException $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
         sendResponse(false, 'Database error: ' . $e->getMessage());
     }
 }

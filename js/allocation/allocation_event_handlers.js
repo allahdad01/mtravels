@@ -76,9 +76,14 @@ $(document).ready(function() {
                                     <td>${new Date(transaction.created_at).toLocaleDateString()}</td>
                                     <td>${transaction.description}</td>
                                     <td>${transaction.amount} ${transaction.currency}</td>
-                                    <td><span class="badge-${transaction.type === 'credit' ? 'success' : 'danger'}">${transaction.type}</span></td>
+                                    <td><span class="ba-badge ${transaction.type}">${transaction.type}</span></td>
                                     <td>
-                                        <button class="btn btn-sm btn-danger delete-fund-transaction" data-id="${transaction.id}" data-allocation-id="${allocationId}">
+                                        <button class="ba-action-btn edit-fund-transaction"
+                                                data-id="${transaction.id}" data-allocation-id="${allocationId}"
+                                                data-amount="${transaction.amount}" data-description="${(transaction.description||'').replace(/'/g,"\\'")}">
+                                            <i class="feather icon-edit-2"></i>
+                                        </button>
+                                        <button class="ba-action-btn danger delete-fund-transaction" data-id="${transaction.id}" data-allocation-id="${allocationId}">
                                             <i class="feather icon-trash-2"></i>
                                         </button>
                                     </td>
@@ -194,15 +199,18 @@ $(document).ready(function() {
         }
     });
     
-    // View expenses for an allocation button click
+    // ── View expenses for an allocation button click ──────────────────────
     $('.view-expenses').on('click', function() {
         const allocationId = $(this).data('id');
         
-        // Show loading state
         const button = $(this);
         const originalText = button.html();
         button.html('<i class="fas fa-spinner fa-spin mr-1"></i>Loading...');
         button.prop('disabled', true);
+        
+        // Reset inline forms
+        $('#addExpenseSection').hide();
+        $('#editExpenseSection').hide();
         
         getAllocationDetails(allocationId)
             .done(function(response) {
@@ -210,7 +218,6 @@ $(document).ready(function() {
                     const allocation = response.allocation;
                     const expenses = response.expenses;
                     
-                    // Update allocation details
                     $('#allocation-category').text(allocation.category_name);
                     $('#allocation-account').text(allocation.account_name);
                     $('#allocation-date').text(new Date(allocation.allocation_date).toLocaleDateString());
@@ -218,12 +225,16 @@ $(document).ready(function() {
                     $('#allocation-remaining').text(`${allocation.remaining_amount} ${allocation.currency}`);
                     $('#allocation-description').text(allocation.description || 'No description');
                     
-                    // Add allocation ID to Add Expense button for later use
-                    $('#addExpenseBtn').data('allocation-id', allocation.id);
-                    $('#addExpenseBtn').data('currency', allocation.currency);
-                    $('#addExpenseBtn').data('category-id', allocation.category_id);
+                    // Store allocation info for inline forms
+                    $('#inlineAllocationId').val(allocation.id);
+                    $('#inlineCategoryId').val(allocation.category_id);
+                    $('#inlineCurrency').val(allocation.currency);
+                    $('#inlineEditAllocationId').val(allocation.id);
                     
-                    // Clear and populate expenses table
+                    // Set default date for add form
+                    $('#inlineExpenseDate').val(new Date().toISOString().split('T')[0]);
+                    
+                    // Populate expenses table
                     const tbody = $('#expenses-table-body');
                     tbody.empty();
                     
@@ -232,10 +243,10 @@ $(document).ready(function() {
                             const row = `
                                 <tr>
                                     <td>${new Date(expense.date).toLocaleDateString()}</td>
-                                    <td style="max-width: 300px; word-wrap: break-word; white-space: normal;">${expense.description}</td>
+                                    <td style="max-width:300px;word-wrap:break-word;white-space:normal;">${expense.description}</td>
                                     <td>${expense.amount} ${expense.currency}</td>
                                     <td>
-                                        <button class="btn btn-sm btn-info edit-expense" data-id="${expense.id}">
+                                        <button class="btn btn-sm btn-info edit-expense" data-id="${expense.id}" data-date="${expense.date}" data-description="${expense.description.replace(/"/g, '&quot;')}" data-amount="${expense.amount}">
                                             <i class="feather icon-edit"></i>
                                         </button>
                                         <button class="btn btn-sm btn-danger delete-expense" data-id="${expense.id}">
@@ -254,79 +265,184 @@ $(document).ready(function() {
                         $('#no-expenses-message').show();
                     }
                     
-                    // Show modal
                     $('#expensesModal').modal('show');
                 } else {
                     alert('Error: ' + response.message);
                 }
             })
             .fail(function(xhr, status, error) {
-
                 alert('An error occurred while fetching allocation details');
             })
             .always(function() {
-                // Restore button state
                 button.html(originalText);
                 button.prop('disabled', false);
             });
     });
     
-    // Add expense from allocation button click
-    $('#addExpenseBtn').on('click', function() {
-        const allocationId = $(this).data('allocation-id');
-        const currency = $(this).data('currency');
-        const categoryId = $(this).data('category-id');
-        
-        // Close current modal
-        $('#expensesModal').modal('hide');
-        
-        // Open expense modal from the main expense page with allocation data
-        window.location.href = 'expense_management.php?allocation_id=' + allocationId + 
-                               '&currency=' + currency + 
-                               '&category_id=' + categoryId;
+    // ── Show/hide inline add expense form ─────────────────────────────────
+    $('#showAddExpenseBtn').on('click', function() {
+        $('#editExpenseSection').hide();
+        $('#addExpenseSection').show();
+        $('#inlineExpenseDescription').val('').focus();
+        $('#inlineExpenseAmount').val('');
     });
     
-    // Edit expense from allocation view button click
+    $('#cancelAddExpense').on('click', function() {
+        $('#addExpenseSection').hide();
+    });
+    
+    // ── Inline add expense form submit ─────────────────────────────────────
+    $('#inlineAddExpenseForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        const allocationId = $('#inlineAllocationId').val();
+        const categoryId = $('#inlineCategoryId').val();
+        const date = $('#inlineExpenseDate').val();
+        const description = $('#inlineExpenseDescription').val();
+        const amount = $('#inlineExpenseAmount').val();
+        const currency = $('#inlineCurrency').val();
+        
+        const $btn = $(this).find('button[type="submit"]');
+        const orig = $btn.html();
+        $btn.html('<i class="feather icon-loader spinner"></i> Saving...').prop('disabled', true);
+        
+        addAllocationExpense(allocationId, categoryId, date, description, amount, currency)
+            .done(function(response) {
+                if (response.success) {
+                    $('#addExpenseSection').hide();
+                    alert(response.message);
+                    location.reload();
+                } else {
+                    alert('Error: ' + response.message);
+                }
+            })
+            .fail(function() {
+                alert('An error occurred while adding the expense');
+            })
+            .always(function() {
+                $btn.html(orig).prop('disabled', false);
+            });
+    });
+    
+    // ── Edit expense button click ─────────────────────────────────────────
     $(document).on('click', '.edit-expense', function() {
         const expenseId = $(this).data('id');
-        // Redirect to expense edit page with the ID
-        window.location.href = 'expense_management.php?edit_expense=' + expenseId;
+        const date = $(this).data('date');
+        const description = $(this).data('description');
+        const amount = $(this).data('amount');
+        
+        $('#inlineEditExpenseId').val(expenseId);
+        $('#inlineEditDate').val(date);
+        $('#inlineEditDescription').val(description);
+        $('#inlineEditAmount').val(amount);
+        
+        $('#addExpenseSection').hide();
+        $('#editExpenseSection').show();
     });
     
-    // Delete expense from allocation view button click
+    $('#cancelEditExpense').on('click', function() {
+        $('#editExpenseSection').hide();
+    });
+    
+    // ── Inline edit expense form submit ───────────────────────────────────
+    $('#inlineEditExpenseForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        const expenseId = $('#inlineEditExpenseId').val();
+        const allocationId = $('#inlineEditAllocationId').val();
+        const date = $('#inlineEditDate').val();
+        const description = $('#inlineEditDescription').val();
+        const amount = $('#inlineEditAmount').val();
+        const currency = $('#inlineCurrency').val();
+        
+        const $btn = $(this).find('button[type="submit"]');
+        const orig = $btn.html();
+        $btn.html('<i class="feather icon-loader spinner"></i> Updating...').prop('disabled', true);
+        
+        updateAllocationExpense(expenseId, allocationId, date, description, amount, currency)
+            .done(function(response) {
+                if (response.success) {
+                    $('#editExpenseSection').hide();
+                    alert(response.message);
+                    location.reload();
+                } else {
+                    alert('Error: ' + response.message);
+                }
+            })
+            .fail(function() {
+                alert('An error occurred while updating the expense');
+            })
+            .always(function() {
+                $btn.html(orig).prop('disabled', false);
+            });
+    });
+    
+    // ── Delete expense button click ───────────────────────────────────────
     $(document).on('click', '.delete-expense', function() {
         if (confirm('Are you sure you want to delete this expense? The amount will be returned to the allocation')) {
             const expenseId = $(this).data('id');
             
-            // Show loading state
             const button = $(this);
             const originalHtml = button.html();
             button.html('<i class="fas fa-spinner fa-spin"></i>');
             button.prop('disabled', true);
             
-            deleteExpense(expenseId)
+            deleteAllocationExpense(expenseId)
                 .done(function(response) {
                     if (response.success) {
                         alert(response.message);
-                        // Close modal and refresh page to see updated allocation
-                        $('#expensesModal').modal('hide');
                         location.reload();
                     } else {
                         alert('Error: ' + response.message);
                     }
                 })
                 .fail(function(xhr, status, error) {
-
                     alert('An error occurred while deleting the expense');
                 })
                 .always(function() {
-                    // Restore button state
                     button.html(originalHtml);
                     button.prop('disabled', false);
                 });
         }
     });
     
+    // ── Reset top-level add expense modal on open ────────────────────────
+    $('#addAllocationExpenseModal').on('shown.bs.modal', function() {
+        $('#addAllocationExpenseForm')[0].reset();
+        $('#topExpenseDate').val(new Date().toISOString().split('T')[0]);
+    });
+
+    // ── Top-level add expense form submit ─────────────────────────────────
+    $('#addAllocationExpenseForm').on('submit', function(e) {
+        e.preventDefault();
+        const $btn = $(this).find('button[type="submit"]');
+        const orig = $btn.html();
+        $btn.html('<i class="feather icon-loader spinner"></i> Adding...').prop('disabled', true);
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
+                         document.querySelector('input[name="csrf_token"]')?.value;
+
+        $.ajax({
+            url: '../api/allocation/allocation_actions.php',
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                action: 'add_auto_allocation_expense',
+                categoryId: $('#topExpenseCategory').val(),
+                date: $('#topExpenseDate').val(),
+                description: $('#topExpenseDescription').val(),
+                amount: $('#topExpenseAmount').val(),
+                currency: $('#topExpenseCurrency').val(),
+                csrf_token: csrfToken
+            },
+            success: function(r) {
+                r.success ? (alert(r.message), location.reload()) : alert('Error: ' + r.message);
+            },
+            error: function() { alert('An error occurred while adding the expense'); },
+            complete: function() { $btn.html(orig).prop('disabled', false); }
+        });
+    });
+
     // Delete fund transaction from view funds modal
     $(document).on('click', '.delete-fund-transaction', function() {
         if (confirm('Are you sure you want to delete this fund transaction? The amount will be returned to the main account')) {
@@ -368,9 +484,14 @@ $(document).ready(function() {
                                                     <td>${new Date(transaction.created_at).toLocaleDateString()}</td>
                                                     <td>${transaction.description}</td>
                                                     <td>${transaction.amount} ${transaction.currency}</td>
-                                                    <td><span class="badge badge-${transaction.type === 'credit' ? 'success' : 'danger'}">${transaction.type}</span></td>
+                                                    <td><span class="ba-badge ${transaction.type}">${transaction.type}</span></td>
                                                     <td>
-                                                        <button class="btn btn-sm btn-danger delete-fund-transaction" data-id="${transaction.id}" data-allocation-id="${allocationId}">
+                                                        <button class="ba-action-btn edit-fund-transaction"
+                                                                data-id="${transaction.id}" data-allocation-id="${allocationId}"
+                                                                data-amount="${transaction.amount}" data-description="${(transaction.description||'').replace(/'/g,"\\'")}">
+                                                            <i class="feather icon-edit-2"></i>
+                                                        </button>
+                                                        <button class="ba-action-btn danger delete-fund-transaction" data-id="${transaction.id}" data-allocation-id="${allocationId}">
                                                             <i class="feather icon-trash-2"></i>
                                                         </button>
                                                     </td>
@@ -400,5 +521,51 @@ $(document).ready(function() {
                     button.prop('disabled', false);
                 });
         }
+    });
+    
+    // Edit fund transaction
+    $(document).on('click', '.edit-fund-transaction', function() {
+        const $btn = $(this);
+        $('#editFundTransactionId').val($btn.data('id'));
+        $('#editFundAllocationId').val($btn.data('allocation-id'));
+        $('#editFundAmount').val($btn.data('amount'));
+        $('#editFundDescription').val($btn.data('description'));
+        $('#viewFundsModal').modal('hide');
+        $('#editFundTransactionModal').modal('show');
+    });
+
+    $('#editFundTransactionModal').on('hidden.bs.modal', function() {
+        const aid = $('#editFundAllocationId').val();
+        if (aid) $('.view-funds[data-id="' + aid + '"]').trigger('click');
+    });
+
+    $('#editFundTransactionForm').on('submit', function(e) {
+        e.preventDefault();
+        const $btn = $(this).find('button[type="submit"]');
+        const originalHtml = $btn.html();
+        $btn.html('<i class="fas fa-spinner fa-spin mr-1"></i>Saving...').prop('disabled', true);
+
+        const transactionId = $('#editFundTransactionId').val();
+        const allocationId = $('#editFundAllocationId').val();
+        const amount = $('#editFundAmount').val();
+        const description = $('#editFundDescription').val();
+
+        updateFundTransaction(transactionId, allocationId, amount, description)
+            .done(function(response) {
+                if (response.success) {
+                    $('#editFundTransactionModal').modal('hide');
+                    alert(response.message);
+                    $('.view-funds[data-id="' + allocationId + '"]').trigger('click');
+                } else {
+                    $('#editFundTransactionModal').modal('hide');
+                    alert('Error: ' + response.message);
+                }
+            })
+            .fail(function() {
+                alert('An error occurred while updating the fund transaction');
+            })
+            .always(function() {
+                $btn.html(originalHtml).prop('disabled', false);
+            });
     });
 });

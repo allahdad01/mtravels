@@ -180,18 +180,23 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_ASSOC);
                                 }
                                 
                                 $expenses = $expenseStmt->fetchAll(PDO::FETCH_ASSOC);
-                                $totalAmount = 0;
                                 $count = count($expenses);
+                                $currencyTotals = [];
                                 foreach ($expenses as $exp) {
-                                    $totalAmount += $exp['amount'];
+                                    $cur = $exp['currency'] ?? 'USD';
+                                    $currencyTotals[$cur] = ($currencyTotals[$cur] ?? 0) + $exp['amount'];
                                 }
                                 
                                 echo '<span class="expense-count">' . $count . ' ' . __('entries') . '</span>';
-                                echo '<span class="category-total">' . number_format($totalAmount, 2) . '</span>';
+                                $totalParts = [];
+                                foreach ($currencyTotals as $cur => $amt) {
+                                    $totalParts[] = number_format($amt, 2) . ' ' . htmlspecialchars($cur);
+                                }
+                                echo '<span class="category-total">' . implode(' | ', $totalParts) . '</span>';
                                 echo '<div class="category-card-actions">';
-                                echo '<button class="btn btn-print print-category" data-id="' . $category['id'] . '" title="Print Category Report"><i class="feather icon-printer"></i></button>';
-                                echo '<button class="btn btn-edit edit-category" data-id="' . $category['id'] . '" data-name="' . htmlspecialchars($category['name']) . '"><i class="feather icon-edit-2"></i></button>';
-                                echo '<button class="btn btn-delete delete-category" data-id="' . $category['id'] . '"><i class="feather icon-trash-2"></i></button>';
+                                echo '<button class="btn-print print-category" data-id="' . $category['id'] . '" title="Print Category Report"><i class="feather icon-printer"></i></button>';
+                                echo '<button class="btn-edit edit-category" data-id="' . $category['id'] . '" data-name="' . htmlspecialchars($category['name']) . '"><i class="feather icon-edit-2"></i></button>';
+                                echo '<button class="btn-delete delete-category" data-id="' . $category['id'] . '"><i class="feather icon-trash-2"></i></button>';
                                 echo '</div>';
                                 echo '<i class="feather icon-chevron-down expand-icon"></i>';
                                 echo '</div>';
@@ -206,17 +211,31 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_ASSOC);
                                     
                                     foreach ($expenses as $expense) {
                                         $createdAt = isset($expense['created_at']) ? $expense['created_at'] : $expense['date'];
+                                        $isGlobal = !empty($expense['global_allocation_id']);
+                                        $isBudgetAlloc = !empty($expense['allocation_id']);
                                         echo '<tr data-created="' . $createdAt . '">';
                                         echo '<td class="date-col">' . date('d/m/Y', strtotime($expense['date'])) . '</td>';
                                         echo '<td class="desc-col">' . htmlspecialchars($expense['description']) . '</td>';
-                                        echo '<td class="amount-col">' . number_format($expense['amount'], 2) . '</td>';
+                                        echo '<td class="amount-col">' . number_format($expense['amount'], 2);
+                                        if ($isGlobal) {
+                                            echo ' <span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:50px;background:#eef5fb;color:#185FA5;border:1px solid #c6ddf0;vertical-align:middle;"><i class="feather icon-globe" style="font-size:9px;"></i>Global</span>';
+                                        } elseif ($isBudgetAlloc) {
+                                            echo ' <span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:50px;background:#e8f8ef;color:#1a7a4a;border:1px solid #b8e6cc;vertical-align:middle;"><i class="feather icon-pie-chart" style="font-size:9px;"></i>Budget</span>';
+                                        }
+                                        echo '</td>';
                                         echo '<td class="ccy-col">' . ($expense['currency'] ?? 'USD') . '</td>';
                                         echo '<td class="actions-col">';
-                                        echo '<div class="btn-group-wrap">';
-                                        echo '<button class="btn btn-action-edit edit-expense" data-id="' . $expense['id'] . '" data-category="' . $category['id'] . '" data-date="' . $expense['date'] . '" data-description="' . htmlspecialchars($expense['description']) . '" data-amount="' . $expense['amount'] . '" data-currency="' . ($expense['currency'] ?? 'USD') . '" data-main-account="' . ($expense['main_account_id'] ?? '') . '" title="Edit"><i class="feather icon-edit-2"></i></button>';
-                                        echo '<a href="expense_detail.php?id=' . $expense['id'] . '" class="btn btn-action-view" title="View"><i class="feather icon-eye"></i></a>';
-                                        echo '<button class="btn btn-action-delete delete-expense" data-id="' . $expense['id'] . '" title="Delete"><i class="feather icon-trash-2"></i></button>';
-                                        echo '</div>';
+                                        if ($isGlobal) {
+                                            echo '<span class="allocation-link">Managed from <a href="global_budget_allocation.php">Global Allocation</a></span>';
+                                        } elseif ($isBudgetAlloc) {
+                                            echo '<span class="allocation-link">Managed from <a href="budget_allocations.php">Budget Allocation</a></span>';
+                                        } else {
+                                            echo '<div class="btn-group-wrap">';
+                                            echo '<button class="btn-action-edit edit-expense" data-id="' . $expense['id'] . '" data-category="' . $category['id'] . '" data-date="' . $expense['date'] . '" data-description="' . htmlspecialchars($expense['description']) . '" data-amount="' . $expense['amount'] . '" data-currency="' . ($expense['currency'] ?? 'USD') . '" data-main-account="' . ($expense['main_account_id'] ?? '') . '" title="Edit"><i class="feather icon-edit-2"></i></button>';
+                                            echo '<a href="expense_detail.php?id=' . $expense['id'] . '" class="btn-action-view" title="View"><i class="feather icon-eye"></i></a>';
+                                            echo '<button class="btn-action-delete delete-expense" data-id="' . $expense['id'] . '" title="Delete"><i class="feather icon-trash-2"></i></button>';
+                                            echo '</div>';
+                                        }
                                         echo '</td>';
                                         echo '</tr>';
                                     }
@@ -243,6 +262,7 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_ASSOC);
 
 <?php include '../modals/expense/category_modal.php'; ?>
 <?php include '../modals/expense/expense_modal.php'; ?>
+<?php include '../modals/expense/edit_expense_modal.php'; ?>
 
     <!-- Required Js -->
     

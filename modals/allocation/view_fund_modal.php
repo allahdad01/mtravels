@@ -1,3 +1,33 @@
+<!-- Edit Fund Transaction Modal -->
+<div class="modal fade" id="editFundTransactionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><?= __('edit_fund_transaction') ?></h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <form id="editFundTransactionForm">
+                <input type="hidden" id="editFundTransactionId" name="transaction_id">
+                <input type="hidden" id="editFundAllocationId" name="allocation_id">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label><?= __('amount') ?></label>
+                        <input type="number" step="0.01" class="form-control" id="editFundAmount" name="amount" required min="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label><?= __('description') ?></label>
+                        <textarea class="form-control" id="editFundDescription" name="description" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('cancel') ?></button>
+                    <button type="submit" class="btn btn-primary"><?= __('save_changes') ?></button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- View Fund Transactions Modal -->
 <div class="modal fade" id="viewFundsModal" tabindex="-1">
     <div class="modal-dialog modal-lg">

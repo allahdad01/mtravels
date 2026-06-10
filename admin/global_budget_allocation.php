@@ -740,6 +740,59 @@ $availableCurrencies = array_column($allocatedCurrencies, 'currency');
     </div>
 </div>
 
+<!-- Edit Expense Modal -->
+<div class="modal fade" id="editGlobalExpenseModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit expense</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <form id="editGlobalExpenseForm">
+                <input type="hidden" id="editExpenseId" name="expense_id">
+                <input type="hidden" id="editExpenseAllocationId" name="allocation_id">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Expense category</label>
+                        <select class="form-control" id="editExpenseCategory" name="category_id" required>
+                            <option value="">Select category</option>
+                            <?php foreach ($categories as $category): ?>
+                                <option value="<?= $category['id'] ?>"><?= htmlspecialchars($category['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="date" class="form-control" id="editExpenseDate" name="date" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea class="form-control" id="editExpenseDescription" name="description" rows="3" required></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Amount</label>
+                                <input type="number" step="0.01" class="form-control" id="editExpenseAmount" name="amount" required min="0.01">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Currency</label>
+                                <input type="text" class="form-control" id="editExpenseCurrency" readonly>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="gba-btn gba-btn-primary">Save changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- New Global Allocation Modal -->
 <div class="modal fade" id="globalAllocationModal" tabindex="-1">
     <div class="modal-dialog">
@@ -907,6 +960,36 @@ $availableCurrencies = array_column($allocatedCurrencies, 'currency');
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Fund Transaction Modal -->
+<div class="modal fade" id="editFundTransactionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit fund transaction</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <form id="editFundTransactionForm">
+                <input type="hidden" id="editFundTransactionId" name="transaction_id">
+                <input type="hidden" id="editFundAllocationId" name="allocation_id">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Amount</label>
+                        <input type="number" step="0.01" class="form-control" id="editFundAmount" name="amount" required min="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea class="form-control" id="editFundDescription" name="description" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="gba-btn gba-btn-primary">Save changes</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -1130,12 +1213,19 @@ $(document).ready(function () {
                         <td style="max-width:160px;word-break:break-word;">${e.description}</td>
                         <td>${e.amount}</td>
                         <td>${e.currency}</td>
-                        <td>
-                            <button class="gba-action-btn danger delete-global-expense" data-id="${e.id}">
-                                <i class="feather icon-trash-2"></i>
-                            </button>
-                        </td>
-                    </tr>`);
+                    <td>
+                        <button class="gba-action-btn edit-global-expense"
+                                data-id="${e.id}" data-allocation-id="${e.global_allocation_id}"
+                                data-category="${e.category_id}" data-date="${e.date}"
+                                data-description="${(e.description||'').replace(/'/g,"\\'")}"
+                                data-amount="${e.amount}" data-currency="${e.currency}">
+                            <i class="feather icon-edit-2"></i>
+                        </button>
+                        <button class="gba-action-btn danger delete-global-expense" data-id="${e.id}">
+                            <i class="feather icon-trash-2"></i>
+                        </button>
+                    </td>
+                </tr>`);
             });
             $tbody.show(); $('#no-global-expenses-message').hide();
         } else {
@@ -1154,6 +1244,55 @@ $(document).ready(function () {
             success: function (r) {
                 btnReset($btn);
                 r.success ? (alert(r.message), location.reload()) : alert('Error: ' + r.message);
+            },
+            error: function () { btnReset($btn); alert('An error occurred.'); }
+        });
+    });
+
+    /* ── Edit expense ──────────────────────────── */
+    $(document).on('click', '.edit-global-expense', function () {
+        var $btn = $(this);
+        $('#editExpenseId').val($btn.data('id'));
+        $('#editExpenseAllocationId').val($btn.data('allocation-id'));
+        $('#editExpenseCategory').val($btn.data('category'));
+        $('#editExpenseDate').val($btn.data('date'));
+        $('#editExpenseDescription').val($btn.data('description'));
+        $('#editExpenseAmount').val($btn.data('amount'));
+        $('#editExpenseCurrency').val($btn.data('currency'));
+        $('#globalExpensesModal').modal('hide');
+        $('#editGlobalExpenseModal').modal('show');
+    });
+
+    $('#editGlobalExpenseModal').on('hidden.bs.modal', function () {
+        var id = $('#editExpenseAllocationId').val();
+        if (id) $('.view-global-expenses[data-id="' + id + '"]').trigger('click');
+    });
+
+    $('#editGlobalExpenseForm').on('submit', function (e) {
+        e.preventDefault();
+        var $btn = $(this).find('button[type="submit"]');
+        btnLoading($btn, 'Saving...');
+        $.ajax({
+            url: 'global_allocation_actions.php', type: 'POST', dataType: 'json',
+            data: {
+                action:      'edit_global_expense',
+                expense_id:  $('#editExpenseId').val(),
+                category_id: $('#editExpenseCategory').val(),
+                date:        $('#editExpenseDate').val(),
+                description: $('#editExpenseDescription').val(),
+                amount:      $('#editExpenseAmount').val()
+            },
+            success: function (r) {
+                btnReset($btn);
+                if (r.success) {
+                    $('#editGlobalExpenseModal').modal('hide');
+                    alert(r.message);
+                    var id = $('#editExpenseAllocationId').val();
+                    $('.view-global-expenses[data-id="' + id + '"]').trigger('click');
+                } else {
+                    $('#editGlobalExpenseModal').modal('hide');
+                    alert('Error: ' + r.message);
+                }
             },
             error: function () { btnReset($btn); alert('An error occurred.'); }
         });
@@ -1189,6 +1328,11 @@ $(document).ready(function () {
                                     ${isDebit ? 'Debit' : 'Credit'}
                                 </td>
                                 <td>
+                                    <button class="gba-action-btn edit-fund-transaction"
+                                            data-id="${t.id}" data-allocation-id="${id}"
+                                            data-amount="${t.amount}" data-description="${(t.description||'').replace(/'/g,"\\'")}">
+                                        <i class="feather icon-edit-2"></i>
+                                    </button>
                                     <button class="gba-action-btn danger delete-fund-transaction"
                                             data-id="${t.id}" data-allocation-id="${id}">
                                         <i class="feather icon-trash-2"></i>
@@ -1220,6 +1364,52 @@ $(document).ready(function () {
                     alert(r.message);
                     $('.view-funds[data-id="' + aid + '"]').trigger('click');
                 } else {
+                    alert('Error: ' + r.message);
+                }
+            },
+            error: function () { btnReset($btn); alert('An error occurred.'); }
+        });
+    });
+
+    /* ── Edit fund transaction ───────────────── */
+    $(document).on('click', '.edit-fund-transaction', function () {
+        var $btn = $(this);
+        $('#editFundTransactionId').val($btn.data('id'));
+        $('#editFundAllocationId').val($btn.data('allocation-id'));
+        $('#editFundAmount').val($btn.data('amount'));
+        $('#editFundDescription').val($btn.data('description'));
+        $('#viewFundsModal').modal('hide');
+        $('#editFundTransactionModal').modal('show');
+    });
+
+    /* reopen view modal if edit modal is cancelled */
+    $('#editFundTransactionModal').on('hidden.bs.modal', function () {
+        var aid = $('#editFundAllocationId').val();
+        if (aid) $('.view-funds[data-id="' + aid + '"]').trigger('click');
+    });
+
+    $('#editFundTransactionForm').on('submit', function (e) {
+        e.preventDefault();
+        var $btn = $(this).find('button[type="submit"]');
+        btnLoading($btn, 'Saving...');
+        $.ajax({
+            url: 'global_allocation_actions.php', type: 'POST', dataType: 'json',
+            data: {
+                action: 'edit_fund_transaction',
+                transaction_id: $('#editFundTransactionId').val(),
+                allocation_id:  $('#editFundAllocationId').val(),
+                amount:         $('#editFundAmount').val(),
+                description:    $('#editFundDescription').val()
+            },
+            success: function (r) {
+                btnReset($btn);
+                if (r.success) {
+                    $('#editFundTransactionModal').modal('hide');
+                    alert(r.message);
+                    var aid = $('#editFundAllocationId').val();
+                    $('.view-funds[data-id="' + aid + '"]').trigger('click');
+                } else {
+                    $('#editFundTransactionModal').modal('hide');
                     alert('Error: ' + r.message);
                 }
             },

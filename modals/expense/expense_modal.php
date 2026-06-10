@@ -93,50 +93,6 @@
                         </div>
                     </div>
 
-                    <!-- Budget Allocation -->
-                    <div class="modal-section">
-                        <div class="modal-section-title">
-                            <i class="feather icon-pie-chart"></i>
-                            <span><?= __('budget_allocation') ?> <span class="text-muted font-weight-normal">(<?= __('optional') ?>)</span></span>
-                        </div>
-                        <div class="form-group">
-                            <select class="form-control" id="expenseAllocation" name="expenseAllocation">
-                                <option value=""><?= __('select_budget_allocation') ?></option>
-                                <?php
-                                $allocationsQuery = "
-                                    SELECT ba.id, ba.remaining_amount, ba.currency,
-                                           ec.name as category_name,
-                                           ma.name as account_name
-                                    FROM budget_allocations ba
-                                    JOIN expense_categories ec ON ba.category_id = ec.id
-                                    JOIN main_account ma ON ba.main_account_id = ma.id
-                                    WHERE ba.tenant_id = ? AND ba.branch_id = ? AND ec.tenant_id = ? AND ec.branch_id = ? AND ma.tenant_id = ? AND ma.branch_id = ?
-                                    ORDER BY ec.name, ba.allocation_date DESC
-                                ";
-                                $allocationsStmt = $pdo->prepare($allocationsQuery);
-                                $tenantId = $_SESSION['tenant_id'] ?? 1;
-                                $allocationsStmt->execute([$tenantId, $branch_id, $tenantId, $branch_id, $tenantId, $branch_id]);
-                                $allocations = $allocationsStmt->fetchAll(PDO::FETCH_ASSOC);
-
-                                foreach($allocations as $allocation):
-                                ?>
-                                <option value="<?= $allocation['id'] ?>"
-                                        data-currency="<?= $allocation['currency'] ?>"
-                                        data-category="<?= $allocation['category_name'] ?>"
-                                        data-remaining="<?= $allocation['remaining_amount'] ?>">
-                                    <?= htmlspecialchars($allocation['category_name']) ?> -
-                                    <?= number_format($allocation['remaining_amount'], 2) ?> <?= $allocation['currency'] ?>
-                                    (<?= htmlspecialchars($allocation['account_name']) ?>)
-                                </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <small class="form-text text-muted">
-                                <i class="feather icon-alert-circle mr-1"></i>
-                                <?= __('if_selected_expense_will_deduct_from_this_allocation_instead_of_the_main_account') ?>
-                            </small>
-                        </div>
-                    </div>
-
                     <!-- Receipt -->
                     <div class="modal-section">
                         <div class="modal-section-title">
