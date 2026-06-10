@@ -88,8 +88,41 @@ try {
             $getStmt->execute([$categoryId, $tenant_id, $branch_id]);
             $category = $getStmt->fetch(PDO::FETCH_ASSOC);
             
+            if (!$category) {
+                echo json_encode(['success' => false, 'message' => 'Category not found']);
+                break;
+            }
+            
+            // Check for associated expenses
+            $expStmt = $pdo->prepare("SELECT COUNT(*) FROM expenses WHERE category_id = ? AND tenant_id = ? AND branch_id = ?");
+            $expStmt->execute([$categoryId, $tenant_id, $branch_id]);
+            $expCount = $expStmt->fetchColumn();
+            
+            if ($expCount > 0) {
+                echo json_encode(['success' => false, 'message' => "Cannot delete category '{$category['name']}': it has {$expCount} associated expense(s). Remove them first."]);
+                break;
+            }
+            
+            // Check for associated budget allocations
+            $allocStmt = $pdo->prepare("SELECT COUNT(*) FROM budget_allocations WHERE category_id = ? AND tenant_id = ? AND branch_id = ?");
+            $allocStmt->execute([$categoryId, $tenant_id, $branch_id]);
+            $allocCount = $allocStmt->fetchColumn();
+            
+            if ($allocCount > 0) {
+                echo json_encode(['success' => false, 'message' => "Cannot delete category '{$category['name']}': it has {$allocCount} associated budget allocation(s). Remove them first."]);
+                break;
+            }
+            
+            $pdo->beginTransaction();
+            
+            // Delete associated notifications
+            $delNotifStmt = $pdo->prepare("DELETE FROM notifications WHERE transaction_type = 'expense' AND message LIKE ? AND tenant_id = ? AND branch_id = ?");
+            $delNotifStmt->execute(['%' . $category['name'] . '%', $tenant_id, $branch_id]);
+            
             $stmt = $pdo->prepare("DELETE FROM expense_categories WHERE id = ? AND tenant_id = ? And branch_id = ?");
             $stmt->execute([$categoryId, $tenant_id, $branch_id]);
+            
+            $pdo->commit();
             
             // Log the activity
             $old_values = json_encode([
