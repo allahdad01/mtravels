@@ -576,10 +576,10 @@ function addExpenseGlobal($pdo, $tenant_id, $branch_id) {
 
         $notifStmt = $pdo->prepare("
             INSERT INTO notifications
-            (transaction_type, message, status, created_at, tenant_id, branch_id)
-            VALUES ('expense', ?, 'Unread', NOW(), ?, ?)
+            (transaction_id, transaction_type, message, status, created_at, tenant_id, branch_id)
+            VALUES (?, 'expense', ?, 'Unread', NOW(), ?, ?)
         ");
-        $notifStmt->execute([$notificationMessage, $tenant_id, $branch_id]);
+        $notifStmt->execute([$expenseId, $notificationMessage, $tenant_id, $branch_id]);
 
         // Commit transaction
         $pdo->commit();
@@ -672,6 +672,10 @@ function deleteGlobalExpense($pdo, $tenant_id, $branch_id) {
         // Return amount to global allocation
         $updateStmt = $pdo->prepare("UPDATE global_budget_allocations SET remaining_amount = remaining_amount + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
         $updateStmt->execute([$amount, $allocationId, $tenant_id, $branch_id]);
+
+        // Delete notification
+        $delNotifStmt = $pdo->prepare("DELETE FROM notifications WHERE transaction_id = ? AND transaction_type = 'expense' AND tenant_id = ? AND branch_id = ?");
+        $delNotifStmt->execute([$expenseId, $tenant_id, $branch_id]);
 
         // Delete expense
         $deleteStmt = $pdo->prepare("DELETE FROM expenses WHERE id = ? AND tenant_id = ? AND branch_id = ?");

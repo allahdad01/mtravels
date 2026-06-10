@@ -465,31 +465,13 @@ try {
                 $deleteStmt->execute([$expenseId, $tenant_id, $branch_id]);
             }
             
+            // Delete original notification
+            $delNotifStmt = $pdo->prepare("DELETE FROM notifications WHERE transaction_id = ? AND transaction_type = 'expense' AND tenant_id = ? AND branch_id = ?");
+            $delNotifStmt->execute([$expenseId, $tenant_id, $branch_id]);
+
             // Now delete the expense
             $stmt = $pdo->prepare("DELETE FROM expenses WHERE id = ? AND tenant_id = ? And branch_id = ?");
             $stmt->execute([$expenseId, $tenant_id, $branch_id]);
-            
-            // Get category name for notification
-            $categoryStmt = $pdo->prepare("SELECT ec.name FROM expenses e JOIN expense_categories ec ON e.category_id = ec.id WHERE e.id = ? AND e.tenant_id = ? And e.branch_id = ?");
-            $categoryStmt->execute([$expenseId, $tenant_id, $branch_id]);
-            $categoryName = $categoryStmt->fetchColumn() ?: 'Unknown';
-            
-            // Create notification message
-            $notificationMessage = sprintf(
-                "Expense deleted for category %s: Amount %s %.2f - %s", 
-                $categoryName,
-                $expense['currency'] ?? 'USD',
-                $expense['amount'] ?? 0,
-                $expense['description'] ?? ''
-            );
-            
-            // Insert notification
-            $notifStmt = $pdo->prepare("
-                INSERT INTO notifications
-                (transaction_type, message, status, created_at, tenant_id, branch_id)
-                VALUES ('expense_delete', ?, 'Unread', NOW(), ?, ?)
-            ");
-            $notifStmt->execute([$notificationMessage, $tenant_id, $branch_id]);
             
             // Commit transaction
             $pdo->commit();

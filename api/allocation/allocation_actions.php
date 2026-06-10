@@ -1205,8 +1205,8 @@ function addAllocationExpense($pdo) {
         $categoryName = $catStmt->fetchColumn() ?: 'Unknown';
 
         $notifMsg = sprintf("New expense added from budget allocation for category %s: Amount %s %.2f - %s", $categoryName, $currency, $amount, $description);
-        $notifStmt = $pdo->prepare("INSERT INTO notifications (transaction_type, message, status, created_at, tenant_id, branch_id) VALUES ('expense', ?, 'Unread', NOW(), ?, ?)");
-        $notifStmt->execute([$notifMsg, $tenant_id, $branch_id]);
+        $notifStmt = $pdo->prepare("INSERT INTO notifications (transaction_id, transaction_type, message, status, created_at, tenant_id, branch_id) VALUES (?, 'expense', ?, 'Unread', NOW(), ?, ?)");
+        $notifStmt->execute([$expenseId, $notifMsg, $tenant_id, $branch_id]);
 
         $pdo->commit();
 
@@ -1335,18 +1335,13 @@ function deleteAllocationExpense($pdo) {
             $refundStmt->execute([$amount, $allocationId, $tenant_id, $branch_id]);
         }
 
+        // Delete notification
+        $delNotifStmt = $pdo->prepare("DELETE FROM notifications WHERE transaction_id = ? AND transaction_type = 'expense' AND tenant_id = ? AND branch_id = ?");
+        $delNotifStmt->execute([$expenseId, $tenant_id, $branch_id]);
+
         // Delete expense
         $deleteStmt = $pdo->prepare("DELETE FROM expenses WHERE id = ? AND tenant_id = ? AND branch_id = ?");
         $deleteStmt->execute([$expenseId, $tenant_id, $branch_id]);
-
-        // Notification
-        $catStmt = $pdo->prepare("SELECT name FROM expense_categories WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-        $catStmt->execute([$expense['category_id'], $tenant_id, $branch_id]);
-        $categoryName = $catStmt->fetchColumn() ?: 'Unknown';
-
-        $notifMsg = sprintf("Expense deleted from budget allocation for category %s: Amount %s %.2f - %s", $categoryName, $expense['currency'], $amount, $expense['description']);
-        $notifStmt = $pdo->prepare("INSERT INTO notifications (transaction_type, message, status, created_at, tenant_id, branch_id) VALUES ('expense_delete', ?, 'Unread', NOW(), ?, ?)");
-        $notifStmt->execute([$notifMsg, $tenant_id, $branch_id]);
 
         $pdo->commit();
 
