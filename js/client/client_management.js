@@ -251,7 +251,7 @@ document.addEventListener('DOMContentLoaded', function () {
     window.editClient = function (clientId) {
       const client = clients.find(c => c.id === clientId);
       if (!client) return;
-  
+
       const editClientIdEl = document.getElementById('editClientId');
       const editNameEl = document.getElementById('editName');
       const editEmailEl = document.getElementById('editEmail');
@@ -259,9 +259,9 @@ document.addEventListener('DOMContentLoaded', function () {
       const editAddressEl = document.getElementById('editAddress');
       const editTypeEl = document.getElementById('editType');
       const editStatusEl = document.getElementById('editStatus');
-  
+
       if (!editClientIdEl || !editNameEl || !editEmailEl) return;
-  
+
       editClientIdEl.value = client.id;
       editNameEl.value = client.name;
       editEmailEl.value = client.email;
@@ -269,7 +269,29 @@ document.addEventListener('DOMContentLoaded', function () {
       if (editAddressEl) editAddressEl.value = client.address || '';
       if (editTypeEl) editTypeEl.value = client.type;
       if (editStatusEl) editStatusEl.value = client.status;
-  
+
+      // Disable client_type if transactions exist
+      const hasTxn = client.has_transactions == '1';
+      if (editTypeEl) editTypeEl.disabled = hasTxn;
+
+      // Show/hide lock note
+      var note = document.getElementById('editClientLockNote');
+      if (hasTxn) {
+        if (!note) {
+          note = document.createElement('div');
+          note.id = 'editClientLockNote';
+          note.className = 'alert alert-warning py-2 px-3 mb-0 mt-2';
+          note.style.fontSize = '12px';
+          note.innerHTML = '<i class="fas fa-lock mr-1"></i> Client type locked — transactions exist';
+          if (editTypeEl) {
+            var formGroup = editTypeEl.closest('.mb-3');
+            if (formGroup) formGroup.parentNode.insertBefore(note, formGroup.nextSibling);
+          }
+        }
+      } else if (note) {
+        note.remove();
+      }
+
       editClientModal.modal('show');
     };
   
@@ -277,7 +299,10 @@ document.addEventListener('DOMContentLoaded', function () {
     if (editClientFormEl) {
       editClientFormEl.addEventListener('submit', function (e) {
         e.preventDefault();
-  
+
+        // Re-enable disabled fields so their values are submitted
+        [].slice.call(this.querySelectorAll('[disabled]')).forEach(function(el) { el.disabled = false; });
+
         const payload = {
           id         : document.getElementById('editClientId').value,
           name       : document.getElementById('editName').value,
@@ -286,8 +311,9 @@ document.addEventListener('DOMContentLoaded', function () {
           address    : document.getElementById('editAddress').value,
           client_type: document.getElementById('editType').value,
           status     : document.getElementById('editStatus').value,
+          csrf_token : window.csrfToken,
         };
-  
+
         fetch('../api/client/update_client.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -327,7 +353,7 @@ document.addEventListener('DOMContentLoaded', function () {
         fetch('../api/client/delete_client.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: clientId }),
+          body: JSON.stringify({ id: clientId, csrf_token: window.csrfToken }),
         })
           .then(res => res.json())
           .then(data => {

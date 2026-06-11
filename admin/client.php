@@ -877,6 +877,10 @@ const clientTypeTranslations = {
 <script src="../assets/js/pcoded.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+<script>
+window.csrfToken = '<?= $_SESSION['csrf_token'] ?>';
+</script>
+
 <!-- Client management logic -->
 <script src="../js/client/client_management.js"></script>
 

@@ -12,7 +12,13 @@ header('Content-Type: application/json');
 
 try {
     // Prepare and execute the query
-    $stmt = $pdo->prepare("SELECT *, COALESCE(status, 'active') as status FROM suppliers WHERE tenant_id = ? AND branch_id = ? ORDER BY name");
+    $stmt = $pdo->prepare("
+        SELECT s.*, COALESCE(s.status, 'active') as status,
+            (SELECT COUNT(*) FROM supplier_transactions st WHERE st.supplier_id = s.id AND st.tenant_id = s.tenant_id AND st.branch_id = s.branch_id) > 0 AS has_transactions
+        FROM suppliers s
+        WHERE s.tenant_id = ? AND s.branch_id = ?
+        ORDER BY s.name
+    ");
     $stmt->execute([$tenant_id, $branch_id]);
     $suppliers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

@@ -706,6 +706,8 @@ td.num {
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
+window.csrfToken = '<?= $_SESSION['csrf_token'] ?>';
+
 /* ─── Supplier Management — new UI wired to original API ─────────────────── */
 (function () {
 
@@ -899,7 +901,6 @@ td.num {
     const s = suppliers.find(x => x.id === id);
     if (!s) return;
 
-    // Populate edit modal fields (mirrors original SupplierManagement.editSupplier)
     const setVal = (sel, val) => { const el = document.getElementById(sel); if (el) el.value = val || ''; };
     setVal('editSupplierId',      s.id);
     setVal('editSupplierName',    s.name);
@@ -910,6 +911,29 @@ td.num {
     setVal('editSupplierCategory', s.category || 'all');
     setVal('editCurrency',        s.currency);
     setVal('editAddress',         s.address);
+
+    // Disable supplier_type and currency if transactions exist
+    const hasTxn = s.has_transactions == '1';
+    var typeEl = document.getElementById('editSupplierType');
+    var currEl = document.getElementById('editCurrency');
+    if (typeEl) typeEl.disabled = hasTxn;
+    if (currEl) currEl.disabled = hasTxn;
+
+    // Show/hide lock note
+    var note = document.getElementById('editSupplierLockNote');
+    if (hasTxn) {
+      if (!note) {
+        note = document.createElement('div');
+        note.id = 'editSupplierLockNote';
+        note.className = 'alert alert-warning py-2 px-3 mb-0 mt-2';
+        note.style.fontSize = '12px';
+        note.innerHTML = '<i class="fas fa-lock mr-1"></i> Supplier type & currency locked — transactions exist';
+        var currGroup = currEl ? currEl.closest('.form-group') : null;
+        if (currGroup) currGroup.parentNode.insertBefore(note, currGroup.nextSibling);
+      }
+    } else if (note) {
+      note.remove();
+    }
 
     $('#editSupplierModal').modal('show');
   };
@@ -934,14 +958,14 @@ td.num {
       fetch('../api/supplier/delete_supplier.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ id, csrf_token: window.csrfToken }),
       })
         .then(r => r.json())
         .then(data => {
           if (data.success) { showToast(`${s.name} removed`); loadSuppliers(); }
-          else throw new Error(data.message || 'Failed to delete supplier');
+          else showError(data.message || 'Failed to delete supplier');
         })
-        .catch(err => showError(err.message));
+        .catch(() => showError('Network error occurred'));
     });
   };
 
@@ -972,6 +996,8 @@ td.num {
    if (editForm) {
      editForm.addEventListener('submit', function (e) {
        e.preventDefault();
+       // Re-enable disabled fields so their values are submitted
+       [].slice.call(this.querySelectorAll('[disabled]')).forEach(function(el) { el.disabled = false; });
        fetch('../api/supplier/update_supplier.php', {
          method: 'POST',
          body: new FormData(this),
