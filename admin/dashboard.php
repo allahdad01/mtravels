@@ -803,7 +803,8 @@ $selected_date = InputValidator::getDate($_GET['departure_date'] ?? '', 'Y-m-d',
               if (!empty($row['passenger_phone'])) echo '<span style="color:var(--sky);margin-top:3px;"><i class="fas fa-phone-alt" style="font-size:10px;"></i> '.htmlspecialchars($row['passenger_phone']).'</span>';
               echo '</div>';
               echo '<div class="fc-route"><div><div class="fc-city-code">'.htmlspecialchars($oc?:strtoupper(substr($o,0,3))).'</div><div class="fc-city-name">'.htmlspecialchars($o).'</div></div><div class="fc-arrow"><div class="fc-arrow-line"></div><div class="fc-airline">'.htmlspecialchars($row['airline']??$row['supplier_name']??'').'</div></div><div><div class="fc-city-code">'.htmlspecialchars($dc?:strtoupper(substr($d,0,3))).'</div><div class="fc-city-name">'.htmlspecialchars($d).'</div></div></div>';
-              echo '<div class="fc-dates"><div class="fc-date-row"><i class="fas fa-calendar-check"></i> '.htmlspecialchars(__('issue')).': <span>'.date('d M Y',strtotime($row['issue_date'])).'</span></div><div class="fc-date-row dep"><i class="fas fa-plane-departure"></i> '.htmlspecialchars(__('departure')).': <span>'.date('d M Y',strtotime($row['departure_date'])).'</span></div></div>';
+              $depTime = !empty($row['departure_time']) ? ' @ '.htmlspecialchars($row['departure_time']) : '';
+echo '<div class="fc-dates"><div class="fc-date-row"><i class="fas fa-calendar-check"></i> '.htmlspecialchars(__('issue')).': <span>'.date('d M Y',strtotime($row['issue_date'])).'</span></div><div class="fc-date-row dep"><i class="fas fa-plane-departure"></i> '.htmlspecialchars(__('departure')).': <span>'.date('d M Y',strtotime($row['departure_date'])).$depTime.'</span></div></div>';
               echo '<div class="fc-sold">'.htmlspecialchars($row['sold']).'</div>';
               echo '</div>';
             }
