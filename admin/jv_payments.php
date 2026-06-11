@@ -634,6 +634,12 @@ $search_param_str = !empty($search_query) ? '&search=' . urlencode($search_query
                                      title="<?php echo __('view'); ?>">
                                <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><ellipse cx="8" cy="8" rx="6" ry="4" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="1.5" fill="currentColor"/></svg>
                              </button>
+                             <!-- Edit -->
+                             <button class="jvp-btn-icon edit-cs-btn"
+                                     data-id="<?php echo $payment['id']; ?>"
+                                     title="<?php echo __('edit'); ?>">
+                               <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M11 2.5l2.5 2.5L5 13.5H2.5V11L11 2.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+                             </button>
                              <!-- Delete -->
                              <button class="jvp-btn-icon danger delete-cs-btn"
                                     data-id="<?php echo $payment['id']; ?>"
@@ -778,10 +784,10 @@ $search_param_str = !empty($search_query) ? '&search=' . urlencode($search_query
             <label><?php echo __('amount'); ?></label>
             <input type="number" step="0.01" name="total_amount" id="total_amount" required placeholder="0.00">
           </div>
-          <div class="jvp-field">
+          <div class="jvp-field" id="exchangeRateField" style="display:none">
             <label><?php echo __('exchange_rate'); ?></label>
             <input type="number" step="0.00001" name="exchange_rate" id="exchange_rate" placeholder="1.00000">
-            <p class="jvp-field-hint"><?php echo __('required_if_currencies_differ'); ?></p>
+            <p class="jvp-field-hint" id="exchangeRateHint"><?php echo __('required_if_currencies_differ'); ?></p>
           </div>
         </div>
 
@@ -885,6 +891,92 @@ $search_param_str = !empty($search_query) ? '&search=' . urlencode($search_query
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════════
+     EDIT MODAL
+════════════════════════════════════════════════════════ -->
+<div class="jvp-backdrop" id="editModal" style="display:none" onclick="jvpBackdropClick(event,'editModal')">
+  <div class="jvp-modal">
+    <div class="jvp-modal-head">
+      <div>
+        <h2><?php echo __('edit_client_supplier_payment'); ?></h2>
+        <p><?php echo __('update_payment'); ?></p>
+      </div>
+      <button class="jvp-btn-icon" onclick="jvpCloseModal('editModal')">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M11 3L3 11M3 3l8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <form method="POST" action="update_jv_payment.php" id="editForm">
+      <input type="hidden" name="id" id="edit_id">
+      <div class="jvp-modal-body">
+        <div class="jvp-form-grid jvp-form-full" style="grid-template-columns:1fr">
+          <div class="jvp-field">
+            <label><?php echo __('jv_name'); ?></label>
+            <input type="text" name="jv_name" id="edit_jv_name" required>
+          </div>
+        </div>
+
+        <div class="jvp-section-title"><?php echo __('transaction_parties'); ?></div>
+        <div class="jvp-form-grid">
+          <div class="jvp-field">
+            <label><?php echo __('client'); ?></label>
+            <input type="text" id="edit_client_name" class="jvp-party-name" readonly style="background:#e9ecef;">
+            <input type="hidden" name="client_id" id="edit_client_id">
+          </div>
+          <div class="jvp-field">
+            <label><?php echo __('supplier'); ?></label>
+            <input type="text" id="edit_supplier_name" class="jvp-party-name" readonly style="background:#e9ecef;">
+            <input type="hidden" name="supplier_id" id="edit_supplier_id">
+            <input type="hidden" name="supplier_currency" id="edit_supplier_currency">
+          </div>
+        </div>
+
+        <div class="jvp-section-title"><?php echo __('amount_currency'); ?></div>
+        <div class="jvp-form-grid jvp-form-three" style="grid-template-columns:1fr 1fr 1fr">
+          <div class="jvp-field">
+            <label><?php echo __('currency'); ?></label>
+            <input type="text" id="edit_currency_display" readonly style="background:#e9ecef;">
+            <input type="hidden" name="currency" id="edit_currency">
+          </div>
+          <div class="jvp-field">
+            <label><?php echo __('amount'); ?></label>
+            <input type="number" step="0.01" name="total_amount" id="edit_total_amount" required placeholder="0.00">
+          </div>
+          <div class="jvp-field" id="editExchangeRateField" style="display:none">
+            <label><?php echo __('exchange_rate'); ?></label>
+            <input type="number" step="0.00001" name="exchange_rate" id="edit_exchange_rate" placeholder="1.00000">
+            <p class="jvp-field-hint" id="editExchangeRateHint"><?php echo __('required_if_currencies_differ'); ?></p>
+          </div>
+        </div>
+
+        <div class="jvp-section-title"><?php echo __('additional_details'); ?></div>
+        <div class="jvp-form-grid">
+          <div class="jvp-field">
+            <label><?php echo __('receipt_number'); ?></label>
+            <input type="text" name="receipt" id="edit_receipt" required placeholder="RCP-XXXXX">
+          </div>
+          <div class="jvp-field">
+            <label><?php echo __('remarks'); ?></label>
+            <textarea name="remarks" id="edit_remarks" placeholder="<?php echo __('optional_notes'); ?>…"></textarea>
+          </div>
+        </div>
+
+        <div class="jvp-section-title">Balance Impact Preview</div>
+        <div id="editBalancePreview" style="background:var(--blue-bg);border:1px solid #bfdbfe;border-radius:8px;padding:14px 16px;font-size:13px;color:#1e3a8a;line-height:1.8">
+          <div><strong><?php echo __('client'); ?>:</strong> <span id="edit_client_balance_preview">—</span></div>
+          <div><strong><?php echo __('supplier'); ?>:</strong> <span id="edit_supplier_balance_preview">—</span></div>
+        </div>
+      </div>
+      <div class="jvp-modal-foot">
+        <button type="button" class="jvp-btn jvp-btn-ghost" onclick="jvpCloseModal('editModal')"><?php echo __('cancel'); ?></button>
+        <button type="submit" class="jvp-btn jvp-btn-primary" id="editSubmitBtn">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M13 4L6.5 11 3 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <?php echo __('update_payment'); ?>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- Toast container -->
 <div class="jvp-toast-wrap" id="jvpToastWrap"></div>
 
@@ -912,7 +1004,7 @@ function jvpBackdropClick(e, id) {
 }
 document.addEventListener('keydown', e => {
    if (e.key === 'Escape') {
-     ['addModal','viewModal','deleteModal'].forEach(id => {
+     ['addModal','viewModal','deleteModal','editModal'].forEach(id => {
        const el = document.getElementById(id);
        if (el && el.style.display !== 'none') jvpCloseModal(id);
      });
@@ -1004,13 +1096,114 @@ document.querySelectorAll('.view-cs-btn').forEach(btn => {
             <div class="jvp-detail-cell"><div class="dc-label"><?php echo __('remarks'); ?></div><div class="dc-value" style="color:var(--text-muted);font-style:italic">${p.remarks ? $('<div>').text(p.remarks).html() : '—'}</div></div>
           </div>`;
 
-        // Hide Edit button (editing disabled)
-         const editBtn = document.getElementById('viewEditBtn');
-         editBtn.style.display = 'none';
+        // Store payment data for edit modal and show edit button
+        window._currentPayment = p;
+        const editBtn = document.getElementById('viewEditBtn');
+        editBtn.style.display = 'inline-flex';
       },
       error: function () {
         document.getElementById('viewModalBody').innerHTML =
           `<div class="jvp-alert error" style="margin:0"><?php echo __('failed_to_load_details'); ?></div>`;
+      }
+    });
+  });
+});
+
+/* ─── Edit payment ───────────────────────────────────────── */
+document.getElementById('viewEditBtn').addEventListener('click', function () {
+  const p = window._currentPayment;
+  if (!p) return;
+
+  document.getElementById('edit_id').value = p.id;
+  document.getElementById('edit_jv_name').value = p.jv_name;
+  document.getElementById('edit_client_name').value = p.client_name || '';
+  document.getElementById('edit_client_id').value = p.client_id || '';
+  document.getElementById('edit_supplier_name').value = p.supplier_name || '';
+  document.getElementById('edit_supplier_id').value = p.supplier_id || '';
+  document.getElementById('edit_currency_display').value = p.currency;
+  document.getElementById('edit_currency').value = p.currency;
+  document.getElementById('edit_total_amount').value = p.total_amount;
+  document.getElementById('edit_receipt').value = p.receipt || '';
+  document.getElementById('edit_remarks').value = p.remarks || '';
+  document.getElementById('edit_exchange_rate').value = p.exchange_rate || '';
+
+  // Get supplier currency for exchange rate field show/hide
+  const supplierOpt = document.querySelector('#supplier_id option[value="' + p.supplier_id + '"]');
+  const supplierCurrency = supplierOpt ? supplierOpt.dataset.currency : '';
+  document.getElementById('edit_supplier_currency').value = supplierCurrency;
+
+  // Show/hide exchange rate field and update hint
+  const editRateField = document.getElementById('editExchangeRateField');
+  const editRateHint = document.getElementById('editExchangeRateHint');
+  const editRateInput = document.getElementById('edit_exchange_rate');
+  if (supplierCurrency && supplierCurrency !== p.currency) {
+    editRateField.style.display = 'block';
+    editRateHint.textContent = 'e.g. 1 USD = 72.5 AFS → enter 72.5';
+  } else {
+    editRateField.style.display = 'none';
+    editRateInput.required = false;
+  }
+
+  // Update balance preview
+  document.getElementById('edit_client_balance_preview').textContent = '—';
+  document.getElementById('edit_supplier_balance_preview').textContent = '—';
+
+  jvpCloseModal('viewModal');
+  jvpOpenModal('editModal');
+});
+
+/* ─── Edit payment from row ──────────────────────────────── */
+document.querySelectorAll('.edit-cs-btn').forEach(btn => {
+  btn.addEventListener('click', function () {
+    const id = this.dataset.id;
+    $.ajax({
+      url: 'get_jv_payment.php',
+      type: 'GET',
+      data: { id: id, type: 'client_supplier' },
+      dataType: 'json',
+      success: function (res) {
+        if (!res.success) {
+          jvpToast(res.message, 'error');
+          return;
+        }
+        const p = res.payment;
+        window._currentPayment = p;
+
+        document.getElementById('edit_id').value = p.id;
+        document.getElementById('edit_jv_name').value = p.jv_name;
+        document.getElementById('edit_client_name').value = p.client_name || '';
+        document.getElementById('edit_client_id').value = p.client_id || '';
+        document.getElementById('edit_supplier_name').value = p.supplier_name || '';
+        document.getElementById('edit_supplier_id').value = p.supplier_id || '';
+        document.getElementById('edit_currency_display').value = p.currency;
+        document.getElementById('edit_currency').value = p.currency;
+        document.getElementById('edit_total_amount').value = p.total_amount;
+        document.getElementById('edit_receipt').value = p.receipt || '';
+        document.getElementById('edit_remarks').value = p.remarks || '';
+        document.getElementById('edit_exchange_rate').value = p.exchange_rate || '';
+
+        const supplierOpt = document.querySelector('#supplier_id option[value="' + p.supplier_id + '"]');
+        const supplierCurrency = supplierOpt ? supplierOpt.dataset.currency : '';
+        document.getElementById('edit_supplier_currency').value = supplierCurrency;
+
+        const editRateField = document.getElementById('editExchangeRateField');
+        const editRateHint = document.getElementById('editExchangeRateHint');
+        const editRateInput = document.getElementById('edit_exchange_rate');
+        if (supplierCurrency && supplierCurrency !== p.currency) {
+          editRateField.style.display = 'block';
+          editRateHint.textContent = 'e.g. 1 USD = 72.5 AFS → enter 72.5';
+        } else {
+          editRateField.style.display = 'none';
+          editRateInput.required = false;
+        }
+
+        document.getElementById('edit_client_balance_preview').textContent = '—';
+        document.getElementById('edit_supplier_balance_preview').textContent = '—';
+
+        jvpOpenModal('editModal');
+      },
+      error: function () {
+        jvpToast('<?php echo __('failed_to_load_details'); ?>', 'error');
       }
     });
   });
@@ -1035,6 +1228,60 @@ document.querySelectorAll('.delete-cs-btn').forEach(btn => {
     jvpOpenModal('deleteModal');
   });
 });
+
+/* ─── Exchange rate field show/hide ──────────────────────── */
+function updateExchangeRateField() {
+    const field = document.getElementById('exchangeRateField');
+    const rateInput = document.getElementById('exchange_rate');
+    const hint = document.getElementById('exchangeRateHint');
+    const currency = document.getElementById('currency').value;
+    const supplierOpt = document.getElementById('supplier_id').selectedOptions[0];
+    const supplierCurr = supplierOpt?.dataset?.currency;
+
+    if (supplierCurr && supplierCurr !== currency) {
+        field.style.display = 'block';
+        rateInput.required = true;
+        hint.textContent = 'e.g. 1 USD = 72.5 AFS → enter 72.5';
+    } else {
+        field.style.display = 'none';
+        rateInput.required = false;
+        rateInput.value = '';
+    }
+}
+document.getElementById('currency').addEventListener('change', updateExchangeRateField);
+document.getElementById('supplier_id').addEventListener('change', updateExchangeRateField);
+document.addEventListener('DOMContentLoaded', updateExchangeRateField);
+
+/* ─── Edit modal balance preview ─────────────────────────── */
+document.getElementById('edit_total_amount').addEventListener('input', updateEditBalancePreview);
+document.getElementById('edit_exchange_rate').addEventListener('input', updateEditBalancePreview);
+function updateEditBalancePreview() {
+  const p = window._currentPayment;
+  if (!p) return;
+  const newAmt = parseFloat(document.getElementById('edit_total_amount').value) || 0;
+  const rate = parseFloat(document.getElementById('edit_exchange_rate').value) || 0;
+  const supplierCurrency = document.getElementById('edit_supplier_currency').value;
+
+  const clientDiff = newAmt - parseFloat(p.total_amount);
+  let supplierDiff = clientDiff;
+
+  if (supplierCurrency && supplierCurrency !== p.currency) {
+    const oldSupplierAmt = p.exchange_rate
+      ? (p.currency === 'USD' ? parseFloat(p.total_amount) * parseFloat(p.exchange_rate) : parseFloat(p.total_amount) / parseFloat(p.exchange_rate))
+      : parseFloat(p.total_amount);
+    const newSupplierAmt = rate > 0
+      ? (p.currency === 'USD' ? newAmt * rate : newAmt / rate)
+      : newAmt;
+    supplierDiff = newSupplierAmt - oldSupplierAmt;
+  }
+
+  const clientSign = clientDiff >= 0 ? '+' : '';
+  const supplierSign = supplierDiff >= 0 ? '+' : '';
+  document.getElementById('edit_client_balance_preview').textContent =
+    (clientDiff !== 0 ? clientSign + clientDiff.toFixed(2) + ' ' + p.currency : 'No change');
+  document.getElementById('edit_supplier_balance_preview').textContent =
+    (supplierDiff !== 0 ? supplierSign + supplierDiff.toFixed(2) + ' ' + (supplierCurrency || p.currency) : 'No change');
+}
 
 /* ─── Form validation ────────────────────────────────────── */
 document.getElementById('clientSupplierForm').addEventListener('submit', function (e) {
@@ -1066,6 +1313,25 @@ document.getElementById('clientSupplierForm').addEventListener('submit', functio
 
 document.getElementById('deleteForm').addEventListener('submit', function () {
   jvpProtectBtn(document.getElementById('deleteSubmitBtn'), 'Deleting…');
+});
+
+document.getElementById('editForm').addEventListener('submit', function (e) {
+  const amount = parseFloat(document.getElementById('edit_total_amount').value);
+  const rate = parseFloat(document.getElementById('edit_exchange_rate').value);
+  const currency = document.getElementById('edit_currency').value;
+  const supplierCurrency = document.getElementById('edit_supplier_currency').value;
+
+  if (isNaN(amount) || amount <= 0) {
+    e.preventDefault();
+    jvpToast('<?php echo __('please_enter_a_valid_amount_greater_than_zero'); ?>', 'error');
+    return;
+  }
+  if (supplierCurrency && supplierCurrency !== currency && (isNaN(rate) || rate <= 0)) {
+    e.preventDefault();
+    jvpToast('<?php echo __('please_enter_a_valid_exchange_rate_for_currency_conversion'); ?>', 'error');
+    return;
+  }
+  jvpProtectBtn(document.getElementById('editSubmitBtn'), 'Updating…');
 });
 </script>
 
