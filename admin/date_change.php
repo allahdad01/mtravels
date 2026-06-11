@@ -893,17 +893,57 @@ function editDateChange(id) {
     const currentRemarks = btn?.dataset?.remarks || '';
 
     Swal.fire({
-        title: 'Edit Date Change Penalties',
+        title: 'Edit Date Change',
+        width: 520,
         html: `
+            <style>
+                .dc-edit-section { margin-bottom:16px; }
+                .dc-edit-section-label { font-size:10px; font-weight:700; color:#8a94a6; text-transform:uppercase; letter-spacing:.6px; margin-bottom:10px; padding-bottom:6px; border-bottom:1px solid #eee; }
+                .dc-edit-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+                .dc-edit-field { text-align:left; }
+                .dc-edit-field label { display:block; font-size:12px; font-weight:600; color:#374151; margin-bottom:4px; }
+                .dc-edit-field input, .dc-edit-field textarea { width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:13px; outline:none; transition:border-color .15s; box-sizing:border-box; }
+                .dc-edit-field input:focus, .dc-edit-field textarea:focus { border-color:#185FA5; box-shadow:0 0 0 3px rgba(24,95,165,.1); }
+                .dc-edit-field textarea { resize:vertical; min-height:70px; font-family:inherit; }
+                .dc-edit-amount { font-size:15px; font-weight:700; color:#1a2332; padding:9px 12px; background:#f5f6f8; border:1px solid #d1d5db; border-radius:8px; text-align:center; }
+            </style>
             <div style="text-align:left">
-                <label style="font-weight:600;font-size:13px;display:block;margin-bottom:4px">Supplier Penalty</label>
-                <input id="swal-supplier-penalty" class="swal2-input" type="number" step="0.01" min="0" value="${supplierPenalty}" style="width:100%">
-                <label style="font-weight:600;font-size:13px;display:block;margin:12px 0 4px">Service Penalty</label>
-                <input id="swal-service-penalty" class="swal2-input" type="number" step="0.01" min="0" value="${servicePenalty}" style="width:100%">
-                <label style="font-weight:600;font-size:13px;display:block;margin:12px 0 4px">Description</label>
-                <textarea id="swal-remarks" class="swal2-textarea" style="width:100%">${currentRemarks}</textarea>
+                <div class="dc-edit-section">
+                    <div class="dc-edit-section-label">Penalties</div>
+                    <div class="dc-edit-row">
+                        <div class="dc-edit-field">
+                            <label>Supplier Penalty</label>
+                            <input id="swal-supplier-penalty" type="number" step="0.01" min="0" value="${supplierPenalty}">
+                        </div>
+                        <div class="dc-edit-field">
+                            <label>Service Penalty</label>
+                            <input id="swal-service-penalty" type="number" step="0.01" min="0" value="${servicePenalty}">
+                        </div>
+                    </div>
+                </div>
+                <div class="dc-edit-section">
+                    <div class="dc-edit-section-label">Total Amount</div>
+                    <div class="dc-edit-amount" id="dc-total-amount">${(supplierPenalty + servicePenalty).toFixed(2)}</div>
+                </div>
+                <div class="dc-edit-section">
+                    <div class="dc-edit-section-label">Description</div>
+                    <div class="dc-edit-field">
+                        <textarea id="swal-remarks" style="width:100%">${currentRemarks}</textarea>
+                    </div>
+                </div>
             </div>
         `,
+        didOpen: () => {
+            const sp = document.getElementById('swal-supplier-penalty');
+            const sv = document.getElementById('swal-service-penalty');
+            const updateTotal = () => {
+                const v1 = parseFloat(sp.value) || 0;
+                const v2 = parseFloat(sv.value) || 0;
+                document.getElementById('dc-total-amount').textContent = (v1 + v2).toFixed(2);
+            };
+            sp.addEventListener('input', updateTotal);
+            sv.addEventListener('input', updateTotal);
+        },
         focusConfirm: false,
         showCancelButton: true,
         confirmButtonText: 'Update',
