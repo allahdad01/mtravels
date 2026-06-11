@@ -48,6 +48,9 @@ if ($member) {
     $member['return_date'] = $member['return_date'] ? date('Y-m-d', strtotime($member['return_date'])) : '';
     $member['passport_expiry'] = date('Y-m-d', strtotime($member['passport_expiry']));
 
+    // Add refund flag
+    $member['has_refund'] = ($member['status'] === 'refunded');
+
     // Add additional information
     $member['client_details'] = [
         'name' => $member['client_name'],

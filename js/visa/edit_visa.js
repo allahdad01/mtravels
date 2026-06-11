@@ -35,9 +35,18 @@ function editVisa(id) {
                 // Set the paid_to/main account dropdown
                 $('#editPaidTo').selectpicker('val', visa.paid_to);
                 
-                // Log for debugging
-
-
+                // Disable supplier and sold_to fields if visa has been refunded
+                var $supplierSelect = $('#editSupplier');
+                var $clientSelect = $('#editSoldTo');
+                if (visa.has_refund) {
+                    $supplierSelect.prop('disabled', true);
+                    $clientSelect.prop('disabled', true);
+                } else {
+                    $supplierSelect.prop('disabled', false);
+                    $clientSelect.prop('disabled', false);
+                }
+                $supplierSelect.selectpicker('refresh');
+                $clientSelect.selectpicker('refresh');
 
             } else {
 

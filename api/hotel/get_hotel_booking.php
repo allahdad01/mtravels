@@ -29,6 +29,7 @@ if (isset($_GET['id'])) {
         $booking = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if ($booking) {
+            $booking['has_refund'] = ($booking['status'] === 'refunded');
             echo json_encode($booking);
         } else {
             echo json_encode(['error' => 'Booking not found']);

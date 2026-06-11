@@ -432,6 +432,15 @@ window.editBooking = function(id) {
                                             }
                                         });
 
+                                        // Disable supplier and sold_to fields if booking has been refunded
+                                        if (booking.has_refund) {
+                                            $('#editBookingForm #supplier_id').prop('disabled', true);
+                                            $('#editBookingForm #sold_to').prop('disabled', true);
+                                        } else {
+                                            $('#editBookingForm #supplier_id').prop('disabled', false);
+                                            $('#editBookingForm #sold_to').prop('disabled', false);
+                                        }
+
                                         HotelBtn.clearTimer(btn);
                                         HotelBtn.done(btn);
                                         $('#editBookingModal').modal('show');

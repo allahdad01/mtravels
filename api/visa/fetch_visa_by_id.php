@@ -32,6 +32,7 @@ if ($id > 0) {
     $visa = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($visa) {
+        $visa['has_refund'] = ($visa['status'] === 'refunded');
         echo json_encode($visa);
     } else {
         echo json_encode(['error' => 'Visa not found.']);

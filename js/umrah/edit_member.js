@@ -232,6 +232,13 @@ function openEditMemberModal(bookingId) {
 
                 loadData();
 
+                // Disable sold_to field if member has been refunded
+                if (member.has_refund) {
+                    document.getElementById('editSoldTo').disabled = true;
+                } else {
+                    document.getElementById('editSoldTo').disabled = false;
+                }
+
                 // Close loading and show modal
                 $('#editMemberModal').modal('show');
                 } else {
