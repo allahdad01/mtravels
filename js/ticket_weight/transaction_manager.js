@@ -616,14 +616,19 @@ $('#weightTransactionForm').on('submit', function(e) {
             try {
                 const result = JSON.parse(response);
                 if (result.success) {
+                    // Re-enable submit button
+                    submitBtn.prop('disabled', false);
+                    submitBtn.html(originalText);
+                    
                     // Show success message
                     showToast('Transaction saved successfully', 'success');
                     
                     // Reload transactions
                     loadTransactions($('#weightId').val());
                     
-                    // Reset form
+                    // Reset form and collapse
                     $('#weightTransactionForm')[0].reset();
+                    $('#weightAddTransactionForm').collapse('hide');
                     
                     // Set today's date and current time again
                     const now = new Date();

@@ -326,27 +326,16 @@ try {
                 </div>
 
                 <div class="detail-row">
-                    <span class="detail-label"><?php echo __('payment_type'); ?>:</span>
-                    <span class="detail-value"><?php echo $transaction['type'] === 'credit' ? __('received') : __('paid'); ?></span>
-                </div>
-
-                <div class="detail-row">
                     <span class="detail-label"><?php echo __('description'); ?>:</span>
                     <span class="detail-value"><?php echo htmlspecialchars($transaction['description']); ?></span>
                 </div>
 
                 <?php if (!empty($transaction['weight_id'])): ?>
-                <hr>
-                <h6><?php echo __('weight_information'); ?></h6>
+                <h6 style="margin-top:8px;margin-bottom:6px"><?php echo __('weight_information'); ?></h6>
 
                 <div class="detail-row">
                     <span class="detail-label"><?php echo __('passenger_name'); ?>:</span>
                     <span class="detail-value"><?php echo htmlspecialchars($transaction['passenger_name']); ?></span>
-                </div>
-
-                <div class="detail-row">
-                    <span class="detail-label"><?php echo __('pnr'); ?>:</span>
-                    <span class="detail-value"><?php echo htmlspecialchars($transaction['pnr']); ?></span>
                 </div>
 
                 <div class="detail-row">
@@ -357,23 +346,8 @@ try {
                 </div>
 
                 <div class="detail-row">
-                    <span class="detail-label"><?php echo __('airline'); ?>:</span>
-                    <span class="detail-value"><?php echo htmlspecialchars($transaction['airline']); ?></span>
-                </div>
-
-                <div class="detail-row">
                     <span class="detail-label"><?php echo __('departure_date'); ?>:</span>
                     <span class="detail-value"><?php echo htmlspecialchars($transaction['departure_date']); ?></span>
-                </div>
-
-                <div class="detail-row">
-                    <span class="detail-label"><?php echo __('weight'); ?>:</span>
-                    <span class="detail-value"><?php echo number_format($transaction['weight'], 2); ?> kg</span>
-                </div>
-
-                <div class="detail-row">
-                    <span class="detail-label"><?php echo __('client'); ?>:</span>
-                    <span class="detail-value"><?php echo htmlspecialchars($transaction['client_name']); ?></span>
                 </div>
 
                 <?php endif; ?>
