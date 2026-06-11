@@ -88,7 +88,33 @@ jQuery(document).ready(function($) {
     $(document).on('click', '.delete-maktob', function(e) {
         e.preventDefault();
         var id = $(this).data('id');
-        $('#delete_maktob_id').val(id);
-        $('#deleteMaktobModal').modal('show');
+        Swal.fire({
+            title: 'Delete Maktob?',
+            text: 'This action cannot be undone.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, delete',
+            cancelButtonText: 'Cancel',
+        }).then(function(result) {
+            if (!result.isConfirmed) return;
+            $.ajax({
+                url: '../api/maktob/delete_maktob.php',
+                method: 'POST',
+                data: { maktob_id: id, csrf_token: window.csrfToken },
+                success: function(r) {
+                    if (r.success) {
+                        Swal.fire({ icon: 'success', title: 'Deleted', timer: 1500, showConfirmButton: false })
+                            .then(function() { location.reload(); });
+                    } else {
+                        Swal.fire('Error', r.message || 'Failed to delete', 'error');
+                    }
+                },
+                error: function() {
+                    Swal.fire('Error', 'Failed to delete maktob', 'error');
+                }
+            });
+        });
     });
 });

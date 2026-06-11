@@ -139,8 +139,8 @@ require_once '../api/dashboard/client_notification.php';
 .ac-hstat:last-child { border-right: none; }
 .ac-hstat-label { font-size: 9px; color: rgba(255,255,255,.4); text-transform: uppercase; letter-spacing: .4px; font-weight: 500; white-space: nowrap; }
 .ac-hstat-value { font-family: 'DM Mono', monospace; font-size: 12px; color: #fff; font-weight: 500; white-space: nowrap; }
-.ac-hstat-value.pos { color: #4ade80; }
-.ac-hstat-value.neg { color: #f87171; }
+.ac-hstat-value.pos { color: #fff; }
+.ac-hstat-value.neg { color: #fff; }
 .ac-stats-bar-spacer { flex: 1; }
 
 /* Mobile responsive adjustments */
@@ -526,9 +526,6 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                 </ul>
                             </div>
                             <div class="col-md-6 text-right">
-                                <button class="btn btn-info" type="button" id="watchTutorialsBtn" data-toggle="modal" data-target="#accountsTutorialsModal">
-                                    <i class="feather icon-play-circle mr-1"></i>Watch Tutorials
-                                </button>
                             </div>
                         </div>
                     </div>

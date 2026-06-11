@@ -547,9 +547,6 @@ $selected_date = InputValidator::getDate($_GET['departure_date'] ?? '', 'Y-m-d',
                   </div>
                 </div>
                 <?php endif; ?>
-                <button class="dbtn dbtn-info" data-toggle="modal" data-target="#dashboardTutorialsModal">
-                  <i class="fas fa-play-circle"></i> Watch Tutorials
-                </button>
               </div>
             </div>
 

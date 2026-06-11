@@ -1,18 +1,25 @@
 <?php
-// Update maktob status (send/archive)
 session_start();
 require_once('../../admin/security.php');
 require_once('../../includes/db.php');
 require_once('../../includes/language_helpers.php');
 
-// Enforce authentication
 enforce_auth();
+$tenant_id = $_SESSION['tenant_id'];
+$branch_id = $_SESSION['branch_id'];
 
 header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(['success' => false, 'message' => 'Method not allowed']);
+    exit();
+}
+
+// CSRF check
+if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Security validation failed. Please refresh the page and try again.']);
     exit();
 }
 
@@ -27,7 +34,7 @@ if (!$maktob_id || !$action) {
 try {
     // Get current maktob data for logging
     $stmt = $pdo->prepare("SELECT * FROM maktobs WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-    $stmt->execute([$maktob_id, $_SESSION['tenant_id'], $_SESSION['branch_id']]);
+    $stmt->execute([$maktob_id, $tenant_id, $branch_id]);
     $maktob = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$maktob) {
@@ -55,33 +62,31 @@ try {
         exit();
     }
 
-    // Update status
-    $update_stmt = $pdo->prepare("UPDATE maktobs SET status = ?, updated_at = NOW() WHERE id = ? AND branch_id = ?");
-    $update_stmt->execute([$new_status, $maktob_id, $_SESSION['branch_id']]);
+    // Update status — include tenant_id in WHERE
+    $update_stmt = $pdo->prepare("UPDATE maktobs SET status = ?, updated_at = NOW() WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $update_stmt->execute([$new_status, $maktob_id, $tenant_id, $branch_id]);
 
     // Log the action
     $log_stmt = $pdo->prepare("INSERT INTO maktob_logs (tenant_id, maktob_id, user_id, action, old_values, new_values, ip_address, branch_id)
                               VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
     $log_stmt->execute([
-        $_SESSION['tenant_id'],
+        $tenant_id,
         $maktob_id,
         $_SESSION['user_id'],
         $action,
         json_encode(['status' => $old_status]),
         json_encode(['status' => $new_status]),
         $_SERVER['REMOTE_ADDR'],
-        $_SESSION['branch_id']
+        $branch_id
     ]);
 
     // Send notification if sent
     if ($action === 'send') {
-        // Get tenant admin for notification
         $admin_stmt = $pdo->prepare("SELECT email, name, phone FROM users WHERE tenant_id = ? AND branch_id = ? AND role IN ('super_admin', 'tenant_super_admin', 'admin') ORDER BY role DESC LIMIT 1");
-        $admin_stmt->execute([$_SESSION['tenant_id'], $_SESSION['branch_id']]);
+        $admin_stmt->execute([$tenant_id, $branch_id]);
         $admin = $admin_stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($admin && $admin['email']) {
-            // Send email notification
             require_once('../../includes/functions.php');
             $subject = "Maktob Sent: " . $maktob['maktob_number'];
             $body = "
@@ -96,9 +101,8 @@ try {
             </ul>
             <p>Please check the admin panel for details.</p>
             ";
-            sendEmail($admin['email'], $subject, $body, true, 'maktob_notification', $admin['name'], $_SESSION['tenant_id']);
+            sendEmail($admin['email'], $subject, $body, true, 'maktob_notification', $admin['name'], $tenant_id);
         }
-
     }
 
     echo json_encode(['success' => true, 'message' => 'Maktob status updated successfully']);
@@ -106,4 +110,3 @@ try {
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'message' => 'Database error']);
 }
-?>

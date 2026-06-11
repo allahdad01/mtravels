@@ -1,5 +1,7 @@
 <?php
-// Get next maktob number for auto-numbering
+require_once('../../admin/security.php');
+enforce_auth();
+
 require_once('../../includes/db.php');
 
 header('Content-Type: application/json');
@@ -10,10 +12,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit();
 }
 
-session_start();
-if (!isset($_SESSION['user_id'])) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+// CSRF check for AJAX calls
+if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Security validation failed. Please refresh the page and try again.']);
     exit();
 }
 
@@ -25,7 +27,6 @@ if (!$base_number) {
 }
 
 try {
-    // Find the highest sequence number for this base
     $stmt = $pdo->prepare("SELECT maktob_number FROM maktobs
                           WHERE tenant_id = ? AND branch_id = ? AND maktob_number LIKE ?
                           ORDER BY CAST(SUBSTRING_INDEX(maktob_number, '-', -1) AS UNSIGNED) DESC
@@ -35,7 +36,6 @@ try {
 
     $next_sequence = 1;
     if ($result) {
-        // Extract the sequence number from the existing number
         $existing_number = $result['maktob_number'];
         $parts = explode('-', $existing_number);
         if (count($parts) >= 4) {
@@ -46,7 +46,6 @@ try {
         }
     }
 
-    // Format the sequence number with leading zeros (3 digits)
     $formatted_sequence = str_pad($next_sequence, 3, '0', STR_PAD_LEFT);
     $full_number = $base_number . $formatted_sequence;
 
@@ -55,4 +54,3 @@ try {
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'message' => 'Database error']);
 }
-?>

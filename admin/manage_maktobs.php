@@ -37,6 +37,12 @@ require_once('../includes/SecureFileUpload.php');
 // Handle maktob submission directly
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
+    // CSRF check
+    if (!verify_csrf_token($_POST['csrf_token'] ?? null)) {
+        $_SESSION['error_message'] = 'Security validation failed. Please refresh the page and try again.';
+        header('Location: ' . $_SERVER['PHP_SELF']); exit();
+    }
+
     $subject      = $_POST['subject']      ?? '';
     $content      = $_POST['content']      ?? '';
     $company_name = $_POST['company_name'] ?? '';
@@ -44,6 +50,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $maktob_date  = $_POST['maktob_date']  ?? '';
     $language     = $_POST['language']     ?? 'english';
     $sender_id    = $_SESSION['user_id'];
+
+    // Validate BEFORE file uploads to avoid orphaned files
+    if (empty($company_name)) {
+        $_SESSION['error_message'] = __('please_enter_company');
+        header('Location: ' . $_SERVER['PHP_SELF']); exit();
+    }
+    if (empty($subject) || empty($content)) {
+        $_SESSION['error_message'] = __('all_fields_required');
+        header('Location: ' . $_SERVER['PHP_SELF']); exit();
+    }
 
     $file_path = null;
     $pdf_path  = null;
@@ -68,15 +84,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['error_message'] = 'Failed to upload attachment: ' . $result['error'];
             header('Location: ' . $_SERVER['PHP_SELF']); exit();
         }
-    }
-
-    if (empty($company_name)) {
-        $_SESSION['error_message'] = __('please_enter_company');
-        header('Location: ' . $_SERVER['PHP_SELF']); exit();
-    }
-    if (empty($subject) || empty($content)) {
-        $_SESSION['error_message'] = __('all_fields_required');
-        header('Location: ' . $_SERVER['PHP_SELF']); exit();
     }
 
     if (empty($maktob_number) && !empty($maktob_date)) {
@@ -800,6 +807,7 @@ include '../includes/header.php';
     </button>
     <div class="mk-accordion-body">
       <form method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
         <div class="mk-form-grid">
           <div class="mk-form-group">
             <label for="maktob_number"><?php echo __('letter_number'); ?></label>
@@ -1068,6 +1076,8 @@ include '../includes/header.php';
 <script src="../js/maktob/main.js"></script>
 
 <script>
+window.csrfToken = '<?= $_SESSION['csrf_token'] ?>';
+
 // ── Accordion ──
 function mkToggleAccordion(forceOpen) {
   var acc = document.getElementById('mkCreateAccordion');
@@ -1104,7 +1114,7 @@ $(document).ready(function () {
       $.ajax({
         url: '../api/maktob/get_next_number.php',
         method: 'POST',
-        data: { base_number: base },
+        data: { base_number: base, csrf_token: window.csrfToken },
         success: function (r) { if (r.number) $('#maktob_number').val(r.number); }
       });
     }
@@ -1117,38 +1127,56 @@ $(document).ready(function () {
 $(document).on('click', '.send-maktob', function (e) {
   e.preventDefault();
   var $btn = $(this);
-  var originalHtml = $btn.html();
   var id = $btn.data('id');
-  if (confirm('Are you sure you want to send this maktob to branch?')) {
+  Swal.fire({
+    title: 'Send Maktob?',
+    text: 'This will send the maktob to the branch.',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#4099ff',
+    cancelButtonColor: '#6c757d',
+    confirmButtonText: 'Yes, send',
+    cancelButtonText: 'Cancel',
+  }).then(function (result) {
+    if (!result.isConfirmed) return;
     $btn.prop('disabled', true);
     $btn.html('<i class="fas fa-spinner fa-spin mr-1"></i>Sending...');
     $.ajax({
       url: '../api/maktob/update_status.php',
       method: 'POST',
-      data: { id: id, action: 'send' },
-      success: function (r) { r.success ? location.reload() : (alert('Error: ' + r.message), $btn.prop('disabled', false), $btn.html(originalHtml)); },
-      error: function () { $btn.prop('disabled', false); $btn.html(originalHtml); alert('Error updating maktob status'); }
+      data: { id: id, action: 'send', csrf_token: window.csrfToken },
+      success: function (r) { r.success ? location.reload() : (Swal.fire('Error', r.message, 'error'), $btn.prop('disabled', false), $btn.html('Send to Branch')); },
+      error: function () { $btn.prop('disabled', false); $btn.html('Send to Branch'); Swal.fire('Error', 'Error updating maktob status', 'error'); }
     });
-  }
+  });
 });
 
 // ── Archive maktob ──
 $(document).on('click', '.archive-maktob', function (e) {
   e.preventDefault();
   var $btn = $(this);
-  var originalHtml = $btn.html();
   var id = $btn.data('id');
-  if (confirm('Are you sure you want to archive this maktob?')) {
+  Swal.fire({
+    title: 'Archive Maktob?',
+    text: 'This will archive the maktob.',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#4099ff',
+    cancelButtonColor: '#6c757d',
+    confirmButtonText: 'Yes, archive',
+    cancelButtonText: 'Cancel',
+  }).then(function (result) {
+    if (!result.isConfirmed) return;
     $btn.prop('disabled', true);
     $btn.html('<i class="fas fa-spinner fa-spin mr-1"></i>Archiving...');
     $.ajax({
       url: '../api/maktob/update_status.php',
       method: 'POST',
-      data: { id: id, action: 'archive' },
-      success: function (r) { r.success ? location.reload() : (alert('Error: ' + r.message), $btn.prop('disabled', false), $btn.html(originalHtml)); },
-      error: function () { $btn.prop('disabled', false); $btn.html(originalHtml); alert('Error updating maktob status'); }
+      data: { id: id, action: 'archive', csrf_token: window.csrfToken },
+      success: function (r) { r.success ? location.reload() : (Swal.fire('Error', r.message, 'error'), $btn.prop('disabled', false), $btn.html('Archive')); },
+      error: function () { $btn.prop('disabled', false); $btn.html('Archive'); Swal.fire('Error', 'Error updating maktob status', 'error'); }
     });
-  }
+  });
 });
 </script>
 
