@@ -32,6 +32,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $supplier_penalty = isset($_POST['supplier_penalty']) ? floatval($_POST['supplier_penalty']) : 0;
     $service_penalty = isset($_POST['service_penalty']) ? floatval($_POST['service_penalty']) : 0;
     $refund_amount = isset($_POST['refund_amount']) ? floatval($_POST['refund_amount']) : 0;
+    $remarks = isset($_POST['remarks']) ? trim($_POST['remarks']) : '';
+    $calculation_method = isset($_POST['calculation_method']) ? trim($_POST['calculation_method']) : '';
     
     // Start transaction
     $conn->begin_transaction();
@@ -232,7 +234,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $balanceField = strtolower($currency) === 'usd' ? 'usd_balance' : 'afs_balance';
                 
                 // Get current client balance
-                $getCurrentBalanceQuery = "SELECT $balanceField FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?v";
+                $getCurrentBalanceQuery = "SELECT $balanceField FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                 $stmtGetCurrentBalance = $conn->prepare($getCurrentBalanceQuery);
                 $stmtGetCurrentBalance->bind_param('iii', $client_id, $tenant_id, $branch_id);
                 $stmtGetCurrentBalance->execute();
@@ -351,11 +353,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $updateTicketQuery = "UPDATE refunded_tickets SET 
             supplier_penalty = ?,
             service_penalty = ?,
-            refund_to_passenger = ?
+            refund_to_passenger = ?,
+            remarks = ?,
+            calculation_method = ?
             WHERE id = ? AND tenant_id = ?";
         
         $stmtTicket = $conn->prepare($updateTicketQuery);
-        $stmtTicket->bind_param('dddi', $supplier_penalty, $service_penalty, $refund_amount, $ticket_id, $tenant_id);
+        $stmtTicket->bind_param('dddsssi', $supplier_penalty, $service_penalty, $refund_amount, $remarks, $calculation_method, $ticket_id, $tenant_id);
         $stmtTicket->execute();
         $stmtTicket->close();
         
@@ -376,7 +380,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $new_values = [
             'supplier_penalty' => $supplier_penalty,
             'service_penalty' => $service_penalty,
-            'refund_to_passenger' => $refund_amount
+            'refund_to_passenger' => $refund_amount,
+            'remarks' => $remarks,
+            'calculation_method' => $calculation_method
         ];
         
         // Insert activity log

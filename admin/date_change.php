@@ -784,6 +784,14 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                                     </button>
                                     <?php if ($canEdit): ?>
                                     <button class="date-change-card-action-btn"
+                                            onclick="editDateChange(<?= $ticket['id'] ?>)"
+                                            title="<?= __('edit') ?>"
+                                            data-supplier-penalty="<?= $ticket['supplier_penalty'] ?>"
+                                            data-service-penalty="<?= $ticket['service_penalty'] ?>"
+                                            data-remarks="<?= htmlspecialchars($ticket['remarks'] ?? '') ?>">
+                                        <i class="feather icon-edit"></i>
+                                    </button>
+                                    <button class="date-change-card-action-btn"
                                             onclick="deleteTicket(<?= $ticket['id'] ?>)"
                                             title="<?= __('delete_ticket') ?>">
                                         <i class="feather icon-trash-2"></i>
@@ -876,6 +884,94 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
 <script src="../js/ticket_date_change/deleteDateChange.js"></script>
 <script src="../js/ticket_date_change/transaction-manager.js"></script>
 <script src="../js/ticket_date_change/multiTicket.js"></script>
+
+<script>
+function editDateChange(id) {
+    const btn = event?.target?.closest('button');
+    const supplierPenalty = parseFloat(btn?.dataset?.supplierPenalty) || 0;
+    const servicePenalty = parseFloat(btn?.dataset?.servicePenalty) || 0;
+    const currentRemarks = btn?.dataset?.remarks || '';
+
+    Swal.fire({
+        title: 'Edit Date Change Penalties',
+        html: `
+            <div style="text-align:left">
+                <label style="font-weight:600;font-size:13px;display:block;margin-bottom:4px">Supplier Penalty</label>
+                <input id="swal-supplier-penalty" class="swal2-input" type="number" step="0.01" min="0" value="${supplierPenalty}" style="width:100%">
+                <label style="font-weight:600;font-size:13px;display:block;margin:12px 0 4px">Service Penalty</label>
+                <input id="swal-service-penalty" class="swal2-input" type="number" step="0.01" min="0" value="${servicePenalty}" style="width:100%">
+                <label style="font-weight:600;font-size:13px;display:block;margin:12px 0 4px">Description</label>
+                <textarea id="swal-remarks" class="swal2-textarea" style="width:100%">${currentRemarks}</textarea>
+            </div>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Update',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#185FA5',
+        preConfirm: () => {
+            const sp = parseFloat(document.getElementById('swal-supplier-penalty').value) || 0;
+            const sv = parseFloat(document.getElementById('swal-service-penalty').value) || 0;
+            const rm = document.getElementById('swal-remarks').value.trim();
+            if (sp < 0 || sv < 0) {
+                Swal.showValidationMessage('Penalties cannot be negative');
+                return false;
+            }
+            return { supplier_penalty: sp, service_penalty: sv, remarks: rm };
+        }
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+        const data = result.value;
+        const clickedBtn = event?.target?.closest('button') || document.activeElement;
+        let originalContent = '';
+        if (clickedBtn && clickedBtn.tagName === 'BUTTON') {
+            originalContent = clickedBtn.innerHTML;
+            clickedBtn.disabled = true;
+            clickedBtn.innerHTML = '<i class="feather icon-loader"></i>';
+        }
+
+        fetch('../api/ticket_date_change/update_date_change.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, ...data }),
+        })
+        .then(response => response.json())
+        .then(res => {
+            if (clickedBtn && clickedBtn.tagName === 'BUTTON' && originalContent) {
+                clickedBtn.disabled = false;
+                clickedBtn.innerHTML = originalContent;
+            }
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: res.success ? 'success' : 'error',
+                title: res.message || (res.success ? 'Updated successfully' : 'Update failed'),
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+            if (res.success) {
+                setTimeout(() => location.reload(), 1000);
+            }
+        })
+        .catch(err => {
+            if (clickedBtn && clickedBtn.tagName === 'BUTTON' && originalContent) {
+                clickedBtn.disabled = false;
+                clickedBtn.innerHTML = originalContent;
+            }
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'error',
+                title: 'An unexpected error occurred',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+        });
+    });
+}
+</script>
 
 </body>
 </html>

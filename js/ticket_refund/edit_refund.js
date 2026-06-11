@@ -1,55 +1,4 @@
-
-function printRefundAgreement(refundId) {
-    window.open('../api/visa/print_visa_refund.php?id=' + refundId, '_blank');
-}
-
-function deleteRefund(refundId) {
-    Swal.fire({
-        title: 'are_you_sure',
-        text: 'you_cannot_revert_this_action',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'yes_delete_it',
-        cancelButtonText: 'cancel'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            fetch('../api/visa/delete_visa_refund.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ id: refundId })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    Swal.fire(
-                        'deleted',
-                        'refund_deleted_successfully',
-                        'success'
-                    ).then(() => location.reload());
-                } else {
-                    Swal.fire(
-                        'error',
-                        data.message || 'failed_to_delete_refund',
-                        'error'
-                    );
-                }
-            })
-            .catch(error => {
-                Swal.fire(
-                    'error',
-                    'network_error_occurred',
-                    'error'
-                );
-            });
-        }
-    });
-}
-
-function editVisaRefund(id) {
+function editRefundTicket(id) {
     if (!id) {
         Swal.fire('Error', 'Refund ID is missing', 'error');
         return;
@@ -62,16 +11,19 @@ function editVisaRefund(id) {
         didOpen: () => Swal.showLoading()
     });
 
-    fetch('../api/visa/get_refund_details.php?id=' + id)
+    fetch('../api/ticket_refund/get_refund_ticket_bookings.php?id=' + id)
         .then(response => response.json())
         .then(data => {
-            if (!data.success || !data.refund) {
+            if (!data.success || !data.booking) {
                 Swal.fire('Error', data.message || 'Failed to fetch refund details', 'error');
                 return;
             }
 
-            const r = data.refund;
+            const r = data.booking;
             const currency = r.currency || 'USD';
+            const calcMethod = r.calculation_method || 'sold';
+            const soldSelected = calcMethod === 'sold' ? 'selected' : '';
+            const baseSelected = calcMethod === 'base' ? 'selected' : '';
 
             var modalHtml = '' +
                 '<style>' +
@@ -93,15 +45,19 @@ function editVisaRefund(id) {
                     '<div class="refund-info-card">' +
                         '<div class="refund-info-row">' +
                             '<span class="refund-info-label">Refund #' + id + '</span>' +
-                            '<span class="refund-info-value">' + escapeHtml(r.applicant_name || '') + '</span>' +
+                            '<span class="refund-info-value" style="color:#185FA5">' + escapeHtml(r.pnr) + '</span>' +
                         '</div>' +
                         '<div class="refund-info-row">' +
-                            '<span class="refund-info-label">Passport</span>' +
-                            '<span class="refund-info-value">' + escapeHtml(r.passport_number || '') + '</span>' +
+                            '<span class="refund-info-label">Passenger</span>' +
+                            '<span class="refund-info-value">' + escapeHtml(r.title) + ' ' + escapeHtml(r.passenger_name) + '</span>' +
                         '</div>' +
                         '<div class="refund-info-row">' +
-                            '<span class="refund-info-label">Country</span>' +
-                            '<span class="refund-info-value">' + escapeHtml(r.country || '') + '</span>' +
+                            '<span class="refund-info-label">Route</span>' +
+                            '<span class="refund-info-value">' + escapeHtml(r.origin) + ' &rarr; ' + escapeHtml(r.destination) + '</span>' +
+                        '</div>' +
+                        '<div class="refund-info-row">' +
+                            '<span class="refund-info-label">Airline</span>' +
+                            '<span class="refund-info-value">' + escapeHtml(r.airline) + '</span>' +
                         '</div>' +
                     '</div>' +
 
@@ -109,40 +65,49 @@ function editVisaRefund(id) {
                     '<div class="refund-grid-2">' +
                         '<div class="refund-field">' +
                             '<label>Base (' + currency + ')</label>' +
-                            '<input class="swal2-input refund-ro" id="edit-base" value="' + parseFloat(r.base || 0).toFixed(2) + '" readonly>' +
+                            '<input class="swal2-input refund-ro" id="edit-base" value="' + parseFloat(r.base).toFixed(3) + '" readonly>' +
                         '</div>' +
                         '<div class="refund-field">' +
                             '<label>Sold (' + currency + ')</label>' +
-                            '<input class="swal2-input refund-ro" id="edit-sold" value="' + parseFloat(r.sold || 0).toFixed(2) + '" readonly>' +
+                            '<input class="swal2-input refund-ro" id="edit-sold" value="' + parseFloat(r.sold).toFixed(3) + '" readonly>' +
                         '</div>' +
+                    '</div>' +
+
+                    '<div class="refund-section-label">Calculation</div>' +
+                    '<div class="refund-field">' +
+                        '<label>Method</label>' +
+                        '<select class="swal2-input" id="edit-method">' +
+                            '<option value="sold" ' + soldSelected + '>Sold - Penalties</option>' +
+                            '<option value="base" ' + baseSelected + '>Base - Penalties</option>' +
+                        '</select>' +
                     '</div>' +
 
                     '<div class="refund-section-label">Penalties</div>' +
                     '<div class="refund-grid-2">' +
                         '<div class="refund-field">' +
                             '<label>Supplier (' + currency + ')</label>' +
-                            '<input class="swal2-input" id="edit-supplier-penalty" type="number" step="0.01" value="' + parseFloat(r.supplier_penalty || 0).toFixed(2) + '">' +
+                            '<input class="swal2-input" id="edit-supplier-penalty" type="number" step="0.001" value="' + parseFloat(r.supplier_penalty).toFixed(3) + '">' +
                         '</div>' +
                         '<div class="refund-field">' +
                             '<label>Service (' + currency + ')</label>' +
-                            '<input class="swal2-input" id="edit-service-penalty" type="number" step="0.01" value="' + parseFloat(r.service_penalty || 0).toFixed(2) + '">' +
+                            '<input class="swal2-input" id="edit-service-penalty" type="number" step="0.001" value="' + parseFloat(r.service_penalty).toFixed(3) + '">' +
                         '</div>' +
                     '</div>' +
 
                     '<div class="refund-section-label">Result</div>' +
                     '<div class="refund-field">' +
-                        '<label>Refund Amount (' + currency + ')</label>' +
-                        '<input class="swal2-input refund-ro" id="edit-refund-amount" type="number" step="0.01" value="' + parseFloat(r.refund_amount || 0).toFixed(2) + '" readonly>' +
+                        '<label>Refund to Passenger (' + currency + ')</label>' +
+                        '<input class="swal2-input refund-ro" id="edit-refund-amount" type="number" step="0.001" value="' + parseFloat(r.refund_to_passenger).toFixed(3) + '" readonly>' +
                     '</div>' +
 
-                    '<div class="refund-section-label">Reason</div>' +
+                    '<div class="refund-section-label">Remarks</div>' +
                     '<div class="refund-field">' +
-                        '<textarea class="swal2-textarea" id="edit-reason" rows="3">' + escapeHtml(r.reason || '') + '</textarea>' +
+                        '<textarea class="swal2-textarea" id="edit-remarks" rows="3">' + escapeHtml(r.remarks || '') + '</textarea>' +
                     '</div>' +
                 '</div>';
 
             Swal.fire({
-                title: 'Edit Visa Refund',
+                title: 'Edit Refund #' + id,
                 html: modalHtml,
                 showCancelButton: true,
                 confirmButtonText: 'Update',
@@ -150,41 +115,47 @@ function editVisaRefund(id) {
                 cancelButtonText: 'Cancel',
                 width: 520,
                 didOpen: () => {
+                    const base = parseFloat(document.getElementById('edit-base').value) || 0;
                     const sold = parseFloat(document.getElementById('edit-sold').value) || 0;
 
                     function calcRefund() {
+                        const method = document.getElementById('edit-method').value;
                         const sp = parseFloat(document.getElementById('edit-supplier-penalty').value) || 0;
                         const sv = parseFloat(document.getElementById('edit-service-penalty').value) || 0;
                         const total = sp + sv;
-                        const amt = sold - total;
-                        document.getElementById('edit-refund-amount').value = amt > 0 ? amt.toFixed(2) : '0.00';
+                        const amt = method === 'sold' ? sold - total : base - total;
+                        document.getElementById('edit-refund-amount').value = amt > 0 ? amt.toFixed(3) : '0.000';
                     }
 
                     document.getElementById('edit-supplier-penalty').addEventListener('input', calcRefund);
                     document.getElementById('edit-service-penalty').addEventListener('input', calcRefund);
+                    document.getElementById('edit-method').addEventListener('change', calcRefund);
                 },
                 preConfirm: () => {
                     const supplierPenalty = parseFloat(document.getElementById('edit-supplier-penalty').value) || 0;
                     const servicePenalty = parseFloat(document.getElementById('edit-service-penalty').value) || 0;
                     const refundAmount = parseFloat(document.getElementById('edit-refund-amount').value) || 0;
-                    const reason = document.getElementById('edit-reason').value.trim();
+                    const remarks = document.getElementById('edit-remarks').value.trim();
 
                     if (refundAmount <= 0) {
                         Swal.showValidationMessage('Refund amount must be greater than zero');
                         return false;
                     }
 
+                    const calculationMethod = document.getElementById('edit-method').value;
+
                     return {
-                        id: id,
+                        ticket_id: id,
                         supplier_penalty: supplierPenalty,
                         service_penalty: servicePenalty,
                         refund_amount: refundAmount,
-                        reason: reason
+                        remarks: remarks,
+                        calculation_method: calculationMethod
                     };
                 }
             }).then((result) => {
                 if (result.isConfirmed) {
-                    fetch('../api/visa/update_visa_refund.php', {
+                    fetch('../api/ticket_refund/update_refund_penalties.php', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                         body: new URLSearchParams(result.value)

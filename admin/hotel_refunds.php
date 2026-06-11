@@ -89,6 +89,7 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
 <?php include '../includes/header.php'; ?>
 
 <link rel="stylesheet" href="../css/general/modal-styles.css">
+<link rel="stylesheet" href="../assets/plugins/sweetalert2/sweetalert2.min.css">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
 <style>
 /* ═══════════════════════════════════════════════════════
@@ -690,6 +691,10 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                                                     <i class="feather icon-more-vertical"></i>
                                                 </button>
                                                 <div class="hb-dropdown-menu">
+                                                    <button class="hb-dropdown-item"
+                                                            onclick="editHotelRefund(<?= $refund['id'] ?>)">
+                                                        <i class="feather icon-edit"></i><?= __('edit') ?>
+                                                    </button>
                                                     <button class="hb-dropdown-item hb-danger"
                                                             onclick="deleteRefund(<?= $refund['id'] ?>)">
                                                         <i class="feather icon-trash-2"></i><?= __('delete_refund') ?>
@@ -779,8 +784,9 @@ document.addEventListener('click', function(e) {
 <script src="../assets/js/vendor-all.min.js"></script>
 <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
 <script src="../assets/js/pcoded.min.js"></script>
-<script src="../js/hotel_refund/transaction_manager.js"></script>
-<script src="../js/hotel_refund/hotel_management.js"></script>
+<script src="../assets/plugins/sweetalert2/sweetalert2.min.js"></script>
+<script src="../js/hotel_refund/transaction_manager.js<?= '?v=' . time() ?>"></script>
+<script src="../js/hotel_refund/hotel_management.js<?= '?v=' . time() ?>"></script>
 
 <?php include '../includes/admin_footer.php'; ?>
 

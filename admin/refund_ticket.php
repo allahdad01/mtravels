@@ -763,6 +763,11 @@ $version = '?v=' . time();
                                     </button>
                                     <?php if ($canEdit): ?>
                                     <button class="refund-card-action-btn"
+                                            onclick="editRefundTicket(<?= $ticket['id'] ?>)"
+                                            title="<?= __('edit') ?>">
+                                        <i class="feather icon-edit"></i>
+                                    </button>
+                                    <button class="refund-card-action-btn"
                                             onclick="deleteTicket(<?= $ticket['id'] ?>)"
                                             title="<?= __('delete') ?>">
                                         <i class="feather icon-trash-2"></i>
@@ -888,6 +893,7 @@ window.translations = {
 <script src="../js/ticket_refund/transaction_manager.js<?= $version ?>"></script>
 <script src="../js/ticket_refund/document_actions.js<?= $version ?>"></script>
 <script src="../js/ticket_refund/select.js<?= $version ?>"></script>
+<script src="../js/ticket_refund/edit_refund.js<?= $version ?>"></script>
 <script src="../js/ticket_refund/main.js<?= $version ?>"></script>
 
 <?php include '../includes/admin_footer.php'; ?>

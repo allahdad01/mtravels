@@ -749,6 +749,13 @@ function getRefundStatusDotColor($status) {
                                             <i class="feather icon-print"></i> <?= __('print') ?>
                                         </button>
 
+                                        <!-- Edit -->
+                                        <?php if ($canEdit): ?>
+<button class="vc-btn" onclick="editVisaRefund(<?= $refund['id'] ?>)">
+    <i class="feather icon-edit"></i> <?= __('edit') ?>
+</button>
+                                        <?php endif; ?>
+
                                         <!-- Delete -->
                                         <?php if ($canEdit): ?>
 <button class="vc-btn vc-btn--danger" onclick="deleteRefund(<?= $refund['id'] ?>)">
@@ -821,8 +828,8 @@ function getRefundStatusDotColor($status) {
 <script src="../assets/js/vendor-all.min.js"></script>
 <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
 <script src="../assets/js/pcoded.min.js"></script>
-<script src="../js/visa_refund/transaction_manager.js"></script>
-<script src="../js/visa_refund/visa_delete.js"></script>
+<script src="../js/visa_refund/transaction_manager.js<?= '?v=' . time() ?>"></script>
+<script src="../js/visa_refund/visa_delete.js<?= '?v=' . time() ?>"></script>
 
 <!-- SweetAlert2 -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

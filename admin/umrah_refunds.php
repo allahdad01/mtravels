@@ -266,12 +266,19 @@ if ($tableExists) {
                                                                                  </a>
                                                                                  <?php endif; ?>
 
-                                                                                  <?php if ($canEdit): ?>
-                                                                                  <a class="dropdown-item text-danger" href="javascript:void(0)" 
-                                                                                     onclick="deleteRefund(<?= $refund['id'] ?>)">
-                                                                                      <i class="feather icon-trash-2 mr-2"></i><?= __('delete_refund') ?>
-                                                                                  </a>
-                                                                                  <?php endif; ?>
+                                                                                   <?php if ($canEdit): ?>
+                                                                                   <a class="dropdown-item" href="javascript:void(0)" 
+                                                                                      onclick="editUmrahRefund(<?= $refund['id'] ?>)">
+                                                                                       <i class="feather icon-edit text-warning mr-2"></i><?= __('edit') ?>
+                                                                                   </a>
+                                                                                   <?php endif; ?>
+
+                                                                                   <?php if ($canEdit): ?>
+                                                                                   <a class="dropdown-item text-danger" href="javascript:void(0)" 
+                                                                                      onclick="deleteRefund(<?= $refund['id'] ?>)">
+                                                                                       <i class="feather icon-trash-2 mr-2"></i><?= __('delete_refund') ?>
+                                                                                   </a>
+                                                                                   <?php endif; ?>
                                                                                 <a class="dropdown-item" href="javascript:void(0)" onclick="printRefundAgreement(<?= $refund['id'] ?>)">
                                                                                     <i class="fas fa-print text-info mr-2"></i><?= __('print_agreement') ?>
                                                                                 </a>
@@ -348,8 +355,8 @@ if ($tableExists) {
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
 
-<script src="../js/umrah_refund/transaction_manager.js"></script>
-<script src="../js/umrah_refund/umrah_management.js"></script>
+<script src="../js/umrah_refund/transaction_manager.js<?= '?v=' . time() ?>"></script>
+<script src="../js/umrah_refund/umrah_management.js<?= '?v=' . time() ?>"></script>
 
 <!-- Custom Scripts -->
 <script>
