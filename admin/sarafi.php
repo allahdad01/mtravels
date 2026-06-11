@@ -306,7 +306,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_hawala'])) {
         'reference'           => uniqid('HWL'),
         'secret_code'         => $_POST['secret_code'],
         'commission_amount'   => $_POST['commission_amount'],
-        'commission_currency' => $_POST['commission_currency'],
+        'commission_currency' => $_POST['send_currency'],
         'main_account_id'     => $_POST['main_account_id'],
     ];
 
@@ -318,10 +318,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_hawala'])) {
         $stmt->bindParam(3, $branch_id,         PDO::PARAM_INT);
         $stmt->execute();
         $sender = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($data['send_currency'] !== $data['commission_currency']) {
-            throw new Exception(__('commission_currency_mismatch'));
-        }
         $net_amount   = $data['send_amount'] - $data['commission_amount'];
         $balanceField = $data['send_currency'] === 'USD' ? 'usd_balance' : ($data['send_currency'] === 'AFS' ? 'afs_balance' : ($data['send_currency'] === 'EUR' ? 'euro_balance' : 'darham_balance'));
 
@@ -453,585 +449,7 @@ $currency_config = [
 <link rel="stylesheet" href="../assets/css/style.css">
 <link rel="stylesheet" href="../assets/css/header-styles.css">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@500;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<style>
-/* ═══════════════════════════════════════════════
-   SARAFI — PROFESSIONAL FINANCE THEME
-   Navy / Teal  ·  Data-dense  ·  Action-first
-═══════════════════════════════════════════════ */
-:root {
-  /* Brand gradient from site header */
-  --grad-start: #4099ff;
-  --grad-end: #2ed8b6;
-  --grad: linear-gradient(135deg, var(--grad-start) 0%, var(--grad-end) 100%);
-  
-  /* Light theme colors */
-  --surface: #f8fafc;
-  --white: #ffffff;
-  --border: #e5e7eb;
-  
-  /* Legacy colors for compatibility */
-  --navy-950: #f8fafc;
-  --navy-900: #ffffff;
-  --navy-800: #ffffff;
-  --navy-700: #f9fafb;
-  --teal-500: #2ed8b6;
-  --teal-400: #2ed8b6;
-  --teal-300: #22d3ee;
-  --teal-glow: rgba(64,153,255,0.12);
-  --teal-glow-sm: rgba(64,153,255,0.06);
-  --amber: #f59e0b;
-  --amber-light: #fcd34d;
-  --emerald: #10b981;
-  --rose: #f43f5e;
-  --slate-400: #6b7280;
-  --slate-300: #d1d5db;
-  --mono: 'IBM Plex Mono', monospace;
-  --display: 'Syne', sans-serif;
-  --body: 'DM Sans', sans-serif;
-  --border-soft: rgba(64,153,255,0.1);
-  --radius: 10px;
-  --radius-lg: 14px;
-}
-
-/* ── Reset the pcoded container to light theme ── */
-body,
-.pcoded-main-container,
-.pcoded-wrapper,
-.pcoded-content,
-.pcoded-inner-content,
-.main-body,
-.page-wrapper {
-  background: var(--surface) !important;
-  color: #333 !important;
-  font-family: var(--body) !important;
-}
-
-/* ── Page chrome ── */
-.sarafi-page {
-  padding: 20px 24px 60px;
-  max-width: 1400px;
-  margin: 0 auto;
-  font-family: var(--body);
-}
-
-/* ── Page heading ── */
-.sarafi-heading {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  margin-bottom: 24px;
-  padding-bottom: 18px;
-  border-bottom: 1px solid var(--border-soft);
-}
-.sarafi-heading h2 {
-   font-family: var(--display);
-   font-weight: 800;
-   font-size: 24px;
-   letter-spacing: -0.4px;
-   color: #333;
-   margin: 0;
- }
-.sarafi-heading .subtitle {
-  font-size: 12px;
-  color: var(--slate-400);
-  margin-top: 4px;
-  font-weight: 400;
-}
-.btn-view-customers {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 8px 16px;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--teal-400);
-  font-family: var(--body);
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  text-decoration: none;
-  transition: all 0.18s;
-}
-.btn-view-customers:hover {
-  background: var(--teal-glow-sm);
-  border-color: var(--teal-400);
-  color: var(--teal-300);
-  text-decoration: none;
-}
-
-/* ── Currency stat cards ── */
-.stats-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin-bottom: 18px;
-}
-.stat-card {
-  background: var(--white);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 16px 18px;
-  position: relative;
-  overflow: hidden;
-  transition: border-color 0.2s, transform 0.2s;
-}
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2px;
-}
-.stat-card.usd::before { background: var(--grad); }
-.stat-card.afs::before { background: linear-gradient(90deg, var(--emerald), #34d399); }
-.stat-card.eur::before { background: linear-gradient(90deg, #6366f1, #8b5cf6); }
-.stat-card.aed::before { background: linear-gradient(90deg, var(--amber), var(--amber-light)); }
-.stat-card:hover { border-color: rgba(64,153,255,0.3); transform: translateY(-2px); }
-.stat-label {
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 1.2px;
-  text-transform: uppercase;
-  color: #666;
-  margin-bottom: 8px;
-}
-.stat-value {
-  font-family: var(--mono);
-  font-size: 20px;
-  font-weight: 500;
-  color: #333;
-  letter-spacing: -0.5px;
-  line-height: 1;
-}
-.stat-badge {
-  display: inline-block;
-  font-family: var(--mono);
-  font-size: 9px;
-  font-weight: 500;
-  letter-spacing: 0.6px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  margin-top: 8px;
-}
-.stat-card.usd .stat-badge { background: rgba(8,145,178,0.15);  color: var(--teal-300); }
-.stat-card.afs .stat-badge { background: rgba(16,185,129,0.15); color: #34d399; }
-.stat-card.eur .stat-badge { background: rgba(99,102,241,0.15); color: #818cf8; }
-.stat-card.aed .stat-badge { background: rgba(245,158,11,0.15); color: var(--amber-light); }
-
-/* ── Action bar ── */
-.action-bar {
-  background: var(--white);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 16px 20px;
-  margin-bottom: 18px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.action-bar-label {
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 1.2px;
-  text-transform: uppercase;
-  color: #666;
-  margin-right: 4px;
-  white-space: nowrap;
-}
-.action-bar-divider {
-  width: 1px;
-  height: 26px;
-  background: var(--border);
-  margin: 0 4px;
-}
-.action-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-family: var(--body);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
-  transition: all 0.18s;
-  white-space: nowrap;
-  letter-spacing: 0.1px;
-}
-.action-btn.deposit    { background: var(--grad); color: #fff; box-shadow: 0 2px 12px rgba(64,153,255,0.2); }
-.action-btn.deposit:hover { box-shadow: 0 4px 18px rgba(64,153,255,0.3); transform: translateY(-1px); }
-.action-btn.withdrawal { background: rgba(244,63,94,0.11); color: #fb7185; border: 1px solid rgba(244,63,94,0.22); }
-.action-btn.withdrawal:hover { background: rgba(244,63,94,0.18); border-color: rgba(244,63,94,0.45); }
-.action-btn.hawala     { background: rgba(99,102,241,0.11); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.22); }
-.action-btn.hawala:hover { background: rgba(99,102,241,0.18); border-color: rgba(99,102,241,0.45); }
-.action-btn.exchange   { background: rgba(245,158,11,0.11); color: var(--amber-light); border: 1px solid rgba(245,158,11,0.22); }
-.action-btn.exchange:hover { background: rgba(245,158,11,0.18); border-color: rgba(245,158,11,0.45); }
-.action-btn.new-customer { background: rgba(16,185,129,0.11); color: #34d399; border: 1px solid rgba(16,185,129,0.22); }
-.action-btn.new-customer:hover { background: rgba(16,185,129,0.18); border-color: rgba(16,185,129,0.45); }
-.kbd {
-  display: inline-flex;
-  align-items: center;
-  padding: 1px 5px;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 3px;
-  font-family: var(--mono);
-  font-size: 9px;
-  color: rgba(255,255,255,0.5);
-  letter-spacing: 0.3px;
-  margin-left: 3px;
-}
-
-/* ── Flash messages ── */
-.flash {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 16px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  margin-bottom: 16px;
-}
-.flash.success { background: rgba(16,185,129,0.10); border: 1px solid rgba(16,185,129,0.25); color: #34d399; }
-.flash.error   { background: rgba(244,63,94,0.10);  border: 1px solid rgba(244,63,94,0.25);  color: #fb7185; }
-
-/* ── Table card ── */
-.table-card {
-  background: var(--white);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-.table-card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 18px 24px;
-  border-bottom: 1px solid var(--border);
-  flex-wrap: wrap;
-  gap: 12px;
-  background: var(--white);
-}
-.table-card-title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.table-card-title h5 {
-  font-family: var(--display);
-  font-weight: 700;
-  font-size: 15px;
-  color: #0f1117;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.table-card-title svg {
-  color: var(--grad-start);
-  flex-shrink: 0;
-}
-.tx-count-badge {
-  background: #f4f5f7;
-  border: 1px solid var(--border);
-  color: #6b7280;
-  font-family: var(--mono);
-  font-size: 9px;
-  font-weight: 500;
-  padding: 2px 8px;
-  border-radius: 20px;
-}
-.table-search-wrap {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  padding: 6px 12px;
-  min-width: 200px;
-  transition: border-color 0.18s;
-}
-.table-search-wrap:focus-within { border-color: var(--grad-start); }
-.table-search-wrap input {
-  background: none;
-  border: none;
-  outline: none;
-  color: #333;
-  font-family: var(--body);
-  font-size: 12px;
-  width: 100%;
-}
-.table-search-wrap input::placeholder { color: #999; }
-
-/* The table itself */
-.table-scroll { overflow-x: auto; }
-.tx-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  font-size: 13.5px;
-}
-.tx-table thead tr { border-bottom: 1px solid var(--border); }
-.tx-table thead th {
-  background: #f4f5f7;
-  color: #6b7280;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.7px;
-  padding: 11px 16px;
-  border-bottom: 1px solid var(--border);
-  white-space: nowrap;
-  text-align: left;
-}
-.tx-table thead th:first-child { border-radius: 8px 0 0 0; padding-left: 20px; }
-.tx-table thead th:last-child  { border-radius: 0 8px 0 0; padding-right: 20px; text-align: right; }
-.tx-table tbody tr { transition: background 0.15s; }
-.tx-table tbody tr:hover td { background: #f8f9ff; }
-.tx-table tbody tr.disabled td { background: #fff9f9; color: #888; }
-.tx-table tbody tr.disabled:hover td { background: #fff3f3; }
-.tx-table tbody tr:last-child td { border-bottom: none; }
-.tx-table tbody td {
-  padding: 13px 16px;
-  border-bottom: 1px solid var(--border);
-  vertical-align: middle;
-  color: #0f1117;
-  font-size: 13.5px;
-}
-.tx-table tbody td:first-child { padding-left: 20px; }
-.tx-table tbody td:last-child  { padding-right: 20px; }
-
-/* Cells */
-.td-date { font-family: var(--mono); font-size: 11px; color: #666; white-space: nowrap; }
-.td-customer { display: flex; align-items: center; gap: 8px; }
-.mini-avatar {
-  width: 26px; height: 26px;
-  border-radius: 50%;
-  background: var(--grad);
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--display); font-weight: 700; font-size: 10px; color: #fff;
-  flex-shrink: 0;
-}
-.customer-nm { font-weight: 500; color: #333; font-size: 13px; }
-
-.type-badge {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 3px 9px; border-radius: 20px;
-  font-size: 11px; font-weight: 600; letter-spacing: 0.1px; white-space: nowrap;
-}
-.type-badge.deposit    { background: rgba(64,153,255,0.12);  color: var(--grad-start);    border: 1px solid rgba(64,153,255,0.2); }
-.type-badge.withdrawal { background: rgba(244,63,94,0.10);  color: #fb7185;            border: 1px solid rgba(244,63,94,0.2); }
-.type-badge.hawala_send,
-.type-badge.hawala_receive { background: rgba(99,102,241,0.10); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.2); }
-.type-badge.exchange   { background: rgba(245,158,11,0.10); color: var(--amber-light); border: 1px solid rgba(245,158,11,0.2); }
-
-.td-amount { font-family: var(--mono); font-size: 13px; font-weight: 500; color: #333; white-space: nowrap; }
-.td-amount.pos { color: var(--grad-end); }
-.td-amount.neg { color: #fb7185; }
-
-.currency-chip {
-  font-family: var(--mono); font-size: 10px; font-weight: 500;
-  letter-spacing: 0.5px; padding: 2px 7px; border-radius: 4px;
-  background: var(--surface); border: 1px solid var(--border); color: #666;
-}
-.td-ref { font-family: var(--mono); font-size: 11px; color: var(--slate-400); }
-
-.status-badge {
-  display: inline-flex; align-items: center; gap: 5px;
-  font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 20px;
-}
-.status-badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; }
-.status-badge.completed { background: rgba(16,185,129,0.10); color: #34d399; }
-.status-badge.completed::before { background: #34d399; }
-.status-badge.pending   { background: rgba(245,158,11,0.10); color: var(--amber-light); }
-.status-badge.pending::before   { background: var(--amber); }
-.status-badge.failed    { background: rgba(244,63,94,0.10);  color: #fb7185; }
-.status-badge.failed::before    { background: #fb7185; }
-
-.td-actions { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
-.icon-btn {
-  width: 27px; height: 27px; border-radius: 6px;
-  border: 1px solid var(--border); background: var(--navy-800);
-  display: inline-flex; align-items: center; justify-content: center;
-  cursor: pointer; transition: all 0.15s; color: var(--slate-400);
-  text-decoration: none;
-}
-.icon-btn:hover       { border-color: var(--teal-400); color: var(--teal-300); background: var(--teal-glow-sm); }
-.icon-btn.danger:hover{ border-color: rgba(244,63,94,0.4); color: #fb7185; background: rgba(244,63,94,0.08); }
-
-/* ── Pagination ── */
-.pagination-bar {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 20px; border-top: 1px solid var(--border); background: var(--navy-950);
-  flex-wrap: wrap; gap: 8px;
-}
-.pagination-info { font-family: var(--mono); font-size: 10px; color: var(--slate-400); }
-.pagination-controls { display: flex; gap: 4px; }
-.page-btn {
-  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
-  border-radius: 6px; border: 1px solid var(--border);
-  background: var(--white); color: #666;
-  font-family: var(--mono); font-size: 12px; cursor: pointer; transition: all 0.15s;
-  text-decoration: none;
-}
-.page-btn:hover  { border-color: var(--grad-start); color: var(--grad-start); }
-.page-btn.active { background: var(--grad); border-color: transparent; color: #fff; }
-
-/* ── Modals ── */
-.modal-content {
-  background: var(--white) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 16px !important;
-  color: #333;
-  box-shadow: 0 24px 80px rgba(0,0,0,0.08) !important;
-}
-.modal-header {
-  background: var(--grad) !important;
-  border-bottom: none !important;
-  padding: 18px 22px !important;
-  border-radius: 16px 16px 0 0 !important;
-}
-.modal-title {
-  font-family: var(--display) !important;
-  font-weight: 700 !important;
-  font-size: 15px !important;
-  color: white !important;
-  display: flex; align-items: center; gap: 10px;
-}
-.modal-icon-wrap {
-  width: 32px; height: 32px; border-radius: 8px;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
-.modal-icon-wrap.teal   { background: rgba(64,153,255,0.15);  color: var(--grad-start); }
-.modal-icon-wrap.rose   { background: rgba(244,63,94,0.12);  color: #fb7185; }
-.modal-icon-wrap.indigo { background: rgba(99,102,241,0.12); color: #a5b4fc; }
-.modal-icon-wrap.amber  { background: rgba(245,158,11,0.12); color: var(--amber-light); }
-.modal-icon-wrap.green  { background: rgba(16,185,129,0.12); color: #34d399; }
-.modal-header .close { color: #666 !important; opacity: 1; }
-.modal-header .close:hover { color: #fb7185 !important; }
-.modal-backdrop.show { opacity: 0.44 !important; }
-.modal-body  { padding: 20px 22px !important; background: transparent !important; }
-.modal-footer{
-  background: var(--surface) !important;
-  border-top: 1px solid var(--border) !important;
-  padding: 14px 22px !important;
-  border-radius: 0 0 16px 16px !important;
-}
-
-/* Form controls inside modals */
-.modal-body .form-group label,
-.modal-body .form-label {
-  font-family: var(--mono) !important;
-  font-size: 9px !important;
-  letter-spacing: 1px !important;
-  text-transform: uppercase !important;
-  color: #666 !important;
-  margin-bottom: 6px !important;
-  display: block;
-}
-.modal-body .form-control,
-.modal-body .form-select,
-.modal-body select {
-  background: var(--white) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 8px !important;
-  color: #333 !important;
-  font-family: var(--body) !important;
-  font-size: 13px !important;
-  padding: 9px 12px !important;
-  transition: border-color 0.18s, box-shadow 0.18s;
-  width: 100%;
-}
-.modal-body .form-control:focus,
-.modal-body select:focus {
-  border-color: var(--grad-start) !important;
-  box-shadow: 0 0 0 3px rgba(64,153,255,0.1) !important;
-  outline: none;
-}
-.modal-body .form-control::placeholder { color: #999 !important; }
-.modal-body textarea.form-control { resize: vertical; min-height: 70px; }
-.modal-body .input-group-text {
-  background: var(--surface) !important;
-  border: 1px solid var(--border) !important;
-  color: #666 !important;
-  font-family: var(--mono) !important;
-  font-size: 11px !important;
-}
-
-/* Select2 light override */
-.select2-container--bootstrap-5 .select2-selection,
-.select2-container--default .select2-selection--single {
-  background: var(--white) !important;
-  border: 1px solid var(--border) !important;
-  color: #333 !important;
-  border-radius: 8px !important;
-  height: 38px !important;
-  padding: 4px 12px !important;
-}
-.select2-container--default .select2-selection--single .select2-selection__rendered { color: #333 !important; line-height: 30px !important; }
-.select2-dropdown { background: var(--white) !important; border: 1px solid var(--border) !important; border-radius: 8px !important; }
-.select2-results__option { color: #333 !important; font-size: 13px !important; padding: 8px 12px !important; }
-.select2-results__option--highlighted { background: rgba(64,153,255,0.12) !important; color: var(--grad-start) !important; }
-.select2-search__field { background: var(--surface) !important; border: 1px solid var(--border) !important; color: #333 !important; border-radius: 6px !important; }
-
-/* Modal action buttons */
-.btn-modal-primary {
-  padding: 8px 20px; border-radius: 8px; border: none;
-  font-family: var(--body); font-size: 13px; font-weight: 600; cursor: pointer;
-  transition: all 0.18s; display: inline-flex; align-items: center; gap: 7px;
-  background: var(--grad); color: #fff; box-shadow: 0 2px 10px rgba(64,153,255,0.2);
-}
-.btn-modal-primary.teal   { background: linear-gradient(135deg, #17a2b8, #20c997); color: #fff; box-shadow: 0 2px 10px rgba(23,162,184,0.28); }
-.btn-modal-primary.rose   { background: rgba(244,63,94,0.14); color: #fb7185; border: 1px solid rgba(244,63,94,0.28); }
-.btn-modal-primary.indigo { background: rgba(99,102,241,0.14); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.28); }
-.btn-modal-primary.amber  { background: rgba(245,158,11,0.14); color: var(--amber-light); border: 1px solid rgba(245,158,11,0.28); }
-.btn-modal-primary.green  { background: rgba(16,185,129,0.14); color: #34d399; border: 1px solid rgba(16,185,129,0.28); }
-.btn-modal-primary:hover  { transform: translateY(-1px); }
-.btn-modal-cancel {
-  padding: 8px 18px; border-radius: 8px; border: 1px solid var(--border);
-  background: var(--surface); color: #666; font-family: var(--body);
-  font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s;
-}
-.btn-modal-cancel:hover { background: var(--border); color: #333; }
-
-/* ── Toast ── */
-.toast-container-sarafi {
-  position: fixed; bottom: 24px; right: 24px; z-index: 9999;
-  display: flex; flex-direction: column; gap: 8px;
-}
-.sarafi-toast {
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px 16px; border-radius: 10px;
-  font-family: var(--body); font-size: 13px; font-weight: 500;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-  animation: toastIn 0.25s ease;
-  min-width: 280px; max-width: 380px;
-}
-.sarafi-toast.success { background: var(--grad); border: none; color: #fff; }
-.sarafi-toast.error   { background: linear-gradient(135deg, #dc3545, #e74c3c); border: none; color: #fff; }
-@keyframes toastIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
-
-/* ── Responsive ── */
-@media (max-width: 1100px) { .stats-row { grid-template-columns: repeat(2,1fr); } }
-@media (max-width: 768px) {
-  .sarafi-page { padding: 14px 14px 48px; }
-  .stats-row { grid-template-columns: repeat(2,1fr); gap: 8px; }
-  .sarafi-heading { flex-direction: column; align-items: flex-start; gap: 12px; }
-  .action-bar { gap: 6px; padding: 12px 14px; }
-  .action-bar-label, .action-bar-divider { display: none; }
-  .action-btn { padding: 7px 11px; font-size: 11px; }
-  .kbd { display: none; }
-}
-
-/* ── Spinner ── */
-@keyframes spin { to { transform: rotate(360deg); } }
-.btn-loading.feather { animation: spin 0.8s linear infinite; display: inline-block; }
-</style>
+<link rel="stylesheet" href="../css/sarafi/styles.css">
 </head>
 <body>
 
@@ -1334,7 +752,7 @@ body,
         </h5>
         <button type="button" class="close" data-dismiss="modal">&times;</button>
       </div>
-      <form id="editTransactionForm">
+      <form id="editTransactionForm" novalidate>
         <div class="modal-body">
           <input type="hidden" id="editTransactionId"   name="transaction_id">
           <input type="hidden" id="editTransactionType" name="transaction_type">
@@ -1365,13 +783,12 @@ body,
             <div class="col-md-6">
               <div class="form-group">
                 <label><?= __('commission') ?></label>
-                <div class="input-group">
-                  <input type="number" step="0.01" min="0" class="form-control" id="editCommissionAmount" name="commission_amount">
-                  <div class="input-group-append">
-                    <span class="input-group-text" id="editCommissionCurrencyDisplay">USD</span>
+                  <div class="input-group">
+                    <input type="number" step="0.01" min="0" class="form-control" id="editCommissionAmount" name="commission_amount">
+                    <div class="input-group-append">
+                      <span class="input-group-text" id="editCommissionCurrencyDisplay">USD</span>
+                    </div>
                   </div>
-                </div>
-                <input type="hidden" id="editCommissionCurrency" name="commission_currency">
               </div>
             </div>
           </div>
@@ -1382,11 +799,11 @@ body,
                 <input type="text" class="form-control" id="editFromCurrency" readonly>
               </div>
             </div>
-            <div class="col-md-4">
-              <div class="form-group">
-                <label><?= __('exchange_rate') ?></label>
-                <input type="number" step="0.0001" min="0" class="form-control" id="editRate" name="rate" required>
-              </div>
+            <div class="col-md-4 text-center">
+              <span id="editExchangeFormulaBadge" style="font-size:28px;font-weight:700;color:#6c757d;display:block;">×</span>
+              <div style="font-size:11px;color:#6c757d;margin-top:-4px;margin-bottom:8px;"><?= __('formula') ?></div>
+              <input type="number" step="0.0001" min="0" class="form-control text-center" id="editRate" name="rate" required placeholder="<?= __('rate') ?>" style="font-size:14px;">
+              <small id="editExchangeRateHelp" class="form-text text-muted" style="font-size:11px;margin-top:4px;display:block;">1 USD = 0.92 EUR</small>
             </div>
             <div class="col-md-4">
               <div class="form-group">
@@ -1504,25 +921,27 @@ $(document).ready(function() {
     });
   });
 
-  // Edit form submit
+  // Edit form submit with double-submit protection
   $(document).on('submit', '#editTransactionForm', function(e) {
     e.preventDefault();
     const type = $('#editTransactionType').val();
     const urlMap = { deposit: 'update_sarafi_deposit_transaction.php', withdrawal: 'update_sarafi_withdrawal_transaction.php', hawala_send: 'update_sarafi_hawala_transaction.php', exchange: 'update_sarafi_exchange_transaction.php' };
     if (!urlMap[type]) { showToast('<?= __("unsupported_transaction_type") ?>', 'error'); return; }
     const btn = $(this).find('button[type="submit"]');
+    if (btn.data('submitting')) return;
+    btn.data('submitting', true).prop('disabled', true);
     const orig = btn.html();
-    btn.prop('disabled', true).html('<i class="feather icon-loader btn-loading"></i> <?= __("saving") ?>');
+    btn.html('<i class="feather icon-loader btn-loading"></i> <?= __("processing") ?>');
     $.ajax({
       url: urlMap[type], type: 'POST', data: new FormData(this),
       processData: false, contentType: false,
       success: r => {
-        btn.prop('disabled', false).html(orig);
+        btn.data('submitting', false).prop('disabled', false).html(orig);
         const res = typeof r === 'string' ? JSON.parse(r) : r;
         if (res.success) { showToast('<?= __("transaction_updated_successfully") ?>', 'success'); $('#editTransactionModal').modal('hide'); setTimeout(() => location.reload(), 800); }
         else showToast(res.message || '<?= __("error_updating_transaction") ?>', 'error');
       },
-      error: () => { btn.prop('disabled', false).html(orig); showToast('<?= __("error_updating_transaction") ?>', 'error'); }
+      error: () => { btn.data('submitting', false).prop('disabled', false).html(orig); showToast('<?= __("error_updating_transaction") ?>', 'error'); }
     });
   });
 
@@ -1534,11 +953,15 @@ $(document).ready(function() {
     });
   });
 
-  // Button double-submit protection & loading state
-  $('form').on('submit', function() {
+  // Button double-submit protection & loading state (exclude edit form - uses its own AJAX handler)
+  $('form').not('#editTransactionForm').on('submit', function() {
     const btn = $(this).find('button[type="submit"]');
     if (btn.data('submitting')) return false;
-    btn.data('submitting', true).prop('disabled', true);
+    btn.data('submitting', true);
+    // Preserve button name via hidden input (disabled buttons don't submit their name)
+    const name = btn.attr('name');
+    if (name) $(this).append($('<input>', { type: 'hidden', name: name, value: btn.val() || '' }));
+    btn.prop('disabled', true);
     btn.data('original-html', btn.html());
     btn.html('<i class="feather icon-loader btn-loading"></i> ' + '<?= __("processing") ?>');
   });
@@ -1708,8 +1131,7 @@ function editTransaction(transactionId) {
         $('#hawalaEditFields').show();
         $('#editSecretCode').val(hawala.secret_code || '');
         $('#editCommissionAmount').val(parseFloat(hawala.commission_amount || 0).toFixed(2));
-        $('#editCommissionCurrency').val(hawala.commission_currency || tx.currency);
-        $('#editCommissionCurrencyDisplay').text(hawala.commission_currency || tx.currency);
+        $('#editCommissionCurrencyDisplay').text(tx.currency);
       } else {
         $('#hawalaEditFields').hide();
       }
@@ -1719,6 +1141,17 @@ function editTransaction(transactionId) {
         $('#editToCurrency').val(exchange.to_currency || '');
         $('#editToAmount').val(parseFloat(exchange.to_amount || 0).toFixed(2));
         $('#editRate').val(parseFloat(exchange.rate || 0).toFixed(4));
+        const dividePairs = ['AFS->USD', 'AFS->EUR', 'AFS->AED', 'AED->USD', 'AED->EUR'];
+        const fromC = exchange.from_currency || '';
+        const toC = exchange.to_currency || '';
+        const isDivide = dividePairs.includes(fromC + '->' + toC);
+        $('#editExchangeFormulaBadge').text(isDivide ? '÷' : '×');
+        const rateVal = parseFloat(exchange.rate || 0);
+        if (isDivide) {
+          $('#editExchangeRateHelp').text('e.g. 1 ' + toC + ' = ' + rateVal.toFixed(2) + ' ' + fromC + ' → enter ' + rateVal.toFixed(2));
+        } else {
+          $('#editExchangeRateHelp').text('e.g. 1 ' + fromC + ' = ' + rateVal.toFixed(2) + ' ' + toC + ' → enter ' + rateVal.toFixed(2));
+        }
       } else {
         $('#exchangeEditFields, #exchangeAmountFields').hide();
       }
@@ -1727,6 +1160,20 @@ function editTransaction(transactionId) {
     error: () => showToast('<?= __("error_loading_transaction_details") ?>', 'error')
   });
 }
+
+// Exchange edit auto-calc
+$(document).on('input', '#editRate, #editAmount', function() {
+  if ($('#exchangeEditFields').is(':visible')) {
+    const fromAmt = parseFloat($('#editAmount').val()) || 0;
+    const rate = parseFloat($('#editRate').val()) || 0;
+    const dividePairs = ['AFS->USD', 'AFS->EUR', 'AFS->AED', 'AED->USD', 'AED->EUR'];
+    const fromC = $('#editFromCurrency').val() || '';
+    const toC = $('#editToCurrency').val() || '';
+    const divide = dividePairs.includes(fromC + '->' + toC);
+    const toAmt = divide ? fromAmt / rate : fromAmt * rate;
+    $('#editToAmount').val(toAmt.toFixed(2));
+  }
+});
 
 // Print
 $(document).on('click', '.print-transaction', function() {

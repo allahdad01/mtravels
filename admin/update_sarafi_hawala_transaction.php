@@ -27,7 +27,7 @@ $main_account_id   = isset($_POST['main_account_id'])   ? DbSecurity::validateIn
 $original_amount   = isset($_POST['original_amount'])   ? DbSecurity::validateInput($_POST['original_amount'], 'float', ['min' => 0]) : null;
 $send_amount       = isset($_POST['amount'])            ? DbSecurity::validateInput($_POST['amount'], 'float', ['min' => 0]) : null;
 $commission_amount = isset($_POST['commission_amount']) ? DbSecurity::validateInput($_POST['commission_amount'], 'float', ['min' => 0]) : null;
-$commission_currency = isset($_POST['commission_currency']) ? trim($_POST['commission_currency']) : '';
+
 $secret_code       = isset($_POST['secret_code'])       ? DbSecurity::validateInput($_POST['secret_code'], 'string', ['maxlength' => 255]) : '';
 $reference         = isset($_POST['reference'])         ? DbSecurity::validateInput($_POST['reference'], 'string', ['maxlength' => 255]) : '';
 $notes             = isset($_POST['notes'])             ? DbSecurity::validateInput($_POST['notes'], 'string', ['maxlength' => 1000]) : '';
@@ -52,10 +52,7 @@ try {
     }
 
     $currency = $transaction['currency'];
-
-    if ($commission_currency !== $currency) {
-        throw new Exception('Commission currency must match send currency');
-    }
+    $commission_currency = $currency;
 
     $stmt = $pdo->prepare("SELECT * FROM hawala_transfers WHERE sender_transaction_id = ? AND tenant_id = ? AND branch_id = ?");
     $stmt->bindParam(1, $transaction_id, PDO::PARAM_INT);

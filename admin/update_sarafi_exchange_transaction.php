@@ -55,6 +55,9 @@ try {
     $from_currency = $transaction['from_currency'];
     $to_currency = $transaction['to_currency'];
 
+    // Convert user-friendly rate to DB format for storage
+    $db_rate = needsRateInversion($from_currency, $to_currency) ? (1 / $rate) : $rate;
+
     $from_diff = $from_amount - $original_amount;
     $to_diff = $to_amount - $transaction['to_amount'];
 
@@ -78,6 +81,8 @@ try {
     } catch (Exception $e) {
         $profit_amount = 0;
     }
+
+    // Rate stored in DB is in user-friendly format (store the entered value)
 
     if ($from_diff != 0) {
         $stmt = $pdo->prepare("UPDATE customer_wallets SET balance = balance - ? WHERE customer_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ?");
@@ -118,7 +123,7 @@ try {
     $stmt->execute();
 
     try {
-        updateExchangeRate($pdo, $from_currency, $to_currency, $rate, $tenant_id, $branch_id);
+        updateExchangeRate($pdo, $from_currency, $to_currency, $db_rate, $tenant_id, $branch_id);
     } catch (Exception $e) {
         error_log("Warning: Could not update exchange rate history: " . $e->getMessage());
     }

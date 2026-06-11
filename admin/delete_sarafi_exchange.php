@@ -56,6 +56,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['transaction_id'])) {
         ");
         $stmt->execute([$transaction['to_amount'], $transaction['customer_id'], $transaction['to_currency'], $tenant_id, $branch_id]);
        
+        // Delete associated notifications
+        $stmt = $pdo->prepare("DELETE FROM notifications WHERE transaction_id = ? AND transaction_type = 'exchange' AND tenant_id = ?");
+        $stmt->execute([$transaction_id, $tenant_id]);
+
         // 0. Delete child exchange transaction first
         $stmt = $pdo->prepare("DELETE FROM exchange_transactions WHERE transaction_id = ? AND tenant_id = ? AND branch_id = ?");
         $stmt->execute([$transaction_id, $tenant_id, $branch_id]);

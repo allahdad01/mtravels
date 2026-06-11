@@ -343,7 +343,7 @@ $currencyColors = [
 
 <?php include '../includes/header.php'; ?>
 
-<link rel="stylesheet" href="../css/general/modal-styles.css">
+<link rel="stylesheet" href="../css/sarafi/styles.css">
 
 <style>
 /* ============================================
@@ -544,7 +544,7 @@ $currencyColors = [
 }
 
 /* Stat Pills - Horizontal */
-.stats-row {
+.customer-stats-row {
     display: flex;
     gap: 12px;
     margin-bottom: 20px;
@@ -1018,38 +1018,6 @@ $currencyColors = [
     color: #adb5bd;
 }
 
-/* Transaction Details Modal */
-.modal .modal-content {
-    border: none;
-    border-radius: 16px;
-    overflow: hidden;
-}
-
-.modal .modal-header {
-    background: linear-gradient(135deg, #4680ff, #6c5ce7);
-    color: white;
-    border: none;
-    padding: 16px 24px;
-}
-
-.modal .modal-header .modal-title {
-    font-size: 1rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.modal .modal-body {
-    padding: 24px;
-}
-
-.modal .modal-footer {
-    border-top: 1px solid #f0f0f0;
-    padding: 12px 24px;
-    background: #fafbfc;
-}
-
 .detail-section-title {
     font-size: 0.85rem;
     font-weight: 600;
@@ -1129,7 +1097,7 @@ $currencyColors = [
 
 /* Responsive */
 @media (max-width: 991px) {
-    .stats-row {
+    .customer-stats-row {
         gap: 8px;
     }
     
@@ -1214,7 +1182,7 @@ $currencyColors = [
     .tx-actions,
     .page-breadcrumb,
     .stat-pill,
-    .stats-row {
+    .customer-stats-row {
         display: none !important;
     }
     
@@ -1318,7 +1286,7 @@ $currencyColors = [
                             <div class="col-lg-8 col-md-7 col-12">
                                 
                                 <!-- Stats Pills Row -->
-                                <div class="stats-row">
+                                <div class="customer-stats-row">
                                     <div class="stat-pill">
                                         <div class="stat-pill-icon deposits">
                                             <i class="feather icon-plus-circle"></i>
@@ -1372,6 +1340,14 @@ $currencyColors = [
                                             <button class="btn btn-withdrawal" data-toggle="modal" data-target="#withdrawalModal">
                                                 <i class="feather icon-minus"></i>
                                                 <?= __("new_withdrawal") ?>
+                                            </button>
+                                            <button class="btn btn-hawala" data-toggle="modal" data-target="#hawalaModal">
+                                                <i class="feather icon-send"></i>
+                                                <?= __("new_hawala") ?>
+                                            </button>
+                                            <button class="btn btn-exchange" data-toggle="modal" data-target="#exchangeModal">
+                                                <i class="feather icon-repeat"></i>
+                                                <?= __("new_exchange") ?>
                                             </button>
                                         </div>
                                     </div>
@@ -1505,7 +1481,12 @@ $currencyColors = [
                                                                     <i class="feather icon-eye"></i>
                                                                 </button>
 
-                                                                <?php if (in_array($transaction['type'], ['deposit', 'withdrawal', 'hawala_send'])): ?>
+                                                                <?php if (in_array($transaction['type'], ['deposit', 'withdrawal', 'hawala_send', 'exchange'])): ?>
+                                                                <button class="btn-action action-edit edit-transaction"
+                                                                        data-id="<?= $transaction['id'] ?>"
+                                                                        data-toggle="tooltip" title="<?= __('edit') ?>">
+                                                                    <i class="feather icon-edit-2"></i>
+                                                                </button>
                                                                 <button class="btn-action action-delete delete-transaction" 
                                                                         data-id="<?= $transaction['id'] ?>"
                                                                         data-type="<?= $transaction['type'] ?>"
@@ -1952,41 +1933,44 @@ function deleteHawala(transactionId, amount, btnElement) {
     });
 }
 
-// Handle delete exchange transaction
-$(document).on('click', '.delete-exchange', function(e) {
-    e.preventDefault();
-    var $btn = $(this);
-    var originalHtml = $btn.html();
-    const transactionId = $btn.data('id');
-    
-    if (confirm('<?= __("are_you_sure_you_want_to_delete_this_exchange_transaction_this_action_cannot_be_undone") ?>')) {
-        $btn.prop('disabled', true);
-        $btn.html('<i class="fas fa-spinner fa-spin"></i>');
-        $.ajax({
-            url: 'delete_sarafi_exchange.php',
-            type: 'POST',
-            data: {
-                transaction_id: transactionId
-            },
-            dataType: 'json',
-            success: function(response) {
-                if (response.success) {
-                    showToast('success', response.message);
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    showToast('error', response.message || '<?= __("failed_to_delete_exchange_transaction") ?>');
-                }
-                $btn.prop('disabled', false);
-                $btn.html(originalHtml);
-            },
-            error: function() {
-                $btn.prop('disabled', false);
-                $btn.html(originalHtml);
-                showToast('error', '<?= __("error_occurred_while_deleting_exchange_transaction") ?>');
-            }
-        });
+function deleteExchange(transactionId, amount) {
+    if (!confirm('<?= __("are_you_sure_you_want_to_delete_this_exchange_transaction_this_action_cannot_be_undone") ?>')) return;
+
+    const btn = document.activeElement;
+    const originalHtml = btn ? btn.innerHTML : '';
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
     }
-});
+
+    fetch('delete_sarafi_exchange.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `transaction_id=${transactionId}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+        if (data.success) {
+            showToast('success', data.message);
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            showToast('error', 'Error: ' + (data.message || '<?= __("failed_to_delete_exchange_transaction") ?>'));
+        }
+    })
+    .catch(error => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+        console.error('Error:', error);
+        showToast('error', '<?= __("error_occurred_while_deleting_exchange_transaction") ?>');
+    });
+}
 
 // Handle delete transaction click
 $(document).on('click', '.delete-transaction', function(e) {
@@ -2004,6 +1988,9 @@ $(document).on('click', '.delete-transaction', function(e) {
             break;
         case 'hawala_send':
             deleteHawala(transactionId, amount);
+            break;
+        case 'exchange':
+            deleteExchange(transactionId, amount);
             break;
     }
 });
@@ -2114,7 +2101,7 @@ function getStatusClass(status) {
 
 <!-- Transaction Details Modal -->
 <div class="modal fade" id="transactionDetailsModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">
@@ -2135,13 +2122,114 @@ function getStatusClass(status) {
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal" style="border-radius: 10px;">
+                <button type="button" class="btn-modal-cancel" data-dismiss="modal">
                     <i class="feather icon-x mr-2"></i><?= __("close") ?>
                 </button>
-                <button type="button" class="btn btn-primary" id="printTransaction" style="border-radius: 10px;">
+                <button type="button" class="btn-modal-primary" id="printTransaction">
                     <i class="feather icon-printer mr-2"></i><?= __("print") ?>
                 </button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Transaction Modal -->
+<div class="modal fade" id="editTransactionModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="feather icon-edit-2 mr-2"></i>
+                    <?= __('edit_transaction') ?>
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+            </div>
+            <form id="editTransactionForm" novalidate>
+                <div class="modal-body">
+                    <input type="hidden" id="editTransactionId"   name="transaction_id">
+                    <input type="hidden" id="editTransactionType" name="transaction_type">
+                    <input type="hidden" id="editCustomerId"      name="customer_id">
+                    <input type="hidden" id="editMainAccountId"   name="main_account_id">
+                    <input type="hidden" id="editOriginalAmount"  name="original_amount">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label><?= __('customer') ?></label>
+                                <input type="text" class="form-control" id="editCustomerName" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label><?= __('amount') ?></label>
+                                <input type="number" step="0.01" min="0" class="form-control" id="editAmount" name="amount" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="hawalaEditFields" style="display:none;">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label><?= __('secret_code') ?></label>
+                                    <input type="text" class="form-control" id="editSecretCode" name="secret_code">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label><?= __('commission') ?></label>
+                                        <div class="input-group">
+                                            <input type="number" step="0.01" min="0" class="form-control" id="editCommissionAmount" name="commission_amount">
+                                            <div class="input-group-append">
+                                                <span class="input-group-text" id="editCommissionCurrencyDisplay">USD</span>
+                                            </div>
+                                        </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="exchangeEditFields" style="display:none;">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label><?= __('from_currency') ?></label>
+                                    <input type="text" class="form-control" id="editFromCurrency" readonly>
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-center">
+                                <span id="editExchangeFormulaBadge" style="font-size:28px;font-weight:700;color:#6c757d;display:block;">×</span>
+                                <div style="font-size:11px;color:#6c757d;margin-top:-4px;margin-bottom:8px;"><?= __('formula') ?></div>
+                                <input type="number" step="0.0001" min="0" class="form-control text-center" id="editRate" name="rate" required placeholder="<?= __('rate') ?>" style="font-size:14px;">
+                                <small id="editExchangeRateHelp" class="form-text text-muted" style="font-size:11px;margin-top:4px;display:block;">1 USD = 0.92 EUR</small>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label><?= __('to_currency') ?></label>
+                                    <input type="text" class="form-control" id="editToCurrency" readonly>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label><?= __('to_amount') ?></label>
+                                    <input type="number" step="0.01" min="0" class="form-control" id="editToAmount" name="to_amount" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label><?= __('reference') ?></label>
+                        <input type="text" class="form-control" id="editReference" name="reference">
+                    </div>
+                    <div class="form-group">
+                        <label><?= __('notes') ?></label>
+                        <textarea class="form-control" id="editNotes" name="notes" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-modal-cancel" data-dismiss="modal"><?= __('cancel') ?></button>
+                    <button type="submit" class="btn-modal-primary"><?= __('save_changes') ?></button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -2151,5 +2239,115 @@ function getStatusClass(status) {
 $customers = [$customer];
 include 'includes/sarafi_modals.php'; 
 ?>
+<script>
+// Edit transaction - load data into modal
+$(document).on('click', '.edit-transaction', function() {
+    const transactionId = $(this).data('id');
+    const btn = $(this);
+    btn.prop('disabled', true).html('<i class="feather icon-loader"></i>');
+    editTransaction(transactionId, btn);
+});
+
+function editTransaction(transactionId, btn) {
+    $.ajax({
+        url: 'view_sarafi_transaction.php', type: 'GET', data: { id: transactionId }, dataType: 'json',
+        success: r => {
+            if (btn) btn.prop('disabled', false).html('<i class="feather icon-edit-2"></i>');
+            if (!r.success) { showToast('error', r.message); return; }
+            if (!r.success) { showToast('error', r.message); return; }
+            const { transaction: tx, customer, main_account, hawala, exchange } = r.data;
+            $('#editTransactionId').val(tx.id);
+            $('#editTransactionType').val(tx.type);
+            $('#editCustomerId').val(customer.id);
+            $('#editCustomerName').val(customer.name);
+            $('#editMainAccountId').val(main_account ? main_account.id : '');
+            $('#editAmount').val(parseFloat(tx.amount).toFixed(2));
+            $('#editOriginalAmount').val(parseFloat(tx.amount).toFixed(2));
+            $('#editReference').val(tx.reference_number || '');
+            $('#editNotes').val(tx.notes || '');
+            if (tx.type === 'hawala_send' && hawala) {
+                $('#hawalaEditFields').show();
+                $('#editSecretCode').val(hawala.secret_code || '');
+                $('#editCommissionAmount').val(parseFloat(hawala.commission_amount || 0).toFixed(2));
+                $('#editCommissionCurrencyDisplay').text(tx.currency);
+            } else {
+                $('#hawalaEditFields').hide();
+            }
+            if (tx.type === 'exchange' && exchange) {
+                $('#exchangeEditFields').show();
+                $('#editFromCurrency').val(exchange.from_currency || '');
+                $('#editToCurrency').val(exchange.to_currency || '');
+                $('#editToAmount').val(parseFloat(exchange.to_amount || 0).toFixed(2));
+                $('#editRate').val(parseFloat(exchange.rate || 0).toFixed(4));
+                const dividePairs = ['AFS->USD', 'AFS->EUR', 'AFS->AED', 'AED->USD', 'AED->EUR'];
+                const fromC = exchange.from_currency || '';
+                const toC = exchange.to_currency || '';
+                const isDivide = dividePairs.includes(fromC + '->' + toC);
+                $('#editExchangeFormulaBadge').text(isDivide ? '÷' : '×');
+                const rateVal = parseFloat(exchange.rate || 0);
+                if (isDivide) {
+                    $('#editExchangeRateHelp').text('e.g. 1 ' + toC + ' = ' + rateVal.toFixed(2) + ' ' + fromC + ' → enter ' + rateVal.toFixed(2));
+                } else {
+                    $('#editExchangeRateHelp').text('e.g. 1 ' + fromC + ' = ' + rateVal.toFixed(2) + ' ' + toC + ' → enter ' + rateVal.toFixed(2));
+                }
+            } else {
+                $('#exchangeEditFields').hide();
+            }
+            $('#editTransactionModal').modal('show');
+        },
+        error: () => { if (btn) btn.prop('disabled', false).html('<i class="feather icon-edit-2"></i>'); showToast('error', '<?= __("error_loading_transaction_details") ?>'); }
+    });
+}
+
+// Exchange edit auto-calc
+$(document).on('input', '#editRate, #editAmount', function() {
+    if ($('#exchangeEditFields').is(':visible')) {
+        const fromAmt = parseFloat($('#editAmount').val()) || 0;
+        const rate = parseFloat($('#editRate').val()) || 0;
+        const dividePairs = ['AFS->USD', 'AFS->EUR', 'AFS->AED', 'AED->USD', 'AED->EUR'];
+        const fromC = $('#editFromCurrency').val() || '';
+        const toC = $('#editToCurrency').val() || '';
+        const divide = dividePairs.includes(fromC + '->' + toC);
+        const toAmt = divide ? fromAmt / rate : fromAmt * rate;
+        $('#editToAmount').val(toAmt.toFixed(2));
+    }
+});
+
+// Edit form submit with double-submit protection
+$(document).on('submit', '#editTransactionForm', function(e) {
+    e.preventDefault();
+    const type = $('#editTransactionType').val();
+    const urlMap = { deposit: 'update_sarafi_deposit_transaction.php', withdrawal: 'update_sarafi_withdrawal_transaction.php', hawala_send: 'update_sarafi_hawala_transaction.php', exchange: 'update_sarafi_exchange_transaction.php' };
+    if (!urlMap[type]) { showToast('error', '<?= __("unsupported_transaction_type") ?>'); return; }
+    const btn = $(this).find('button[type="submit"]');
+    if (btn.data('submitting')) return;
+    btn.data('submitting', true).prop('disabled', true);
+    const orig = btn.html();
+    btn.html('<i class="feather icon-loader btn-loading"></i> <?= __("processing") ?>');
+    $.ajax({
+        url: urlMap[type], type: 'POST', data: new FormData(this),
+        processData: false, contentType: false,
+        success: r => {
+            btn.data('submitting', false).prop('disabled', false).html(orig);
+            const res = typeof r === 'string' ? JSON.parse(r) : r;
+            if (res.success) { showToast('success', '<?= __("transaction_updated_successfully") ?>'); $('#editTransactionModal').modal('hide'); setTimeout(() => location.reload(), 800); }
+            else showToast('error', res.message || '<?= __("error_updating_transaction") ?>');
+        },
+        error: () => { btn.data('submitting', false).prop('disabled', false).html(orig); showToast('error', '<?= __("error_updating_transaction") ?>'); }
+    });
+});
+
+// Button double-submit protection & loading state for create forms
+$('form').not('#editTransactionForm').on('submit', function() {
+    const btn = $(this).find('button[type="submit"]');
+    if (btn.data('submitting')) return false;
+    btn.data('submitting', true);
+    const name = btn.attr('name');
+    if (name) $(this).append($('<input>', { type: 'hidden', name: name, value: btn.val() || '' }));
+    btn.prop('disabled', true);
+    btn.data('original-html', btn.html());
+    btn.html('<i class="feather icon-loader btn-loading"></i> <?= __("processing") ?>');
+});
+</script>
 </body>
 </html>

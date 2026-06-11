@@ -1,4 +1,20 @@
 <?php
+
+/**
+ * Determine if the rate needs to be inverted for DB storage.
+ * The user always enters the rate as "units of weaker per 1 stronger"
+ * (e.g., 72.5 AFS per USD). When going weak→strong we divide, so the
+ * stored DB rate (units of to per 1 from) must be 1/user_rate.
+ */
+function needsRateInversion($from_currency, $to_currency) {
+    $dividePairs = ['AFS->USD', 'AFS->EUR', 'AFS->AED', 'AED->USD', 'AED->EUR'];
+    return in_array("{$from_currency}->{$to_currency}", $dividePairs);
+}
+
+function getFormulaLabel($from_currency, $to_currency) {
+    return needsRateInversion($from_currency, $to_currency) ? '÷' : '×';
+}
+
 // Function to process currency exchange
 // Note: Assumes transaction is already active in the caller
 function processCurrencyExchange($pdo, $data) {
@@ -19,18 +35,18 @@ function processCurrencyExchange($pdo, $data) {
             throw new Exception('Insufficient balance for exchange');
         }
         
-        // Calculate profit/loss using the provided rate
-        $provided_rate = $data['rate'];
-        
+        // Convert user-friendly rate to DB format (units of to per 1 from)
+        $user_rate = $data['rate'];
+        $db_rate = needsRateInversion($data['from_currency'], $data['to_currency']) ? (1 / $user_rate) : $user_rate;
+
         // Try to get market rate for profit calculation, but don't fail if not found
         try {
             $market_rate = getCurrentMarketRate($pdo, $data['from_currency'], $data['to_currency']);
             $market_amount = $data['from_amount'] * $market_rate;
             $profit_amount = $data['to_amount'] - $market_amount;
         } catch (Exception $e) {
-            // If market rate is not available, assume provided rate is market rate (no profit)
-            $market_rate = $provided_rate;
-            $market_amount = $data['from_amount'] * $provided_rate;
+            $market_rate = $db_rate;
+            $market_amount = $data['from_amount'] * $db_rate;
             $profit_amount = 0;
         }
         
@@ -46,14 +62,14 @@ function processCurrencyExchange($pdo, $data) {
         $stmt->execute();
         $transaction_id = $pdo->lastInsertId();
         
-        // Record exchange details
+        // Record exchange details — store user-friendly rate (the rate the user entered)
         $stmt = $pdo->prepare("INSERT INTO exchange_transactions (transaction_id, from_amount, from_currency, to_amount, to_currency, rate, profit_amount, profit_currency, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->bindParam(1, $transaction_id, PDO::PARAM_INT);
         $stmt->bindParam(2, $data['from_amount'], PDO::PARAM_STR);
         $stmt->bindParam(3, $data['from_currency'], PDO::PARAM_STR);
         $stmt->bindParam(4, $data['to_amount'], PDO::PARAM_STR);
         $stmt->bindParam(5, $data['to_currency'], PDO::PARAM_STR);
-        $stmt->bindParam(6, $provided_rate, PDO::PARAM_STR);
+        $stmt->bindParam(6, $user_rate, PDO::PARAM_STR);
         $stmt->bindParam(7, $profit_amount, PDO::PARAM_STR);
         $stmt->bindParam(8, $data['to_currency'], PDO::PARAM_STR);
         $stmt->bindParam(9, $tenant_id, PDO::PARAM_INT);
@@ -86,7 +102,7 @@ function processCurrencyExchange($pdo, $data) {
         
         // Store the exchange rate for future reference
         try {
-            updateExchangeRate($pdo, $data['from_currency'], $data['to_currency'], $provided_rate, $tenant_id, $branch_id);
+            updateExchangeRate($pdo, $data['from_currency'], $data['to_currency'], $db_rate, $tenant_id, $branch_id);
         } catch (Exception $e) {
             error_log("Warning: Could not update exchange rate history: " . $e->getMessage());
             // Don't fail the transaction if we can't update the rate history
@@ -97,7 +113,7 @@ function processCurrencyExchange($pdo, $data) {
             'message' => 'Currency exchange completed successfully',
             'transaction_id' => $transaction_id,
             'profit_amount' => $profit_amount,
-            'exchange_rate' => $provided_rate
+            'exchange_rate' => $user_rate
         ];
         
     } catch (Exception $e) {
@@ -272,16 +288,15 @@ function getExchangeRateHistory($pdo, $from_currency, $to_currency, $tenant_id, 
 // Function to calculate potential profit
 function calculatePotentialProfit($pdo, $from_amount, $from_currency, $to_currency, $exchange_rate) {
     try {
-        // Try to get market rate, but don't fail if not found
+        $db_rate = needsRateInversion($from_currency, $to_currency) ? (1 / $exchange_rate) : $exchange_rate;
         try {
             $market_rate = getCurrentMarketRate($pdo, $from_currency, $to_currency);
         } catch (Exception $e) {
-            // If market rate is not available, use the provided exchange rate
-            $market_rate = $exchange_rate;
+            $market_rate = $db_rate;
         }
         
         $market_amount = $from_amount * $market_rate;
-        $exchange_amount = $from_amount * $exchange_rate;
+        $exchange_amount = $from_amount * $db_rate;
         $profit = $exchange_amount - $market_amount;
         
         return [
