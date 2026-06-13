@@ -79,7 +79,6 @@ try {
     $base = floatval($booking['price'] ?? 0);
     $refundToSupplier = $base - $supplierPenalty;
     $refundToPassenger = $sold - ($supplierPenalty + $servicePenalty);
-    $calculationMethod = 'sold';
 
     if ($refundToPassenger < 0) {
         throw new Exception('Refund amount cannot be negative.');
@@ -89,8 +88,8 @@ try {
 
     // Insert refund record into umrah_refunds
     $insertRefundStmt = $pdo->prepare("INSERT INTO umrah_refunds
-        (tenant_id, booking_id, refund_type, refund_amount, base, sold, supplier_penalty, service_penalty, calculation_method, reason, currency, processed_by, branch_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        (tenant_id, booking_id, refund_type, refund_amount, base, sold, supplier_penalty, service_penalty, reason, currency, processed_by, branch_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $refundType = ($refundToPassenger >= $sold) ? 'full' : 'partial';
     $insertRefundStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
     $insertRefundStmt->bindParam(2, $bookingId, PDO::PARAM_INT);
@@ -100,11 +99,10 @@ try {
     $insertRefundStmt->bindParam(6, $sold, PDO::PARAM_STR);
     $insertRefundStmt->bindParam(7, $supplierPenalty, PDO::PARAM_STR);
     $insertRefundStmt->bindParam(8, $servicePenalty, PDO::PARAM_STR);
-    $insertRefundStmt->bindParam(9, $calculationMethod, PDO::PARAM_STR);
-    $insertRefundStmt->bindParam(10, $description, PDO::PARAM_STR);
-    $insertRefundStmt->bindParam(11, $currency, PDO::PARAM_STR);
-    $insertRefundStmt->bindParam(12, $user_id, PDO::PARAM_INT);
-    $insertRefundStmt->bindParam(13, $branch_id, PDO::PARAM_INT);
+    $insertRefundStmt->bindParam(9, $description, PDO::PARAM_STR);
+    $insertRefundStmt->bindParam(10, $currency, PDO::PARAM_STR);
+    $insertRefundStmt->bindParam(11, $user_id, PDO::PARAM_INT);
+    $insertRefundStmt->bindParam(12, $branch_id, PDO::PARAM_INT);
     if (!$insertRefundStmt->execute()) {
         throw new Exception('Failed to insert refund record');
     }
@@ -274,8 +272,7 @@ try {
         'service_penalty' => $servicePenalty,
         'currency' => $currency,
         'refund_amount' => $refundToPassenger,
-        'description' => $description,
-        'calculation_method' => $calculationMethod
+        'description' => $description
     ];
 
     $activityStmt = $pdo->prepare("INSERT INTO activity_log

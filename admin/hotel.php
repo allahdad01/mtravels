@@ -827,14 +827,16 @@ $paginationPattern = empty($search)
                                         'confirmed' => ['label' => 'Confirmed', 'class' => 'hb-status-confirmed', 'bar' => 'linear-gradient(180deg,#1a56db 0%,#7c3aed 100%)'],
                                         'pending'   => ['label' => 'Pending',   'class' => 'hb-status-pending',   'bar' => 'linear-gradient(180deg,#d97706 0%,#f59e0b 100%)'],
                                         'cancelled' => ['label' => 'Cancelled', 'class' => 'hb-status-cancelled', 'bar' => '#d1d5db'],
+                                        'refunded'  => ['label' => 'Refunded',  'class' => 'hb-status-cancelled', 'bar' => '#d1d5db'],
                                     ];
                                     $statusInfo = $statusMap[$status] ?? $statusMap['confirmed'];
-                                    $isCancelled = ($status === 'cancelled');
+                                    $isCancelled = ($status === 'cancelled' || $status === 'refunded');
 
                                     // Icon colour per status
                                     $iconStyle = match($status) {
                                         'pending'   => 'background:#fffbeb; color:#d97706;',
                                         'cancelled' => 'background:#f9fafb; color:#9ca3af;',
+                                        'refunded'  => 'background:#f9fafb; color:#9ca3af;',
                                         default     => 'background:#eff3ff; color:#1a56db;',
                                     };
 
@@ -1018,13 +1020,15 @@ $paginationPattern = empty($search)
                                               </button>
                                               <?php endif; ?>
 
+                                              <?php if ($status !== 'refunded'): ?>
                                               <button class="hb-btn-icon hb-refund"
-                                                      data-id="<?= $booking['id'] ?>"
-                                                      data-action="refund"
-                                                      data-tip="<?= __('process_refund') ?>"
-                                                      onclick="openRefundModal(<?= $booking['id'] ?>, <?= $booking['sold_amount'] ?>, <?= $booking['base_amount'] ?>, '<?= $booking['currency'] ?>')">
+                                                       data-id="<?= $booking['id'] ?>"
+                                                       data-action="refund"
+                                                       data-tip="<?= __('process_refund') ?>"
+                                                       onclick="openRefundModal(<?= $booking['id'] ?>, <?= $booking['sold_amount'] ?>, <?= $booking['base_amount'] ?>, '<?= $booking['currency'] ?>')">
                                                   <i class="feather icon-refresh-ccw"></i>
                                               </button>
+                                              <?php endif; ?>
 
                                               <?php if ($canEdit): ?>
                                               <button class="hb-btn-icon hb-delete"
