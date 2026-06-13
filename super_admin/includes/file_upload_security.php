@@ -235,9 +235,10 @@ class FileUploadSecurity {
      * @param string $tmpPath Path to temporary file
      * @param string $destPath Destination path
      * @param string $safeName Safe filename to use
+     * @param int $webpQuality WebP quality (0=off)
      * @return array ['success' => bool, 'error' => string, 'path' => string]
      */
-    public static function moveUploadedFile($tmpPath, $destPath, $safeName) {
+    public static function moveUploadedFile($tmpPath, $destPath, $safeName, $webpQuality = 85) {
         // Ensure destination directory exists
         if (!is_dir($destPath)) {
             if (!@mkdir($destPath, 0755, true)) {
@@ -269,10 +270,53 @@ class FileUploadSecurity {
         // Set proper permissions
         chmod($fullPath, 0644);
         
+        // Auto-convert images to WebP
+        $finalPath = $fullPath;
+        $imageMimes = [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_GIF];
+        $ext = strtolower(pathinfo($safeName, PATHINFO_EXTENSION));
+        
+        if ($webpQuality > 0 && in_array($ext, ['jpg', 'jpeg', 'png', 'gif']) && function_exists('imagewebp')) {
+            $imageinfo = @getimagesize($fullPath);
+            if ($imageinfo !== false && in_array($imageinfo[2], $imageMimes)) {
+                $webpPath = $destPath . '/' . pathinfo($safeName, PATHINFO_FILENAME) . '.webp';
+                
+                try {
+                    switch ($imageinfo[2]) {
+                        case IMAGETYPE_JPEG:
+                            $img = @imagecreatefromjpeg($fullPath);
+                            break;
+                        case IMAGETYPE_PNG:
+                            $img = @imagecreatefrompng($fullPath);
+                            break;
+                        case IMAGETYPE_GIF:
+                            $img = @imagecreatefromgif($fullPath);
+                            break;
+                    }
+                    
+                    if (isset($img) && $img !== false) {
+                        if ($imageinfo[2] === IMAGETYPE_PNG) {
+                            imagepalettetotruecolor($img);
+                            imagealphablending($img, true);
+                            imagesavealpha($img, false);
+                        }
+                        
+                        if (imagewebp($img, $webpPath, $webpQuality)) {
+                            chmod($webpPath, 0644);
+                            unlink($fullPath);
+                            $finalPath = $webpPath;
+                        }
+                        imagedestroy($img);
+                    }
+                } catch (Exception $e) {
+                    // Fallback: keep original
+                }
+            }
+        }
+        
         return [
             'success' => true,
-            'path' => $fullPath,
-            'url' => str_replace($destPath, '', $fullPath)
+            'path' => $finalPath,
+            'url' => str_replace($destPath, '', $finalPath)
         ];
     }
 }

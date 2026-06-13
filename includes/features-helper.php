@@ -143,20 +143,38 @@ function renderAllFeatureCards($features) {
 
 /**
  * Get feature screenshots from uploads/features_images/{n+1}/
- * Returns array of full URL paths
+ * Returns array of full URL paths — prefers WebP when available
  */
 function getFeatureScreenshots($index) {
     $folderNum = str_pad($index + 1, 2, '0', STR_PAD_LEFT);
     $folderPath = __DIR__ . '/../uploads/features_images/' . $folderNum;
     $baseUrl = 'uploads/features_images/' . $folderNum;
     $images = [];
+    $webpMap = [];
     if (is_dir($folderPath)) {
         $files = scandir($folderPath);
         $extensions = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
+        $originals = [];
         foreach ($files as $file) {
             if ($file === '.' || $file === '..') continue;
             $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
-            if (in_array($ext, $extensions)) {
+            if (!in_array($ext, $extensions)) continue;
+            $base = pathinfo($file, PATHINFO_FILENAME);
+            if ($ext === 'webp') {
+                $webpMap[$base] = $file;
+            } else {
+                $originals[$base] = $file;
+            }
+        }
+        foreach ($originals as $base => $file) {
+            if (isset($webpMap[$base])) {
+                $images[] = $baseUrl . '/' . $webpMap[$base];
+            } else {
+                $images[] = $baseUrl . '/' . $file;
+            }
+        }
+        foreach ($webpMap as $base => $file) {
+            if (!isset($originals[$base])) {
                 $images[] = $baseUrl . '/' . $file;
             }
         }

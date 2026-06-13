@@ -12,6 +12,7 @@ class SecureFileUpload {
         'image/jpeg' => ['jpg', 'jpeg'],
         'image/png' => ['png'],
         'image/gif' => ['gif'],
+        'image/webp' => ['webp'],
         'application/pdf' => ['pdf'],
         'application/msword' => ['doc'],
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => ['docx'],
@@ -22,19 +23,26 @@ class SecureFileUpload {
     
     private $max_size = 10485760; // 10MB default
     private $upload_dir = '../uploads/';
+    private $webp_quality = 85;
     private $errors = [];
     
     /**
      * Constructor
      * @param int $max_size Maximum file size in bytes
      * @param string $upload_dir Base upload directory
+     * @param int $webp_quality WebP quality (0-100, 0=off)
      */
-    public function __construct($max_size = null, $upload_dir = null) {
+    public function __construct($max_size = null, $upload_dir = null, $webp_quality = 85) {
         if ($max_size !== null) {
             $this->max_size = $max_size;
         }
         if ($upload_dir !== null) {
             $this->upload_dir = $upload_dir;
+        }
+        if ($webp_quality > 0) {
+            $this->webp_quality = $webp_quality;
+        } else {
+            $this->webp_quality = 0; // off
         }
     }
     
@@ -128,13 +136,57 @@ class SecureFileUpload {
         // Set proper file permissions (readable but not executable)
         chmod($target_path, 0644);
         
+        // Auto-convert images to WebP
+        $final_filename = $unique_name;
+        $final_path = $target_path;
+        $final_mime = $mime;
+        $image_mimes = ['image/jpeg', 'image/png', 'image/gif'];
+        
+        if ($this->webp_quality > 0 && in_array($mime, $image_mimes) && function_exists('imagewebp')) {
+            $webp_filename = pathinfo($unique_name, PATHINFO_FILENAME) . '.webp';
+            $webp_path = $target_dir . $webp_filename;
+            
+            try {
+                switch ($mime) {
+                    case 'image/jpeg':
+                        $img = @imagecreatefromjpeg($target_path);
+                        break;
+                    case 'image/png':
+                        $img = @imagecreatefrompng($target_path);
+                        break;
+                    case 'image/gif':
+                        $img = @imagecreatefromgif($target_path);
+                        break;
+                }
+                
+                if (isset($img) && $img !== false) {
+                    if ($mime === 'image/png') {
+                        imagepalettetotruecolor($img);
+                        imagealphablending($img, true);
+                        imagesavealpha($img, false);
+                    }
+                    
+                    if (imagewebp($img, $webp_path, $this->webp_quality)) {
+                        chmod($webp_path, 0644);
+                        unlink($target_path); // remove original
+                        $final_filename = $webp_filename;
+                        $final_path = $webp_path;
+                        $final_mime = 'image/webp';
+                    }
+                    imagedestroy($img);
+                }
+            } catch (Exception $e) {
+                // Fallback: keep original file if conversion fails
+            }
+        }
+        
         return $this->success([
-            'filename' => $unique_name,
+            'filename' => $final_filename,
             'original_name' => $original_name,
-            'path' => str_replace('\\', '/', $target_path),
-            'mime' => $mime,
-            'size' => $file['size'],
-            'extension' => $extension
+            'path' => str_replace('\\', '/', $final_path),
+            'mime' => $final_mime,
+            'size' => file_exists($final_path) ? filesize($final_path) : $file['size'],
+            'extension' => pathinfo($final_filename, PATHINFO_EXTENSION)
         ]);
     }
     

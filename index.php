@@ -93,7 +93,7 @@ $blog_posts = $landingData['blog_posts'];
                 <div class="hero-image">
                     <div class="laptop-mockup">
                         <div class="laptop-screen">
-                            <img src="uploads/hero_image/dashboard.png" alt="MTravels Dashboard">
+                            <img src="uploads/hero_image/dashboard.webp" alt="MTravels Dashboard">
                         </div>
                         <div class="laptop-base">
                             <div class="laptop-notch"></div>
