@@ -33,7 +33,7 @@ define('DEFAULT_FEATURES', [
     ['icon_key' => 'finance', 'title' => 'Finance & Accounting', 'description' => 'Multi-currency support, real-time P&L, main accounts, client/supplier tracking, JV payments, and comprehensive financial statements.'],
     ['icon_key' => 'automation', 'title' => 'Automation & Intelligence', 'description' => 'Automated profit calculation, real-time analytics, interactive charts, email/WhatsApp automation, and OCR auto-fill features.'],
     ['icon_key' => 'dashboard', 'title' => 'Dashboards & Reporting', 'description' => 'Admin dashboard with multi-currency charts, profit breakdowns, outstanding dues, and exportable reports in Excel/PDF.'],
-    ['icon_key' => 'multitenant', 'title' => 'Multi-Tenant & Multi-Branch', 'description' => 'Full SaaS architecture with multi-branch support, separate data per tenant, and branch-level operations management.'],
+    ['icon_key' => 'multitenant', 'title' => 'Multi-Branch', 'description' => 'Full SaaS architecture with multi-branch support, separate data per tenant, and branch-level operations management.'],
     ['icon_key' => 'roles', 'title' => 'Roles & Access Control', 'description' => 'Role-based access with Super Admin, Admin, Finance, Sales, and Umrah roles, plus branch-based user visibility.'],
     ['icon_key' => 'maktob', 'title' => 'Maktob Management', 'description' => 'Official letter management with multi-language support, PDF generation, numbering system, and audit logging.'],
     ['icon_key' => 'hr', 'title' => 'HR & Attendance', 'description' => 'Employee attendance tracking, integration with salary module, and performance-based reporting per branch.'],
