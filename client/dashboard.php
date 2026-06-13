@@ -154,8 +154,9 @@ try {
 } catch (PDOException $e) { error_log("Recent payments: " . $e->getMessage()); }
 
 // ── Helpers ────────────────────────────────────────────────
-$profilePic = !empty($client['profile_pic']) ? $client['profile_pic'] : 'default-avatar.jpg';
-$imagePath  = '../assets/images/user/' . htmlspecialchars($profilePic);
+$profilePic = !empty($client['profile_pic']) ? $client['profile_pic'] : '';
+$hasAvatar = $profilePic && file_exists('../assets/images/client/' . htmlspecialchars($profilePic));
+$imagePath = $hasAvatar ? '../assets/images/client/' . htmlspecialchars($profilePic) : '';
 
 $totalBookings = $stats['tickets'] + $stats['hotels'] + $stats['visas'] + $stats['umrah'];
 
@@ -620,15 +621,20 @@ function greetClient(): string {
                     <strong><?= date('d M Y') ?></strong>
                     <?= date('l') ?>
                 </div>
+                <?php if ($imagePath): ?>
                 <img src="<?= $imagePath ?>" alt="Profile" class="hero-avatar"
-                     onerror="this.src='../assets/images/user/default-avatar.jpg'">
+                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                <div class="hero-avatar-fallback" style="display:none;width:64px;height:64px;border-radius:50%;background:var(--grad);color:#fff;font-size:24px;font-weight:700;align-items:center;justify-content:center;flex-shrink:0;"><?= strtoupper(substr($client['name'] ?? 'U', 0, 1)) ?></div>
+                <?php else: ?>
+                <div class="hero-avatar-fallback" style="display:flex;width:64px;height:64px;border-radius:50%;background:var(--grad);color:#fff;font-size:24px;font-weight:700;align-items:center;justify-content:center;flex-shrink:0;"><?= strtoupper(substr($client['name'] ?? 'U', 0, 1)) ?></div>
+                <?php endif; ?>
             </div>
         </div>
 
         <!-- ── Account Balances ───────────────────────────── -->
         <div class="balance-row">
             <div class="balance-card usd">
-                <div class="balance-icon"><i class="feather icon-dollar-sign"></i></div>
+                <div class="balance-icon"><i class="fas fa-dollar-sign"></i></div>
                 <div class="balance-info">
                     <div class="b-label">USD Balance</div>
                     <div class="b-value"><?= number_format($stats['balance']['usd'], 2) ?></div>
@@ -636,7 +642,7 @@ function greetClient(): string {
                 </div>
             </div>
             <div class="balance-card afs">
-                <div class="balance-icon"><i class="feather icon-credit-card"></i></div>
+                <div class="balance-icon"><i class="fas fa-credit-card"></i></div>
                 <div class="balance-info">
                     <div class="b-label">AFS Balance</div>
                     <div class="b-value"><?= number_format($stats['balance']['afs'], 2) ?></div>
@@ -649,42 +655,42 @@ function greetClient(): string {
         <div class="stats-grid">
 
             <a href="ticket.php" class="stat-card">
-                <div class="stat-icon tickets"><i class="feather icon-send"></i></div>
+                <div class="stat-icon tickets"><i class="fas fa-paper-plane"></i></div>
                 <div class="stat-value"><?= number_format($stats['tickets']) ?></div>
                 <div class="stat-label">Tickets</div>
-                <div class="stat-link">View all <i class="feather icon-arrow-right"></i></div>
+                <div class="stat-link">View all <i class="fas fa-arrow-right"></i></div>
             </a>
 
             <a href="hotel.php" class="stat-card">
-                <div class="stat-icon hotels"><i class="feather icon-home"></i></div>
+                <div class="stat-icon hotels"><i class="fas fa-home"></i></div>
                 <div class="stat-value"><?= number_format($stats['hotels']) ?></div>
                 <div class="stat-label">Hotels</div>
-                <div class="stat-link">View all <i class="feather icon-arrow-right"></i></div>
+                <div class="stat-link">View all <i class="fas fa-arrow-right"></i></div>
             </a>
 
             <a href="visa.php" class="stat-card">
-                <div class="stat-icon visas"><i class="feather icon-globe"></i></div>
+                <div class="stat-icon visas"><i class="fas fa-globe"></i></div>
                 <div class="stat-value"><?= number_format($stats['visas']) ?></div>
                 <div class="stat-label">Visas</div>
-                <div class="stat-link">View all <i class="feather icon-arrow-right"></i></div>
+                <div class="stat-link">View all <i class="fas fa-arrow-right"></i></div>
             </a>
 
             <a href="umrah.php" class="stat-card">
-                <div class="stat-icon umrah"><i class="feather icon-map-pin"></i></div>
+                <div class="stat-icon umrah"><i class="fas fa-map-marker-alt"></i></div>
                 <div class="stat-value"><?= number_format($stats['umrah']) ?></div>
                 <div class="stat-label">Umrah</div>
-                <div class="stat-link">View all <i class="feather icon-arrow-right"></i></div>
+                <div class="stat-link">View all <i class="fas fa-arrow-right"></i></div>
             </a>
 
             <a href="additional_payments.php" class="stat-card">
-                <div class="stat-icon payments"><i class="feather icon-credit-card"></i></div>
+                <div class="stat-icon payments"><i class="fas fa-credit-card"></i></div>
                 <div class="stat-value"><?= number_format($stats['payments']) ?></div>
                 <div class="stat-label">Payments</div>
-                <div class="stat-link">View all <i class="feather icon-arrow-right"></i></div>
+                <div class="stat-link">View all <i class="fas fa-arrow-right"></i></div>
             </a>
 
             <div class="stat-card" style="cursor:default;">
-                <div class="stat-icon total"><i class="feather icon-layers"></i></div>
+                <div class="stat-icon total"><i class="fas fa-layer-group"></i></div>
                 <div class="stat-value"><?= number_format($totalBookings) ?></div>
                 <div class="stat-label">All Bookings</div>
                 <div class="stat-link" style="color:var(--text-light); cursor:default;">Combined total</div>
@@ -698,27 +704,27 @@ function greetClient(): string {
         </div>
         <div class="quick-links">
             <a href="ticket.php" class="quick-link-card">
-                <div class="ql-icon" style="background:linear-gradient(135deg,#4099ff,#0ea5e9);"><i class="feather icon-send"></i></div>
+                <div class="ql-icon" style="background:linear-gradient(135deg,#4099ff,#0ea5e9);"><i class="fas fa-paper-plane"></i></div>
                 <span class="ql-label">Tickets</span>
             </a>
             <a href="ticket_reservations.php" class="quick-link-card">
-                <div class="ql-icon" style="background:linear-gradient(135deg,#0284c7,#0ea5e9);"><i class="feather icon-bookmark"></i></div>
+                <div class="ql-icon" style="background:linear-gradient(135deg,#0284c7,#0ea5e9);"><i class="fas fa-bookmark"></i></div>
                 <span class="ql-label">Reservations</span>
             </a>
             <a href="hotel.php" class="quick-link-card">
-                <div class="ql-icon" style="background:linear-gradient(135deg,#059669,#2ed8b6);"><i class="feather icon-home"></i></div>
+                <div class="ql-icon" style="background:linear-gradient(135deg,#059669,#2ed8b6);"><i class="fas fa-home"></i></div>
                 <span class="ql-label">Hotels</span>
             </a>
             <a href="visa.php" class="quick-link-card">
-                <div class="ql-icon" style="background:linear-gradient(135deg,#7c3aed,#6366f1);"><i class="feather icon-globe"></i></div>
+                <div class="ql-icon" style="background:linear-gradient(135deg,#7c3aed,#6366f1);"><i class="fas fa-globe"></i></div>
                 <span class="ql-label">Visas</span>
             </a>
             <a href="umrah.php" class="quick-link-card">
-                <div class="ql-icon" style="background:linear-gradient(135deg,#d97706,#f59e0b);"><i class="feather icon-map-pin"></i></div>
+                <div class="ql-icon" style="background:linear-gradient(135deg,#d97706,#f59e0b);"><i class="fas fa-map-marker-alt"></i></div>
                 <span class="ql-label">Umrah</span>
             </a>
             <a href="additional_payments.php" class="quick-link-card">
-                <div class="ql-icon" style="background:linear-gradient(135deg,#db2777,#ec4899);"><i class="feather icon-credit-card"></i></div>
+                <div class="ql-icon" style="background:linear-gradient(135deg,#db2777,#ec4899);"><i class="fas fa-credit-card"></i></div>
                 <span class="ql-label">Payments</span>
             </a>
         </div>
@@ -731,10 +737,10 @@ function greetClient(): string {
         <!-- Recent Tickets -->
         <div class="section-card">
             <div class="section-head">
-                <span class="sec-icon tickets"><i class="feather icon-send"></i></span>
+                <span class="sec-icon tickets"><i class="fas fa-paper-plane"></i></span>
                 <h6>Recent Tickets</h6>
                 <span class="rec-count"><?= count($recent['tickets']) ?> shown</span>
-                <a href="ticket.php" class="view-all-btn">View All <i class="feather icon-arrow-right"></i></a>
+                <a href="ticket.php" class="view-all-btn">View All <i class="fas fa-arrow-right"></i></a>
             </div>
             <?php if (!empty($recent['tickets'])): ?>
                 <div style="overflow-x:auto;">
@@ -756,7 +762,7 @@ function greetClient(): string {
                                 <td>
                                     <div class="route-cell">
                                         <span><?= htmlspecialchars($t['origin']) ?></span>
-                                        <span class="route-arr"><i class="feather icon-arrow-right"></i></span>
+                                        <span class="route-arr"><i class="fas fa-arrow-right"></i></span>
                                         <span><?= htmlspecialchars($t['destination']) ?></span>
                                     </div>
                                 </td>
@@ -769,7 +775,7 @@ function greetClient(): string {
                 </div>
             <?php else: ?>
                 <div class="empty-mini">
-                    <i class="feather icon-send"></i>
+                    <i class="fas fa-paper-plane"></i>
                     <p>No recent ticket bookings</p>
                 </div>
             <?php endif; ?>
@@ -778,10 +784,10 @@ function greetClient(): string {
         <!-- Recent Hotels -->
         <div class="section-card">
             <div class="section-head">
-                <span class="sec-icon hotels"><i class="feather icon-home"></i></span>
+                <span class="sec-icon hotels"><i class="fas fa-home"></i></span>
                 <h6>Recent Hotels</h6>
                 <span class="rec-count"><?= count($recent['hotels']) ?> shown</span>
-                <a href="hotel.php" class="view-all-btn">View All <i class="feather icon-arrow-right"></i></a>
+                <a href="hotel.php" class="view-all-btn">View All <i class="fas fa-arrow-right"></i></a>
             </div>
             <?php if (!empty($recent['hotels'])): ?>
                 <div style="overflow-x:auto;">
@@ -802,7 +808,7 @@ function greetClient(): string {
                                 <td><span class="date-text"><?= htmlspecialchars($h['check_in_date']) ?></span></td>
                                 <td>
                                     <?php if ((int)$h['total_nights'] > 0): ?>
-                                        <span class="nights-badge"><i class="feather icon-moon"></i> <?= (int)$h['total_nights'] ?></span>
+                                        <span class="nights-badge"><i class="fas fa-moon"></i> <?= (int)$h['total_nights'] ?></span>
                                     <?php else: ?>
                                         <span style="color:var(--text-light);">—</span>
                                     <?php endif; ?>
@@ -816,7 +822,7 @@ function greetClient(): string {
                 </div>
             <?php else: ?>
                 <div class="empty-mini">
-                    <i class="feather icon-home"></i>
+                    <i class="fas fa-home"></i>
                     <p>No recent hotel bookings</p>
                 </div>
             <?php endif; ?>
@@ -825,10 +831,10 @@ function greetClient(): string {
         <!-- Recent Visas -->
         <div class="section-card">
             <div class="section-head">
-                <span class="sec-icon visas"><i class="feather icon-globe"></i></span>
+                <span class="sec-icon visas"><i class="fas fa-globe"></i></span>
                 <h6>Recent Visa Applications</h6>
                 <span class="rec-count"><?= count($recent['visas']) ?> shown</span>
-                <a href="visa.php" class="view-all-btn">View All <i class="feather icon-arrow-right"></i></a>
+                <a href="visa.php" class="view-all-btn">View All <i class="fas fa-arrow-right"></i></a>
             </div>
             <?php if (!empty($recent['visas'])): ?>
                 <div style="overflow-x:auto;">
@@ -875,7 +881,7 @@ function greetClient(): string {
                 </div>
             <?php else: ?>
                 <div class="empty-mini">
-                    <i class="feather icon-globe"></i>
+                    <i class="fas fa-globe"></i>
                     <p>No recent visa applications</p>
                 </div>
             <?php endif; ?>
@@ -884,10 +890,10 @@ function greetClient(): string {
         <!-- Recent Umrah -->
         <div class="section-card">
             <div class="section-head">
-                <span class="sec-icon umrah"><i class="feather icon-map-pin"></i></span>
+                <span class="sec-icon umrah"><i class="fas fa-map-marker-alt"></i></span>
                 <h6>Recent Umrah Packages</h6>
                 <span class="rec-count"><?= count($recent['umrah']) ?> shown</span>
-                <a href="umrah.php" class="view-all-btn">View All <i class="feather icon-arrow-right"></i></a>
+                <a href="umrah.php" class="view-all-btn">View All <i class="fas fa-arrow-right"></i></a>
             </div>
             <?php if (!empty($recent['umrah'])): ?>
                 <div style="overflow-x:auto;">
@@ -929,7 +935,7 @@ function greetClient(): string {
                 </div>
             <?php else: ?>
                 <div class="empty-mini">
-                    <i class="feather icon-map-pin"></i>
+                    <i class="fas fa-map-marker-alt"></i>
                     <p>No recent Umrah bookings</p>
                 </div>
             <?php endif; ?>
@@ -938,10 +944,10 @@ function greetClient(): string {
         <!-- Recent Payments -->
         <div class="section-card">
             <div class="section-head">
-                <span class="sec-icon payments"><i class="feather icon-credit-card"></i></span>
+                <span class="sec-icon payments"><i class="fas fa-credit-card"></i></span>
                 <h6>Recent Payments</h6>
                 <span class="rec-count"><?= count($recent['payments']) ?> shown</span>
-                <a href="additional_payments.php" class="view-all-btn">View All <i class="feather icon-arrow-right"></i></a>
+                <a href="additional_payments.php" class="view-all-btn">View All <i class="fas fa-arrow-right"></i></a>
             </div>
             <?php if (!empty($recent['payments'])): ?>
                 <div style="overflow-x:auto;">
@@ -970,7 +976,7 @@ function greetClient(): string {
                 </div>
             <?php else: ?>
                 <div class="empty-mini">
-                    <i class="feather icon-credit-card"></i>
+                    <i class="fas fa-credit-card"></i>
                     <p>No recent payments</p>
                 </div>
             <?php endif; ?>

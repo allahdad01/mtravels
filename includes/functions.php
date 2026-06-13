@@ -1304,6 +1304,9 @@ function generateInvoicePDF($paymentId, $subscriptionId) {
             $_GET['output'] = 'file'; // Add flag to save as file
             $_GET['output_path'] = $pdf_path;
             
+            // Flag to skip CSRF check (parent script already validated)
+            $include_mode = true;
+            
             // Include the existing invoice generator
             include '../super_admin/generate_invoice_pdf.php';
             
@@ -1317,6 +1320,7 @@ function generateInvoicePDF($paymentId, $subscriptionId) {
             }
             
         } catch (Exception $e) {
+            if (ob_get_level()) ob_end_clean();
             return false;
         }
     }

@@ -23,6 +23,7 @@ if (!isset($pdo) || !$pdo) {
 }
 
 // Helper function to get currency symbol
+if (!function_exists('getCurrencySymbol')) {
 function getCurrencySymbol($currencyCode) {
     $symbols = [
         'USD' => '$',
@@ -35,6 +36,7 @@ function getCurrencySymbol($currencyCode) {
         'PKR' => '₨',
     ];
     return $symbols[$currencyCode] ?? $currencyCode;
+}
 }
 
 // Handle form submissions before including header

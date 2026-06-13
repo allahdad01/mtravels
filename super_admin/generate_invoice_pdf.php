@@ -34,8 +34,8 @@ if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-// Check for CSRF token on POST requests
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// Check for CSRF token on POST requests (skip when included by another script)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($include_mode)) {
     if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
         die('Invalid request - CSRF token validation failed');
     }
@@ -78,10 +78,14 @@ if ($payment_id > 0) {
         $receipt_number = $payment_record['receipt_number'];
         $notes = $payment_record['notes'];
     } catch (PDOException $e) {
-        die("Error fetching payment");
+        $error_msg = "Error fetching payment";
+        if (!empty($include_mode)) { throw new Exception($error_msg); }
+        die($error_msg);
     }
 } elseif (!$subscription_id || !$amount) {
-    die('Invalid parameters');
+    $error_msg = 'Invalid parameters';
+    if (!empty($include_mode)) { throw new Exception($error_msg); }
+    die($error_msg);
 }
 
 // Fetch subscription and tenant details
@@ -99,10 +103,14 @@ try {
     $subscription = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$subscription) {
-        die('Subscription not found');
+        $error_msg = 'Subscription not found';
+        if (!empty($include_mode)) { throw new Exception($error_msg); }
+        die($error_msg);
     }
 } catch (PDOException $e) {
-    die("Error fetching subscription: " . $e->getMessage());
+    $error_msg = "Error fetching subscription: " . $e->getMessage();
+    if (!empty($include_mode)) { throw new Exception($error_msg); }
+    die($error_msg);
 }
 
 // Get company details from platform_settings
@@ -139,6 +147,7 @@ if ($platform_logo) {
 }
 
 // Helper function for currency symbol - mPDF compatible
+if (!function_exists('getCurrencySymbol')) {
 function getCurrencySymbol($currencyCode) {
     $symbols = [
         'USD' => '$',
@@ -151,6 +160,7 @@ function getCurrencySymbol($currencyCode) {
         'PKR' => 'PKR',  // Use code instead of symbol
     ];
     return $symbols[$currencyCode] ?? $currencyCode;
+}
 }
 
 // Generate unique invoice number
@@ -656,7 +666,9 @@ try {
     if (isset($_GET['output']) && $_GET['output'] === 'file' && isset($_GET['output_path'])) {
         $output_path = $_GET['output_path'];
         $mpdf->Output($output_path, \Mpdf\Output\Destination::FILE);
-        exit(); // Exit without redirecting to prevent execution of rest of code
+        if (empty($include_mode)) {
+            exit();
+        }
     } else {
         // Normal browser download
         $filename = 'Invoice-' . $invoice_number . '-' . date('Y-m-d') . '.pdf';
