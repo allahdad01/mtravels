@@ -91,7 +91,14 @@ $blog_posts = $landingData['blog_posts'];
                     </div>
                 </div>
                 <div class="hero-image">
-                    <img src="assets/images/widget/undraw_finance_m6vw.svg" alt="Finance Dashboard" style="max-width: 100%; height: auto; border-radius: 20px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);">
+                    <div class="laptop-mockup">
+                        <div class="laptop-screen">
+                            <img src="uploads/hero_image/dashboard.png" alt="MTravels Dashboard">
+                        </div>
+                        <div class="laptop-base">
+                            <div class="laptop-notch"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -534,31 +541,39 @@ $blog_posts = $landingData['blog_posts'];
             }
         }
 
-        // Feature sticky scroll - Apple-style
+        // Feature sticky scroll with screenshot carousel
         class FeatureStickyScroll {
             constructor() {
                 this.wrap = document.querySelector('.features-scroll-wrap');
                 if (!this.wrap) return;
 
-                this.icons = JSON.parse(this.wrap.dataset.icons);
+                this.featureImages = JSON.parse(this.wrap.dataset.featureImages);
                 this.items = this.wrap.querySelectorAll('.ft-item');
-                this.iconWrap = document.getElementById('fvIconWrap');
-                this.iconEl = document.getElementById('fvIcon');
-                this.curNum = document.getElementById('fvCurNum');
-                this.progressFill = document.getElementById('fvProgressFill');
-                this.total = this.icons.length;
-                this.current = 0;
-                this.flipping = false;
+                this.stage = this.wrap.querySelector('.fv-images-stage');
+                this.dotsWrap = this.wrap.querySelector('.fv-images-dots');
+                this.btnPrev = this.wrap.querySelector('.fv-img-prev');
+                this.btnNext = this.wrap.querySelector('.fv-img-next');
+                this.imagesWrap = this.wrap.querySelector('.fv-images-wrap');
+                this.curNum = this.wrap.querySelector('.fv-curnum');
+                this.progressFill = this.wrap.querySelector('.fv-progress-fill');
+                this.total = this.featureImages.length;
+                this.currentFeature = 0;
+                this.currentImg = 0;
+                this.isTransitioning = false;
 
                 this.init();
             }
 
             init() {
+                this.renderFeature(0, false);
+
                 const observer = new IntersectionObserver((entries) => {
                     entries.forEach(entry => {
                         if (entry.isIntersecting) {
                             const idx = parseInt(entry.target.dataset.index);
-                            this.goTo(idx);
+                            if (idx !== this.currentFeature) {
+                                this.goToFeature(idx);
+                            }
                         }
                     });
                 }, { threshold: 0.5 });
@@ -567,34 +582,197 @@ $blog_posts = $landingData['blog_posts'];
 
                 window.addEventListener('scroll', () => this.updateProgress());
                 this.updateProgress();
+
+                this.btnPrev.addEventListener('click', () => this.prevImage());
+                this.btnNext.addEventListener('click', () => this.nextImage());
+                this.dotsWrap.addEventListener('click', (e) => {
+                    const btn = e.target.closest('button');
+                    if (btn) {
+                        this.goToImage(parseInt(btn.dataset.idx));
+                    }
+                });
+                this.stage.addEventListener('click', (e) => {
+                    const img = e.target.closest('img');
+                    if (img) {
+                        const idx = parseInt(img.dataset.idx);
+                        this.openLightbox(idx);
+                    }
+                });
             }
 
-            goTo(index) {
-                if (index === this.current || this.flipping) return;
+            openLightbox(imgIdx) {
+                const existing = document.querySelector('.fv-lightbox');
+                if (existing) existing.remove();
 
-                this.flipping = true;
-                this.current = index;
+                this._lightboxImages = this.featureImages[this.currentFeature];
+                if (!this._lightboxImages || this._lightboxImages.length === 0) return;
+                this._lightboxIndex = imgIdx;
+
+                const overlay = document.createElement('div');
+                overlay.className = 'fv-lightbox';
+                overlay.innerHTML =
+                    '<div class="fv-lightbox-backdrop"></div>' +
+                    '<div class="fv-lightbox-body">' +
+                        '<button class="fv-lightbox-prev" type="button" aria-label="Previous"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>' +
+                        '<div class="fv-lightbox-content">' +
+                            '<button class="fv-lightbox-close" type="button" aria-label="Close">&times;</button>' +
+                            '<div class="fv-lightbox-img-wrap"><img src="" alt=""></div>' +
+                            '<div class="fv-lightbox-counter"></div>' +
+                        '</div>' +
+                        '<button class="fv-lightbox-next" type="button" aria-label="Next"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>' +
+                    '</div>';
+                document.body.appendChild(overlay);
+
+                this._updateLightboxImage();
+
+                requestAnimationFrame(() => overlay.classList.add('open'));
+
+                const closeHandler = (e) => {
+                    if (e.target === overlay || e.target.closest('.fv-lightbox-backdrop') || e.target.closest('.fv-lightbox-close')) {
+                        this.closeLightbox();
+                    }
+                };
+                overlay.addEventListener('click', closeHandler);
+                overlay.querySelector('.fv-lightbox-prev').addEventListener('click', (e) => { e.stopPropagation(); this.lightboxPrev(); });
+                overlay.querySelector('.fv-lightbox-next').addEventListener('click', (e) => { e.stopPropagation(); this.lightboxNext(); });
+
+                this._lightboxKeyHandler = (e) => {
+                    if (e.key === 'Escape') this.closeLightbox();
+                    if (e.key === 'ArrowLeft') this.lightboxPrev();
+                    if (e.key === 'ArrowRight') this.lightboxNext();
+                };
+                document.addEventListener('keydown', this._lightboxKeyHandler);
+            }
+
+            _updateLightboxImage() {
+                const overlay = document.querySelector('.fv-lightbox');
+                if (!overlay) return;
+                const img = overlay.querySelector('.fv-lightbox-img-wrap img');
+                const counter = overlay.querySelector('.fv-lightbox-counter');
+                const prev = overlay.querySelector('.fv-lightbox-prev');
+                const next = overlay.querySelector('.fv-lightbox-next');
+                const total = this._lightboxImages.length;
+
+                img.src = this._lightboxImages[this._lightboxIndex];
+                counter.textContent = (this._lightboxIndex + 1) + ' / ' + total;
+                prev.style.display = total > 1 ? '' : 'none';
+                next.style.display = total > 1 ? '' : 'none';
+                prev.classList.toggle('edge', this._lightboxIndex === 0);
+                next.classList.toggle('edge', this._lightboxIndex === total - 1);
+            }
+
+            lightboxPrev() {
+                if (this._lightboxIndex > 0) {
+                    this._lightboxIndex--;
+                    this._updateLightboxImage();
+                }
+            }
+
+            lightboxNext() {
+                if (this._lightboxIndex < this._lightboxImages.length - 1) {
+                    this._lightboxIndex++;
+                    this._updateLightboxImage();
+                }
+            }
+
+            closeLightbox() {
+                const overlay = document.querySelector('.fv-lightbox');
+                if (!overlay) return;
+                overlay.classList.remove('open');
+                setTimeout(() => overlay.remove(), 300);
+                if (this._lightboxKeyHandler) {
+                    document.removeEventListener('keydown', this._lightboxKeyHandler);
+                    this._lightboxKeyHandler = null;
+                }
+                this._lightboxImages = null;
+            }
+
+            renderFeature(featureIdx, animate) {
+                const images = this.featureImages[featureIdx];
+                this.currentImg = 0;
+
+                if (!images || images.length === 0) {
+                    this.stage.innerHTML = '<div style="padding:3rem;text-align:center;color:var(--gray-400);width:100%;flex-shrink:0;">No screenshot available</div>';
+                    this.dotsWrap.innerHTML = '';
+                    this.btnPrev.classList.add('edge');
+                    this.btnNext.classList.add('edge');
+                    return;
+                }
+
+                if (animate) {
+                    this.imagesWrap.classList.add('flipping');
+                    setTimeout(() => {
+                        this.buildCarousel(images);
+                        this.imagesWrap.classList.remove('flipping');
+                    }, 250);
+                } else {
+                    this.buildCarousel(images);
+                }
+            }
+
+            buildCarousel(images) {
+                this.stage.innerHTML = images.map((src, i) =>
+                    `<img src="${src}" alt="" data-idx="${i}" loading="lazy">`
+                ).join('');
+
+                if (images.length > 1) {
+                    this.dotsWrap.innerHTML = images.map((_, i) =>
+                        `<button class="${i === 0 ? 'active' : ''}" data-idx="${i}"></button>`
+                    ).join('');
+                    this.btnPrev.classList.remove('edge');
+                    this.btnNext.classList.remove('edge');
+                } else {
+                    this.dotsWrap.innerHTML = '';
+                    this.btnPrev.classList.add('edge');
+                    this.btnNext.classList.add('edge');
+                }
+
+                this.stage.style.transform = 'translateX(0)';
+            }
+
+            goToFeature(index) {
+                if (index === this.currentFeature || this.isTransitioning) return;
+                this.isTransitioning = true;
+                this.currentFeature = index;
+                this.currentImg = 0;
 
                 this.items.forEach((item, i) => item.classList.toggle('active', i === index));
-
                 this.curNum.textContent = String(index + 1).padStart(2, '0');
 
-                this.iconWrap.classList.add('flipping');
-                requestAnimationFrame(() => {
-                    setTimeout(() => {
-                        this.iconEl.innerHTML = this.icons[index];
-                        this.iconWrap.classList.remove('flipping');
-                        this.flipping = false;
-                    }, 250);
-                });
+                this.renderFeature(index, true);
+                setTimeout(() => { this.isTransitioning = false; }, 350);
+            }
+
+            goToImage(index) {
+                const imgs = this.stage.children;
+                if (!imgs.length || index < 0 || index >= imgs.length || index === this.currentImg) return;
+                this.currentImg = index;
+                this.stage.style.transform = 'translateX(-' + (index * 100) + '%)';
+
+                const dots = this.dotsWrap.children;
+                for (let i = 0; i < dots.length; i++) {
+                    dots[i].classList.toggle('active', i === index);
+                }
+
+                this.btnPrev.classList.toggle('edge', index === 0);
+                this.btnNext.classList.toggle('edge', index === imgs.length - 1);
+            }
+
+            prevImage() {
+                if (this.currentImg > 0) this.goToImage(this.currentImg - 1);
+            }
+
+            nextImage() {
+                const imgs = this.stage.children;
+                if (this.currentImg < imgs.length - 1) this.goToImage(this.currentImg + 1);
             }
 
             updateProgress() {
                 const rect = this.wrap.getBoundingClientRect();
-                const total = this.wrap.scrollHeight - window.innerHeight;
-                if (total <= 0) return;
+                const scrollable = this.wrap.scrollHeight - window.innerHeight;
+                if (scrollable <= 0) return;
                 const scrolled = window.innerHeight - rect.top;
-                const pct = Math.max(0, Math.min(100, (scrolled / total) * 100));
+                const pct = Math.max(0, Math.min(100, (scrolled / scrollable) * 100));
                 if (this.progressFill) this.progressFill.style.height = pct + '%';
             }
         }

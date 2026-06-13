@@ -142,20 +142,42 @@ function renderAllFeatureCards($features) {
 }
 
 /**
+ * Get feature screenshots from uploads/features_images/{n+1}/
+ * Returns array of full URL paths
+ */
+function getFeatureScreenshots($index) {
+    $folderNum = str_pad($index + 1, 2, '0', STR_PAD_LEFT);
+    $folderPath = __DIR__ . '/../uploads/features_images/' . $folderNum;
+    $baseUrl = 'uploads/features_images/' . $folderNum;
+    $images = [];
+    if (is_dir($folderPath)) {
+        $files = scandir($folderPath);
+        $extensions = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
+        foreach ($files as $file) {
+            if ($file === '.' || $file === '..') continue;
+            $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+            if (in_array($ext, $extensions)) {
+                $images[] = $baseUrl . '/' . $file;
+            }
+        }
+        sort($images);
+    }
+    return $images;
+}
+
+/**
  * Render the split-screen feature showcase
- * Left side: full-view feature visual, Right side: feature details
+ * Left side: feature screenshots (carousel for multi-image), Right side: feature details
  * Scroll-driven navigation between features
  */
 function renderFeatureSplitSection($features) {
     $total = count($features);
     if ($total === 0) return '';
 
-    $icons = [];
+    $allImages = [];
     $textHtml = '';
 
     foreach ($features as $i => $f) {
-        $iconKey = $f['icon_key'] ?? 'dashboard';
-        $svg = getFeatureSvgIcon($iconKey);
         $title = htmlspecialchars($f['title'] ?? '');
         $desc = htmlspecialchars($f['description'] ?? '');
         $active = $i === 0 ? ' active' : '';
@@ -170,24 +192,29 @@ function renderFeatureSplitSection($features) {
             </div>',
             $active, $i, $title, $desc
         );
-        $icons[] = $svg;
+        $allImages[] = getFeatureScreenshots($i);
     }
 
-    $iconsJson = htmlspecialchars(json_encode($icons), ENT_QUOTES, 'UTF-8');
+    $imagesJson = htmlspecialchars(json_encode($allImages, JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8');
     $totalStr = sprintf('%02d', $total);
 
     return sprintf(
-        '<div class="features-scroll-wrap" data-icons=\'%s\'>
+        '<div class="features-scroll-wrap" data-feature-images=\'%s\'>
             <div class="fv-sticky">
-                <div class="fv-bg" id="fvBg"></div>
-                <div class="fv-icon-wrap" id="fvIconWrap">
-                    <div class="fv-icon" id="fvIcon">%s</div>
+                <div class="fv-bg"></div>
+                <div class="fv-images-wrap">
+                    <div class="fv-images-view">
+                        <div class="fv-images-stage"></div>
+                        <button class="fv-img-prev" type="button" aria-label="Previous image"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+                        <button class="fv-img-next" type="button" aria-label="Next image"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+                    </div>
+                    <div class="fv-images-dots"></div>
                 </div>
-                <div class="fv-counter"><span class="fv-curnum" id="fvCurNum">01</span><span class="fv-sep">/</span><span class="fv-totalnum">%s</span></div>
+                <div class="fv-counter"><span class="fv-curnum">01</span><span class="fv-sep">/</span><span class="fv-totalnum">%s</span></div>
             </div>
-            <div class="ft-list" id="ftList">%s</div>
-            <div class="fv-progress" id="fvProgress"><div class="fv-progress-fill" id="fvProgressFill"></div></div>
+            <div class="ft-list">%s</div>
+            <div class="fv-progress"><div class="fv-progress-fill"></div></div>
         </div>',
-        $iconsJson, $icons[0], $totalStr, $textHtml
+        $imagesJson, $totalStr, $textHtml
     );
 }
