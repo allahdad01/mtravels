@@ -41,8 +41,8 @@ try {
 
         echo "  Trial expired for: $tenantName (ID: $tenantId) - Trial ended: $trialEndDate\n";
 
-        // Suspend tenant - trial has expired
-        $pdo->prepare("UPDATE tenants SET status = 'suspended', payment_status = 'suspended', updated_at = NOW() WHERE id = ?")
+        // Mark tenant payment as overdue (don't suspend - avoid distrust)
+        $pdo->prepare("UPDATE tenants SET payment_status = 'overdue', updated_at = NOW() WHERE id = ?")
             ->execute([$tenantId]);
 
         // Update subscription status from 'trial' to 'expired'
@@ -155,11 +155,8 @@ MTravels Support Team
                 // Past due date
                 $daysOverdue = abs($daysUntilDue);
 
-                if ($daysOverdue >= 5) {
-                    $newPaymentStatus = 'suspended';
-                } else {
-                    $newPaymentStatus = 'overdue';
-                }
+                // Don't suspend - keep as overdue to avoid distrust
+                $newPaymentStatus = 'overdue';
             }
         } else {
             // No billing date set, assume current
@@ -178,12 +175,7 @@ MTravels Support Team
             ");
             $updateStmt->execute([$newPaymentStatus, $nextBillingDate, $tenantId]);
 
-            // If suspended, also update tenant status to suspended
-            if ($newPaymentStatus === 'suspended') {
-                $pdo->prepare("UPDATE tenants SET status = 'suspended' WHERE id = ?")
-                    ->execute([$tenantId]);
-                echo "  Tenant access suspended due to non-payment\n";
-            }
+            // Removed: account suspension would cause distrust
         }
 
         // Send daily notifications for warning/overdue status (3 days before to 5 days after due date)

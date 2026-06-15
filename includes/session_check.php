@@ -197,26 +197,8 @@ function checkTenantPaymentStatus() {
         $tenant = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($tenant) {
-            // If tenant is in trial status, check if trial has expired
-            if ($tenant['status'] === 'trial') {
-                $today = date('Y-m-d');
-                if (!empty($tenant['trial_end_date']) && $tenant['trial_end_date'] < $today) {
-                    // Trial has expired - suspend the tenant
-                    $pdo->prepare("UPDATE tenants SET status = 'suspended', payment_status = 'suspended', updated_at = NOW() WHERE id = ?")
-                        ->execute([$tenant_id]);
-                    // Also expire the trial subscription
-                    $pdo->prepare("UPDATE tenant_subscriptions SET status = 'expired', updated_at = NOW() WHERE tenant_id = ? AND status = 'trial'")
-                        ->execute([$tenant_id]);
-                    header("location: " . determineBasePath() . "payment_required.php");
-                    exit;
-                }
-            }
-
-            // If tenant is suspended due to payment issues, redirect to payment required page
-            if ($tenant['payment_status'] === 'suspended' || $tenant['status'] === 'suspended') {
-                header("location: " . determineBasePath() . "payment_required.php");
-                exit;
-            }
+            // Note: Account suspension removed to avoid distrust.
+            // Payment warning banners are shown in header files instead.
         }
     } catch (Exception $e) {
         // Log error but don't block access if database check fails

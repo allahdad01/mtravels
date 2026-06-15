@@ -2171,8 +2171,74 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
             // Silently ignore
         }
     }
-    ?>
 
+    // ── Payment overdue/warning banner ────────────────────────
+    if (isset($tenant_id) && $tenant_id) {
+        try {
+            $pay_stmt = $pdo->prepare("SELECT payment_status, payment_due_date, next_billing_date FROM tenants WHERE id = ?");
+            $pay_stmt->execute([$tenant_id]);
+            $pay_info = $pay_stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($pay_info && in_array($pay_info['payment_status'], ['warning', 'overdue'])) {
+                $pay_status = $pay_info['payment_status'];
+                $pay_due = $pay_info['payment_due_date'] ?: $pay_info['next_billing_date'];
+                $pay_urgency = $pay_status === 'overdue' ? 'pay-banner-overdue' : 'pay-banner-warning';
+    ?>
+    <div class="pay-banner <?= $pay_urgency ?>" id="payBanner">
+        <div class="pay-banner-content">
+            <div class="pay-banner-icon"><i class="feather icon-credit-card"></i></div>
+            <div class="pay-banner-text">
+                <?php if ($pay_status === 'overdue'): ?>
+                    <strong>Payment Overdue!</strong> Your subscription payment is past due<?= $pay_due ? ' (due: ' . date('M d, Y', strtotime($pay_due)) . ')' : '' ?>. Please contact your administrator.
+                <?php else: ?>
+                    <strong>Payment Due Soon:</strong> Your subscription payment is due <strong><?= $pay_due ? date('M d, Y', strtotime($pay_due)) : 'soon' ?></strong>. Please arrange payment.
+                <?php endif; ?>
+            </div>
+            <button class="pay-banner-close" onclick="closePayBanner();">&times;</button>
+        </div>
+    </div>
+    <script>
+    function closePayBanner() {
+        var banner = document.getElementById('payBanner');
+        if (banner) banner.style.display = 'none';
+        document.body.classList.remove('has-pay-banner');
+        sessionStorage.setItem('payBannerClosed', 'true');
+    }
+    if (sessionStorage.getItem('payBannerClosed') === 'true') {
+        closePayBanner();
+    } else {
+        document.body.classList.add('has-pay-banner');
+    }
+    </script>
+    <style>
+    .pay-banner {
+        position: fixed; top: 0; left: 0; right: 0; z-index: 9998; padding: 0;
+        font-family: 'Inter', system-ui, sans-serif;
+    }
+    .pay-banner-content {
+        display: flex; align-items: center; justify-content: center; gap: 10px;
+        padding: 10px 20px; font-size: 0.9rem; color: #fff;
+    }
+    .pay-banner-warning .pay-banner-content { background: linear-gradient(135deg, #f59e0b, #eab308); }
+    .pay-banner-overdue .pay-banner-content { background: linear-gradient(135deg, #ef4444, #dc2626); }
+    .pay-banner-icon { font-size: 1.2rem; flex-shrink: 0; }
+    .pay-banner-text { flex: 1; text-align: center; }
+    .pay-banner-close {
+        background: rgba(255,255,255,0.2); border: none; color: #fff; font-size: 1.3rem;
+        cursor: pointer; border-radius: 50%; width: 28px; height: 28px;
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0; line-height: 1;
+    }
+    .pay-banner-close:hover { background: rgba(255,255,255,0.4); }
+    body.has-pay-banner .app-header { top: 48px; }
+    body.has-pay-banner .pcoded-navbar { top: 48px !important; height: calc(100vh - 48px) !important; }
+    body.has-pay-banner .pcoded-main-container { padding-top: calc(var(--app-header-height) + 48px) !important; }
+    </style>
+    <?php
+            }
+        } catch (Exception $e) { /* Silently ignore */ }
+    }
+    ?>
+    
     <div class="app-shell-overlay" id="appShellOverlay"></div>
 
     <header class="app-header" role="banner">
