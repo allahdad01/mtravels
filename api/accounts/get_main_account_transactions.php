@@ -78,7 +78,8 @@ $query = "SELECT mt.*,
                              WHEN mt.transaction_of = 'visa_sale' THEN CONCAT(va_sale.applicant_name, ' (Visa Sale)') 
                              WHEN mt.transaction_of = 'umrah' THEN CONCAT(ub.name, ' (Umrah)')
                              WHEN mt.transaction_of = 'hotel' THEN CONCAT(hb_txn.title, hb_txn.first_name, ' ', hb_txn.last_name, ' (Hotel)')
-                             WHEN mt.transaction_of = 'fund' THEN CONCAT(usr.name, ' (Fund)') 
+                              WHEN mt.transaction_of = 'fund' THEN CONCAT(usr.name, ' (Fund)') 
+                             WHEN mt.transaction_of = 'withdraw_fund' THEN CONCAT(wf_usr.name, ' (Withdraw Fund)') 
                              WHEN mt.transaction_of = 'hotel_refund' THEN CONCAT(hb_refund.title, hb_refund.first_name, ' ', hb_refund.last_name, ' (Hotel Refund)')
                              WHEN mt.transaction_of = 'deposit_sarafi' THEN CONCAT(sc.name, ' (Deposit Sarafi)')
                              WHEN mt.transaction_of = 'withdrawal_sarafi' THEN CONCAT(sc.name, ' (Withdrawal Sarafi)')
@@ -106,7 +107,8 @@ $query = "SELECT mt.*,
            LEFT JOIN refunded_tickets rt ON mt.reference_id = rt.id AND mt.transaction_of = 'ticket_refund'
            LEFT JOIN date_change_tickets dc ON mt.reference_id = dc.id AND mt.transaction_of = 'date_change'
            LEFT JOIN umrah_bookings ub ON mt.reference_id = ub.booking_id AND mt.transaction_of = 'umrah'
-           LEFT JOIN users usr ON usr.id = mt.reference_id AND mt.transaction_of = 'fund'
+            LEFT JOIN users usr ON usr.id = mt.reference_id AND mt.transaction_of = 'fund'
+            LEFT JOIN users wf_usr ON wf_usr.id = mt.reference_id AND mt.transaction_of = 'withdraw_fund'
            LEFT JOIN sarafi_transactions st ON mt.reference_id = st.id AND mt.transaction_of IN ('deposit_sarafi', 'withdrawal_sarafi', 'hawala_sarafi')
            LEFT JOIN customers sc ON st.customer_id = sc.id AND mt.transaction_of IN ('deposit_sarafi', 'withdrawal_sarafi', 'hawala_sarafi')
            LEFT JOIN salary_payments sp ON mt.reference_id = sp.id AND mt.transaction_of = 'salary_payment'

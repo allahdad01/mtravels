@@ -32,8 +32,8 @@ function txnBuildActionsCell(transaction, accountType, amount, dateField) {
 
     if (accountType === 'main') {
         const tof = (transaction.transaction_of || '').toLowerCase();
-        showDelete  = isUserAdmin && ['fund', 'transfer', 'supplier_bonus'].includes(tof);
-        showEdit    = tof === 'fund';
+        showDelete  = isUserAdmin && ['fund', 'transfer', 'supplier_bonus', 'withdraw_fund'].includes(tof);
+        showEdit    = tof === 'fund' || tof === 'withdraw_fund';
         showReceipt = true;
         showPrintReceipt = false;
     } else if (accountType === 'supplier') {

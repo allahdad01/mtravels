@@ -698,16 +698,21 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                                  <i class="feather icon-list mr-1"></i> <?= __('view_transactions') ?>
                                              </button>
                                              <div class="ac-mc-footer-row">
-                                                 <button class="btn btn-outline-info btn-sm action-btn edit-main-account-btn"
-                                                         data-account-id="<?= $account['id'] ?>"
-                                                         data-account-name="<?= htmlspecialchars($account['name']) ?>">
-                                                     <i class="feather icon-edit mr-1"></i> <?= __('edit_account') ?>
-                                                 </button>
-                                                 <button class="btn btn-outline-<?= $isInactive ? 'success' : 'danger' ?> btn-sm action-btn toggle-status-btn"
+                                              <button class="btn btn-outline-danger btn-sm action-btn"
+                                                          onclick="setupMainWithdrawModal(<?= $account['id'] ?>, '<?= htmlspecialchars($account['name']) ?>')"
+                                                          title="<?= __('withdraw') ?>" <?= $isInactive ? 'disabled style="opacity:.5"' : '' ?>>
+                                                      <i class="feather icon-arrow-down mr-1"></i> <?= __('withdraw') ?>
+                                                  </button>
+                                                  <button class="btn btn-outline-info btn-sm action-btn edit-main-account-btn"
+                                                          data-account-id="<?= $account['id'] ?>"
+                                                          data-account-name="<?= htmlspecialchars($account['name']) ?>">
+                                                      <i class="feather icon-edit mr-1"></i> <?= __('edit_account') ?>
+                                                  </button>
+                                                  <button class="btn btn-outline-<?= $isInactive ? 'success' : 'danger' ?> btn-sm action-btn toggle-status-btn"
                                                          data-account-id="<?= $account['id'] ?>"
                                                          data-current-status="<?= isset($account['status']) ? $account['status'] : 'active' ?>">
                                                      <i class="feather icon-<?= $isInactive ? 'check-circle' : 'power' ?> mr-1"></i>
-                                                     <?= $isInactive ? __('activate') : __('deactivate') ?> <?= __('account') ?>
+                                                      <?= $isInactive ? __('activate') : __('deactivate') ?>
                                                  </button>
                                              </div>
                                          </div>
@@ -996,6 +1001,7 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
 <?php include '../modals/accounts/edit_receipt_modal.php'; ?>
 <?php include '../modals/accounts/edit_main_account_modal.php'; ?>
 <?php include '../modals/accounts/add_main_account_modal.php'; ?>
+<?php include '../modals/accounts/withdraw_main_modal.php'; ?>
 
 <!-- Hidden form for transaction deletion — untouched -->
 <form id="deleteTransactionForm" class="d-none">
@@ -1028,6 +1034,7 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
 <script src="../js/accounts/account-management.js"></script>
 <script src="../js/accounts/account-funding.js"></script>
 <script src="../js/accounts/account-withdrawal.js"></script>
+<script src="../js/accounts/main-account-withdrawal.js"></script>
 <script src="../js/accounts/transaction-management.js"></script>
 <script src="../js/accounts/status-management.js?v=1.1"></script>
 
