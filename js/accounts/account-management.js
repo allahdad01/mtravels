@@ -286,7 +286,8 @@ document.addEventListener('DOMContentLoaded', function() {
         paymentCurrency.addEventListener('change', function() {
             const selectedCurrency = this.value;
             const currencySymbol = selectedCurrency === 'USD' ? '$' : '؋';
-            document.getElementById('totalAmountCurrency').textContent = currencySymbol;
+            const curEl = document.getElementById('totalAmountCurrency');
+            if (curEl) curEl.textContent = currencySymbol;
             updatePaymentSummary();
         });
     }
@@ -581,8 +582,8 @@ function setupBonusModal(supplierId, supplierName, supplierCurrency) {
     $('#bonusSupplierName').val(supplierName);
     $('#bonusSupplierCurrency').val(supplierCurrency);
 
-    $('#bonusSupplierNameDisplay').text(supplierName);
-    $('#bonusSupplierCurrencyDisplay').text('Currency: ' + supplierCurrency);
+    $('#bonusSupplierNameDisplay').val(supplierName);
+    $('#bonusSupplierCurrencyDisplay').val(supplierCurrency);
 
     if (supplierCurrency === 'USD') {
         $('#bonusCurrencySymbol').text('$');

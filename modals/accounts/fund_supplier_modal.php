@@ -1,3 +1,27 @@
+<style>
+.modal-section {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+    border: 1px solid #e9ecef;
+}
+.modal-section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.modal-section-title i {
+    font-size: 16px;
+}
+</style>
+
 <!-- Fund Supplier Modal -->
 <div class="modal fade modern-modal" id="fundSupplierModal" tabindex="-1" role="dialog" aria-labelledby="fundSupplierModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -12,87 +36,117 @@
             </div>
             <div class="modal-body">
                 <form id="fundSupplierForm">
-                    <!-- CSRF Protection -->
                     <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
-                    
                     <input type="hidden" id="supplierId" name="supplier_id">
                     <input type="hidden" id="supplierName" name="supplier_name">
-                    
-                    
-                    <!-- Supplier Info Section -->
-                    <div class="form-section">
-                        <div class="supplier-info alert alert-info mb-4">
-                            <div class="d-flex align-items-center mb-2">
-                                <i class="feather icon-user mr-2"></i>
-                                <h6 class="mb-0" id="supplierNameDisplay"></h6>
+
+                    <!-- Supplier Information -->
+                    <div class="modal-section">
+                        <div class="modal-section-title"><i class="feather icon-user"></i><?= __('supplier_information') ?></div>
+                        <div class="row">
+                            <div class="col-md-7">
+                                <div class="form-group">
+                                    <label><?= __('supplier') ?></label>
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-light"><i class="feather icon-user"></i></span>
+                                        </div>
+                                        <input type="text" class="form-control" id="supplierNameDisplay" readonly>
+                                    </div>
+                                </div>
                             </div>
-                            <p class="mb-0 small" id="supplierCurrencyDisplay"></p>
+                            <div class="col-md-5">
+                                <div class="form-group">
+                                    <label><?= __('currency') ?></label>
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-light"><i class="feather icon-dollar-sign"></i></span>
+                                        </div>
+                                        <input type="text" class="form-control" id="supplierCurrencyDisplay" readonly>
+                                        <input type="hidden" id="supplierCurrency" name="supplier_currency">
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    
-                    <!-- Transaction Details Section -->
-                    <div class="form-section">
-                        <div class="form-section-title"><?= __('transaction_details') ?></div>
-                        
-                        <div class="form-group mb-3">
-                            <label for="mainAccount"><?= __('select_main_account') ?></label>
-                            <div class="input-group">
-                                <div class="input-group-prepend">
-                                    <span class="input-group-text bg-light"><i class="feather icon-credit-card"></i></span>
+
+                    <!-- Transaction Details -->
+                    <div class="modal-section">
+                        <div class="modal-section-title"><i class="feather icon-file-text"></i><?= __('transaction_details') ?></div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="mainAccount"><?= __('main_account') ?></label>
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-light"><i class="feather icon-credit-card"></i></span>
+                                        </div>
+                                        <select class="form-control" id="mainAccount" name="main_account" required>
+                                            <option value=""><?= __('select_account') ?></option>
+                                        </select>
+                                    </div>
                                 </div>
-                                <select class="form-control" id="mainAccount" name="main_account" required>
-                                    <option value=""><?= __('select_account') ?></option>
-                                    <!-- Options will be loaded dynamically -->
-                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="paymentCurrency"><?= __('payment_currency') ?></label>
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-light"><i class="feather icon-dollar-sign"></i></span>
+                                        </div>
+                                        <select id="paymentCurrency" name="payment_currency" class="form-control" required>
+                                            <option value="USD"><?= __('usd') ?></option>
+                                            <option value="AFS"><?= __('afs') ?></option>
+                                            <option value="EUR"><?= __('eur') ?></option>
+                                            <option value="DARHAM"><?= __('darham') ?></option>
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        
-                        
-                        
-                        <!-- Payment Currency -->
-                    <div class="mb-3">
-                        <label for="supplierCurrency" class="form-label">Supplier Currency</label>
-                        <input class="form-control" type="text" id="supplierCurrency" name="supplier_currency" readonly>
-                        <label for="paymentCurrency" class="form-label">Payment Currency</label>
-                        <select id="paymentCurrency" name="payment_currency" class="form-control" required>
-                            <option value="USD">USD</option>
-                            <option value="AFS">AFS</option>
-                        </select>
+
+                        <div class="mb-3 d-none" id="exchangeRateGroup">
+                            <label for="exchangeRate" class="form-label" id="exchangeRateLabel"><?= __('exchange_rate') ?></label>
+                            <div class="input-group">
+                                <input type="number" id="exchangeRate" name="exchange_rate" class="form-control" step="0.0001" placeholder="e.g., 70" min="0">
+                                <div class="input-group-append">
+                                    <span class="input-group-text bg-light" id="fundFormulaBadge" style="font-weight:700;font-size:16px;">×</span>
+                                </div>
+                            </div>
+                            <small class="form-text text-muted" id="exchangeHint" style="font-size:11px;margin-top:4px;"></small>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="amount"><?= __('amount') ?></label>
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-light" id="currencySymbol">$</span>
+                                        </div>
+                                        <input type="number" class="form-control" id="amount" name="amount" step="0.01" min="0" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="receipt"><?= __('receipt_number') ?></label>
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-light"><i class="feather icon-hash"></i></span>
+                                        </div>
+                                        <input type="text" class="form-control" id="receipt" name="receipt_number" required>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <!-- Exchange Rate -->
-                    <div class="mb-3 d-none" id="exchangeRateGroup">
-                        <label for="exchangeRate" class="form-label" id="exchangeRateLabel">Exchange rate (USD → AFS)</label>
-                        <input type="number" id="exchangeRate" name="exchange_rate" class="form-control" step="0.0001" placeholder="e.g., 70" min="0">
-                        <small class="form-text text-muted" id="exchangeHint">Provide USD → AFS rate only when payment currency differs from supplier currency.</small>
-                    </div>
-                        <div class="form-group mb-3">
-                            <label for="amount"><?= __('amount') ?></label>
-                            <div class="input-group">
-                                <div class="input-group-prepend">
-                                    <span class="input-group-text bg-light" id="currencySymbol">$</span>
-                                </div>
-                                <input type="number" class="form-control" id="amount" name="amount" step="0.01" min="0" required>
-                            </div>
-                        </div>
-                        
-                        <div class="form-group mb-3">
-                            <label for="receipt"><?= __('receipt_number') ?></label>
-                            <div class="input-group">
-                                <div class="input-group-prepend">
-                                    <span class="input-group-text bg-light"><i class="feather icon-file-text"></i></span>
-                                </div>
-                                <input type="text" class="form-control" id="receipt" name="receipt_number" required>
-                            </div>
-                        </div>
-                        
+
+                    <!-- Remarks -->
+                    <div class="modal-section">
+                        <div class="modal-section-title"><i class="feather icon-message-square"></i><?= __('remarks') ?></div>
                         <div class="form-group mb-0">
-                            <label for="remarks"><?= __('remarks') ?></label>
-                            <div class="input-group">
-                                <div class="input-group-prepend">
-                                    <span class="input-group-text bg-light"><i class="feather icon-message-square"></i></span>
-                                </div>
-                                <textarea class="form-control" id="remarks" name="remarks" rows="3" placeholder="<?= __('enter_transaction_details') ?>"></textarea>
-                            </div>
+                            <textarea class="form-control" id="remarks" name="remarks" rows="2" placeholder="<?= __('enter_transaction_details') ?>"></textarea>
                         </div>
                     </div>
                 </form>
@@ -101,7 +155,7 @@
                 <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">
                     <i class="feather icon-x mr-1"></i><?= __('cancel') ?>
                 </button>
-                <button type="submit" form="fundSupplierForm" class="btn btn-info">
+                <button type="submit" form="fundSupplierForm" class="btn btn-info" id="fundSupplierBtn">
                     <i class="feather icon-check-circle mr-1"></i><?= __('fund_account') ?>
                 </button>
             </div>

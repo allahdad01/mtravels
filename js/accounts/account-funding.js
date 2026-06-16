@@ -14,11 +14,11 @@ function setupFundingModal(supplierId, supplierName, supplierCurrency) {
     if (supplierCurrencyInput) supplierCurrencyInput.value = supplierCurrency;
     
     // Set display values
-    if (supplierNameDisplay) supplierNameDisplay.textContent = supplierName;
+    if (supplierNameDisplay) supplierNameDisplay.value = supplierName;
     
     // Set currency display and symbol
     if (supplierCurrencyDisplay) {
-        supplierCurrencyDisplay.textContent = `Currency: ${supplierCurrency}`;
+        supplierCurrencyDisplay.value = supplierCurrency;
     }
     
     if (currencySymbol) {
@@ -28,6 +28,8 @@ function setupFundingModal(supplierId, supplierName, supplierCurrency) {
             currencySymbol.textContent = '؋';
         } else if (supplierCurrency === 'EUR') {
             currencySymbol.textContent = '€';
+        } else if (supplierCurrency === 'DARHAM') {
+            currencySymbol.textContent = 'AED';
         } else {
             currencySymbol.textContent = supplierCurrency;
         }
@@ -79,11 +81,11 @@ function showFundSupplierModal(supplierId, supplierName, supplierCurrency) {
     if (supplierCurrencyInput) supplierCurrencyInput.value = supplierCurrency;
     
     // Set display values
-    if (supplierNameDisplay) supplierNameDisplay.textContent = supplierName;
+    if (supplierNameDisplay) supplierNameDisplay.value = supplierName;
     
     // Set currency display and symbol
     if (supplierCurrencyDisplay) {
-        supplierCurrencyDisplay.textContent = `Currency: ${supplierCurrency}`;
+        supplierCurrencyDisplay.value = supplierCurrency;
     }
     
     if (currencySymbol) {
@@ -93,6 +95,8 @@ function showFundSupplierModal(supplierId, supplierName, supplierCurrency) {
             currencySymbol.textContent = '؋';
         } else if (supplierCurrency === 'EUR') {
             currencySymbol.textContent = '€';
+        } else if (supplierCurrency === 'DARHAM') {
+            currencySymbol.textContent = 'AED';
         } else {
             currencySymbol.textContent = supplierCurrency;
         }
@@ -116,15 +120,34 @@ function toggleExchangeRateVisibility() {
     const needsRate = supplierCurrency !== paymentCurrency;
     group.classList.toggle('d-none', !needsRate);
     exchangeInput.required = needsRate;
-    // We always expect USD → AFS rate
-    label.textContent = 'Exchange rate (USD → AFS)';
-    hint.textContent = 'Provide USD → AFS rate only when payment currency differs from supplier currency.';
+    const norm = c => c === 'DARHAM' ? 'AED' : c;
+    const normFrom = norm(paymentCurrency);
+    const normTo = norm(supplierCurrency);
+    const dividePairs = ['AFS->AED', 'AFS->EUR', 'AFS->USD', 'AED->EUR', 'AED->USD', 'EUR->USD'];
+    const isDivide = dividePairs.includes(normFrom + '->' + normTo);
+    label.textContent = 'Exchange rate (' + paymentCurrency + ' → ' + supplierCurrency + ')';
+    const sampleRates = {
+        'AFS->AED': 19.75, 'AED->AFS': 19.75,
+        'AFS->EUR': 78.8, 'EUR->AFS': 78.8,
+        'AFS->USD': 72.5, 'USD->AFS': 72.5,
+        'AED->EUR': 3.99, 'EUR->AED': 3.99,
+        'AED->USD': 3.67, 'USD->AED': 3.67,
+        'EUR->USD': 1.09, 'USD->EUR': 0.92,
+    };
+    const rate = sampleRates[normFrom + '->' + normTo];
+    if (rate) {
+        hint.textContent = isDivide
+            ? 'e.g. 1 ' + supplierCurrency + ' = ' + rate.toFixed(2) + ' ' + paymentCurrency + ' → enter ' + rate.toFixed(2)
+            : 'e.g. 1 ' + paymentCurrency + ' = ' + rate.toFixed(2) + ' ' + supplierCurrency + ' → enter ' + rate.toFixed(2);
+    } else {
+        hint.textContent = 'Enter the exchange rate';
+    }
 }
 
 function updateAmountPlaceholder() {
     const paymentCurrency = document.getElementById('paymentCurrency').value;
-    const amount = document.getElementById('fundAmount');
-    amount.placeholder = `Enter amount in ${paymentCurrency}`;
+    const amount = document.getElementById('amount');
+    if (amount) amount.placeholder = `Enter amount in ${paymentCurrency}`;
 }
 
 document.getElementById('paymentCurrency').addEventListener('change', () => {

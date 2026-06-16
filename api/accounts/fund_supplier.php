@@ -57,7 +57,7 @@ $supplierName = $supplier['name'];
 
 // Fetch main account balances and name
 $mainAccountQuery = "
-    SELECT usd_balance, afs_balance, name
+    SELECT usd_balance, afs_balance, euro_balance, darham_balance, name
     FROM main_account
     WHERE id = ? AND tenant_id = ? AND branch_id = ?
 ";
@@ -75,16 +75,18 @@ if (!$mainAccount) {
 $supplierCurrency = $supplier['currency']; // Supplier's currency (USD or AFS)
 
 // Determine which main account balance to deduct based on PAYMENT currency
-if ($paymentCurrency === 'USD') {
-    $mainBalance = (float)$mainAccount['usd_balance'];
-    $balanceField = 'usd_balance';
-} elseif ($paymentCurrency === 'AFS') {
-    $mainBalance = (float)$mainAccount['afs_balance'];
-    $balanceField = 'afs_balance';
-} else {
+$currencyFieldMap = [
+    'USD' => ['field' => 'usd_balance', 'label' => 'USD'],
+    'AFS' => ['field' => 'afs_balance', 'label' => 'AFS'],
+    'EUR' => ['field' => 'euro_balance', 'label' => 'EUR'],
+    'DARHAM' => ['field' => 'darham_balance', 'label' => 'DARHAM'],
+];
+if (!isset($currencyFieldMap[$paymentCurrency])) {
     echo json_encode(['success' => false, 'message' => 'Invalid payment currency.']);
     exit;
 }
+$balanceField = $currencyFieldMap[$paymentCurrency]['field'];
+$mainBalance = (float)$mainAccount[$balanceField];
 
 // Ensure sufficient funds in the main account (deducting in payment currency)
 if ($mainBalance < $amount) {
@@ -120,18 +122,19 @@ try {
     $newMainBalance = $mainBalance - $amount;
 
 // Compute amount to credit to supplier in SUPPLIER currency.
-// When currencies differ, we require exchangeRate as USD → AFS.
+// Rate convention: "units of weaker currency per 1 unit of stronger currency"
 $creditedAmount = $amount; // same currency default
 if ($paymentCurrency !== $supplierCurrency) {
     if ($exchangeRate === null || $exchangeRate <= 0) {
         throw new Exception('Missing or invalid exchange rate.');
     }
-    if ($paymentCurrency === 'USD' && $supplierCurrency === 'AFS') {
-        // 100 USD at 70 => 7000 AFS
-        $creditedAmount = $amount * $exchangeRate;
-    } elseif ($paymentCurrency === 'AFS' && $supplierCurrency === 'USD') {
-        // 7000 AFS at 70 => 100 USD
+    $normCur = function($c) { return $c === 'DARHAM' ? 'AED' : $c; };
+    $dividePairs = ['AFS->AED', 'AFS->EUR', 'AFS->USD', 'AED->EUR', 'AED->USD', 'EUR->USD'];
+    $pairKey = $normCur($paymentCurrency) . '->' . $normCur($supplierCurrency);
+    if (in_array($pairKey, $dividePairs)) {
         $creditedAmount = $amount / $exchangeRate;
+    } else {
+        $creditedAmount = $amount * $exchangeRate;
     }
 }
 
@@ -154,11 +157,7 @@ $supplierUpdateStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
     // Build exchange narrative if currencies differ
     $exchangeNarrative = '';
     if ($paymentCurrency !== $supplierCurrency) {
-        if ($paymentCurrency === 'USD' && $supplierCurrency === 'AFS') {
-            $exchangeNarrative = ", paid {$amount} USD; exchange rate USD to AFS is {$exchangeRate} equal to " . number_format($creditedAmount, 2) . " AFS";
-        } elseif ($paymentCurrency === 'AFS' && $supplierCurrency === 'USD') {
-            $exchangeNarrative = ", paid {$amount} AFS; exchange rate USD to AFS is {$exchangeRate} equal to " . number_format($creditedAmount, 2) . " USD";
-        }
+        $exchangeNarrative = ", paid {$amount} {$paymentCurrency}; exchange rate {$paymentCurrency} to {$supplierCurrency} is {$exchangeRate} equal to " . number_format($creditedAmount, 2) . " {$supplierCurrency}";
     }
     $completeRemarks = "Supplier: $supplierName, Funded by main account: $mainAccountName, processed by: $username, Remarks: $userRemarks$exchangeNarrative";
     $newBalance = $supplier['balance'] + $creditedAmount;
