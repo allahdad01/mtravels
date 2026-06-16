@@ -109,13 +109,22 @@
                         <div class="col-md-6">
                     <div class="form-group">
                         <label for="exchangeRate"><?= __('exchange_rate') ?></label>
-                                <div class="input-group">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text bg-light"><i class="feather icon-percent"></i></span>
-                                    </div>
-                        <input type="number" class="form-control" id="exchangeRate" name="exchangeRate" step="0.01" required>
-                    </div>
+                        <div class="input-group">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text bg-light"><i class="feather icon-percent"></i></span>
                             </div>
+                            <input type="number" class="form-control" id="exchangeRate" name="exchangeRate" step="0.01" required>
+                            <div class="input-group-append">
+                                <span class="input-group-text bg-light" id="transferFormulaBadge" style="font-weight:700;font-size:16px;">×</span>
+                            </div>
+                        </div>
+                        <small id="transferRateHelp" class="form-text text-muted" style="font-size:11px;margin-top:4px;"></small>
+                    </div>
+                    <div class="form-group">
+                        <div class="bg-light rounded p-2 text-center" id="transferConvertedPreview" style="font-size:13px;display:none;">
+                            <span id="transferConvertedText">0.00</span>
+                        </div>
+                    </div>
                         </div>
                     </div>
                     

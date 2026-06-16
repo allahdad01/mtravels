@@ -356,6 +356,56 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // --- Transfer balance dynamic helper ---
+    const transferDividePairs = ['AFS->AED', 'AFS->EUR', 'AFS->USD', 'AED->EUR', 'AED->USD', 'EUR->USD'];
+    const transferSampleRates = {
+        'AFS->AED': 19.75, 'AED->AFS': 19.75,
+        'AFS->EUR': 78.8, 'EUR->AFS': 78.8,
+        'AFS->USD': 72.5, 'USD->AFS': 72.5,
+        'AED->EUR': 3.99, 'EUR->AED': 3.99,
+        'AED->USD': 3.67, 'USD->AED': 3.67,
+        'EUR->USD': 1.09, 'USD->EUR': 0.92,
+    };
+    function updateTransferHelper() {
+        const fromCur = document.getElementById('fromCurrency').value;
+        const toCur = document.getElementById('toCurrency').value;
+        const badge = document.getElementById('transferFormulaBadge');
+        const help = document.getElementById('transferRateHelp');
+        const preview = document.getElementById('transferConvertedPreview');
+        const previewText = document.getElementById('transferConvertedText');
+        if (!fromCur || !toCur || fromCur === toCur) {
+            badge.textContent = '×';
+            help.textContent = '';
+            preview.style.display = 'none';
+            return;
+        }
+        const pairKey = fromCur + '->' + toCur;
+        const isDivide = transferDividePairs.includes(pairKey);
+        badge.textContent = isDivide ? '÷' : '×';
+        const rate = transferSampleRates[pairKey];
+        if (rate) {
+            help.textContent = isDivide
+                ? 'e.g. 1 ' + toCur + ' = ' + rate.toFixed(2) + ' ' + fromCur + ' → enter ' + rate.toFixed(2)
+                : 'e.g. 1 ' + fromCur + ' = ' + rate.toFixed(2) + ' ' + toCur + ' → enter ' + rate.toFixed(2);
+        } else {
+            help.textContent = 'Enter the exchange rate';
+        }
+        const amount = parseFloat(document.getElementById('amount').value) || 0;
+        const exchangeRate = parseFloat(document.getElementById('exchangeRate').value) || 0;
+        if (amount > 0 && exchangeRate > 0) {
+            const converted = isDivide ? amount / exchangeRate : amount * exchangeRate;
+            previewText.textContent = converted.toFixed(2) + ' ' + toCur;
+            preview.style.display = 'block';
+        } else {
+            preview.style.display = 'none';
+        }
+    }
+    document.getElementById('fromCurrency').addEventListener('change', updateTransferHelper);
+    document.getElementById('toCurrency').addEventListener('change', updateTransferHelper);
+    document.getElementById('amount').addEventListener('input', updateTransferHelper);
+    document.getElementById('exchangeRate').addEventListener('input', updateTransferHelper);
+    $('#transferModal').on('shown.bs.modal', updateTransferHelper);
+
     // Fund client accounts
     document.addEventListener('DOMContentLoaded', () => {
         // Fetch and populate main accounts for all client dropdowns

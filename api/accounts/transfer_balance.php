@@ -78,36 +78,22 @@ try {
 
 
 
+    // Normalize currency codes
+    $fromCurrencyNorm = strtoupper($fromCurrency) === 'EURO' ? 'EUR' : strtoupper($fromCurrency);
+    $toCurrencyNorm = strtoupper($toCurrency) === 'EURO' ? 'EUR' : strtoupper($toCurrency);
+
     // Calculate converted amount based on currency pairs
     $convertedAmount = 0;
-    
-    // When converting from AFS to other currencies
-    if ($fromCurrency === 'AFS') {
-        if ($toCurrency === 'USD') {
-            $convertedAmount = $amount / $exchangeRate; // AFS to USD: divide
-        } elseif ($toCurrency === 'DARHAM') {
-            $convertedAmount = $amount / $exchangeRate; // AFS to DARHAM: divide
-        } elseif ($toCurrency === 'EURO') {
-            $convertedAmount = $amount / $exchangeRate; // AFS to EUR: divide
-        } else {
-            $convertedAmount = $amount; // Same currency
-        }
-    }
-    // When converting to AFS from other currencies
-    elseif ($toCurrency === 'AFS') {
-        if ($fromCurrency === 'USD') {
-            $convertedAmount = $amount * $exchangeRate; // USD to AFS: multiply
-        } elseif ($fromCurrency === 'DARHAM') {
-            $convertedAmount = $amount * $exchangeRate; // DARHAM to AFS: multiply
-        } elseif ($fromCurrency === 'EURO') {
-            $convertedAmount = $amount * $exchangeRate; // EUR to AFS: multiply
-        } else {
-            $convertedAmount = $amount; // Same currency
-        }
-    }
-    // For other currency pairs (non-AFS)
-    else {
-        $convertedAmount = $amount * $exchangeRate; // Default: multiply
+
+    $dividePairs = ['AFS->AED', 'AFS->EUR', 'AFS->USD', 'AED->EUR', 'AED->USD', 'EUR->USD'];
+    $pairKey = "{$fromCurrencyNorm}->{$toCurrencyNorm}";
+
+    if ($fromCurrencyNorm === $toCurrencyNorm) {
+        $convertedAmount = $amount;
+    } elseif (in_array($pairKey, $dividePairs)) {
+        $convertedAmount = $amount / $exchangeRate;
+    } else {
+        $convertedAmount = $amount * $exchangeRate;
     }
 
     // Update source account balance
@@ -127,9 +113,9 @@ try {
     $updateToStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
     $updateToStmt->execute();
 
-    // Normalize euro currency to EUR before transaction insertion
-    $fromCurrency = (strtolower($fromCurrency) === 'euro') ? 'EUR' : $fromCurrency;
-    $toCurrency = (strtolower($toCurrency) === 'euro') ? 'EUR' : $toCurrency;
+    // Use normalized currency codes for transaction insertion
+    $fromCurrency = $fromCurrencyNorm;
+    $toCurrency = $toCurrencyNorm;
 
     // Record transaction for source account (debit)
     $fromTransactionStmt = $pdo->prepare("
