@@ -47,18 +47,45 @@ function openTransactionTab(umrahId, soldAmount) {
     document.getElementById('totalAmount').textContent = `USD ${soldAmount.toFixed(2)}`; // Default to USD
     document.getElementById('transactionUmrahIdInput').value = umrahId;
 
+    // Clear stale data from any previous member
+    $('#trans-guest-name').text('—');
+    $('#trans-package-name').text('—');
+    $('#exchangeRateDisplay').text('No exchange rates found');
+    $('#exchangedAmount').text('No conversions available');
+    $('#transactionTableBody').html('<tr><td colspan="7" class="text-center">Loading transactions...</td></tr>');
+    ['USD', 'AFS', 'EUR', 'DARHAM'].forEach(function(cur) {
+        var idSuffix = cur === 'DARHAM' ? 'AED' : cur;
+        $('#paidAmount' + idSuffix).text('');
+        $('#remainingAmount' + idSuffix).text('');
+    });
+
+    // Collapse the add-transaction form if it was left open from a previous session
+    $('#addTransactionForm').collapse('hide');
+
+    // Abort any pending request to avoid stale data on rapid re-opens
+    if (window._umrahDetailsXhr) {
+        window._umrahDetailsXhr.abort();
+    }
+
     // Fetch Umrah details for the transaction modal
-    $.ajax({
+    window._umrahDetailsXhr = $.ajax({
         url: '../api/umrah/get_umrah_details.php',
         type: 'GET',
         data: { id: umrahId },
         dataType: 'json',
         success: function(response) {
+            // Ignore stale response if a newer request was started
+            var currentId = document.getElementById('transactionUmrahIdInput').value;
+            if (String(umrahId) !== String(currentId)) return;
+
             if (response.success) {
                 const umrah = response.umrah;
 
                 // Store booking currency globally for exchange rate field logic
                 window.bookingCurrency = umrah.currency || 'USD';
+
+                // Store client type for transaction_to logic (regular clients default to Bank)
+                window.currentClientType = umrah.client_type || '';
 
                 // Update total amount with correct currency
                 document.getElementById('totalAmount').textContent = `${umrah.currency || 'USD'} ${soldAmount.toFixed(2)}`;
@@ -103,12 +130,18 @@ function openTransactionTab(umrahId, soldAmount) {
 }
 
 function loadTransactionHistory(umrahId) {
-    $.ajax({
+    if (window._umrahHistoryXhr) {
+        window._umrahHistoryXhr.abort();
+    }
+
+    window._umrahHistoryXhr = $.ajax({
         url: '../api/umrah/fetch_umrah_transactions.php',
         type: 'GET',
         data: { umrah_id: umrahId },
         dataType: 'json',
         success: function(response) {
+            var currentId = document.getElementById('transactionUmrahIdInput').value;
+            if (String(umrahId) !== String(currentId)) return;
             let transactions = typeof response === 'string' ? JSON.parse(response) : response;
             // Map transactions to the expected format
             transactions = transactions.map(transaction => ({
@@ -382,8 +415,11 @@ $(document).ready(function() {
                         // Reset form
                         $('#umrahTransactionForm')[0].reset();
                         $('#paymentCurrency').val('');
-                        $('#transaction_to').val('Internal Account');
-                        $('#receiptNumberField').show();
+                        if (window.currentClientType === 'regular') {
+                            $('#transaction_to').val('Bank').prop('disabled', true).trigger('change');
+                        } else {
+                            $('#transaction_to').val('Internal Account').prop('disabled', false).trigger('change');
+                        }
 
                     } else {
                         // Re-enable submit button on business logic error
@@ -462,8 +498,11 @@ $('#paymentCurrency').on('change', function() {
         submitBtn.html('<i class="feather icon-check mr-1"></i>' + (typeof add_transaction_label !== 'undefined' ? add_transaction_label : 'Add Transaction'));
         $('#umrahTransactionForm')[0].reset();
         $('#paymentCurrency').val(''); // Clear currency selection
-        $('#transaction_to').val('Internal Account');
-        $('#receiptNumberField').show();
+        if (window.currentClientType === 'regular') {
+            $('#transaction_to').val('Bank').prop('disabled', true).trigger('change');
+        } else {
+            $('#transaction_to').val('Internal Account').prop('disabled', false).trigger('change');
+        }
 
         // Reset exchange rate field
         $('#exchangeRateField').hide();

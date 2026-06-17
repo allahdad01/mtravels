@@ -212,8 +212,17 @@ $(document).ready(function() {
         }
 
         if (transactionTo === 'Bank') {
-            // Check if supplier is internal, then load main accounts
-            checkAndLoadFamilyMainAccounts();
+            if ($('#familyTransactionTo').prop('disabled')) {
+                // Regular client — use pre-stored majority supplier
+                if (window.familyMajoritySupplier === 'Internal') {
+                    loadFamilyMainAccounts();
+                    $('#familyMainAccountField').slideDown();
+                } else {
+                    $('#familyMainAccountField').slideUp();
+                }
+            } else {
+                checkAndLoadFamilyMainAccounts();
+            }
         } else {
             $('#familyMainAccountField').slideUp();
         }
