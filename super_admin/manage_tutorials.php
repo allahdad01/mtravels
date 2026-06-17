@@ -125,13 +125,14 @@ include '../includes/header_super_admin.php';
                                                     <th>Duration</th>
                                                     <th>Chapters</th>
                                                     <th>Level</th>
+                                                    <th>On Load</th>
                                                     <th>Roles</th>
                                                     <th>Status</th>
                                                     <th>Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody id="tutorialsTableBody">
-                                                <tr><td colspan="10" class="sa-empty">Loading...</td></tr>
+                                                <tr><td colspan="11" class="sa-empty">Loading...</td></tr>
                                             </tbody>
                                         </table>
                                     </div>
@@ -214,10 +215,14 @@ include '../includes/header_super_admin.php';
                             <label class="sa-form-label">Sort Order</label>
                             <input type="number" class="sa-form-control" name="sort_order" id="fSortOrder" value="0" min="0">
                         </div>
-                        <div class="sa-form-group" style="display:flex;align-items:flex-end;padding-bottom:4px;">
-                            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                        <div class="sa-form-group" style="display:flex;align-items:flex-end;padding-bottom:4px;gap:12px;">
+                            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
                                 <input type="checkbox" name="status" id="fStatus" checked>
                                 <span style="font-size:.88rem;">Active</span>
+                            </label>
+                            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;" title="Auto-play this tutorial when user first loads the page">
+                                <input type="checkbox" name="show_on_load" id="fShowOnLoad">
+                                <span style="font-size:.88rem;">Show on Page Load</span>
                             </label>
                         </div>
                     </div>
@@ -303,6 +308,9 @@ function renderTable() {
         const videoBadge = t.video_type === 'youtube'
             ? '<span class="sa-badge sa-badge-video"><i class="fab fa-youtube"></i> YouTube</span>'
             : '<span class="sa-badge" style="background:#e3f2fd;color:#1565c0;"><i class="fab fa-vimeo-v"></i> Vimeo</span>';
+        const onLoadBadge = t.show_on_load == 1
+            ? '<span class="sa-badge" style="background:#fff3cd;color:#856404;"><i class="feather icon-play"></i> Yes</span>'
+            : '<span class="sa-badge" style="background:#e8ecf1;color:#6c757d;">No</span>';
         return `<tr>
             <td>${i + 1}</td>
             <td><strong>${esc(t.title)}</strong></td>
@@ -311,6 +319,7 @@ function renderTable() {
             <td>${esc(t.duration)}</td>
             <td style="font-size:.75rem;color:var(--sa-text-muted);">${(() => { try { const c = JSON.parse(t.chapters || '[]'); return c.length ? '<span class="sa-badge" style="background:#e8f0fe;color:#1967d2;">' + c.length + ' chapter' + (c.length > 1 ? 's' : '') + '</span>' : '-'; } catch(e) { return '-'; } })()}</td>
             <td>${esc(t.level)}</td>
+            <td>${onLoadBadge}</td>
             <td>${roleBadges}</td>
             <td>${statusBadge}</td>
             <td><div class="sa-actions">
@@ -358,6 +367,7 @@ function openAddModal() {
     document.getElementById('tutorialForm').reset();
     document.getElementById('tutorialId').value = 0;
     document.getElementById('fStatus').checked = true;
+    document.getElementById('fShowOnLoad').checked = false;
     document.getElementById('roleAll').checked = false;
     toggleAllRoles(false);
     document.querySelectorAll('.role-checkbox').forEach(cb => cb.checked = false);
@@ -381,6 +391,7 @@ function editTutorial(id) {
     document.getElementById('fLevel').value = t.level || 'Beginner';
     document.getElementById('fSortOrder').value = t.sort_order || 0;
     document.getElementById('fStatus').checked = t.status == 1;
+    document.getElementById('fShowOnLoad').checked = t.show_on_load == 1;
 
     let roles = [];
     try { roles = JSON.parse(t.roles || '["all"]'); } catch(e) { roles = ['all']; }

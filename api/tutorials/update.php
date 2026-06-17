@@ -33,6 +33,7 @@ $chapters_raw = $_POST['chapters'] ?? '[]';
 $chapters = is_string($chapters_raw) ? $chapters_raw : json_encode($chapters_raw);
 if (!json_decode($chapters)) { $chapters = '[]'; }
 $sort_order = intval($_POST['sort_order'] ?? 0);
+$show_on_load = isset($_POST['show_on_load']) ? 1 : 0;
 $status = isset($_POST['status']) ? 1 : 0;
 
 $roles_raw = $_POST['roles'] ?? [];
@@ -47,8 +48,8 @@ if (empty($title)) {
 }
 
 try {
-    $stmt = $pdo->prepare("UPDATE tutorials SET title = ?, description = ?, category = ?, page = ?, video_type = ?, video_id = ?, duration = ?, level = ?, roles = ?, sort_order = ?, status = ?, chapters = ?, updated_at = NOW() WHERE id = ?");
-    $stmt->execute([$title, $description, $category, $page, $video_type, $video_id, $duration, $level, $roles, $sort_order, $status, $chapters, $id]);
+    $stmt = $pdo->prepare("UPDATE tutorials SET title = ?, description = ?, category = ?, page = ?, video_type = ?, video_id = ?, duration = ?, level = ?, roles = ?, sort_order = ?, show_on_load = ?, status = ?, chapters = ?, updated_at = NOW() WHERE id = ?");
+    $stmt->execute([$title, $description, $category, $page, $video_type, $video_id, $duration, $level, $roles, $sort_order, $show_on_load, $status, $chapters, $id]);
 
     echo json_encode(['success' => true]);
 } catch (PDOException $e) {
