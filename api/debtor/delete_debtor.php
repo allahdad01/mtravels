@@ -61,6 +61,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['debtor_id'])) {
             exit();
         }
 
+        // Check if debtor has any main account transactions
+        // reference_id in main_account_transactions stores debtor_transaction.id, not debtor.id
+        $stmt = $pdo->prepare("SELECT COUNT(*) as cnt FROM main_account_transactions mat JOIN debtor_transactions dt ON dt.id = mat.reference_id AND mat.transaction_of = 'debtor' WHERE dt.debtor_id = ? AND mat.tenant_id = ? AND mat.branch_id = ?");
+        $stmt->execute([$debtor_id, $tenant_id, $branch_id]);
+        $main_tx_count = $stmt->fetch(PDO::FETCH_ASSOC)['cnt'];
+
+        if ($main_tx_count > 0) {
+            $_SESSION['error_message'] = "Cannot delete debtor. Please delete all main account transactions first, then try deleting the debtor.";
+            header('Location: ../../admin/debtors.php');
+            exit();
+        }
+
         // If no transactions, proceed with deletion
         $pdo->beginTransaction();
 
