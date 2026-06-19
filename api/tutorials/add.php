@@ -27,6 +27,7 @@ $chapters_raw = $_POST['chapters'] ?? '[]';
 $chapters = is_string($chapters_raw) ? $chapters_raw : json_encode($chapters_raw);
 if (!json_decode($chapters)) { $chapters = '[]'; }
 $sort_order = intval($_POST['sort_order'] ?? 0);
+$show_on_load = isset($_POST['show_on_load']) ? 1 : 0;
 $status = isset($_POST['status']) ? 1 : 0;
 
 $roles_raw = $_POST['roles'] ?? [];
@@ -41,8 +42,8 @@ if (empty($title)) {
 }
 
 try {
-    $stmt = $pdo->prepare("INSERT INTO tutorials (title, description, category, page, video_type, video_id, duration, level, roles, sort_order, status, chapters, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
-    $stmt->execute([$title, $description, $category, $page, $video_type, $video_id, $duration, $level, $roles, $sort_order, $status, $chapters, $user_id]);
+    $stmt = $pdo->prepare("INSERT INTO tutorials (title, description, category, page, video_type, video_id, duration, level, roles, sort_order, show_on_load, status, chapters, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+    $stmt->execute([$title, $description, $category, $page, $video_type, $video_id, $duration, $level, $roles, $sort_order, $show_on_load, $status, $chapters, $user_id]);
 
     echo json_encode(['success' => true, 'id' => $pdo->lastInsertId()]);
 } catch (PDOException $e) {

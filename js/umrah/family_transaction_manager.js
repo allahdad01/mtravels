@@ -15,6 +15,9 @@ function openFamilyTransactionModal(familyId, familyName, packageName, totalMemb
     // Reset member currencies array
     window.familyMemberCurrencies = [];
 
+    // Collapse the add-transaction form if it was left open
+    $('#familyTransactionForm').collapse('hide');
+
     // Load family members and financial summary
     loadFamilyTransactionData(familyId);
 
@@ -31,6 +34,20 @@ function loadFamilyTransactionData(familyId) {
         success: function(response) {
             if (response.success) {
                 const data = response.data;
+
+                // Store client type for transaction_to logic (regular clients default to Bank)
+                window.currentClientType = data.client_type || '';
+
+                // Determine majority supplier type across members
+                var supCounts = {};
+                (data.members || []).forEach(function(m) {
+                    var st = m.supplier_type || '';
+                    supCounts[st] = (supCounts[st] || 0) + 1;
+                });
+                var majoritySup = Object.keys(supCounts).reduce(function(a, b) {
+                    return supCounts[a] > supCounts[b] ? a : b;
+                }, '');
+                window.familyMajoritySupplier = majoritySup;
 
                 // Update financial summary
                 $('#familyTotalPrice').text(data.total_price || '0.00');
@@ -62,23 +79,42 @@ function loadFamilyMembersTransactionTable(members) {
         return;
     }
 
-    members.forEach(member => {
-        const row = `
-            <tr>
-                <td>
-                    <div><strong>${member.name}</strong></div>
-                    <small class="text-muted">ID: ${member.booking_id}</small>
-                </td>
-                <td>${member.sold_price || '0.00'}</td>
-                <td class="text-success">${member.paid || '0.00'}</td>
-                <td class="text-danger">${member.due || '0.00'}</td>
-                <td>
-                    <button class="btn btn-sm btn-outline-primary" onclick="openTransactionTab(${member.booking_id}, ${(member.sold_price || '0').replace(/,/g, '')})">
-                        <i class="feather icon-credit-card"></i> View
-                    </button>
-                </td>
-            </tr>
-        `;
+    // Determine majority supplier_type and sold_to
+    var supplierCounts = {};
+    var clientCounts = {};
+    members.forEach(function(m) {
+        var st = m.supplier_type || '';
+        supplierCounts[st] = (supplierCounts[st] || 0) + 1;
+        var ct = String(m.sold_to || '');
+        clientCounts[ct] = (clientCounts[ct] || 0) + 1;
+    });
+    var majoritySupplier = Object.keys(supplierCounts).reduce(function(a, b) {
+        return supplierCounts[a] > supplierCounts[b] ? a : b;
+    }, '');
+    var majorityClient = Object.keys(clientCounts).reduce(function(a, b) {
+        return clientCounts[a] > clientCounts[b] ? a : b;
+    }, '');
+
+    members.forEach(function(member) {
+        var isDiff = member.supplier_type !== majoritySupplier || String(member.sold_to) !== String(majorityClient);
+        var warningIcon = isDiff ? '<i class="feather icon-alert-triangle text-warning mr-1" title="Supplier or client differs from majority"></i>' : '';
+        var rowClass = isDiff ? ' class="table-warning"' : '';
+        var helperText = isDiff ? '<br><small class="text-warning"><i class="feather icon-alert-triangle"></i> Supplier or client differs from others</small>' : '';
+
+        var row = '<tr' + rowClass + '>' +
+            '<td>' + warningIcon + '<strong>' + member.name + '</strong>' +
+                '<br><small class="text-muted">ID: ' + member.booking_id + '</small>' +
+                helperText +
+            '</td>' +
+            '<td>' + (member.sold_price || '0.00') + '</td>' +
+            '<td class="text-success">' + (member.paid || '0.00') + '</td>' +
+            '<td class="text-danger">' + (member.due || '0.00') + '</td>' +
+            '<td>' +
+                '<button class="btn btn-sm btn-outline-primary" onclick="openTransactionTab(' + member.booking_id + ', ' + (member.sold_price || '0').replace(/,/g, '') + ')">' +
+                    '<i class="feather icon-credit-card"></i> View' +
+                '</button>' +
+            '</td>' +
+        '</tr>';
         tbody.append(row);
     });
 }
@@ -95,10 +131,30 @@ function loadFamilyMemberPaymentInputs(members) {
          return;
      }
 
-     members.forEach(member => {
+     // Determine majority supplier_type and sold_to
+     var supplierCounts = {};
+     var clientCounts = {};
+     members.forEach(function(m) {
+         var st = m.supplier_type || '';
+         supplierCounts[st] = (supplierCounts[st] || 0) + 1;
+         var ct = String(m.sold_to || '');
+         clientCounts[ct] = (clientCounts[ct] || 0) + 1;
+     });
+     var majoritySupplier = Object.keys(supplierCounts).reduce(function(a, b) {
+         return supplierCounts[a] > supplierCounts[b] ? a : b;
+     }, '');
+     var majorityClient = Object.keys(clientCounts).reduce(function(a, b) {
+         return clientCounts[a] > clientCounts[b] ? a : b;
+     }, '');
+
+     members.forEach(function(member) {
          // Store member currency for exchange rate logic
          window.familyMemberCurrencies.push(member.currency);
-         
+
+         var isDiff = member.supplier_type !== majoritySupplier || String(member.sold_to) !== String(majorityClient);
+         var cardClass = isDiff ? 'card border-warning' : 'card border-light';
+         var warningBadge = isDiff ? '<div class="mt-1"><span class="badge badge-warning"><i class="feather icon-alert-triangle"></i> Supplier or client differs from others</span></div>' : '';
+
          const needsReceipt = familyTransactionNeedsReceipt($('#familyTransactionTo').val());
          
          let receiptInput = '';
@@ -119,12 +175,13 @@ function loadFamilyMemberPaymentInputs(members) {
          
          const memberInput = `
              <div class="col-md-6 mb-3">
-                 <div class="card border-light">
+                 <div class="${cardClass}">
                      <div class="card-body p-3">
                          <div class="d-flex justify-content-between align-items-center mb-2">
                              <strong>${member.name}</strong>
                              <small class="text-muted">Due: ${member.due || '0.00'}</small>
                          </div>
+                         ${warningBadge}
                          <div class="form-group mb-2">
                              <label class="small">Payment Amount</label>
                              <input type="number" class="form-control form-control-sm"
@@ -340,7 +397,11 @@ $(document).ready(function() {
 
         $('#familyTransactionFormData')[0].reset();
         $('#familyPaymentCurrency').val('');
-        $('#familyTransactionTo').val('Internal Account');
+        if (window.currentClientType === 'regular') {
+            $('#familyTransactionTo').val('Bank').prop('disabled', true).trigger('change');
+        } else {
+            $('#familyTransactionTo').val('Internal Account').prop('disabled', false).trigger('change');
+        }
         $('#familyReceiptNumberField').show();
         $('#bankReceiptAlert').show();
 

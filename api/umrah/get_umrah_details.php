@@ -27,11 +27,14 @@ try {
     // Query to get umrah details
     $query = "SELECT
                 u.*,
-                f.head_of_family AS family_name
+                f.head_of_family AS family_name,
+                c.client_type
               FROM
                 umrah_bookings u
               LEFT JOIN
                 families f ON u.family_id = f.family_id
+              LEFT JOIN
+                clients c ON u.sold_to = c.id
               WHERE
                 u.booking_id = ? AND u.tenant_id = ? AND u.branch_id = ?";
 

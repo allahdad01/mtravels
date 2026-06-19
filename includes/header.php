@@ -1337,6 +1337,10 @@ body.has-pay-banner .app-header {
 
 <!-- ── Scripts ────────────────────────────────────────────────── -->
 <script>
+var currentUserId = <?= (int)($user['id'] ?? 0) ?>;
+var onLoadTutorialsQueue = [];
+var isPlayingOnLoadTutorial = false;
+
 document.addEventListener('DOMContentLoaded', function () {
     var shellToggle = document.getElementById('mobile-collapse');
     var shellOverlay = document.getElementById('appShellOverlay');
@@ -1485,6 +1489,33 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
     // ── End Help button ─────────────────────────────────────
+
+    // ── Auto-load on-page-load tutorials ────────────────────
+    function checkOnLoadTutorials() {
+        var pageName = window.location.pathname.split('/').pop();
+        if (!pageName) return;
+        fetch('../api/tutorials/check_on_load.php?page=' + encodeURIComponent(pageName))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success && data.tutorials && data.tutorials.length) {
+                    onLoadTutorialsQueue = data.tutorials;
+                    playNextOnLoadTutorial();
+                }
+            })
+            .catch(function() {});
+    }
+
+    function playNextOnLoadTutorial() {
+        if (!onLoadTutorialsQueue.length) return;
+        var tut = onLoadTutorialsQueue.shift();
+        isPlayingOnLoadTutorial = true;
+        var btn = document.getElementById('helpVideoMarkLearned');
+        if (btn) btn.style.display = 'inline-flex';
+        openTutorialVideo(tut);
+    }
+
+    checkOnLoadTutorials();
+    // ── End auto-load tutorials ─────────────────────────────
 
     if (typeof window.switchNotifTab !== 'function') {
         window.switchNotifTab = function(btn, id) {
@@ -1921,7 +1952,12 @@ document.addEventListener('DOMContentLoaded', function () {
     <div class="help-video-modal-content">
         <div class="help-video-modal-header">
             <span class="help-video-modal-title" id="helpVideoTitle">Tutorial</span>
-            <span class="help-video-modal-close" onclick="closeHelpVideo()">&times;</span>
+            <div>
+                <button class="help-video-learn-btn" id="helpVideoMarkLearned" onclick="markTutorialLearned()" style="display:none;" title="Mark as learned so it won't auto-play again">
+                    <i class="feather icon-check-circle"></i> Mark as Learned
+                </button>
+                <span class="help-video-modal-close" onclick="closeHelpVideo()">&times;</span>
+            </div>
         </div>
         <div class="help-video-container">
             <iframe id="helpVideoPlayer" src="" allow="autoplay; fullscreen; picture-in-picture"></iframe>
@@ -1946,8 +1982,15 @@ document.addEventListener('DOMContentLoaded', function () {
     background: #1a1a2e; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between;
 }
 .help-video-modal-title { color: #fff; font-weight: 600; font-size: .9rem; }
-.help-video-modal-close { color: #fff; font-size: 24px; cursor: pointer; line-height: 1; }
+.help-video-modal-close { color: #fff; font-size: 24px; cursor: pointer; line-height: 1; margin-left: 8px; }
 .help-video-modal-close:hover { color: #ff5370; }
+.help-video-learn-btn {
+    display: inline-flex; align-items: center; gap: 5px; background: #10b981; color: #fff;
+    border: none; border-radius: 5px; padding: 5px 10px; font-size: .78rem; font-weight: 600;
+    cursor: pointer; transition: all .2s;
+}
+.help-video-learn-btn:hover { background: #059669; }
+.help-video-learn-btn:disabled { opacity: .6; cursor: not-allowed; }
 .help-video-container { position: relative; width: 100%; padding-bottom: 56.25%; height: 0; }
 .help-video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
 .help-video-chapters { background: #1a1a2e; padding: 12px 16px; border-top: 1px solid #333; }
@@ -1973,6 +2016,8 @@ var helpVimeoPlayer = null;
 var helpYtApiLoaded = false;
 var helpVimeoApiLoaded = false;
 
+var helpCurrentTutorialId = null;
+
 function openTutorialVideo(tutorial) {
     var type = tutorial.video_type || 'vimeo';
     var id = tutorial.video_id || '';
@@ -1981,6 +2026,7 @@ function openTutorialVideo(tutorial) {
     document.getElementById('helpVideoTitle').textContent = tutorial.title || 'Tutorial';
     helpCurrentVideoId = id;
     helpCurrentVideoType = type;
+    helpCurrentTutorialId = tutorial.id;
     helpYtPlayer = null;
     helpVimeoPlayer = null;
     try { helpCurrentChapters = JSON.parse(tutorial.chapters || '[]'); } catch(e) { helpCurrentChapters = []; }
@@ -2060,6 +2106,39 @@ function seekHelpVideo(index) {
     }
 }
 
+function markTutorialLearned() {
+    var tutorialId = helpCurrentTutorialId;
+    if (!tutorialId) return;
+
+    var btn = document.getElementById('helpVideoMarkLearned');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="feather icon-loader"></i> Saving...';
+    }
+
+    var formData = new FormData();
+    formData.append('tutorial_id', tutorialId);
+
+    fetch('../api/tutorials/mark_learned.php', { method: 'POST', body: formData })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                try { localStorage.setItem('tutorial_learned_' + currentUserId + '_' + tutorialId, '1'); } catch(e) {}
+                closeHelpVideo();
+                if (isPlayingOnLoadTutorial) {
+                    isPlayingOnLoadTutorial = false;
+                    playNextOnLoadTutorial();
+                }
+            }
+        })
+        .catch(function() {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="feather icon-check-circle"></i> Mark as Learned';
+            }
+        });
+}
+
 function closeHelpVideo() {
     document.getElementById('helpVideoModal').classList.remove('show');
     document.getElementById('helpVideoPlayer').src = '';
@@ -2067,6 +2146,15 @@ function closeHelpVideo() {
     helpCurrentChapters = [];
     helpYtPlayer = null;
     helpVimeoPlayer = null;
+    var btn = document.getElementById('helpVideoMarkLearned');
+    if (btn) {
+        btn.style.display = 'none';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="feather icon-check-circle"></i> Mark as Learned';
+    }
+    if (isPlayingOnLoadTutorial) {
+        isPlayingOnLoadTutorial = false;
+    }
 }
 
 document.addEventListener('click', function(e) {

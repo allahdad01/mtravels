@@ -20,9 +20,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['family_id'])) {
                 f.total_price,
                 f.total_paid,
                 f.total_due,
-                COUNT(ub.booking_id) as member_count
+                COUNT(ub.booking_id) as member_count,
+                MAX(c.client_type) as client_type
             FROM families f
             LEFT JOIN umrah_bookings ub ON f.family_id = ub.family_id AND ub.tenant_id = ? AND ub.branch_id = ?
+            LEFT JOIN clients c ON ub.sold_to = c.id
             WHERE f.family_id = ? AND f.tenant_id = ? AND f.branch_id = ?
             GROUP BY f.family_id
         ";
@@ -44,7 +46,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['family_id'])) {
                 ub.sold_price,
                 ub.paid,
                 ub.due,
-                ub.currency
+                ub.currency,
+                ub.sold_to,
+                (SELECT s.supplier_type FROM umrah_booking_services ubs
+                 JOIN suppliers s ON ubs.supplier_id = s.id
+                 WHERE ubs.booking_id = ub.booking_id AND ubs.tenant_id = ub.tenant_id
+                 AND ubs.branch_id = ub.branch_id
+                 AND ubs.service_type IN ('all', 'visa')
+                 LIMIT 1) as supplier_type
             FROM umrah_bookings ub
             WHERE ub.family_id = ? AND ub.tenant_id = ? AND ub.branch_id = ?
             ORDER BY ub.name
@@ -65,7 +74,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['family_id'])) {
                 'sold_price' => number_format($member['sold_price'] ?? 0, 2),
                 'paid' => number_format($member['paid'] ?? 0, 2),
                 'due' => number_format($member['due'] ?? 0, 2),
-                'currency' => $member['currency'] ?? 'USD'
+                'currency' => $member['currency'] ?? 'USD',
+                'supplier_type' => $member['supplier_type'] ?? '',
+                'sold_to' => $member['sold_to'] ?? ''
             ];
         }
 
@@ -77,6 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['family_id'])) {
                 'total_paid' => number_format($familyData['total_paid'] ?? 0, 2),
                 'total_due' => number_format($familyData['total_due'] ?? 0, 2),
                 'member_count' => $familyData['member_count'] ?? 0,
+                'client_type' => $familyData['client_type'] ?? '',
                 'members' => $members
             ]
         ];
