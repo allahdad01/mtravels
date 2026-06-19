@@ -101,7 +101,8 @@ try {
         $stmt = $pdo->prepare("
             SELECT ht.*, c.name as receiver_name, c.phone as receiver_phone
             FROM hawala_transfers ht
-            LEFT JOIN customers c ON ht.receiver_id = c.id
+            LEFT JOIN sarafi_transactions st ON st.id = ht.receiver_transaction_id
+            LEFT JOIN customers c ON c.id = st.customer_id
             WHERE ht.sender_transaction_id = ? AND ht.tenant_id = ? AND ht.branch_id = ?
         ");
         $stmt->bindParam(1, $transaction_id, PDO::PARAM_INT);
