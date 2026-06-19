@@ -19,6 +19,8 @@
                     <input type="hidden" id="editTransactionType" name="transaction_type">
                     <input type="hidden" id="originalAmount" name="original_amount">
                     <input type="hidden" id="originalType" name="original_type">
+                    <input type="hidden" id="editTransactionCurrencyHidden" name="currency">
+                    <input type="hidden" id="editTransactionTypeHidden" name="type">
 
                     <!-- Transaction Details Section -->
                     <div class="form-section">

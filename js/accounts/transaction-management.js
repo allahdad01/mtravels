@@ -415,6 +415,8 @@ function attachEditButtonListeners() {
             set('editTransactionCurrency',   d.currency);
             set('editTransactionDescription',d.description);
             set('editTransactionReceipt',    d.receipt);
+            set('editTransactionCurrencyHidden', d.currency);
+            set('editTransactionTypeHidden',     d.type.toLowerCase());
             const typeSelect = document.getElementById('editTransactionTypeSelect');
             if (typeSelect) typeSelect.value = d.type.toLowerCase();
             if (d.transactionDate) {

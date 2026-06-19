@@ -1,9 +1,9 @@
 <?php
 // Include database security module for input validation
-require_once 'includes/db_security.php';
+require_once __DIR__ . '/../../admin/includes/db_security.php';
 
 // Include security module
-require_once '../../admin/security.php';
+require_once __DIR__ . '/../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
