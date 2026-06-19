@@ -21,13 +21,13 @@ class ExcelImportHandler {
         $this->branchId = $_SESSION['branch_id'];
     }
 
-    public function importFromExcel($excelFilePath) {
+    public function importFromExcel($excelFilePath, $onlySheets = []) {
         try {
             // Load the Excel file
             $spreadsheet = IOFactory::load($excelFilePath);
 
             // Define the expected sheets and their processing methods
-            $sheetMappings = [
+            $allSheets = [
                 'Ticket Bookings' => 'processTicketBookings',
                 'Ticket Refunds' => 'processTicketRefunds',
                 'Ticket Date Changes' => 'processTicketDateChanges',
@@ -38,6 +38,8 @@ class ExcelImportHandler {
                 'Families' => 'processFamilies',
                 'Umrah Bookings' => 'processUmrahBookings'
             ];
+
+            $sheetMappings = empty($onlySheets) ? $allSheets : array_intersect_key($allSheets, array_flip($onlySheets));
 
             // Process each expected sheet
             foreach ($sheetMappings as $sheetName => $methodName) {
@@ -71,6 +73,122 @@ class ExcelImportHandler {
                 'processed_sheets' => []
             ];
         }
+    }
+
+    public function previewImport($excelFilePath, $onlySheets = []) {
+        try {
+            $spreadsheet = IOFactory::load($excelFilePath);
+
+            $allEntityColumns = [
+                'Ticket Bookings' => ['suppliers' => 15, 'clients' => 16, 'accounts' => 17],
+                'Ticket Refunds' => ['suppliers' => 16, 'clients' => 17, 'accounts' => 18],
+                'Ticket Date Changes' => ['suppliers' => 15, 'clients' => 16, 'accounts' => 17],
+                'Ticket Weights' => ['suppliers' => 9, 'clients' => 10, 'accounts' => 11],
+                'Ticket Reservations' => ['suppliers' => 15, 'clients' => 16, 'accounts' => 17],
+                'Visa Applications' => ['suppliers' => 14, 'clients' => 15, 'accounts' => 16],
+                'Hotel Bookings' => ['suppliers' => 14, 'clients' => 15, 'accounts' => 16],
+                'Families' => [],
+                'Umrah Bookings' => ['suppliers' => 18, 'clients' => 19, 'accounts' => 20, 'families' => 16]
+            ];
+
+            $entityColumns = empty($onlySheets) ? $allEntityColumns : array_intersect_key($allEntityColumns, array_flip($onlySheets));
+
+            $found = ['suppliers' => [], 'clients' => [], 'accounts' => [], 'families' => []];
+            $sheets = [];
+            $totalRows = 0;
+
+            foreach ($entityColumns as $sheetName => $columns) {
+                $worksheet = $spreadsheet->getSheetByName($sheetName);
+                if (!$worksheet) continue;
+
+                $highestRow = $worksheet->getHighestRow();
+                if ($highestRow <= 1) continue;
+
+                $rowCount = $highestRow - 1;
+                $totalRows += $rowCount;
+                $sheets[] = ['name' => $sheetName, 'row_count' => $rowCount];
+
+                $highestColumn = $worksheet->getHighestColumn();
+                $highestColumnIndex = Coordinate::columnIndexFromString($highestColumn);
+
+                for ($row = 2; $row <= $highestRow; $row++) {
+                    $data = [];
+                    for ($col = 1; $col <= $highestColumnIndex; $col++) {
+                        $cellValue = $worksheet->getCell(Coordinate::stringFromColumnIndex($col) . $row)->getCalculatedValue();
+                        $data[] = (string) $cellValue;
+                    }
+
+                    if ($this->shouldSkipImportRow($data)) continue;
+
+                    foreach ($columns as $type => $colIdx) {
+                        $name = trim($data[$colIdx] ?? '');
+                        if ($name !== '') {
+                            $found[$type][] = $name;
+                        }
+                    }
+                }
+            }
+
+            foreach ($found as $type => $list) {
+                $found[$type] = array_values(array_unique($list));
+            }
+
+            $newEntities = ['suppliers' => [], 'clients' => [], 'accounts' => [], 'families' => []];
+            $existingEntities = ['suppliers' => [], 'clients' => [], 'accounts' => [], 'families' => []];
+
+            foreach ($found['suppliers'] as $name) {
+                if ($this->entityExists('suppliers', $name)) {
+                    $existingEntities['suppliers'][] = $name;
+                } else {
+                    $newEntities['suppliers'][] = $name;
+                }
+            }
+            foreach ($found['clients'] as $name) {
+                if ($this->entityExists('clients', $name)) {
+                    $existingEntities['clients'][] = $name;
+                } else {
+                    $newEntities['clients'][] = $name;
+                }
+            }
+            foreach ($found['accounts'] as $name) {
+                if ($this->entityExists('main_account', $name)) {
+                    $existingEntities['accounts'][] = $name;
+                } else {
+                    $newEntities['accounts'][] = $name;
+                }
+            }
+            foreach ($found['families'] as $name) {
+                if ($this->entityExists('families', $name, 'head_of_family', 'family_id')) {
+                    $existingEntities['families'][] = $name;
+                } else {
+                    $newEntities['families'][] = $name;
+                }
+            }
+
+            return [
+                'success' => true,
+                'sheets' => $sheets,
+                'total_rows' => $totalRows,
+                'new_entities' => $newEntities,
+                'existing_entities' => $existingEntities
+            ];
+
+        } catch (Throwable $e) {
+            return [
+                'success' => false,
+                'errors' => ['Preview failed: ' . $e->getMessage()],
+                'sheets' => [],
+                'total_rows' => 0,
+                'new_entities' => ['suppliers' => [], 'clients' => [], 'accounts' => [], 'families' => []],
+                'existing_entities' => ['suppliers' => [], 'clients' => [], 'accounts' => [], 'families' => []]
+            ];
+        }
+    }
+
+    private function entityExists($table, $name, $nameColumn = 'name', $idColumn = 'id') {
+        $stmt = $this->pdo->prepare("SELECT $idColumn FROM $table WHERE $nameColumn = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt->execute([$name, $this->tenantId, $this->branchId]);
+        return (bool) $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
     private function processTicketBookings($worksheet) {
@@ -610,7 +728,7 @@ if (empty(array_filter($data))) continue;
                 currency, sold, base, supplier_penalty, service_penalty, status, remarks,
                 created_by, imported
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1
             )
         ");
 

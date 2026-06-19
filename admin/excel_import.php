@@ -11,13 +11,14 @@ enforce_auth();
 $isAjax = isset($_GET['is_ajax']) && $_GET['is_ajax'] === '1';
 
 $tenant_id = $_SESSION['tenant_id'] ?? null;
-if (!$tenant_id) {
+$branch_id = $_SESSION['branch_id'] ?? null;
+if (!$tenant_id || !$branch_id) {
     if ($isAjax) {
         header('Content-Type: application/json');
-        echo json_encode(['success' => false, 'errors' => ['Tenant ID not found in session. Please log in again.'], 'success_count' => 0, 'processed_sheets' => []]);
+        echo json_encode(['success' => false, 'errors' => ['Tenant ID or Branch ID not found in session. Please log in again.'], 'success_count' => 0, 'processed_sheets' => []]);
         exit;
     }
-    $message = "Error: Tenant ID not found in session. Please log in again.";
+    $message = "Error: Tenant ID or Branch ID not found in session. Please log in again.";
     $messageType = 'error';
     return;
 }
@@ -29,43 +30,109 @@ if (!$isAjax) {
 $message = '';
 $messageType = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['excel_file'])) {
-    try {
-        $file = $_FILES['excel_file'];
-        if ($file['error'] !== UPLOAD_ERR_OK) throw new Exception('File upload failed');
-        $allowedTypes = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'];
-        if (!in_array($file['type'], $allowedTypes)) throw new Exception('Please upload a valid Excel file (.xlsx or .xls)');
-        if ($file['size'] > 52428800) throw new Exception('File size must be less than 50MB');
+function getTempDir() {
+    $dir = sys_get_temp_dir() . '/mtravels_excel_imports';
+    if (!is_dir($dir)) mkdir($dir, 0777, true);
+    return $dir;
+}
 
-        $importHandler = new ExcelImportHandler($tenant_id);
-        $result = $importHandler->importFromExcel($file['tmp_name']);
+function cleanupOldTempFiles() {
+    $dir = getTempDir();
+    foreach (glob($dir . '/*') as $file) {
+        if (time() - filemtime($file) > 3600) @unlink($file);
+    }
+}
 
-        if ($isAjax) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+    $importHandler = new ExcelImportHandler($tenant_id);
+
+    // ── Confirm import (uses saved temp file) ──
+    if ($isAjax && isset($_GET['confirm'])) {
+        try {
+            $uploadId = basename($_POST['upload_id'] ?? '');
+            $tempPath = getTempDir() . '/' . $uploadId;
+
+            if (!file_exists($tempPath)) {
+                throw new Exception('Upload session expired. Please re-upload the file.');
+            }
+
+            $metaPath = $tempPath . '.meta.json';
+            $onlySheets = [];
+            if (file_exists($metaPath)) {
+                $meta = json_decode(file_get_contents($metaPath), true);
+                $onlySheets = $meta['sheets'] ?? [];
+                @unlink($metaPath);
+            }
+            $result = $importHandler->importFromExcel($tempPath, $onlySheets);
+            @unlink($tempPath);
+
             header('Content-Type: application/json');
             echo json_encode($result);
             exit;
-        }
 
-        if ($result['success']) {
-            $message = "Import completed successfully! Processed {$result['success_count']} records.";
-            if (!empty($result['processed_sheets'])) $message .= "<br>Sheets: " . implode(', ', $result['processed_sheets']);
-            $messageType = 'success';
-        } else {
-            $message = "Import completed with errors. Processed {$result['success_count']} records.";
-            if (!empty($result['errors'])) {
-                $message .= "<br>" . implode('<br>', array_slice($result['errors'], 0, 10));
-                if (count($result['errors']) > 10) $message .= "<br>... and " . (count($result['errors']) - 10) . " more errors";
-            }
-            $messageType = 'warning';
-        }
-    } catch (Exception $e) {
-        if ($isAjax) {
+        } catch (Exception $e) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'errors' => [$e->getMessage()], 'success_count' => 0, 'processed_sheets' => []]);
             exit;
         }
-        $message = "Import failed: " . $e->getMessage();
-        $messageType = 'error';
+    }
+
+    // ── File upload ──
+    if (isset($_FILES['excel_file'])) {
+        try {
+            $file = $_FILES['excel_file'];
+            if ($file['error'] !== UPLOAD_ERR_OK) throw new Exception('File upload failed');
+            $allowedTypes = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'];
+            if (!in_array($file['type'], $allowedTypes)) throw new Exception('Please upload a valid Excel file (.xlsx or .xls)');
+            if ($file['size'] > 52428800) throw new Exception('File size must be less than 50MB');
+
+            // ── Preview mode (AJAX only) ──
+            if ($isAjax && isset($_GET['preview'])) {
+                cleanupOldTempFiles();
+                $onlySheets = $_POST['sheets'] ?? [];
+                $result = $importHandler->previewImport($file['tmp_name'], $onlySheets);
+                if ($result['success']) {
+                    $uploadId = uniqid('', true);
+                    copy($file['tmp_name'], getTempDir() . '/' . $uploadId);
+                    file_put_contents(getTempDir() . '/' . $uploadId . '.meta.json', json_encode(['sheets' => $onlySheets]));
+                    $result['upload_id'] = $uploadId;
+                }
+                header('Content-Type: application/json');
+                echo json_encode($result);
+                exit;
+            }
+
+            // ── Direct import (non-AJAX fallback) ──
+            $result = $importHandler->importFromExcel($file['tmp_name']);
+
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode($result);
+                exit;
+            }
+
+            if ($result['success']) {
+                $message = "Import completed successfully! Processed {$result['success_count']} records.";
+                if (!empty($result['processed_sheets'])) $message .= "<br>Sheets: " . implode(', ', $result['processed_sheets']);
+                $messageType = 'success';
+            } else {
+                $message = "Import completed with errors. Processed {$result['success_count']} records.";
+                if (!empty($result['errors'])) {
+                    $message .= "<br>" . implode('<br>', array_slice($result['errors'], 0, 10));
+                    if (count($result['errors']) > 10) $message .= "<br>... and " . (count($result['errors']) - 10) . " more errors";
+                }
+                $messageType = 'warning';
+            }
+        } catch (Exception $e) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'errors' => [$e->getMessage()], 'success_count' => 0, 'processed_sheets' => []]);
+                exit;
+            }
+            $message = "Import failed: " . $e->getMessage();
+            $messageType = 'error';
+        }
     }
 }
 
@@ -489,17 +556,24 @@ if ($isAjax) {
                             </form>
                         </div>
 
-                        <!-- Supported Types -->
+                        <!-- Data Types Selection -->
                         <div class="panel">
-                            <p class="section-label">Supported data types</p>
+                            <p class="section-label">
+                                Data types to import
+                                <label style="float:right;font-weight:400;font-size:.75rem;cursor:pointer;text-transform:none;letter-spacing:0;color:var(--accent)">
+                                    <input type="checkbox" id="selectAllSheets" checked onchange="toggleAllSheets(this)"> Select All
+                                </label>
+                            </p>
                             <div class="data-grid">
                                 <?php
-                                $types = ['Ticket Bookings','Ticket Refunds','Date Changes','Ticket Weights','Reservations','Visa Applications','Hotel Bookings','Families','Umrah Bookings'];
-                                foreach ($types as $t): ?>
-                                <div class="data-chip">
-                                    <span class="data-chip__dot"></span>
-                                    <?php echo $t; ?>
-                                </div>
+                                $allSheetNames = ['Ticket Bookings','Ticket Refunds','Ticket Date Changes','Ticket Weights','Ticket Reservations','Visa Applications','Hotel Bookings','Families','Umrah Bookings'];
+                                foreach ($allSheetNames as $s): ?>
+                                <label class="data-chip" style="cursor:pointer;gap:.35rem">
+                                    <input type="checkbox" name="sheets[]" value="<?php echo $s; ?>" checked class="sheet-checkbox" style="accent-color:var(--accent);margin:0;width:14px;height:14px">
+                                    <span class="data-chip__dot" style="background:var(--ink-mute)"></span>
+                                    <?php echo $s; ?>
+                                    <a href="generate_excel_template.php?sheet=<?php echo rawurlencode($s); ?>" class="chip-dl" title="Download template for <?php echo $s; ?>"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></a>
+                                </label>
                                 <?php endforeach; ?>
                             </div>
                         </div>
@@ -547,6 +621,9 @@ if ($isAjax) {
 <script src="../assets/plugins/sweetalert2/sweetalert2.min.js"></script>
 
 <script>
+function toggleAllSheets(el) {
+    document.querySelectorAll('.sheet-checkbox').forEach(cb => cb.checked = el.checked);
+}
 (function () {
     const zone       = document.getElementById('uploadZone');
     const fileInput  = document.getElementById('excelFile');
@@ -592,56 +669,132 @@ if ($isAjax) {
         importBtn.disabled = true;
     };
 
+    function buildPreviewHtml(prev) {
+        let html = '';
+
+        html += `<div style="text-align:left;font-size:.85rem;line-height:1.6">`;
+
+        html += `<p style="margin-bottom:.75rem"><strong>${prev.total_rows} records</strong> found across <strong>${prev.sheets.length}</strong> sheet(s):</p>`;
+        html += `<ul style="margin:0 0 1rem 1.25rem;padding:0;color:#6b7280">`;
+        prev.sheets.forEach(s => {
+            html += `<li><strong>${s.name}:</strong> ${s.row_count} rows</li>`;
+        });
+        html += `</ul>`;
+
+        const hasNew = Object.values(prev.new_entities).some(a => a.length);
+        const hasExisting = Object.values(prev.existing_entities).some(a => a.length);
+
+        if (hasNew) {
+            html += `<p style="margin-bottom:.5rem;color:#059669;font-weight:600">New entities to be created:</p>`;
+            for (const [type, names] of Object.entries(prev.new_entities)) {
+                if (!names.length) continue;
+                const label = type.charAt(0).toUpperCase() + type.slice(1);
+                html += `<p style="margin:0 0 .25rem 0;font-size:.8rem;color:#374151">${label} (${names.length}): <span style="color:#059669">${names.join(', ')}</span></p>`;
+            }
+        }
+
+        if (hasExisting) {
+            html += `<p style="margin:.75rem 0 .5rem 0;color:#2563eb;font-weight:600">Already in system (will be reused):</p>`;
+            for (const [type, names] of Object.entries(prev.existing_entities)) {
+                if (!names.length) continue;
+                const label = type.charAt(0).toUpperCase() + type.slice(1);
+                const truncated = names.length > 5 ? names.slice(0, 5).join(', ') + `, …and ${names.length - 5} more` : names.join(', ');
+                html += `<p style="margin:0 0 .25rem 0;font-size:.8rem;color:#374151">${label} (${names.length}): ${truncated}</p>`;
+            }
+        }
+
+        if (!hasNew && !hasExisting) {
+            html += `<p style="color:#6b7280">No entity references found in the spreadsheet.</p>`;
+        }
+
+        html += `<hr style="margin:.75rem 0;border:0;border-top:1px solid #e5e7eb">`;
+        html += `<p style="font-size:.8rem;color:#9ca3af">Review the details above and click <strong>Confirm</strong> to proceed, or <strong>Cancel</strong> to go back.</p>`;
+        html += `</div>`;
+        return html;
+    }
+
     form.addEventListener('submit', e => {
         e.preventDefault();
+        if (!fileInput.files.length) return;
 
-        Swal.fire({
-            title: 'Start import?',
-            html: 'This will import data from your Excel file.<br>Make sure you have a recent backup.',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#2563eb',
-            cancelButtonColor: '#94a3b8',
-            confirmButtonText: 'Yes, import',
-            cancelButtonText: 'Cancel',
-            borderRadius: '12px',
-        }).then(res => {
-            if (!res.isConfirmed) return;
+        progressWrap.style.display = 'block';
+        progressBar.style.width = '20%';
+        importBtn.disabled = true;
+        importBtn.innerHTML = `<svg width="17" height="17" style="animation:spin .8s linear infinite" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-4.22-7.64"/></svg> Scanning…`;
 
-            progressWrap.style.display = 'block';
-            progressBar.style.width = '30%';
-            importBtn.disabled = true;
-            importBtn.innerHTML = `<svg width="17" height="17" style="animation:spin .8s linear infinite" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-4.22-7.64"/></svg> Importing…`;
+        const fd = new FormData();
+        fd.append('excel_file', fileInput.files[0]);
+        document.querySelectorAll('.sheet-checkbox:checked').forEach(cb => fd.append('sheets[]', cb.value));
 
-            const fd = new FormData();
-            if (fileInput.files.length) fd.append('excel_file', fileInput.files[0]);
+        // Step 1: Preview
+        fetch('?is_ajax=1&preview=1', { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(prev => {
+                progressWrap.style.display = 'none';
+                importBtn.disabled = false;
+                importBtn.innerHTML = `<svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg> Start Import`;
 
-            fetch('?is_ajax=1', { method: 'POST', body: fd })
-                .then(r => r.json())
-                .then(result => {
-                    progressBar.style.width = '100%';
-                    setTimeout(() => {
-                        progressWrap.style.display = 'none';
-                        if (result.success) {
-                            let msg = `Processed <strong>${result.success_count}</strong> records successfully.`;
-                            if (result.processed_sheets?.length) msg += `<br><small style="color:#6b7280">Sheets: ${result.processed_sheets.join(', ')}</small>`;
-                            Swal.fire({ title: 'Import complete', html: msg, icon: 'success', confirmButtonColor: '#2563eb' }).then(() => location.reload());
-                        } else {
-                            let msg = `Processed <strong>${result.success_count}</strong> records.`;
-                            if (result.errors?.length) {
-                                msg += `<br><br><div style="text-align:left;font-size:.85rem;max-height:160px;overflow-y:auto;background:#f8f9fa;padding:.75rem;border-radius:8px">${result.errors.slice(0,10).join('<br>')}${result.errors.length>10?`<br>…and ${result.errors.length-10} more`:''}</div>`;
-                            }
-                            Swal.fire({ title: 'Import result', html: msg, icon: result.success_count > 0 ? 'warning' : 'error', confirmButtonColor: '#2563eb' }).then(() => location.reload());
-                        }
-                    }, 400);
-                })
-                .catch(() => {
-                    progressWrap.style.display = 'none';
-                    importBtn.disabled = false;
-                    importBtn.innerHTML = `<svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg> Start Import`;
-                    Swal.fire({ title: 'Import failed', text: 'An unexpected error occurred. Please try again.', icon: 'error', confirmButtonColor: '#2563eb' });
+                if (!prev.success) {
+                    Swal.fire({ title: 'Preview failed', html: prev.errors?.join('<br>') || 'Could not scan the file.', icon: 'error', confirmButtonColor: '#2563eb' });
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Preview',
+                    html: buildPreviewHtml(prev),
+                    icon: 'info',
+                    showCancelButton: true,
+                    confirmButtonColor: '#059669',
+                    cancelButtonColor: '#94a3b8',
+                    confirmButtonText: 'Confirm Import',
+                    cancelButtonText: 'Cancel',
+                    borderRadius: '12px',
+                    width: 520,
+                }).then(res => {
+                    if (!res.isConfirmed) return;
+
+                    progressWrap.style.display = 'block';
+                    progressBar.style.width = '30%';
+                    importBtn.disabled = true;
+                    importBtn.innerHTML = `<svg width="17" height="17" style="animation:spin .8s linear infinite" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-4.22-7.64"/></svg> Importing…`;
+
+                    const cf = new FormData();
+                    cf.append('upload_id', prev.upload_id);
+
+                    // Step 2: Confirm import
+                    fetch('?is_ajax=1&confirm=1', { method: 'POST', body: cf })
+                        .then(r => r.json())
+                        .then(result => {
+                            progressBar.style.width = '100%';
+                            setTimeout(() => {
+                                progressWrap.style.display = 'none';
+                                if (result.success) {
+                                    let msg = `Processed <strong>${result.success_count}</strong> records successfully.`;
+                                    if (result.processed_sheets?.length) msg += `<br><small style="color:#6b7280">Sheets: ${result.processed_sheets.join(', ')}</small>`;
+                                    Swal.fire({ title: 'Import complete', html: msg, icon: 'success', confirmButtonColor: '#2563eb' }).then(() => location.reload());
+                                } else {
+                                    let msg = `Processed <strong>${result.success_count}</strong> records.`;
+                                    if (result.errors?.length) {
+                                        msg += `<br><br><div style="text-align:left;font-size:.85rem;max-height:160px;overflow-y:auto;background:#f8f9fa;padding:.75rem;border-radius:8px">${result.errors.slice(0,10).join('<br>')}${result.errors.length>10?`<br>…and ${result.errors.length-10} more`:''}</div>`;
+                                    }
+                                    Swal.fire({ title: 'Import result', html: msg, icon: result.success_count > 0 ? 'warning' : 'error', confirmButtonColor: '#2563eb' }).then(() => location.reload());
+                                }
+                            }, 400);
+                        })
+                        .catch(() => {
+                            progressWrap.style.display = 'none';
+                            importBtn.disabled = false;
+                            importBtn.innerHTML = `<svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg> Start Import`;
+                            Swal.fire({ title: 'Import failed', text: 'An unexpected error occurred. Please try again.', icon: 'error', confirmButtonColor: '#2563eb' });
+                        });
                 });
-        });
+            })
+            .catch(() => {
+                progressWrap.style.display = 'none';
+                importBtn.disabled = false;
+                importBtn.innerHTML = `<svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg> Start Import`;
+                Swal.fire({ title: 'Preview failed', text: 'Could not scan the file. Please try again.', icon: 'error', confirmButtonColor: '#2563eb' });
+            });
     });
 
     // CSS spin keyframe

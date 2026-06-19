@@ -63,16 +63,25 @@ use PhpOffice\PhpSpreadsheet\Style\Font;
 ob_clean();
 
 try {
+    // Single-sheet mode
+    $onlySheet = $_GET['sheet'] ?? null;
+    $includeSheet = function($name) use ($onlySheet) {
+        return !$onlySheet || $name === $onlySheet;
+    };
+
     // Create new spreadsheet
     $spreadsheet = new Spreadsheet();
+
+    $suffix = $onlySheet ? ' - ' . $onlySheet : '';
+    $filename = $onlySheet ? str_replace(' ', '_', strtolower($onlySheet)) . '_template.xlsx' : 'tenant_data_import_template.xlsx';
 
     // Set document properties
     $spreadsheet->getProperties()
         ->setCreator('Travel Agency System')
         ->setLastModifiedBy('Travel Agency System')
-        ->setTitle('Data Import Template')
-        ->setSubject('Excel Template for Data Import')
-        ->setDescription('Template with all required sheets and columns for importing tenant data')
+        ->setTitle('Data Import Template' . $suffix)
+        ->setSubject('Excel Template for Data Import' . $suffix)
+        ->setDescription('Template for importing ' . ($onlySheet ?: 'all') . ' tenant data')
         ->setKeywords('import template excel data')
         ->setCategory('Templates');
 
@@ -157,7 +166,7 @@ try {
     $instructionsSheet->getStyle('A3:A' . ($row-1))->getAlignment()->setWrapText(true);
 
     // Create Ticket Bookings sheet (only if feature enabled)
-    if (hasFeature('ticket_bookings', $allowed_features)) {
+    if (hasFeature('ticket_bookings', $allowed_features) && $includeSheet('Ticket Bookings')) {
         $ticketBookingsSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Ticket Bookings');
         $spreadsheet->addSheet($ticketBookingsSheet);
     } else {
@@ -196,7 +205,7 @@ try {
     }
 
     // Create Ticket Refunds sheet (only if feature enabled)
-    if (hasFeature('refunded_tickets', $allowed_features)) {
+    if (hasFeature('refunded_tickets', $allowed_features) && $includeSheet('Ticket Refunds')) {
         $ticketRefundsSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Ticket Refunds');
         $spreadsheet->addSheet($ticketRefundsSheet);
 
@@ -229,7 +238,7 @@ try {
     }
 
     // Create Ticket Date Changes sheet (only if feature enabled)
-    if (hasFeature('date_change_tickets', $allowed_features)) {
+    if (hasFeature('date_change_tickets', $allowed_features) && $includeSheet('Ticket Date Changes')) {
         $dateChangesSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Ticket Date Changes');
         $spreadsheet->addSheet($dateChangesSheet);
 
@@ -247,7 +256,7 @@ try {
     }
 
     // Create Ticket Weights sheet (only if feature enabled)
-    if (hasFeature('ticket_weights', $allowed_features)) {
+    if (hasFeature('ticket_weights', $allowed_features) && $includeSheet('Ticket Weights')) {
         $weightsSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Ticket Weights');
         $spreadsheet->addSheet($weightsSheet);
 
@@ -263,7 +272,7 @@ try {
     }
 
     // Create Ticket Reservations sheet (only if feature enabled)
-    if (hasFeature('ticket_reservations', $allowed_features)) {
+    if (hasFeature('ticket_reservations', $allowed_features) && $includeSheet('Ticket Reservations')) {
         $reservationsSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Ticket Reservations');
         $spreadsheet->addSheet($reservationsSheet);
 
@@ -281,7 +290,7 @@ try {
     }
 
     // Create Visa Applications sheet (only if feature enabled)
-    if (hasFeature('visa_applications', $allowed_features)) {
+    if (hasFeature('visa_applications', $allowed_features) && $includeSheet('Visa Applications')) {
         $visaSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Visa Applications');
         $spreadsheet->addSheet($visaSheet);
 
@@ -298,7 +307,7 @@ try {
     }
 
     // Create Hotel Bookings sheet (only if feature enabled)
-    if (hasFeature('hotel_bookings', $allowed_features)) {
+    if (hasFeature('hotel_bookings', $allowed_features) && $includeSheet('Hotel Bookings')) {
         $hotelSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Hotel Bookings');
         $spreadsheet->addSheet($hotelSheet);
 
@@ -316,7 +325,7 @@ try {
     }
 
     // Create Families sheet (only if feature enabled)
-    if (hasFeature('umrah_bookings', $allowed_features)) {
+    if (hasFeature('umrah_bookings', $allowed_features) && $includeSheet('Families')) {
         $familiesSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Families');
         $spreadsheet->addSheet($familiesSheet);
 
@@ -333,7 +342,7 @@ try {
     }
 
     // Create Umrah Bookings sheet (only if feature enabled)
-    if (hasFeature('umrah_bookings', $allowed_features)) {
+    if (hasFeature('umrah_bookings', $allowed_features) && $includeSheet('Umrah Bookings')) {
         $umrahSheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, 'Umrah Bookings');
         $spreadsheet->addSheet($umrahSheet);
 
@@ -362,8 +371,11 @@ try {
         }
     }
 
-    // Remove default sheet
-    $spreadsheet->removeSheetByIndex(0);
+    // Remove the default "Worksheet" sheet that Spreadsheet creates
+    $defaultSheet = $spreadsheet->getSheetByName('Worksheet');
+    if ($defaultSheet !== null) {
+        $spreadsheet->removeSheetByIndex($spreadsheet->getIndex($defaultSheet));
+    }
 
     // Set active sheet to Instructions
     $spreadsheet->setActiveSheetIndex(0);
@@ -374,7 +386,7 @@ try {
     // Clear any buffered output and set headers for download
     ob_clean();
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    header('Content-Disposition: attachment;filename="tenant_data_import_template.xlsx"');
+    header('Content-Disposition: attachment;filename="' . $filename . '"');
     header('Cache-Control: max-age=0');
     header('Pragma: public');
 
