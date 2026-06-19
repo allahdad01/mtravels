@@ -360,15 +360,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pay'])) {
         $transStmt->execute([$debtor_id, $amount_in_debtor_currency, $debtor['currency'], 'credit', $description, $payment_date, $reference_number, $tenant_id, $branch_id]);
         $transaction_id = $pdo->lastInsertId();
 
-        // Update main account balance
-        $balance_column = strtolower($debtor['currency']) . '_balance';
-        if ($debtor['currency'] == 'DARHAM') {
+        // Determine main account currency and amount
+        // The main account receives funds in the PAYMENT currency, not the debtor's currency
+        $main_currency = $currency;
+        $main_amount = $amount;
+
+        // Update main account balance using payment currency column
+        $balance_column = strtolower($main_currency) . '_balance';
+        if ($main_currency == 'DARHAM') {
             $balance_column = 'darham_balance';
-        } elseif ($debtor['currency'] == 'EUR') {
+        } elseif ($main_currency == 'EUR') {
             $balance_column = 'euro_balance';
-        } elseif ($debtor['currency'] == 'USD') {
+        } elseif ($main_currency == 'USD') {
             $balance_column = 'usd_balance';
-        } elseif ($debtor['currency'] == 'AFS') {
+        } elseif ($main_currency == 'AFS') {
             $balance_column = 'afs_balance';
         }
 
@@ -380,13 +385,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pay'])) {
             throw new Exception("Main account not found");
         }
 
-        $new_main_balance = $main_account[$balance_column] + $amount_in_debtor_currency;
+        $new_main_balance = $main_account[$balance_column] + $main_amount;
         $updateMainStmt = $pdo->prepare("UPDATE main_account SET $balance_column = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
         $updateMainStmt->execute([$new_main_balance, $paid_to, $tenant_id, $branch_id]);
 
-        // Create main account transaction
+        // Create main account transaction in PAYMENT currency
          $mainTransStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, amount, balance, currency, type, description, transaction_of, reference_id, receipt, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-         $mainTransStmt->execute([$paid_to, $amount_in_debtor_currency, $new_main_balance, $debtor['currency'], 'credit', $description, 'debtor', $transaction_id, $reference_number, $tenant_id, $branch_id]);
+         $mainTransStmt->execute([$paid_to, $main_amount, $new_main_balance, $main_currency, 'credit', $description, 'debtor', $transaction_id, $reference_number, $tenant_id, $branch_id]);
          $main_transaction_id = $pdo->lastInsertId();
 
          // Create notification
