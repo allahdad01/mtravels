@@ -147,6 +147,24 @@ include '../includes/header_super_admin.php';
     </div>
 </div>
 
+<div id="playVideoOverlay" style="display:none;position:fixed;z-index:99999;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.85);align-items:center;justify-content:center;">
+    <div style="position:relative;width:90%;max-width:900px;border-radius:8px;overflow:hidden;background:#000;">
+        <div style="background:#1a1a2e;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;">
+            <span style="color:#fff;font-weight:600;font-size:.9rem;" id="playVideoTitle">Tutorial</span>
+            <div>
+                <span style="color:#fff;font-size:24px;cursor:pointer;line-height:1;" onclick="closePlayOverlay()">&times;</span>
+            </div>
+        </div>
+        <div style="position:relative;width:100%;padding-bottom:56.25%;height:0;">
+            <iframe id="playVideoPlayer" src="" allow="autoplay; fullscreen; picture-in-picture" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;"></iframe>
+        </div>
+        <div id="playVideoChapters" style="background:#1a1a2e;padding:12px 16px;border-top:1px solid #333;display:none;">
+            <div style="color:#aaa;font-size:.8rem;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Chapters</div>
+            <div id="playVideoChaptersList" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade sa-modal" id="tutorialModal" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content">
@@ -191,7 +209,18 @@ include '../includes/header_super_admin.php';
                         </div>
                         <div class="sa-form-group">
                             <label class="sa-form-label">Video ID <span style="color:var(--sa-danger)">*</span></label>
-                            <input type="text" class="sa-form-control" name="video_id" id="fVideoId" placeholder="Video ID from URL" required>
+                            <div style="display:flex;gap:6px;">
+                                <input type="text" class="sa-form-control" name="video_id" id="fVideoId" placeholder="Video ID from URL" required style="flex:1;">
+                                <button type="button" class="sa-btn sa-btn-primary sa-btn-sm" onclick="loadPreview()" id="previewBtn" style="white-space:nowrap;" title="Load video preview">
+                                    <i class="feather icon-play"></i> Preview
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="videoPreviewArea" style="display:none;margin-bottom:16px;border-radius:8px;overflow:hidden;background:#000;">
+                        <div style="position:relative;width:100%;padding-bottom:56.25%;height:0;">
+                            <iframe id="modalVideoPlayer" src="" allow="autoplay; fullscreen; picture-in-picture" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;"></iframe>
                         </div>
                     </div>
 
@@ -229,16 +258,15 @@ include '../includes/header_super_admin.php';
 
                     <div class="sa-form-group">
                         <label class="sa-form-label">Chapters / Timestamps</label>
-                        <div id="chaptersContainer">
-                            <div class="chapter-entry" style="display:flex;gap:8px;margin-bottom:6px;">
-                                <input type="text" class="sa-form-control" name="chapters[label][]" placeholder="Label (e.g. Add Ticket)" style="flex:1;">
-                                <input type="text" class="sa-form-control" name="chapters[time][]" placeholder="Time (e.g. 3:50)" style="width:100px;">
-                                <button type="button" class="sa-btn sa-btn-danger sa-btn-sm" onclick="this.parentElement.remove()" style="flex-shrink:0;">&times;</button>
-                            </div>
+                        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+                            <button type="button" class="sa-btn sa-btn-sm" style="background:#4099ff;color:#fff;" onclick="addChapter()">
+                                <i class="feather icon-plus"></i> Add Manually
+                            </button>
+                            <button type="button" class="sa-btn sa-btn-sm" style="background:#ffb64d;color:#fff;" onclick="captureChapter()" id="captureChapterBtn" title="Capture current video time as chapter">
+                                <i class="feather icon-camera"></i> Capture from Video
+                            </button>
                         </div>
-                        <button type="button" class="sa-btn sa-btn-sm" style="background:#e8ecf1;color:var(--sa-text);margin-top:4px;" onclick="addChapter()">
-                            <i class="feather icon-plus"></i> Add Chapter
-                        </button>
+                        <div id="chaptersContainer"></div>
                     </div>
 
                     <div class="sa-form-group">
@@ -278,6 +306,206 @@ include '../includes/header_super_admin.php';
 
 <script>
 let tutorials = [];
+let modalYtPlayer = null;
+let modalVimeoPlayer = null;
+let modalYtApiLoaded = false;
+let modalVimeoApiLoaded = false;
+
+function loadPreview() {
+    const type = document.getElementById('fVideoType').value;
+    const id = document.getElementById('fVideoId').value.trim();
+    if (!id) { showToast('Enter a Video ID first', 'error'); return; }
+
+    const area = document.getElementById('videoPreviewArea');
+    const iframe = document.getElementById('modalVideoPlayer');
+    const url = type === 'youtube'
+        ? 'https://www.youtube.com/embed/' + id + '?autoplay=1&rel=0&enablejsapi=1'
+        : 'https://player.vimeo.com/video/' + id + '?autoplay=1';
+    iframe.src = url;
+    area.style.display = 'block';
+
+    modalYtPlayer = null;
+    modalVimeoPlayer = null;
+
+    if (type === 'youtube') {
+        if (!modalYtApiLoaded) {
+            modalYtApiLoaded = true;
+            const tag = document.createElement('script');
+            tag.src = 'https://www.youtube.com/iframe_api';
+            document.body.appendChild(tag);
+        }
+        const checkYt = setInterval(function() {
+            if (typeof YT !== 'undefined' && YT.loaded) {
+                clearInterval(checkYt);
+                if (!modalYtPlayer) {
+                    try { modalYtPlayer = new YT.Player('modalVideoPlayer', {}); } catch(e) {}
+                }
+            }
+        }, 500);
+    } else {
+        if (!modalVimeoApiLoaded) {
+            modalVimeoApiLoaded = true;
+            const tag = document.createElement('script');
+            tag.src = 'https://player.vimeo.com/api/player.js';
+            document.body.appendChild(tag);
+        }
+        const checkVimeo = setInterval(function() {
+            if (typeof Vimeo !== 'undefined' && Vimeo.Player) {
+                clearInterval(checkVimeo);
+                if (!modalVimeoPlayer) {
+                    try { modalVimeoPlayer = new Vimeo.Player(iframe); } catch(e) {}
+                }
+            }
+        }, 500);
+    }
+}
+
+function captureChapter() {
+    const type = document.getElementById('fVideoType').value;
+    let currentSeconds = 0;
+
+    if (type === 'youtube' && modalYtPlayer && typeof modalYtPlayer.getCurrentTime === 'function') {
+        currentSeconds = Math.floor(modalYtPlayer.getCurrentTime());
+    } else if (type === 'vimeo' && modalVimeoPlayer && typeof modalVimeoPlayer.getCurrentTime === 'function') {
+        modalVimeoPlayer.getCurrentTime().then(function(s) {
+            currentSeconds = Math.floor(s);
+            addChapterEntryAtTime(currentSeconds);
+        }).catch(function() {
+            showToast('Could not get video time. Make sure the video is playing.', 'error');
+        });
+        return;
+    } else {
+        showToast('Video not loaded or player not ready. Click Preview first.', 'error');
+        return;
+    }
+
+    addChapterEntryAtTime(currentSeconds);
+}
+
+function addChapterEntryAtTime(seconds) {
+    const label = prompt('Enter label for chapter at ' + secondsToTime(seconds) + ':');
+    if (label === null) return;
+    const timeStr = secondsToTime(seconds);
+    addChapter(label, timeStr);
+    showToast('Chapter "' + label + '" at ' + timeStr + ' added!', 'success');
+}
+
+function secondsToTime(s) {
+    if (isNaN(s) || s < 0) return '0:00';
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return m + ':' + (sec < 10 ? '0' : '') + sec;
+}
+
+let playYtPlayer = null;
+let playVimeoPlayer = null;
+let playYtApiLoaded = false;
+let playVimeoApiLoaded = false;
+
+function playTutorial(id) {
+    const t = tutorials.find(x => x.id == id);
+    if (!t) return;
+
+    currentPlayTutorialId = t.id;
+    currentPlayType = t.video_type || 'vimeo';
+
+    document.getElementById('playVideoTitle').textContent = t.title || 'Tutorial';
+    const type = currentPlayType;
+    const vid = t.video_id || '';
+    if (!vid) { showToast('No video ID', 'error'); return; }
+
+    const iframe = document.getElementById('playVideoPlayer');
+    const url = type === 'youtube'
+        ? 'https://www.youtube.com/embed/' + vid + '?autoplay=1&rel=0&enablejsapi=1'
+        : 'https://player.vimeo.com/video/' + vid + '?autoplay=1';
+    iframe.src = url;
+
+    playYtPlayer = null;
+    playVimeoPlayer = null;
+
+    // Render chapters
+    let chapters = [];
+    try { chapters = JSON.parse(t.chapters || '[]'); } catch(e) { chapters = []; }
+    const chContainer = document.getElementById('playVideoChapters');
+    const chList = document.getElementById('playVideoChaptersList');
+    if (chapters.length) {
+        chContainer.style.display = 'block';
+        chList.innerHTML = chapters.map(function(ch, i) {
+            return '<div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.08);border-radius:5px;padding:5px 10px;cursor:pointer;transition:all .2s;border:1px solid transparent;hover:{background:rgba(70,128,255,0.2);border-color:#4680ff;}" onclick="seekPlayVideo(' + i + ')">'
+                + '<span style="font-size:.75rem;font-weight:700;color:#4680ff;font-family:monospace;">' + esc(ch.time) + '</span>'
+                + '<span style="font-size:.8rem;color:#e0e0e0;">' + esc(ch.label) + '</span>'
+                + '</div>';
+        }).join('');
+    } else {
+        chContainer.style.display = 'none';
+    }
+
+    document.getElementById('playVideoOverlay').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+
+    // Load player API
+    if (type === 'youtube') {
+        if (!playYtApiLoaded) {
+            playYtApiLoaded = true;
+            const tag = document.createElement('script');
+            tag.src = 'https://www.youtube.com/iframe_api';
+            document.body.appendChild(tag);
+        }
+        const checkYt = setInterval(function() {
+            if (typeof YT !== 'undefined' && YT.loaded) {
+                clearInterval(checkYt);
+                if (!playYtPlayer) {
+                    try { playYtPlayer = new YT.Player('playVideoPlayer', {}); } catch(e) {}
+                }
+            }
+        }, 500);
+    } else {
+        if (!playVimeoApiLoaded) {
+            playVimeoApiLoaded = true;
+            const tag = document.createElement('script');
+            tag.src = 'https://player.vimeo.com/api/player.js';
+            document.body.appendChild(tag);
+        }
+        const checkVimeo = setInterval(function() {
+            if (typeof Vimeo !== 'undefined' && Vimeo.Player) {
+                clearInterval(checkVimeo);
+                if (!playVimeoPlayer) {
+                    try { playVimeoPlayer = new Vimeo.Player(iframe); } catch(e) {}
+                }
+            }
+        }, 500);
+    }
+}
+
+function seekPlayVideo(index) {
+    const t = tutorials.find(x => x.id == currentPlayTutorialId);
+    if (!t) return;
+    let chapters = [];
+    try { chapters = JSON.parse(t.chapters || '[]'); } catch(e) { chapters = []; }
+    const ch = chapters[index];
+    if (!ch) return;
+    const seconds = parseInt(ch.seconds, 10) || 0;
+
+    const type = t.video_type || 'vimeo';
+    if (type === 'youtube' && playYtPlayer && typeof playYtPlayer.seekTo === 'function') {
+        playYtPlayer.seekTo(seconds, true);
+    } else if (type === 'vimeo' && playVimeoPlayer && typeof playVimeoPlayer.setCurrentTime === 'function') {
+        playVimeoPlayer.setCurrentTime(seconds).catch(function() {});
+    }
+}
+
+let currentPlayTutorialId = null;
+let currentPlayType = null;
+
+function closePlayOverlay() {
+    document.getElementById('playVideoOverlay').style.display = 'none';
+    document.getElementById('playVideoPlayer').src = '';
+    document.body.style.overflow = 'auto';
+    playYtPlayer = null;
+    playVimeoPlayer = null;
+    currentPlayTutorialId = null;
+    currentPlayType = null;
+}
 
 function loadTutorials() {
     fetch('../api/tutorials/list.php?all=1')
@@ -323,6 +551,7 @@ function renderTable() {
             <td>${roleBadges}</td>
             <td>${statusBadge}</td>
             <td><div class="sa-actions">
+                <button class="sa-btn sa-btn-sm" style="background:#10b981;color:#fff;" onclick="playTutorial(${t.id})" title="Play Video"><i class="feather icon-play"></i></button>
                 <button class="sa-btn sa-btn-primary sa-btn-sm" onclick="editTutorial(${t.id})" title="Edit"><i class="feather icon-edit-2"></i></button>
                 <button class="sa-btn sa-btn-danger sa-btn-sm" onclick="deleteTutorial(${t.id})" title="Delete"><i class="feather icon-trash-2"></i></button>
             </div></td>
@@ -362,7 +591,17 @@ function toggleAllRoles(checked) {
     });
 }
 
+function resetPreview() {
+    const area = document.getElementById('videoPreviewArea');
+    const iframe = document.getElementById('modalVideoPlayer');
+    iframe.src = '';
+    area.style.display = 'none';
+    modalYtPlayer = null;
+    modalVimeoPlayer = null;
+}
+
 function openAddModal() {
+    resetPreview();
     document.getElementById('modalTitle').textContent = 'Add Tutorial';
     document.getElementById('tutorialForm').reset();
     document.getElementById('tutorialId').value = 0;
@@ -379,6 +618,7 @@ function openAddModal() {
 function editTutorial(id) {
     const t = tutorials.find(x => x.id == id);
     if (!t) return;
+    resetPreview();
     document.getElementById('modalTitle').textContent = 'Edit Tutorial';
     document.getElementById('tutorialId').value = t.id;
     document.getElementById('fTitle').value = t.title || '';
@@ -498,6 +738,20 @@ function showToast(msg, type) {
     requestAnimationFrame(() => div.classList.add('show'));
     toastTimer = setTimeout(() => { div.classList.remove('show'); setTimeout(() => div.remove(), 300); }, 3000);
 }
+
+document.getElementById('playVideoOverlay').addEventListener('click', function(e) {
+    if (e.target === this) closePlayOverlay();
+});
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && document.getElementById('playVideoOverlay').style.display === 'flex') {
+        closePlayOverlay();
+    }
+});
+
+$('#tutorialModal').on('hidden.bs.modal', function () {
+    resetPreview();
+});
 
 loadTutorials();
 </script>
