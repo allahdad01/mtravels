@@ -953,11 +953,15 @@ if (!function_exists('h')) {
                         <span class="pcoded-mtext">SSL Monitoring</span>
                     </a>
                 </li>
-                <li data-username="backup_management" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'backup_management.php' ? 'active' : ''; ?>">
+                <li data-username="backup_management" class="nav-item <?php echo in_array(basename($_SERVER['PHP_SELF']), ['backup_management.php', 'backup_settings.php']) ? 'active' : ''; ?>">
                     <a href="backup_management.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-save"></i></span>
                         <span class="pcoded-mtext">Backups</span>
                     </a>
+                    <ul class="nav-item" style="padding-left:20px;list-style:none;margin:0;">
+                        <li><a href="backup_management.php" style="display:block;padding:6px 12px;font-size:.82rem;color:<?= basename($_SERVER['PHP_SELF']) == 'backup_management.php' ? '#4099ff' : 'rgba(255,255,255,.6)' ?>;">Manage Backups</a></li>
+                        <li><a href="backup_settings.php" style="display:block;padding:6px 12px;font-size:.82rem;color:<?= basename($_SERVER['PHP_SELF']) == 'backup_settings.php' ? '#4099ff' : 'rgba(255,255,255,.6)' ?>;">Auto Backup Settings</a></li>
+                    </ul>
                 </li>
                 <li data-username="file_browser" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'file_browser.php' ? 'active' : ''; ?>">
                     <a href="file_browser.php" class="nav-link">
