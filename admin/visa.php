@@ -948,9 +948,9 @@ function isCancelledEtc($status) {
                                         <?php endif; ?>
 
                                         <!-- Cancel -->
-                                        <?php if ($isApproved): ?>
+                                        <?php if ($isApproved || $statusLower === 'refunded'): ?>
                                         <button class="vc-btn vc-btn--danger vc-btn--disabled"
-                                                disabled title="<?= __('cannot_cancel_approved_visas') ?>">
+                                                disabled title="<?= $statusLower === 'refunded' ? 'Cannot cancel refunded visa' : __('cannot_cancel_approved_visas') ?>">
                                             <i class="feather icon-x-circle"></i>
                                         </button>
                                         <?php elseif (!$isCancelled): ?>
