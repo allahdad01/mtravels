@@ -99,7 +99,7 @@ function sendEmail($to, $subject, $body, $isHtml = true, $emailType = 'general',
         $mail->send();
 
         // Record email in tracking table
-        recordEmailTracking($emailId, $to, $emailType, $tenant_id);
+        recordEmailTracking($emailId, $to, $emailType, $subject, $tenant_id);
 
         return true;
     } catch (Exception $e) {
@@ -108,7 +108,7 @@ function sendEmail($to, $subject, $body, $isHtml = true, $emailType = 'general',
 }
 
 // Record email tracking
-function recordEmailTracking($emailId, $recipientEmail, $emailType, $tenantId) {
+function recordEmailTracking($emailId, $recipientEmail, $emailType, $subject = '', $tenantId = null) {
     global $pdo, $branch_id;
 
     if ($pdo === null) {
@@ -116,13 +116,14 @@ function recordEmailTracking($emailId, $recipientEmail, $emailType, $tenantId) {
     }
 
     try {
-        $stmt = $pdo->prepare("INSERT INTO email_tracking (email_id, recipient_email, email_type, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?)");
+        $stmt = $pdo->prepare("INSERT INTO email_tracking (email_id, recipient_email, email_type, subject, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?)");
         $stmt->bindParam(1, $emailId, PDO::PARAM_STR);
         $stmt->bindParam(2, $recipientEmail, PDO::PARAM_STR);
         $stmt->bindParam(3, $emailType, PDO::PARAM_STR);
-        $stmt->bindParam(4, $tenantId, PDO::PARAM_INT);
+        $stmt->bindParam(4, $subject, PDO::PARAM_STR);
+        $stmt->bindParam(5, $tenantId, PDO::PARAM_INT);
         $branchIdVal = isset($branch_id) ? intval($branch_id) : null;
-        $stmt->bindParam(5, $branchIdVal, PDO::PARAM_INT);
+        $stmt->bindParam(6, $branchIdVal, PDO::PARAM_INT);
         $stmt->execute();
         return true;
     } catch (Exception $e) {
@@ -1786,7 +1787,7 @@ function sendTicketNotificationWithAttachment($email, $name, $subject, $body, $a
         
         // Record email in tracking table
         $emailId = uniqid('email_', true);
-        recordEmailTracking($emailId, $email, 'ticket_notification_with_pdf', $tenant_id);
+        recordEmailTracking($emailId, $email, 'ticket_notification_with_pdf', $subject, $tenant_id);
         
         return true;
     } catch (Exception $e) {
