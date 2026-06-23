@@ -975,6 +975,12 @@ if (!function_exists('h')) {
                         <span class="pcoded-mtext">Manage Tutorials</span>
                     </a>
                 </li>
+                <li data-username="tenant_activity" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'tenant_activity.php' ? 'active' : ''; ?>">
+                    <a href="tenant_activity.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-bar-chart-2"></i></span>
+                        <span class="pcoded-mtext">Tenant Activity</span>
+                    </a>
+                </li>
                 <li data-username="manage_email_tracking" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_email_tracking.php' ? 'active' : ''; ?>">
                     <a href="manage_email_tracking.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-mail"></i></span>
