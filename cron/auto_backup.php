@@ -253,7 +253,7 @@ if ($odEnabled === '1' && !empty($odRefreshToken) && !empty($odClientId) && !emp
     autoBackupLog($log, 'Uploading to OneDrive...');
     try {
         // Get access token from refresh token
-        $tokenResponse = autoBackupCurlPost('https://login.microsoftonline.com/common/oauth2/v2.0/token', [
+        $tokenResponse = autoBackupCurlPost('https://login.microsoftonline.com/consumers/oauth2/v2.0/token', [
             'client_id' => $odClientId,
             'client_secret' => $odClientSecret,
             'refresh_token' => $odRefreshToken,

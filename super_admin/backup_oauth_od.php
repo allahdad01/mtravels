@@ -17,7 +17,7 @@ session_start();
 header("X-XSS-Protection: 1; mode=block");
 header("X-Content-Type-Options: nosniff");
 
-if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'super_admin' || !is_null($_SESSION['tenant_id'])) {
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'super_admin' || !empty($_SESSION['tenant_id'])) {
     die('Unauthorized. Please log in as super admin first.');
 }
 
@@ -70,7 +70,7 @@ if (empty($clientId) || empty($clientSecret)) {
 $redirectUri = rtrim((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']), '/') . '/backup_oauth_od.php';
 
 // Exchange code for tokens
-$ch = curl_init('https://login.microsoftonline.com/common/oauth2/v2.0/token');
+$ch = curl_init('https://login.microsoftonline.com/consumers/oauth2/v2.0/token');
 curl_setopt_array($ch, [
     CURLOPT_POST => true,
     CURLOPT_POSTFIELDS => http_build_query([

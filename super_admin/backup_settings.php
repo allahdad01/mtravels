@@ -17,7 +17,7 @@ if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 
 }
 $_SESSION['last_activity'] = time();
 
-if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'super_admin' || !is_null($_SESSION['tenant_id'])) {
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'super_admin' || !empty($_SESSION['tenant_id'])) {
     header('Location: ../login.php');
     exit();
 }
@@ -476,7 +476,7 @@ function getOneDriveAuthUrl() {
         'response_type' => 'code',
         'scope' => 'offline_access files.readwrite',
     ]);
-    return 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?' . $params;
+    return 'https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize?' . $params;
 }
 ?>
 
