@@ -942,16 +942,24 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                             <div class="ac-lc-date"><?= date('M d, Y', strtotime($client['updated_at'])) ?></div>
                                              <div class="ac-lc-actions ac-lc-actions-expanded">
                                                  <?php $isAgencyClient = isset($client['client_type']) && $client['client_type'] === 'agency'; ?>
-                                                 <?php if (!$isAgencyClient): ?>
-                                                 <button class="btn btn-primary btn-sm make-payment-btn"
-                                                         data-client-id="<?= $client['id'] ?>"
-                                                         data-client-name="<?= htmlspecialchars($client['name']) ?>"
-                                                         data-usd-balance="<?= $client['usd_balance'] ?>"
-                                                         data-afs-balance="<?= $client['afs_balance'] ?>"
-                                                         title="<?= __('make_payment') ?>" data-toggle="tooltip" data-placement="top">
-                                                     <i class="feather icon-credit-card"></i>
-                                                 </button>
-                                                 <?php endif; ?>
+                                                  <?php if (!$isAgencyClient): ?>
+                                                  <button class="btn btn-primary btn-sm make-payment-btn"
+                                                          data-client-id="<?= $client['id'] ?>"
+                                                          data-client-name="<?= htmlspecialchars($client['name']) ?>"
+                                                          data-usd-balance="<?= $client['usd_balance'] ?>"
+                                                          data-afs-balance="<?= $client['afs_balance'] ?>"
+                                                          title="<?= __('make_payment') ?>" data-toggle="tooltip" data-placement="top">
+                                                      <i class="feather icon-credit-card"></i>
+                                                  </button>
+                                                  <button class="btn btn-outline-danger btn-sm client-withdraw-btn"
+                                                          data-client-id="<?= $client['id'] ?>"
+                                                          data-client-name="<?= htmlspecialchars($client['name']) ?>"
+                                                          data-usd-balance="<?= $client['usd_balance'] ?>"
+                                                          data-afs-balance="<?= $client['afs_balance'] ?>"
+                                                          title="<?= __('withdraw') ?>" data-toggle="tooltip" data-placement="top">
+                                                      <i class="feather icon-arrow-down"></i>
+                                                  </button>
+                                                  <?php endif; ?>
                                                  <button class="btn btn-outline-secondary view-client-transactions-btn btn-sm"
                                                          data-client-id="<?= $client['id'] ?>"
                                                          data-client-name="<?= htmlspecialchars($client['name']) ?>"
@@ -1002,6 +1010,7 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
 <?php include '../modals/accounts/edit_main_account_modal.php'; ?>
 <?php include '../modals/accounts/add_main_account_modal.php'; ?>
 <?php include '../modals/accounts/withdraw_main_modal.php'; ?>
+<?php include '../modals/accounts/client_withdraw_modal.php'; ?>
 
 <!-- Hidden form for transaction deletion — untouched -->
 <form id="deleteTransactionForm" class="d-none">

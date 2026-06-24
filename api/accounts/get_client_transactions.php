@@ -98,6 +98,7 @@ $query = "SELECT ct.*,
                 WHEN ct.transaction_of = 'hotel' THEN CONCAT(hb.title, ' ', hb.first_name, ' ', hb.last_name)
                 WHEN ct.transaction_of = 'hotel_refund' THEN CONCAT(hr_book.title, ' ', hr_book.first_name, ' ', hr_book.last_name)
                 WHEN ct.transaction_of = 'fund' THEN CONCAT(usr.name) 
+                WHEN ct.transaction_of = 'client_withdrawal' THEN CONCAT(usr.name) 
                 WHEN ct.transaction_of = 'jv_payment' THEN CONCAT(jv.jv_name)
                 WHEN ct.transaction_of = 'additional_payment' THEN CONCAT(ap.payment_type)
                 ELSE ct.reference_id
@@ -120,7 +121,7 @@ $query = "SELECT ct.*,
           LEFT JOIN hotel_bookings hb ON ct.reference_id = hb.id AND ct.transaction_of = 'hotel' AND hb.tenant_id = ? AND hb.branch_id = ?
           LEFT JOIN hotel_refunds hr ON ct.reference_id = hr.id AND ct.transaction_of = 'hotel_refund' AND hr.tenant_id = ? AND hr.branch_id = ?
           LEFT JOIN hotel_bookings hr_book ON hr.booking_id = hr_book.id AND ct.transaction_of = 'hotel_refund' AND hr_book.tenant_id = ? AND hr_book.branch_id = ?
-          LEFT JOIN users usr ON usr.id = ct.reference_id AND ct.transaction_of = 'fund' AND usr.tenant_id = ? AND usr.branch_id = ?
+          LEFT JOIN users usr ON usr.id = ct.reference_id AND ct.transaction_of IN ('fund', 'client_withdrawal') AND usr.tenant_id = ? AND usr.branch_id = ?
           LEFT JOIN jv_transactions jvt ON jvt.id = ct.reference_id AND ct.transaction_of = 'jv_payment' AND jvt.tenant_id = ? AND jvt.branch_id = ?
           LEFT JOIN jv_payments jv ON jv.id = jvt.jv_payment_id AND ct.transaction_of = 'jv_payment' AND jv.tenant_id = ? AND jv.branch_id = ?
           LEFT JOIN additional_payments ap ON ap.id = ct.reference_id AND ct.transaction_of = 'additional_payment' AND ap.tenant_id = ? AND ap.branch_id = ?
