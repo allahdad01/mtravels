@@ -1,5 +1,16 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) {
+    $sessParams = [
+        'lifetime' => 0,
+        'path' => '/',
+        'domain' => '',
+        'httponly' => true,
+    ];
+    if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
+        $sessParams['secure'] = true;
+        $sessParams['samesite'] = 'None';
+    }
+    session_set_cookie_params($sessParams);
     session_start();
 }
 
@@ -285,10 +296,10 @@ include '../includes/header_super_admin.php';
                                         </div>
 
                                         <div style="margin-top:8px;">
-                                            <a href="<?= h(getGoogleDriveAuthUrl()) ?>" class="bs-btn bs-btn-primary bs-btn-sm" target="_blank" <?php if (empty($platformSettings['backup_gd_client_id'])) echo 'onclick="showToast(\'Save Client ID first\',\'error\');return false;"' ?>>
+                                            <a href="<?= h(getGoogleDriveAuthUrl()) ?>" class="bs-btn bs-btn-primary bs-btn-sm" <?php if (empty($platformSettings['backup_gd_client_id'])) echo 'onclick="showToast(\'Save Client ID first\',\'error\');return false;"' ?>>
                                                 <i class="fab fa-google"></i> Authorize Google Drive
                                             </a>
-                                            <span class="bs-help-text" style="display:inline;margin-left:8px;">Opens Google to authorize access.</span>
+                                            <span class="bs-help-text" style="display:inline;margin-left:8px;">You will be redirected to Google to authorize access.</span>
                                         </div>
                                     </div>
                                 </div>
@@ -342,10 +353,10 @@ include '../includes/header_super_admin.php';
                                         </div>
 
                                         <div style="margin-top:8px;">
-                                            <a href="<?= h(getOneDriveAuthUrl()) ?>" class="bs-btn bs-btn-primary bs-btn-sm" target="_blank" <?php if (empty($platformSettings['backup_od_client_id'])) echo 'onclick="showToast(\'Save Client ID first\',\'error\');return false;"' ?>>
+                                            <a href="<?= h(getOneDriveAuthUrl()) ?>" class="bs-btn bs-btn-primary bs-btn-sm" <?php if (empty($platformSettings['backup_od_client_id'])) echo 'onclick="showToast(\'Save Client ID first\',\'error\');return false;"' ?>>
                                                 <i class="fab fa-microsoft"></i> Authorize OneDrive
                                             </a>
-                                            <span class="bs-help-text" style="display:inline;margin-left:8px;">Opens Microsoft to authorize access.</span>
+                                            <span class="bs-help-text" style="display:inline;margin-left:8px;">You will be redirected to Microsoft to authorize access.</span>
                                         </div>
                                     </div>
                                 </div>

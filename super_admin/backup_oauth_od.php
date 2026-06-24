@@ -12,13 +12,25 @@
  * 4. Certificates & secrets → New client secret
  */
 
+$sessParams = [
+    'lifetime' => 0,
+    'path' => '/',
+    'domain' => '',
+    'httponly' => true,
+];
+if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
+    $sessParams['secure'] = true;
+    $sessParams['samesite'] = 'None';
+}
+session_set_cookie_params($sessParams);
 session_start();
 
 header("X-XSS-Protection: 1; mode=block");
 header("X-Content-Type-Options: nosniff");
 
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'super_admin' || !empty($_SESSION['tenant_id'])) {
-    die('Unauthorized. Please log in as super admin first.');
+    header('Location: ../login.php');
+    exit();
 }
 
 require_once '../includes/db.php';

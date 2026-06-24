@@ -2,10 +2,17 @@
 ob_start();
 
 // Set secure session parameters BEFORE starting the session
-ini_set('session.cookie_httponly', 1);
+$sessParams = [
+    'lifetime' => 0,
+    'path' => '/',
+    'domain' => '',
+    'httponly' => true,
+];
 if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
-    ini_set('session.cookie_secure', 1);
+    $sessParams['secure'] = true;
+    $sessParams['samesite'] = 'None';
 }
+session_set_cookie_params($sessParams);
 
 session_start();
 
