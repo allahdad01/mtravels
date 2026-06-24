@@ -8,7 +8,7 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role
 }
 
 $file = isset($_GET['file']) ? basename($_GET['file']) : '';
-if (empty($file) || !preg_match('/^backup_\d{8}_\d{6}\.sql$/', $file)) {
+if (empty($file) || !preg_match('/^(auto_)?backup_\d{8}_\d{6}\.sql$/', $file)) {
     http_response_code(400);
     exit('Invalid file');
 }

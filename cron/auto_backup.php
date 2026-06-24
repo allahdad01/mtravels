@@ -87,22 +87,23 @@ try {
     fwrite($fh, "-- Database: " . DB_NAME . "\n");
     fwrite($fh, "SET NAMES utf8mb4;\n\n");
 
-    $tables = $pdoBackup->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
-    $allowedResult = $pdoBackup->query("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()");
-    $allowedTables = [];
-    while ($row = $allowedResult->fetch(PDO::FETCH_ASSOC)) {
-        $allowedTables[] = $row['TABLE_NAME'];
-    }
+    $tables = $pdoBackup->query("SELECT TABLE_NAME, TABLE_TYPE FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME")->fetchAll(PDO::FETCH_ASSOC);
 
-    foreach ($tables as $table) {
-        if (!in_array($table, $allowedTables)) continue;
+    foreach ($tables as $t) {
+        $table = $t['TABLE_NAME'];
+        $tableType = $t['TABLE_TYPE'];
+        $isView = ($tableType === 'VIEW');
         $tableId = '`' . str_replace('`', '``', $table) . '`';
 
         $createResult = $pdoBackup->query("SHOW CREATE TABLE {$tableId}");
         if (!$createResult) continue;
         $createRow = $createResult->fetch(PDO::FETCH_NUM);
-        $createSql = "DROP TABLE IF EXISTS {$tableId};\n" . $createRow[1] . ";\n\n";
-        fwrite($fh, $createSql);
+
+        $dropSql = $isView ? "DROP VIEW IF EXISTS {$tableId};\n" : "DROP TABLE IF EXISTS {$tableId};\n";
+        fwrite($fh, $dropSql . $createRow[1] . ";\n\n");
+
+        // Views don't store data; skip INSERT
+        if ($isView) continue;
 
         $selectStmt = $pdoBackup->prepare("SELECT * FROM {$tableId}");
         $selectStmt->execute();
