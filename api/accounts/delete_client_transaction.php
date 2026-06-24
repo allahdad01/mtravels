@@ -134,7 +134,7 @@ try {
     // Handle main account transaction if it exists
     if ($referenceId) {
         // Get main account transaction details
-        $mainTxQuery = "SELECT main_account_id, amount, type, currency, created_at FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'client_fund' AND tenant_id = ? AND branch_id = ?";
+        $mainTxQuery = "SELECT main_account_id, amount, type, currency, created_at FROM main_account_transactions WHERE reference_id = ? AND transaction_of IN ('client_fund', 'client_withdraw') AND tenant_id = ? AND branch_id = ?";
         $mainTxStmt = $pdo->prepare($mainTxQuery);
         $mainTxStmt->bindParam(1, $transactionId, PDO::PARAM_INT);
         $mainTxStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
@@ -211,7 +211,7 @@ try {
             $current_balance = $balanceResult['current_balance'];
 
             // Delete the main account transaction
-            $mainDeleteQuery = "DELETE FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'client_fund' AND tenant_id = ? AND branch_id = ?";
+            $mainDeleteQuery = "DELETE FROM main_account_transactions WHERE reference_id = ? AND transaction_of IN ('client_fund', 'client_withdraw') AND tenant_id = ? AND branch_id = ?";
             $mainDeleteStmt = $pdo->prepare($mainDeleteQuery);
             $mainDeleteStmt->bindParam(1, $transactionId, PDO::PARAM_INT);
             $mainDeleteStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);

@@ -90,6 +90,7 @@ $query = "SELECT mt.*,
                              WHEN mt.transaction_of = 'supplier_fund' THEN CONCAT(sup.name, ' (Supplier Fund)')
                              WHEN mt.transaction_of = 'supplier_fund_withdrawal' THEN CONCAT(sup2.name, ' (Supplier Fund Withdrawal)')
                              WHEN mt.transaction_of = 'client_fund' THEN CONCAT(cl.name, ' (Client Fund)')
+                             WHEN mt.transaction_of = 'client_withdraw' THEN CONCAT(cl_wd.name, ' (Client Withdraw)')
                              WHEN mt.transaction_of = 'global_budget_allocation' THEN 'Global Budget Allocation'
                              WHEN mt.transaction_of = 'budget_allocation' THEN CONCAT(ec.name, ' (Budget Allocation)')
                              WHEN mt.transaction_of = 'expense' THEN CONCAT(exp_cat.name, ' (Expense)')
@@ -123,7 +124,9 @@ $query = "SELECT mt.*,
            LEFT JOIN supplier_transactions st3 ON mt.reference_id = st3.id AND mt.transaction_of = 'supplier_fund_withdrawal'
            LEFT JOIN suppliers sup2 ON st3.supplier_id = sup2.id AND mt.transaction_of = 'supplier_fund_withdrawal'
            LEFT JOIN client_transactions clt ON mt.reference_id = clt.id AND mt.transaction_of = 'client_fund'
-           LEFT JOIN clients cl ON clt.client_id = cl.id AND mt.transaction_of = 'client_fund'
+            LEFT JOIN clients cl ON clt.client_id = cl.id AND mt.transaction_of = 'client_fund'
+            LEFT JOIN client_transactions clt_wd ON mt.reference_id = clt_wd.id AND mt.transaction_of = 'client_withdraw'
+            LEFT JOIN clients cl_wd ON clt_wd.client_id = cl_wd.id AND mt.transaction_of = 'client_withdraw'
             LEFT JOIN budget_allocations ba ON mt.reference_id = ba.id AND mt.transaction_of = 'budget_allocation'
             LEFT JOIN expense_categories ec ON ba.category_id = ec.id AND mt.transaction_of = 'budget_allocation'
             LEFT JOIN global_budget_allocations ga ON mt.reference_id = ga.id AND mt.transaction_of = 'global_budget_allocation'

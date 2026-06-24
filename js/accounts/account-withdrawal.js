@@ -70,6 +70,17 @@ document.addEventListener('DOMContentLoaded', function() {
         paymentCurrencyEl.addEventListener('change', toggleWithdrawExchangeRateVisibility);
     }
 
+    // Client withdraw button handler
+    document.querySelectorAll('.client-withdraw-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const clientId = this.dataset.clientId;
+            const clientName = this.dataset.clientName;
+            const usdBalance = parseFloat(this.dataset.usdBalance);
+            const afsBalance = parseFloat(this.dataset.afsBalance);
+            window.openClientWithdrawModal(clientId, clientName, usdBalance, afsBalance);
+        });
+    });
+
     const form = document.getElementById('withdrawSupplierForm');
     if (form) {
         form.addEventListener('submit', function(e) {

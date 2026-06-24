@@ -43,7 +43,8 @@ function txnBuildActionsCell(transaction, accountType, amount, dateField) {
         showPrintReceipt = false;
     } else if (accountType === 'client') {
         const tof = (transaction.transaction_of || '').toLowerCase();
-        showDelete = isUserAdmin && tof === 'fund';
+        showDelete = isUserAdmin && (tof === 'fund' || tof === 'client_withdrawal');
+        showEdit   = tof === 'fund' || tof === 'client_withdrawal';
         showReceipt = true;
         showPrintReceipt = true;
     }
