@@ -879,6 +879,12 @@ const clientTypeTranslations = {
 
 <script>
 window.csrfToken = '<?= $_SESSION['csrf_token'] ?>';
+<?php
+$clientCountStmt = $pdo->prepare("SELECT COUNT(*) FROM clients WHERE tenant_id = ? AND branch_id = ?");
+$clientCountStmt->execute([$tenant_id, $branch_id]);
+$hasExistingClients = (int)$clientCountStmt->fetchColumn() > 0;
+?>
+var __hasExistingClients = <?= $hasExistingClients ? 'true' : 'false' ?>;
 </script>
 
 <!-- Client management logic -->

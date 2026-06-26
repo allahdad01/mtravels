@@ -1358,6 +1358,7 @@ body.has-pay-banner .app-header {
 var currentUserId = <?= (int)($user['id'] ?? 0) ?>;
 var onLoadTutorialsQueue = [];
 var isPlayingOnLoadTutorial = false;
+var helpAutoSeekIndex = -1;
 
 document.addEventListener('DOMContentLoaded', function () {
     var shellToggle = document.getElementById('mobile-collapse');
@@ -1526,6 +1527,30 @@ document.addEventListener('DOMContentLoaded', function () {
     function playNextOnLoadTutorial() {
         if (!onLoadTutorialsQueue.length) return;
         var tut = onLoadTutorialsQueue.shift();
+        helpAutoSeekIndex = -1;
+        var pageName = window.location.pathname.split('/').pop();
+        if (pageName === 'accounts.php' && tut.chapters) {
+            try {
+                var chapters = JSON.parse(tut.chapters);
+                if (chapters.length) {
+                    fetch('../api/onboarding/check.php')
+                        .then(function(r) { return r.json(); })
+                        .then(function(d) {
+                            if (d.success && d.current_step === 'main_account') {
+                                for (var i = 0; i < chapters.length; i++) {
+                                    var label = (chapters[i].label || '').toLowerCase();
+                                    if (label.indexOf('add') !== -1 || label.indexOf('create') !== -1 || label.indexOf('new') !== -1) {
+                                        helpAutoSeekIndex = i;
+                                        seekHelpVideo(helpAutoSeekIndex);
+                                        break;
+                                    }
+                                }
+                            }
+                        })
+                        .catch(function() {});
+                }
+            } catch(e) {}
+        }
         isPlayingOnLoadTutorial = true;
         var btn = document.getElementById('helpVideoMarkLearned');
         if (btn) btn.style.display = 'inline-flex';
@@ -2036,7 +2061,8 @@ document.addEventListener('DOMContentLoaded', function () {
 }
 .help-video-modal.show { display: flex !important; }
 .help-video-modal-content {
-    position: relative; background: #000; width: 90%; max-width: 900px; border-radius: 8px; overflow: hidden;
+    position: relative; background: #000; width: 90%; max-width: 900px; border-radius: 8px;
+    max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;
 }
 .help-video-modal-header {
     background: #1a1a2e; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between;
@@ -2051,10 +2077,10 @@ document.addEventListener('DOMContentLoaded', function () {
 }
 .help-video-learn-btn:hover { background: #059669; }
 .help-video-learn-btn:disabled { opacity: .6; cursor: not-allowed; }
-.help-video-container { position: relative; width: 100%; padding-bottom: 56.25%; height: 0; }
+.help-video-container { position: relative; width: 100%; aspect-ratio: 16 / 9; flex-shrink: 0; }
 .help-video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
-.help-video-chapters { background: #1a1a2e; padding: 12px 16px; border-top: 1px solid #333; }
-.help-video-chapters-title { color: #aaa; font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+.help-video-chapters { background: #1a1a2e; padding: 12px 16px; border-top: 1px solid #333; overflow-y: auto; flex-shrink: 1; min-height: 0; }
+.help-video-chapters-title { color: #aaa; font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; flex-shrink: 0; }
 .help-video-chapters-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .help-video-chapter-item {
     display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.08); border-radius: 5px;
@@ -2127,11 +2153,43 @@ document.addEventListener('DOMContentLoaded', function () {
     0%, 100% { background: rgba(64,153,255,.08); }
     50% { background: rgba(64,153,255,.18); }
 }
-@keyframes ogNavRing {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(64,153,255,.4); }
-    50% { box-shadow: 0 0 0 4px rgba(64,153,255,.15); }
-}
-</style>
+  @keyframes ogNavRing {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(64,153,255,.4); }
+      50% { box-shadow: 0 0 0 4px rgba(64,153,255,.15); }
+  }
+  .onboarding-btn-highlight {
+      animation: ogBtnPulse 1.5s ease-in-out infinite !important;
+      position: relative;
+      z-index: 1;
+  }
+  @keyframes ogBtnPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(64,153,255,.6); transform: scale(1); }
+      50% { box-shadow: 0 0 0 6px rgba(64,153,255,.25); transform: scale(1.03); }
+  }
+  .onboarding-btn-hint {
+      position: fixed; z-index: 1060;
+      background: #4099ff; color: #fff;
+      padding: 8px 16px; border-radius: 8px;
+      font-size: 13px; font-weight: 500;
+      white-space: nowrap; pointer-events: none;
+      box-shadow: 0 4px 12px rgba(64,153,255,.35);
+      font-family: 'DM Sans', sans-serif;
+      display: flex; align-items: center; gap: 8px;
+  }
+  .onboarding-btn-hint::after {
+      content: ''; position: absolute;
+      width: 0; height: 0;
+      border: 6px solid transparent;
+  }
+  .onboarding-btn-hint.og-hint-below::after {
+      top: -12px; left: 50%; margin-left: -6px;
+      border-bottom-color: #4099ff;
+  }
+  .onboarding-btn-hint.og-hint-above::after {
+      bottom: -12px; left: 50%; margin-left: -6px;
+      border-top-color: #4099ff;
+  }
+  </style>
 
 <script>
 function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
@@ -2186,6 +2244,7 @@ function loadHelpPlayerApi() {
                 if (!helpYtPlayer) {
                     try { helpYtPlayer = new YT.Player('helpVideoPlayer', {}); } catch(e) {}
                 }
+                if (helpAutoSeekIndex >= 0) seekHelpVideo(helpAutoSeekIndex);
             }
         }, 500);
     } else if (helpCurrentVideoType === 'vimeo') {
@@ -2202,6 +2261,7 @@ function loadHelpPlayerApi() {
                 if (!helpVimeoPlayer) {
                     try { helpVimeoPlayer = new Vimeo.Player(iframe); } catch(e) {}
                 }
+                if (helpAutoSeekIndex >= 0) seekHelpVideo(helpAutoSeekIndex);
             }
         }, 500);
     }
@@ -2308,6 +2368,49 @@ function highlightOnboardingNav(page) {
     }
 }
 
+function highlightOnboardingButton(page) {
+    document.querySelectorAll('.onboarding-btn-highlight').forEach(function(el) {
+        el.classList.remove('onboarding-btn-highlight');
+    });
+    var oldHint = document.getElementById('ogBtnHint');
+    if (oldHint) oldHint.remove();
+    if (!page) return;
+    var sel;
+    if (page === 'accounts.php') sel = '#addMainAccountBtn';
+    else if (page === 'supplier.php') sel = '[data-target="#addSupplierModal"]';
+    else if (page === 'client.php') sel = '#addClientBtn';
+    else return;
+    var btn = document.querySelector(sel);
+    if (!btn) return;
+    btn.classList.add('onboarding-btn-highlight');
+    var rect = btn.getBoundingClientRect();
+    var ogPanel = document.getElementById('onboardingGuide');
+    var ogRect = ogPanel ? ogPanel.getBoundingClientRect() : null;
+    var overlapY = 0;
+    if (ogRect && rect.bottom + 40 > ogRect.top && rect.right + 40 > ogRect.left) {
+        overlapY = rect.bottom - ogRect.top + 40;
+    }
+    var targetScrollY = Math.max(0, window.scrollY + rect.top - 120 - overlapY);
+    var scrollDelta = window.scrollY - targetScrollY;
+    window.scrollTo({ top: targetScrollY, behavior: 'smooth' });
+    var hint = document.createElement('div');
+    hint.id = 'ogBtnHint';
+    hint.className = 'onboarding-btn-hint';
+    hint.innerHTML = 'Click here <i class="feather icon-arrow-right"></i>';
+    var hintTop = rect.top - scrollDelta;
+    var hintBottom = rect.bottom - scrollDelta;
+    if (window.innerHeight - hintBottom >= 50) {
+        hint.classList.add('og-hint-below');
+        hint.style.left = Math.max(8, Math.min(rect.left + rect.width / 2 - 60, window.innerWidth - 170)) + 'px';
+        hint.style.top = (hintBottom + 12) + 'px';
+    } else {
+        hint.classList.add('og-hint-above');
+        hint.style.left = Math.max(8, Math.min(rect.left + rect.width / 2 - 60, window.innerWidth - 170)) + 'px';
+        hint.style.top = (hintTop - 48) + 'px';
+    }
+    document.body.appendChild(hint);
+}
+
 function refreshOnboardingGuide() {
     var og = document.getElementById('onboardingGuide');
     if (!og || og.style.display === 'none') return;
@@ -2324,6 +2427,7 @@ function refreshOnboardingGuide() {
             if (!d.should_show) {
                 og.style.display = 'none';
                 highlightOnboardingNav(null);
+                highlightOnboardingButton(null);
                 return;
             }
             ogBar.style.width = d.percent + '%';
@@ -2351,12 +2455,14 @@ function refreshOnboardingGuide() {
             ogActionDesc.textContent = d.step_description || '';
             ogActionBtn.href = d.step_page || '#';
             highlightOnboardingNav(d.step_page);
+            highlightOnboardingButton(d.step_page);
         });
 }
 
 var og = document.getElementById('onboardingGuide');
 if (og) {
     highlightOnboardingNav('<?= $onboarding_data['step_page'] ?>');
+    highlightOnboardingButton('<?= $onboarding_data['step_page'] ?>');
     ogTimer = setInterval(refreshOnboardingGuide, 5000);
 }
 <?php endif; ?>
@@ -2369,8 +2475,10 @@ function dismissOnboarding() {
         og.style.opacity = '0';
         setTimeout(function() { og.style.display = 'none'; }, 300);
     }
-    document.querySelectorAll('.onboarding-nav-highlight').forEach(function(el) {
-        el.classList.remove('onboarding-nav-highlight');
+    document.querySelectorAll('.onboarding-nav-highlight, .onboarding-btn-highlight').forEach(function(el) {
+        el.classList.remove('onboarding-nav-highlight', 'onboarding-btn-highlight');
     });
+    var hint = document.getElementById('ogBtnHint');
+    if (hint) hint.remove();
 }
 </script>

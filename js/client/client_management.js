@@ -234,7 +234,23 @@ document.addEventListener('DOMContentLoaded', function () {
                   icon: 'success', title: 'Client Added',
                   text: 'New client has been saved.',
                   timer: 1500, showConfirmButton: false,
-                }).then(() => { this.reset(); loadClients(); });
+                }).then(() => {
+                  this.reset(); loadClients();
+                  if (typeof __hasExistingClients !== 'undefined' && !__hasExistingClients) {
+                    __hasExistingClients = true;
+                    setTimeout(function() {
+                      if (typeof openTutorialVideo === 'function') {
+                        openTutorialVideo({
+                          video_type: 'vimeo',
+                          video_id: '1204855926',
+                          title: 'Client Tutorial',
+                          chapters: '[]',
+                          id: 0
+                        });
+                      }
+                    }, 500);
+                  }
+                });
               } else {
                 showError(data.message || 'Failed to add client');
               }

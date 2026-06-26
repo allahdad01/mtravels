@@ -3114,7 +3114,8 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 .help-video-modal.show { display: flex !important; }
 .help-video-modal-content {
-    position: relative; background: #000; width: 90%; max-width: 900px; border-radius: 8px; overflow: hidden;
+    position: relative; background: #000; width: 90%; max-width: 900px; border-radius: 8px;
+    max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;
 }
 .help-video-modal-header {
     background: #1a1a2e; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between;
@@ -3129,10 +3130,10 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 .help-video-learn-btn:hover { background: #059669; }
 .help-video-learn-btn:disabled { opacity: .6; cursor: not-allowed; }
-.help-video-container { position: relative; width: 100%; padding-bottom: 56.25%; height: 0; }
+.help-video-container { position: relative; width: 100%; aspect-ratio: 16 / 9; flex-shrink: 0; }
 .help-video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
-.help-video-chapters { background: #1a1a2e; padding: 12px 16px; border-top: 1px solid #333; }
-.help-video-chapters-title { color: #aaa; font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+.help-video-chapters { background: #1a1a2e; padding: 12px 16px; border-top: 1px solid #333; overflow-y: auto; flex-shrink: 1; min-height: 0; }
+.help-video-chapters-title { color: #aaa; font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; flex-shrink: 0; }
 .help-video-chapters-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .help-video-chapter-item {
     display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.08); border-radius: 5px;
@@ -3149,6 +3150,7 @@ function esc(s) { if (!s) return ''; var d = document.createElement('div'); d.te
 var currentUserId = <?= (int)($user['id'] ?? 0) ?>;
 var onLoadTutorialsQueue = [];
 var isPlayingOnLoadTutorial = false;
+var helpAutoSeekIndex = -1;
 var helpCurrentVideoId = null;
 var helpCurrentVideoType = null;
 var helpCurrentChapters = [];
@@ -3198,6 +3200,7 @@ function loadHelpPlayerApi() {
                 if (!helpYtPlayer) {
                     try { helpYtPlayer = new YT.Player('helpVideoPlayer', {}); } catch(e) {}
                 }
+                if (helpAutoSeekIndex >= 0) seekHelpVideo(helpAutoSeekIndex);
             }
         }, 500);
     } else if (helpCurrentVideoType === 'vimeo') {
@@ -3214,6 +3217,7 @@ function loadHelpPlayerApi() {
                 if (!helpVimeoPlayer) {
                     try { helpVimeoPlayer = new Vimeo.Player(iframe); } catch(e) {}
                 }
+                if (helpAutoSeekIndex >= 0) seekHelpVideo(helpAutoSeekIndex);
             }
         }, 500);
     }
@@ -3307,6 +3311,30 @@ document.addEventListener('keydown', function(e) {
 function playNextOnLoadTutorial() {
     if (!onLoadTutorialsQueue.length) return;
     var tut = onLoadTutorialsQueue.shift();
+    helpAutoSeekIndex = -1;
+    var pageName = window.location.pathname.split('/').pop();
+    if (pageName === 'accounts.php' && tut.chapters) {
+        try {
+            var chapters = JSON.parse(tut.chapters);
+            if (chapters.length) {
+                fetch('../api/onboarding/check.php')
+                    .then(function(r) { return r.json(); })
+                    .then(function(d) {
+                        if (d.success && d.current_step === 'main_account') {
+                            for (var i = 0; i < chapters.length; i++) {
+                                var label = (chapters[i].label || '').toLowerCase();
+                                if (label.indexOf('add') !== -1 || label.indexOf('create') !== -1 || label.indexOf('new') !== -1) {
+                                    helpAutoSeekIndex = i;
+                                    seekHelpVideo(helpAutoSeekIndex);
+                                    break;
+                                }
+                            }
+                        }
+                    })
+                    .catch(function() {});
+            }
+        } catch(e) {}
+    }
     isPlayingOnLoadTutorial = true;
     var btn = document.getElementById('helpVideoMarkLearned');
     if (btn) btn.style.display = 'inline-flex';
