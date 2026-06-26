@@ -81,14 +81,32 @@ if (isset($pdo, $tenant_id) && in_array($user['role'] ?? '', ['admin', 'finance'
         $current_page = basename($_SERVER['PHP_SELF']);
         if ($current_page === 'dashboard.php' && empty($_SESSION['onboarding_video_dismissed'])) {
             try {
-                $vid_stmt = $pdo->prepare("SELECT * FROM tutorials WHERE status = 1 AND video_id != '' AND (category IN ('Setup', 'System Setup') OR page = 'onboarding' OR FIND_IN_SET('onboarding', REPLACE(page, ' ', ''))) ORDER BY sort_order ASC, id ASC LIMIT 1");
+                $vid_stmt = $pdo->prepare("
+                    SELECT * FROM tutorials
+                    WHERE status = 1 AND video_id != ''
+                    AND (
+                        category IN ('Setup', 'System Setup')
+                        OR page = 'onboarding'
+                        OR FIND_IN_SET('onboarding', REPLACE(page, ' ', ''))
+                    )
+                    ORDER BY
+                        CASE WHEN page = 'onboarding' THEN 0 ELSE 1 END,
+                        sort_order ASC,
+                        id ASC
+                ");
                 $vid_stmt->execute();
-                $vid_row = $vid_stmt->fetch(PDO::FETCH_ASSOC);
-                if ($vid_row && !empty($vid_row['video_id'])) {
+                $user_role = $user['role'] ?? '';
+                while ($vid_row = $vid_stmt->fetch(PDO::FETCH_ASSOC)) {
+                    if (empty($vid_row['video_id'])) {
+                        continue;
+                    }
                     $roles = json_decode($vid_row['roles'], true);
-                    if (!is_array($roles)) $roles = ['all'];
-                    if (in_array('all', $roles) || in_array($user['role'] ?? '', $roles)) {
+                    if (!is_array($roles)) {
+                        $roles = ['all'];
+                    }
+                    if (in_array('all', $roles, true) || in_array($user_role, $roles, true)) {
                         $onboarding_video = $vid_row;
+                        break;
                     }
                 }
             } catch (PDOException $e) {
@@ -2038,7 +2056,7 @@ document.addEventListener('DOMContentLoaded', function () {
         <button class="onboarding-video-close" onclick="dismissOnboardingVideo()" aria-label="Close">&times;</button>
         <div class="onboarding-video-header">
             <h2><?= h(__('welcome_to') ?? 'Welcome') ?> <?= h($settings['agency_name'] ?? '') ?>!</h2>
-            <p>Watch this quick guide to set up your system</p>
+            <p><?= h($onboarding_video['title'] ?? 'Watch this quick guide to set up your system') ?></p>
         </div>
         <div class="onboarding-video-player">
             <iframe id="onboardingVideoPlayer"
@@ -2057,7 +2075,7 @@ document.addEventListener('DOMContentLoaded', function () {
 <?php endif; ?>
 
 <?php if ($onboarding_guide): ?>
-<div id="onboardingGuide" class="og-panel">
+<div id="onboardingGuide" class="og-panel"<?= $onboarding_video ? ' style="display:none"' : '' ?>>
     <div class="og-header">
         <div class="og-title"><i class="feather icon-zap"></i> Getting Started</div>
         <button class="og-close" onclick="dismissOnboarding()" title="Dismiss">&times;</button>
@@ -2141,6 +2159,11 @@ document.addEventListener('DOMContentLoaded', function () {
     display: flex; align-items: center; justify-content: center;
     backdrop-filter: blur(4px);
     animation: ovFadeIn .35s ease;
+    overflow-y: auto;
+    padding: 16px;
+}
+body.onboarding-video-open {
+    overflow: hidden;
 }
 @keyframes ovFadeIn { from { opacity: 0; } to { opacity: 1; } }
 .onboarding-video-modal {
@@ -2587,10 +2610,21 @@ function dismissOnboardingVideo() {
         overlay.style.opacity = '0';
         setTimeout(function() { overlay.style.display = 'none'; }, 400);
     }
+    document.body.classList.remove('onboarding-video-open');
     var iframe = document.getElementById('onboardingVideoPlayer');
     if (iframe) iframe.src = '';
     fetch('../api/onboarding/dismiss_video.php').catch(function(){});
+    var og = document.getElementById('onboardingGuide');
+    if (og) {
+        og.style.display = '';
+        og.style.opacity = '1';
+        og.style.transform = '';
+    }
 }
+
+<?php if ($onboarding_video): ?>
+document.body.classList.add('onboarding-video-open');
+<?php endif; ?>
 
 function dismissOnboarding() {
     var og = document.getElementById('onboardingGuide');
