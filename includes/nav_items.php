@@ -509,7 +509,7 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 
 <!-- ── 2FA ────────────────────────────────────────────────────────────── -->
 <li class="nav-item <?= navActive('totp.php') ?>">
-    <a href="../totp_setup.php" class="nav-link">
+    <a href="../admin/totp_setup.php" class="nav-link">
         <span class="pcoded-micon"><i class="feather icon-shield"></i></span>
         <span class="pcoded-mtext"><?= __('2fa') ?></span>
     </a>
