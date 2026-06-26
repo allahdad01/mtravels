@@ -539,6 +539,8 @@ tbody tr:hover .action-row { opacity: 1; }
 
 .act-btn:hover { background: var(--surface-3); color: var(--ink); }
 .act-btn.danger:hover { background: var(--rose-soft); color: var(--rose); }
+.act-btn:disabled { cursor: not-allowed; }
+.act-btn:disabled:hover { background: transparent; color: var(--ink-4); }
 .act-btn.primary:hover { background: var(--blue-soft); color: var(--blue); }
 
 /* Inline edit field */

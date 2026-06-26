@@ -184,8 +184,8 @@ document.addEventListener('DOMContentLoaded', function () {
               <button class="act-btn primary" onclick="editClient(${c.id})" title="Edit">
                 <i class="fas fa-pen-to-square"></i>
               </button>
-              <button class="act-btn danger" onclick="deleteClient(${c.id})" title="Delete">
-                <i class="fas fa-trash-can"></i>
+              <button class="act-btn ${c.can_delete == '1' ? 'danger' : ''}" onclick="deleteClient(${c.id})" title="${c.can_delete == '1' ? 'Delete' : 'Cannot delete — client has related transactions, payments, or bookings'}" ${c.can_delete == '1' ? '' : 'disabled style="opacity:0.35;cursor:not-allowed"'}>
+                <i class="fas ${c.can_delete == '1' ? 'fa-trash-can' : 'fa-lock'}"></i>
               </button>
             </div>
           </td>
@@ -239,16 +239,8 @@ document.addEventListener('DOMContentLoaded', function () {
                   if (typeof __hasExistingClients !== 'undefined' && !__hasExistingClients) {
                     __hasExistingClients = true;
                     setTimeout(function() {
-                      if (typeof openTutorialVideo === 'function') {
-                        openTutorialVideo({
-                          video_type: 'vimeo',
-                          video_id: '1204855926',
-                          title: 'Client Tutorial',
-                          chapters: '[]',
-                          id: 0
-                        });
-                      }
-                    }, 500);
+                      window.location.href = 'tutorial.php';
+                    }, 600);
                   }
                 });
               } else {
@@ -353,6 +345,15 @@ document.addEventListener('DOMContentLoaded', function () {
     window.deleteClient = function (clientId) {
       const client = clients.find(c => c.id === clientId);
       if (!client) return;
+
+      if (client.can_delete != '1') {
+        Swal.fire({
+          icon: 'info', title: 'Cannot Delete',
+          text: 'This client has related transactions, payments, or bookings. Remove or reassign them first.',
+          confirmButtonColor: '#6C737F',
+        });
+        return;
+      }
   
       Swal.fire({
         title: 'Delete Client?',
