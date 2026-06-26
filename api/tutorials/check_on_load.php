@@ -14,7 +14,7 @@ if ($page_filter === '') {
 }
 
 try {
-    $sql = "SELECT * FROM tutorials WHERE status = 1 AND show_on_load = 1 AND page = ?";
+    $sql = "SELECT * FROM tutorials WHERE status = 1 AND show_on_load = 1 AND FIND_IN_SET(?, REPLACE(page, ' ', ''))";
     $params = [$page_filter];
     $sql .= " ORDER BY sort_order ASC, id ASC";
 

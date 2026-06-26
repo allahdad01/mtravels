@@ -60,6 +60,24 @@ if (($user['role'] ?? '') === 'admin' && isset($pdo, $tenant_id)) {
     }
 }
 
+$onboarding_guide = null;
+$onboarding_data = [];
+if (isset($pdo, $tenant_id) && in_array($user['role'] ?? '', ['admin', 'finance', 'sales', 'umrah'])) {
+    require_once __DIR__ . '/OnboardingGuide.php';
+    $guide = new OnboardingGuide($pdo, (int)$tenant_id);
+    if ($guide->shouldShow()) {
+        $onboarding_guide = $guide;
+        $onboarding_data = [
+            'current_step' => $guide->getCurrentStep(),
+            'percent'      => $guide->getProgressPercent(),
+            'progress'     => $guide->getProgress(),
+            'step_label'   => OnboardingGuide::getStepLabel($guide->getCurrentStep() ?? ''),
+            'step_desc'    => OnboardingGuide::getStepDescription($guide->getCurrentStep() ?? ''),
+            'step_page'    => OnboardingGuide::getStepPage($guide->getCurrentStep() ?? ''),
+        ];
+    }
+}
+
 if (!function_exists('renderHeaderNotifications')) {
     function renderHeaderNotifications(array $notifications, string $status): void {
         if (empty($notifications)) {
@@ -1969,6 +1987,48 @@ document.addEventListener('DOMContentLoaded', function () {
     </div>
 </div>
 
+<?php if ($onboarding_guide): ?>
+<div id="onboardingGuide" class="og-panel">
+    <div class="og-header">
+        <div class="og-title"><i class="feather icon-zap"></i> Getting Started</div>
+        <button class="og-close" onclick="dismissOnboarding()" title="Dismiss">&times;</button>
+    </div>
+    <div class="og-progress-wrap">
+        <div class="og-progress-bar" id="ogProgressBar" style="width:<?= $onboarding_data['percent'] ?>%"></div>
+    </div>
+    <div class="og-steps" id="ogSteps">
+        <div class="og-step <?= $onboarding_data['progress']['main_account'] ? 'og-done' : ($onboarding_data['current_step'] === 'main_account' ? 'og-current' : '') ?>" data-step="main_account">
+            <div class="og-step-icon"><?= $onboarding_data['progress']['main_account'] ? '<i class="feather icon-check-circle"></i>' : '<span>1</span>' ?></div>
+            <div class="og-step-body">
+                <div class="og-step-label">Create a Main Account</div>
+                <div class="og-step-status"><?= $onboarding_data['progress']['main_account'] ? 'Done' : ($onboarding_data['current_step'] === 'main_account' ? 'Current' : 'Pending') ?></div>
+            </div>
+        </div>
+        <div class="og-step <?= $onboarding_data['progress']['supplier'] ? 'og-done' : ($onboarding_data['current_step'] === 'supplier' ? 'og-current' : '') ?>" data-step="supplier">
+            <div class="og-step-icon"><?= $onboarding_data['progress']['supplier'] ? '<i class="feather icon-check-circle"></i>' : '<span>2</span>' ?></div>
+            <div class="og-step-body">
+                <div class="og-step-label">Add a Supplier</div>
+                <div class="og-step-status"><?= $onboarding_data['progress']['supplier'] ? 'Done' : ($onboarding_data['current_step'] === 'supplier' ? 'Current' : 'Pending') ?></div>
+            </div>
+        </div>
+        <div class="og-step <?= $onboarding_data['progress']['client'] ? 'og-done' : ($onboarding_data['current_step'] === 'client' ? 'og-current' : '') ?>" data-step="client">
+            <div class="og-step-icon"><?= $onboarding_data['progress']['client'] ? '<i class="feather icon-check-circle"></i>' : '<span>3</span>' ?></div>
+            <div class="og-step-body">
+                <div class="og-step-label">Add a Client</div>
+                <div class="og-step-status"><?= $onboarding_data['progress']['client'] ? 'Done' : ($onboarding_data['current_step'] === 'client' ? 'Current' : 'Pending') ?></div>
+            </div>
+        </div>
+    </div>
+    <div class="og-action" id="ogAction">
+        <div class="og-action-label" id="ogActionLabel"><?= htmlspecialchars($onboarding_data['step_label']) ?></div>
+        <div class="og-action-desc" id="ogActionDesc"><?= htmlspecialchars($onboarding_data['step_desc']) ?></div>
+        <a class="og-action-btn" id="ogActionBtn" href="<?= htmlspecialchars($onboarding_data['step_page']) ?>">
+            <i class="feather icon-arrow-right"></i> Go
+        </a>
+    </div>
+</div>
+<?php endif; ?>
+
 <style>
 .help-video-modal {
     position: fixed; z-index: 12000; left: 0; top: 0; width: 100%; height: 100%;
@@ -2003,6 +2063,74 @@ document.addEventListener('DOMContentLoaded', function () {
 .help-video-chapter-item:hover { background: rgba(70,128,255,0.2); border-color: #4680ff; }
 .help-video-chapter-time { font-size: .75rem; font-weight: 700; color: #4680ff; font-family: monospace; }
 .help-video-chapter-label { font-size: .8rem; color: #e0e0e0; }
+
+/* ── Onboarding Guide ─────────────────────────── */
+.og-panel {
+    position: fixed; bottom: 24px; right: 24px; z-index: 1050;
+    width: 340px; background: #fff; border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.15), 0 2px 8px rgba(0,0,0,.08);
+    overflow: hidden; font-family: 'DM Sans', sans-serif;
+    animation: ogSlideUp .35s ease-out;
+}
+@keyframes ogSlideUp {
+    from { transform: translateY(30px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+}
+.og-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px; background: linear-gradient(135deg,#4099ff,#2ed8b6); color: #fff;
+}
+.og-title { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 7px; }
+.og-close { background: none; border: none; color: rgba(255,255,255,.7); font-size: 20px; cursor: pointer; padding: 0; line-height: 1; }
+.og-close:hover { color: #fff; }
+.og-progress-wrap { height: 4px; background: #e9ecef; }
+.og-progress-bar { height: 100%; background: linear-gradient(90deg,#4099ff,#2ed8b6); border-radius: 0 2px 2px 0; transition: width .5s ease; }
+.og-steps { padding: 14px 18px 0; display: flex; flex-direction: column; gap: 6px; }
+.og-step { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; transition: all .2s; }
+.og-step.og-current { background: #f0f7ff; }
+.og-step.og-done { opacity: .6; }
+.og-step-icon {
+    width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; flex-shrink: 0;
+    background: #e9ecef; color: #6c757d;
+}
+.og-step.og-current .og-step-icon { background: #4099ff; color: #fff; }
+.og-step.og-done .og-step-icon { background: #2ed8b6; color: #fff; }
+.og-step.og-done .og-step-icon i { font-size: 14px; }
+.og-step-body { flex: 1; min-width: 0; }
+.og-step-label { font-size: 12.5px; font-weight: 600; color: #212529; }
+.og-step-status { font-size: 10.5px; color: #6c757d; text-transform: uppercase; letter-spacing: .5px; font-weight: 600; }
+.og-step.og-current .og-step-status { color: #4099ff; }
+.og-step.og-done .og-step-status { color: #2ed8b6; }
+.og-action { padding: 12px 18px 16px; border-top: 1px solid #e9ecef; margin-top: 6px; }
+.og-action-label { font-size: 13px; font-weight: 700; color: #212529; margin-bottom: 3px; }
+.og-action-desc { font-size: 12px; color: #6c757d; line-height: 1.4; margin-bottom: 10px; }
+.og-action-btn {
+    display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px;
+    background: linear-gradient(135deg,#4099ff,#2ed8b6); color: #fff; border-radius: 8px;
+    font-size: 13px; font-weight: 600; text-decoration: none; transition: opacity .2s;
+}
+.og-action-btn:hover { opacity: .9; color: #fff; text-decoration: none; }
+
+/* ── Nav highlight ────────────────────────────── */
+.onboarding-nav-highlight {
+    animation: ogNavPulse 2s ease-in-out infinite !important;
+    position: relative;
+}
+.onboarding-nav-highlight::after {
+    content: ''; position: absolute; inset: 0;
+    border-radius: inherit; pointer-events: none;
+    box-shadow: 0 0 0 0 rgba(64,153,255,.4);
+    animation: ogNavRing 2s ease-in-out infinite;
+}
+@keyframes ogNavPulse {
+    0%, 100% { background: rgba(64,153,255,.08); }
+    50% { background: rgba(64,153,255,.18); }
+}
+@keyframes ogNavRing {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(64,153,255,.4); }
+    50% { box-shadow: 0 0 0 4px rgba(64,153,255,.15); }
+}
 </style>
 
 <script>
@@ -2163,4 +2291,86 @@ document.addEventListener('click', function(e) {
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape' && document.getElementById('helpVideoModal').classList.contains('show')) closeHelpVideo();
 });
+
+/* ── Onboarding Guide ─────────────────────────── */
+<?php if ($onboarding_guide): ?>
+var ogTimer = null;
+
+function highlightOnboardingNav(page) {
+    document.querySelectorAll('.onboarding-nav-highlight').forEach(function(el) {
+        el.classList.remove('onboarding-nav-highlight');
+    });
+    if (!page) return;
+    var link = document.querySelector('.pcoded-inner-navbar a[href="' + page + '"]');
+    if (link) {
+        var li = link.closest('.nav-item');
+        if (li) li.classList.add('onboarding-nav-highlight');
+    }
+}
+
+function refreshOnboardingGuide() {
+    var og = document.getElementById('onboardingGuide');
+    if (!og || og.style.display === 'none') return;
+    var ogBar = document.getElementById('ogProgressBar');
+    var ogSteps = document.getElementById('ogSteps');
+    var ogActionLabel = document.getElementById('ogActionLabel');
+    var ogActionDesc = document.getElementById('ogActionDesc');
+    var ogActionBtn = document.getElementById('ogActionBtn');
+
+    fetch('../api/onboarding/check.php')
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (!d.success) return;
+            if (!d.should_show) {
+                og.style.display = 'none';
+                highlightOnboardingNav(null);
+                return;
+            }
+            ogBar.style.width = d.percent + '%';
+
+            var steps = ['main_account', 'supplier', 'client'];
+            steps.forEach(function(s) {
+                var el = ogSteps.querySelector('[data-step="' + s + '"]');
+                if (!el) return;
+                el.className = 'og-step';
+                if (d.progress[s]) {
+                    el.classList.add('og-done');
+                    el.querySelector('.og-step-icon').innerHTML = '<i class="feather icon-check-circle"></i>';
+                    el.querySelector('.og-step-status').textContent = 'Done';
+                } else if (s === d.current_step) {
+                    el.classList.add('og-current');
+                    el.querySelector('.og-step-icon').innerHTML = '<span>' + (steps.indexOf(s) + 1) + '</span>';
+                    el.querySelector('.og-step-status').textContent = 'Current';
+                } else {
+                    el.querySelector('.og-step-icon').innerHTML = '<span>' + (steps.indexOf(s) + 1) + '</span>';
+                    el.querySelector('.og-step-status').textContent = 'Pending';
+                }
+            });
+
+            ogActionLabel.textContent = d.step_label || '';
+            ogActionDesc.textContent = d.step_description || '';
+            ogActionBtn.href = d.step_page || '#';
+            highlightOnboardingNav(d.step_page);
+        });
+}
+
+var og = document.getElementById('onboardingGuide');
+if (og) {
+    highlightOnboardingNav('<?= $onboarding_data['step_page'] ?>');
+    ogTimer = setInterval(refreshOnboardingGuide, 5000);
+}
+<?php endif; ?>
+
+function dismissOnboarding() {
+    var og = document.getElementById('onboardingGuide');
+    if (og) {
+        og.style.transition = 'transform .3s ease, opacity .3s ease';
+        og.style.transform = 'translateY(30px)';
+        og.style.opacity = '0';
+        setTimeout(function() { og.style.display = 'none'; }, 300);
+    }
+    document.querySelectorAll('.onboarding-nav-highlight').forEach(function(el) {
+        el.classList.remove('onboarding-nav-highlight');
+    });
+}
 </script>

@@ -18,7 +18,7 @@ try {
         $conditions[] = "status = 1";
     }
     if ($page_filter !== '') {
-        $conditions[] = "page = ?";
+        $conditions[] = "FIND_IN_SET(?, REPLACE(page, ' ', ''))";
         $params[] = $page_filter;
     }
 

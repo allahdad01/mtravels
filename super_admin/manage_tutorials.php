@@ -194,8 +194,25 @@ include '../includes/header_super_admin.php';
                             <input type="text" class="sa-form-control" name="category" id="fCategory" placeholder="e.g. dashboard, tickets">
                         </div>
                         <div class="sa-form-group">
-                            <label class="sa-form-label">Page (optional)</label>
-                            <input type="text" class="sa-form-control" name="page" id="fPage" placeholder="e.g. dashboard.php">
+                            <label class="sa-form-label">Pages (optional)</label>
+                            <input type="text" class="sa-form-control" name="page" id="fPage" placeholder="e.g. dashboard.php, ticket.php" style="margin-bottom:6px;">
+                            <div style="font-size:.75rem;color:var(--sa-text-muted);margin-bottom:6px;">Separate multiple pages with commas. Click a suggestion to add:</div>
+                            <div id="pageSuggestions" style="display:flex;flex-wrap:wrap;gap:4px;max-height:80px;overflow-y:auto;">
+                                <?php
+                                $common_pages = [
+                                    'dashboard.php', 'profile.php', 'ticket.php', 'ticket_detail.php',
+                                    'visa.php', 'visa_detail.php', 'umrah.php', 'umrah_detail.php',
+                                    'hotel.php', 'hotel_detail.php', 'report.php', 'users.php',
+                                    'client.php', 'supplier.php', 'accounts.php', 'sarafi.php',
+                                    'hr.php', 'expense_management.php', 'salary_management.php',
+                                    'customer_detail.php', 'employee_management.php', 'attendance.php',
+                                    'date_change.php', 'ticket_reserve.php', 'ticket_weights.php',
+                                ];
+                                foreach ($common_pages as $p):
+                                ?>
+                                <span onclick="addPageSuggestion('<?= $p ?>')" style="cursor:pointer;padding:2px 8px;border:1px solid var(--sa-border);border-radius:4px;font-size:.75rem;color:var(--sa-primary);background:#f0f7ff;transition:all .2s;" onmouseover="this.style.borderColor='var(--sa-primary)'" onmouseout="this.style.borderColor='var(--sa-border)'"><?= $p ?></span>
+                                <?php endforeach; ?>
+                            </div>
                         </div>
                     </div>
 
@@ -557,6 +574,17 @@ function renderTable() {
             </div></td>
         </tr>`;
     }).join('');
+}
+
+function addPageSuggestion(page) {
+    const input = document.getElementById('fPage');
+    const current = input.value.trim();
+    const pages = current ? current.split(',').map(p => p.trim()).filter(p => p) : [];
+    if (!pages.includes(page)) {
+        pages.push(page);
+        input.value = pages.join(',');
+    }
+    input.focus();
 }
 
 function esc(s) {

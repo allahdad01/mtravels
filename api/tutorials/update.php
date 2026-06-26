@@ -24,7 +24,9 @@ if ($id <= 0) {
 $title = htmlspecialchars(trim($_POST['title'] ?? ''), ENT_QUOTES, 'UTF-8');
 $description = htmlspecialchars(trim($_POST['description'] ?? ''), ENT_QUOTES, 'UTF-8');
 $category = htmlspecialchars(trim($_POST['category'] ?? ''), ENT_QUOTES, 'UTF-8');
-$page = htmlspecialchars(trim($_POST['page'] ?? ''), ENT_QUOTES, 'UTF-8');
+$page_raw = trim($_POST['page'] ?? '');
+$page_parts = array_map('trim', explode(',', $page_raw));
+$page = htmlspecialchars(implode(',', $page_parts), ENT_QUOTES, 'UTF-8');
 $video_type = ($_POST['video_type'] ?? 'vimeo') === 'youtube' ? 'youtube' : 'vimeo';
 $video_id = htmlspecialchars(trim($_POST['video_id'] ?? ''), ENT_QUOTES, 'UTF-8');
 $duration = htmlspecialchars(trim($_POST['duration'] ?? '5:00'), ENT_QUOTES, 'UTF-8');
