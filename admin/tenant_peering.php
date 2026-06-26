@@ -691,6 +691,7 @@
                                     <tbody>
                                         <?php foreach ($peerings as $p): ?>
                                         <?php $isReceiver = (int)$p['peer_tenant_id'] === $currentTenantId; ?>
+                                        <!-- DEBUG: peer_tenant_id=<?= $p['peer_tenant_id'] ?> currentTenantId=<?= $currentTenantId ?> status=<?= $p['status'] ?> isReceiver=<?= (int)$isReceiver ?> -->
                                         <tr>
                                             <td><span class="tp-id-badge"><?= (int)$p['id'] ?></span></td>
                                             <td class="tp-tenant-cell">

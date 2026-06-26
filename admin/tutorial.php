@@ -6,7 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 header("X-XSS-Protection: 1; mode=block");
 header("X-Content-Type-Options: nosniff");
 header("X-Frame-Options: DENY");
-header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://player.vimeo.com https://www.youtube.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; frame-src https://player.vimeo.com https://www.youtube.com;");
+header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://player.vimeo.com https://www.youtube.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; frame-src 'self' https://mtravels.org https://www.mtravels.org https://player.vimeo.com https://www.youtube.com;");
 header("Referrer-Policy: strict-origin-when-cross-origin");
 
 $sessionTimeout = 30 * 60;

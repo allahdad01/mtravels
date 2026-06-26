@@ -190,11 +190,14 @@ AddDefaultCharset UTF-8
     # Only set on HTTPS connections (not on localhost/development)
     Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" env=HTTPS
 
-    # Prevent clickjacking - Allow same origin for chat iframe
-    Header always set X-Frame-Options DENY
-    <Files "chat.php">
-        Header always set X-Frame-Options SAMEORIGIN
-    </Files>
+# Prevent clickjacking - Allow same origin for chat iframe
+<IfModule mod_setenvif.c>
+    SetEnvIf QUERY_STRING "embed=1" EMBED_ALLOWED=1
+</IfModule>
+Header always set X-Frame-Options DENY env=!EMBED_ALLOWED
+<Files "chat.php">
+    Header always set X-Frame-Options SAMEORIGIN env=!EMBED_ALLOWED
+</Files>
 
     # XSS Protection
     Header always set X-XSS-Protection "1; mode=block"
@@ -208,7 +211,9 @@ AddDefaultCharset UTF-8
     # Content Security Policy (CSP) - Prevents XSS, inline scripts, and unauthorized resource loading
     # UPDATED: Added blob: to media-src for voice message playback
     # UPDATED: Added cdn.jsdelivr.net to style-src, unpkg.com to script-src for Bootstrap and WaveSurfer
-    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' code.jquery.com cdnjs.cloudflare.com cdn.datatables.net cdn.jsdelivr.net https://player.vimeo.com https://www.youtube.com unpkg.com; style-src 'self' 'unsafe-inline' fonts.googleapis.com cdnjs.cloudflare.com cdn.datatables.net cdn.jsdelivr.net; img-src 'self' data: https: blob:; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data: https:; connect-src 'self' https://code.jquery.com https://cdnjs.cloudflare.com https://cdn.datatables.net https://cdn.jsdelivr.net data: blob:; frame-src 'self' https://player.vimeo.com https://www.youtube.com; object-src 'none'; media-src 'self' blob:; manifest-src 'self'; frame-ancestors 'self'; worker-src 'self' blob:;"
+    # UPDATED: Allow framing from any origin when embed=1 query param is present
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' code.jquery.com cdnjs.cloudflare.com cdn.datatables.net cdn.jsdelivr.net https://player.vimeo.com https://www.youtube.com unpkg.com; style-src 'self' 'unsafe-inline' fonts.googleapis.com cdnjs.cloudflare.com cdn.datatables.net cdn.jsdelivr.net; img-src 'self' data: https: blob:; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data: https:; connect-src 'self' https://code.jquery.com https://cdnjs.cloudflare.com https://cdn.datatables.net https://cdn.jsdelivr.net data: blob:; frame-src 'self' https://mtravels.org https://www.mtravels.org https://player.vimeo.com https://www.youtube.com; object-src 'none'; media-src 'self' blob:; manifest-src 'self'; frame-ancestors 'self'; worker-src 'self' blob:;" env=!EMBED_ALLOWED
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' code.jquery.com cdnjs.cloudflare.com cdn.datatables.net cdn.jsdelivr.net https://player.vimeo.com https://www.youtube.com unpkg.com; style-src 'self' 'unsafe-inline' fonts.googleapis.com cdnjs.cloudflare.com cdn.datatables.net cdn.jsdelivr.net; img-src 'self' data: https: blob:; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data: https:; connect-src 'self' https://code.jquery.com https://cdnjs.cloudflare.com https://cdn.datatables.net https://cdn.jsdelivr.net data: blob:; frame-src 'self' https://mtravels.org https://www.mtravels.org https://player.vimeo.com https://www.youtube.com; object-src 'none'; media-src 'self' blob:; manifest-src 'self'; frame-ancestors *; worker-src 'self' blob:;" env=EMBED_ALLOWED
     
     # Permissions Policy - Control browser features (formerly Feature-Policy)
     Header always set Permissions-Policy "geolocation=(), microphone=(self), camera=(), payment=(self)"
