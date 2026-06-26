@@ -38,8 +38,7 @@ try {
     $tables = [
         'ticket_bookings' => 'supplier',
         'hotel_bookings' => 'supplier_id',
-        'umrah_bookings' => 'supplier',
-        'visa_applications' => 'supplier_id'
+        'visa_applications' => 'supplier'
     ];
 
     $refs = [];

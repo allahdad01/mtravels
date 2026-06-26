@@ -264,7 +264,7 @@ require_once '../api/dashboard/client_notification.php';
 /* ============================================================
    MAIN ACCOUNT CARDS (grid)
    ============================================================ */
-.ac-main-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.ac-main-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
 .ac-main-card { background: var(--ac-surface); border: 1px solid var(--ac-border); border-radius: var(--ac-radius-lg); overflow: visible; box-shadow: var(--ac-shadow-sm); transition: var(--ac-transition); animation: acFadeUp .4s ease both; }
 .ac-main-card:hover { box-shadow: var(--ac-shadow); transform: translateY(-2px); }
 .ac-main-card.inactive { opacity: .72; }
@@ -295,10 +295,26 @@ require_once '../api/dashboard/client_notification.php';
 .ac-mc-fund select { width: 80px; flex-shrink: 0; }
 .ac-mc-fund input { flex: 1; min-width: 0; }
 .ac-mc-last-updated { padding: 6px 14px 8px; font-size: 11px; color: var(--ac-text-3); }
-.ac-mc-footer { padding: 10px 14px 13px; display: flex; flex-direction: column; gap: 8px; background: var(--ac-surface-2); }
-.ac-mc-footer .view-transactions-btn { width: 100%; justify-content: center; font-size: 12px; }
-.ac-mc-footer-row { display: flex; gap: 6px; }
-.ac-mc-footer-row .btn { flex: 1; min-width: 0; justify-content: center; font-size: 12px; }
+.ac-mc-footer { padding: 10px 14px 13px; display: flex; flex-direction: column; gap: 8px; background: var(--ac-surface-2); border-radius: 0 0 var(--ac-radius-lg) var(--ac-radius-lg); }
+.ac-mc-footer .view-transactions-btn { width: 100%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; }
+.ac-mc-footer-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.ac-mc-footer-row .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0.4rem 0.5rem;
+  font-size: 11.5px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ac-mc-footer .action-btn { margin-right: 0; }
+.ac-mc-footer-row .btn i { flex-shrink: 0; font-size: 13px; }
 
 /* ============================================================
     HORIZONTAL LIST CARD
@@ -447,6 +463,7 @@ require_once '../api/dashboard/client_notification.php';
   .ac-mc-fund select, .ac-mc-fund input { width: 100%; }
   .ac-mc-footer { flex-direction: column; }
   .ac-mc-footer .btn { width: 100%; }
+  .ac-mc-footer-row { grid-template-columns: 1fr 1fr; }
 }
 </style>
 
@@ -709,11 +726,17 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                                       <i class="feather icon-edit mr-1"></i> <?= __('edit_account') ?>
                                                   </button>
                                                   <button class="btn btn-outline-<?= $isInactive ? 'success' : 'danger' ?> btn-sm action-btn toggle-status-btn"
-                                                         data-account-id="<?= $account['id'] ?>"
-                                                         data-current-status="<?= isset($account['status']) ? $account['status'] : 'active' ?>">
-                                                     <i class="feather icon-<?= $isInactive ? 'check-circle' : 'power' ?> mr-1"></i>
-                                                      <?= $isInactive ? __('activate') : __('deactivate') ?>
-                                                 </button>
+                                                          data-account-id="<?= $account['id'] ?>"
+                                                          data-current-status="<?= isset($account['status']) ? $account['status'] : 'active' ?>">
+                                                      <i class="feather icon-<?= $isInactive ? 'check-circle' : 'power' ?> mr-1"></i>
+                                                       <?= $isInactive ? __('activate') : __('deactivate') ?>
+                                                  </button>
+                                                  <button class="btn btn-outline-danger btn-sm action-btn delete-main-account-btn"
+                                                          data-account-id="<?= $account['id'] ?>"
+                                                          data-account-name="<?= htmlspecialchars($account['name']) ?>"
+                                                          title="<?= __('delete') ?>">
+                                                      <i class="feather icon-trash-2 mr-1"></i> <?= __('delete') ?>
+                                                  </button>
                                              </div>
                                          </div>
 

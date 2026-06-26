@@ -4,13 +4,15 @@ class OnboardingGuide
 {
     private PDO $pdo;
     private int $tenant_id;
+    private ?int $branch_id;
 
     private array $steps = ['main_account', 'supplier', 'client'];
 
-    public function __construct(PDO $pdo, int $tenant_id)
+    public function __construct(PDO $pdo, int $tenant_id, ?int $branch_id = null)
     {
         $this->pdo = $pdo;
         $this->tenant_id = $tenant_id;
+        $this->branch_id = $branch_id > 0 ? $branch_id : null;
     }
 
     public function shouldShow(): bool
@@ -67,25 +69,39 @@ class OnboardingGuide
         };
     }
 
+    private function countForBranch(string $table, string $extraWhere = '', array $extraParams = []): int
+    {
+        $sql = "SELECT COUNT(*) FROM {$table} WHERE tenant_id = ?";
+        $params = [$this->tenant_id];
+
+        if ($this->branch_id) {
+            $sql .= ' AND (branch_id = ? OR branch_id IS NULL)';
+            $params[] = $this->branch_id;
+        }
+
+        if ($extraWhere !== '') {
+            $sql .= " AND {$extraWhere}";
+            $params = array_merge($params, $extraParams);
+        }
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        return (int) $stmt->fetchColumn();
+    }
+
     private function hasMainAccounts(): bool
     {
-        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM main_account WHERE tenant_id = ?");
-        $stmt->execute([$this->tenant_id]);
-        return $stmt->fetchColumn() > 0;
+        return $this->countForBranch('main_account') > 0;
     }
 
     private function hasSuppliers(): bool
     {
-        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM suppliers WHERE tenant_id = ? AND status = 'active'");
-        $stmt->execute([$this->tenant_id]);
-        return $stmt->fetchColumn() > 0;
+        return $this->countForBranch('suppliers', "status = 'active'") > 0;
     }
 
     private function hasClients(): bool
     {
-        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM clients WHERE tenant_id = ? AND status = 'active'");
-        $stmt->execute([$this->tenant_id]);
-        return $stmt->fetchColumn() > 0;
+        return $this->countForBranch('clients', "status = 'active'") > 0;
     }
 
     public static function getStepLabel(string $step): string

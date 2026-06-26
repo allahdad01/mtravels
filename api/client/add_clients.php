@@ -4,10 +4,16 @@ require_once '../../admin/includes/db_security.php';
 
 // Include security module
 require_once '../../admin/security.php';
-$tenant_id = $_SESSION['tenant_id'];
-$branch_id = $_SESSION['branch_id'];
-// Enforce authentication
 enforce_auth();
+
+$tenant_id = (int) ($_SESSION['tenant_id'] ?? 0);
+$branch_id = (int) ($_SESSION['branch_id'] ?? 0);
+
+if (!$tenant_id || !$branch_id) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Invalid session. Please log in again.']);
+    exit;
+}
 
 // ✅ CSRF Token Validation
 if (!verify_csrf_token()) {

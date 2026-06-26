@@ -162,6 +162,83 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // Delete main account
+    document.querySelectorAll('.delete-main-account-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const accountId = this.dataset.accountId;
+            const accountName = this.dataset.accountName;
+
+            const existingModal = document.getElementById('deleteMainAccountModal');
+            if (existingModal) {
+                existingModal.parentNode.removeChild(existingModal);
+            }
+
+            const modalHTML = `
+            <div class="modal fade" id="deleteMainAccountModal" tabindex="-1" role="dialog" aria-labelledby="deleteMainAccountModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header bg-danger text-white">
+                            <h5 class="modal-title" id="deleteMainAccountModalLabel">
+                                <i class="feather icon-trash-2 mr-2"></i>Delete Account
+                            </h5>
+                            <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Are you sure you want to permanently delete the account <strong>"${accountName}"</strong>?</p>
+                            <p class="text-muted small mb-0">This action cannot be undone. Accounts with existing transactions cannot be deleted.</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-danger" id="confirmDeleteMainAccountBtn">Delete Account</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            `;
+
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            $('#deleteMainAccountModal').modal('show');
+
+            document.getElementById('confirmDeleteMainAccountBtn').addEventListener('click', function() {
+                const confirmBtn = this;
+                const originalHtml = confirmBtn.innerHTML;
+                confirmBtn.disabled = true;
+                confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Deleting...';
+
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+                fetch('../api/accounts/delete_main_account.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: accountId,
+                        csrf_token: csrfToken
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    $('#deleteMainAccountModal').modal('hide');
+                    if (data.success) {
+                        showSuccessToast('Main account deleted successfully!');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        showErrorToast('Error: ' + data.message);
+                        confirmBtn.disabled = false;
+                        confirmBtn.innerHTML = originalHtml;
+                    }
+                })
+                .catch(() => {
+                    $('#deleteMainAccountModal').modal('hide');
+                    showErrorToast('An error occurred while deleting the account. Please try again.');
+                    confirmBtn.disabled = false;
+                    confirmBtn.innerHTML = originalHtml;
+                });
+            });
+        });
+    });
+
     // NOTE: Payment modal handler now in client_payment_modal.php (openPaymentModal)
     // This old code is deprecated and replaced by the new modal's built-in submission
     /*

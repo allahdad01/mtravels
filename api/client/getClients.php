@@ -1,14 +1,27 @@
 <?php
 // Include security module
 require_once '../../admin/security.php';
-$tenant_id = $_SESSION['tenant_id'];
-$branch_id = $_SESSION['branch_id'];
-// Enforce authentication
+
+// Enforce authentication before reading session
 enforce_auth();
 
-require_once('../../includes/db.php');
+require_once '../../includes/db.php';
 
 header('Content-Type: application/json');
+
+$tenant_id = (int) ($_SESSION['tenant_id'] ?? 0);
+$branch_id = (int) ($_SESSION['branch_id'] ?? 0);
+
+if (!$tenant_id) {
+    http_response_code(403);
+    echo json_encode(['error' => 'Invalid session. Please log in again.']);
+    exit;
+}
+
+$branchSql = $branch_id > 0
+    ? 'c.tenant_id = ? AND (c.branch_id = ? OR c.branch_id IS NULL)'
+    : 'c.tenant_id = ? AND c.branch_id IS NULL';
+$branchParams = $branch_id > 0 ? [$tenant_id, $branch_id] : [$tenant_id];
 
 try {
     $stmt = $pdo->prepare("
@@ -54,10 +67,10 @@ try {
                 WHERE dct.sold_to = c.id AND dct.tenant_id = c.tenant_id
             ) = 0 AS can_delete
         FROM clients c
-        WHERE c.tenant_id = ? AND c.branch_id = ?
+        WHERE {$branchSql}
         ORDER BY c.name
     ");
-    $stmt->execute([$tenant_id, $branch_id]);
+    $stmt->execute($branchParams);
     $clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
     echo json_encode($clients);
 } catch (PDOException $e) {

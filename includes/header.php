@@ -62,9 +62,10 @@ if (($user['role'] ?? '') === 'admin' && isset($pdo, $tenant_id)) {
 
 $onboarding_guide = null;
 $onboarding_data = [];
+$onboarding_video = null;
 if (isset($pdo, $tenant_id) && in_array($user['role'] ?? '', ['admin', 'finance', 'sales', 'umrah'])) {
     require_once __DIR__ . '/OnboardingGuide.php';
-    $guide = new OnboardingGuide($pdo, (int)$tenant_id);
+    $guide = new OnboardingGuide($pdo, (int)$tenant_id, (int)($_SESSION['branch_id'] ?? 0));
     if ($guide->shouldShow()) {
         $onboarding_guide = $guide;
         $onboarding_data = [
@@ -75,6 +76,25 @@ if (isset($pdo, $tenant_id) && in_array($user['role'] ?? '', ['admin', 'finance'
             'step_desc'    => OnboardingGuide::getStepDescription($guide->getCurrentStep() ?? ''),
             'step_page'    => OnboardingGuide::getStepPage($guide->getCurrentStep() ?? ''),
         ];
+
+        // Check if we should show full-screen onboarding video
+        $current_page = basename($_SERVER['PHP_SELF']);
+        if ($current_page === 'dashboard.php' && empty($_SESSION['onboarding_video_dismissed'])) {
+            try {
+                $vid_stmt = $pdo->prepare("SELECT * FROM tutorials WHERE status = 1 AND video_id != '' AND (category IN ('Setup', 'System Setup') OR page = 'onboarding' OR FIND_IN_SET('onboarding', REPLACE(page, ' ', ''))) ORDER BY sort_order ASC, id ASC LIMIT 1");
+                $vid_stmt->execute();
+                $vid_row = $vid_stmt->fetch(PDO::FETCH_ASSOC);
+                if ($vid_row && !empty($vid_row['video_id'])) {
+                    $roles = json_decode($vid_row['roles'], true);
+                    if (!is_array($roles)) $roles = ['all'];
+                    if (in_array('all', $roles) || in_array($user['role'] ?? '', $roles)) {
+                        $onboarding_video = $vid_row;
+                    }
+                }
+            } catch (PDOException $e) {
+                error_log('Onboarding video query error: ' . $e->getMessage());
+            }
+        }
     }
 }
 
@@ -2012,6 +2032,30 @@ document.addEventListener('DOMContentLoaded', function () {
     </div>
 </div>
 
+<?php if ($onboarding_video): ?>
+<div id="onboardingVideoOverlay" class="onboarding-video-overlay">
+    <div class="onboarding-video-modal">
+        <button class="onboarding-video-close" onclick="dismissOnboardingVideo()" aria-label="Close">&times;</button>
+        <div class="onboarding-video-header">
+            <h2><?= h(__('welcome_to') ?? 'Welcome') ?> <?= h($settings['agency_name'] ?? '') ?>!</h2>
+            <p>Watch this quick guide to set up your system</p>
+        </div>
+        <div class="onboarding-video-player">
+            <iframe id="onboardingVideoPlayer"
+                    src="https://player.vimeo.com/video/<?= h($onboarding_video['video_id']) ?>?autoplay=1&title=0&byline=0&portrait=0"
+                    allow="autoplay; fullscreen; picture-in-picture"
+                    loading="lazy"></iframe>
+        </div>
+        <div class="onboarding-video-footer">
+            <button class="onboarding-video-skip" onclick="dismissOnboardingVideo()">
+                <i class="feather icon-play-circle"></i> <?= h(__('got_it_setup') ?? 'I understand, let\'s begin setup') ?>
+                <i class="feather icon-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <?php if ($onboarding_guide): ?>
 <div id="onboardingGuide" class="og-panel">
     <div class="og-header">
@@ -2089,6 +2133,73 @@ document.addEventListener('DOMContentLoaded', function () {
 .help-video-chapter-item:hover { background: rgba(70,128,255,0.2); border-color: #4680ff; }
 .help-video-chapter-time { font-size: .75rem; font-weight: 700; color: #4680ff; font-family: monospace; }
 .help-video-chapter-label { font-size: .8rem; color: #e0e0e0; }
+
+/* ── Onboarding Full-Screen Video Overlay ─────── */
+.onboarding-video-overlay {
+    position: fixed; z-index: 99999; inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(4px);
+    animation: ovFadeIn .35s ease;
+}
+@keyframes ovFadeIn { from { opacity: 0; } to { opacity: 1; } }
+.onboarding-video-modal {
+    background: #1a1a2e; border-radius: 16px;
+    width: 92%; max-width: 820px;
+    overflow: hidden; position: relative;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+    animation: ovScaleIn .4s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes ovScaleIn { from { transform: scale(.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.onboarding-video-close {
+    position: absolute; top: 12px; right: 14px;
+    background: rgba(255,255,255,0.12); border: none;
+    color: #fff; font-size: 22px; cursor: pointer;
+    width: 34px; height: 34px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 10; transition: all .2s; line-height: 1;
+}
+.onboarding-video-close:hover { background: rgba(255,255,255,0.25); transform: rotate(90deg); }
+.onboarding-video-header {
+    padding: 28px 32px 14px; text-align: center;
+}
+.onboarding-video-header h2 {
+    color: #fff; font-size: 22px; font-weight: 700; margin: 0 0 6px;
+}
+.onboarding-video-header p {
+    color: rgba(255,255,255,0.55); font-size: 14px; margin: 0;
+}
+.onboarding-video-player {
+    position: relative; width: 100%; padding-bottom: 56.25%;
+    height: 0; overflow: hidden;
+}
+.onboarding-video-player iframe {
+    position: absolute; inset: 0; width: 100%; height: 100%; border: 0;
+}
+.onboarding-video-footer {
+    padding: 16px 32px 24px; text-align: center;
+}
+.onboarding-video-skip {
+    background: linear-gradient(135deg, #4099ff, #2ed8b6);
+    color: #fff; border: none; border-radius: 10px;
+    padding: 12px 28px; font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: all .25s; font-family: inherit;
+    display: inline-flex; align-items: center; gap: 8px;
+    box-shadow: 0 4px 20px rgba(64,153,255,.35);
+}
+.onboarding-video-skip:hover {
+    transform: translateY(-2px); box-shadow: 0 8px 28px rgba(64,153,255,.5);
+}
+.onboarding-video-skip i.feather { font-size: 16px; }
+
+@media (max-width: 640px) {
+    .onboarding-video-modal { width: 96%; border-radius: 12px; }
+    .onboarding-video-header { padding: 20px 16px 10px; }
+    .onboarding-video-header h2 { font-size: 17px; }
+    .onboarding-video-header p { font-size: 13px; }
+    .onboarding-video-footer { padding: 12px 16px 18px; }
+    .onboarding-video-skip { padding: 10px 20px; font-size: 14px; }
+}
 
 /* ── Onboarding Guide ─────────────────────────── */
 .og-panel {
@@ -2347,9 +2458,11 @@ function closeHelpVideo() {
 
 document.addEventListener('click', function(e) {
     if (e.target === document.getElementById('helpVideoModal')) closeHelpVideo();
+    if (e.target === document.getElementById('onboardingVideoOverlay')) dismissOnboardingVideo();
 });
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape' && document.getElementById('helpVideoModal').classList.contains('show')) closeHelpVideo();
+    if (e.key === 'Escape' && document.getElementById('onboardingVideoOverlay')) dismissOnboardingVideo();
 });
 
 /* ── Onboarding Guide ─────────────────────────── */
@@ -2466,6 +2579,18 @@ if (og) {
     ogTimer = setInterval(refreshOnboardingGuide, 5000);
 }
 <?php endif; ?>
+
+function dismissOnboardingVideo() {
+    var overlay = document.getElementById('onboardingVideoOverlay');
+    if (overlay) {
+        overlay.style.transition = 'opacity .4s ease';
+        overlay.style.opacity = '0';
+        setTimeout(function() { overlay.style.display = 'none'; }, 400);
+    }
+    var iframe = document.getElementById('onboardingVideoPlayer');
+    if (iframe) iframe.src = '';
+    fetch('../api/onboarding/dismiss_video.php').catch(function(){});
+}
 
 function dismissOnboarding() {
     var og = document.getElementById('onboardingGuide');

@@ -56,6 +56,9 @@ document.addEventListener('DOMContentLoaded', function () {
       fetch('../api/client/getClients.php')
         .then(res => res.json())
         .then(data => {
+          if (!Array.isArray(data)) {
+            throw new Error(data.error || 'Invalid response from server');
+          }
           // Normalise field names: API returns usd_balance / afs_balance / client_type
           // The renderer uses .usd / .afs / .type  — map once here.
           clients = data.map(c => ({

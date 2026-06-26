@@ -1,9 +1,9 @@
 <?php
-session_start();
-$tenant_id = $_SESSION['tenant_id'];
-$branch_id = $_SESSION['branch_id'];
 require_once 'security.php';
 require_once '../includes/db.php';
+
+$tenant_id = (int) ($_SESSION['tenant_id'] ?? 0);
+$branch_id = (int) ($_SESSION['branch_id'] ?? 0);
 
 $allowed_roles = ['admin', 'finance'];
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
@@ -882,8 +882,11 @@ const clientTypeTranslations = {
 <script>
 window.csrfToken = '<?= $_SESSION['csrf_token'] ?>';
 <?php
-$clientCountStmt = $pdo->prepare("SELECT COUNT(*) FROM clients WHERE tenant_id = ? AND branch_id = ?");
-$clientCountStmt->execute([$tenant_id, $branch_id]);
+$clientCountSql = $branch_id > 0
+    ? 'SELECT COUNT(*) FROM clients WHERE tenant_id = ? AND (branch_id = ? OR branch_id IS NULL)'
+    : 'SELECT COUNT(*) FROM clients WHERE tenant_id = ? AND branch_id IS NULL';
+$clientCountStmt = $pdo->prepare($clientCountSql);
+$clientCountStmt->execute($branch_id > 0 ? [$tenant_id, $branch_id] : [$tenant_id]);
 $hasExistingClients = (int)$clientCountStmt->fetchColumn() > 0;
 ?>
 var __hasExistingClients = <?= $hasExistingClients ? 'true' : 'false' ?>;

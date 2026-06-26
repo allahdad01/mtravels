@@ -1,14 +1,25 @@
 <?php
 // Include security module
 require_once '../../admin/security.php';
-$tenant_id = $_SESSION['tenant_id'];
-$branch_id = $_SESSION['branch_id'];
-// Enforce authentication
+
+// Enforce authentication before reading session
 enforce_auth();
 
-require_once('../../includes/db.php');
+require_once '../../includes/db.php';
 
 header('Content-Type: application/json');
+
+$tenant_id = (int) ($_SESSION['tenant_id'] ?? 0);
+$branch_id = (int) ($_SESSION['branch_id'] ?? 0);
+
+if (!$tenant_id || !$branch_id) {
+    http_response_code(403);
+    echo json_encode([
+        'suppliers' => [],
+        'error' => 'Invalid session. Please log in again.'
+    ]);
+    exit;
+}
 
 try {
     // Prepare and execute the query
