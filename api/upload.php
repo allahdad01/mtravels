@@ -68,19 +68,9 @@ if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
 }
 
 $file = $_FILES['file'];
-$toUserId = isset($_POST['to_user_id']) ? (int)$_POST['to_user_id'] : 0;
-$toUserType = isset($_POST['to_user_type']) ? trim($_POST['to_user_type']) : 'user';
-if ($toUserId <= 0) {
-    http_response_code(400);
-    echo json_encode(['error' => 'invalid_peer']);
-    exit;
-}
 
-if (!in_array($toUserType, ['user', 'client'], true)) {
-    http_response_code(400);
-    echo json_encode(['error' => 'invalid_peer_type']);
-    exit;
-}
+$groupId = isset($_POST['group_id']) ? (int)$_POST['group_id'] : 0;
+$isGroupUpload = $groupId > 0;
 
 if ($file['size'] > $maxFileBytes) {
     http_response_code(400);
@@ -89,6 +79,14 @@ if ($file['size'] > $maxFileBytes) {
 }
 
 $mimeType = mime_content_type($file['tmp_name']);
+$allowedMimePrefixes[] = 'application/vnd.'; // Excel, Word, PowerPoint etc.
+$extraAllowed = [
+    'application/vnd.openxmlformats-officedocument.',
+    'application/vnd.ms-',
+    'application/octet-stream',
+    'application/zip',
+];
+$allowedMimePrefixes = array_merge($allowedMimePrefixes, $extraAllowed);
 if (!in_array($mimeType, array_map('trim', $allowedMimePrefixes), true)) {
     $prefixMatch = false;
     foreach ($allowedMimePrefixes as $prefix) {
@@ -102,6 +100,84 @@ if (!in_array($mimeType, array_map('trim', $allowedMimePrefixes), true)) {
         echo json_encode(['error' => 'invalid_file_type']);
         exit;
     }
+}
+
+if ($isGroupUpload) {
+    // ── Group file upload ─────────────────────────────────────────────────────
+    // Verify user is member of group
+    $memberStmt = secure_query($pdo, "
+        SELECT id FROM chat_group_members 
+        WHERE group_id = ? AND member_id = ? AND member_type = ? AND left_at IS NULL
+    ", [$groupId, $currentUserId, $currentUserType]);
+    if (!$memberStmt || !$memberStmt->fetch()) {
+        http_response_code(403);
+        echo json_encode(['error' => 'access_denied']);
+        exit;
+    }
+
+    // Store the file
+    $uploadDir = __DIR__ . '/../uploads/files/';
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0755, true);
+    }
+    $fileName = uniqid('file_') . '_' . preg_replace('/[^a-zA-Z0-9.-]/', '_', $file['name']);
+    $filePath = $uploadDir . $fileName;
+    if (!move_uploaded_file($file['tmp_name'], $filePath)) {
+        http_response_code(500);
+        echo json_encode(['error' => 'file_upload_failed']);
+        exit;
+    }
+
+    // Determine message_type based on MIME
+    $msgType = 'file';
+    if (strpos($mimeType, 'image/') === 0) $msgType = 'image';
+
+    $content = json_encode([
+        'type' => 'file',
+        'filename' => $file['name'],
+        'name' => $file['name'],
+        'size' => $file['size'],
+        'mimetype' => $mimeType,
+        'mimeType' => $mimeType,
+        'filePath' => $fileName
+    ]);
+
+    $insertStmt = secure_query($pdo, "
+        INSERT INTO chat_group_messages 
+        (group_id, from_user_id, from_user_type, content, message_type, file_url, file_name, file_size)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ", [$groupId, $currentUserId, $currentUserType, $content, $msgType, $fileName, $file['name'], $file['size']]);
+
+    if (!$insertStmt) {
+        unlink($filePath);
+        http_response_code(500);
+        echo json_encode(['error' => 'save_failed']);
+        exit;
+    }
+    $messageId = $pdo->lastInsertId();
+
+    echo json_encode([
+        'ok' => true,
+        'id' => (int)$messageId,
+        'group_id' => $groupId,
+        'file_name' => $file['name'],
+        'file_path' => $fileName
+    ]);
+    exit;
+}
+
+$toUserId = isset($_POST['to_user_id']) ? (int)$_POST['to_user_id'] : 0;
+$toUserType = isset($_POST['to_user_type']) ? trim($_POST['to_user_type']) : 'user';
+if ($toUserId <= 0) {
+    http_response_code(400);
+    echo json_encode(['error' => 'invalid_peer']);
+    exit;
+}
+
+if (!in_array($toUserType, ['user', 'client'], true)) {
+    http_response_code(400);
+    echo json_encode(['error' => 'invalid_peer_type']);
+    exit;
 }
 
 // Verify peer and tenant/branch peering

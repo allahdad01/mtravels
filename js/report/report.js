@@ -105,7 +105,7 @@ function loadOptions() {
         }
 
         reportCategories.forEach(function(category) {
-            if (hasFeature(category.feature)) {
+            if (hasFeature(category.feature) && !(reportType === "general" && category.value === "statement")) {
                 reportCategoryDropdown.innerHTML += `<option value="${category.value}">${category.label}</option>`;
             }
         });
@@ -149,6 +149,9 @@ function loadOptions() {
     }
 
     if (reportType === "supplier" || reportType === "main_account" || reportType === "client") {
+        if (entitySection) {
+            entitySection.style.display = "block";
+        }
         if (entitySelection) {
             entitySelection.style.display = "block";
         }

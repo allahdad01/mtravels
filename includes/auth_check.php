@@ -113,8 +113,8 @@ $remaining_time  = max(0, $session_timeout - (time() - $last_activity));
  * Escape a value for safe HTML output.
  */
 if (!function_exists('h')) {
-    function h(string $string): string {
-        return htmlspecialchars($string, ENT_QUOTES, 'UTF-8');
+    function h(?string $string): string {
+        return htmlspecialchars($string ?? '', ENT_QUOTES, 'UTF-8');
     }
 }
 

@@ -1484,16 +1484,26 @@ class ChatUI {
         const files = Array.from(event.target.files);
         if (files.length === 0) return;
 
+        const manager = window.chatApp?.manager;
+        const api = window.chatApp?.api;
+        if (!api) {
+            this.showError('API not available');
+            event.target.value = '';
+            return;
+        }
+
+        const isGroup = manager?.currentType === 'group';
+        const groupId = isGroup ? manager.currentGroupId : null;
         const contact = this.currentContact;
-        if (!contact) {
+
+        if (!isGroup && !contact) {
             this.showError('Please select a contact first');
             event.target.value = '';
             return;
         }
 
-        const api = window.chatApp?.api;
-        if (!api) {
-            this.showError('API not available');
+        if (isGroup && !groupId) {
+            this.showError('Please select a group first');
             event.target.value = '';
             return;
         }
@@ -1529,43 +1539,85 @@ class ChatUI {
             });
 
             // Upload file
-            api.uploadFile(file, contact.id, { peerType: contact.user_type || 'user' })
+            const uploadOptions = isGroup ? { groupId } : { peerType: contact.user_type || 'user' };
+            const targetId = isGroup ? groupId : contact.id;
+
+            api.uploadFile(file, targetId, uploadOptions)
                 .then(async response => {
                     if (response && response.ok) {
                         // Reload messages to show the uploaded file
                         try {
-                            const messagesResponse = await api.getMessages(contact.id, {
-                                peerType: contact.user_type || 'user'
-                            });
-                            if (messagesResponse.messages) {
-                                const formatted = messagesResponse.messages.map(m => {
-                                    const isOutgoing = m.from_user_id === window.ALQ_USER_ID;
-                                    let status = 'sending';
-                                    if (isOutgoing) {
-                                        if (m.seen_at) status = 'read';
-                                        else if (m.delivered_at) status = 'delivered';
-                                        else status = 'sent';
-                                    }
-                                    return {
-                                        id: m.id,
-                                        text: m.content,
-                                        type: isOutgoing ? 'outgoing' : 'incoming',
-                                        status: status,
-                                        messageType: m.message_type || 'text',
-                                        duration: m.duration || 0,
-                                        url: m.url,
-                                        time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                                    };
+                            let formatted = [];
+                            if (isGroup) {
+                                const messagesResponse = await api.getGroupMessages(groupId);
+                                if (messagesResponse.messages) {
+                                    formatted = messagesResponse.messages.map(m => {
+                                        const isOutgoing = m.from_user_id === window.ALQ_USER_ID;
+                                        let text = m.content;
+                                        let duration = 0;
+                                        let url = '';
+                                        if (m.message_type === 'voice' || (m.content && m.content.startsWith('{'))) {
+                                            try {
+                                                const parsed = JSON.parse(m.content);
+                                                if (parsed.type === 'voice') {
+                                                    duration = parsed.duration || 0;
+                                                    url = parsed.url || '';
+                                                }
+                                            } catch (e) {}
+                                        }
+                                        return {
+                                            id: m.id,
+                                            text: text,
+                                            type: isOutgoing ? 'outgoing' : 'incoming',
+                                            senderName: m.sender_name,
+                                            status: isOutgoing ? 'sent' : 'sending',
+                                            messageType: m.message_type || 'text',
+                                            duration: duration,
+                                            url: url,
+                                            time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                        };
+                                    });
+                                }
+                                // Update sidebar for group
+                                const group = manager.groups.find(g => g.id === groupId);
+                                if (group) {
+                                    group.lastMessage = `📎 ${fileName}`;
+                                    group.time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                }
+                            } else {
+                                const messagesResponse = await api.getMessages(contact.id, {
+                                    peerType: contact.user_type || 'user'
                                 });
-                                this.renderMessages(formatted);
+                                if (messagesResponse.messages) {
+                                    formatted = messagesResponse.messages.map(m => {
+                                        const isOutgoing = m.from_user_id === window.ALQ_USER_ID;
+                                        let status = 'sending';
+                                        if (isOutgoing) {
+                                            if (m.seen_at) status = 'read';
+                                            else if (m.delivered_at) status = 'delivered';
+                                            else status = 'sent';
+                                        }
+                                        return {
+                                            id: m.id,
+                                            text: m.content,
+                                            type: isOutgoing ? 'outgoing' : 'incoming',
+                                            status: status,
+                                            messageType: m.message_type || 'text',
+                                            duration: m.duration || 0,
+                                            url: m.url,
+                                            time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                        };
+                                    });
+                                }
+                                // Update sidebar for contact
+                                contact.lastMessage = `📎 ${fileName}`;
+                                contact.time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                             }
+                            this.renderMessages(formatted);
                         } catch (e) {
 
                         }
-                        // Update sidebar
-                        contact.lastMessage = `📎 ${fileName}`;
-                        contact.time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                        this.renderContacts(window.chatApp?.manager?.contacts || []);
+                        this.renderContacts(manager?.contacts || [], manager?.groups || []);
                         this.showSuccess(`"${fileName}" sent successfully`);
                     } else {
                         this.showError(`Failed to send "${fileName}"`);

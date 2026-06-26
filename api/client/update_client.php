@@ -8,6 +8,8 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 try {
+    require_once '../../admin/security.php';
+
     // Get the input data
     $data = json_decode(file_get_contents("php://input"), true);
 

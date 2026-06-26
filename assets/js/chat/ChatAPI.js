@@ -231,12 +231,14 @@ class ChatAPI {
             throw new Error('File is required');
         }
 
-        const { peerType = 'user' } = options;
+        const { peerType = 'user', groupId = null } = options;
 
         try {
             const formData = new FormData();
             formData.append('file', file);
-            if (contactId) {
+            if (groupId) {
+                formData.append('group_id', groupId);
+            } else if (contactId) {
                 formData.append('to_user_id', contactId);
                 formData.append('to_user_type', peerType);
             }
