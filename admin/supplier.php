@@ -118,6 +118,134 @@ body {
   margin-top: 4px;
 }
 
+/* ─── Type guide callout ──────────────────────────────────────────────────── */
+.type-guide {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+
+.type-guide-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  cursor: pointer;
+  user-select: none;
+  background: linear-gradient(135deg, var(--blue-soft) 0%, var(--surface) 100%);
+  border-bottom: 1px solid transparent;
+  transition: var(--t);
+}
+
+.type-guide.is-open .type-guide-header {
+  border-bottom-color: var(--line);
+}
+
+.type-guide-header:hover { background: var(--blue-soft); }
+
+.type-guide-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.type-guide-title i {
+  color: var(--blue);
+  font-size: 15px;
+}
+
+.type-guide-toggle {
+  color: var(--ink-3);
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.type-guide-toggle i { transition: transform .2s ease; }
+.type-guide.is-open .type-guide-toggle i { transform: rotate(180deg); }
+
+.type-guide-body {
+  display: none;
+  padding: 18px;
+}
+
+.type-guide.is-open .type-guide-body { display: block; }
+
+.type-guide-intro {
+  font-size: 13px;
+  color: var(--ink-3);
+  line-height: 1.55;
+  margin: 0 0 16px;
+}
+
+.type-guide-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.type-guide-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+  background: var(--surface-2);
+}
+
+.type-guide-card h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+  margin: 0 0 10px;
+  color: var(--ink);
+}
+
+.type-guide-card ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  line-height: 1.6;
+}
+
+.type-guide-card li + li { margin-top: 6px; }
+
+.type-guide-card.internal { border-top: 3px solid var(--blue); }
+.type-guide-card.external { border-top: 3px solid var(--violet); }
+
+.type-guide-card.internal h4 { color: var(--blue); }
+.type-guide-card.external h4 { color: var(--violet); }
+
+.type-guide-foot {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--line);
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.type-guide-foot a {
+  color: var(--blue);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.type-guide-foot a:hover { text-decoration: underline; }
+
+@media (max-width: 768px) {
+  .type-guide-grid { grid-template-columns: 1fr; }
+}
+
 /* ─── Add button ──────────────────────────────────────────────────────────── */
 .btn-add {
   display: inline-flex;
@@ -569,6 +697,48 @@ td.num {
     </button>
   </div>
 
+  <!-- ─── Supplier type guide ─── -->
+  <div class="type-guide is-open" id="supplierTypeGuide">
+    <div class="type-guide-header" onclick="toggleTypeGuide('supplierTypeGuide')">
+      <div class="type-guide-title">
+        <i class="fas fa-circle-info"></i>
+        <?= __('supplier_type_internal_external') ?? 'Supplier types: Internal vs External' ?>
+      </div>
+      <span class="type-guide-toggle">How it works <i class="fas fa-chevron-down"></i></span>
+    </div>
+    <div class="type-guide-body">
+      <p class="type-guide-intro">
+        <strong>Internal</strong> means your own agency — services you provide yourself, with nothing owed to an outside party.
+        <strong>External</strong> means a third-party vendor you buy from and must fund or settle with.
+      </p>
+      <div class="type-guide-grid">
+        <div class="type-guide-card internal">
+          <h4><i class="fas fa-building"></i> Internal supplier</h4>
+          <ul>
+            <li>Your own agency — a service <strong>you provide</strong> (e.g. your own Umrah packages, in-house operations).</li>
+            <li>You do not owe money to an outside vendor for this service.</li>
+            <li>No supplier balance is calculated when a booking is assigned.</li>
+            <li>Fund, bonus, and withdraw are <strong>not shown</strong> on <a href="accounts.php">Accounts</a>.</li>
+          </ul>
+        </div>
+        <div class="type-guide-card external">
+          <h4><i class="fas fa-globe"></i> External supplier</h4>
+          <ul>
+            <li>An outside company you purchase tickets, visas, hotels, or Umrah services from.</li>
+            <li>You owe this vendor — supplier balance is tracked in USD or AFS.</li>
+            <li>Fund them on <a href="accounts.php">Accounts</a>; balance is <strong>deducted</strong> when a booking is assigned to them.</li>
+            <li>Bonus and withdraw are also managed from the Accounts page.</li>
+          </ul>
+        </div>
+      </div>
+      <p class="type-guide-foot">
+        <i class="fas fa-lightbulb"></i>
+        Tip: Running your own Umrah or in-house service? Use <strong>Internal</strong>.
+        Buying from another airline, agency, or vendor? Use <strong>External</strong>.
+      </p>
+    </div>
+  </div>
+
   <!-- ─── Stats Grid ─── -->
   <div class="stats-grid">
 
@@ -595,20 +765,20 @@ td.num {
     <div class="stat-card violet">
       <div class="stat-top">
         <div class="stat-icon violet"><i class="fas fa-globe"></i></div>
-        <span class="stat-change up">Foreign</span>
+        <span class="stat-change up">External</span>
       </div>
       <div class="stat-val" id="statForeign">0</div>
-      <div class="stat-lbl"><?= __('foreign_suppliers') ?? 'Foreign Suppliers' ?></div>
+      <div class="stat-lbl"><?= __('external_suppliers') ?? 'External Suppliers' ?></div>
       <div class="sparkline" id="sparkForeign"></div>
     </div>
 
     <div class="stat-card amber">
       <div class="stat-top">
         <div class="stat-icon amber"><i class="fas fa-building"></i></div>
-        <span class="stat-change up">Local</span>
+        <span class="stat-change up">Internal</span>
       </div>
       <div class="stat-val" id="statLocal">0</div>
-      <div class="stat-lbl"><?= __('local_suppliers') ?? 'Local Suppliers' ?></div>
+      <div class="stat-lbl"><?= __('internal_suppliers') ?? 'Internal Suppliers' ?></div>
       <div class="sparkline" id="sparkLocal"></div>
     </div>
 
@@ -1070,6 +1240,13 @@ window.csrfToken = '<?= $_SESSION['csrf_token'] ?>';
   loadSuppliers();
 
 })();
+</script>
+
+<script>
+function toggleTypeGuide(id) {
+  var el = document.getElementById(id);
+  if (el) el.classList.toggle('is-open');
+}
 </script>
 
 <?php include '../includes/admin_footer.php'; ?>

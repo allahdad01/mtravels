@@ -103,6 +103,134 @@ body {
   margin-top: 4px;
 }
 
+/* ─── Type guide callout ─── */
+.type-guide {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+
+.type-guide-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  cursor: pointer;
+  user-select: none;
+  background: linear-gradient(135deg, var(--blue-soft) 0%, var(--surface) 100%);
+  border-bottom: 1px solid transparent;
+  transition: var(--t);
+}
+
+.type-guide.is-open .type-guide-header {
+  border-bottom-color: var(--line);
+}
+
+.type-guide-header:hover { background: var(--blue-soft); }
+
+.type-guide-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.type-guide-title i {
+  color: var(--blue);
+  font-size: 15px;
+}
+
+.type-guide-toggle {
+  color: var(--ink-3);
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.type-guide-toggle i { transition: transform .2s ease; }
+.type-guide.is-open .type-guide-toggle i { transform: rotate(180deg); }
+
+.type-guide-body {
+  display: none;
+  padding: 18px;
+}
+
+.type-guide.is-open .type-guide-body { display: block; }
+
+.type-guide-intro {
+  font-size: 13px;
+  color: var(--ink-3);
+  line-height: 1.55;
+  margin: 0 0 16px;
+}
+
+.type-guide-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.type-guide-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+  background: var(--surface-2);
+}
+
+.type-guide-card h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+  margin: 0 0 10px;
+  color: var(--ink);
+}
+
+.type-guide-card ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  line-height: 1.6;
+}
+
+.type-guide-card li + li { margin-top: 6px; }
+
+.type-guide-card.internal { border-top: 3px solid var(--violet); }
+.type-guide-card.external { border-top: 3px solid var(--blue); }
+
+.type-guide-card.internal h4 { color: var(--violet); }
+.type-guide-card.external h4 { color: var(--blue); }
+
+.type-guide-foot {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--line);
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.type-guide-foot a {
+  color: var(--blue);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.type-guide-foot a:hover { text-decoration: underline; }
+
+@media (max-width: 768px) {
+  .type-guide-grid { grid-template-columns: 1fr; }
+}
+
 .live-badge {
   display: inline-flex;
   align-items: center;
@@ -752,6 +880,48 @@ tbody tr:hover .action-row { opacity: 1; }
     </button>
   </div>
 
+  <!-- ─── Client type guide ─── -->
+  <div class="type-guide is-open" id="clientTypeGuide">
+    <div class="type-guide-header" onclick="toggleTypeGuide('clientTypeGuide')">
+      <div class="type-guide-title">
+        <i class="fas fa-circle-info"></i>
+        <?= __('client_type_regular_agency') ?? 'Client types: External vs Internal' ?>
+      </div>
+      <span class="type-guide-toggle">How it works <i class="fas fa-chevron-down"></i></span>
+    </div>
+    <div class="type-guide-body">
+      <p class="type-guide-intro">
+        In the table, <strong>Internal</strong> is stored as <em>agency</em> and <strong>External</strong> as <em>regular</em>.
+        Both types relate to your own agency — the difference is <em>how</em> the customer pays: on the spot vs. on a running account.
+      </p>
+      <div class="type-guide-grid">
+        <div class="type-guide-card internal">
+          <h4><i class="fas fa-store"></i> Internal client <span style="font-weight:500;color:var(--ink-3);font-size:11px">(agency)</span></h4>
+          <ul>
+            <li>Your own agency’s <strong>walk-in / counter customers</strong> — someone enters, buys a ticket, and <strong>pays right away</strong>.</li>
+            <li>Use a single internal client profile (e.g. “Walking Customer”) for these sales.</li>
+            <li><strong>Manage Transactions</strong> on the booking records the payment; money goes <strong>directly to the main account</strong>.</li>
+            <li>No running client balance — nothing is calculated or deducted from a client account.</li>
+          </ul>
+        </div>
+        <div class="type-guide-card external">
+          <h4><i class="fas fa-handshake"></i> External client <span style="font-weight:500;color:var(--ink-3);font-size:11px">(regular)</span></h4>
+          <ul>
+            <li>Other agencies or clients you sell to on <strong>account / credit</strong> (not pay-on-the-spot walk-ins).</li>
+            <li><strong>Manage Transactions</strong> is <strong>not shown</strong> on bookings for this type.</li>
+            <li>Receive payments via <a href="accounts.php">Accounts</a> → Client Accounts → <strong>Make Payment</strong> (funds flow to main account).</li>
+            <li>USD/AFS balance is tracked and <strong>deducted</strong> when a booking is sold to them.</li>
+          </ul>
+        </div>
+      </div>
+      <p class="type-guide-foot">
+        <i class="fas fa-lightbulb"></i>
+        Tip: Customer walked in and paid cash or card today? Use <strong>Internal (agency)</strong> and Manage Transactions.
+        Selling on credit to another agency or account client? Use <strong>External (regular)</strong> and fund on Accounts.
+      </p>
+    </div>
+  </div>
+
   <!-- ─── Stats Grid ─── -->
   <div class="stats-grid">
 
@@ -771,7 +941,7 @@ tbody tr:hover .action-row { opacity: 1; }
         <span class="stat-change up">↑ 3%</span>
       </div>
       <div class="stat-val" id="statAgencies">34</div>
-      <div class="stat-lbl">Internal</div>
+      <div class="stat-lbl">Internal <span style="font-weight:400;color:var(--ink-4)">(walk-in)</span></div>
       <div class="sparkline" id="sparkAgencies"></div>
     </div>
 
@@ -868,8 +1038,8 @@ tbody tr:hover .action-row { opacity: 1; }
 <script>
 // PHP → JS translations for client types
 const clientTypeTranslations = {
-    'regular': '<?= __("regular") ?>',
-    'agency':  '<?= __("agency") ?>'
+    'regular': 'External',
+    'agency':  'Internal'
 };
 </script>
 
@@ -894,5 +1064,12 @@ var __hasExistingClients = <?= $hasExistingClients ? 'true' : 'false' ?>;
 
 <!-- Client management logic -->
 <script src="../js/client/client_management.js"></script>
+
+<script>
+function toggleTypeGuide(id) {
+  var el = document.getElementById(id);
+  if (el) el.classList.toggle('is-open');
+}
+</script>
 
 <?php include '../includes/admin_footer.php'; ?>
