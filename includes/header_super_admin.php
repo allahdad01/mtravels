@@ -825,6 +825,12 @@ if (!function_exists('h')) {
                         <span class="pcoded-mtext">Plans</span>
                     </a>
                 </li>
+                <li data-username="manage_custom_plan_requests" class="nav-item <?php echo in_array(basename($_SERVER['PHP_SELF']), ['manage_custom_plan_requests.php', 'view_custom_plan_request.php', 'convert_custom_plan_request.php']) ? 'active' : ''; ?>">
+                    <a href="manage_custom_plan_requests.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-plus-circle"></i></span>
+                        <span class="pcoded-mtext">Custom Plan Requests</span>
+                    </a>
+                </li>
                 <li data-username="manage_subscriptions" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'manage_subscriptions.php' ? 'active' : ''; ?>">
                     <a href="manage_subscriptions.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-credit-card"></i></span>

@@ -185,9 +185,23 @@ $plans = $stmt->fetchAll();
 
                                 <!-- Plans Header -->
                                 <div class="sa-shdr" style="margin-bottom: 16px;">
-                                    <div>
-                                        <h2>Plans Overview</h2>
-                                        <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: var(--muted);">Total: <?= $total_items ?> plans</p>
+                                    <div style="display:flex;align-items:center;gap:12px;">
+                                        <div>
+                                            <h2>Plans Overview</h2>
+                                            <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: var(--muted);">Total: <?= $total_items ?> plans</p>
+                                        </div>
+                                        <?php
+                                        $stmt_c = $pdo->prepare("SELECT COUNT(*) as count FROM custom_plan_requests WHERE status = 'pending'");
+                                        $stmt_c->execute();
+                                        $pending_reqs = $stmt_c->fetch()['count'];
+                                        ?>
+                                        <a href="manage_custom_plan_requests.php" style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;background:<?= $pending_reqs > 0 ? 'rgba(245,158,11,0.12)' : 'var(--surface2)' ?>;color:<?= $pending_reqs > 0 ? 'var(--amber)' : 'var(--muted)' ?>;font-size:0.75rem;font-weight:600;text-decoration:none;border:1px solid <?= $pending_reqs > 0 ? 'rgba(245,158,11,0.3)' : 'var(--border)' ?>;transition:all 0.2s;">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                                            Custom Requests
+                                            <?php if ($pending_reqs > 0): ?>
+                                            <span style="background:var(--amber);color:#fff;border-radius:10px;padding:1px 7px;font-size:0.65rem;font-weight:700;"><?= $pending_reqs ?></span>
+                                            <?php endif; ?>
+                                        </a>
                                     </div>
                                     <button class="sa-btn sa-btn-primary" data-toggle="modal" data-target="#createPlanModal">
                                         <span style="margin-right: 6px;">+</span>Create Plan

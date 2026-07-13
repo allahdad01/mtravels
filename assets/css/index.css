@@ -3490,3 +3490,71 @@ html.dark-mode .loader-dot {
     .loader-dot:nth-child(2) { opacity: 0.6; }
     .loader-dot:nth-child(3) { opacity: 1; }
 }
+
+/* ── Custom Plan CTA Section ──────────────────────────────────────────── */
+.custom-plan-cta {
+    padding: 80px 0;
+    background: linear-gradient(135deg, #0f172a 0%, #1a2332 100%);
+    position: relative;
+    overflow: hidden;
+    text-align: center;
+}
+.custom-plan-cta::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(ellipse at 30% 50%, rgba(64,153,255,0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 50%, rgba(46,216,182,0.06) 0%, transparent 50%);
+    pointer-events: none;
+}
+.custom-plan-cta-content {
+    position: relative;
+    z-index: 1;
+    max-width: 640px;
+    margin: 0 auto;
+}
+.custom-plan-cta-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: rgba(64,153,255,0.12);
+    color: #4099ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+}
+.custom-plan-cta h2 {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #f8fafc;
+    margin-bottom: 14px;
+    letter-spacing: -0.03em;
+}
+.custom-plan-cta p {
+    font-size: 1.05rem;
+    color: #94a3b8;
+    line-height: 1.7;
+    margin-bottom: 28px;
+}
+.custom-plan-cta .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-weight: 700;
+    transition: all 0.3s;
+    box-shadow: 0 4px 20px rgba(64,153,255,0.3);
+}
+.custom-plan-cta .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(64,153,255,0.4);
+}
+html.dark-mode .custom-plan-cta {
+    background: linear-gradient(135deg, #0a0f1a 0%, #0f172a 100%);
+}

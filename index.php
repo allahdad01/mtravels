@@ -186,6 +186,23 @@ $blog_posts = $landingData['blog_posts'];
     </section>
     <?php endif; ?>
 
+    <!-- Custom Plan CTA Section -->
+    <section class="custom-plan-cta">
+        <div class="container">
+            <div class="custom-plan-cta-content">
+                <div class="custom-plan-cta-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                </div>
+                <h2>Need a Custom Plan?</h2>
+                <p>Don't see a plan that fits your needs? Build your own! Select only the features you want, and we'll create a personalized plan with pricing tailored to your agency.</p>
+                <a href="custom-plan-request.php" class="btn btn-primary" style="font-size: 1.05rem; padding: 0.9rem 2.5rem;">
+                    Build Your Custom Plan
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 8px;"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                </a>
+            </div>
+        </div>
+    </section>
+
     <!-- Contact Section -->
     <section class="contact" id="contact">
         <div class="container">
