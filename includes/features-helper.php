@@ -153,7 +153,7 @@ function getFeatureScreenshots($index) {
     $webpMap = [];
     if (is_dir($folderPath)) {
         $files = scandir($folderPath);
-        $extensions = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
+        $extensions = ['avif', 'webp', 'png', 'jpg', 'jpeg', 'gif'];
         $originals = [];
         foreach ($files as $file) {
             if ($file === '.' || $file === '..') continue;
@@ -184,8 +184,73 @@ function getFeatureScreenshots($index) {
 }
 
 /**
+ * Get the primary screenshot for a feature with AVIF/WebP/fallback chain.
+ * Returns associative array: ['avif' => url|null, 'webp' => url|null, 'fallback' => url]
+ */
+function getFeaturePrimaryImage($index) {
+    $folderNum = str_pad($index + 1, 2, '0', STR_PAD_LEFT);
+    $folderPath = __DIR__ . '/../uploads/features_images/' . $folderNum;
+    $baseUrl = 'uploads/features_images/' . $folderNum;
+    $result = ['avif' => null, 'webp' => null, 'fallback' => null];
+
+    if (!is_dir($folderPath)) {
+        return $result;
+    }
+
+    $files = scandir($folderPath);
+    $byFormat = ['avif' => [], 'webp' => [], 'other' => []];
+    $imageExts = ['avif', 'webp', 'png', 'jpg', 'jpeg', 'gif'];
+
+    foreach ($files as $file) {
+        if ($file[0] === '.') continue;
+        $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+        if (!in_array($ext, $imageExts)) continue;
+        if ($ext === 'avif') {
+            $byFormat['avif'][] = $file;
+        } elseif ($ext === 'webp') {
+            $byFormat['webp'][] = $file;
+        } else {
+            $byFormat['other'][] = $file;
+        }
+    }
+
+    // Pick the first file (sorted) from the best available format
+    foreach (['avif', 'webp', 'other'] as $fmt) {
+        if (empty($byFormat[$fmt])) continue;
+        sort($byFormat[$fmt]);
+        $first = $byFormat[$fmt][0];
+        $base = pathinfo($first, PATHINFO_FILENAME);
+
+        // Look for matching alternatives in other formats
+        $result['fallback'] = $baseUrl . '/' . $first;
+
+        foreach (['avif', 'webp'] as $alt) {
+            $match = array_values(array_filter($byFormat[$alt] ?? [], function($f) use ($base) {
+                return pathinfo($f, PATHINFO_FILENAME) === $base;
+            }));
+            if (!empty($match)) {
+                $result[$alt] = $baseUrl . '/' . $match[0];
+            }
+        }
+
+        // If the picked format was AVIF or WebP, find a fallback original
+        if ($fmt !== 'other') {
+            foreach ($byFormat['other'] as $f) {
+                if (pathinfo($f, PATHINFO_FILENAME) === $base) {
+                    $result['fallback'] = $baseUrl . '/' . $f;
+                    break;
+                }
+            }
+        }
+        break;
+    }
+
+    return $result;
+}
+
+/**
  * Render the split-screen feature showcase
- * Left side: feature screenshots (carousel for multi-image), Right side: feature details
+ * Left side: single screenshot with fade transition, Right side: feature details
  * Scroll-driven navigation between features
  */
 function renderFeatureSplitSection($features) {
@@ -194,6 +259,7 @@ function renderFeatureSplitSection($features) {
 
     $allImages = [];
     $textHtml = '';
+    $sizes = '(max-width: 768px) 92vw, 520px';
 
     foreach ($features as $i => $f) {
         $title = htmlspecialchars($f['title'] ?? '');
@@ -210,11 +276,36 @@ function renderFeatureSplitSection($features) {
             </div>',
             $active, $i, $title, $desc
         );
-        $allImages[] = getFeatureScreenshots($i);
+        $primary = getFeaturePrimaryImage($i);
+        // Resolve the single best URL: avif > webp > fallback
+        $primary['src'] = $primary['avif'] ?? $primary['webp'] ?? $primary['fallback'] ?? '';
+        $allImages[] = $primary;
     }
 
     $imagesJson = htmlspecialchars(json_encode($allImages, JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8');
     $totalStr = sprintf('%02d', $total);
+
+    // Build initial picture element for the first feature
+    $first = $allImages[0] ?? ['avif' => null, 'webp' => null, 'fallback' => ''];
+    $pictureHtml = '<picture class="fv-picture">';
+    if ($first['avif']) {
+        $pictureHtml .= sprintf(
+            '<source srcset="%s" type="image/avif" sizes="%s">',
+            htmlspecialchars($first['avif'], ENT_QUOTES, 'UTF-8'), $sizes
+        );
+    }
+    if ($first['webp']) {
+        $pictureHtml .= sprintf(
+            '<source srcset="%s" type="image/webp" sizes="%s">',
+            htmlspecialchars($first['webp'], ENT_QUOTES, 'UTF-8'), $sizes
+        );
+    }
+    $fallbackUrl = htmlspecialchars($first['fallback'], ENT_QUOTES, 'UTF-8');
+    $pictureHtml .= sprintf(
+        '<img class="fv-primary-img" src="%s" alt="" sizes="%s" loading="eager">',
+        $fallbackUrl, $sizes
+    );
+    $pictureHtml .= '</picture>';
 
     return sprintf(
         '<div class="features-scroll-wrap" data-feature-images=\'%s\'>
@@ -222,17 +313,14 @@ function renderFeatureSplitSection($features) {
                 <div class="fv-bg"></div>
                 <div class="fv-images-wrap">
                     <div class="fv-images-view">
-                        <div class="fv-images-stage"></div>
-                        <button class="fv-img-prev" type="button" aria-label="Previous image"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
-                        <button class="fv-img-next" type="button" aria-label="Next image"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+                        %s
                     </div>
-                    <div class="fv-images-dots"></div>
                 </div>
                 <div class="fv-counter"><span class="fv-curnum">01</span><span class="fv-sep">/</span><span class="fv-totalnum">%s</span></div>
             </div>
             <div class="ft-list">%s</div>
             <div class="fv-progress"><div class="fv-progress-fill"></div></div>
         </div>',
-        $imagesJson, $totalStr, $textHtml
+        $imagesJson, $pictureHtml, $totalStr, $textHtml
     );
 }
