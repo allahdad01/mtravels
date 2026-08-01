@@ -78,6 +78,22 @@ if ($has_trial && ($trial_days < 1 || $trial_days > 365)) {
     $errors[] = "Trial days must be between 1 and 365.";
 }
 
+// Check for duplicate email
+if (empty($errors)) {
+    $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM tenants WHERE billing_email = ?");
+    $stmt->execute([$billing_email]);
+    if ($stmt->fetch()['count'] > 0) {
+        $errors[] = "A tenant with this billing email already exists.";
+    }
+}
+if (empty($errors)) {
+    $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM users WHERE email = ?");
+    $stmt->execute([$billing_email]);
+    if ($stmt->fetch()['count'] > 0) {
+        $errors[] = "A user with this email already exists.";
+    }
+}
+
 // Auto-generate unique identifier
 $identifier = generateUniqueIdentifier($pdo, $name);
 // Verify plan exists and get plan details

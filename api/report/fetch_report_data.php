@@ -32,11 +32,38 @@ $umrahFamilyType = isset($_POST['umrahFamilyType']) ? DbSecurity::validateInput(
 // Validate specificFamily
 $specificFamily = isset($_POST['specificFamily']) ? DbSecurity::validateInput($_POST['specificFamily'], 'string', ['maxlength' => 255]) : null;
 
+// Umrah filter type (all, family, flight_date, return_date)
+$umrahFilterType = isset($_POST['umrahFilterType']) ? DbSecurity::validateInput($_POST['umrahFilterType'], 'string', ['maxlength' => 255]) : '';
+$umrahFlightDate = isset($_POST['umrahFlightDate']) ? DbSecurity::validateInput($_POST['umrahFlightDate'], 'date') : '';
+$umrahReturnDate = isset($_POST['umrahReturnDate']) ? DbSecurity::validateInput($_POST['umrahReturnDate'], 'date') : '';
+
 $reportType = $_POST['reportType'];
 $entity = isset($_POST['entity']) ? $_POST['entity'] : '';
 $reportCategory = $_POST['reportCategory'];
 $startDate = $_POST['startDate'];
 $endDate = $_POST['endDate'];
+
+// Build umrah filter conditions (applied to umrah_bookings alias u)
+$umrahFilterSql = '';
+$umrahFilterParams = [];
+if (($umrahFilterType === 'family' || $umrahFamilyType === 'specific') && $specificFamily) {
+    $umrahFilterSql = " AND u.family_id = ?";
+    $umrahFilterParams[] = $specificFamily;
+} elseif ($umrahFilterType === 'flight_date' && $umrahFlightDate) {
+    $umrahFilterSql = " AND DATE(u.flight_date) = ?";
+    $umrahFilterParams[] = $umrahFlightDate;
+} elseif ($umrahFilterType === 'return_date' && $umrahReturnDate) {
+    $umrahFilterSql = " AND DATE(u.return_date) = ?";
+    $umrahFilterParams[] = $umrahReturnDate;
+}
+
+// When filtering umrah by family/flight/return date, ignore the entry date range
+$umrahDateCondition = 'u.entry_date BETWEEN ? AND ?';
+$umrahDateParams = [$startDate, $endDate];
+if (in_array($umrahFilterType, ['family', 'flight_date', 'return_date'])) {
+    $umrahDateCondition = '1=1';
+    $umrahDateParams = [];
+}
 
 try {
     $query = "";
@@ -112,13 +139,13 @@ try {
                            c.name as client_name
                            FROM umrah_bookings u
                            LEFT JOIN clients c ON u.sold_to = c.id
-                           WHERE u.entry_date BETWEEN ? AND ? AND u.tenant_id = ? AND u.branch_id = ?";
-                $params = [$startDate, $endDate, $tenant_id, $branch_id];
+                           WHERE " . $umrahDateCondition . " AND u.tenant_id = ? AND u.branch_id = ?";
+                $params = array_merge($umrahDateParams, [$tenant_id, $branch_id]);
 
-                // Add family filter if specific family is selected
-                if ($umrahFamilyType === 'specific' && $specificFamily) {
-                    $query .= " AND u.family_id = ?";
-                    $params[] = $specificFamily;
+                // Add umrah filter (family / flight date / return date)
+                if (!empty($umrahFilterSql)) {
+                    $query .= $umrahFilterSql;
+                    $params = array_merge($params, $umrahFilterParams);
                 }
 
                 $headers = ['Passport Number', 'Pilgrim Name', 'Entry Date', 'Package Price', 'Duration', 'Currency', 'Client'];
@@ -406,15 +433,15 @@ try {
                     case 'umrah':
                         $query = "SELECT u.passport_number as pnr, u.name as passenger_name,
                                   u.entry_date as issue_date, u.sold_price as total_amount, u.duration as status
-                                  FROM umrah_bookings u
-                                  INNER JOIN umrah_booking_services ubs ON u.booking_id = ubs.booking_id
-                                  WHERE ubs.supplier_id = ? AND u.entry_date BETWEEN ? AND ? AND u.tenant_id = ? AND u.branch_id = ?";
-                        $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id];
+                          FROM umrah_bookings u
+                          INNER JOIN umrah_booking_services ubs ON u.booking_id = ubs.booking_id
+                          WHERE ubs.supplier_id = ? AND " . $umrahDateCondition . " AND u.tenant_id = ? AND u.branch_id = ?";
+                        $params = array_merge([$entity], $umrahDateParams, [$tenant_id, $branch_id]);
 
-                        // Add family filter if specific family is selected
-                        if ($umrahFamilyType === 'specific' && $specificFamily) {
-                            $query .= " AND u.family_id = ?";
-                            $params[] = $specificFamily;
+                        // Add umrah filter (family / flight date / return date)
+                        if (!empty($umrahFilterSql)) {
+                            $query .= $umrahFilterSql;
+                            $params = array_merge($params, $umrahFilterParams);
                         }
 
                         $headers = ['Passport Number', 'Pilgrim Name', 'Entry Date', 'Package Price', 'Duration'];
@@ -548,14 +575,14 @@ try {
                     case 'umrah':
                         $query = "SELECT u.passport_number as pnr, u.name as passenger_name,
                                   u.entry_date as issue_date, u.sold_price as total_amount, u.duration as status
-                                  FROM umrah_bookings u
-                                  WHERE u.sold_to = ? AND u.entry_date BETWEEN ? AND ? AND u.tenant_id = ? AND u.branch_id = ?";
-                        $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id];
+                          FROM umrah_bookings u
+                          WHERE u.sold_to = ? AND " . $umrahDateCondition . " AND u.tenant_id = ? AND u.branch_id = ?";
+                        $params = array_merge([$entity], $umrahDateParams, [$tenant_id, $branch_id]);
 
-                        // Add family filter if specific family is selected
-                        if ($umrahFamilyType === 'specific' && $specificFamily) {
-                            $query .= " AND u.family_id = ?";
-                            $params[] = $specificFamily;
+                        // Add umrah filter (family / flight date / return date)
+                        if (!empty($umrahFilterSql)) {
+                            $query .= $umrahFilterSql;
+                            $params = array_merge($params, $umrahFilterParams);
                         }
 
                         $headers = ['Passport Number', 'Pilgrim Name', 'Entry Date', 'Package Price', 'Duration'];
@@ -692,14 +719,14 @@ try {
                     case 'umrah':
                         $query = "SELECT u.passport_number as pnr, u.name as passenger_name,
                                   u.entry_date as issue_date, u.sold_price as total_amount, u.duration as status
-                                  FROM umrah_bookings u
-                                  WHERE u.paid_to = ? AND u.entry_date BETWEEN ? AND ? AND u.tenant_id = ? AND u.branch_id = ?";
-                        $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id];
+                          FROM umrah_bookings u
+                          WHERE u.paid_to = ? AND " . $umrahDateCondition . " AND u.tenant_id = ? AND u.branch_id = ?";
+                        $params = array_merge([$entity], $umrahDateParams, [$tenant_id, $branch_id]);
 
-                        // Add family filter if specific family is selected
-                        if ($umrahFamilyType === 'specific' && $specificFamily) {
-                            $query .= " AND u.family_id = ?";
-                            $params[] = $specificFamily;
+                        // Add umrah filter (family / flight date / return date)
+                        if (!empty($umrahFilterSql)) {
+                            $query .= $umrahFilterSql;
+                            $params = array_merge($params, $umrahFilterParams);
                         }
 
                         $headers = ['Passport Number', 'Pilgrim Name', 'Entry Date', 'Package Price', 'Duration'];

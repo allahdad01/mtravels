@@ -5,7 +5,7 @@
  */
 
 class PasswordValidator {
-    private static $minLength = 12;
+    private static $minLength = 6;
     private static $requireUppercase = true;
     private static $requireLowercase = true;
     private static $requireNumbers = true;

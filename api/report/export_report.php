@@ -19,6 +19,31 @@ $format = $_GET['format'];
 $expenseCategory = isset($_GET['expenseCategory']) ? $_GET['expenseCategory'] : '';
 $umrahFamilyType = isset($_GET['umrahFamilyType']) ? $_GET['umrahFamilyType'] : '';
 $specificFamily = isset($_GET['specificFamily']) ? $_GET['specificFamily'] : '';
+$umrahFilterType = isset($_GET['umrahFilterType']) ? $_GET['umrahFilterType'] : '';
+$umrahFlightDate = isset($_GET['umrahFlightDate']) ? $_GET['umrahFlightDate'] : '';
+$umrahReturnDate = isset($_GET['umrahReturnDate']) ? $_GET['umrahReturnDate'] : '';
+
+// Build umrah filter conditions (applied to umrah_bookings alias u)
+$umrahFilterSql = '';
+$umrahFilterParams = [];
+if (($umrahFilterType === 'family' || $umrahFamilyType === 'specific') && $specificFamily) {
+    $umrahFilterSql = " AND u.family_id = ?";
+    $umrahFilterParams[] = $specificFamily;
+} elseif ($umrahFilterType === 'flight_date' && $umrahFlightDate) {
+    $umrahFilterSql = " AND DATE(u.flight_date) = ?";
+    $umrahFilterParams[] = $umrahFlightDate;
+} elseif ($umrahFilterType === 'return_date' && $umrahReturnDate) {
+    $umrahFilterSql = " AND DATE(u.return_date) = ?";
+    $umrahFilterParams[] = $umrahReturnDate;
+}
+
+// When filtering umrah by family/flight/return date, ignore the entry date range
+$umrahDateCondition = 'u.entry_date BETWEEN ? AND ?';
+$umrahDateParams = [$startDate, $endDate];
+if (in_array($umrahFilterType, ['family', 'flight_date', 'return_date'])) {
+    $umrahDateCondition = '1=1';
+    $umrahDateParams = [];
+}
 
 try {
     // Get entity name based on report type
@@ -571,24 +596,20 @@ try {
                         LEFT JOIN umrah_refunds ur ON u.booking_id = ur.booking_id
                         LEFT JOIN umrah_booking_services ubs ON u.booking_id = ubs.booking_id
                         LEFT JOIN suppliers s ON ubs.supplier_id = s.id
-                        WHERE u.entry_date BETWEEN ? AND ?
+                        WHERE " . $umrahDateCondition . "
                           AND u.tenant_id = ?
                           AND u.branch_id = ?
                     ";
                 
-                    if ($umrahFamilyType === 'specific' && $specificFamily) {
-                        $query .= " AND u.family_id = ?";
-                    }
+                    $query .= $umrahFilterSql;
                 
                     $query .= "
                         GROUP BY u.booking_id
                         ORDER BY u.entry_date DESC
                     ";
                 
-                    $params = [$startDate, $endDate, $tenant_id, $branch_id];
-                    if ($umrahFamilyType === 'specific' && $specificFamily) {
-                        $params[] = $specificFamily;
-                    }
+                    $params = array_merge($umrahDateParams, [$tenant_id, $branch_id]);
+                    $params = array_merge($params, $umrahFilterParams);
                 
                     // ===============================
                     // 2. COLUMN DEFINITION (SINGLE SOURCE OF TRUTH)
@@ -1309,14 +1330,11 @@ try {
                             LEFT JOIN umrah_refunds ur ON u.booking_id = ur.booking_id
                             LEFT JOIN umrah_booking_services ubs ON u.booking_id = ubs.booking_id
                             LEFT JOIN suppliers s ON ubs.supplier_id = s.id
-                            WHERE u.entry_date BETWEEN ? AND ? AND u.tenant_id = ? AND u.branch_id = ? AND ubs.supplier_id = ?"
-                            . ($umrahFamilyType === 'specific' && $specificFamily ? " AND u.family_id = ?" : "") .
+                            WHERE " . $umrahDateCondition . " AND u.tenant_id = ? AND u.branch_id = ? AND ubs.supplier_id = ?"
+                            . $umrahFilterSql .
                             " GROUP BY u.booking_id
                             ORDER BY u.entry_date DESC";
-                        $params = [$startDate, $endDate, $tenant_id, $branch_id, $entity];
-                        if ($umrahFamilyType === 'specific' && $specificFamily) {
-                            $params[] = $specificFamily;
-                        }
+                        $params = array_merge($umrahDateParams, [$tenant_id, $branch_id, $entity], $umrahFilterParams);
                         // Base headers (shown to everyone)
                         $headers = [
                             'Head of Family',
@@ -1753,14 +1771,11 @@ try {
                             LEFT JOIN umrah_refunds ur ON u.booking_id = ur.booking_id
                             LEFT JOIN umrah_booking_services ubs ON u.booking_id = ubs.booking_id
                             LEFT JOIN suppliers s ON ubs.supplier_id = s.id
-                            WHERE u.sold_to = ? AND u.entry_date BETWEEN ? AND ? AND u.tenant_id = ? AND u.branch_id = ?"
-                            . ($umrahFamilyType === 'specific' && $specificFamily ? " AND u.family_id = ?" : "") .
+                            WHERE u.sold_to = ? AND " . $umrahDateCondition . " AND u.tenant_id = ? AND u.branch_id = ?"
+                            . $umrahFilterSql .
                             " GROUP BY u.booking_id
                             ORDER BY u.entry_date DESC";
-                        $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id];
-                        if ($umrahFamilyType === 'specific' && $specificFamily) {
-                            $params[] = $specificFamily;
-                        }
+                        $params = array_merge([$entity], $umrahDateParams, [$tenant_id, $branch_id], $umrahFilterParams);
                         // Base headers (shown to everyone)
                         $headers = [
                             'Head of Family',
@@ -2205,14 +2220,11 @@ try {
                             LEFT JOIN umrah_refunds ur ON u.booking_id = ur.booking_id
                             LEFT JOIN umrah_booking_services ubs ON u.booking_id = ubs.booking_id
                             LEFT JOIN suppliers s ON ubs.supplier_id = s.id
-                            WHERE u.paid_to = ? AND u.entry_date BETWEEN ? AND ? AND u.tenant_id = ? AND u.branch_id = ?"
-                            . ($umrahFamilyType === 'specific' && $specificFamily ? " AND u.family_id = ?" : "") .
+                            WHERE u.paid_to = ? AND " . $umrahDateCondition . " AND u.tenant_id = ? AND u.branch_id = ?"
+                            . $umrahFilterSql .
                             " GROUP BY u.booking_id
                             ORDER BY u.entry_date DESC";
-                        $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id];
-                        if ($umrahFamilyType === 'specific' && $specificFamily) {
-                            $params[] = $specificFamily;
-                        }
+                        $params = array_merge([$entity], $umrahDateParams, [$tenant_id, $branch_id], $umrahFilterParams);
                         // Base headers (shown to everyone)
                         $headers = [
                             'Head of Family',

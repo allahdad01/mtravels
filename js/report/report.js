@@ -30,6 +30,18 @@ function loadOptions() {
     if (expenseCategoryFields) {
         expenseCategoryFields.style.display = "none";
     }
+    if (document.getElementById("umrahFilterFields")) {
+        document.getElementById("umrahFilterFields").style.display = "none";
+    }
+    if (document.getElementById("umrahFlightDateFields")) {
+        document.getElementById("umrahFlightDateFields").style.display = "none";
+    }
+    if (document.getElementById("umrahReturnDateFields")) {
+        document.getElementById("umrahReturnDateFields").style.display = "none";
+    }
+    if (document.getElementById("specificFamilySelection")) {
+        document.getElementById("specificFamilySelection").style.display = "none";
+    }
 
     // Get allowed features from the page (similar to header.php)
     var allowedFeatures = allowedFeaturesData;
@@ -200,8 +212,14 @@ function loadOptions() {
             if (this.value === "statement") {
                 statementFields.style.display = "block";
                 expenseCategoryFields.style.display = "none";
-                if (document.getElementById("umrahFamilyFields")) {
-                    document.getElementById("umrahFamilyFields").style.display = "none";
+                if (document.getElementById("umrahFilterFields")) {
+                    document.getElementById("umrahFilterFields").style.display = "none";
+                }
+                if (document.getElementById("umrahFlightDateFields")) {
+                    document.getElementById("umrahFlightDateFields").style.display = "none";
+                }
+                if (document.getElementById("umrahReturnDateFields")) {
+                    document.getElementById("umrahReturnDateFields").style.display = "none";
                 }
                 if (document.getElementById("specificFamilySelection")) {
                     document.getElementById("specificFamilySelection").style.display = "none";
@@ -210,42 +228,60 @@ function loadOptions() {
             } else if (this.value === "expense") {
                 expenseCategoryFields.style.display = "block";
                 statementFields.style.display = "none";
-                if (document.getElementById("umrahFamilyFields")) {
-                    document.getElementById("umrahFamilyFields").style.display = "none";
+                if (document.getElementById("umrahFilterFields")) {
+                    document.getElementById("umrahFilterFields").style.display = "none";
+                }
+                if (document.getElementById("umrahFlightDateFields")) {
+                    document.getElementById("umrahFlightDateFields").style.display = "none";
+                }
+                if (document.getElementById("umrahReturnDateFields")) {
+                    document.getElementById("umrahReturnDateFields").style.display = "none";
                 }
                 if (document.getElementById("specificFamilySelection")) {
                     document.getElementById("specificFamilySelection").style.display = "none";
                 }
                 loadExpenseCategories(); // Load expense categories from the database
             } else if (this.value === "umrah" || this.value === "umrah_refund") {
-                if (document.getElementById("umrahFamilyFields")) {
-                    document.getElementById("umrahFamilyFields").style.display = "block";
+                if (document.getElementById("umrahFilterFields")) {
+                    document.getElementById("umrahFilterFields").style.display = "block";
                 }
                 statementFields.style.display = "none";
                 expenseCategoryFields.style.display = "none";
+                if (document.getElementById("umrahFlightDateFields")) {
+                    document.getElementById("umrahFlightDateFields").style.display = "none";
+                }
+                if (document.getElementById("umrahReturnDateFields")) {
+                    document.getElementById("umrahReturnDateFields").style.display = "none";
+                }
                 if (document.getElementById("specificFamilySelection")) {
                     document.getElementById("specificFamilySelection").style.display = "none";
                 }
-                // Reset family type to default
-                if (document.getElementById("umrahFamilyType")) {
-                    document.getElementById("umrahFamilyType").value = "all";
+                // Reset filter type to default
+                if (document.getElementById("umrahFilterType")) {
+                    document.getElementById("umrahFilterType").value = "all";
                     // Reset call counter for new session
                     loadFamiliesCallCount = 0;
-                    // Load families if specific is selected
-                    toggleFamilySelection();
+                    // Load families if family filter is selected
+                    toggleUmrahFilterFields();
                 }
             } else {
                 statementFields.style.display = "none";
                 expenseCategoryFields.style.display = "none";
-                if (document.getElementById("umrahFamilyFields")) {
-                    document.getElementById("umrahFamilyFields").style.display = "none";
+                if (document.getElementById("umrahFilterFields")) {
+                    document.getElementById("umrahFilterFields").style.display = "none";
+                }
+                if (document.getElementById("umrahFlightDateFields")) {
+                    document.getElementById("umrahFlightDateFields").style.display = "none";
+                }
+                if (document.getElementById("umrahReturnDateFields")) {
+                    document.getElementById("umrahReturnDateFields").style.display = "none";
                 }
                 if (document.getElementById("specificFamilySelection")) {
                     document.getElementById("specificFamilySelection").style.display = "none";
                 }
-                // Reset family type when switching away
-                if (document.getElementById("umrahFamilyType")) {
-                    document.getElementById("umrahFamilyType").value = "all";
+                // Reset filter type when switching away
+                if (document.getElementById("umrahFilterType")) {
+                    document.getElementById("umrahFilterType").value = "all";
                     isLoadingFamilies = false;
                     loadFamiliesCallCount = 0;
                 }
@@ -330,21 +366,44 @@ function cleanupDynamicFields() {
         familyDropdown.className = 'form-select form-select-lg';
     }
 
-
+    // Reset umrah filter fields
+    var umrahFilterType = document.getElementById("umrahFilterType");
+    if (umrahFilterType) {
+        umrahFilterType.value = "all";
+    }
+    if (document.getElementById("umrahFlightDateFields")) {
+        document.getElementById("umrahFlightDateFields").style.display = "none";
+    }
+    if (document.getElementById("umrahReturnDateFields")) {
+        document.getElementById("umrahReturnDateFields").style.display = "none";
+    }
+    if (document.getElementById("specificFamilySelection")) {
+        document.getElementById("specificFamilySelection").style.display = "none";
+    }
+    if (document.getElementById("umrahFlightDate")) {
+        document.getElementById("umrahFlightDate").value = "";
+    }
+    if (document.getElementById("umrahReturnDate")) {
+        document.getElementById("umrahReturnDate").value = "";
+    }
 }
 
-// Function to toggle family selection visibility
-function toggleFamilySelection() {
-    var type = document.getElementById("umrahFamilyType").value;
+// Function to toggle umrah filter fields visibility
+function toggleUmrahFilterFields() {
+    var filterType = document.getElementById("umrahFilterType").value;
     var specificFamilySelection = document.getElementById("specificFamilySelection");
+    var flightDateFields = document.getElementById("umrahFlightDateFields");
+    var returnDateFields = document.getElementById("umrahReturnDateFields");
 
-    if (type === "specific") {
-        specificFamilySelection.style.display = "block";
+    if (specificFamilySelection) specificFamilySelection.style.display = filterType === "family" ? "block" : "none";
+    if (flightDateFields) flightDateFields.style.display = filterType === "flight_date" ? "block" : "none";
+    if (returnDateFields) returnDateFields.style.display = filterType === "return_date" ? "block" : "none";
+
+    if (filterType === "family") {
         if (!isLoadingFamilies) {
             loadFamilies();
         }
     } else {
-        specificFamilySelection.style.display = "none";
         cleanupFamilySelection();
     }
 }
@@ -483,26 +542,39 @@ function filterResults() {
     var startDate = document.getElementById("startDate").value;
     var endDate = document.getElementById("endDate").value;
     var expenseCategory = reportCategory === "expense" ? document.getElementById("expenseCategory").value : "";
-    var umrahFamilyType = reportCategory === "umrah" ? document.getElementById("umrahFamilyType").value : "";
-    var specificFamily = reportCategory === "umrah" && umrahFamilyType === "specific" ? document.getElementById("specificFamily").value : "";
+    var umrahFilterType = reportCategory === "umrah" ? document.getElementById("umrahFilterType").value : "";
+    var specificFamily = reportCategory === "umrah" && umrahFilterType === "family" ? document.getElementById("specificFamily").value : "";
+    var umrahFlightDate = reportCategory === "umrah" && umrahFilterType === "flight_date" ? document.getElementById("umrahFlightDate").value : "";
+    var umrahReturnDate = reportCategory === "umrah" && umrahFilterType === "return_date" ? document.getElementById("umrahReturnDate").value : "";
 
-    if (!reportType || !startDate || !endDate) {
+    // Date range is ignored when filtering umrah by family/flight/return date
+    var umrahDateRangeIgnored = reportCategory === "umrah" && (umrahFilterType === "family" || umrahFilterType === "flight_date" || umrahFilterType === "return_date");
+
+    if (!reportType || (!umrahDateRangeIgnored && (!startDate || !endDate))) {
         alert("Please select all required fields");
         return;
     }
 
     // Special handling for general report type - don't require entity selection
-    if (reportType === "general" && (!reportCategory || !startDate || !endDate)) {
+    if (reportType === "general" && (!reportCategory || (!umrahDateRangeIgnored && (!startDate || !endDate)))) {
         alert("Please select report category and date range");
         return;
-    } else if (reportType !== "general" && ((!entity && (reportType === "supplier" || reportType === "main_account" || reportType === "client")) || !reportCategory || !startDate || !endDate)) {
+    } else if (reportType !== "general" && ((!entity && (reportType === "supplier" || reportType === "main_account" || reportType === "client")) || !reportCategory || (!umrahDateRangeIgnored && (!startDate || !endDate)))) {
         alert("Please select all required fields");
         return;
     }
 
     // Validation for umrah specific family selection
-    if (reportCategory === "umrah" && umrahFamilyType === "specific" && !specificFamily) {
+    if (reportCategory === "umrah" && umrahFilterType === "family" && !specificFamily) {
         alert("Please select a family");
+        return;
+    }
+    if (reportCategory === "umrah" && umrahFilterType === "flight_date" && !umrahFlightDate) {
+        alert("Please select a flight date");
+        return;
+    }
+    if (reportCategory === "umrah" && umrahFilterType === "return_date" && !umrahReturnDate) {
+        alert("Please select a return date");
         return;
     }
 
@@ -565,8 +637,10 @@ function filterResults() {
                 startDate: startDate,
                 endDate: endDate,
                 expenseCategory: expenseCategory,
-                umrahFamilyType: umrahFamilyType,
+                umrahFilterType: umrahFilterType,
                 specificFamily: specificFamily,
+                umrahFlightDate: umrahFlightDate,
+                umrahReturnDate: umrahReturnDate,
                 tenant_id: tenantId,
                 branch_id: branchId
             },
@@ -604,10 +678,15 @@ function exportReport(format) {
     var endDate = document.getElementById("endDate").value;
     var currency = document.getElementById("statementCurrency").value;
     var expenseCategory = reportCategory === "expense" ? document.getElementById("expenseCategory").value : "";
-    var umrahFamilyType = reportCategory === "umrah" ? document.getElementById("umrahFamilyType").value : "";
-    var specificFamily = reportCategory === "umrah" && umrahFamilyType === "specific" ? document.getElementById("specificFamily").value : "";
+    var umrahFilterType = reportCategory === "umrah" ? document.getElementById("umrahFilterType").value : "";
+    var specificFamily = reportCategory === "umrah" && umrahFilterType === "family" ? document.getElementById("specificFamily").value : "";
+    var umrahFlightDate = reportCategory === "umrah" && umrahFilterType === "flight_date" ? document.getElementById("umrahFlightDate").value : "";
+    var umrahReturnDate = reportCategory === "umrah" && umrahFilterType === "return_date" ? document.getElementById("umrahReturnDate").value : "";
     
-    if (!reportType || !reportCategory || !startDate || !endDate) {
+    // Date range is ignored when filtering umrah by family/flight/return date
+    var umrahDateRangeIgnored = reportCategory === "umrah" && (umrahFilterType === "family" || umrahFilterType === "flight_date" || umrahFilterType === "return_date");
+    
+    if (!reportType || !reportCategory || (!umrahDateRangeIgnored && (!startDate || !endDate))) {
         Swal.fire({
             icon: 'error',
             title: 'Error',
@@ -690,8 +769,10 @@ function exportReport(format) {
                               "&tenant_id=" + tenantId +
                               "&branch_id=" + branchId +
                               (expenseCategory ? "&expenseCategory=" + expenseCategory : "") +
-                              (umrahFamilyType ? "&umrahFamilyType=" + umrahFamilyType : "") +
-                              (specificFamily ? "&specificFamily=" + specificFamily : "");
+                              (umrahFilterType ? "&umrahFilterType=" + umrahFilterType : "") +
+                              (specificFamily ? "&specificFamily=" + specificFamily : "") +
+                              (umrahFlightDate ? "&umrahFlightDate=" + umrahFlightDate : "") +
+                              (umrahReturnDate ? "&umrahReturnDate=" + umrahReturnDate : "");
 
         // Close loading after a short delay
         setTimeout(() => {
@@ -792,17 +873,17 @@ $(document).ready(function() {
 
     // Test family selection functionality
 
-    var umrahFamilyType = document.getElementById('umrahFamilyType');
+    var umrahFilterType = document.getElementById('umrahFilterType');
     var specificFamilySelection = document.getElementById('specificFamilySelection');
     var specificFamily = document.getElementById('specificFamily');
 
-    if (umrahFamilyType) {
+    if (umrahFilterType) {
 
         // Remove any existing event listeners to prevent duplicates
-        var newUmrahFamilyType = umrahFamilyType.cloneNode(true);
-        umrahFamilyType.parentNode.replaceChild(newUmrahFamilyType, umrahFamilyType);
+        var newUmrahFilterType = umrahFilterType.cloneNode(true);
+        umrahFilterType.parentNode.replaceChild(newUmrahFilterType, umrahFilterType);
         // Add event listener to the new element
-        newUmrahFamilyType.addEventListener('change', toggleFamilySelection);
+        newUmrahFilterType.addEventListener('change', toggleUmrahFilterFields);
     } else {
 
     }

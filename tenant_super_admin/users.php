@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $branch_id = !empty($_POST['branch_id']) ? $_POST['branch_id'] : null;
                 if (empty($name)||empty($email)||empty($password)||empty($role)) { $message='Name, email, password, and role are required.'; $messageType='danger'; }
                 elseif (!filter_var($email,FILTER_VALIDATE_EMAIL)) { $message='Please enter a valid email address.'; $messageType='danger'; }
-                elseif (strlen($password)<12) { $message='Password must be at least 12 characters long.'; $messageType='danger'; }
+                elseif (strlen($password)<6) { $message='Password must be at least 6 characters long.'; $messageType='danger'; }
                 elseif (!$canAddMoreUsers) { $message='You have reached your user limit ('.$usageStats['max_users'].' users). Please request additional user slots.'; $messageType='danger'; }
                 else {
                     require_once '../includes/PasswordValidator.php';
@@ -66,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'reset_password':
                 $user_id=intval($_POST['user_id']??0); $new_password=$_POST['new_password']??'';
                 if (!$user_id||empty($new_password)) { $message='User ID and new password are required.'; $messageType='danger'; }
-                elseif (strlen($new_password)<12) { $message='Password must be at least 12 characters long.'; $messageType='danger'; }
+                elseif (strlen($new_password)<6) { $message='Password must be at least 6 characters long.'; $messageType='danger'; }
                 else {
                     require_once '../includes/PasswordValidator.php'; $v=PasswordValidator::validate($new_password);
                     if (!$v['valid']) { $message='Password does not meet requirements: '.implode(', ',$v['errors']); $messageType='danger'; }
@@ -430,8 +430,8 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label>Password *</label>
-                                <input type="password" class="form-control" id="userPassword" name="password" required minlength="12">
-                                <div class="form-text">Min 12 chars with uppercase, lowercase, numbers & special characters</div>
+                                <input type="password" class="form-control" id="userPassword" name="password" required minlength="6">
+                                <div class="form-text">Min 6 chars with uppercase, lowercase, numbers & special characters</div>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -551,8 +551,8 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                     <p style="font-size:14px;color:var(--text-main);">Reset password for <strong id="resetUserName"></strong></p>
                     <div class="form-group">
                         <label>New Password *</label>
-                        <input type="password" class="form-control" id="newPassword" name="new_password" required minlength="12">
-                        <div class="form-text">Min 12 chars with uppercase, lowercase, numbers & special characters</div>
+                        <input type="password" class="form-control" id="newPassword" name="new_password" required minlength="6">
+                        <div class="form-text">Min 6 chars with uppercase, lowercase, numbers & special characters</div>
                     </div>
                     <div class="warn-box">
                         <i class="feather icon-alert-triangle" style="flex-shrink:0;margin-top:1px;"></i>

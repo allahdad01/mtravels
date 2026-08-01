@@ -162,19 +162,38 @@ $blog_posts = $landingData['blog_posts'];
 
     <!-- Pricing Section -->
     <?php if (!empty($plans)): ?>
+    <?php $yearlyDiscount = (float)getSetting($platform_settings, 'yearly_discount', '20'); ?>
     <section class="pricing" id="pricing">
         <div class="container">
             <div class="section-header">
                 <h2><?php echo getSetting($platform_settings, 'pricing_title', 'Choose Your Plan'); ?></h2>
                 <p><?php echo getSetting($platform_settings, 'pricing_subtitle', 'Select the perfect plan for your travel agency. All plans include our core features with different usage limits.'); ?></p>
             </div>
+            <div class="pricing-toggle-wrap">
+                <span class="toggle-label active" data-period="monthly">Monthly</span>
+                <button class="toggle-switch" id="billingToggle" type="button" role="switch" aria-checked="false" aria-label="Toggle yearly billing">
+                    <span class="toggle-thumb"></span>
+                </button>
+                <span class="toggle-label" data-period="yearly">Yearly</span>
+                <span class="toggle-badge">Save <?php echo (int)$yearlyDiscount; ?>%</span>
+            </div>
             <div class="pricing-grid">
                 <?php foreach ($plans as $index => $plan): ?>
+                <?php
+                    $monthlyPrice = (float)$plan['price'];
+                    $yearlyPrice = $monthlyPrice * 12 * (1 - $yearlyDiscount / 100);
+                ?>
                 <div class="pricing-card <?php echo strtolower($plan['name']) === 'enterprise' ? 'popular' : ''; ?>">
                     <div class="pricing-badge">Most Popular</div>
                     <div class="pricing-name"><?php echo htmlspecialchars(formatFeatureName($plan['name'])); ?></div>
-                    <div class="pricing-price"><?php echo formatCurrency($plan['price']); ?></div>
-                    <div class="pricing-period"><?php echo htmlspecialchars(formatFeatureName('per_month')); ?></div>
+                    <div class="pricing-price">
+                        <span class="price-monthly"><?php echo formatCurrency($monthlyPrice); ?></span>
+                        <span class="price-yearly"><?php echo formatCurrency($yearlyPrice); ?></span>
+                    </div>
+                    <div class="pricing-period">
+                        <span class="period-monthly"><?php echo htmlspecialchars(formatFeatureName('per_month')); ?></span>
+                        <span class="period-yearly">per year <span class="save-badge">Save <?php echo (int)$yearlyDiscount; ?>%</span></span>
+                    </div>
                     <div class="pricing-features">
                         <?php echo renderPricingCardFeatures($plan, $index, $plans); ?>
                     </div>
@@ -885,7 +904,24 @@ $blog_posts = $landingData['blog_posts'];
             }
         }
 
-        // Initialize feature split slider, testimonial slider, and mobile menu
+        // Billing toggle (monthly / yearly)
+        function initBillingToggle() {
+            const toggle = document.getElementById('billingToggle');
+            const section = document.querySelector('.pricing');
+            const labels = document.querySelectorAll('.pricing-toggle-wrap .toggle-label');
+            if (!toggle || !section) return;
+
+            toggle.addEventListener('click', function() {
+                const isYearly = this.getAttribute('aria-checked') === 'true';
+                this.setAttribute('aria-checked', isYearly ? 'false' : 'true');
+                section.classList.toggle('yearly', !isYearly);
+                labels.forEach(function(lbl) {
+                    lbl.classList.toggle('active', lbl.dataset.period === (isYearly ? 'monthly' : 'yearly'));
+                });
+            });
+        }
+
+        // Initialize feature split slider, testimonial slider, billing toggle, and mobile menu
         document.addEventListener('DOMContentLoaded', function() {
             if (document.querySelector('.features-scroll-wrap')) {
                 new FeatureStickyScroll();
@@ -893,6 +929,7 @@ $blog_posts = $landingData['blog_posts'];
             if (document.querySelector('.testimonials-slider')) {
                 new TestimonialSlider();
             }
+            initBillingToggle();
             toggleMobileMenu();
         });
     </script>

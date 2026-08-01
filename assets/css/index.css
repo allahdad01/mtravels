@@ -1747,6 +1747,99 @@ html.dark-mode .navbar.scrolled {
     pointer-events: none;
 }
 
+.pricing-toggle-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 3rem;
+    position: relative;
+    z-index: 1;
+}
+
+.toggle-switch {
+    position: relative;
+    width: 52px;
+    height: 28px;
+    background: var(--gray-200);
+    border-radius: 14px;
+    border: none;
+    cursor: pointer;
+    transition: background 0.3s ease;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.toggle-switch .toggle-thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 22px;
+    height: 22px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.toggle-switch[aria-checked="true"] {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+}
+
+.toggle-switch[aria-checked="true"] .toggle-thumb {
+    transform: translateX(24px);
+}
+
+.toggle-label {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--gray-400);
+    cursor: pointer;
+    transition: color 0.3s ease;
+    user-select: none;
+}
+
+.toggle-label.active {
+    color: var(--gray-800);
+}
+
+.toggle-badge {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, #10b981, #059669);
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    letter-spacing: 0.02em;
+}
+
+.save-badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, #10b981, #059669);
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    margin-left: 0.4rem;
+    vertical-align: middle;
+}
+
+.price-yearly,
+.period-yearly {
+    display: none;
+}
+
+.pricing.yearly .price-monthly,
+.pricing.yearly .period-monthly {
+    display: none;
+}
+
+.pricing.yearly .price-yearly,
+.pricing.yearly .period-yearly {
+    display: inline;
+}
+
 .pricing-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -2682,6 +2775,26 @@ html.dark-mode .pricing-price {
 
 html.dark-mode .pricing-period {
     color: #94a3b8;
+}
+
+html.dark-mode .toggle-switch {
+    background: #334155;
+}
+
+html.dark-mode .toggle-label {
+    color: #64748b;
+}
+
+html.dark-mode .toggle-label.active {
+    color: #f8fafc;
+}
+
+html.dark-mode .toggle-badge {
+    background: linear-gradient(135deg, #10b981, #059669);
+}
+
+html.dark-mode .save-badge {
+    background: linear-gradient(135deg, #10b981, #059669);
 }
 
 html.dark-mode .feature-group {

@@ -243,17 +243,41 @@ if ($tenant_id) {
                                                                 </div>
                                                             </div>
 
-                                                            <!-- Umrah Family Selection -->
-                                                            <div class="col-lg-6" id="umrahFamilyFields" style="display: none;">
+                                                            <!-- Umrah Filter Selection -->
+                                                            <div class="col-lg-6" id="umrahFilterFields" style="display: none;">
                                                                 <div class="form-group custom-form-group">
                                                                     <label class="form-label fw-semibold text-muted mb-2">
                                                                         <i class="feather icon-users me-1"></i>
                                                                         <?= __('family_type') ?>
                                                                     </label>
-                                                                    <select id="umrahFamilyType" class="form-select form-select-lg" onchange="toggleFamilySelection()">
-                                                                        <option value="all">🕌 <?= __('all_families') ?></option>
-                                                                        <option value="specific">👨‍👩‍👧‍👦 <?= __('specific_family') ?></option>
+                                                                    <select id="umrahFilterType" class="form-select form-select-lg">
+                                                                        <option value="all">🕌 <?= __('all') ?></option>
+                                                                        <option value="family">👨‍👩‍👧‍👦 <?= __('family') ?></option>
+                                                                        <option value="flight_date">✈️ <?= __('flight_date') ?></option>
+                                                                        <option value="return_date">↩️ <?= __('return_date') ?></option>
                                                                     </select>
+                                                                </div>
+                                                            </div>
+
+                                                            <!-- Umrah Flight Date Selection -->
+                                                            <div class="col-lg-6" id="umrahFlightDateFields" style="display: none;">
+                                                                <div class="form-group custom-form-group">
+                                                                    <label class="form-label fw-semibold text-muted mb-2">
+                                                                        <i class="feather icon-calendar me-1"></i>
+                                                                        <?= __('flight_date') ?>
+                                                                    </label>
+                                                                    <input type="date" id="umrahFlightDate" class="form-control form-control-lg">
+                                                                </div>
+                                                            </div>
+
+                                                            <!-- Umrah Return Date Selection -->
+                                                            <div class="col-lg-6" id="umrahReturnDateFields" style="display: none;">
+                                                                <div class="form-group custom-form-group">
+                                                                    <label class="form-label fw-semibold text-muted mb-2">
+                                                                        <i class="feather icon-calendar me-1"></i>
+                                                                        <?= __('return_date') ?>
+                                                                    </label>
+                                                                    <input type="date" id="umrahReturnDate" class="form-control form-control-lg">
                                                                 </div>
                                                             </div>
 
