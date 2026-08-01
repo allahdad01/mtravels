@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // Include security module
 require_once 'security.php';
 
@@ -172,6 +172,34 @@ require_once('../includes/db.php');
                                                 <i class="fas fa-bus"></i>
                                                 <span><?= __('transport') ?></span>
                                             </a>
+                                            <a href="?service_type=<?= urlencode('ticket+visa') ?>" class="filter-pill <?= $serviceType === 'ticket+visa' ? 'active' : '' ?>">
+                                                <i class="fas fa-ticket-alt"></i>
+                                                <span>Ticket + Visa</span>
+                                            </a>
+                                            <a href="?service_type=<?= urlencode('ticket+hotel') ?>" class="filter-pill <?= $serviceType === 'ticket+hotel' ? 'active' : '' ?>">
+                                                <i class="fas fa-ticket-alt"></i>
+                                                <span>Ticket + Hotel</span>
+                                            </a>
+                                            <a href="?service_type=<?= urlencode('ticket+transport') ?>" class="filter-pill <?= $serviceType === 'ticket+transport' ? 'active' : '' ?>">
+                                                <i class="fas fa-ticket-alt"></i>
+                                                <span>Ticket + Transport</span>
+                                            </a>
+                                            <a href="?service_type=<?= urlencode('visa+services') ?>" class="filter-pill <?= $serviceType === 'visa+services' ? 'active' : '' ?>">
+                                                <i class="fas fa-passport"></i>
+                                                <span>Visa + Services</span>
+                                            </a>
+                                            <a href="?service_type=<?= urlencode('visa+hotel') ?>" class="filter-pill <?= $serviceType === 'visa+hotel' ? 'active' : '' ?>">
+                                                <i class="fas fa-passport"></i>
+                                                <span>Visa + Hotel</span>
+                                            </a>
+                                            <a href="?service_type=<?= urlencode('visa+transport') ?>" class="filter-pill <?= $serviceType === 'visa+transport' ? 'active' : '' ?>">
+                                                <i class="fas fa-passport"></i>
+                                                <span>Visa + Transport</span>
+                                            </a>
+                                            <a href="?service_type=<?= urlencode('hotel+transport') ?>" class="filter-pill <?= $serviceType === 'hotel+transport' ? 'active' : '' ?>">
+                                                <i class="fas fa-hotel"></i>
+                                                <span>Hotel + Transport</span>
+                                            </a>
                                         </div>
 
                                         <!-- Enhanced Search -->
@@ -228,9 +256,21 @@ require_once('../includes/db.php');
                                                                             <div>
                                                                                 <h6 class="mb-1 font-weight-bold">
                                                                                     <?php
+                                                                                    $serviceTypeLabels = [
+                                                                                        'all' => 'All Services',
+                                                                                        'ticket+visa' => 'Ticket + Visa',
+                                                                                        'ticket+hotel' => 'Ticket + Hotel',
+                                                                                        'ticket+transport' => 'Ticket + Transport',
+                                                                                        'visa+services' => 'Visa + Services',
+                                                                                        'visa+hotel' => 'Visa + Hotel',
+                                                                                        'visa+transport' => 'Visa + Transport',
+                                                                                        'hotel+transport' => 'Hotel + Transport',
+                                                                                    ];
                                                                                     $serviceTypeDisplay = $row['service_type'];
-                                                                                    if ($row['service_type'] == 'all') {
-                                                                                        $serviceTypeDisplay = 'All Services';
+                                                                                    if (isset($serviceTypeLabels[$serviceTypeDisplay])) {
+                                                                                        $serviceTypeDisplay = $serviceTypeLabels[$serviceTypeDisplay];
+                                                                                    } elseif (strpos($serviceTypeDisplay, '+') !== false) {
+                                                                                        $serviceTypeDisplay = ucwords(str_replace('+', ' + ', $serviceTypeDisplay));
                                                                                     }
                                                                                     echo htmlspecialchars($serviceTypeDisplay);
                                                                                     ?>

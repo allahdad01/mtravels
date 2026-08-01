@@ -89,7 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
          $booking_currency = $umrah_details['booking_currency'];
 
         // Get supplier_id from umrah_booking_services where service_type is 'all' or 'visa'
-        $stmt_fetch_supplier_id = $pdo->prepare("SELECT supplier_id FROM umrah_booking_services WHERE booking_id = ? AND tenant_id = ? AND branch_id = ? AND service_type IN ('all', 'visa') LIMIT 1");
+        $stmt_fetch_supplier_id = $pdo->prepare("SELECT supplier_id FROM umrah_booking_services WHERE booking_id = ? AND tenant_id = ? AND branch_id = ? AND (service_type = 'all' OR FIND_IN_SET('visa', REPLACE(service_type, '+', ',')) > 0) LIMIT 1");
         $stmt_fetch_supplier_id->bindParam(1, $umrah_id, PDO::PARAM_INT);
         $stmt_fetch_supplier_id->bindParam(2, $tenant_id, PDO::PARAM_INT);
         $stmt_fetch_supplier_id->bindParam(3, $branch_id, PDO::PARAM_INT);
@@ -454,7 +454,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 s.name AS supplier_name,
                 ubs.supplier_id
             FROM umrah_bookings ub
-            INNER JOIN umrah_booking_services ubs ON ub.booking_id = ubs.booking_id AND ubs.service_type IN ('all', 'visa')
+            INNER JOIN umrah_booking_services ubs ON ub.booking_id = ubs.booking_id AND (ubs.service_type = 'all' OR FIND_IN_SET('visa', REPLACE(ubs.service_type, '+', ',')) > 0)
             INNER JOIN suppliers s ON ubs.supplier_id = s.id
             WHERE ub.booking_id = ? AND ub.tenant_id = ? AND ub.branch_id = ?
             LIMIT 1

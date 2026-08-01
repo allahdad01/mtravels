@@ -2567,7 +2567,7 @@ CREATE TABLE `umrah_booking_services` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `tenant_id` int(11) NOT NULL,
   `booking_id` int(11) NOT NULL,
-  `service_type` enum('ticket','visa','hotel','transport','all') NOT NULL,
+  `service_type` varchar(50) NOT NULL,
   `supplier_id` int(11) NOT NULL,
   `base_price` decimal(10,3) NOT NULL DEFAULT 0.000,
   `sold_price` decimal(10,3) NOT NULL DEFAULT 0.000,

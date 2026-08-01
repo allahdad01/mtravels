@@ -52,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['family_id'])) {
                  JOIN suppliers s ON ubs.supplier_id = s.id
                  WHERE ubs.booking_id = ub.booking_id AND ubs.tenant_id = ub.tenant_id
                  AND ubs.branch_id = ub.branch_id
-                 AND ubs.service_type IN ('all', 'visa')
+                 AND (ubs.service_type = 'all' OR FIND_IN_SET('visa', REPLACE(ubs.service_type, '+', ',')) > 0)
                  LIMIT 1) as supplier_type
             FROM umrah_bookings ub
             WHERE ub.family_id = ? AND ub.tenant_id = ? AND ub.branch_id = ?

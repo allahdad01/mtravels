@@ -279,7 +279,7 @@ $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_PO
             } else {
                  // Handle bank/supplier transaction
                  // Get supplier ID from umrah_booking_services
-                 $bookingStmt = $pdo->prepare("SELECT supplier_id FROM umrah_booking_services WHERE booking_id = ? AND service_type IN ('all', 'visa') AND tenant_id = ? AND branch_id = ? LIMIT 1");
+                 $bookingStmt = $pdo->prepare("SELECT supplier_id FROM umrah_booking_services WHERE booking_id = ? AND (service_type = 'all' OR FIND_IN_SET('visa', REPLACE(service_type, '+', ',')) > 0) AND tenant_id = ? AND branch_id = ? LIMIT 1");
                  $bookingStmt->bindParam(1, $umrahId, PDO::PARAM_INT);
                  $bookingStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
                  $bookingStmt->bindParam(3, $branch_id, PDO::PARAM_INT);

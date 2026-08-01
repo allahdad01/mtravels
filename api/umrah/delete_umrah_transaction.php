@@ -116,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $current_paid = $umrah['paid'];
 
         // Get supplier_id from umrah_booking_services where service_type is 'all' or 'visa'
-        $stmt_fetch_supplier_id = $pdo->prepare("SELECT supplier_id FROM umrah_booking_services WHERE booking_id = ? AND service_type IN ('all', 'visa') AND tenant_id = ? AND branch_id = ? LIMIT 1");
+        $stmt_fetch_supplier_id = $pdo->prepare("SELECT supplier_id FROM umrah_booking_services WHERE booking_id = ? AND (service_type = 'all' OR FIND_IN_SET('visa', REPLACE(service_type, '+', ',')) > 0) AND tenant_id = ? AND branch_id = ? LIMIT 1");
         $stmt_fetch_supplier_id->bindParam(1, $umrah_id, PDO::PARAM_INT);
         $stmt_fetch_supplier_id->bindParam(2, $tenant_id, PDO::PARAM_INT);
         $stmt_fetch_supplier_id->bindParam(3, $branch_id, PDO::PARAM_INT);

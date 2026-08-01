@@ -42,6 +42,13 @@ try {
                 WHEN 'visa' THEN 'Visa'
                 WHEN 'hotel' THEN 'Hotel'
                 WHEN 'transport' THEN 'Transport'
+                WHEN 'ticket+visa' THEN 'Ticket + Visa'
+                WHEN 'ticket+hotel' THEN 'Ticket + Hotel'
+                WHEN 'ticket+transport' THEN 'Ticket + Transport'
+                WHEN 'visa+services' THEN 'Visa + Services'
+                WHEN 'visa+hotel' THEN 'Visa + Hotel'
+                WHEN 'visa+transport' THEN 'Visa + Transport'
+                WHEN 'hotel+transport' THEN 'Hotel + Transport'
                 ELSE ubs.service_type
             END,
             ': ', s.name) SEPARATOR '|') as services_info

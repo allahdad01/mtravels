@@ -1164,9 +1164,25 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
             <tbody>
               <?php foreach ($umrahData['supplier_services'] as $svc): 
                 $profit = ($svc['sold_price'] ?? 0) - ($svc['base_price'] ?? 0);
+                $serviceTypeLabels = [
+                    'all' => 'All Services',
+                    'ticket+visa' => 'Ticket + Visa',
+                    'ticket+hotel' => 'Ticket + Hotel',
+                    'ticket+transport' => 'Ticket + Transport',
+                    'visa+services' => 'Visa + Services',
+                    'visa+hotel' => 'Visa + Hotel',
+                    'visa+transport' => 'Visa + Transport',
+                    'hotel+transport' => 'Hotel + Transport',
+                ];
+                $serviceTypeLabel = $svc['service_type'] ?? '';
+                if (isset($serviceTypeLabels[$serviceTypeLabel])) {
+                    $serviceTypeLabel = $serviceTypeLabels[$serviceTypeLabel];
+                } elseif (strpos($serviceTypeLabel, '+') !== false) {
+                    $serviceTypeLabel = ucwords(str_replace('+', ' + ', $serviceTypeLabel));
+                }
               ?>
               <tr>
-                <td><span class="tag <?= strtolower($svc['service_type'] ?? 'default') ?>"><?= htmlspecialchars($svc['service_type']) ?></span></td>
+                <td><span class="tag <?= strtolower(str_replace('+', '-', $svc['service_type'] ?? 'default')) ?>"><?= htmlspecialchars($serviceTypeLabel) ?></span></td>
                 <td><a href="#" class="link-cell"><i class="fa fa-external-link-alt"></i><?= htmlspecialchars($svc['supplier_name'] ?? 'N/A') ?></a></td>
                 <td class="num"><?= htmlspecialchars($svc['currency'] ?? 'USD') ?> <?= number_format($svc['base_price'] ?? 0, 0) ?></td>
                 <td class="num"><?= htmlspecialchars($svc['currency'] ?? 'USD') ?> <?= number_format($svc['sold_price'] ?? 0, 0) ?></td>

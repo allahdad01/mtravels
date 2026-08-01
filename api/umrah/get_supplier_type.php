@@ -25,7 +25,7 @@ try {
     $stmt_fetch_supplier_id = $pdo->prepare("
         SELECT supplier_id FROM umrah_booking_services 
         WHERE booking_id = ? AND tenant_id = ? AND branch_id = ? 
-        AND service_type IN ('all', 'visa') LIMIT 1
+        AND (service_type = 'all' OR FIND_IN_SET('visa', REPLACE(service_type, '+', ',')) > 0) LIMIT 1
     ");
     $stmt_fetch_supplier_id->bindParam(1, $umrah_id, PDO::PARAM_INT);
     $stmt_fetch_supplier_id->bindParam(2, $tenant_id, PDO::PARAM_INT);

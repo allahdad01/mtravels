@@ -68,9 +68,11 @@ if ($suppliers) {
         $supplier['profit'] = DbSecurity::validateInput($supplier['profit'], 'float', ['min' => 0]);
         $supplier['currency'] = DbSecurity::validateInput($supplier['currency'], 'string', ['maxlength' => 10]);
 
-        // Validate service_type
+        // Validate service_type (single service or compound like 'ticket+visa')
         $validServiceTypes = ['all', 'ticket', 'visa', 'hotel', 'transport'];
-        if (!in_array($supplier['service_type'], $validServiceTypes)) {
+        $isValidServiceType = in_array($supplier['service_type'], $validServiceTypes)
+            || (bool)preg_match('/^(ticket|visa|hotel|transport)(\+(ticket|visa|hotel|transport))*$/', $supplier['service_type']);
+        if (!$isValidServiceType) {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => "Invalid service_type for supplier at index $index"]);
             exit();

@@ -81,7 +81,14 @@ function viewMemberDetails(bookingId) {
                                           service.service_type === 'ticket' ? 'Ticket' :
                                           service.service_type === 'visa' ? 'Visa' :
                                           service.service_type === 'hotel' ? 'Hotel' :
-                                          service.service_type === 'transport' ? 'Transport' : service.service_type;
+                                          service.service_type === 'transport' ? 'Transport' :
+                                          service.service_type === 'ticket+visa' ? 'Ticket + Visa' :
+                                          service.service_type === 'ticket+hotel' ? 'Ticket + Hotel' :
+                                          service.service_type === 'ticket+transport' ? 'Ticket + Transport' :
+                                          service.service_type === 'visa+services' ? 'Visa + Services' :
+                                          service.service_type === 'visa+hotel' ? 'Visa + Hotel' :
+                                          service.service_type === 'visa+transport' ? 'Visa + Transport' :
+                                          service.service_type === 'hotel+transport' ? 'Hotel + Transport' : service.service_type;
                         const supplierName = service.supplier_name || 'No Supplier';
                         servicesHTML += '<div style="padding: 0.75rem; background: #f0f9ff; border-radius: 0.375rem; border-left: 3px solid #06b6d4; display: flex; align-items: flex-start; gap: 0.5rem;"><i class="fas fa-check" style="color: #06b6d4; margin-top: 0.1rem;"></i><div style="flex: 1;"><div style="color: #1f2937; font-weight: 600; font-size: 0.9rem;">' + serviceType + '</div><div style="color: #6b7280; font-size: 0.8rem; margin-top: 0.2rem;">Supplier: ' + supplierName + '</div></div></div>';
                     });

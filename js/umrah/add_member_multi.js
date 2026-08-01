@@ -50,6 +50,13 @@ function addServiceRow(serviceType = '', supplierId = '', basePrice = 0, soldPri
                         <option value="visa" ${serviceType==='visa'?'selected':''}>Visa</option>
                         <option value="hotel" ${serviceType==='hotel'?'selected':''}>Hotel</option>
                         <option value="transport" ${serviceType==='transport'?'selected':''}>Transport</option>
+                        <option value="ticket+visa" ${serviceType==='ticket+visa'?'selected':''}>Ticket + Visa</option>
+                        <option value="ticket+hotel" ${serviceType==='ticket+hotel'?'selected':''}>Ticket + Hotel</option>
+                        <option value="ticket+transport" ${serviceType==='ticket+transport'?'selected':''}>Ticket + Transport</option>
+                        <option value="visa+services" ${serviceType==='visa+services'?'selected':''}>Visa + Services</option>
+                        <option value="visa+hotel" ${serviceType==='visa+hotel'?'selected':''}>Visa + Hotel</option>
+                        <option value="visa+transport" ${serviceType==='visa+transport'?'selected':''}>Visa + Transport</option>
+                        <option value="hotel+transport" ${serviceType==='hotel+transport'?'selected':''}>Hotel + Transport</option>
                     </select>
                 </div>
                 <div class="form-group">
