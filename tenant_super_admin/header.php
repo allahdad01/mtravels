@@ -2733,6 +2733,60 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ── Preserve sidebar scroll position across page loads ────────
+    var sidebarScroller = document.querySelector('.pcoded-navbar .navbar-content');
+    if (sidebarScroller) {
+        var SIDEBAR_SCROLL_KEY = 'mtravels_sidebar_scroll_top';
+        var sidebarSaveTimer = null;
+
+        var saveSidebarScroll = function() {
+            try { sessionStorage.setItem(SIDEBAR_SCROLL_KEY, String(sidebarScroller.scrollTop)); } catch(e) {}
+        };
+
+        sidebarScroller.addEventListener('scroll', function() {
+            if (sidebarSaveTimer) return;
+            sidebarSaveTimer = setTimeout(function() {
+                sidebarSaveTimer = null;
+                saveSidebarScroll();
+            }, 150);
+        }, { passive: true });
+
+        window.addEventListener('pagehide', saveSidebarScroll);
+
+        var savedSidebarTop = 0;
+        try { savedSidebarTop = parseInt(sessionStorage.getItem(SIDEBAR_SCROLL_KEY) || '0', 10) || 0; } catch(e) {}
+
+        var syncSlimScrollbar = function() {
+            if (!window.jQuery || !sidebarScroller) return;
+            var wrapper = sidebarScroller.parentNode;
+            if (!wrapper || !wrapper.className || wrapper.className.indexOf('slimScrollDiv') === -1) return;
+            var bar = wrapper.querySelector('.slimScrollBar');
+            if (!bar) return;
+            var maxBarTop = wrapper.clientHeight - bar.offsetHeight;
+            var maxScroll = sidebarScroller.scrollHeight - sidebarScroller.clientHeight;
+            var barTop = maxScroll > 0 ? Math.round((sidebarScroller.scrollTop / maxScroll) * maxBarTop) : 0;
+            bar.style.top = Math.min(Math.max(barTop, 0), maxBarTop) + 'px';
+        };
+
+        if (savedSidebarTop > 0) {
+            var applySidebarScroll = function() {
+                if (!sidebarScroller) return;
+                var maxScroll = sidebarScroller.scrollHeight - sidebarScroller.clientHeight;
+                var target = Math.min(savedSidebarTop, Math.max(maxScroll, 0));
+                if (sidebarScroller.scrollTop !== target) {
+                    sidebarScroller.scrollTop = target;
+                }
+                syncSlimScrollbar();
+            };
+            window.addEventListener('load', function() { setTimeout(applySidebarScroll, 60); });
+            window.addEventListener('pageshow', function() { setTimeout(applySidebarScroll, 60); });
+            setTimeout(applySidebarScroll, 150);
+        }
+    }
+});
+</script>
 
 <?php if (hasFeature('inter_tenant_chat', $allowed_features)): ?>
 <!-- Floating Chat Widget -->
