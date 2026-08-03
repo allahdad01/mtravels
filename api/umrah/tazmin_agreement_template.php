@@ -60,6 +60,14 @@ $duration = '15';
 if (!empty($pilgrims_info) && isset($pilgrims_info[0]['duration'])) {
     $duration = intval(preg_replace('/[^0-9]/', '', $pilgrims_info[0]['duration']));
 }
+
+// Auto-translate names into the document language (MyMemory - free)
+require_once __DIR__ . '/../../includes/translate_helper.php';
+foreach ($pilgrims_info as &$pilgrimInfo) {
+    $pilgrimInfo['name'] = translate_name($pilgrimInfo['name'], $language);
+}
+unset($pilgrimInfo);
+$guarantor_name = translate_name($guarantor_name, $language);
 ?>
 <!DOCTYPE html>
 <html lang="ps" dir="rtl">

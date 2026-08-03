@@ -100,6 +100,11 @@ try {
     }
     $pilgrim_name = $booking['name'];
 
+    // Auto-translate name into the document language (MyMemory - free)
+    require_once __DIR__ . '/../../includes/translate_helper.php';
+    translate_name_fields($booking, $lang, ['name', 'client_name', 'family_name']);
+    $pilgrim_name = $booking['name'];
+
 // Fetch settings data (using PDO connection)
 try {
     $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");

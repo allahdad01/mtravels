@@ -68,6 +68,14 @@ try {
     $membersStmt->execute([$familyId, $tenant_id, $branch_id]);
     $members = $membersStmt->fetchAll(PDO::FETCH_ASSOC);
 
+    // Keep original names for the output filename
+    $originalHeadOfFamily = $family['head_of_family'];
+
+    // Auto-translate names into the document language (MyMemory - free)
+    require_once __DIR__ . '/../../includes/translate_helper.php';
+    translate_name_fields($family, $lang, ['head_of_family']);
+    translate_name_fields($members, $lang, ['name', 'client_name']);
+
 // Fetch settings data (using PDO connection)
 try {
     $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
@@ -188,7 +196,7 @@ try {
     $mpdf->WriteHTML($template['html'], \Mpdf\HTMLParserMode::HTML_BODY);
 
     // Generate unique filename
-    $filename = 'family_receipt_' . $family['head_of_family'] . '_' . date('Y-m-d_His') . '.pdf';
+    $filename = 'family_receipt_' . $originalHeadOfFamily . '_' . date('Y-m-d_His') . '.pdf';
 
     if ($isAjaxRequest) {
         // Save PDF to file and return JSON response

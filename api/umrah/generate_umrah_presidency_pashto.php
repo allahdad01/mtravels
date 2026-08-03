@@ -77,6 +77,11 @@ try {
     $stmt->execute([$tenant_id, $branch_id, $family_id, $tenant_id, $branch_id]);
     $members = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+    // Auto-translate names into the document language (MyMemory - free)
+    require_once __DIR__ . '/../../includes/translate_helper.php';
+    $docLang = in_array($language, ['ps', 'fa']) ? $language : 'ps';
+    translate_name_fields($members, $docLang, ['name', 'head_of_family']);
+
     if (!$members) die('د دې کورنۍ لپاره کوم غړی نه پیدا شو.');
 } catch (PDOException $e) {
     die("معلومات ترلاسه کولو کې خرابی.");

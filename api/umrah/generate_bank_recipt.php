@@ -73,6 +73,13 @@ try {
         $members = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    // Auto-translate names into the document language (MyMemory - free)
+    require_once __DIR__ . '/../../includes/translate_helper.php';
+    $docLang = in_array($language, ['ps', 'fa']) ? $language : 'fa';
+    translate_name_fields($members, $docLang, ['name']);
+    $bank_name = translate_place($bank_name, $docLang);
+    $account_name = translate_name($account_name, $docLang);
+
     if (!$members) {
         die('هیچ عضوی برای این خانواده یافت نشد.');
     }

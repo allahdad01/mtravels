@@ -133,6 +133,11 @@ try {
         die('No bookings found for this family');
     }
 
+    // Auto-translate names into the document language (MyMemory - free)
+    require_once __DIR__ . '/../../includes/translate_helper.php';
+    translate_name_fields($family, $lang, ['head_of_family']);
+    translate_name_fields($bookings, $lang, ['name', 'client_name']);
+
     // Extract booking IDs for later use
     $bookingIds = array_column($bookings, 'booking_id');
 

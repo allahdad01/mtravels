@@ -92,6 +92,11 @@ try {
      $membersStmt->execute($params);
      $members = $membersStmt->fetchAll(PDO::FETCH_ASSOC);
 
+     // Auto-translate names into the document language (MyMemory - free)
+     require_once __DIR__ . '/../../includes/translate_helper.php';
+     translate_name_fields($family, $lang, ['head_of_family']);
+     translate_name_fields($members, $lang, ['name', 'client_name']);
+
 // Fetch settings data (using PDO connection)
 try {
     $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
