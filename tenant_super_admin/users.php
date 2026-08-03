@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 elseif (!$canAddMoreUsers) { $message='You have reached your user limit ('.$usageStats['max_users'].' users). Please request additional user slots.'; $messageType='danger'; }
                 else {
                     require_once '../includes/PasswordValidator.php';
-                    $validation = PasswordValidator::validate($password);
+                    $validation = PasswordValidator::validate($password, false);
                     if (!$validation['valid']) { $message='Password does not meet requirements: '.implode(', ',$validation['errors']); $messageType='danger'; }
                     else {
                         try {
@@ -431,7 +431,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                             <div class="form-group">
                                 <label>Password *</label>
                                 <input type="password" class="form-control" id="userPassword" name="password" required minlength="6">
-                                <div class="form-text">Min 6 chars with uppercase, lowercase, numbers & special characters</div>
+<div class="form-text">Min 6 characters. Tip: mix uppercase, lowercase, numbers & special characters for a stronger password</div>
                             </div>
                         </div>
                         <div class="col-md-6">

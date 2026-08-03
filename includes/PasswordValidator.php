@@ -14,14 +14,24 @@ class PasswordValidator {
     /**
      * Validate password strength
      * @param string $password The password to validate
+     * @param bool $strict When false, character-diversity rules (uppercase,
+     *                     lowercase, numbers, special chars) become optional
+     *                     suggestions and only the minimum length is enforced.
      * @return array ['valid' => bool, 'errors' => array]
      */
-    public static function validate($password) {
+    public static function validate($password, $strict = true) {
         $errors = [];
         
         // Check minimum length
         if (strlen($password) < self::$minLength) {
             $errors[] = "Password must be at least " . self::$minLength . " characters";
+        }
+        
+        if (!$strict) {
+            return [
+                'valid' => empty($errors),
+                'errors' => $errors
+            ];
         }
         
         // Check for uppercase letters
