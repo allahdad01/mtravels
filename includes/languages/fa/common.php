@@ -5541,4 +5541,5 @@ return [
 'send_currency' => 'اسعار ارسال',
 'new_hawala' => 'حواله جدید',
 'enter_the_exchange_rate_to_convert_between_currencies' => 'نرخ تبدیل را برای تبدیل بین اسعار وارد کنید',
+'more_actions' => 'اقدامات بیشتر',
 ];

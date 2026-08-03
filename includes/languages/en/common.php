@@ -5941,4 +5941,5 @@ return [
 'send_currency' => 'Send Currency',
 'new_hawala' => 'New Hawala',
 'enter_the_exchange_rate_to_convert_between_currencies' => 'Enter the exchange rate to convert between currencies',
+'more_actions' => 'More Actions',
 ];

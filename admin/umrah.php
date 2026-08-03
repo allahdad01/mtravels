@@ -26,10 +26,20 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
 
 <?php include '../includes/header.php'; ?>
 <script src="../assets/plugins/jquery/js/jquery.min.js"></script>
-<link rel="stylesheet" href="../css/general/modal-styles.css">
-<link rel="stylesheet" href="../css/umrah/umrah-enhanced.css">
-<link rel="stylesheet" href="../css/document-upload.css">
-<link rel="stylesheet" href="../css/passport-photo-extractor.css">
+<?php
+    // Cache-busting versions for the combined CSS/JS bundles (max filemtime of bundled files)
+    $umrahCssVersion = 0;
+    foreach (require '../css/bundle_files.php' as $bundleFile) {
+        $bundleMtime = @filemtime('../css/' . $bundleFile);
+        if ($bundleMtime > $umrahCssVersion) { $umrahCssVersion = $bundleMtime; }
+    }
+    $umrahJsVersion = 0;
+    foreach (require '../js/umrah/bundle_files.php' as $bundleFile) {
+        $bundleMtime = @filemtime('../js/' . $bundleFile);
+        if ($bundleMtime > $umrahJsVersion) { $umrahJsVersion = $bundleMtime; }
+    }
+?>
+<link rel="stylesheet" href="../css/bundle.php?v=<?= $umrahCssVersion ?>">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -149,6 +159,9 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                                         COUNT(ub.booking_id) AS total_members,
                                         SUM(CASE WHEN ub.status = 'refunded' THEN 1 ELSE 0 END) AS refunded_members,
                                         SUM(CASE WHEN ub.status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled_members,
+                                        (SELECT ub2.currency FROM umrah_bookings ub2
+                                         WHERE ub2.family_id = f.family_id
+                                         ORDER BY ub2.created_at DESC LIMIT 1) AS family_currency,
                                         (SELECT COUNT(*) FROM group_tickets gt WHERE gt.tenant_id = f.tenant_id AND gt.branch_id = f.branch_id AND JSON_CONTAINS(gt.member_ids, JSON_ARRAY((SELECT booking_id FROM umrah_bookings ub2 WHERE ub2.family_id = f.family_id LIMIT 1))) AND gt.status = 'active') AS has_group_tickets
                                     FROM families f
                                     LEFT JOIN users u ON f.created_by = u.id
@@ -196,14 +209,22 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                     $familiesStmt->execute($familiesParams);
                     $resultFamilies = $familiesStmt->fetchAll(PDO::FETCH_ASSOC);
 
-                    // Calculate statistics
-                    $totalRevenue = 0;
-                    $totalCollected = 0;
-                    $totalOutstanding = 0;
-                    foreach ($resultFamilies as $family) {
-                        $totalRevenue += floatval($family['total_price'] ?? 0);
-                        $totalCollected += floatval($family['total_paid'] ?? 0);
-                        $totalOutstanding += floatval($family['total_due'] ?? 0);
+                    // Families with at least one regular client (single query for all
+                    // families on this page — replaces the per-card N+1 query)
+                    $regularClientFamilies = [];
+                    $familyIds = array_column($resultFamilies, 'family_id');
+                    if (!empty($familyIds)) {
+                        $placeholders = implode(',', array_fill(0, count($familyIds), '?'));
+                        $clientTypeStmt = $pdo->prepare("
+                            SELECT DISTINCT ub.family_id
+                            FROM umrah_bookings ub
+                            JOIN clients c ON ub.sold_to = c.id
+                            WHERE c.client_type = 'regular'
+                              AND ub.tenant_id = ? AND ub.branch_id = ?
+                              AND ub.family_id IN ($placeholders)
+                        ");
+                        $clientTypeStmt->execute(array_merge([$tenant_id, $branch_id], $familyIds));
+                        $regularClientFamilies = array_flip($clientTypeStmt->fetchAll(PDO::FETCH_COLUMN));
                     }
                 ?>
 
@@ -324,30 +345,31 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                                                 </div>
                                         </div>
                                         <div class="card-actions">
-                                             <button class="btn-icon view-members-btn" data-family-id="<?= $familyId ?>" type="button" title="<?= __('view_members') ?>">
+                                             <button class="btn-icon view-members-btn" data-family-id="<?= $familyId ?>" type="button" title="<?= __('view_members') ?>" aria-label="<?= __('view_members') ?>">
                                                  <i class="fas fa-eye"></i>
                                              </button>
+                                             <button class="btn-icon btn-icon-add" type="button" title="<?= __('add_member') ?>" aria-label="<?= __('add_member') ?>" onclick="openBookingModal(<?= $familyId ?>, '<?= addslashes($row['package_type']) ?>')">
+                                                 <i class="fas fa-user-plus"></i>
+                                             </button>
+                                             <button class="btn-icon" type="button" title="<?= __('edit') ?>" aria-label="<?= __('edit') ?>" onclick="openEditFamilyModal(<?= $familyId ?>, '<?= htmlspecialchars(addslashes($row['head_of_family']), ENT_QUOTES) ?>',
+                                                  '<?= htmlspecialchars(addslashes($row['contact']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($row['address']), ENT_QUOTES) ?>',
+                                                  '<?= htmlspecialchars(addslashes($row['package_type']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($row['location']), ENT_QUOTES) ?>',
+                                                  '<?= htmlspecialchars(addslashes($row['tazmin']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($row['visa_status']), ENT_QUOTES) ?>',
+                                                  '<?= htmlspecialchars(addslashes($row['province']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($row['district']), ENT_QUOTES) ?>')">
+                                                 <i class="fas fa-edit"></i>
+                                             </button>
                                             <div class="dropdown">
-                                                <button class="btn-icon" type="button" data-toggle="dropdown">
+                                                <button class="btn-icon" type="button" data-toggle="dropdown" title="<?= __('more_actions') ?>" aria-label="<?= __('more_actions') ?>" aria-haspopup="true">
                                                     <i class="fas fa-ellipsis-v"></i>
                                                 </button>
                                                 <div class="dropdown-menu dropdown-menu-right">
-                                                     <a class="dropdown-item" href="javascript:void(0)" onclick="openBookingModal(<?= $familyId ?>, '<?= addslashes($row['package_type']) ?>')">
-                                                         <i class="fas fa-user-plus"></i><?= __('add_member') ?>
-                                                     </a>
-                                                      <a class="dropdown-item" href="javascript:void(0)" onclick="openEditFamilyModal(<?= $familyId ?>, '<?= htmlspecialchars(addslashes($row['head_of_family']), ENT_QUOTES) ?>',
-                                                      '<?= htmlspecialchars(addslashes($row['contact']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($row['address']), ENT_QUOTES) ?>',
-                                                      '<?= htmlspecialchars(addslashes($row['package_type']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($row['location']), ENT_QUOTES) ?>',
-                                                      '<?= htmlspecialchars(addslashes($row['tazmin']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($row['visa_status']), ENT_QUOTES) ?>',
-                                                      '<?= htmlspecialchars(addslashes($row['province']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($row['district']), ENT_QUOTES) ?>')">
-                                                         <i class="fas fa-edit"></i><?= __('edit') ?>
-                                                     </a>
                                                      <?php if ($canEdit): ?>
-                                                      <a class="dropdown-item" href="javascript:void(0)" onclick="openFamilyTransactionModal(<?= $familyId ?>, '<?= htmlspecialchars(addslashes($row['head_of_family']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($row['package_type']), ENT_QUOTES) ?>', <?= (int)$row['total_members'] ?>)">
+                                                     <h6 class="dropdown-header"><?= __('finance') ?></h6>
+                                                     <a class="dropdown-item" href="javascript:void(0)" onclick="openFamilyTransactionModal(<?= $familyId ?>, '<?= htmlspecialchars(addslashes($row['head_of_family']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($row['package_type']), ENT_QUOTES) ?>', <?= (int)$row['total_members'] ?>)">
                                                          <i class="fas fa-credit-card"></i><?= __('family_transaction') ?>
                                                      </a>
                                                      <?php endif; ?>
-                                                    <div class="dropdown-divider"></div>
+                                                    <h6 class="dropdown-header"><?= __('documents') ?></h6>
                                                     <a class="dropdown-item" href="javascript:void(0)" onclick="generateFamilyTazmin(<?= $familyId ?>)">
                                                         <i class="fas fa-shield-alt"></i><?= __('generate_family_tazmin') ?>
                                                     </a>
@@ -406,9 +428,9 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                                          </div>
 
                                          <!-- Flight Status Badge -->
-                                         <div class="flight-badge" id="flight-status-<?= $familyId ?>">
+                                         <div class="flight-badge flight-loading" id="flight-status-<?= $familyId ?>">
                                              <i class="fas fa-plane"></i>
-                                             <span id="flight-status-text-<?= $familyId ?>">Loading...</span>
+                                             <span id="flight-status-text-<?= $familyId ?>">&nbsp;</span>
                                          </div>
 
                                          <!-- Flight Details Button (if group ticket exists) -->
@@ -421,25 +443,25 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                                          </button>
                                          <?php endif; ?>
 
-                                        <!-- Financial Summary -->
+                                        <!-- Financial Summary (collapsible) -->
+                                        <?php $hasRegularClient = isset($regularClientFamilies[$familyId]); ?>
+                                        <button type="button" class="payment-summary-toggle" data-toggle="collapse" data-target="#payment-summary-<?= $familyId ?>" aria-expanded="false" aria-controls="payment-summary-<?= $familyId ?>">
+                                            <span class="toggle-label"><i class="fas fa-credit-card"></i><?= __('payment_status') ?></span>
+                                            <?php $familyCurrency = htmlspecialchars($row['family_currency'] ?? 'USD'); ?>
+                                            <?php if (!$hasRegularClient): ?>
+                                            <span class="toggle-quick">
+                                                <span class="toggle-pct"><?= number_format($paymentPercentage, 1) ?>%</span>
+                                                <?= __('paid') ?> <?= number_format(floatval($row['total_paid'] ?? 0)) ?> / <?= number_format(floatval($row['total_price'] ?? 0)) ?> <?= $familyCurrency ?>
+                                            </span>
+                                            <?php else: ?>
+                                            <span class="toggle-quick">
+                                                <?= __('bank') ?> <?= number_format(floatval($row['total_paid_to_bank'] ?? 0)) ?> <?= $familyCurrency ?>
+                                            </span>
+                                            <?php endif; ?>
+                                            <i class="fas fa-chevron-down toggle-chevron"></i>
+                                        </button>
+                                        <div class="collapse" id="payment-summary-<?= $familyId ?>">
                                         <div class="financial-summary">
-                                            <?php 
-                                                // Check if any family member has regular client type
-                                                $hasRegularClient = false;
-                                                $checkClientTypeStmt = $pdo->prepare("
-                                                    SELECT COUNT(*) as regular_count 
-                                                    FROM umrah_bookings ub
-                                                    JOIN clients c ON ub.sold_to = c.id
-                                                    WHERE ub.family_id = ? AND c.client_type = 'regular' 
-                                                    AND ub.tenant_id = ? AND ub.branch_id = ?
-                                                ");
-                                                $checkClientTypeStmt->bindParam(1, $familyId, PDO::PARAM_INT);
-                                                $checkClientTypeStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-                                                $checkClientTypeStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-                                                $checkClientTypeStmt->execute();
-                                                $clientTypeResult = $checkClientTypeStmt->fetch(PDO::FETCH_ASSOC);
-                                                $hasRegularClient = $clientTypeResult && $clientTypeResult['regular_count'] > 0;
-                                            ?>
                                             <?php if (!$hasRegularClient): ?>
                                             <div class="financial-header">
                                                 <span><?= __('payment_status') ?></span>
@@ -452,22 +474,22 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                                             <div class="financial-details">
                                                 <div class="financial-item">
                                                     <span class="label"><?= __('total_price') ?></span>
-                                                    <span class="value"><?= htmlspecialchars($row['total_price'] ?? '0') ?></span>
+                                                    <span class="value"><?= number_format(floatval($row['total_price'] ?? 0)) ?> <?= $familyCurrency ?></span>
                                                 </div>
                                                 <?php if (!$hasRegularClient): ?>
                                                 <div class="financial-item success">
                                                     <span class="label"><?= __('paid') ?></span>
-                                                    <span class="value"><?= htmlspecialchars($row['total_paid'] ?? '0') ?></span>
+                                                    <span class="value"><?= number_format(floatval($row['total_paid'] ?? 0)) ?> <?= $familyCurrency ?></span>
                                                 </div>
                                                 <?php endif; ?>
                                                 <div class="financial-item warning">
                                                     <span class="label"><?= __('bank') ?></span>
-                                                    <span class="value"><?= htmlspecialchars($row['total_paid_to_bank'] ?? '0') ?></span>
+                                                    <span class="value"><?= number_format(floatval($row['total_paid_to_bank'] ?? 0)) ?> <?= $familyCurrency ?></span>
                                                 </div>
                                                 <?php if (!$hasRegularClient): ?>
                                                 <div class="financial-item danger">
                                                     <span class="label"><?= __('due') ?></span>
-                                                    <span class="value"><?= htmlspecialchars($row['total_due'] ?? '0') ?></span>
+                                                    <span class="value"><?= number_format(floatval($row['total_due'] ?? 0)) ?> <?= $familyCurrency ?></span>
                                                 </div>
                                                 <?php endif; ?>
                                             </div>
@@ -477,6 +499,7 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                                                 <strong><?= __('note') ?>:</strong> <?= __('add_only_bank_transaction_for_outsider_client') ?>
                                             </div>
                                             <?php endif; ?>
+                                        </div>
                                         </div>
                                     </div>
 
@@ -490,9 +513,10 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                                         </div>
                                         <div class="members-grid" id="members-grid-<?= $familyId ?>">
                                             <!-- Members will be loaded via AJAX -->
-                                            <div class="loading-spinner">
-                                                <i class="fas fa-spinner fa-spin"></i>
-                                                <?= __('loading_members') ?>...
+                                            <div class="loading-spinner members-loading" aria-label="<?= __('loading_members') ?>">
+                                                <div class="member-skeleton"><div class="skeleton skeleton-avatar"></div><div class="skeleton skeleton-line w-75"></div><div class="skeleton skeleton-line w-50"></div></div>
+                                                <div class="member-skeleton"><div class="skeleton skeleton-avatar"></div><div class="skeleton skeleton-line w-75"></div><div class="skeleton skeleton-line w-50"></div></div>
+                                                <div class="member-skeleton"><div class="skeleton skeleton-avatar"></div><div class="skeleton skeleton-line w-75"></div><div class="skeleton skeleton-line w-50"></div></div>
                                             </div>
                                         </div>
                                     </div>
@@ -602,14 +626,14 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
 
 <!-- Floating action buttons -->
 <div id="groupTicketFloatingButton" class="floating-action-btn" style="display: none; bottom: 220px; right: 23px;">
-    <button type="button" class="fab-button" id="showGroupTicketModal">
+    <button type="button" class="fab-button" id="showGroupTicketModal" aria-label="<?= __('generate_group_ticket') ?>" title="<?= __('generate_group_ticket') ?>">
         <i class="fas fa-plane"></i>
         <span class="fab-badge" id="groupTicketSelectionCount">0</span>
     </button>
 </div>
 
 <div id="idCardFloatingButton" class="floating-action-btn" style="display: none; bottom: 85px; right: 23px;">
-    <button type="button" class="fab-button fab-dark" id="showIdCardModal">
+    <button type="button" class="fab-button fab-dark" id="showIdCardModal" aria-label="<?= __('id_card') ?>" title="<?= __('id_card') ?>">
         <i class="fas fa-id-card"></i>
         <span class="fab-badge" id="idCardSelectionCount">0</span>
     </button>
@@ -622,50 +646,20 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
 
-<!-- Document Upload Script -->
- 
-<script src="../js/umrah/family_transaction_manager.js"></script>
-<script src="../js/umrah/transaction_manager.js"></script>
-<script src="../js/member-document-upload.js"></script>
-<script src="../js/umrah/refresh-families.js"></script>
-
-<script src="../js/umrah/approve_booking.js"></script>
-<script src="../js/umrah/refund.js?v=1"></script>
-<script src="../js/umrah/cancellation_reapply.js"></script>
-<script src="../js/umrah/idcard.js"></script>
-<script src="../js/umrah/groupTickets.js"></script>
-<script src="../js/umrah/family.js"></script>
-<script src="../js/umrah/generations.js"></script>
-<script src="../js/umrah/generations_received_form.js"></script>
-<script src="../js/umrah/generate_completion.js"></script>
-<script src="../js/umrah/generate_cancelation.js"></script>
-<script src="../js/umrah/family_documents.js"></script>
-<script src="../js/umrah/generate_bankandumrah.js"></script>
-<script src="../js/umrah/date_change_request.js"></script>
-<script src="../js/umrah/multi_ticket.js"></script>
-<script src="../js/umrah/edit_member.js"></script>
-<script src="../js/umrah/family_cancellation.js"></script>
-<script src="../js/umrah/view_member_details.js"></script>
-<script src="../js/umrah/umrah-forms.js"></script>
-<script src="../js/umrah/flight_details.js"></script>
-<script src="../js/umrah/bookings.js"></script>
+<!-- Combined page scripts (single request, cache-busted by max filemtime) -->
+<script src="../js/umrah/bundle.php?v=<?= $umrahJsVersion ?>"></script>
 
 <!-- Tesseract.js for OCR -->
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
 
-<!-- Multi-Member Umrah Modal (NEW - replaces single-member) -->
-<script src="../js/umrah/add_member_multi_refactored.js?v=<?php echo time(); ?>"></script>
-<!-- Multi-Member Form Submission (NEW) -->
-<script src="../js/umrah/bookings_multi.js"></script>
-
-<!-- Single-Member Document Handler (fallback if needed) -->
-<script src="../js/umrah/open_documents_modal.js"></script>
-<script src="../js/umrah/passport-photo-extractor.js"></script>
-<script src="../js/umrah/auto-passport-extractor.js"></script>
 <!-- Custom Scripts -->
 <script>
     // Set CSRF token
     window.csrfToken = '<?php echo $_SESSION['csrf_token']; ?>';
+
+    // Debug logging: enable with ?debug in the URL
+    const DEBUG_MODE = new URLSearchParams(window.location.search).has('debug');
+    const dbg = (...args) => { if (DEBUG_MODE) console.log(...args); };
 
     // Toast notification
     function showToast(type, message) {
@@ -692,7 +686,7 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
             const grid = document.getElementById(gridId);
             const card = document.querySelector('[data-family-id="' + familyId + '"]');
             
-            console.log('VIEW: familyId=' + familyId + ', section=' + (section ? 'FOUND' : 'NOT FOUND') + ', grid=' + (grid ? 'FOUND' : 'NOT FOUND'));
+            dbg('VIEW: familyId=' + familyId + ', section=' + (section ? 'FOUND' : 'NOT FOUND') + ', grid=' + (grid ? 'FOUND' : 'NOT FOUND'));
             
             if (!section || !grid) {
                 console.error('ERROR: Could not find section or grid');
@@ -711,10 +705,10 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                 }
             }
             
-            console.log('VIEW: Display changed to ' + section.style.display);
+            dbg('VIEW: Display changed to ' + section.style.display);
             
             if (isHidden && grid.innerHTML.includes('loading-spinner')) {
-                console.log('VIEW: Loading members...');
+                dbg('VIEW: Loading members...');
                 window.loadFamilyMembers(familyId);
             }
             return false;
@@ -729,14 +723,20 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
         const gridId = 'members-grid-' + familyId;
         const grid = document.getElementById(gridId);
         
-        console.log('LOAD: familyId=' + familyId + ', grid=' + (grid ? 'FOUND' : 'NOT FOUND'));
+        dbg('LOAD: familyId=' + familyId + ', grid=' + (grid ? 'FOUND' : 'NOT FOUND'));
         
         if (!grid) {
-            alert('ERROR: Grid element not found: ' + gridId);
+            console.error('ERROR: Grid element not found: ' + gridId);
             return;
         }
         
-        grid.innerHTML = '<div style="padding: 20px; text-align: center;"><i class="fas fa-spinner fa-spin"></i> Loading members...</div>';
+        const memberSkeleton = '<div class="member-skeleton">' +
+            '<div class="skeleton skeleton-avatar"></div>' +
+            '<div class="skeleton skeleton-line w-75"></div>' +
+            '<div class="skeleton skeleton-line w-50"></div>' +
+            '</div>';
+        grid.innerHTML = '<div class="loading-spinner members-loading" aria-label="Loading members">' +
+            memberSkeleton.repeat(3) + '</div>';
         
         // Get filter parameter from current URL
         const urlParams = new URLSearchParams(window.location.search);
@@ -745,19 +745,19 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
         if (filter) {
             url += '&filter=' + encodeURIComponent(filter);
         }
-        console.log('LOAD: Fetching from ' + url);
+        dbg('LOAD: Fetching from ' + url);
         
         fetch(url)
             .then(function(response) {
-                console.log('LOAD: Response status ' + response.status);
+                dbg('LOAD: Response status ' + response.status);
                 if (!response.ok) throw new Error('HTTP ' + response.status);
                 return response.json();
             })
             .then(function(data) {
-                console.log('LOAD: Data received', data);
+                dbg('LOAD: Data received', data);
                 if (data.success) {
                     grid.innerHTML = data.html;
-                    console.log('LOAD: Success - members displayed');
+                    dbg('LOAD: Success - members displayed');
                 } else {
                     grid.innerHTML = '<div style="color: red; padding: 20px;">ERROR: ' + (data.message || 'Unknown error') + '</div>';
                     console.error('LOAD: API error - ' + data.message);
@@ -766,7 +766,6 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
             .catch(function(error) {
                 console.error('LOAD: Fetch error', error);
                 grid.innerHTML = '<div style="color: red; padding: 20px;">ERROR: ' + error.message + '</div>';
-                alert('Error loading members: ' + error.message);
             });
     };
 
@@ -781,17 +780,17 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
 
     // Add event listener to view members buttons (run immediately, don't wait for DOMContentLoaded)
     function attachMembersButtonListeners() {
-        console.log('Attaching members button listeners...');
+        dbg('Attaching members button listeners...');
         const buttons = document.querySelectorAll('.view-members-btn');
-        console.log('Found ' + buttons.length + ' buttons');
+        dbg('Found ' + buttons.length + ' buttons');
         buttons.forEach(function(button) {
             button.addEventListener('click', function(e) {
                 e.preventDefault();
                 const familyId = this.getAttribute('data-family-id');
-                console.log('Button clicked for family ' + familyId);
+                dbg('Button clicked for family ' + familyId);
                 try {
                     var result = window.viewFamilyMembers(familyId);
-                    console.log('viewFamilyMembers returned:', result);
+                    dbg('viewFamilyMembers returned:', result);
                 } catch(ex) {
                     console.error('Exception:', ex);
                 }
@@ -806,12 +805,12 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
         attachMembersButtonListeners();
     }
 
-    // Load flight status for each family card
+    // Load flight status for each family card (staggered to avoid request bursts)
     function loadFlightStatusForFamilies() {
         const familyCards = document.querySelectorAll('[data-family-id]');
-        familyCards.forEach(card => {
+        familyCards.forEach((card, index) => {
             const familyId = card.getAttribute('data-family-id');
-            loadFlightStatus(familyId);
+            setTimeout(() => loadFlightStatus(familyId), index * 120);
         });
     }
 
@@ -823,12 +822,11 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
         fetch(`../api/umrah/get_group_ticket_info.php?family_id=${familyId}`)
             .then(response => response.json())
             .then(data => {
+                // Remove skeleton, then apply the real status
+                statusBadge.classList.remove('flight-loading', 'flight-complete', 'flight-partial', 'flight-pending');
                 if (data.success) {
                     const totalMembers = data.members_total;
                     const flightDone = data.members_with_flight;
-                    
-                    // Reset classes
-                    statusBadge.classList.remove('flight-complete', 'flight-partial', 'flight-pending');
                     
                     if (flightDone === totalMembers && totalMembers > 0) {
                         statusBadge.classList.add('flight-complete');
@@ -847,6 +845,7 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
             })
             .catch(error => {
                 console.error('Error loading flight status:', error);
+                statusBadge.classList.remove('flight-loading');
                 statusBadge.classList.add('flight-pending');
                 statusText.textContent = '-';
             });

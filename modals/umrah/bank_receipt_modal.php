@@ -23,7 +23,7 @@
                     </div>
                     <div class="form-group">
                     <label for="payment"><?= __("payment") ?></label>
-                    <input type="text" class="form-control" id="payment" placeholder="<?= __("payment") ?>">
+                    <input type="text" class="form-control" id="payment" inputmode="decimal" placeholder="<?= __("payment") ?>">
                     </div>
                     </form>
                     <div class="mt-3">

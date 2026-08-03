@@ -23,7 +23,7 @@
                         <div class="col-md-4">
                             <div class="form-group">
                                 <label for="contact"><?= __('contact_number') ?></label>
-                                <input type="text" class="form-control" id="contact" name="contact" required>
+                                <input type="text" class="form-control" id="contact" inputmode="tel" name="contact" required>
                             </div>
                         </div>
                         <div class="col-md-4">

@@ -67,7 +67,7 @@
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label for="guideMakkahPhone"><?= __('guide_makkah_phone_number') ?></label>
-                                        <input type="text" class="form-control" id="guideMakkahPhone" name="guide_makkah_phone" placeholder="<?= __('enter_guide_phone_number') ?>">
+                                        <input type="text" class="form-control" id="guideMakkahPhone" inputmode="tel" name="guide_makkah_phone" placeholder="<?= __('enter_guide_phone_number') ?>">
                                     </div>
                                 </div>
                             </div>
@@ -85,7 +85,7 @@
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label for="guideMadinaPhone"><?= __('guide_madina_phone_number') ?></label>
-                                        <input type="text" class="form-control" id="guideMadinaPhone" name="guide_madina_phone" placeholder="<?= __('enter_guide_madina_phone_number') ?>">
+                                        <input type="text" class="form-control" id="guideMadinaPhone" inputmode="tel" name="guide_madina_phone" placeholder="<?= __('enter_guide_madina_phone_number') ?>">
                                     </div>
                                 </div>
                             </div>

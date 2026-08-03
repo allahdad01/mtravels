@@ -19,7 +19,7 @@
                         </div>
                         <div class="form-group col-md-3">
                             <label for="family_head_id_number"><?= __("family_head_id_number") ?></label>
-                            <input type="text" class="form-control" id="family_head_id_number" placeholder="<?= __("family_head_id_number") ?>">
+                            <input type="text" class="form-control" id="family_head_id_number" inputmode="numeric" placeholder="<?= __("family_head_id_number") ?>">
                         </div>
                     </div>
 
@@ -28,11 +28,11 @@
                     <div class="form-row">
                         <div class="form-group col-md-3">
                             <label for="umrah_visa_amount"><?= __("umrah_visa_amount") ?></label>
-                            <input type="text" class="form-control" id="umrah_visa_amount" placeholder="<?= __("umrah_visa_amount") ?>">
+                            <input type="text" class="form-control" id="umrah_visa_amount" inputmode="decimal" placeholder="<?= __("umrah_visa_amount") ?>">
                         </div>
                         <div class="form-group col-md-3">
                             <label for="ticket_amount"><?= __("ticket_amount") ?></label>
-                            <input type="text" class="form-control" id="ticket_amount" placeholder="<?= __("ticket_amount") ?>">
+                            <input type="text" class="form-control" id="ticket_amount" inputmode="decimal" placeholder="<?= __("ticket_amount") ?>">
                         </div>
                         <div class="form-group col-md-3">
                             <label for="airline_name"><?= __("airline_name") ?></label>
@@ -45,19 +45,19 @@
                     <div class="form-row">
                         <div class="form-group col-md-3">
                             <label for="makkah_day_number"><?= __("makkah_day_number") ?></label>
-                            <input type="text" class="form-control" id="makkah_day_number" placeholder="<?= __("makkah_day_number") ?>">
+                            <input type="text" class="form-control" id="makkah_day_number" inputmode="numeric" placeholder="<?= __("makkah_day_number") ?>">
                         </div>
                         <div class="form-group col-md-3">
                             <label for="makkah_night_number"><?= __("makkah_night_number") ?></label>
-                            <input type="text" class="form-control" id="makkah_night_number" placeholder="<?= __("makkah_night_number") ?>">
+                            <input type="text" class="form-control" id="makkah_night_number" inputmode="numeric" placeholder="<?= __("makkah_night_number") ?>">
                         </div>
                         <div class="form-group col-md-3">
                             <label for="madina_day_number"><?= __("madina_day_number") ?></label>
-                            <input type="text" class="form-control" id="madina_day_number" placeholder="<?= __("madina_day_number") ?>">
+                            <input type="text" class="form-control" id="madina_day_number" inputmode="numeric" placeholder="<?= __("madina_day_number") ?>">
                         </div>
                         <div class="form-group col-md-3">
                             <label for="madina_night_number"><?= __("madina_night_number") ?></label>
-                            <input type="text" class="form-control" id="madina_night_number" placeholder="<?= __("madina_night_number") ?>">
+                            <input type="text" class="form-control" id="madina_night_number" inputmode="numeric" placeholder="<?= __("madina_night_number") ?>">
                         </div>
                     </div>
 
@@ -66,19 +66,19 @@
                     <div class="form-row">
                         <div class="form-group col-md-3">
                             <label for="amount_airport_hotel"><?= __("amount_airport_hotel") ?></label>
-                            <input type="text" class="form-control" id="amount_airport_hotel" placeholder="<?= __("amount_airport_hotel") ?>">
+                            <input type="text" class="form-control" id="amount_airport_hotel" inputmode="decimal" placeholder="<?= __("amount_airport_hotel") ?>">
                         </div>
                         <div class="form-group col-md-3">
                             <label for="amount_hotel_airport"><?= __("amount_hotel_airport") ?></label>
-                            <input type="text" class="form-control" id="amount_hotel_airport" placeholder="<?= __("amount_hotel_airport") ?>">
+                            <input type="text" class="form-control" id="amount_hotel_airport" inputmode="decimal" placeholder="<?= __("amount_hotel_airport") ?>">
                         </div>
                         <div class="form-group col-md-3">
                             <label for="visiting_ziarats_amount"><?= __("visiting_ziarats_amount") ?></label>
-                            <input type="text" class="form-control" id="visiting_ziarats_amount" placeholder="<?= __("visiting_ziarats_amount") ?>">
+                            <input type="text" class="form-control" id="visiting_ziarats_amount" inputmode="decimal" placeholder="<?= __("visiting_ziarats_amount") ?>">
                         </div>
                         <div class="form-group col-md-3">
                             <label for="halaqat_darsi_amount"><?= __("halaqat_darsi_amount") ?></label>
-                            <input type="text" class="form-control" id="halaqat_darsi_amount" placeholder="<?= __("halaqat_darsi_amount") ?>">
+                            <input type="text" class="form-control" id="halaqat_darsi_amount" inputmode="decimal" placeholder="<?= __("halaqat_darsi_amount") ?>">
                         </div>
                     </div>
 
@@ -99,7 +99,7 @@
                         </div>
                         <div class="form-group col-md-3">
                             <label for="makkah_hotel_amount"><?= __("makkah_hotel_amount") ?></label>
-                            <input type="text" class="form-control" id="makkah_hotel_amount" placeholder="<?= __("makkah_hotel_amount") ?>">
+                            <input type="text" class="form-control" id="makkah_hotel_amount" inputmode="decimal" placeholder="<?= __("makkah_hotel_amount") ?>">
                         </div>
                     </div>
 
@@ -118,7 +118,7 @@
                         </div>
                         <div class="form-group col-md-3">
                             <label for="madina_hotel_amount"><?= __("madina_hotel_amount") ?></label>
-                            <input type="text" class="form-control" id="madina_hotel_amount" placeholder="<?= __("madina_hotel_amount") ?>">
+                            <input type="text" class="form-control" id="madina_hotel_amount" inputmode="decimal" placeholder="<?= __("madina_hotel_amount") ?>">
                         </div>
                     </div>
 
@@ -127,19 +127,19 @@
                     <div class="form-row">
                         <div class="form-group col-md-3">
                             <label for="commission_amount"><?= __("commission_amount") ?></label>
-                            <input type="text" class="form-control" id="commission_amount" placeholder="<?= __("commission_amount") ?>">
+                            <input type="text" class="form-control" id="commission_amount" inputmode="decimal" placeholder="<?= __("commission_amount") ?>">
                         </div>
                         <div class="form-group col-md-3">
                             <label for="child_services_amount"><?= __("child_services_amount") ?></label>
-                            <input type="text" class="form-control" id="child_services_amount" placeholder="<?= __("child_services_amount") ?>">
+                            <input type="text" class="form-control" id="child_services_amount" inputmode="decimal" placeholder="<?= __("child_services_amount") ?>">
                         </div>
                         <div class="form-group col-md-3">
                             <label for="child_commission_amount"><?= __("child_commission_amount") ?></label>
-                            <input type="text" class="form-control" id="child_commission_amount" placeholder="<?= __("child_commission_amount") ?>">
+                            <input type="text" class="form-control" id="child_commission_amount" inputmode="decimal" placeholder="<?= __("child_commission_amount") ?>">
                         </div>
                         <div class="form-group col-md-3">
                             <label for="total_amount"><?= __("total_amount") ?></label>
-                            <input type="text" class="form-control" id="total_amount" placeholder="<?= __("total_amount") ?>">
+                            <input type="text" class="form-control" id="total_amount" inputmode="decimal" placeholder="<?= __("total_amount") ?>">
                         </div>
                     </div>
                 </form>

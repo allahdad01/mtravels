@@ -1,0 +1,35 @@
+<?php
+// Shared list of Umrah page scripts served by js/umrah/bundle.php.
+// Paths are relative to the js/ root. Single source of truth — the page
+// uses this list to compute a cache-busting version from filemtimes.
+return [
+    'umrah/family_transaction_manager.js',
+    'umrah/transaction_manager.js',
+    'member-document-upload.js',
+    'umrah/refresh-families.js',
+    'umrah/approve_booking.js',
+    'umrah/refund.js',
+    'umrah/cancellation_reapply.js',
+    'umrah/idcard.js',
+    'umrah/groupTickets.js',
+    'umrah/family.js',
+    'umrah/generations.js',
+    'umrah/generations_received_form.js',
+    'umrah/generate_completion.js',
+    'umrah/generate_cancelation.js',
+    'umrah/family_documents.js',
+    'umrah/generate_bankandumrah.js',
+    'umrah/date_change_request.js',
+    'umrah/multi_ticket.js',
+    'umrah/edit_member.js',
+    'umrah/family_cancellation.js',
+    'umrah/view_member_details.js',
+    'umrah/umrah-forms.js',
+    'umrah/flight_details.js',
+    'umrah/bookings.js',
+    'umrah/add_member_multi_refactored.js',
+    'umrah/bookings_multi.js',
+    'umrah/open_documents_modal.js',
+    'umrah/passport-photo-extractor.js',
+    'umrah/auto-passport-extractor.js',
+];
