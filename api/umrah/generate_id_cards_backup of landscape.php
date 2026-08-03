@@ -501,6 +501,7 @@ foreach ($pilgrims as $index => $pilgrim) {
 $html .= '
         </div>
     </div>
+<script src="../../js/umrah/document-editor.js"></script>
 </body>
 </html>
 ';

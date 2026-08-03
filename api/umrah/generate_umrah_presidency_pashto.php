@@ -274,5 +274,6 @@ try {
         <div class="sig-line">شرکت</div>
     </div>
 </div>
+<script src="../../js/umrah/document-editor.js"></script>
 </body>
 </html>

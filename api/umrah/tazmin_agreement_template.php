@@ -448,5 +448,6 @@ if (!empty($pilgrims_info) && isset($pilgrims_info[0]['duration'])) {
     <!-- Bottom gold stripe -->
     <div class="bottom-stripe"></div>
 
+<script src="../../js/umrah/document-editor.js"></script>
 </body>
 </html>

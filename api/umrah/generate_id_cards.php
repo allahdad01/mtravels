@@ -683,5 +683,6 @@ header('Content-Type: text/html; charset=UTF-8');
         // Auto-print on load (optional)
         // window.print();
     </script>
+    <script src="../../js/umrah/document-editor.js"></script>
 </body>
 </html>

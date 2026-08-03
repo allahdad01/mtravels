@@ -743,5 +743,6 @@ function calculateStopover($arrivalTime, $departureTime) {
             }
         });
     </script>
+    <script src="../../js/umrah/document-editor.js"></script>
 </body>
 </html>

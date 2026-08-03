@@ -155,6 +155,9 @@ try {
     // Add print button before the container
     $html = str_replace('<body>', '<body><button class="print-button no-print" onclick="window.print()">🖨️ Print</button>', $html);
 
+    // Add document editor for direct text editing
+    $html = str_replace('</body>', '<script src="../../js/umrah/document-editor.js"></script></body>', $html);
+
     if ($isAjaxRequest) {
         echo json_encode([
             'success' => true,

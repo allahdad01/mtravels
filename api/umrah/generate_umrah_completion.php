@@ -150,6 +150,7 @@ try {
 <body>
     <button class="print-button no-print" onclick="window.print()">🖨️ Print</button>
     ' . $template['html'] . '
+    <script src="../../js/umrah/document-editor.js"></script>
 </body>
 </html>';
 
