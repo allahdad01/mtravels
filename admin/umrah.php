@@ -82,6 +82,61 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                     $filter = isset($_GET['filter']) ? trim($_GET['filter']) : '';
                     $offset = ($page - 1) * $resultsPerPage;
 
+                    // Flights tab: group members by flight ticket
+                    $showFlights = ($filter === 'flights');
+
+                    // Total of active tickets (badge on the Flights pill)
+                    $flightsCountStmt = $pdo->prepare("SELECT COUNT(*) FROM group_tickets WHERE tenant_id = ? AND branch_id = ? AND status = 'active'");
+                    $flightsCountStmt->execute([$tenant_id, $branch_id]);
+                    $totalFlights = (int)$flightsCountStmt->fetchColumn();
+
+                    if ($showFlights) {
+                        // FLIGHTS VIEW: fetch all flights for this tenant/branch
+                        $flightsStmt = $pdo->prepare("SELECT gt.*, u.name AS created_by_name
+                                                    FROM group_tickets gt
+                                                    LEFT JOIN users u ON gt.created_by = u.id
+                                                    WHERE gt.tenant_id = ? AND gt.branch_id = ? AND gt.status = 'active'
+                                                    ORDER BY gt.created_at DESC");
+                        $flightsStmt->execute([$tenant_id, $branch_id]);
+                        $resultFlights = $flightsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+                        // Collect every member id referenced by all tickets (single query)
+                        $allMemberIds = [];
+                        foreach ($resultFlights as $flight) {
+                            $decoded = json_decode($flight['member_ids'], true);
+                            if (is_array($decoded)) {
+                                foreach ($decoded as $id) {
+                                    $allMemberIds[] = (int)$id;
+                                }
+                            }
+                        }
+                        $allMemberIds = array_values(array_unique($allMemberIds));
+
+                        $flightsMemberMap = [];
+                        if (!empty($allMemberIds)) {
+                            $placeholders = implode(',', array_fill(0, count($allMemberIds), '?'));
+                            $flightMemberStmt = $pdo->prepare("
+                                SELECT ub.booking_id, ub.family_id, ub.name, ub.passport_number, ub.status,
+                                       ub.sold_price, ub.paid, ub.due, ub.currency,
+                                       f.head_of_family
+                                FROM umrah_bookings ub
+                                LEFT JOIN families f ON ub.family_id = f.family_id
+                                WHERE ub.booking_id IN ({$placeholders}) AND ub.tenant_id = ? AND ub.branch_id = ?
+                            ");
+                            $flightMemberStmt->execute(array_merge($allMemberIds, [$tenant_id, $branch_id]));
+                            foreach ($flightMemberStmt->fetchAll(PDO::FETCH_ASSOC) as $m) {
+                                $flightsMemberMap[(int)$m['booking_id']] = $m;
+                            }
+                        }
+
+                        // Fallbacks needed by the shared header/pagination markup
+                        $familiesCountStmt = $pdo->prepare("SELECT COUNT(DISTINCT family_id) AS total FROM families WHERE tenant_id = ? AND branch_id = ?");
+                        $familiesCountStmt->execute([$tenant_id, $branch_id]);
+                        $totalFamilies = (int)$familiesCountStmt->fetchColumn();
+                        $totalPages = 1;
+                        $resultFamilies = [];
+                        $regularClientFamilies = [];
+                    } else {
                     // COUNT QUERY
                     if ($filter === 'refunded' || $filter === 'cancelled') {
                         $statusFilter = $filter === 'refunded' ? 'refunded' : 'cancelled';
@@ -226,6 +281,7 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                         $clientTypeStmt->execute(array_merge([$tenant_id, $branch_id], $familyIds));
                         $regularClientFamilies = array_flip($clientTypeStmt->fetchAll(PDO::FETCH_COLUMN));
                     }
+                    }
                 ?>
 
                 <!-- Filters and Search -->
@@ -249,6 +305,11 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                             <a href="?visa_status=Issued" class="filter-pill <?= empty($filter) && $visaStatus === 'Issued' ? 'active' : '' ?>">
                                 <i class="fas fa-check-circle"></i>
                                 <span><?= __('issued') ?></span>
+                            </a>
+                            <a href="?filter=flights" class="filter-pill <?= $filter === 'flights' ? 'active' : '' ?>">
+                                <i class="fas fa-plane"></i>
+                                <span><?= __('flights') ?></span>
+                                <span class="pill-badge"><?= $totalFlights ?></span>
                             </a>
                             <a href="?filter=refunded" class="filter-pill <?= $filter === 'refunded' ? 'active' : '' ?>">
                                 <i class="fas fa-undo"></i>
@@ -288,7 +349,174 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
 
                 <!-- Family Cards Grid -->
                 <div class="container-fluid px-4">
-                    <?php if (!empty($resultFamilies)): ?>
+                    <?php if ($showFlights): ?>
+                        <!-- Flights View: group members by flight, then by family -->
+                        <div class="flights-list">
+                            <?php foreach ($resultFlights as $flight):
+                                $memberIds = json_decode($flight['member_ids'] ?? '[]', true);
+                                $flightMembers = [];
+                                if (is_array($memberIds)) {
+                                    foreach ($memberIds as $bid) {
+                                        if (isset($flightsMemberMap[(int)$bid])) {
+                                            $flightMembers[] = $flightsMemberMap[(int)$bid];
+                                        }
+                                    }
+                                }
+                                $flightFamilies = [];
+                                $flightTotals = [];
+                                foreach ($flightMembers as $m) {
+                                    $flightFamilies[$m['family_id']][] = $m;
+                                    if (isset($m['status']) && in_array($m['status'], ['refunded', 'cancelled'])) {
+                                        continue;
+                                    }
+                                    $cur = $m['currency'] ?: 'USD';
+                                    if (!isset($flightTotals[$cur])) {
+                                        $flightTotals[$cur] = ['price' => 0.0, 'paid' => 0.0, 'due' => 0.0];
+                                    }
+                                    $flightTotals[$cur]['price'] += (float)($m['sold_price'] ?? 0);
+                                    $flightTotals[$cur]['paid']  += (float)($m['paid'] ?? 0);
+                                    $flightTotals[$cur]['due']   += (float)($m['due'] ?? 0);
+                                }
+                                $flightType = $flight['flight_type'] === 'indirect' ? __('indirect') : __('direct');
+                            ?>
+                                <div class="flight-card" data-flight-id="<?= (int)$flight['ticket_id'] ?>">
+                                    <div class="flight-card-header">
+                                        <div class="flight-avatar">
+                                            <i class="fas fa-plane"></i>
+                                        </div>
+                                        <div class="flight-main-info">
+                                            <h3 class="flight-name"><?= htmlspecialchars($flight['airline_name'] ?? '') ?> <span class="flight-pnr"><i class="fas fa-ticket-alt"></i> <?= htmlspecialchars($flight['pnr'] ?? '') ?></span></h3>
+                                            <div class="flight-meta">
+                                                <span class="meta-item">
+                                                    <i class="fas fa-calendar-alt"></i>
+                                                    <?= htmlspecialchars($flight['flight_date'] ?? '') ?> <i class="fas fa-long-arrow-alt-right"></i> <?= htmlspecialchars($flight['return_date'] ?? '') ?>
+                                                </span>
+                                                <span class="meta-item">
+                                                    <i class="fas fa-route"></i>
+                                                    <?= htmlspecialchars($flight['departure_city'] ?? '') ?> <i class="fas fa-long-arrow-alt-right"></i> <?= htmlspecialchars($flight['arrival_city'] ?? '') ?>
+                                                </span>
+                                                <span class="meta-item">
+                                                    <i class="fas fa-users"></i>
+                                                    <?= count($flightMembers) ?> <?= __('members') ?>
+                                                </span>
+                                                <span class="meta-item">
+                                                    <i class="fas fa-user-friends"></i>
+                                                    <?= count($flightFamilies) ?> <?= __('families') ?>
+                                                </span>
+                                                <?php if (!empty($flight['duration'])): ?>
+                                                <span class="meta-item">
+                                                    <i class="fas fa-clock"></i>
+                                                    <?= htmlspecialchars($flight['duration']) ?>
+                                                </span>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+                                        <span class="flight-type-badge"><?= $flightType ?></span>
+                                        <button type="button" class="btn-icon btn-icon-print" onclick="window.open('../api/umrah/generate_group_ticket.php?ticket_id=<?= (int)$flight['ticket_id'] ?>', '_blank')" title="<?= __('print_group_ticket') ?>" aria-label="<?= __('print_group_ticket') ?>">
+                                            <i class="fas fa-print"></i>
+                                        </button>
+                                    </div>
+                                    <?php if (!empty($flightTotals)): ?>
+                                    <div class="flight-summary">
+                                        <?php foreach ($flightTotals as $totCurrency => $tot): ?>
+                                        <div class="flight-stat">
+                                            <span class="flight-stat-label"><i class="fas fa-tag"></i> <?= htmlspecialchars($totCurrency) ?></span>
+                                            <span class="flight-stat-value"><?= number_format($tot['price']) ?></span>
+                                            <span class="flight-stat-hint"><?= __('total_price') ?></span>
+                                        </div>
+                                        <div class="flight-stat">
+                                            <span class="flight-stat-label"><i class="fas fa-check-circle"></i> <?= htmlspecialchars($totCurrency) ?></span>
+                                            <span class="flight-stat-value success"><?= number_format($tot['paid']) ?></span>
+                                            <span class="flight-stat-hint"><?= __('paid') ?></span>
+                                        </div>
+                                        <div class="flight-stat">
+                                            <span class="flight-stat-label"><i class="fas fa-exclamation-circle"></i> <?= htmlspecialchars($totCurrency) ?></span>
+                                            <span class="flight-stat-value danger"><?= number_format($tot['due']) ?></span>
+                                            <span class="flight-stat-hint"><?= __('due') ?></span>
+                                        </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                    <?php endif; ?>
+                                    <div class="flight-families">
+                                        <?php if (empty($flightMembers)): ?>
+                                        <div class="flight-no-members">
+                                            <i class="fas fa-info-circle"></i> <?= __('no_members_found') ?>
+                                        </div>
+                                        <?php else: ?>
+                                        <?php foreach ($flightFamilies as $familyId => $familyMembers):
+                                            $famTotals = [];
+                                            foreach ($familyMembers as $fm) {
+                                                if (isset($fm['status']) && in_array($fm['status'], ['refunded', 'cancelled'])) {
+                                                    continue;
+                                                }
+                                                $fcur = $fm['currency'] ?: 'USD';
+                                                if (!isset($famTotals[$fcur])) {
+                                                    $famTotals[$fcur] = ['price' => 0.0, 'paid' => 0.0];
+                                                }
+                                                $famTotals[$fcur]['price'] += (float)($fm['sold_price'] ?? 0);
+                                                $famTotals[$fcur]['paid']  += (float)($fm['paid'] ?? 0);
+                                            }
+                                        ?>
+                                        <div class="flight-family-group">
+                                            <div class="flight-family-header">
+                                                <i class="fas fa-users"></i>
+                                                <span class="flight-family-name"><?= htmlspecialchars($familyMembers[0]['head_of_family'] ?? '') ?></span>
+                                                <?php if (!empty($famTotals)): ?>
+                                                <span class="flight-family-finance">
+                                                    <i class="fas fa-credit-card"></i>
+                                                    <?php foreach ($famTotals as $fcur => $ft): ?>
+                                                        <?= __('paid') ?> <?= number_format($ft['paid']) ?> / <?= number_format($ft['price']) ?> <?= htmlspecialchars($fcur) ?>
+                                                    <?php endforeach; ?>
+                                                </span>
+                                                <?php endif; ?>
+                                                <span class="flight-family-count"><?= count($familyMembers) ?> <?= __('members') ?></span>
+                                            </div>
+                                            <div class="flight-members-grid">
+                                                <?php foreach ($familyMembers as $member):
+                                                    $mStatus = $member['status'] ?? '';
+                                                    if ($mStatus === 'refunded') {
+                                                        $mBadgeClass = 'badge-danger'; $mBadgeIcon = 'fa-times-circle'; $mBadgeText = __('refunded');
+                                                    } elseif ($mStatus === 'cancelled') {
+                                                        $mBadgeClass = 'badge-secondary'; $mBadgeIcon = 'fa-ban'; $mBadgeText = __('cancelled');
+                                                    } elseif ($mStatus === 'pending') {
+                                                        $mBadgeClass = 'badge-warning'; $mBadgeIcon = 'fa-clock'; $mBadgeText = __('pending');
+                                                    } else {
+                                                        $mBadgeClass = 'badge-success'; $mBadgeIcon = 'fa-check-circle'; $mBadgeText = __('active');
+                                                    }
+                                                ?>
+                                                <div class="flight-member" onclick="viewMemberDetails(<?= (int)$member['booking_id'] ?>)" title="<?= __('view_details') ?>">
+                                                    <div class="flight-member-avatar">
+                                                        <i class="fas fa-user"></i>
+                                                    </div>
+                                                    <div class="flight-member-info">
+                                                        <span class="flight-member-name"><?= htmlspecialchars($member['name'] ?? '') ?></span>
+                                                        <span class="flight-member-passport"><i class="fas fa-id-card"></i> <?= htmlspecialchars($member['passport_number'] ?? '') ?></span>
+                                                    </div>
+                                                    <span class="flight-member-badge <?= $mBadgeClass ?>"><i class="fas <?= $mBadgeIcon ?>"></i> <?= $mBadgeText ?></span>
+                                                </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                        <?php endforeach; ?>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php if (empty($resultFlights)): ?>
+                        <!-- Empty State -->
+                        <div class="empty-state">
+                            <div class="empty-state-icon">
+                                <i class="fas fa-plane"></i>
+                            </div>
+                            <h3><?= __('no_flights_available') ?></h3>
+                            <p><?= __('start_by_adding_a_new_family') ?></p>
+                            <button class="btn btn-gradient-primary" data-toggle="modal" data-target="#createFamilyModal">
+                                <i class="fas fa-plus mr-2"></i><?= __('add_new_family') ?>
+                            </button>
+                        </div>
+                        <?php endif; ?>
+                    <?php elseif (!empty($resultFamilies)): ?>
                         <div class="family-cards-grid">
                             <?php foreach ($resultFamilies as $row): 
                                 $familyId = $row['family_id'];

@@ -5941,5 +5941,11 @@ return [
 'send_currency' => 'Send Currency',
 'new_hawala' => 'New Hawala',
 'enter_the_exchange_rate_to_convert_between_currencies' => 'Enter the exchange rate to convert between currencies',
+    'flights' => 'Flights',
+    'families' => 'Families',
+    'direct' => 'Direct',
+    'indirect' => 'Indirect',
+    'no_flights_available' => 'No Flights Available',
+    'print_group_ticket' => 'Print Group Ticket',
 'more_actions' => 'More Actions',
 ];

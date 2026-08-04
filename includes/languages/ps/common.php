@@ -5414,5 +5414,11 @@ return [
 'send_currency' => 'د لېږلو اسعار',
 'new_hawala' => 'نوې حواله',
 'enter_the_exchange_rate_to_convert_between_currencies' => 'د اسعارو ترمنځ د تبادلې نرخ داخل کړئ',
+    'flights' => 'الوتنې',
+    'families' => 'کورنۍ',
+    'direct' => 'نېغ',
+    'indirect' => 'غیرمستقیم',
+    'no_flights_available' => 'هیړ الوتنه شتون نلرل',
+    'print_group_ticket' => 'چاپ د ډله پلځې می',
 'more_actions' => 'نورې کړنې',
 ];

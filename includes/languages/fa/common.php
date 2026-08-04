@@ -5541,5 +5541,11 @@ return [
 'send_currency' => 'اسعار ارسال',
 'new_hawala' => 'حواله جدید',
 'enter_the_exchange_rate_to_convert_between_currencies' => 'نرخ تبدیل را برای تبدیل بین اسعار وارد کنید',
+    'flights' => 'پروازها',
+    'families' => 'خانواده‌ها',
+    'direct' => 'مستقیم',
+    'indirect' => 'غیرمستقیم',
+    'no_flights_available' => 'هیچ پروازی موجود نیست',
+    'print_group_ticket' => 'چاپ بلیط گروهی',
 'more_actions' => 'اقدامات بیشتر',
 ];
