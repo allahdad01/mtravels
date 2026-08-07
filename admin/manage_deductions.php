@@ -12,6 +12,15 @@ $branch_id = $_SESSION['branch_id'];
 
 require_once "../includes/db.php";
 
+$is_ajax = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+function deduction_finish_ajax($is_ajax, $success, $message) {
+    if ($is_ajax) {
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode(['success' => (bool)$success, 'message' => $message]);
+        exit;
+    }
+}
+
 // Define variables and initialize with empty values
 $user_id = $amount = $description = $deduction_date = $type = "";
 $user_id_err = $amount_err = $description_err = $deduction_date_err = "";
@@ -78,12 +87,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Attempt to execute the prepared statement
         if ($stmt->execute()) {
             // Records created successfully. Redirect to landing page
+            deduction_finish_ajax($is_ajax, true, 'Deduction recorded successfully.');
             header("location: manage_deductions.php?success=1");
             exit();
         } else {
             $error_message = "Oops! Something went wrong. Please try again later.";
         }
+    } else {
+        $error_message = $user_id_err ?? $amount_err ?? $description_err ?? $deduction_date_err;
     }
+}
+
+if ($is_ajax && isset($error_message) && $error_message !== "") {
+    deduction_finish_ajax($is_ajax, false, $error_message);
 }
 
 // Fetch deduction records

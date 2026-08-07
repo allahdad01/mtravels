@@ -123,6 +123,8 @@ function createGlobalAllocation($pdo, $tenant_id, $branch_id) {
             $balanceColumn = 'euro_balance';
         } elseif ($currency == 'DARHAM') {
             $balanceColumn = 'darham_balance';
+        } elseif ($currency == 'SAR') {
+            $balanceColumn = 'sar_balance';
         }
 
         $accountStmt = $pdo->prepare("SELECT $balanceColumn FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
@@ -173,20 +175,21 @@ function createGlobalAllocation($pdo, $tenant_id, $branch_id) {
         // Add transaction record
          $transactionStmt = $pdo->prepare("
              INSERT INTO main_account_transactions
-             (main_account_id, type, amount, description, balance, currency, transaction_of, reference_id, tenant_id, branch_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             (main_account_id, type, amount, description, balance, currency, transaction_of, reference_id, tenant_id, branch_id, created_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ");
          $transactionStmt->execute([
              $mainAccountId,
              'debit',
              $amount,
-              $description,
+             $description,
              $updatedBalance,
              $currency,
              'global_budget_allocation',
              $allocationId,
              $tenant_id,
-             $branch_id
+             $branch_id,
+             $_SESSION['user_id'] ?? null
          ]);
 
         // Commit transaction
@@ -277,6 +280,8 @@ function deleteGlobalAllocation($pdo, $tenant_id, $branch_id) {
                 $balanceColumn = 'euro_balance';
             } elseif ($allocation['currency'] == 'DARHAM') {
                 $balanceColumn = 'darham_balance';
+            } elseif ($allocation['currency'] == 'SAR') {
+                $balanceColumn = 'sar_balance';
             }
 
             $updateAccountStmt = $pdo->prepare("
@@ -394,6 +399,7 @@ function addFundsGlobal($pdo, $tenant_id, $branch_id) {
                        WHEN ga.currency = 'EUR' THEN ma.euro_balance
                        WHEN ga.currency = 'AFS' THEN ma.afs_balance
                        WHEN ga.currency = 'DARHAM' THEN ma.darham_balance
+                       WHEN ga.currency = 'SAR' THEN ma.sar_balance
                        ELSE 0
                    END as account_balance
             FROM global_budget_allocations ga
@@ -447,6 +453,8 @@ function addFundsGlobal($pdo, $tenant_id, $branch_id) {
             $balanceColumn = 'euro_balance';
         } elseif ($currency == 'DARHAM') {
             $balanceColumn = 'darham_balance';
+        } elseif ($currency == 'SAR') {
+            $balanceColumn = 'sar_balance';
         }
 
         // Deduct the amount from the appropriate balance column in main account
@@ -465,8 +473,8 @@ function addFundsGlobal($pdo, $tenant_id, $branch_id) {
         // Log the transaction in main_account_transactions
         $transactionStmt = $pdo->prepare("
             INSERT INTO main_account_transactions
-            (main_account_id, type, amount, description, balance, currency, transaction_of, reference_id, tenant_id, branch_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (main_account_id, type, amount, description, balance, currency, transaction_of, reference_id, tenant_id, branch_id, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $globalAllocDesc = $allocation['description'] ?? "Additional funding to global budget allocation";
         $finalDesc = $globalAllocDesc . ($note ? " - " . $note : "");
@@ -480,7 +488,8 @@ function addFundsGlobal($pdo, $tenant_id, $branch_id) {
             'global_budget_allocation',
             $allocationId,
             $tenant_id,
-            $branch_id
+            $branch_id,
+            $_SESSION['user_id'] ?? null
         ]);
 
         // Log the activity
@@ -841,6 +850,8 @@ function deleteFundTransaction($pdo, $tenant_id, $branch_id) {
             $balanceColumn = 'euro_balance';
         } elseif ($currency == 'DARHAM') {
             $balanceColumn = 'darham_balance';
+        } elseif ($currency == 'SAR') {
+            $balanceColumn = 'sar_balance';
         }
 
         // Update main account balance (reverse the transaction)
@@ -1013,6 +1024,7 @@ function editFundTransaction($pdo, $tenant_id, $branch_id) {
         if ($currency == 'AFS') $balanceColumn = 'afs_balance';
         elseif ($currency == 'EUR') $balanceColumn = 'euro_balance';
         elseif ($currency == 'DARHAM') $balanceColumn = 'darham_balance';
+        elseif ($currency == 'SAR') $balanceColumn = 'sar_balance';
 
         if ($type === 'debit') {
             // Net main account change: -diff (more debit = lower balance)

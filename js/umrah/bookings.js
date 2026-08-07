@@ -89,6 +89,28 @@ $(document).ready(function() {
         
         const formData = new FormData(this);
         const umrahId = $('#transactionUmrahIdInput').val();
+
+        // Ensure required fields are included even when their controls are disabled
+        if (!formData.has('transaction_to')) {
+            formData.append('transaction_to', $('#transaction_to').val() || 'Internal Account');
+        }
+        if (!formData.has('payment_currency')) {
+            formData.append('payment_currency', $('#paymentCurrency').val() || 'USD');
+        }
+
+        // Get exchange rate and append to description if currencies differ
+        const currency = formData.get('payment_currency') || $('#paymentCurrency').val() || 'USD';
+        const bookingCurrency = window.bookingCurrency || 'USD';
+        const exchangeRate = parseFloat(formData.get('exchange_rate') || $('#transactionExchangeRate').val() || 1);
+        if (currency !== bookingCurrency && exchangeRate > 0) {
+            let description = formData.get('payment_description') || '';
+            if (description && !description.includes('Exchange Rate:')) {
+                description += ` (Exchange Rate: ${exchangeRate.toFixed(2)})`;
+                formData.set('payment_description', description);
+            } else if (!description) {
+                formData.set('payment_description', `(Exchange Rate: ${exchangeRate.toFixed(2)})`);
+            }
+        }
         
         $.ajax({
             url: '../api/umrah/add_umrah_transaction.php',

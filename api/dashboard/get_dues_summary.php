@@ -109,6 +109,9 @@ try {
             } elseif ($transCurrency === 'DAR' && $transExchangeRate > 0) {
                 $result = $amount * $transExchangeRate; // AED to AFS: multiply
                 return $result;
+            } elseif ($transCurrency === 'SAR' && $transExchangeRate > 0) {
+                $result = $amount * $transExchangeRate; // SAR to AFS: multiply
+                return $result;
             }
         } elseif ($baseCurrency === 'USD') {
             // Converting TO USD
@@ -120,6 +123,9 @@ try {
                 return $result;
             } elseif ($transCurrency === 'DAR' && $transExchangeRate > 0) {
                 $result = $amount / $transExchangeRate; // AED to USD: divide
+                return $result;
+            } elseif ($transCurrency === 'SAR' && $transExchangeRate > 0) {
+                $result = $amount / $transExchangeRate; // SAR to USD: divide
                 return $result;
             }
         }
@@ -146,10 +152,10 @@ try {
             $transStmt->execute([$row['id'], $tenant_id, $branch_id]);
             $transactions = $transStmt->fetchAll(PDO::FETCH_ASSOC);
             // Collect rates
-            $rates = ['AFS' => 1.0, 'USD' => 1.0, 'EUR' => 1.0, 'DARHAM' => 1.0, 'DAR' => 1.0];
+            $rates = ['AFS' => 1.0, 'USD' => 1.0, 'EUR' => 1.0, 'DARHAM' => 1.0, 'DAR' => 1.0, 'SAR' => 1.0];
             foreach ($transactions as $trans) {
                 $transCurrency = $trans['currency'];
-                if (isset($trans['exchange_rate']) && $trans['exchange_rate'] > 0 && in_array($transCurrency, ['AFS', 'USD', 'EUR', 'DARHAM', 'DAR'])) {
+                if (isset($trans['exchange_rate']) && $trans['exchange_rate'] > 0 && in_array($transCurrency, ['AFS', 'USD', 'EUR', 'DARHAM', 'DAR', 'SAR'])) {
                     $rates[$transCurrency] = floatval($trans['exchange_rate']);
                 }
             }
@@ -192,10 +198,10 @@ try {
             $transStmt->execute([$row['id'], $tenant_id, $branch_id]);
             $transactions = $transStmt->fetchAll(PDO::FETCH_ASSOC);
             // Collect rates
-            $rates = ['AFS' => 1.0, 'USD' => 1.0, 'EUR' => 1.0, 'DARHAM' => 1.0, 'DAR' => 1.0];
+            $rates = ['AFS' => 1.0, 'USD' => 1.0, 'EUR' => 1.0, 'DARHAM' => 1.0, 'DAR' => 1.0, 'SAR' => 1.0];
             foreach ($transactions as $trans) {
                 $transCurrency = $trans['currency'];
-                if (isset($trans['exchange_rate']) && $trans['exchange_rate'] > 0 && in_array($transCurrency, ['AFS', 'USD', 'EUR', 'DARHAM', 'DAR'])) {
+                if (isset($trans['exchange_rate']) && $trans['exchange_rate'] > 0 && in_array($transCurrency, ['AFS', 'USD', 'EUR', 'DARHAM', 'DAR', 'SAR'])) {
                     $rates[$transCurrency] = floatval($trans['exchange_rate']);
                 }
             }
@@ -239,10 +245,10 @@ try {
             $transStmt->execute([$row['id'], $tenant_id, $branch_id]);
             $transactions = $transStmt->fetchAll(PDO::FETCH_ASSOC);
             // Collect rates
-            $rates = ['AFS' => 1.0, 'USD' => 1.0, 'EUR' => 1.0, 'DARHAM' => 1.0, 'DAR' => 1.0];
+            $rates = ['AFS' => 1.0, 'USD' => 1.0, 'EUR' => 1.0, 'DARHAM' => 1.0, 'DAR' => 1.0, 'SAR' => 1.0];
             foreach ($transactions as $trans) {
                 $transCurrency = $trans['currency'];
-                if (isset($trans['exchange_rate']) && $trans['exchange_rate'] > 0 && in_array($transCurrency, ['AFS', 'USD', 'EUR', 'DARHAM', 'DAR'])) {
+                if (isset($trans['exchange_rate']) && $trans['exchange_rate'] > 0 && in_array($transCurrency, ['AFS', 'USD', 'EUR', 'DARHAM', 'DAR', 'SAR'])) {
                     $rates[$transCurrency] = floatval($trans['exchange_rate']);
                 }
             }
@@ -286,10 +292,10 @@ try {
             $transStmt->execute([$row['id'], $tenant_id, $branch_id]);
             $transactions = $transStmt->fetchAll(PDO::FETCH_ASSOC);
             // Collect rates
-            $rates = ['AFS' => 1.0, 'USD' => 1.0, 'EUR' => 1.0, 'DARHAM' => 1.0, 'DAR' => 1.0];
+            $rates = ['AFS' => 1.0, 'USD' => 1.0, 'EUR' => 1.0, 'DARHAM' => 1.0, 'DAR' => 1.0, 'SAR' => 1.0];
             foreach ($transactions as $trans) {
                 $transCurrency = $trans['currency'];
-                if (isset($trans['exchange_rate']) && $trans['exchange_rate'] > 0 && in_array($transCurrency, ['AFS', 'USD', 'EUR', 'DARHAM', 'DAR'])) {
+                if (isset($trans['exchange_rate']) && $trans['exchange_rate'] > 0 && in_array($transCurrency, ['AFS', 'USD', 'EUR', 'DARHAM', 'DAR', 'SAR'])) {
                     $rates[$transCurrency] = floatval($trans['exchange_rate']);
                 }
             }
@@ -333,10 +339,10 @@ try {
             $transStmt->execute([$row['id'], $tenant_id, $branch_id]);
             $transactions = $transStmt->fetchAll(PDO::FETCH_ASSOC);
             // Collect rates
-            $rates = ['AFS' => 1.0, 'USD' => 1.0, 'EUR' => 1.0, 'DARHAM' => 1.0, 'DAR' => 1.0];
+            $rates = ['AFS' => 1.0, 'USD' => 1.0, 'EUR' => 1.0, 'DARHAM' => 1.0, 'DAR' => 1.0, 'SAR' => 1.0];
             foreach ($transactions as $trans) {
                 $transCurrency = $trans['currency'];
-                if (isset($trans['exchange_rate']) && $trans['exchange_rate'] > 0 && in_array($transCurrency, ['AFS', 'USD', 'EUR', 'DARHAM', 'DAR'])) {
+                if (isset($trans['exchange_rate']) && $trans['exchange_rate'] > 0 && in_array($transCurrency, ['AFS', 'USD', 'EUR', 'DARHAM', 'DAR', 'SAR'])) {
                     $rates[$transCurrency] = floatval($trans['exchange_rate']);
                 }
             }
@@ -380,10 +386,10 @@ try {
             $transStmt->execute([$row['booking_id'], $tenant_id, $branch_id]);
             $transactions = $transStmt->fetchAll(PDO::FETCH_ASSOC);
             // Collect rates
-            $rates = ['AFS' => 1.0, 'USD' => 1.0, 'EUR' => 1.0, 'DARHAM' => 1.0, 'DAR' => 1.0];
+            $rates = ['AFS' => 1.0, 'USD' => 1.0, 'EUR' => 1.0, 'DARHAM' => 1.0, 'DAR' => 1.0, 'SAR' => 1.0];
             foreach ($transactions as $trans) {
                 $transCurrency = $trans['currency'];
-                if (isset($trans['exchange_rate']) && $trans['exchange_rate'] > 0 && in_array($transCurrency, ['AFS', 'USD', 'EUR', 'DARHAM', 'DAR'])) {
+                if (isset($trans['exchange_rate']) && $trans['exchange_rate'] > 0 && in_array($transCurrency, ['AFS', 'USD', 'EUR', 'DARHAM', 'DAR', 'SAR'])) {
                     $rates[$transCurrency] = floatval($trans['exchange_rate']);
                 }
             }
@@ -427,10 +433,10 @@ try {
             $transStmt->execute([$row['id'], $tenant_id, $branch_id]);
             $transactions = $transStmt->fetchAll(PDO::FETCH_ASSOC);
             // Collect rates
-            $rates = ['AFS' => 1.0, 'USD' => 1.0, 'EUR' => 1.0, 'DARHAM' => 1.0, 'DAR' => 1.0];
+            $rates = ['AFS' => 1.0, 'USD' => 1.0, 'EUR' => 1.0, 'DARHAM' => 1.0, 'DAR' => 1.0, 'SAR' => 1.0];
             foreach ($transactions as $trans) {
                 $transCurrency = $trans['currency'];
-                if (isset($trans['exchange_rate']) && $trans['exchange_rate'] > 0 && in_array($transCurrency, ['AFS', 'USD', 'EUR', 'DARHAM', 'DAR'])) {
+                if (isset($trans['exchange_rate']) && $trans['exchange_rate'] > 0 && in_array($transCurrency, ['AFS', 'USD', 'EUR', 'DARHAM', 'DAR', 'SAR'])) {
                     $rates[$transCurrency] = floatval($trans['exchange_rate']);
                 }
             }
@@ -474,10 +480,10 @@ try {
             $transStmt->execute([$row['id'], $tenant_id, $branch_id]);
             $transactions = $transStmt->fetchAll(PDO::FETCH_ASSOC);
             // Collect rates
-            $rates = ['AFS' => 1.0, 'USD' => 1.0, 'EUR' => 1.0, 'DARHAM' => 1.0, 'DAR' => 1.0];
+            $rates = ['AFS' => 1.0, 'USD' => 1.0, 'EUR' => 1.0, 'DARHAM' => 1.0, 'DAR' => 1.0, 'SAR' => 1.0];
             foreach ($transactions as $trans) {
                 $transCurrency = $trans['currency'];
-                if (isset($trans['exchange_rate']) && $trans['exchange_rate'] > 0 && in_array($transCurrency, ['AFS', 'USD', 'EUR', 'DARHAM', 'DAR'])) {
+                if (isset($trans['exchange_rate']) && $trans['exchange_rate'] > 0 && in_array($transCurrency, ['AFS', 'USD', 'EUR', 'DARHAM', 'DAR', 'SAR'])) {
                     $rates[$transCurrency] = floatval($trans['exchange_rate']);
                 }
             }
@@ -521,10 +527,10 @@ try {
             $transStmt->execute([$row['id'], $tenant_id, $branch_id]);
             $transactions = $transStmt->fetchAll(PDO::FETCH_ASSOC);
             // Collect rates
-            $rates = ['AFS' => 1.0, 'USD' => 1.0, 'EUR' => 1.0, 'DARHAM' => 1.0, 'DAR' => 1.0];
+            $rates = ['AFS' => 1.0, 'USD' => 1.0, 'EUR' => 1.0, 'DARHAM' => 1.0, 'DAR' => 1.0, 'SAR' => 1.0];
             foreach ($transactions as $trans) {
                 $transCurrency = $trans['currency'];
-                if (isset($trans['exchange_rate']) && $trans['exchange_rate'] > 0 && in_array($transCurrency, ['AFS', 'USD', 'EUR', 'DARHAM', 'DAR'])) {
+                if (isset($trans['exchange_rate']) && $trans['exchange_rate'] > 0 && in_array($transCurrency, ['AFS', 'USD', 'EUR', 'DARHAM', 'DAR', 'SAR'])) {
                     $rates[$transCurrency] = floatval($trans['exchange_rate']);
                 }
             }

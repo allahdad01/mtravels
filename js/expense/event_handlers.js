@@ -119,8 +119,8 @@ $(document).ready(function() {
     // Print category button click handler
     $('.print-category').on('click', function() {
         const categoryId = $(this).data('id');
-        // Open the PDF in a new window/tab
-        window.open('../api/expense/generate_category_pdf.php?category_id=' + categoryId, '_blank');
+        // Open the printable HTML report in a new window/tab
+        window.open('../admin/expense_category_report.php?category_id=' + categoryId, '_blank');
     });
 
     // Helper function to get CSRF token
@@ -134,6 +134,7 @@ $(document).ready(function() {
         e.preventDefault();
         const categoryId = $('#categoryId').val();
         const categoryName = $('#categoryName').val();
+        const parentId = $('#categoryParent').val();
         const csrfToken = $('input[name="csrf_token"]').val();
         
         $.ajax({
@@ -143,6 +144,7 @@ $(document).ready(function() {
                 action: 'save_category',
                 categoryId: categoryId,
                 categoryName: categoryName,
+                parentId: parentId,
                 csrf_token: csrfToken
             },
             dataType: 'json',
@@ -255,10 +257,20 @@ $(document).ready(function() {
     $('.edit-category').on('click', function() {
         const categoryId = $(this).data('id');
         const categoryName = $(this).data('name');
+        const parentId = $(this).data('parent') || '';
+        const hasChildren = $(this).data('has-children') === 1;
         
         $('#categoryId').val(categoryId);
         $('#categoryName').val(categoryName);
+        $('#categoryParent').val(parentId).prop('disabled', hasChildren);
         $('#categoryModal').modal('show');
+    });
+    
+    // Add Category button click handler (reset the form for new entries)
+    $('#addCategoryBtn').on('click', function() {
+        $('#categoryId').val('');
+        $('#categoryName').val('');
+        $('#categoryParent').val('').prop('disabled', false);
     });
     
     // Delete category button click handler
@@ -291,10 +303,59 @@ $(document).ready(function() {
         }
     });
     
+    // Helper: load sub-categories for a category into a select
+    function loadSubCategories(categoryId, targetSelect, selectedValue) {
+        const csrfToken = $('input[name="csrf_token"]').val();
+        $.ajax({
+            url: '../api/expense/expense_actions.php',
+            type: 'POST',
+            data: {
+                action: 'get_sub_categories',
+                categoryId: categoryId,
+                csrf_token: csrfToken
+            },
+            dataType: 'json',
+            success: function(response) {
+                const $select = $(targetSelect);
+                const current = $select.val();
+                $select.empty().append('<option value="">No Sub-Category</option>');
+                if (response.success) {
+                    $.each(response.sub_categories, function(i, sub) {
+                        $select.append($('<option>', { value: sub.id, text: sub.name }));
+                    });
+                }
+                if (selectedValue && selectedValue !== '') {
+                    $select.val(String(selectedValue));
+                } else {
+                    $select.val(current || '');
+                }
+            }
+        });
+    }
+
+    // Category change in expense modal -> load its sub-categories
+    $('#expenseCategory').on('change', function() {
+        const categoryId = $(this).val();
+        if (categoryId) {
+            loadSubCategories(categoryId, '#expenseSubCategory', '');
+        } else {
+            $('#expenseSubCategory').empty().append('<option value="">No Sub-Category</option>');
+        }
+    });
+
+    // Load sub-categories when the add-expense modal opens
+    $('#expenseModal').on('show.bs.modal', function() {
+        const categoryId = $('#expenseCategory').val();
+        if (categoryId) {
+            loadSubCategories(categoryId, '#expenseSubCategory', '');
+        }
+    });
+
     // Edit expense button click handler
     $('.edit-expense').on('click', function() {
         const expenseId = $(this).data('id');
         const categoryId = $(this).data('category');
+        const subCategoryId = $(this).data('sub-category') || '';
         const date = $(this).data('date');
         const description = $(this).data('description');
         const amount = $(this).data('amount');
@@ -308,6 +369,11 @@ $(document).ready(function() {
         $('#editExpenseDate').val(date);
         $('#editExpenseDescription').val(description);
         $('#editExpenseAmount').val(amount);
+        
+        // Load sub-categories for the locked category
+        if (categoryId) {
+            loadSubCategories(categoryId, '#editExpenseSubCategory', subCategoryId);
+        }
         
         // Reset receipt fields
         $('#editExpenseReceiptNumber').val('');

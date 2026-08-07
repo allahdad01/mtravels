@@ -238,6 +238,7 @@ const TXN_CONFIG = {
         nameDisplay:        'accountNameDisplay',
         idField:            'mainAccountTransactionId',
         modal:              'transactionHistoryModal',
+        skeletonCols:       10,
         paginationList:     'mainTransactionsPaginationList',
         paginationContainer:'transactionsPagination',
         endpoint:           (id) => `../api/accounts/get_main_account_transactions.php?account_id=${id}`,
@@ -254,6 +255,7 @@ const TXN_CONFIG = {
         nameDisplay:        'supplierTransNameDisplay',
         idField:            'supplierTransactionId',
         modal:              'supplierTransactionHistoryModal',
+        skeletonCols:       9,
         paginationList:     'supplierTransactionsPaginationList',
         paginationContainer:'supplierTransactionsPagination',
         endpoint:           (id) => `../api/accounts/get_supplier_transactions_main.php?supplier_id=${id}`,
@@ -269,6 +271,7 @@ const TXN_CONFIG = {
         nameDisplay:        'clientNameDisplay',
         idField:            'clientTransactionId',
         modal:              'clientTransactionHistoryModal',
+        skeletonCols:       10,
         paginationList:     'clientTransactionsPaginationList',
         paginationContainer:'clientTransactionsPagination',
         endpoint:           (id) => `../api/accounts/get_client_transactions.php?client_id=${id}`,
@@ -294,6 +297,21 @@ function txnBuildEndpoint(base, filters, page) {
     return url;
 }
 
+// ── Skeleton rows for the transaction table ────────────────────────────────
+
+function txnBuildSkeleton(cols, rows) {
+    const widths = [42, 58, 78, 66, 52, 44, 38, 62, 48, 30];
+    let html = '';
+    for (let r = 0; r < rows; r++) {
+        html += '<tr class="txn-skel-row">';
+        for (let c = 0; c < cols; c++) {
+            html += '<td class="txn-skel-cell"><div class="txn-skel-bar" style="width:' + (widths[c % widths.length]) + '%"></div></td>';
+        }
+        html += '</tr>';
+    }
+    return html;
+}
+
 // ── Core loader ─────────────────────────────────────────────────────────────
 
 function loadTransactions(accountType, accountId, accountName, page) {
@@ -317,9 +335,9 @@ function loadTransactions(accountType, accountId, accountName, page) {
     document.getElementById(cfg.nameDisplay).textContent = accountName;
 
     // Reset UI
-    loader.classList.remove('d-none');
+    loader.classList.add('d-none');
     noMsg.classList.add('d-none');
-    tableBody.innerHTML = '';
+    tableBody.innerHTML = txnBuildSkeleton(cfg.skeletonCols || 10, 8);
 
     // Open modal
     const modal = new bootstrap.Modal(document.getElementById(cfg.modal));
@@ -334,6 +352,7 @@ function loadTransactions(accountType, accountId, accountName, page) {
         .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
         .then(data => {
             loader.classList.add('d-none');
+            tableBody.innerHTML = '';
 
             const transactions = Array.isArray(data) ? data : (data?.data ?? []);
             const pagination   = data?.pagination ?? null;

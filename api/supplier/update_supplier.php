@@ -50,7 +50,10 @@ $name = isset($_POST['name']) ? DbSecurity::validateInput($_POST['name'], 'strin
 $id = isset($_POST['id']) ? DbSecurity::validateInput($_POST['id'], 'int', ['min' => 0]) : null;
 $contact_person = isset($_POST['contact_person']) ? DbSecurity::validateInput($_POST['contact_person'], 'string', ['maxlength' => 255]) : null;
 
-$query = "UPDATE suppliers SET name = ?, contact_person = ?, phone = ?, email = ?, address = ?, currency = ?, supplier_type = ?, category = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+// Validate route_payment_to_main_account (checkbox: absent => 0)
+$route_payment_to_main_account = isset($_POST['route_payment_to_main_account']) ? 1 : 0;
+
+$query = "UPDATE suppliers SET name = ?, contact_person = ?, phone = ?, email = ?, address = ?, currency = ?, supplier_type = ?, category = ?, route_payment_to_main_account = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
 $stmt = $pdo->prepare($query);
 $stmt->bindParam(1, $name, PDO::PARAM_STR);
 $stmt->bindParam(2, $contact_person, PDO::PARAM_STR);
@@ -60,9 +63,10 @@ $stmt->bindParam(5, $address, PDO::PARAM_STR);
 $stmt->bindParam(6, $currency, PDO::PARAM_STR);
 $stmt->bindParam(7, $supplier_type, PDO::PARAM_STR);
 $stmt->bindParam(8, $category, PDO::PARAM_STR);
-$stmt->bindParam(9, $id, PDO::PARAM_INT);
-$stmt->bindParam(10, $tenant_id, PDO::PARAM_INT);
-$stmt->bindParam(11, $branch_id, PDO::PARAM_INT);
+$stmt->bindParam(9, $route_payment_to_main_account, PDO::PARAM_INT);
+$stmt->bindParam(10, $id, PDO::PARAM_INT);
+$stmt->bindParam(11, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(12, $branch_id, PDO::PARAM_INT);
 
 if ($stmt->execute()) {
     // Add activity logging
@@ -86,7 +90,8 @@ if ($stmt->execute()) {
              'phone' => $original_data['phone'],
              'email' => $original_data['email'],
              'address' => $original_data['address'],
-             'currency' => $original_data['currency']
+             'currency' => $original_data['currency'],
+             'route_payment_to_main_account' => $original_data['route_payment_to_main_account']
          ];
      }
      
@@ -97,7 +102,8 @@ if ($stmt->execute()) {
          'phone' => $phone,
          'email' => $email,
          'address' => $address,
-         'currency' => $currency
+         'currency' => $currency,
+         'route_payment_to_main_account' => $route_payment_to_main_account
      ];
     $action = 'update';
     $table_name = 'suppliers';

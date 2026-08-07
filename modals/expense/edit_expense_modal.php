@@ -50,6 +50,12 @@
                             <label class="form-label"><?= __('description') ?></label>
                             <input type="text" class="form-control" id="editExpenseDescription" name="expenseDescription" placeholder="<?= __('enter_expense_description') ?>" required>
                         </div>
+                        <div class="form-group">
+                            <label class="form-label"><?= __('sub_category') ?> <span class="text-muted font-weight-normal">(<?= __('optional') ?>)</span></label>
+                            <select class="form-control" id="editExpenseSubCategory" name="expenseSubCategory">
+                                <option value=""><?= __('no_sub_category') ?></option>
+                            </select>
+                        </div>
                     </div>
 
                     <!-- Receipt -->

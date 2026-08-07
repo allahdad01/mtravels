@@ -36,6 +36,7 @@
                                     <option value="AFS"><?= __('afs') ?></option>
                                     <option value="EUR"><?= __('eur') ?></option>
                                     <option value="DARHAM"><?= __('darham') ?></option>
+                                    <option value="SAR"><?= __('sar') ?></option>
                                 </select>
                                 <input type="hidden" id="editPaymentCurrencyHidden" name="payment_currency_actual">
                             </div>

@@ -10,7 +10,7 @@
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
                 <!-- Payment Info Summary Card -->
                 <div class="card mb-4 border-primary">
                     <div class="card-body">
@@ -73,6 +73,16 @@
                                         <div class="d-flex justify-content-between align-items-center mb-2">
                                             <span>Remaining Amount AED:</span>
                                             <strong id="remainingAmountAED" class="text-danger">AED 0.00</strong>
+                                        </div>
+                                    </div>
+                                    <div id="sarSection" style="display: none;">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span>Paid Amount SAR:</span>
+                                            <strong id="paidAmountSAR" class="text-success">SAR 0.00</strong>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span>Remaining Amount SAR:</span>
+                                            <strong id="remainingAmountSAR" class="text-danger">SAR 0.00</strong>
                                         </div>
                                     </div>
                                 </div>
@@ -139,6 +149,7 @@
                                                 <option value="AFS"><?= __('afs') ?></option>
                                                 <option value="EUR"><?= __('eur') ?></option>
                                                 <option value="DARHAM"><?= __('darham') ?></option>
+                                                <option value="SAR"><?= __('sar') ?></option>
                                             </select>
                                         </div>
                                     </div>

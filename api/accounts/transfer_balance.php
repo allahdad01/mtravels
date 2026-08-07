@@ -85,7 +85,7 @@ try {
     // Calculate converted amount based on currency pairs
     $convertedAmount = 0;
 
-    $dividePairs = ['AFS->AED', 'AFS->EUR', 'AFS->USD', 'AED->EUR', 'AED->USD', 'EUR->USD'];
+    $dividePairs = ['AFS->AED', 'AFS->EUR', 'AFS->USD', 'AED->EUR', 'AED->USD', 'EUR->USD', 'AFS->SAR', 'SAR->USD', 'SAR->EUR'];
     $pairKey = "{$fromCurrencyNorm}->{$toCurrencyNorm}";
 
     if ($fromCurrencyNorm === $toCurrencyNorm) {
@@ -121,9 +121,9 @@ try {
     $fromTransactionStmt = $pdo->prepare("
         INSERT INTO main_account_transactions (
             main_account_id, type, amount, currency, description,
-            transaction_of, reference_id, balance, tenant_id, branch_id
+            transaction_of, reference_id, balance, tenant_id, branch_id, created_by
 
-        ) VALUES (?, 'debit', ?, ?, ?, 'transfer', ?, ?, ?, ?)
+        ) VALUES (?, 'debit', ?, ?, ?, 'transfer', ?, ?, ?, ?, ?)
     ");
     $fromBalance = $fromAccount[$fromBalanceField] - $amount;
     $fromTransactionStmt->bindParam(1, $fromAccountId, PDO::PARAM_INT);
@@ -134,15 +134,16 @@ try {
     $fromTransactionStmt->bindParam(6, $fromBalance, PDO::PARAM_STR);
     $fromTransactionStmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
     $fromTransactionStmt->bindParam(8, $branch_id, PDO::PARAM_INT);
+    $fromTransactionStmt->bindValue(9, $_SESSION['user_id'] ?? null, PDO::PARAM_INT);
     $fromTransactionStmt->execute();
 
     // Record transaction for destination account (credit)
     $toTransactionStmt = $pdo->prepare("
         INSERT INTO main_account_transactions (
             main_account_id, type, amount, currency, description,
-            transaction_of, reference_id, balance, tenant_id, branch_id
+            transaction_of, reference_id, balance, tenant_id, branch_id, created_by
 
-        ) VALUES (?, 'credit', ?, ?, ?, 'transfer', ?, ?, ?, ?)
+        ) VALUES (?, 'credit', ?, ?, ?, 'transfer', ?, ?, ?, ?, ?)
     ");
     $toBalance = $toAccount[$toBalanceField] + $convertedAmount;
     $toTransactionStmt->bindParam(1, $toAccountId, PDO::PARAM_INT);
@@ -153,6 +154,7 @@ try {
     $toTransactionStmt->bindParam(6, $toBalance, PDO::PARAM_STR);
     $toTransactionStmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
     $toTransactionStmt->bindParam(8, $branch_id, PDO::PARAM_INT);
+    $toTransactionStmt->bindValue(9, $_SESSION['user_id'] ?? null, PDO::PARAM_INT);
     $toTransactionStmt->execute();
 
     // Add activity logging

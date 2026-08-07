@@ -202,6 +202,7 @@ function updateBulkButtonStates() {
     const selectedMembers = getSelectedMembers();
     const cancelBtn = document.querySelector('[onclick="bulkCancelSelected()"]');
     const reapplyBtn = document.querySelector('[onclick="bulkReapplySelected()"]');
+    const approveBtn = document.getElementById('bulkApproveBtn');
     
     if (cancelBtn && reapplyBtn) {
         if (selectedMembers.length > 0) {
@@ -211,6 +212,11 @@ function updateBulkButtonStates() {
             cancelBtn.disabled = true;
             reapplyBtn.disabled = true;
         }
+    }
+    
+    if (approveBtn) {
+        const hasPending = selectedMembers.some(cb => (cb.dataset.status || '') === 'pending');
+        approveBtn.disabled = !hasPending;
     }
 }
 

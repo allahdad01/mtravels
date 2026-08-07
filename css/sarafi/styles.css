@@ -130,6 +130,7 @@
   .stat-card.afs::before { background: linear-gradient(90deg, var(--emerald), #34d399); }
   .stat-card.eur::before { background: linear-gradient(90deg, #6366f1, #8b5cf6); }
   .stat-card.aed::before { background: linear-gradient(90deg, var(--amber), var(--amber-light)); }
+  .stat-card.sar::before { background: linear-gradient(90deg, #059669, #10b981); }
   .stat-card:hover { border-color: rgba(64,153,255,0.3); transform: translateY(-2px); }
   .stat-label {
     font-family: var(--mono);
@@ -161,6 +162,7 @@
   .stat-card.afs .stat-badge { background: rgba(16,185,129,0.15); color: #34d399; }
   .stat-card.eur .stat-badge { background: rgba(99,102,241,0.15); color: #818cf8; }
   .stat-card.aed .stat-badge { background: rgba(245,158,11,0.15); color: var(--amber-light); }
+  .stat-card.sar .stat-badge { background: rgba(5,150,105,0.15); color: #34d399; }
   
   /* ── Action bar ── */
   .action-bar {

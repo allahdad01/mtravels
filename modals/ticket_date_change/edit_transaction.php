@@ -32,6 +32,7 @@
                                     <option value="AFS">AFS - <?= __('afghan_afghani') ?></option>
                                     <option value="EUR">EUR - <?= __('euro') ?></option>
                                     <option value="DARHAM">AED - <?= __('uae_dirham') ?></option>
+                                    <option value="SAR"><?= __('sar') ?></option>
                                 </select>
                             </div>
                         </div>

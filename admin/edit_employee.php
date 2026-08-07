@@ -41,6 +41,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Verify CSRF token
     if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
         $error = __('invalid_csrf_token');
+    } elseif (isset($_POST['action']) && $_POST['action'] === 'reset_password') {
+        // ── Password reset action (separate form) ────────────────────
+        require_once '../includes/PasswordValidator.php';
+        $new_password = $_POST['new_password'] ?? '';
+        $confirm_password = $_POST['confirm_password'] ?? '';
+
+        if (empty($new_password) || empty($confirm_password)) {
+            $error = __('please_enter_new_password');
+        } elseif ($new_password !== $confirm_password) {
+            $error = __('new_passwords_do_not_match');
+        } else {
+            $validation = PasswordValidator::validate($new_password, false);
+            if (!$validation['valid']) {
+                $error = 'Password does not meet requirements: ' . implode(', ', $validation['errors']);
+            } else {
+                try {
+                    $hashed = password_hash($new_password, PASSWORD_DEFAULT);
+                    $stmt = $pdo->prepare("UPDATE users SET password = ?, updated_at = NOW() WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                    $stmt->execute([$hashed, $employee_id, $tenant_id, $branch_id]);
+
+                    // Log the action
+                    $logStmt = $pdo->prepare("
+                        INSERT INTO activity_log (
+                            user_id, action, table_name, record_id,
+                            old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id
+                        ) VALUES (?, 'reset_password', 'users', ?, NULL, ?, ?, ?, NOW(), ?, ?)
+                    ");
+                    $logStmt->execute([
+                        $_SESSION['user_id'],
+                        $employee_id,
+                        json_encode(['password' => '(password changed)']),
+                        $_SERVER['REMOTE_ADDR'],
+                        $_SERVER['HTTP_USER_AGENT'],
+                        $tenant_id,
+                        $branch_id
+                    ]);
+
+                    $success = 'Password reset successfully.';
+                } catch (Exception $e) {
+                    $error = 'Error resetting password: ' . $e->getMessage();
+                }
+            }
+        }
     } else {
         $name = trim($_POST['name'] ?? '');
         $email = trim($_POST['email'] ?? '');
@@ -682,6 +725,21 @@ include '../includes/header.php';
                                             </div>
                                         </div>
 
+                                        <!-- Reset Password Card -->
+                                        <div class="em-info-card">
+                                            <div class="em-info-card-header">
+                                                <h5><i class="feather icon-lock"></i><?php echo __('change_password'); ?></h5>
+                                            </div>
+                                            <div class="em-info-card-body" style="text-align: center;">
+                                                <p style="font-size: .78rem; color: var(--muted); margin: 0 0 14px;">
+                                                    <?php echo __('only_fill_if_you_want_to_change_password'); ?>
+                                                </p>
+                                                <button type="button" class="em-btn em-btn-primary" onclick="showResetPasswordModal()">
+                                                    <i class="feather icon-key"></i><?php echo __('reset_password'); ?>
+                                                </button>
+                                            </div>
+                                        </div>
+
                                         <!-- Salary Information -->
                                         <?php if ($employee['base_salary']): ?>
                                         <div class="em-info-card">
@@ -740,9 +798,53 @@ include '../includes/header.php';
         </div>
     </div>
 </div>
-<!-- Required Js -->
+<!-- Reset Password Modal -->
+<div class="modal fade" id="resetPasswordModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content" style="border-radius:18px;overflow:hidden;border:none;box-shadow:0 32px 80px rgba(13,19,33,.22)">
+            <div class="modal-header" style="background:linear-gradient(135deg,#4099ff,#2ed8b6);border:none;padding:20px 26px">
+                <h5 class="modal-title" style="color:#fff;font-weight:800;margin:0;font-family:var(--font);font-size:.95rem">
+                    <i class="feather icon-key" style="margin-right:6px"></i><?php echo __('reset_password'); ?>
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" style="color:#fff;opacity:.8"><span>&times;</span></button>
+            </div>
+            <form method="POST" action="">
+                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                <input type="hidden" name="action" value="reset_password">
+                <div class="modal-body" style="padding:26px">
+                    <p style="font-size:.8rem;color:var(--muted);margin:0 0 16px;font-family:var(--font)">
+                        <?php echo __('reset_password_for'); ?> <strong style="color:var(--text)"><?php echo htmlspecialchars($employee['name']); ?></strong>
+                    </p>
+                    <div class="em-form-group">
+                        <label for="new_password"><?php echo __('new_password'); ?> <span class="text-danger">*</span></label>
+                        <input type="password" id="new_password" name="new_password" required autocomplete="new-password">
+                        <small style="font-size:.72rem;color:var(--faint)"><?php echo __('password_length_error'); ?></small>
+                    </div>
+                    <div class="em-form-group mb-0">
+                        <label for="confirm_password"><?php echo __('confirm_password'); ?> <span class="text-danger">*</span></label>
+                        <input type="password" id="confirm_password" name="confirm_password" required autocomplete="new-password">
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid var(--border);padding:14px 26px;gap:8px">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal" style="border-radius:9px;font-size:.83rem;font-family:var(--font)"><?php echo __('cancel'); ?></button>
+                    <button type="submit" class="btn btn-primary" style="border-radius:9px;background:linear-gradient(135deg,#4099ff,#2ed8b6);border:none;font-weight:700;font-size:.83rem;font-family:var(--font)">
+                        <i class="feather icon-key" style="margin-right:4px"></i><?php echo __('reset_password'); ?>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
+<!-- Required Js -->
 <script src="../assets/js/vendor-all.min.js"></script>
 <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
 <script src="../assets/js/pcoded.min.js"></script>
+<script>
+function showResetPasswordModal() {
+    document.getElementById('new_password').value = '';
+    document.getElementById('confirm_password').value = '';
+    $('#resetPasswordModal').modal('show');
+}
+</script>
 <?php include '../includes/admin_footer.php'; ?>

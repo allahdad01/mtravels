@@ -78,6 +78,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 case 'DARHAM':
                     $balanceField = 'darham_balance';
                     break;
+                case 'SAR':
+                    $balanceField = 'sar_balance';
+                    break;
                 default:
                     throw new Exception("Unsupported currency: $currency");
             }
@@ -102,8 +105,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Insert transaction record
         $stmt = $pdo->prepare("INSERT INTO main_account_transactions
-            (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, tenant_id, branch_id, exchange_rate, receipt)
-            VALUES (?, 'debit', ?, ?, ?, 'umrah_refund', ?, ?, ?, ?, ?, ?, ?)");
+            (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, tenant_id, branch_id, exchange_rate, receipt, created_by)
+            VALUES (?, 'debit', ?, ?, ?, 'umrah_refund', ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $main_account_id,
             $transactionAmount,
@@ -115,7 +118,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $tenant_id,
             $branch_id,
             $exchange_rate,
-            $receipt_number
+            $receipt_number,
+            $_SESSION['user_id'] ?? null
         ]);
 
         // Get the last inserted ID

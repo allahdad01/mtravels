@@ -128,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $supplier_id = $supplier_result['supplier_id'];
 
         // Step 3: Fetch Supplier Type
-        $stmt_fetch_supplier = $pdo->prepare("SELECT supplier_type FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt_fetch_supplier = $pdo->prepare("SELECT supplier_type, route_payment_to_main_account FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
         $stmt_fetch_supplier->bindParam(1, $supplier_id, PDO::PARAM_INT);
         $stmt_fetch_supplier->bindParam(2, $tenant_id, PDO::PARAM_INT);
         $stmt_fetch_supplier->bindParam(3, $branch_id, PDO::PARAM_INT);
@@ -141,6 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $supplier = $supplier_result;
         $supplier_type = $supplier['supplier_type'];
+        $route_payment_to_main_account = (int)($supplier['route_payment_to_main_account'] ?? 0);
 
         // Normalize $transaction_to to lowercase for case-insensitive comparison
         $transaction_to_lower = strtolower(trim($transaction_to));
@@ -189,7 +190,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new PDOException("Failed to update received bank payment");
             }
 
-            if ($supplier_type === 'External') {
+            if ($supplier_type === 'External' && $route_payment_to_main_account !== 1) {
                 // Get current supplier balance
                 $stmt_get_supplier_balance = $pdo->prepare("SELECT balance FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                 $stmt_get_supplier_balance->bindParam(1, $supplier_id, PDO::PARAM_INT);
@@ -277,6 +278,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $balance_field = 'euro_balance'; // EUR transactions affect USD balance (converted)
                 } elseif ($currency === 'DARHAM' || $currency === 'DAR') {
                     $balance_field = 'darham_balance'; // DARHAM transactions affect USD balance (converted)
+                } elseif ($currency === 'SAR') {
+                    $balance_field = 'sar_balance';
                 } else {
                     $balance_field = 'usd_balance'; // Default to USD balance
                 }
@@ -418,6 +421,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $balance_field = 'euro_balance'; // EUR transactions affect USD balance (converted)
             } elseif ($currency === 'DARHAM' || $currency === 'DAR') {
                 $balance_field = 'darham_balance'; // DARHAM transactions affect USD balance (converted)
+            } elseif ($currency === 'SAR') {
+                $balance_field = 'sar_balance';
             } else {
                 $balance_field = 'usd_balance'; // Default to USD balance
             }

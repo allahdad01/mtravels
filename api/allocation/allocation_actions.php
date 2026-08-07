@@ -146,6 +146,8 @@ function createAllocation($pdo) {
             $balanceColumn = 'euro_balance';
         } elseif ($currency == 'DARHAM') {
             $balanceColumn = 'darham_balance';
+        } elseif ($currency == 'SAR') {
+            $balanceColumn = 'sar_balance';
         }
         
         $accountStmt = $pdo->prepare("SELECT $balanceColumn FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
@@ -198,8 +200,8 @@ function createAllocation($pdo) {
         // Add transaction record
         $transactionStmt = $pdo->prepare("
             INSERT INTO main_account_transactions
-            (main_account_id, type, amount, description, balance, currency, transaction_of, reference_id, tenant_id, branch_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (main_account_id, type, amount, description, balance, currency, transaction_of, reference_id, tenant_id, branch_id, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $transactionStmt->execute([
             $mainAccountId,
@@ -212,7 +214,8 @@ function createAllocation($pdo) {
             'budget_allocation',
             $allocationId,
             $tenant_id,
-            $branch_id
+            $branch_id,
+            $_SESSION['user_id'] ?? null
         ]);
 
         // Commit transaction
@@ -342,6 +345,8 @@ function deleteAllocation($pdo) {
                 $balanceColumn = 'euro_balance';
             } elseif ($allocation['currency'] == 'DARHAM') {
                 $balanceColumn = 'darham_balance';
+            } elseif ($allocation['currency'] == 'SAR') {
+                $balanceColumn = 'sar_balance';
             }
             
             $updateAccountStmt = $pdo->prepare("
@@ -557,6 +562,7 @@ function addFunds($pdo) {
                        WHEN ba.currency = 'EUR' THEN ma.euro_balance
                        WHEN ba.currency = 'AFS' THEN ma.afs_balance
                        WHEN ba.currency = 'DARHAM' THEN ma.darham_balance
+                       WHEN ba.currency = 'SAR' THEN ma.sar_balance
                        ELSE 0
                    END as account_balance
             FROM budget_allocations ba
@@ -611,6 +617,8 @@ function addFunds($pdo) {
             $balanceColumn = 'euro_balance';
         } elseif ($currency == 'DARHAM') {
             $balanceColumn = 'darham_balance';
+        } elseif ($currency == 'SAR') {
+            $balanceColumn = 'sar_balance';
         }
 
         // Deduct the amount from the appropriate balance column in main account
@@ -629,8 +637,8 @@ function addFunds($pdo) {
         // Log the transaction in main_account_transactions
         $transactionStmt = $pdo->prepare("
             INSERT INTO main_account_transactions
-            (main_account_id, type, amount, description, balance, currency, transaction_of, reference_id, tenant_id, branch_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (main_account_id, type, amount, description, balance, currency, transaction_of, reference_id, tenant_id, branch_id, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $allocDesc = $allocation['description'] ?: $allocation['category_name'];
         $fundDesc = $allocDesc . ($note ? " - " . $note : "");
@@ -644,7 +652,8 @@ function addFunds($pdo) {
             'budget_allocation',
             $allocationId,
             $tenant_id,
-            $branch_id
+            $branch_id,
+            $_SESSION['user_id'] ?? null
         ]);
 
         // Log the activity
@@ -791,6 +800,8 @@ function deleteFundTransaction($pdo) {
             $balanceColumn = 'euro_balance';
         } elseif ($currency == 'DARHAM') {
             $balanceColumn = 'darham_balance';
+        } elseif ($currency == 'SAR') {
+            $balanceColumn = 'sar_balance';
         }
         
         // Update main account balance (reverse the transaction)
@@ -959,6 +970,7 @@ function updateFundTransaction($pdo) {
         if ($currency == 'AFS') $balanceColumn = 'afs_balance';
         elseif ($currency == 'EUR') $balanceColumn = 'euro_balance';
         elseif ($currency == 'DARHAM') $balanceColumn = 'darham_balance';
+        elseif ($currency == 'SAR') $balanceColumn = 'sar_balance';
 
         if ($type === 'debit') {
             $colQ = "`{$balanceColumn}`";

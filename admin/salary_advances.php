@@ -14,6 +14,14 @@ $branch_id = $_SESSION['branch_id'];
 // Include config file
 require_once "../includes/db.php";
 
+$is_ajax = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+function advance_finish_ajax($is_ajax, $success, $message) {
+    if ($is_ajax) {
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode(['success' => (bool)$success, 'message' => $message]);
+        exit;
+    }
+}
 
 // Define variables and initialize with empty values
 $main_account_id = $amount = $currency = $description = "";
@@ -25,9 +33,14 @@ function generateReceiptNumber() {
     return "SA" . date("YmdHis");
 }
 
-// Check if user_id is passed in the URL
-if (isset($_GET["advance_user_id"]) && !empty(trim($_GET["advance_user_id"]))) {
-    $advance_user_id = trim($_GET["advance_user_id"]);
+// Resolve user_id from URL parameter or POST (AJAX)
+$advance_user_id = trim($_GET["advance_user_id"] ?? "");
+if ($advance_user_id === "" && isset($_POST["user_id"])) {
+    $advance_user_id = trim($_POST["user_id"]);
+}
+
+// Check if user_id is provided
+if ($advance_user_id !== "") {
     
     // Get user information
     $sql = "SELECT u.name, sm.base_salary, sm.currency
@@ -49,6 +62,7 @@ if (isset($_GET["advance_user_id"]) && !empty(trim($_GET["advance_user_id"]))) {
             $default_currency = $result["currency"];
         } else {
             // URL doesn't contain valid id parameter
+            advance_finish_ajax($is_ajax, false, "Employee not found.");
             header("location: salary_management.php");
             exit();
         }
@@ -56,14 +70,14 @@ if (isset($_GET["advance_user_id"]) && !empty(trim($_GET["advance_user_id"]))) {
         $error_message = "Oops! Something went wrong. Please try again later.";
     }
 } else {
-    // URL doesn't contain id parameter
+    // No user id provided
+    advance_finish_ajax($is_ajax, false, "Please select an employee.");
     header("location: salary_management.php");
     exit();
 }
 
 // Processing form data when form is submitted
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_GET["advance_user_id"])) {
-    $advance_user_id = trim($_GET["advance_user_id"]); // Get the user_id from URL parameter
+if ($_SERVER["REQUEST_METHOD"] == "POST" && $advance_user_id !== "") {
     
     // Validate main account
     if (empty($_POST["main_account_id"])) {
@@ -176,8 +190,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_GET["advance_user_id"])) {
                 
                 // Insert into main_account_transactions
                 $transaction_sql = "INSERT INTO main_account_transactions (main_account_id, type, amount, balance, currency,
-                                   description, transaction_of, reference_id, receipt, tenant_id, branch_id)
-                                   VALUES (?, 'debit', ?, ?, ?, ?, 'salary_payment', ?, ?, ?, ?)";
+                                   description, transaction_of, reference_id, receipt, tenant_id, branch_id, created_by)
+                                   VALUES (?, 'debit', ?, ?, ?, ?, 'salary_payment', ?, ?, ?, ?, ?)";
 
                 $transaction_stmt = $pdo->prepare($transaction_sql);
                 $transaction_stmt->bindParam(1, $main_account_id, PDO::PARAM_INT);
@@ -189,6 +203,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_GET["advance_user_id"])) {
                 $transaction_stmt->bindParam(7, $receipt, PDO::PARAM_STR);
                 $transaction_stmt->bindParam(8, $tenant_id, PDO::PARAM_INT);
                 $transaction_stmt->bindParam(9, $branch_id, PDO::PARAM_INT);
+                $transaction_stmt->bindValue(10, $_SESSION['user_id'] ?? null, PDO::PARAM_INT);
                 $transaction_stmt->execute();
 
                 // Commit transaction
@@ -224,6 +239,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_GET["advance_user_id"])) {
                 }
 
                 // Redirect back to the same employee's page with success message
+                advance_finish_ajax($is_ajax, true, 'Salary advance recorded successfully.');
                 header("location: salary_advances.php?advance_user_id=" . $advance_user_id . "&success=1");
                 exit();
             } else {
@@ -234,6 +250,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_GET["advance_user_id"])) {
             $pdo->rollBack();
             $error_message = "Error: " . $e->getMessage();
         }
+    }
+
+    if ($is_ajax && (isset($error_message) || isset($main_account_id_err) || isset($amount_err))) {
+        $first_err = '';
+        foreach ([$main_account_id_err, $amount_err, $error_message] as $e) {
+            if (!empty($e)) { $first_err = $e; break; }
+        }
+        advance_finish_ajax($is_ajax, false, $first_err ?: 'Please fix the highlighted fields.');
     }
 
     // PDO connection will be closed automatically when script ends

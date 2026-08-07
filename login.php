@@ -224,6 +224,16 @@ try {
     // but focus the input on page load for faster UX
     const totpInput = document.getElementById('totp_code');
     if (totpInput) totpInput.focus();
+
+    // Loading state on auth form submits (page navigation reloads anyway)
+    document.querySelectorAll('.auth-form').forEach(function (form) {
+      form.addEventListener('submit', function () {
+        const btn = form.querySelector('button[type="submit"]');
+        if (!btn || btn.disabled) return;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i><span>Please wait...</span>';
+      });
+    });
   });
   </script>
 </body>

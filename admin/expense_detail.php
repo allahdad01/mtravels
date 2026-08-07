@@ -19,10 +19,11 @@ if (isset($_GET['id'])) {
     if (!$expenseId) {
         $errorMessage = "Invalid expense ID.";
     } else {
-        $stmt = $pdo->prepare("SELECT e.*, ec.name as category_name, ma.name as account_name,
+        $stmt = $pdo->prepare("SELECT e.*, ec.name as category_name, esc.name as sub_category_name, ma.name as account_name,
                   mat.receipt as receipt_number
                   FROM expenses e
                   LEFT JOIN expense_categories ec ON e.category_id=ec.id AND e.tenant_id=ec.tenant_id AND e.branch_id=ec.branch_id
+                  LEFT JOIN expense_categories esc ON e.sub_category_id=esc.id AND e.tenant_id=esc.tenant_id AND e.branch_id=esc.branch_id
                   LEFT JOIN main_account ma ON e.main_account_id=ma.id AND e.tenant_id=ma.tenant_id AND e.branch_id=ma.branch_id
                   LEFT JOIN main_account_transactions mat ON e.id=mat.reference_id AND mat.transaction_of='expense' AND mat.tenant_id=e.tenant_id AND mat.branch_id=e.branch_id
                   WHERE e.id=? AND e.tenant_id=? AND e.branch_id=?");
@@ -335,6 +336,12 @@ a:hover { text-decoration: underline; }
               <span class="key"><?= __('category') ?></span>
               <span class="val"><span class="badge badge-category"><?php echo htmlspecialchars($expense['category_name']); ?></span></span>
             </div>
+            <?php if (!empty($expense['sub_category_name'])): ?>
+            <div class="field">
+              <span class="key"><?= __('sub_category') ?></span>
+              <span class="val"><span class="badge badge-category"><?php echo htmlspecialchars($expense['sub_category_name']); ?></span></span>
+            </div>
+            <?php endif; ?>
             <div class="field">
               <span class="key"><?= __('amount') ?></span>
               <span class="val danger"><?php echo htmlspecialchars($expense['currency']); ?> <?php echo number_format($expense['amount'], 2); ?></span>

@@ -49,6 +49,12 @@ function loadFamilyTransactionData(familyId) {
                 }, '');
                 window.familyMajoritySupplier = majoritySup;
 
+                // Majority route-to-main-account flag (Nusuk-style suppliers)
+                var routeCount = (data.members || []).filter(function(m) {
+                    return parseInt(m.route_payment_to_main_account || 0, 10) === 1;
+                }).length;
+                window.familyRouteToMainMajority = routeCount >= (data.members || []).length / 2;
+
                 // Update financial summary
                 $('#familyTotalPrice').text(data.total_price || '0.00');
                 $('#familyTotalPaid').text(data.total_paid || '0.00');
@@ -211,6 +217,11 @@ $(document).ready(function() {
         submitBtn.html('<i class="feather icon-loader"></i> Processing...');
 
         const formData = new FormData(this);
+
+        // Ensure transaction_to is included if missing (the select may be disabled)
+        if (!formData.has('transaction_to')) {
+            formData.append('transaction_to', $('#familyTransactionTo').val() || 'Internal Account');
+        }
 
         // Collect member payments
          const memberPayments = [];

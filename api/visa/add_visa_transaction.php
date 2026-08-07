@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Get current balance
         $balanceField = $currency === 'USD' ? 'usd_balance' : ($currency === 'AFS' ? 'afs_balance' : 
-                        ($currency === 'EUR' ? 'euro_balance' : 'darham_balance'));
+                        ($currency === 'EUR' ? 'euro_balance' : ($currency === 'SAR' ? 'sar_balance' : 'darham_balance')));
                         
         $stmt = $pdo->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
         $stmt->execute([$visa['paid_to'], $tenant_id, $branch_id]);
@@ -120,8 +120,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Insert transaction record in main_account_transactions
         $stmt = $pdo->prepare("INSERT INTO main_account_transactions
-            (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, exchange_rate, created_at, tenant_id, branch_id, receipt)
-            VALUES (?, ?, ?, ?, ?, 'visa_sale', ?, ?, ?, ?, ?, ?, ?)");
+            (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, exchange_rate, created_at, tenant_id, branch_id, receipt, created_by)
+            VALUES (?, ?, ?, ?, ?, 'visa_sale', ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $visa['paid_to'],
             $transaction_type,
@@ -134,7 +134,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $payment_datetime,
             $tenant_id,
             $branch_id,
-            $receipt_number
+            $receipt_number,
+            $_SESSION['user_id'] ?? null
         ]);
 
         // Get the last inserted ID for main account transaction

@@ -63,6 +63,7 @@ function addServiceRow(serviceType = '', supplierId = '', basePrice = 0, soldPri
                 <div class="form-group">
                     <label>Base Price</label>
                     <input type="number" class="form-control service-base-price" name="services[${serviceRowCounter}][base_price]" value="${basePrice}" min="0" step="0.01" required>
+                    <small class="service-currency-hint d-block text-info"></small>
                 </div>
                 <div class="form-group">
                     <label>Sold Price</label>
@@ -92,15 +93,32 @@ function addServiceRow(serviceType = '', supplierId = '', basePrice = 0, soldPri
 
 function removeServiceRow(rowId) { $('#' + rowId).remove(); updateTotals(); }
 
+function updateCurrencyHint($row) {
+    const cur = ($row.find('.service-currency').val() || '').trim().toUpperCase();
+    const sale = getSaleCurrency();
+    const hint = $row.find('.service-currency-hint');
+    if (!cur || cur === sale) { hint.addClass('d-none').text(''); return; }
+    hint.removeClass('d-none').text(`Enter Base Price in ${cur} — converted to ${sale} at rate ${getExchangeRate()}`);
+}
+
+function getSaleCurrency() { return ($('#saleCurrency').val() || 'USD').toUpperCase(); }
+
+function getExchangeRate() { const r = parseFloat($('#exchangeRate').val()); return (r && r > 0) ? r : 1; }
+
 function updateTotals() {
     let totalBase=0, totalSold=0, totalProfit=0;
     const discount = parseFloat($('#discount').val()) || 0;
+    const sale = getSaleCurrency();
+    const rate = getExchangeRate();
     $('.services-grid-body .service-row-grid').each(function() {
+        updateCurrencyHint($(this));
         const base = parseFloat($(this).find('.service-base-price').val()) || 0;
         const sold = parseFloat($(this).find('.service-sold-price').val()) || 0;
-        const profit = sold - base;
+        const cur = ($(this).find('.service-currency').val() || '').trim().toUpperCase();
+        const baseInSale = (!cur || cur === sale) ? base : base / rate;
+        const profit = sold - baseInSale;
         $(this).find('.service-profit').val(profit.toFixed(2));
-        totalBase += base; totalSold += sold; totalProfit += profit;
+        totalBase += baseInSale; totalSold += sold; totalProfit += profit;
     });
     const discountedSold = totalSold - discount;
     $('#totalBasePrice').val(totalBase.toFixed(2));
@@ -111,10 +129,23 @@ function updateTotals() {
 // Event bindings
 $(document).on('click', '#addServiceBtn', () => addServiceRow());
 $(document).on('change', '.service-supplier', function() {
-    const currency = $(this).find('option:selected').data('currency') || '';
-    $(this).closest('.service-row-grid').find('.service-currency').val(currency);
+    const $row = $(this).closest('.service-row-grid');
+    const oldCur = ($row.find('.service-currency').val() || '').trim().toUpperCase();
+    const newCur = ($(this).find('option:selected').data('currency') || '').trim().toUpperCase();
+    if (oldCur && newCur && oldCur !== newCur) {
+        const base = parseFloat($row.find('.service-base-price').val()) || 0;
+        if (base > 0) {
+            const sale = getSaleCurrency();
+            const rate = getExchangeRate();
+            const inSale = oldCur === sale ? base : base / rate;
+            $row.find('.service-base-price').val(parseFloat(newCur === sale ? inSale : inSale * rate).toFixed(2));
+        }
+    }
+    $row.find('.service-currency').val(newCur);
+    updateTotals();
 });
-$(document).on('input', '.service-base-price, .service-sold-price, #discount', updateTotals);
+$(document).on('input', '.service-base-price, .service-sold-price, #discount, #exchangeRate', updateTotals);
+$(document).on('change', '#saleCurrency', updateTotals);
 
 // Ensure at least one service row when modal opens
 $('#umrahModal').on('shown.bs.modal', function() {

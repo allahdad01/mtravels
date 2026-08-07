@@ -30,18 +30,50 @@ try {
         case 'save_category':
             $categoryId = $_POST['categoryId'] ?? '';
             $categoryName = $_POST['categoryName'] ?? '';
+            $parentId = isset($_POST['parentId']) && $_POST['parentId'] !== '' ? (int)$_POST['parentId'] : null;
+
+            if ($categoryId && $parentId !== null && (int)$categoryId === $parentId) {
+                echo json_encode(['success' => false, 'message' => 'A category cannot be its own parent']);
+                break;
+            }
+
+            // Validate parent category when provided
+            if ($parentId !== null) {
+                $parentStmt = $pdo->prepare("SELECT parent_id FROM expense_categories WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $parentStmt->execute([$parentId, $tenant_id, $branch_id]);
+                $parentCat = $parentStmt->fetch(PDO::FETCH_ASSOC);
+
+                if (!$parentCat) {
+                    echo json_encode(['success' => false, 'message' => 'Parent category not found']);
+                    break;
+                }
+                if (!empty($parentCat['parent_id'])) {
+                    echo json_encode(['success' => false, 'message' => 'A sub-category cannot have its own sub-category. Choose a top-level category as parent.']);
+                    break;
+                }
+            }
 
             if($categoryId) {
+                // Prevent making a category with children into a sub-category
+                if ($parentId !== null) {
+                    $childCheck = $pdo->prepare("SELECT COUNT(*) FROM expense_categories WHERE parent_id = ? AND tenant_id = ? AND branch_id = ?");
+                    $childCheck->execute([$categoryId, $tenant_id, $branch_id]);
+                    if ($childCheck->fetchColumn() > 0) {
+                        echo json_encode(['success' => false, 'message' => 'Cannot make this category a sub-category: it has sub-categories of its own.']);
+                        break;
+                    }
+                }
                 // Update
-                $stmt = $pdo->prepare("UPDATE expense_categories SET name = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                $stmt->execute([$categoryName, $categoryId, $tenant_id, $branch_id]);
+                $stmt = $pdo->prepare("UPDATE expense_categories SET name = ?, parent_id = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $stmt->execute([$categoryName, $parentId, $categoryId, $tenant_id, $branch_id]);
 
                 // Log the activity
                 $old_values = json_encode([
                     'category_id' => $categoryId
                 ], JSON_UNESCAPED_UNICODE);
                 $new_values = json_encode([
-                    'name' => $categoryName
+                    'name' => $categoryName,
+                    'parent_id' => $parentId
                 ], JSON_UNESCAPED_UNICODE);
                 
                 $user_id = $_SESSION['user_id'] ?? 0;
@@ -56,14 +88,15 @@ try {
                 $activityStmt->execute([$user_id, $categoryId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id]);
             } else {
                 // Insert
-                $stmt = $pdo->prepare("INSERT INTO expense_categories (name, tenant_id, branch_id) VALUES (?, ?, ?)");
-                $stmt->execute([$categoryName, $tenant_id, $branch_id]);
+                $stmt = $pdo->prepare("INSERT INTO expense_categories (name, parent_id, tenant_id, branch_id) VALUES (?, ?, ?, ?)");
+                $stmt->execute([$categoryName, $parentId, $tenant_id, $branch_id]);
                 $newCategoryId = $pdo->lastInsertId();
                 
                 // Log the activity
                 $old_values = json_encode([], JSON_UNESCAPED_UNICODE);
                 $new_values = json_encode([
-                    'name' => $categoryName
+                    'name' => $categoryName,
+                    'parent_id' => $parentId
                 ], JSON_UNESCAPED_UNICODE);
                 
                 $user_id = $_SESSION['user_id'] ?? 0;
@@ -90,6 +123,16 @@ try {
             
             if (!$category) {
                 echo json_encode(['success' => false, 'message' => 'Category not found']);
+                break;
+            }
+            
+            // Check for associated sub-categories
+            $childStmt = $pdo->prepare("SELECT COUNT(*) FROM expense_categories WHERE parent_id = ? AND tenant_id = ? AND branch_id = ?");
+            $childStmt->execute([$categoryId, $tenant_id, $branch_id]);
+            $childCount = $childStmt->fetchColumn();
+            
+            if ($childCount > 0) {
+                echo json_encode(['success' => false, 'message' => "Cannot delete category '{$category['name']}': it has {$childCount} sub-categor(ies). Delete or move them first."]);
                 break;
             }
             
@@ -149,7 +192,19 @@ try {
             // Extract form fields
             $expenseId = $_POST['expenseId'] ?? '';
             $categoryId = $_POST['expenseCategory'] ?? '';
+            $subCategoryId = isset($_POST['expenseSubCategory']) && $_POST['expenseSubCategory'] !== '' ? (int)$_POST['expenseSubCategory'] : null;
             $date = $_POST['expenseDate'] ?? '';
+            
+            // Validate sub-category belongs to the selected category
+            if ($subCategoryId !== null) {
+                $subStmt = $pdo->prepare("SELECT parent_id FROM expense_categories WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $subStmt->execute([$subCategoryId, $tenant_id, $branch_id]);
+                $subCat = $subStmt->fetch(PDO::FETCH_ASSOC);
+                if (!$subCat || empty($subCat['parent_id']) || (int)$subCat['parent_id'] !== (int)$categoryId) {
+                    echo json_encode(['success' => false, 'message' => 'Selected sub-category does not belong to the selected category.']);
+                    break;
+                }
+            }
             
             // Format date - ensure it's in YYYY-MM-DD format
             if (!empty($date)) {
@@ -193,6 +248,8 @@ try {
                 $balanceColumn = 'euro_balance';
             } elseif ($currency == 'DARHAM') {
                 $balanceColumn = 'darham_balance';
+            } elseif ($currency === 'SAR') {
+                $balanceColumn = 'sar_balance';
             }
 
             if($expenseId) {
@@ -228,8 +285,8 @@ try {
                 }
                 
                 // Update expense with receipt fields
-                $stmt = $pdo->prepare("UPDATE expenses SET date = ?, description = ?, amount = ?, currency = ?, main_account_id = ?, receipt_file = ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
-                $stmt->execute([$date, $description, $amount, $currency, $mainAccountId, $receiptFile, $expenseId, $tenant_id, $branch_id]);
+                $stmt = $pdo->prepare("UPDATE expenses SET date = ?, description = ?, amount = ?, currency = ?, main_account_id = ?, receipt_file = ?, sub_category_id = ? WHERE id = ? AND tenant_id = ? And branch_id = ?");
+                $stmt->execute([$date, $description, $amount, $currency, $mainAccountId, $receiptFile, $subCategoryId, $expenseId, $tenant_id, $branch_id]);
                 
                 // Handle main account changes — only amount can change (account/currency locked in edit modal)
                 if ($prevExpense && $prevExpense['amount'] != $amount) {
@@ -303,8 +360,8 @@ try {
                 }
                 
                 // Insert new expense with receipt fields
-                $stmt = $pdo->prepare("INSERT INTO expenses (category_id, date, description, amount, currency, main_account_id, receipt_file, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmt->execute([$categoryId, $date, $description, $amount, $currency, $mainAccountId, $receiptFile, $tenant_id, $branch_id]);
+                $stmt = $pdo->prepare("INSERT INTO expenses (category_id, sub_category_id, date, description, amount, currency, main_account_id, receipt_file, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$categoryId, $subCategoryId, $date, $description, $amount, $currency, $mainAccountId, $receiptFile, $tenant_id, $branch_id]);
                 $ExpenseId = $pdo->lastInsertId();
                 
                 // Deduct from main account
@@ -319,7 +376,7 @@ try {
                     $updatedBalance = $balanceStmt->fetchColumn();
                     
                     // Add transaction record with updated balance and receipt number
-                    $txnStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, description, balance, currency, transaction_of, reference_id, receipt, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                    $txnStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, description, balance, currency, transaction_of, reference_id, receipt, tenant_id, branch_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                     $txnStmt->execute([
                         $mainAccountId,
                         'debit',
@@ -331,7 +388,8 @@ try {
                         $ExpenseId,
                         $receiptNumber,
                         $tenant_id,
-                        $branch_id
+                        $branch_id,
+                        $_SESSION['user_id'] ?? null
                     ]);
                 }
             }
@@ -460,6 +518,8 @@ try {
                     $balanceColumn = 'euro_balance';
                 } elseif ($expense['currency'] == 'DARHAM') {
                     $balanceColumn = 'darham_balance';
+                } elseif ($expense['currency'] == 'SAR') {
+                    $balanceColumn = 'sar_balance';
                 }
                 
                 // Get transaction details to find created_at timestamp
@@ -597,6 +657,30 @@ try {
             } catch (Exception $e) {
                 echo json_encode([
                     'success' => false, 
+                    'message' => $e->getMessage()
+                ]);
+            }
+            break;
+
+        case 'get_sub_categories':
+            try {
+                $categoryId = $_POST['categoryId'] ?? '';
+                
+                if (!$categoryId) {
+                    throw new Exception('Category ID is required');
+                }
+                
+                $subStmt = $pdo->prepare("SELECT id, name FROM expense_categories WHERE parent_id = ? AND tenant_id = ? AND branch_id = ? ORDER BY name");
+                $subStmt->execute([$categoryId, $tenant_id, $branch_id]);
+                $subCategories = $subStmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                echo json_encode([
+                    'success' => true,
+                    'sub_categories' => $subCategories
+                ]);
+            } catch (Exception $e) {
+                echo json_encode([
+                    'success' => false,
                     'message' => $e->getMessage()
                 ]);
             }

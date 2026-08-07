@@ -204,6 +204,28 @@
     padding: 14px 12px;
 }
 
+.txn-skel-row td {
+    padding: 13px 12px;
+    border-bottom: 1px solid #f1f3f5;
+}
+
+.txn-skel-bar {
+    height: 12px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #eef1f5 25%, #e3e7ee 37%, #eef1f5 63%);
+    background-size: 400% 100%;
+    animation: txn-skel-shimmer 1.4s ease infinite;
+}
+
+@keyframes txn-skel-shimmer {
+    0% { background-position: 100% 0; }
+    100% { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .txn-skel-bar { animation: none; }
+}
+
 /* No-data row */
 .txn-empty-row td {
     text-align: center;

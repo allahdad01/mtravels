@@ -68,6 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'AFS' => 'afs_balance',
             'EURO' => 'euro_balance',
             'DARHAM' => 'darham_balance',
+            'SAR' => 'sar_balance',
             default => throw new Exception("Unsupported currency: $currency")
         };
         $stmt = $pdo->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ? And branch_id = ?");
@@ -90,8 +91,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Insert transaction record
         $stmt = $pdo->prepare("INSERT INTO main_account_transactions 
-            (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, tenant_id, exchange_rate, branch_id, receipt)
-            VALUES (?, 'debit', ?, ?, ?, 'hotel_refund', ?, ?, ?, ?, ?, ?, ?)");
+            (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, tenant_id, exchange_rate, branch_id, receipt, created_by)
+            VALUES (?, 'debit', ?, ?, ?, 'hotel_refund', ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $main_account_id,
             $transactionAmount,
@@ -103,7 +104,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $tenant_id,
             $payment_exchange_rate,
             $branch_id,
-            $receipt_number
+            $receipt_number,
+            $_SESSION['user_id'] ?? null
         ]);
 
         // Get the last inserted ID

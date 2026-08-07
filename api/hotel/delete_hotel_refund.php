@@ -177,6 +177,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
                 case 'AFS': $balanceField = 'afs_balance'; break;
                 case 'EUR': $balanceField = 'euro_balance'; break;
                 case 'DARHAM': $balanceField = 'darham_balance'; break;
+                case 'SAR': $Field = 'sar_balance'; break;
                 default: $balanceField = 'afs_balance'; break;
             }
             $adjustMainBalance = "UPDATE main_account

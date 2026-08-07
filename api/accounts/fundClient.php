@@ -184,8 +184,8 @@ try {
 
             // Record main account transaction
             $mainTransactionRemarks = "Client: $clientName, Paid ؋$paymentAmount AFS (= $$amountToCredit USD) for account funding, processed by: $username, Remarks: $remarks";
-            $mainTransactionStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, transaction_of, reference_id, description, balance, receipt, currency, tenant_id, branch_id)
-                                                VALUES (?, 'credit', ?, 'client_fund', ?, ?, ?, ?, 'AFS', ?, ?)");
+            $mainTransactionStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, transaction_of, reference_id, description, balance, receipt, currency, tenant_id, branch_id, created_by)
+                                                VALUES (?, 'credit', ?, 'client_fund', ?, ?, ?, ?, 'AFS', ?, ?, ?)");
             $mainTransactionStmt->bindParam(1, $mainAccountId, PDO::PARAM_INT);
             $mainTransactionStmt->bindParam(2, $paymentAmount, PDO::PARAM_STR);
             $mainTransactionStmt->bindParam(3, $lastInsertId, PDO::PARAM_INT);
@@ -194,6 +194,7 @@ try {
             $mainTransactionStmt->bindParam(6, $receipt, PDO::PARAM_STR);
             $mainTransactionStmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
             $mainTransactionStmt->bindParam(8, $branch_id, PDO::PARAM_INT);
+            $mainTransactionStmt->bindValue(9, $_SESSION['user_id'] ?? null, PDO::PARAM_INT);
             $mainTransactionStmt->execute();
         } else {
             // Client paid USD, so add to main account USD balance
@@ -222,8 +223,8 @@ try {
 
             // Record main account transaction
             $mainTransactionRemarks = "Client: $clientName, Paid \$$paymentAmount USD for account funding, processed by: $username, Remarks: $remarks";
-            $mainTransactionStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, transaction_of, reference_id, description, balance, receipt, currency, tenant_id, branch_id)
-                                                VALUES (?, 'credit', ?, 'client_fund', ?, ?, ?, ?, 'USD', ?, ?)");
+            $mainTransactionStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, transaction_of, reference_id, description, balance, receipt, currency, tenant_id, branch_id, created_by)
+                                                VALUES (?, 'credit', ?, 'client_fund', ?, ?, ?, ?, 'USD', ?, ?, ?)");
             $mainTransactionStmt->bindParam(1, $mainAccountId, PDO::PARAM_INT);
             $mainTransactionStmt->bindParam(2, $paymentAmount, PDO::PARAM_STR);
             $mainTransactionStmt->bindParam(3, $lastInsertId, PDO::PARAM_INT);
@@ -232,6 +233,7 @@ try {
             $mainTransactionStmt->bindParam(6, $receipt, PDO::PARAM_STR);
             $mainTransactionStmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
             $mainTransactionStmt->bindParam(8, $branch_id, PDO::PARAM_INT);
+            $mainTransactionStmt->bindValue(9, $_SESSION['user_id'] ?? null, PDO::PARAM_INT);
             $mainTransactionStmt->execute();
         }
 
@@ -290,8 +292,8 @@ try {
 
             // Record main account transaction
             $mainTransactionRemarks = "Client: $clientName, Paid \$$paymentAmount USD (= ؋$amountToCredit AFS) for account funding, processed by: $username, Remarks: $remarks";
-            $mainTransactionStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, transaction_of, reference_id, description, balance, receipt, currency, tenant_id, branch_id)
-                                                VALUES (?, 'credit', ?, 'client_fund', ?, ?, ?, ?, 'USD', ?, ?)");
+            $mainTransactionStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, transaction_of, reference_id, description, balance, receipt, currency, tenant_id, branch_id, created_by)
+                                                VALUES (?, 'credit', ?, 'client_fund', ?, ?, ?, ?, 'USD', ?, ?, ?)");
             $mainTransactionStmt->bindParam(1, $mainAccountId, PDO::PARAM_INT);
             $mainTransactionStmt->bindParam(2, $paymentAmount, PDO::PARAM_STR);
             $mainTransactionStmt->bindParam(3, $lastInsertId, PDO::PARAM_INT);
@@ -300,6 +302,7 @@ try {
             $mainTransactionStmt->bindParam(6, $receipt, PDO::PARAM_STR);
             $mainTransactionStmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
             $mainTransactionStmt->bindParam(8, $branch_id, PDO::PARAM_INT);
+            $mainTransactionStmt->bindValue(9, $_SESSION['user_id'] ?? null, PDO::PARAM_INT);
             $mainTransactionStmt->execute();
         } else {
             // Client paid AFS, so add to main account AFS balance
@@ -328,8 +331,8 @@ try {
 
             // Record main account transaction
             $mainTransactionRemarks = "Client: $clientName, Paid ؋$paymentAmount AFS for account funding, processed by: $username, Remarks: $remarks";
-            $mainTransactionStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, transaction_of, reference_id, description, balance, receipt, currency, tenant_id, branch_id)
-                                                VALUES (?, 'credit', ?, 'client_fund', ?, ?, ?, ?, 'AFS', ?, ?)");
+            $mainTransactionStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, transaction_of, reference_id, description, balance, receipt, currency, tenant_id, branch_id, created_by)
+                                                VALUES (?, 'credit', ?, 'client_fund', ?, ?, ?, ?, 'AFS', ?, ?, ?)");
             $mainTransactionStmt->bindParam(1, $mainAccountId, PDO::PARAM_INT);
             $mainTransactionStmt->bindParam(2, $paymentAmount, PDO::PARAM_STR);
             $mainTransactionStmt->bindParam(3, $lastInsertId, PDO::PARAM_INT);
@@ -338,6 +341,7 @@ try {
             $mainTransactionStmt->bindParam(6, $receipt, PDO::PARAM_STR);
             $mainTransactionStmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
             $mainTransactionStmt->bindParam(8, $branch_id, PDO::PARAM_INT);
+            $mainTransactionStmt->bindValue(9, $_SESSION['user_id'] ?? null, PDO::PARAM_INT);
             $mainTransactionStmt->execute();
         }
 

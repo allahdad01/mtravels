@@ -110,6 +110,25 @@
                             </button>
                         </div>
                         <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="form-group col-md-4">
+                                    <label for="saleCurrency"><?= __('sale_currency') ?></label>
+                                    <select class="form-control" id="saleCurrency" name="sale_currency">
+                                        <option value="USD" selected>USD</option>
+                                        <option value="AFS">AFS</option>
+                                    </select>
+                                    <small class="text-muted d-block"><?= __('sale_currency_hint') ?></small>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <label for="exchangeRate"><?= __('exchange_rate') ?></label>
+                                    <input type="number" class="form-control" id="exchangeRate" name="exchange_rate" value="1" min="0" step="0.0001">
+                                    <small class="text-muted d-block"><?= __('exchange_rate_hint') ?></small>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <label>&nbsp;</label>
+                                    <small class="text-muted d-block"><?= __('exchange_rate_note') ?></small>
+                                </div>
+                            </div>
                             <div class="services-grid-wrapper">
                                 <div class="services-grid-header">
                                     <div class="header-item header-column-1"><?= __('service_info') ?></div>

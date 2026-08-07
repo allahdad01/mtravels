@@ -28,7 +28,17 @@
         
         // AED pairs - show "1 AED = X" format
         'AED-AFS': 'Example: 1 AED = 23.99 AFS, enter 23.99',
-        'AFS-AED': 'Example: 1 AED = 23.99 AFS, enter 23.99'
+        'AFS-AED': 'Example: 1 AED = 23.99 AFS, enter 23.99',
+        
+        // SAR pairs - show "1 ANCHOR = X SAR" format
+        'USD-SAR': 'Example: 1 USD = 3.75 SAR, enter 3.75',
+        'SAR-USD': 'Example: 1 USD = 3.75 SAR, enter 3.75',
+        'EUR-SAR': 'Example: 1 EUR = 4.07 SAR, enter 4.07',
+        'SAR-EUR': 'Example: 1 EUR = 4.07 SAR, enter 4.07',
+        'AED-SAR': 'Example: 1 AED = 1.02 SAR, enter 1.02',
+        'SAR-AED': 'Example: 1 AED = 1.02 SAR, enter 1.02',
+        'AFS-SAR': 'Example: 1 AFS = 18.67 SAR, enter 18.67',
+        'SAR-AFS': 'Example: 1 AFS = 18.67 SAR, enter 18.67'
                 };
                 const key = `${targetCurrency}-${baseCurrency}`;
                 return examples[key] || 'Enter the exchange rate';
@@ -73,11 +83,13 @@
                                 let hasAFSTransactions = false;
                                 let hasEURTransactions = false;
                                 let hasDARHAMTransactions = false;
+                                let hasSARTransactions = false;
     
                                 // Store exchange rates for calculations (will be updated from transactions)
                                 let usdToAfsRate = 70; // Default AFS rate from user's data
                                 let usdToEurRate = 0.9; // Default EUR rate from user's data
                                 let usdToDarhamRate = 3.61; // Default DARHAM rate from user's data
+                                let usdToSarRate = 3.75; // Default SAR rate from user's data
     
                                 // Collect exchange rates from transactions for display
                                 let exchangeRatesDisplay = [];
@@ -96,6 +108,9 @@
                                             break;
                                         case 'DARHAM':
                                             hasDARHAMTransactions = true;
+                                            break;
+                                        case 'SAR':
+                                            hasSARTransactions = true;
                                             break;
                                     }
 
@@ -128,6 +143,13 @@
                                             // Add to display list if not already present
                                             if (!exchangeRatesDisplay.find(rate => rate.currency === 'DARHAM' && rate.value === transactionExchangeRate)) {
                                                 exchangeRatesDisplay.push({ currency: 'DARHAM', value: transactionExchangeRate });
+                                            }
+                                        } else if (transaction.currency === 'SAR') {
+                                            usdToSarRate = transactionExchangeRate;
+
+                                            // Add to display list if not already present
+                                            if (!exchangeRatesDisplay.find(rate => rate.currency === 'SAR' && rate.value === transactionExchangeRate)) {
+                                                exchangeRatesDisplay.push({ currency: 'SAR', value: transactionExchangeRate });
                                             }
                                         } else if (transaction.currency === 'USD') {
                                             usdToUsdRate = transactionExchangeRate;
@@ -194,6 +216,8 @@
                                             convertedAmount = totalAmount * rate.value;
                                         } else if (rate.currency === 'DARHAM') {
                                             convertedAmount = totalAmount * rate.value;
+                                        } else if (rate.currency === 'SAR') {
+                                            convertedAmount = totalAmount * rate.value;
                                         }
                                     } else if (totalCurrency === 'AFS') {
                                         if (rate.currency === 'USD') {
@@ -201,6 +225,8 @@
                                         } else if (rate.currency === 'EUR') {
                                             convertedAmount = (totalAmount / usdToAfsRate) * rate.value;
                                         } else if (rate.currency === 'DARHAM') {
+                                            convertedAmount = (totalAmount / usdToAfsRate) * rate.value;
+                                        } else if (rate.currency === 'SAR') {
                                             convertedAmount = (totalAmount / usdToAfsRate) * rate.value;
                                         } else if (rate.currency === 'USD') {
                                             convertedAmount = (totalAmount / usdToAfsRate) * rate.value;
@@ -212,6 +238,8 @@
                                             convertedAmount = (totalAmount / usdToEurRate) * rate.value;
                                         } else if (rate.currency === 'DARHAM') {
                                             convertedAmount = (totalAmount / usdToEurRate) * rate.value;
+                                        } else if (rate.currency === 'SAR') {
+                                            convertedAmount = (totalAmount / usdToEurRate) * rate.value;
                                         }
                                     } else if (totalCurrency === 'DARHAM') {
                                         if (rate.currency === 'USD') {
@@ -219,6 +247,8 @@
                                         } else if (rate.currency === 'AFS') {
                                             convertedAmount = (totalAmount / usdToDarhamRate) * rate.value;
                                         } else if (rate.currency === 'EUR') {
+                                            convertedAmount = (totalAmount / usdToDarhamRate) * rate.value;
+                                        } else if (rate.currency === 'SAR') {
                                             convertedAmount = (totalAmount / usdToDarhamRate) * rate.value;
                                         }
                                     }
@@ -240,6 +270,7 @@
                                 $('#afsSection').toggle(hasAFSTransactions);
                                 $('#eurSection').toggle(hasEURTransactions);
                                 $('#aedSection').toggle(hasDARHAMTransactions);
+                                $('#sarSection').toggle(hasSARTransactions);
     
                                 // Calculate totals and remaining amounts using transaction-specific exchange rates
                                 let totalPaidInBaseCurrency = 0;
@@ -264,14 +295,17 @@
                                                 if (transaction.currency === 'AFS') exchangeRateToUse = usdToAfsRate;
                                                 else if (transaction.currency === 'EUR') exchangeRateToUse = usdToEurRate;
                                                 else if (transaction.currency === 'DARHAM') exchangeRateToUse = usdToDarhamRate;
+                                                else if (transaction.currency === 'SAR') exchangeRateToUse = usdToSarRate;
                                             } else if (totalCurrency === 'AFS') {
                                                 if (transaction.currency === 'USD') exchangeRateToUse = 1 / usdToAfsRate;
                                                 else if (transaction.currency === 'EUR') exchangeRateToUse = usdToEurRate / usdToAfsRate;
                                                 else if (transaction.currency === 'DARHAM') exchangeRateToUse = usdToDarhamRate / usdToAfsRate;
+                                                else if (transaction.currency === 'SAR') exchangeRateToUse = usdToSarRate / usdToAfsRate;
                                             } else if (totalCurrency === 'EUR') {
                                                 if (transaction.currency === 'USD') exchangeRateToUse = 1 / usdToEurRate;
                                                 else if (transaction.currency === 'AFS') exchangeRateToUse = usdToAfsRate / usdToEurRate;
                                                 else if (transaction.currency === 'DARHAM') exchangeRateToUse = usdToDarhamRate / usdToEurRate;
+                                                else if (transaction.currency === 'SAR') exchangeRateToUse = usdToSarRate / usdToEurRate;
                                             }
                                         }
 
@@ -286,6 +320,9 @@
                                                 } else if (transaction.currency === 'DARHAM') {
                                                     convertedAmount = amount / exchangeRateToUse;
 
+                                                } else if (transaction.currency === 'SAR') {
+                                                    convertedAmount = amount / exchangeRateToUse;
+
                                                 }
                                             } else if (totalCurrency === 'AFS') {
                                                 if (transaction.currency === 'USD') {
@@ -297,6 +334,9 @@
                                                 } else if (transaction.currency === 'DARHAM') {
                                                     convertedAmount = amount * exchangeRateToUse;
 
+                                                } else if (transaction.currency === 'SAR') {
+                                                    convertedAmount = amount * exchangeRateToUse;
+
                                                 }
                                             } else if (totalCurrency === 'EUR') {
                                                 if (transaction.currency === 'USD') {
@@ -306,6 +346,9 @@
                                                     convertedAmount = amount * exchangeRateToUse;
 
                                                 } else if (transaction.currency === 'DARHAM') {
+                                                    convertedAmount = amount * exchangeRateToUse;
+
+                                                } else if (transaction.currency === 'SAR') {
                                                     convertedAmount = amount * exchangeRateToUse;
 
                                                 }
@@ -391,6 +434,25 @@
                                         darhamRemaining = (remainingAmount / usdToEurRate) * usdToDarhamRate;
                                     }
                                     $('#remainingAmountAED').text(`AED ${darhamRemaining.toFixed(2)}`);
+                                }
+
+                                if (hasSARTransactions) {
+                                    const sarPaid = transactions
+                                        .filter(t => t.currency === 'SAR')
+                                        .reduce((sum, t) => sum + parseFloat(t.amount), 0);
+                                    $('#paidAmountSAR').text(`SAR ${sarPaid.toFixed(2)}`);
+
+                                    let sarRemaining = remainingAmount;
+                                    if (totalCurrency === 'USD') {
+                                        sarRemaining = remainingAmount * usdToSarRate;
+                                    } else if (totalCurrency === 'AFS') {
+                                        sarRemaining = (remainingAmount / usdToAfsRate) * usdToSarRate;
+                                    } else if (totalCurrency === 'EUR') {
+                                        sarRemaining = (remainingAmount / usdToEurRate) * usdToSarRate;
+                                    } else if (totalCurrency === 'DARHAM') {
+                                        sarRemaining = (remainingAmount / usdToDarhamRate) * usdToSarRate;
+                                    }
+                                    $('#remainingAmountSAR').text(`SAR ${sarRemaining.toFixed(2)}`);
                                 }
     
                             } catch (e) {
@@ -550,3 +612,6 @@
                     }
                 });
             });
+            
+            window.transactionManager = transactionManager;
+            window.printReceipt = printReceipt;

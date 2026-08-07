@@ -384,6 +384,7 @@
                     const editCurrency = safeGetElement('#editCurrency');
                     const editBalance = safeGetElement('#editBalance');
                     const editSupplierType = safeGetElement('#editSupplierType');
+                    const editRoutePaymentToMainAccount = safeGetElement('#editRoutePaymentToMainAccount');
 
                     if (editSupplierId) editSupplierId.value = supplier.id;
                     if (editSupplierName) editSupplierName.value = supplier.name;
@@ -394,6 +395,7 @@
                     if (editCurrency) editCurrency.value = supplier.currency || '';
                     if (editBalance) editBalance.value = supplier.balance;
                     if (editSupplierType) editSupplierType.value = supplier.supplier_type || 'Internal';
+                    if (editRoutePaymentToMainAccount) editRoutePaymentToMainAccount.checked = (supplier.route_payment_to_main_account == 1);
 
                     // Show the modal
                     $('#editSupplierModal').modal('show');

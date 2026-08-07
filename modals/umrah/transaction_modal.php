@@ -75,6 +75,16 @@
                                                                                 <strong id="remainingAmountAED" class="text-danger">AED 0.00</strong>
                                                                             </div>
                                                                         </div>
+                                                                        <div id="sarSection" style="display: none;">
+                                                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                                                <span><?= __('paid_amount_sar') ?>:</span>
+                                                                                <strong id="paidAmountSAR" class="text-success">SAR 0.00</strong>
+                                                                            </div>
+                                                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                                                <span><?= __('remaining_amount_sar') ?>:</span>
+                                                                                <strong id="remainingAmountSAR" class="text-danger">SAR 0.00</strong>
+                                                                            </div>
+                                                                        </div>
                                                                     </div>
                             </div>
                         </div>
@@ -165,6 +175,7 @@
                                                 <option value="AFS">AFS</option>
                                                 <option value="EUR">EUR</option>
                                                 <option value="DARHAM">DARHAM</option>
+                                                <option value="SAR"><?= __('sar') ?></option>
                                             </select>
                                         </div>
                                     </div>
@@ -264,7 +275,8 @@ function checkAndLoadMainAccounts() {
         success: function(response) {
             if (response.success) {
                 const supplierType = response.supplier_type;
-                if (supplierType === 'Internal') {
+                const routeToMain = parseInt(response.route_payment_to_main_account || 0, 10) === 1;
+                if (supplierType === 'Internal' || routeToMain) {
                     // Load main accounts
                     loadMainAccounts();
                     $('#mainAccountField').slideDown();

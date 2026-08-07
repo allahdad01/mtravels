@@ -75,7 +75,7 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_ASSOC);
                                 <h4><?= __('expense_management') ?></h4>
                             </div>
                             <div class="header-actions">
-                                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#categoryModal">
+                                <button type="button" class="btn btn-primary" id="addCategoryBtn" data-toggle="modal" data-target="#categoryModal">
                                     <i class="feather icon-plus"></i> <?= __('add_category') ?>
                                 </button>
                                 <button type="button" class="btn btn-success" data-toggle="modal" data-target="#expenseModal">
@@ -152,33 +152,48 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_ASSOC);
                         <!-- Category Expenses -->
                         <div class="expense-categories">
                             <?php
-                            foreach ($categories as $category) {
-                                echo '<div class="category-card" data-category="' . $category['id'] . '">';
-                                echo '<div class="category-card-header">';
-                                echo '<div class="category-info">';
-                                echo '<div class="category-icon icon-default"><i class="feather icon-folder"></i></div>';
-                                echo '<h6>' . htmlspecialchars($category['name']) . '</h6>';
-                                echo '</div>';
-                                echo '<div class="category-meta">';
-                                
-                                // By default, show only current month expenses
+                            // Build parent -> children map
+                            $childrenByParent = [];
+                            foreach ($categories as $cat) {
+                                if (!empty($cat['parent_id'])) {
+                                    $childrenByParent[$cat['parent_id']][] = $cat;
+                                }
+                            }
+
+                            // Render one category card (parent or child) with its expense list
+                            function render_expense_category_card($category, $pdo, $tenantId, $branchId, $children = [], $isChild = false, $parentName = '') {
                                 $currentMonth = date('Y-m-01');
                                 $nextMonth = date('Y-m-d', strtotime($currentMonth . ' +1 month'));
-                                
+
                                 $isFilterActive = isset($_GET['startDate']) && isset($_GET['endDate']);
-                                
+
                                 if ($isFilterActive) {
                                     $startDate = $_GET['startDate'];
                                     $endDate = $_GET['endDate'];
-                                    $expenseQuery = "SELECT * FROM expenses WHERE category_id = ? AND date >= ? AND date <= ? AND tenant_id = ? AND branch_id = ? ORDER BY date DESC";
-                                    $expenseStmt = $pdo->prepare($expenseQuery);
-                                    $expenseStmt->execute([$category['id'], $startDate, $endDate, $_SESSION['tenant_id'] ?? 1, $branch_id]);
+                                    $dateOp = '<='; // filter end date is inclusive
                                 } else {
-                                    $expenseQuery = "SELECT * FROM expenses WHERE category_id = ? AND date >= ? AND date < ? AND tenant_id = ? AND branch_id = ? ORDER BY date DESC";
-                                    $expenseStmt = $pdo->prepare($expenseQuery);
-                                    $expenseStmt->execute([$category['id'], $currentMonth, $nextMonth, $_SESSION['tenant_id'] ?? 1, $branch_id]);
+                                    $startDate = $currentMonth;
+                                    $endDate = $nextMonth;
+                                    $dateOp = '<'; // current-month view: end is exclusive
                                 }
-                                
+
+                                // Expense list for this card: child cards show only their own
+                                // sub-category expenses; a parent with children shows only its
+                                // direct expenses (children are listed in their own cards).
+                                if ($isChild) {
+                                    $expenseQuery = "SELECT * FROM expenses WHERE sub_category_id = ? AND date >= ? AND date $dateOp ? AND tenant_id = ? AND branch_id = ? ORDER BY date DESC";
+                                    $expenseStmt = $pdo->prepare($expenseQuery);
+                                    $expenseStmt->execute([$category['id'], $startDate, $endDate, $tenantId, $branchId]);
+                                } elseif ($children) {
+                                    $expenseQuery = "SELECT * FROM expenses WHERE category_id = ? AND sub_category_id IS NULL AND date >= ? AND date $dateOp ? AND tenant_id = ? AND branch_id = ? ORDER BY date DESC";
+                                    $expenseStmt = $pdo->prepare($expenseQuery);
+                                    $expenseStmt->execute([$category['id'], $startDate, $endDate, $tenantId, $branchId]);
+                                } else {
+                                    $expenseQuery = "SELECT * FROM expenses WHERE category_id = ? AND date >= ? AND date $dateOp ? AND tenant_id = ? AND branch_id = ? ORDER BY date DESC";
+                                    $expenseStmt = $pdo->prepare($expenseQuery);
+                                    $expenseStmt->execute([$category['id'], $startDate, $endDate, $tenantId, $branchId]);
+                                }
+
                                 $expenses = $expenseStmt->fetchAll(PDO::FETCH_ASSOC);
                                 $count = count($expenses);
                                 $currencyTotals = [];
@@ -186,29 +201,76 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_ASSOC);
                                     $cur = $exp['currency'] ?? 'USD';
                                     $currencyTotals[$cur] = ($currencyTotals[$cur] ?? 0) + $exp['amount'];
                                 }
-                                
-                                echo '<span class="expense-count">' . $count . ' ' . __('entries') . '</span>';
+
+                                // Grand total for a parent: include all children's expenses
+                                $grandCount = $count;
+                                $grandTotals = $currencyTotals;
+                                if ($children) {
+                                    foreach ($children as $child) {
+                                        $childQuery = "SELECT amount, currency FROM expenses WHERE sub_category_id = ? AND date >= ? AND date $dateOp ? AND tenant_id = ? AND branch_id = ?";
+                                        $childStmt = $pdo->prepare($childQuery);
+                                        $childStmt->execute([$child['id'], $startDate, $endDate, $tenantId, $branchId]);
+                                        foreach ($childStmt->fetchAll(PDO::FETCH_ASSOC) as $cexp) {
+                                            $ccur = $cexp['currency'] ?? 'USD';
+                                            $grandTotals[$ccur] = ($grandTotals[$ccur] ?? 0) + $cexp['amount'];
+                                            $grandCount++;
+                                        }
+                                    }
+                                }
+
+                                $cardClass = $isChild ? 'category-card category-card--child' : 'category-card';
+                                echo '<div class="' . $cardClass . '" data-category="' . $category['id'] . '">';
+                                echo '<div class="category-card-header">';
+                                echo '<div class="category-info">';
+                                if ($isChild) {
+                                    echo '<div class="category-icon icon-sub"><i class="feather icon-corner-down-right"></i></div>';
+                                } else {
+                                    echo '<div class="category-icon icon-default"><i class="feather icon-folder"></i></div>';
+                                }
+                                echo '<h6>';
+                                if ($isChild && $parentName !== '') {
+                                    echo '<span class="sub-parent-crumb">' . htmlspecialchars($parentName) . '</span>';
+                                    echo '<i class="feather icon-chevrons-right sub-crumb-sep"></i>';
+                                }
+                                echo htmlspecialchars($category['name']);
+                                if ($isChild) {
+                                    echo ' <span class="sub-category-badge">' . __('sub_category') . '</span>';
+                                }
+                                echo '</h6>';
+                                echo '</div>';
+                                echo '<div class="category-meta">';
+
+                                if ($children) {
+                                    echo '<span class="sub-count-chip"><i class="feather icon-layers"></i> ' . count($children) . ' ' . __('sub_categories') . '</span>';
+                                }
+                                echo '<span class="expense-count">' . ($children ? $grandCount : $count) . ' ' . __('entries') . '</span>';
                                 $totalParts = [];
-                                foreach ($currencyTotals as $cur => $amt) {
+                                foreach (($children ? $grandTotals : $currencyTotals) as $cur => $amt) {
                                     $totalParts[] = number_format($amt, 2) . ' ' . htmlspecialchars($cur);
                                 }
-                                echo '<span class="category-total">' . implode(' | ', $totalParts) . '</span>';
+                                $totalClass = $children ? 'category-total category-total--grand' : 'category-total';
+                                if ($totalParts) {
+                                    $totalTitle = $children ? __('grand_total_includes_sub') : '';
+                                    echo '<span class="' . $totalClass . '"' . ($totalTitle ? ' title="' . $totalTitle . '"' : '') . '>' . implode(' | ', $totalParts) . '</span>';
+                                } else {
+                                    echo '<span class="' . $totalClass . ' category-total--zero">0.00</span>';
+                                }
                                 echo '<div class="category-card-actions">';
                                 echo '<button class="btn-print print-category" data-id="' . $category['id'] . '" title="Print Category Report"><i class="feather icon-printer"></i></button>';
-                                echo '<button class="btn-edit edit-category" data-id="' . $category['id'] . '" data-name="' . htmlspecialchars($category['name']) . '"><i class="feather icon-edit-2"></i></button>';
+                                echo '<button class="btn-edit edit-category" data-id="' . $category['id'] . '" data-name="' . htmlspecialchars($category['name']) . '" data-parent="' . ($category['parent_id'] ?? '') . '" data-has-children="' . ($children ? 1 : 0) . '"><i class="feather icon-edit-2"></i></button>';
                                 echo '<button class="btn-delete delete-category" data-id="' . $category['id'] . '"><i class="feather icon-trash-2"></i></button>';
                                 echo '</div>';
                                 echo '<i class="feather icon-chevron-down expand-icon"></i>';
                                 echo '</div>';
                                 echo '</div>';
-                                
+
                                 echo '<div class="expense-list">';
                                 if ($count > 0) {
                                     echo '<div class="table-wrap">';
                                     echo '<table class="table">';
                                     echo '<thead><tr><th>'.__('date').'</th><th>'.__('description').'</th><th>'.__('amount').'</th><th>'.__('currency').'</th><th>'.__('actions').'</th></tr></thead>';
                                     echo '<tbody>';
-                                    
+
                                     foreach ($expenses as $expense) {
                                         $createdAt = isset($expense['created_at']) ? $expense['created_at'] : $expense['date'];
                                         $isGlobal = !empty($expense['global_allocation_id']);
@@ -231,7 +293,8 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_ASSOC);
                                             echo '<span class="allocation-link">Managed from <a href="budget_allocations.php">Budget Allocation</a></span>';
                                         } else {
                                             echo '<div class="btn-group-wrap">';
-                                            echo '<button class="btn-action-edit edit-expense" data-id="' . $expense['id'] . '" data-category="' . $category['id'] . '" data-date="' . $expense['date'] . '" data-description="' . htmlspecialchars($expense['description']) . '" data-amount="' . $expense['amount'] . '" data-currency="' . ($expense['currency'] ?? 'USD') . '" data-main-account="' . ($expense['main_account_id'] ?? '') . '" title="Edit"><i class="feather icon-edit-2"></i></button>';
+                                            $expenseCategoryId = $isChild ? ($category['parent_id'] ?? $category['id']) : $category['id'];
+                                            echo '<button class="btn-action-edit edit-expense" data-id="' . $expense['id'] . '" data-category="' . $expenseCategoryId . '" data-sub-category="' . ($expense['sub_category_id'] ?? '') . '" data-date="' . $expense['date'] . '" data-description="' . htmlspecialchars($expense['description']) . '" data-amount="' . $expense['amount'] . '" data-currency="' . ($expense['currency'] ?? 'USD') . '" data-main-account="' . ($expense['main_account_id'] ?? '') . '" title="Edit"><i class="feather icon-edit-2"></i></button>';
                                             echo '<a href="expense_detail.php?id=' . $expense['id'] . '" class="btn-action-view" title="View"><i class="feather icon-eye"></i></a>';
                                             echo '<button class="btn-action-delete delete-expense" data-id="' . $expense['id'] . '" title="Delete"><i class="feather icon-trash-2"></i></button>';
                                             echo '</div>';
@@ -239,7 +302,7 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_ASSOC);
                                         echo '</td>';
                                         echo '</tr>';
                                     }
-                                    
+
                                     echo '</tbody></table>';
                                     echo '</div>';
                                 } else {
@@ -249,6 +312,24 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_ASSOC);
                                     echo '</div>';
                                 }
                                 echo '</div>';
+                                echo '</div>';
+                            }
+
+                            // Render top-level categories with their sub-categories nested underneath
+                            foreach ($categories as $category) {
+                                if (!empty($category['parent_id'])) {
+                                    continue; // rendered under its parent
+                                }
+                                $children = $childrenByParent[$category['id']] ?? [];
+                                echo '<div class="category-group">';
+                                render_expense_category_card($category, $pdo, $_SESSION['tenant_id'] ?? 1, $branch_id, $children);
+                                if ($children) {
+                                    echo '<div class="category-children">';
+                                    foreach ($children as $child) {
+                                        render_expense_category_card($child, $pdo, $_SESSION['tenant_id'] ?? 1, $branch_id, [], true, $category['name']);
+                                    }
+                                    echo '</div>';
+                                }
                                 echo '</div>';
                             }
                             ?>

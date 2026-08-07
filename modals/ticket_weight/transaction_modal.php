@@ -75,6 +75,16 @@
                                             <strong id="remainingAmountDARHAM" class="text-danger">AED 0.00</strong>
                                         </div>
                                     </div>
+                                    <div id="sarSection" style="display: none;">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span><?= __('paid_amount_sar') ?>:</span>
+                                            <strong id="paidAmountSAR" class="text-success">SAR 0.00</strong>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span><?= __('remaining_amount_sar') ?>:</span>
+                                            <strong id="remainingAmountSAR" class="text-danger">SAR 0.00</strong>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             </div>
@@ -122,6 +132,7 @@
                                                     <option value="AFS">AFS - Afghan Afghani</option>
                                                     <option value="EUR">EUR - Euro</option>
                                                     <option value="DARHAM">DARHAM - AED</option>
+                                                    <option value="SAR"><?= __('sar') ?></option>
                                                 </select>
                                             </div>
                                         </div>

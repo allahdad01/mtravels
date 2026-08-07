@@ -15,6 +15,12 @@ let activeToasts = [];
  * @param {object} options - Optional configuration overrides
  */
 function showToast(message, type = 'success', options = {}) {
+    // When embedded in the Payments Journal, use its styled toast instead.
+    if (typeof pjlToast === 'function') {
+        pjlToast(message, type === 'error' ? 'error' : 'success');
+        return;
+    }
+
     const config = { ...toastConfig, ...options };
 
     // Create the toast element
@@ -54,7 +60,12 @@ function showToast(message, type = 'success', options = {}) {
     }
 
     // Add toast to container
-    const container = document.querySelector('.toast-container');
+    let container = document.querySelector('.toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
     container.appendChild(toast);
     activeToasts.push(toast);
 

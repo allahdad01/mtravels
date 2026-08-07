@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_deposit'])) {
         $amount = InputValidator::getString($_POST['amount'] ?? '', 20);
         $currency = InputValidator::getEnum(
             $_POST['currency'] ?? '',
-            ['USD', 'EUR', 'AFS', 'DARHAM', 'PKR', 'INR'],
+            ['USD', 'EUR', 'AFS', 'DARHAM', 'SAR', 'PKR', 'INR'],
             'USD'
         );
         $notes = InputValidator::getString($_POST['notes'] ?? '', 500);
@@ -336,6 +336,7 @@ $currencyColors = [
     'EUR' => '#2980b9',
     'AFS' => '#8e44ad',
     'DARHAM' => '#d4a017',
+    'SAR' => '#1abc9c',
     'PKR' => '#d35400',
     'INR' => '#c0392b'
 ];
@@ -1633,6 +1634,7 @@ function loadCustomerBalance(customerId) {
                 'EUR': '#2980b9',
                 'AFS': '#8e44ad',
                 'DARHAM': '#d4a017',
+                'SAR': '#1abc9c',
                 'PKR': '#d35400',
                 'INR': '#c0392b'
             };
@@ -2279,7 +2281,7 @@ function editTransaction(transactionId, btn) {
                 $('#editToCurrency').val(exchange.to_currency || '');
                 $('#editToAmount').val(parseFloat(exchange.to_amount || 0).toFixed(2));
                 $('#editRate').val(parseFloat(exchange.rate || 0).toFixed(4));
-                const dividePairs = ['AFS->USD', 'AFS->EUR', 'AFS->AED', 'AED->USD', 'AED->EUR'];
+                const dividePairs = ['AFS->USD', 'AFS->EUR', 'AFS->AED', 'AED->USD', 'AED->EUR', 'AFS->SAR', 'SAR->USD', 'SAR->EUR'];
                 const fromC = exchange.from_currency || '';
                 const toC = exchange.to_currency || '';
                 const isDivide = dividePairs.includes(fromC + '->' + toC);
@@ -2304,7 +2306,7 @@ $(document).on('input', '#editRate, #editAmount', function() {
     if ($('#exchangeEditFields').is(':visible')) {
         const fromAmt = parseFloat($('#editAmount').val()) || 0;
         const rate = parseFloat($('#editRate').val()) || 0;
-        const dividePairs = ['AFS->USD', 'AFS->EUR', 'AFS->AED', 'AED->USD', 'AED->EUR'];
+        const dividePairs = ['AFS->USD', 'AFS->EUR', 'AFS->AED', 'AED->USD', 'AED->EUR', 'AFS->SAR', 'SAR->USD', 'SAR->EUR'];
         const fromC = $('#editFromCurrency').val() || '';
         const toC = $('#editToCurrency').val() || '';
         const divide = dividePairs.includes(fromC + '->' + toC);

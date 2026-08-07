@@ -75,7 +75,7 @@ function generateNotificationHtml($stmt, $status) {
             $html .= '<td width="100" class="align-middle">';
             if ($status === 'unread') {
                 // Array of transaction types that should only show read button
-                $read_only_types = ['deposit_sarafi', 'hawala_sarafi', 'withdrawal_sarafi', 'supplier_fund', 'client_fund', 'expense', 'expense_update', 'expense_delete'];
+                $read_only_types = ['deposit_sarafi', 'hawala_sarafi', 'withdrawal_sarafi', 'supplier_fund', 'client_fund', 'expense', 'expense_update', 'expense_delete', 'cash_settlement'];
                 $show_only_read = in_array($transaction_type, $read_only_types) || $receipt_value !== '';
                 
                 if (!$show_only_read) {
@@ -140,11 +140,13 @@ try {
                    WHEN n.transaction_type = 'visa' THEN va.base
                    WHEN n.transaction_type = 'supplier' THEN st.amount
                    WHEN n.transaction_type = 'umrah' THEN ub.sold_price
+                   WHEN n.transaction_type = 'cash_settlement' THEN cs.amount
                    ELSE 0
                END AS transaction_amount,
                CASE
                    WHEN n.transaction_type = 'visa' THEN va.currency
                    WHEN n.transaction_type = 'supplier' THEN s.currency
+                   WHEN n.transaction_type = 'cash_settlement' THEN cs.currency
                    ELSE NULL
                END AS transaction_currency
         FROM notifications n
@@ -152,11 +154,12 @@ try {
         LEFT JOIN umrah_bookings ub ON n.transaction_id = ub.booking_id AND n.transaction_type = 'umrah' AND ub.tenant_id = ? AND ub.branch_id = ?
         LEFT JOIN supplier_transactions st ON n.transaction_id = st.id AND n.transaction_type = 'supplier' AND st.tenant_id = ? AND st.branch_id = ?
         LEFT JOIN suppliers s ON (st.supplier_id = s.id OR va.supplier = s.id) AND s.tenant_id = ? AND s.branch_id = ?
+        LEFT JOIN cash_settlements cs ON n.transaction_id = cs.id AND n.transaction_type = 'cash_settlement' AND cs.tenant_id = ? AND cs.branch_id = ?
         WHERE n.status = ? AND DATE(n.created_at) = ? AND n.tenant_id = ? AND n.branch_id = ?
         ORDER BY n.created_at DESC";
 
     $stmt = $pdo->prepare($query);
-    $stmt->execute([$tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $status, $date, $tenant_id, $branch_id]);
+    $stmt->execute([$tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $branch_id, $status, $date, $tenant_id, $branch_id]);
     
     // Generate HTML for notifications
     $html = generateNotificationHtml($stmt, $status);

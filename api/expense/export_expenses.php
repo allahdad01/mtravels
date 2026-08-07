@@ -31,10 +31,12 @@ try {
         SELECT 
             e.*,
             ec.name as category_name,
+            esc.name as sub_category_name,
             ma.name as main_account_name
             
         FROM expenses e
         LEFT JOIN expense_categories ec ON e.category_id = ec.id
+        LEFT JOIN expense_categories esc ON e.sub_category_id = esc.id
         LEFT JOIN main_account ma ON e.main_account_id = ma.id
 
         WHERE e.date BETWEEN ? AND ?
@@ -62,6 +64,7 @@ try {
      $headers = [
          'Date',
          'Category',
+         'Sub-Category',
          'Description',
          'Amount',
          'Currency',
@@ -113,10 +116,11 @@ try {
      foreach ($expenses as $expense) {
          $sheet->setCellValue('A' . $row, $expense['date']);
          $sheet->setCellValue('B' . $row, $expense['category_name']);
-         $sheet->setCellValue('C' . $row, $expense['description']);
-         $sheet->setCellValue('D' . $row, $expense['amount']);
-         $sheet->setCellValue('E' . $row, $expense['currency']);
-         $sheet->setCellValue('F' . $row, $expense['main_account_name']);
+         $sheet->setCellValue('C' . $row, $expense['sub_category_name'] ?? '');
+         $sheet->setCellValue('D' . $row, $expense['description']);
+         $sheet->setCellValue('E' . $row, $expense['amount']);
+         $sheet->setCellValue('F' . $row, $expense['currency']);
+         $sheet->setCellValue('G' . $row, $expense['main_account_name']);
          $sheet->setCellValue('H' . $row, $expense['created_at']);
          
          // Style the data row
@@ -132,7 +136,7 @@ try {
          ]);
          
          // Format amount column
-         $sheet->getStyle('D' . $row)->getNumberFormat()->setFormatCode('#,##0.00');
+         $sheet->getStyle('E' . $row)->getNumberFormat()->setFormatCode('#,##0.00');
          
          if ($expense['currency'] === 'USD') {
              $totalUSD += $expense['amount'];
@@ -145,15 +149,15 @@ try {
      // Add total rows with styling
      $totalRow = $row + 1;
      $sheet->setCellValue('A' . $totalRow, 'Total Expenses (USD):');
-     $sheet->setCellValue('D' . $totalRow, $totalUSD);
-     $sheet->getStyle('A' . $totalRow . ':D' . $totalRow)->getFont()->setBold(true);
-     $sheet->getStyle('D' . $totalRow)->getNumberFormat()->setFormatCode('#,##0.00');
+     $sheet->setCellValue('E' . $totalRow, $totalUSD);
+     $sheet->getStyle('A' . $totalRow . ':E' . $totalRow)->getFont()->setBold(true);
+     $sheet->getStyle('E' . $totalRow)->getNumberFormat()->setFormatCode('#,##0.00');
      
      $totalRow++;
      $sheet->setCellValue('A' . $totalRow, 'Total Expenses (AFS):');
-     $sheet->setCellValue('D' . $totalRow, $totalAFN);
-     $sheet->getStyle('A' . $totalRow . ':D' . $totalRow)->getFont()->setBold(true);
-     $sheet->getStyle('D' . $totalRow)->getNumberFormat()->setFormatCode('#,##0.00');
+     $sheet->setCellValue('E' . $totalRow, $totalAFN);
+     $sheet->getStyle('A' . $totalRow . ':E' . $totalRow)->getFont()->setBold(true);
+     $sheet->getStyle('E' . $totalRow)->getNumberFormat()->setFormatCode('#,##0.00');
  
      // Auto-size columns
      foreach (range('A', 'H') as $col) {

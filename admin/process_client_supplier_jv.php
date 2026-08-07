@@ -13,6 +13,9 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 
+// Detect AJAX requests so we can respond with JSON instead of redirecting
+$isAjax = (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest') || (($_POST['ajax'] ?? '') === '1');
+
 
 
 // Check if user is logged in
@@ -31,6 +34,11 @@ require_once('../includes/db.php');
 
 // Check if it's a POST request
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    if ($isAjax) {
+        http_response_code(405);
+        echo json_encode(['success' => false, 'message' => 'Invalid request method']);
+        exit();
+    }
     $_SESSION['error'] = 'Invalid request method';
     header('Location: jv_payments.php');
     exit();
@@ -48,6 +56,11 @@ $exchangeRate = floatval($_POST['exchange_rate'] ?? 0);
 
 // Validate required fields
 if ($clientId <= 0 || $supplierId <= 0 || $amount <= 0 || empty($receipt)) {
+    if ($isAjax) {
+        http_response_code(422);
+        echo json_encode(['success' => false, 'message' => 'All required fields must be filled out']);
+        exit();
+    }
     $_SESSION['error_message'] = 'All required fields must be filled out';
     header('Location: jv_payments.php');
     exit();
@@ -277,6 +290,21 @@ try {
     // Rollback on error
     $pdo->rollBack();
     $_SESSION['error_message'] = 'Error: ' . $e->getMessage();
+    if ($isAjax) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+        exit();
+    }
+}
+
+if ($isAjax) {
+    header('Content-Type: application/json');
+    echo json_encode([
+        'success' => true,
+        'message' => 'JV payment processed successfully',
+        'jv_payment_id' => $jvPaymentId ?? null,
+    ]);
+    exit();
 }
 
 header('Location: jv_payments.php');

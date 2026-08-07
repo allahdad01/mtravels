@@ -28,7 +28,17 @@
         
         // AED pairs - show "1 AED = X" format
         'AED-AFS': 'Example: 1 AED = 23.99 AFS, enter 23.99',
-        'AFS-AED': 'Example: 1 AED = 23.99 AFS, enter 23.99'
+        'AFS-AED': 'Example: 1 AED = 23.99 AFS, enter 23.99',
+        
+        // SAR pairs - show "1 ANCHOR = X SAR" format
+        'USD-SAR': 'Example: 1 USD = 3.75 SAR, enter 3.75',
+        'SAR-USD': 'Example: 1 USD = 3.75 SAR, enter 3.75',
+        'EUR-SAR': 'Example: 1 EUR = 4.07 SAR, enter 4.07',
+        'SAR-EUR': 'Example: 1 EUR = 4.07 SAR, enter 4.07',
+        'AED-SAR': 'Example: 1 AED = 1.02 SAR, enter 1.02',
+        'SAR-AED': 'Example: 1 AED = 1.02 SAR, enter 1.02',
+        'AFS-SAR': 'Example: 1 AFS = 18.67 SAR, enter 18.67',
+        'SAR-AFS': 'Example: 1 AFS = 18.67 SAR, enter 18.67'
      };
      const key = `${baseCurrency}-${targetCurrency}`;
      return examples[key] || 'Enter the exchange rate';
@@ -183,7 +193,7 @@ function loadTransactions(weightId) {
                     });
 
                     // Track currencies present in transactions
-                    let hasCurrency = { USD: false, AFS: false, EUR: false, DARHAM: false };
+                    let hasCurrency = { USD: false, AFS: false, EUR: false, DARHAM: false, SAR: false };
 
                     // Render transactions table
                     transactions.forEach(tx => {
@@ -238,7 +248,7 @@ function loadTransactions(weightId) {
                     const remainingBase = Math.max(0, totalAmount - totalPaidBase);
 
                     // Display paid and remaining amounts for each currency
-                    ['USD','AFS','EUR','DARHAM'].forEach(cur => {
+                    ['USD','AFS','EUR','DARHAM','SAR'].forEach(cur => {
                         if (hasCurrency[cur]) {
                             const paid = transactions.filter(t => t.currency === cur)
                                                      .reduce((a,b) => a + parseFloat(b.amount), 0);
@@ -274,6 +284,7 @@ function loadTransactions(weightId) {
                     $('#afsSection').toggle(hasCurrency.AFS);
                     $('#eurSection').toggle(hasCurrency.EUR);
                     $('#darhamSection').toggle(hasCurrency.DARHAM);
+                    $('#sarSection').toggle(hasCurrency.SAR);
 
                 } else {
 
@@ -359,6 +370,7 @@ function editWeightTransaction(id, remarks, amount, transaction_date, currency, 
                                                 <option value="AFS">AFS</option>
                                                 <option value="EUR">EUR</option>
                                                 <option value="DARHAM">DARHAM</option>
+                                                <option value="SAR">SAR</option>
                                             </select>
                                             <input type="hidden" name="transaction_currency" id="editWeightCurrencyHidden">
                                         </div>
@@ -690,3 +702,54 @@ function formatDate(dateString) {
     function printReceipt(transactionId) {
         window.open(`../api/ticket_weight/print_weight_receipt.php?id=${transactionId}`, '_blank');
     }
+
+// Expose to global scope so inline onclick handlers in the rendered rows work
+// (when embedded via new Function they are not global lexical bindings).
+window.editWeightTransaction = editWeightTransaction;
+window.printReceipt = printReceipt;
+
+// Delete is defined in weight_manager.js on the native page; provide a
+// self-contained version here so it works when embedded in the journal too.
+window.deleteTransaction = function(transactionId, reference_id, amount) {
+    const performDelete = function() {
+        $.ajax({
+            url: '../api/ticket_weight/delete_weight_transaction.php',
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                transaction_id: transactionId,
+                weight_id: reference_id,
+                amount: amount
+            },
+            success: function(result) {
+                if (result && result.success) {
+                    showToast(result.message || 'Transaction deleted successfully', 'success');
+                    loadTransactions(reference_id);
+                } else {
+                    showToast(result?.message || 'Failed to delete transaction', 'error');
+                }
+            },
+            error: function() {
+                showToast('Error processing request', 'error');
+            }
+        });
+    };
+
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'Are you sure you want to delete this transaction',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes delete it',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                performDelete();
+            }
+        });
+    } else if (window.confirm('Are you sure you want to delete this transaction?')) {
+        performDelete();
+    }
+};

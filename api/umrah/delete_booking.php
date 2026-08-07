@@ -465,6 +465,7 @@ if ($booking_id !== null) {
                     'AFS' => 'afs_balance',
                     'EUR' => 'euro_balance',
                     'DARHAM' => 'darham_balance',
+                    'SAR' => 'sar_balance',
                     default => throw new PDOException("Unsupported currency type: $main_currency")
                 };
 

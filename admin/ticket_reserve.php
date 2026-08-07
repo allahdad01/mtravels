@@ -663,7 +663,7 @@ $supplier_names = array_column($suppliers, 'name', 'id');
 <script src="../js/ticket_reserve/bookings.js"></script>
 <script src="../js/ticket_reserve/data/airlines.js"></script>
 <script src="../js/ticket_reserve/airline-select.js"></script>
-<script src="../js/ticket_reserve/transaction_manager.js"></script>
+<script src="../js/ticket_reserve/transaction_manager.js<?= '?v=' . time() ?>"></script>
 <script src="../js/ticket_reserve/edit_ticket_reserve.js"></script>
 <script src="../js/ticket_reserve/invoice.js"></script>
 

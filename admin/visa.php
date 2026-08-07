@@ -1085,7 +1085,7 @@ function getStatusBadgeClass($status) {
 <script src="../js/visa/edit_visa.js"></script>
 <script src="../js/visa/invoice.js"></script>
 <script src="../js/visa/visa_refund.js"></script>
-<script src="../js/visa/transaction_manager.js"></script>
+<script src="../js/visa/transaction_manager.js<?= '?v=' . time() ?>"></script>
 <script src="../js/visa/search.js"></script>
 <script src="../js/visa/cancel_reapply.js"></script>
 <script src="../js/visa/toast.js"></script>

@@ -86,7 +86,8 @@ try {
         'USD' => 'usd_balance',
         'AFS' => 'afs_balance',
         'EUR' => 'euro_balance',
-        'AED' => 'darham_balance'
+        'AED' => 'darham_balance',
+        'SAR' => 'sar_balance'
     ];
 
     if (!isset($currencyFieldMap[$currency])) {

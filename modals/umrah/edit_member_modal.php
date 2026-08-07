@@ -83,6 +83,25 @@
                             </button>
                         </div>
                         <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="form-group col-md-4">
+                                    <label for="editSaleCurrency"><?= __('sale_currency') ?></label>
+                                    <select class="form-control" id="editSaleCurrency" name="sale_currency">
+                                        <option value="USD" selected>USD</option>
+                                        <option value="AFS">AFS</option>
+                                    </select>
+                                    <small class="text-muted d-block"><?= __('sale_currency_hint') ?></small>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <label for="editExchangeRate"><?= __('exchange_rate') ?></label>
+                                    <input type="number" class="form-control" id="editExchangeRate" name="exchange_rate" value="1" min="0" step="0.0001">
+                                    <small class="text-muted d-block"><?= __('exchange_rate_hint') ?></small>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <label>&nbsp;</label>
+                                    <small class="text-muted d-block"><?= __('exchange_rate_note') ?></small>
+                                </div>
+                            </div>
                             <div class="edit-services-grid-wrapper">
                                 <div class="edit-services-grid-header">
                                     <div class="edit-header-item edit-header-column-1"><?= __('service_info') ?></div>

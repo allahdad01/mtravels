@@ -15,6 +15,11 @@ document.addEventListener('DOMContentLoaded', function () {
         addMainAccountForm.addEventListener('submit', function (e) {
             e.preventDefault(); // Prevent form from submitting normally
 
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalHtml = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Adding...';
+
             const formData = new FormData(e.target);
 
             fetch('../api/accounts/add_main_account.php', { // PHP file to handle adding accounts
@@ -33,6 +38,10 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(error => {
 
                 showErrorToast('An unexpected error occurred while adding the account.');
+            })
+            .finally(() => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalHtml;
             });
         });
     }

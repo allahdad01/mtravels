@@ -882,7 +882,7 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
 <script src="../assets/js/pcoded.min.js"></script>
 <script src="../js/ticket_date_change/addDateChange.js"></script>
 <script src="../js/ticket_date_change/deleteDateChange.js"></script>
-<script src="../js/ticket_date_change/transaction-manager.js"></script>
+<script src="../js/ticket_date_change/transaction-manager.js<?= '?v=' . time() ?>"></script>
 <script src="../js/ticket_date_change/multiTicket.js"></script>
 
 <script>

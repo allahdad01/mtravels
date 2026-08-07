@@ -649,6 +649,7 @@ try {
                                                                     <option value="AFS"><?= __("afs") ?></option>
                                                                     <option value="EUR"><?= __("eur") ?></option>
                                                                     <option value="DARHAM"><?= __("darham") ?></option>
+                                                                    <option value="SAR"><?= __("sar") ?></option>
                                                                 </select>
                                                             </div>
                                                         </div>
@@ -741,6 +742,7 @@ try {
                                                                      <option value="AFS" <?php echo h($debtor['currency']) == 'AFS' ? 'selected' : ''; ?>><?= __('afs') ?></option>
                                                                      <option value="EUR" <?php echo h($debtor['currency']) == 'EUR' ? 'selected' : ''; ?>><?= __('eur') ?></option>
                                                                      <option value="DARHAM" <?php echo h($debtor['currency']) == 'DARHAM' ? 'selected' : ''; ?>><?= __('darham') ?></option>
+                                                                     <option value="SAR" <?php echo h($debtor['currency']) == 'SAR' ? 'selected' : ''; ?>><?= __('sar') ?></option>
                                                                  </select>
                                                              </div>
                                                          </div>

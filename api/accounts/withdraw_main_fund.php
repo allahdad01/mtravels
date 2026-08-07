@@ -65,8 +65,8 @@ try {
 
     $txnStmt = $pdo->prepare("
         INSERT INTO main_account_transactions
-            (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id, branch_id)
-        VALUES (?, 'debit', ?, ?, ?, 'withdraw_fund', ?, ?, ?, ?, ?)
+            (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id, branch_id, created_by)
+        VALUES (?, 'debit', ?, ?, ?, 'withdraw_fund', ?, ?, ?, ?, ?, ?)
     ");
     $txnStmt->bindParam(1, $accountId, PDO::PARAM_INT);
     $txnStmt->bindParam(2, $amount, PDO::PARAM_STR);
@@ -77,6 +77,7 @@ try {
     $txnStmt->bindParam(7, $receiptNumber, PDO::PARAM_STR);
     $txnStmt->bindParam(8, $tenant_id, PDO::PARAM_INT);
     $txnStmt->bindParam(9, $branch_id, PDO::PARAM_INT);
+    $txnStmt->bindValue(10, $_SESSION['user_id'] ?? null, PDO::PARAM_INT);
     if (!$txnStmt->execute()) {
         throw new Exception("Failed to log transaction");
     }

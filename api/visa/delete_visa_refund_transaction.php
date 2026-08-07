@@ -59,6 +59,12 @@ try {
             break;
         case 'DARHAM':
             $balanceColumn = 'darham_balance';
+        case 'SAR':
+            $Column = 'sar_balance';
+            break;
+            break;
+        case 'SAR':
+            $balanceColumn = 'sar_balance';
             break;            
         default:
             throw new Exception('Unsupported currency: ' . $transaction['currency']);

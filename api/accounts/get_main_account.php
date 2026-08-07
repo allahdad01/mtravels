@@ -21,7 +21,7 @@ try {
     // Prepare the SQL query
     $query = "SELECT id, name,
                      account_type, bank_account_number account_details,
-                     usd_balance, afs_balance, euro_balance, darham_balance,
+                     usd_balance, afs_balance, euro_balance, darham_balance, sar_balance,
                      status, last_updated
                FROM main_account
                WHERE id = ? AND tenant_id = ? AND branch_id = ?";

@@ -123,7 +123,7 @@ function toggleExchangeRateVisibility() {
     const norm = c => c === 'DARHAM' ? 'AED' : c;
     const normFrom = norm(paymentCurrency);
     const normTo = norm(supplierCurrency);
-    const dividePairs = ['AFS->AED', 'AFS->EUR', 'AFS->USD', 'AED->EUR', 'AED->USD', 'EUR->USD'];
+    const dividePairs = ['AFS->AED', 'AFS->EUR', 'AFS->USD', 'AED->EUR', 'AED->USD', 'EUR->USD', 'AFS->SAR', 'SAR->USD', 'SAR->EUR'];
     const isDivide = dividePairs.includes(normFrom + '->' + normTo);
     label.textContent = 'Exchange rate (' + paymentCurrency + ' → ' + supplierCurrency + ')';
     const sampleRates = {
@@ -133,6 +133,10 @@ function toggleExchangeRateVisibility() {
         'AED->EUR': 3.99, 'EUR->AED': 3.99,
         'AED->USD': 3.67, 'USD->AED': 3.67,
         'EUR->USD': 1.09, 'USD->EUR': 0.92,
+        'AFS->SAR': 18.67, 'SAR->AFS': 18.67,
+        'USD->SAR': 3.75, 'SAR->USD': 3.75,
+        'EUR->SAR': 4.07, 'SAR->EUR': 4.07,
+        'AED->SAR': 1.02, 'SAR->AED': 1.02,
     };
     const rate = sampleRates[normFrom + '->' + normTo];
     if (rate) {
@@ -150,10 +154,13 @@ function updateAmountPlaceholder() {
     if (amount) amount.placeholder = `Enter amount in ${paymentCurrency}`;
 }
 
-document.getElementById('paymentCurrency').addEventListener('change', () => {
-    toggleExchangeRateVisibility();
-    updateAmountPlaceholder();
-});
+const paymentCurrencyEl = document.getElementById('paymentCurrency');
+if (paymentCurrencyEl) {
+    paymentCurrencyEl.addEventListener('change', () => {
+        toggleExchangeRateVisibility();
+        updateAmountPlaceholder();
+    });
+}
 
 // Load main accounts for client dropdowns
 function loadMainAccountsForClients() {
@@ -380,7 +387,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- Transfer balance dynamic helper ---
-    const transferDividePairs = ['AFS->AED', 'AFS->EUR', 'AFS->USD', 'AED->EUR', 'AED->USD', 'EUR->USD'];
+    const transferDividePairs = ['AFS->AED', 'AFS->EUR', 'AFS->USD', 'AED->EUR', 'AED->USD', 'EUR->USD', 'AFS->SAR', 'SAR->USD', 'SAR->EUR'];
     const transferSampleRates = {
         'AFS->AED': 19.75, 'AED->AFS': 19.75,
         'AFS->EUR': 78.8, 'EUR->AFS': 78.8,
@@ -388,6 +395,10 @@ document.addEventListener('DOMContentLoaded', function() {
         'AED->EUR': 3.99, 'EUR->AED': 3.99,
         'AED->USD': 3.67, 'USD->AED': 3.67,
         'EUR->USD': 1.09, 'USD->EUR': 0.92,
+        'AFS->SAR': 18.67, 'SAR->AFS': 18.67,
+        'USD->SAR': 3.75, 'SAR->USD': 3.75,
+        'EUR->SAR': 4.07, 'SAR->EUR': 4.07,
+        'AED->SAR': 1.02, 'SAR->AED': 1.02,
     };
     function updateTransferHelper() {
         const fromCur = document.getElementById('fromCurrency').value;
@@ -423,11 +434,13 @@ document.addEventListener('DOMContentLoaded', function() {
             preview.style.display = 'none';
         }
     }
-    document.getElementById('fromCurrency').addEventListener('change', updateTransferHelper);
-    document.getElementById('toCurrency').addEventListener('change', updateTransferHelper);
-    document.getElementById('amount').addEventListener('input', updateTransferHelper);
-    document.getElementById('exchangeRate').addEventListener('input', updateTransferHelper);
-    $('#transferModal').on('shown.bs.modal', updateTransferHelper);
+    if (document.getElementById('fromCurrency')) {
+        document.getElementById('fromCurrency').addEventListener('change', updateTransferHelper);
+        document.getElementById('toCurrency').addEventListener('change', updateTransferHelper);
+        document.getElementById('amount').addEventListener('input', updateTransferHelper);
+        document.getElementById('exchangeRate').addEventListener('input', updateTransferHelper);
+        $('#transferModal').on('shown.bs.modal', updateTransferHelper);
+    }
 
     // Fund client accounts
     document.addEventListener('DOMContentLoaded', () => {

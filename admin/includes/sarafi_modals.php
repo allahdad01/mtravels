@@ -156,6 +156,7 @@ $main_accounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         <option value="EUR"><?= __('eur') ?></option>
                                         <option value="AFS"><?= __('afs') ?></option>
                                         <option value="DARHAM"><?= __('darham') ?></option>
+                                        <option value="SAR"><?= __('sar') ?></option>
                                     </select>
                                 </div>
                             </div>
@@ -246,6 +247,7 @@ $main_accounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         <option value="EUR"><?= __('eur') ?></option>
                                         <option value="AFS"><?= __('afs') ?></option>
                                         <option value="DARHAM"><?= __('darham') ?></option>
+                                        <option value="SAR"><?= __('sar') ?></option>
                                     </select>
                                 </div>
                             </div>
@@ -336,6 +338,7 @@ $main_accounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         <option value="EUR"><?= __('eur') ?></option>
                                         <option value="AFS"><?= __('afs') ?></option>
                                         <option value="DARHAM"><?= __('darham') ?></option>
+                                        <option value="SAR"><?= __('sar') ?></option>
                                     </select>
                                 </div>
                             </div>
@@ -451,6 +454,7 @@ $main_accounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         <option value="EUR"><?= __('eur') ?></option>
                                         <option value="AFS"><?= __('afs') ?></option>
                                         <option value="DARHAM"><?= __('darham') ?></option>
+                                        <option value="SAR"><?= __('sar') ?></option>
                                     </select>
                                 </div>
                                 <div class="form-group mb-0">
@@ -482,6 +486,7 @@ $main_accounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         <option value="EUR"><?= __('eur') ?></option>
                                         <option value="AFS"><?= __('afs') ?></option>
                                         <option value="DARHAM"><?= __('darham') ?></option>
+                                        <option value="SAR"><?= __('sar') ?></option>
                                     </select>
                                 </div>
                                 <div class="form-group mb-0">
@@ -546,7 +551,7 @@ function loadCustomerBalance(customerId) {
 
 // Exchange auto-calculate with multiply/divide detection
 function exchangeFormula(from, to) {
-    const divide = ['AFS->USD', 'AFS->EUR', 'AFS->AED', 'AED->USD', 'AED->EUR'];
+    const divide = ['AFS->USD', 'AFS->EUR', 'AFS->AED', 'AED->USD', 'AED->EUR', 'AFS->SAR', 'SAR->USD', 'SAR->EUR'];
     return divide.includes(from + '->' + to) ? 'divide' : 'multiply';
 }
 function updateExchangeFormulaBadge() {
@@ -571,12 +576,16 @@ const sampleRates = {
     'EUR->AFS': 78.8, 'AFS->EUR': 78.8,
     'EUR->AED': 3.99, 'AED->EUR': 3.99,
     'AED->AFS': 19.75, 'AFS->AED': 19.75,
+    'USD->SAR': 3.75, 'SAR->USD': 3.75,
+    'EUR->SAR': 4.07, 'SAR->EUR': 4.07,
+    'AED->SAR': 1.02, 'SAR->AED': 1.02,
+    'AFS->SAR': 18.67, 'SAR->AFS': 18.67,
 };
 function updateExchangeRateHelp() {
     const fromCur = $('#exchangeFromCurrency').val();
     const toCur = $('#exchangeToCurrency').val();
     if (!fromCur || !toCur) { $('#exchangeRateHelp').text(''); return; }
-    const dividePairs = ['AFS->USD', 'AFS->EUR', 'AFS->AED', 'AED->USD', 'AED->EUR'];
+    const dividePairs = ['AFS->USD', 'AFS->EUR', 'AFS->AED', 'AED->USD', 'AED->EUR', 'AFS->SAR', 'SAR->USD', 'SAR->EUR'];
     const isDivide = dividePairs.includes(fromCur + '->' + toCur);
     const rate = sampleRates[fromCur + '->' + toCur];
     if (!rate) { $('#exchangeRateHelp').text(''); return; }

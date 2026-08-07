@@ -79,6 +79,9 @@ try {
         case 'DARHAM': // if you keep this naming
             $balanceField = 'darham_balance';
             break;
+        case 'SAR':
+            $balanceField = 'sar_balance';
+            break;
         default:
             throw new PDOException("Unsupported currency: $currency");
     }
@@ -104,8 +107,8 @@ try {
     // Insert main account transaction
     $mainTransaction = $pdo->prepare("
         INSERT INTO main_account_transactions
-        (main_account_id, type, amount, currency, exchange_rate, description, transaction_of, reference_id, balance, created_at, tenant_id, branch_id, receipt)
-        VALUES (?, 'credit', ?, ?, ?, ?, 'weight', ?, ?, ?, ?, ?, ?)
+        (main_account_id, type, amount, currency, exchange_rate, description, transaction_of, reference_id, balance, created_at, tenant_id, branch_id, created_by, receipt)
+        VALUES (?, 'credit', ?, ?, ?, ?, 'weight', ?, ?, ?, ?, ?, ?, ?)
     ");
     $mainTransaction->bindParam(1, $weight['paid_to'], PDO::PARAM_INT);
     $mainTransaction->bindParam(2, $amount, PDO::PARAM_STR);
@@ -118,6 +121,7 @@ try {
     $mainTransaction->bindParam(9, $tenant_id, PDO::PARAM_INT);
     $mainTransaction->bindParam(10, $branch_id, PDO::PARAM_INT);
     $mainTransaction->bindParam(11, $receipt_number, PDO::PARAM_STR);
+    $mainTransaction->bindValue(12, $_SESSION['user_id'] ?? null, PDO::PARAM_INT);
     if (!$mainTransaction->execute()) {
         throw new PDOException('Failed to save transaction');
     }

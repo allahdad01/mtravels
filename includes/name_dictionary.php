@@ -111,6 +111,7 @@ return [
     'omeed'         => 'امید',
     'kamal'         => 'کمال',
     'kamran'        => 'کامران',
+    'kamair'        => 'کام ایر',
     'farid'         => 'فرید',
     'feroz'         => 'فیروز',
     'fairoz'        => 'فیروز',

@@ -11,6 +11,15 @@ $branch_id = $_SESSION['branch_id'];
 
 require_once "../includes/db.php";
 
+$is_ajax = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+function salary_payment_finish_ajax($is_ajax, $success, $message) {
+    if ($is_ajax) {
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode(['success' => (bool)$success, 'message' => $message]);
+        exit;
+    }
+}
+
 $user_id = $main_account_id = $amount = $currency = $payment_type = $description = $payment_for_month = "";
 $user_id_err = $main_account_id_err = $amount_err = $payment_for_month_err = "";
 
@@ -61,8 +70,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $payment_id = $pdo->lastInsertId();
 
                     $running_balance = $starting_balance - ($amount * ($i + 1));
-                    $trx = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id,type,amount,balance,currency,description,transaction_of,reference_id,receipt,tenant_id,branch_id) VALUES (?,'debit',?,?,?,?,'salary_payment',?,?,?,?)");
-                    $trx->execute([$main_account_id,$amount,$running_balance,$currency,$description,$payment_id,$this_receipt,$tenant_id,$branch_id]);
+                    $trx = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id,type,amount,balance,currency,description,transaction_of,reference_id,receipt,tenant_id,branch_id,created_by) VALUES (?,'debit',?,?,?,?,'salary_payment',?,?,?,?,?)");
+                    $trx->execute([$main_account_id,$amount,$running_balance,$currency,$description,$payment_id,$this_receipt,$tenant_id,$branch_id,$_SESSION['user_id'] ?? null]);
 
                     if ($payment_type == 'regular') {
                         $adv = $pdo->prepare("SELECT id,amount,amount_paid FROM salary_advances WHERE user_id=? AND currency=? AND repayment_status!='paid' AND tenant_id=? AND branch_id=?");
@@ -93,6 +102,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     sendSalaryPaymentNotification($emp['email'],$emp['name'],$payment_id,$amount,$currency,$payment_date,date('Y-m',strtotime($payment_for_month)),$payment_type,$description,$receipt);
                 }
 
+                salary_payment_finish_ajax($is_ajax, true, 'Salary payment recorded successfully.');
                 header("location: salary_payment.php?success=1");
                 exit();
             } else {
@@ -103,6 +113,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $error_message = "Error: " . $e->getMessage();
         }
     }
+}
+
+if ($is_ajax && (isset($error_message) || isset($user_id_err) || isset($main_account_id_err) || isset($amount_err) || isset($payment_for_month_err))) {
+    $first_err = '';
+    foreach ([$user_id_err, $main_account_id_err, $amount_err, $payment_for_month_err, $error_message] as $e) {
+        if (!empty($e)) { $first_err = $e; break; }
+    }
+    salary_payment_finish_ajax($is_ajax, false, $first_err ?: 'Please fix the highlighted fields.');
 }
 
 // Fetch active employees with salary records
@@ -424,10 +442,10 @@ textarea.field-control{height:auto;padding:10px 12px;resize:vertical}
                             </div>
                             <div class="field-group">
                                 <label class="field-label">Currency</label>
-                                <select class="field-control" id="currency" name="currency">
-                                    <option value="USD" <?= $currency == 'USD' ? 'selected' : '' ?>>USD — Dollar</option>
-                                    <option value="AFS" <?= $currency == 'AFS' ? 'selected' : '' ?>>AFS — Afghani</option>
-                                </select>
+                                <input type="hidden" id="currency" name="currency" value="<?= $currency ?>">
+                                <input type="text" class="field-control" id="currencyDisplay" readonly
+                                       style="background:var(--muted);color:var(--text-sub)"
+                                       placeholder="Set from employee's salary record">
                             </div>
                         </div>
 
@@ -777,15 +795,34 @@ function updateTotalHint() {
     document.getElementById(id).addEventListener('change', updateTotalHint);
 });
 
-// ── Auto description on payment type change ───────
+// ── Auto description + submit state on payment type change ─
 document.getElementById('payment_type').addEventListener('change', function() {
     const map = { regular: 'Regular Salary Payment', bonus: 'Bonus Payment', advance: 'Salary Advance' };
     document.getElementById('description').value = map[this.value] || '';
+    updateSubmitState();
 });
 
 // ── Employee select → fetch salary details ────────
+let alreadyPaidMonthly = false;
+
+function updateSubmitState() {
+    document.getElementById('submitBtn').disabled =
+        alreadyPaidMonthly && document.getElementById('payment_type').value === 'regular';
+}
+
 document.getElementById('user_id').addEventListener('change', fetchSalaryDetails);
 document.getElementById('payment_for_month').addEventListener('change', fetchSalaryDetails);
+
+// Sync currency display on load (e.g. after validation error re-render)
+document.addEventListener('DOMContentLoaded', () => {
+    const sel  = document.getElementById('user_id');
+    const opt  = sel.options[sel.selectedIndex];
+    if (opt && opt.value) {
+        document.getElementById('currencyDisplay').value     = opt.dataset.currency || '';
+        document.getElementById('currency').value            = opt.dataset.currency || '';
+        fetchSalaryDetails();
+    }
+});
 
 function fetchSalaryDetails() {
     const sel      = document.getElementById('user_id');
@@ -796,6 +833,8 @@ function fetchSalaryDetails() {
     const month    = document.getElementById('payment_for_month').value;
 
     // Hide breakdown
+    alreadyPaidMonthly = false;
+    updateSubmitState();
     document.getElementById('breakdownPanel').style.display = 'none';
     document.getElementById('absenceWarning').style.display = 'none';
     document.getElementById('alreadyPaidBanner').classList.remove('visible');
@@ -803,6 +842,7 @@ function fetchSalaryDetails() {
     if (!userId || !baseSal) return;
 
     document.getElementById('currency').value = currency;
+    document.getElementById('currencyDisplay').value = currency;
 
     $.ajax({
         url: 'get_salary_details.php',
@@ -822,10 +862,11 @@ function fetchSalaryDetails() {
                 const banner = document.getElementById('alreadyPaidBanner');
                 banner.innerHTML = `⚠️ Salary already processed for this month — <strong>${data.existingPayment.amount} ${currency}</strong> on ${data.existingPayment.payment_date}.`;
                 banner.classList.add('visible');
-                document.getElementById('submitBtn').disabled = (document.getElementById('payment_type').value === 'regular');
+                alreadyPaidMonthly = true;
             } else {
-                document.getElementById('submitBtn').disabled = false;
+                alreadyPaidMonthly = false;
             }
+            updateSubmitState();
 
             // Set amount
             document.getElementById('amount').value = net.toFixed(2);

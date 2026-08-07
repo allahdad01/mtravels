@@ -1135,6 +1135,7 @@ CREATE TABLE `expenses` (
   `id` int(11) NOT NULL,
   `tenant_id` int(11) NOT NULL,
   `category_id` int(11) NOT NULL,
+  `sub_category_id` int(11) DEFAULT NULL,
   `main_account_id` int(11) NOT NULL,
   `date` date NOT NULL,
   `description` mediumtext NOT NULL,
@@ -1157,6 +1158,7 @@ CREATE TABLE `expense_categories` (
   `id` int(11) NOT NULL,
   `tenant_id` int(11) NOT NULL,
   `name` varchar(100) NOT NULL,
+  `parent_id` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `branch_id` bigint(20) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -1219,7 +1221,7 @@ CREATE TABLE `finance_tracker` (
   `date` date NOT NULL,
   `type` enum('income','expense') NOT NULL,
   `amount` decimal(12,2) NOT NULL,
-  `currency` enum('usd','afs') NOT NULL DEFAULT 'usd',
+  `currency` enum('USD','AFS','EUR','DARHAM','SAR') NOT NULL DEFAULT 'USD',
   `description` text DEFAULT NULL,
   `branch_id` int(11) NOT NULL,
   `tenant_id` int(11) NOT NULL,
@@ -1297,7 +1299,7 @@ CREATE TABLE `global_budget_allocations` (
   `main_account_id` int(11) NOT NULL,
   `allocated_amount` decimal(15,2) NOT NULL,
   `remaining_amount` decimal(15,2) NOT NULL,
-  `currency` enum('USD','AFS','EUR','DARHAM') NOT NULL,
+  `currency` enum('USD','AFS','EUR','DARHAM','SAR') NOT NULL,
   `allocation_date` date NOT NULL,
   `description` text DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
@@ -1575,6 +1577,7 @@ CREATE TABLE `main_account` (
   `afs_balance` decimal(15,3) NOT NULL DEFAULT 0.000,
   `euro_balance` decimal(10,3) NOT NULL DEFAULT 0.000,
   `darham_balance` decimal(10,3) NOT NULL DEFAULT 0.000,
+  `sar_balance` decimal(10,3) NOT NULL DEFAULT 0.000,
   `last_updated` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `status` enum('active','inactive') NOT NULL DEFAULT 'active',
   `branch_id` bigint(20) DEFAULT NULL
@@ -1593,14 +1596,39 @@ CREATE TABLE `main_account_transactions` (
   `type` enum('credit','debit') NOT NULL,
   `amount` decimal(15,3) NOT NULL,
   `balance` decimal(15,3) NOT NULL,
-  `currency` enum('USD','AFS','EUR','DARHAM') NOT NULL,
+  `currency` enum('USD','AFS','EUR','DARHAM','SAR') NOT NULL,
   `description` mediumtext NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `transaction_of` enum('ticket_sale','visa_sale','ticket_refund','date_change','fund','umrah','hotel','hotel_refund','expense','debtor','supplier_fund','client_fund','budget_allocation','ticket_reserve','transfer','additional_payment','creditor','jv_payment','salary_payment','visa_refund','deposit_sarafi','hawala_sarafi','withdrawal_sarafi','umrah_refund','weight','supplier_fund_withdrawal','umrah_transaction','global_budget_allocation','withdraw_fund') NOT NULL,
   `reference_id` int(11) DEFAULT NULL,
   `receipt` varchar(100) DEFAULT NULL,
   `exchange_rate` decimal(10,5) DEFAULT NULL,
-  `branch_id` bigint(20) DEFAULT NULL
+  `branch_id` bigint(20) DEFAULT NULL,
+  `created_by` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `cash_settlements`
+--
+
+CREATE TABLE `cash_settlements` (
+  `id` int(10) unsigned NOT NULL,
+  `tenant_id` int(11) NOT NULL,
+  `branch_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL COMMENT 'finance user being settled',
+  `currency` enum('USD','AFS','EUR','DARHAM','SAR') NOT NULL DEFAULT 'USD',
+  `amount` decimal(14,2) NOT NULL,
+  `status` enum('pending','confirmed','rejected') NOT NULL DEFAULT 'pending',
+  `request_note` text DEFAULT NULL,
+  `requested_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `confirmed_by` int(11) DEFAULT NULL,
+  `confirmed_at` datetime DEFAULT NULL,
+  `rejected_by` int(11) DEFAULT NULL,
+  `rejected_at` datetime DEFAULT NULL,
+  `reject_reason` varchar(500) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -1672,7 +1700,7 @@ CREATE TABLE `notifications` (
   `id` int(11) NOT NULL,
   `tenant_id` int(11) NOT NULL,
   `transaction_id` int(11) DEFAULT NULL,
-  `transaction_type` enum('visa','supplier','ticket_date_change','ticket_refund','umrah','hotel','hotel_refund','ticket_sale','ticket_reserve','additional_payment','debtor','creditor','deposit_sarafi','hawala_sarafi','withdrawal_sarafi','supplier_fund','client_fund','weight','expense','expense_update','expense_delete','supplier_bonus','umrah_refund','visa_refund','supplier_fund_withdrawal','mtravels','withdraw_fund') NOT NULL,
+  `transaction_type` enum('visa','supplier','ticket_date_change','ticket_refund','umrah','hotel','hotel_refund','ticket_sale','ticket_reserve','additional_payment','debtor','creditor','deposit_sarafi','hawala_sarafi','withdrawal_sarafi','supplier_fund','client_fund','weight','expense','expense_update','expense_delete','supplier_bonus','umrah_refund','visa_refund','supplier_fund_withdrawal','mtravels','withdraw_fund','cash_settlement') NOT NULL,
   `message` mediumtext NOT NULL,
   `recipient_role` enum('Admin','Sales','Finance') NOT NULL,
   `status` enum('Unread','Read') DEFAULT 'Unread',
@@ -2292,7 +2320,8 @@ CREATE TABLE `suppliers` (
   `phone` varchar(15) NOT NULL,
   `email` varchar(255) DEFAULT NULL,
   `address` mediumtext DEFAULT NULL,
-  `currency` enum('USD','AFS') NOT NULL,
+  `currency` varchar(10) NOT NULL DEFAULT 'USD',
+  `route_payment_to_main_account` tinyint(1) NOT NULL DEFAULT 0,
   `balance` decimal(10,3) NOT NULL DEFAULT 0.000,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
@@ -2892,6 +2921,7 @@ CREATE TABLE `umrah_bookings` (
   `paid` decimal(10,3) DEFAULT NULL,
   `due` decimal(10,3) DEFAULT NULL,
   `currency` enum('USD','AFS') NOT NULL,
+  `exchange_rate` decimal(12,4) NOT NULL DEFAULT 1.0000,
   `created_by` int(11) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
@@ -2922,7 +2952,7 @@ CREATE TABLE `umrah_booking_services` (
   `base_price` decimal(10,3) NOT NULL DEFAULT 0.000,
   `sold_price` decimal(10,3) NOT NULL DEFAULT 0.000,
   `profit` decimal(10,3) NOT NULL DEFAULT 0.000,
-  `currency` enum('USD','AFS') NOT NULL,
+  `currency` varchar(10) NOT NULL DEFAULT 'USD',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `branch_id` bigint(20) DEFAULT NULL
@@ -3940,14 +3970,16 @@ ALTER TABLE `exchange_transactions`
 ALTER TABLE `expenses`
   ADD PRIMARY KEY (`id`),
   ADD KEY `category_id` (`category_id`),
-  ADD KEY `tenant_id` (`tenant_id`);
+  ADD KEY `tenant_id` (`tenant_id`),
+  ADD KEY `idx_expenses_sub_category` (`sub_category_id`,`category_id`);
 
 --
 -- Indexes for table `expense_categories`
 --
 ALTER TABLE `expense_categories`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `tenant_id` (`tenant_id`);
+  ADD KEY `tenant_id` (`tenant_id`),
+  ADD KEY `idx_expense_categories_parent` (`parent_id`,`tenant_id`,`branch_id`);
 
 --
 -- Indexes for table `expense_report_config`
@@ -4105,7 +4137,8 @@ ALTER TABLE `main_account`
 ALTER TABLE `main_account_transactions`
   ADD PRIMARY KEY (`id`),
   ADD KEY `client_id` (`main_account_id`),
-  ADD KEY `tenant_id` (`tenant_id`);
+  ADD KEY `tenant_id` (`tenant_id`),
+  ADD KEY `idx_mat_created_by` (`created_by`, `created_at`);
 
 --
 -- Indexes for table `maktobs`
@@ -6168,6 +6201,14 @@ ALTER TABLE `main_account`
 --
 ALTER TABLE `main_account_transactions`
   ADD CONSTRAINT `fk_main_account_transactions_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE;
+
+--
+-- Indexes for table `cash_settlements`
+--
+ALTER TABLE `cash_settlements`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_cs_branch_user` (`branch_id`, `user_id`, `currency`, `status`),
+  ADD KEY `idx_cs_tenant` (`tenant_id`);
 
 --
 -- Constraints for table `maktobs`

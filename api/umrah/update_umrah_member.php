@@ -159,6 +159,11 @@ $g_name = isset($_POST['g_name']) ? DbSecurity::validateInput($_POST['g_name'], 
 $father_name = isset($_POST['father_name']) ? DbSecurity::validateInput($_POST['father_name'], 'string', ['maxlength' => 255]) : null;
 $discount = isset($_POST['discount']) ? DbSecurity::validateInput($_POST['discount'], 'float', ['min' => 0]) : null;
 
+$sale_currency = isset($_POST['sale_currency']) ? DbSecurity::validateInput($_POST['sale_currency'], 'string') : 'USD';
+if (!in_array(strtoupper($sale_currency), ['USD', 'AFS'])) { $sale_currency = 'USD'; }
+$exchange_rate = isset($_POST['exchange_rate']) ? (float)$_POST['exchange_rate'] : 1.0;
+if ($exchange_rate <= 0) { $exchange_rate = 1.0; }
+
 // Validate passport expiry (must be at least 6 months from today)
 if (!empty($passport_expiry)) {
     $today = new DateTime();
@@ -183,7 +188,7 @@ try {
     
     // First, get the current booking data to calculate balance adjustments
     $stmtCurrentData = $pdo->prepare("
-        SELECT sold_to, family_id, paid_to, entry_date, name, dob, passport_number, id_type, flight_date, return_date, duration, room_type, price, sold_price, profit, received_bank_payment, bank_receipt_number, paid, due, discount, status
+        SELECT sold_to, family_id, paid_to, entry_date, name, dob, passport_number, id_type, flight_date, return_date, duration, room_type, price, sold_price, profit, received_bank_payment, bank_receipt_number, paid, due, discount, status, currency, exchange_rate
         FROM umrah_bookings
         WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?
     ");
@@ -222,13 +227,30 @@ try {
         $oldClientIsRegular = ($oldClientData && $oldClientData['client_type'] === 'regular');
     }
     
-    // Calculate totals from new suppliers
-    $totalBasePrice = array_sum(array_column($suppliers, 'base_price'));
-    $totalSoldPrice = array_sum(array_column($suppliers, 'sold_price'));
-    $totalProfit = array_sum(array_column($suppliers, 'profit'));
+    // Calculate totals from new suppliers (converted to sale currency)
+    $totalBasePrice = 0;
+    $totalSoldPrice = 0;
+    $totalProfit = 0;
+    foreach ($suppliers as &$svc) {
+        $svcCurrency = strtoupper(trim((string)($svc['currency'] ?? '')));
+        $svc['base_in_sale'] = (empty($svcCurrency) || $svcCurrency === strtoupper($sale_currency)) ? (float)$svc['base_price'] : ((float)$svc['base_price'] / $exchange_rate);
+        $svcSold = (float)$svc['sold_price'];
+        $svc['profit'] = $svcSold - $svc['base_in_sale'];
+        $totalBasePrice += $svc['base_in_sale'];
+        $totalSoldPrice += $svcSold;
+        $totalProfit += $svc['profit'];
+    }
+    unset($svc);
 
     // Calculate totals from current services (not from main booking record)
-    $currentTotalBasePrice = array_sum(array_column($currentServices, 'base_price'));
+    $currentCurrency = strtoupper(trim((string)($currentData['currency'] ?? 'USD')));
+    $currentRate = (float)($currentData['exchange_rate'] ?? 1);
+    if ($currentRate <= 0) { $currentRate = 1; }
+    $currentTotalBasePrice = 0;
+    foreach ($currentServices as $cs) {
+        $csCur = strtoupper(trim((string)($cs['currency'] ?? '')));
+        $currentTotalBasePrice += (empty($csCur) || $csCur === $currentCurrency) ? (float)$cs['base_price'] : ((float)$cs['base_price'] / $currentRate);
+    }
     $currentTotalSoldPrice = array_sum(array_column($currentServices, 'sold_price'));
     
     // Calculate proper adjustments
@@ -251,6 +273,7 @@ try {
             duration = ?,
             room_type = ?,
             currency = ?,
+            exchange_rate = ?,
             price = ?,
             sold_price = ?,
             profit = ?,
@@ -278,7 +301,8 @@ try {
         $return_date,
         $duration,
         $room_type,
-        ($suppliers[0]['currency'] ?? 'USD'), // Use first supplier's currency for main record
+        $sale_currency,
+        $exchange_rate,
         $totalBasePrice,
         $totalSoldPrice,
         $totalProfit,
@@ -517,12 +541,12 @@ try {
 
     // Handle client balance updates - SAME AS SINGLE SUPPLIER VERSION (only if status is active)
     if ($isActiveStatus && ($soldTo != $currentData['sold_to'] || $clientPriceAdjustment != 0)) {
-        $clientCurrency = ($suppliers[0]['currency'] ?? 'USD');
+        $clientCurrency = $sale_currency;
 
         if ($soldTo != $currentData['sold_to']) {
             // Client changed - handle old and new client
             if ($oldClientIsRegular) {
-                $oldClientCurrency = (!empty($currentServices) ? ($currentServices[0]['currency'] ?? 'USD') : 'USD');
+                $oldClientCurrency = $currentCurrency;
 
                 if ($oldClientCurrency == 'USD') {
                     $updateOldClientStmt = $pdo->prepare("UPDATE clients SET usd_balance = usd_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");

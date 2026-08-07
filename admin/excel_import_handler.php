@@ -1078,9 +1078,9 @@ if (empty(array_filter($data))) continue;
         $insertStmt = $this->pdo->prepare("
             INSERT INTO main_account (
                 tenant_id, branch_id, name, account_type, usd_balance, afs_balance,
-                euro_balance, darham_balance, last_updated, status
+                euro_balance, darham_balance, sar_balance, last_updated, status
             ) VALUES (
-                ?, ?, ?, 'internal', 0, 0, 0, 0, NOW(), 'active'
+                ?, ?, ?, 'internal', 0, 0, 0, 0, 0, NOW(), 'active'
             )
         ");
         $insertStmt->execute([$this->tenantId, $this->branchId, $name]);

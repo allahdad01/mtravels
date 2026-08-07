@@ -53,7 +53,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['family_id'])) {
                  WHERE ubs.booking_id = ub.booking_id AND ubs.tenant_id = ub.tenant_id
                  AND ubs.branch_id = ub.branch_id
                  AND (ubs.service_type = 'all' OR FIND_IN_SET('visa', REPLACE(ubs.service_type, '+', ',')) > 0)
-                 LIMIT 1) as supplier_type
+                 LIMIT 1) as supplier_type,
+                (SELECT s.route_payment_to_main_account FROM umrah_booking_services ubs
+                 JOIN suppliers s ON ubs.supplier_id = s.id
+                 WHERE ubs.booking_id = ub.booking_id AND ubs.tenant_id = ub.tenant_id
+                 AND ubs.branch_id = ub.branch_id
+                 AND (ubs.service_type = 'all' OR FIND_IN_SET('visa', REPLACE(ubs.service_type, '+', ',')) > 0)
+                 LIMIT 1) as route_payment_to_main_account
             FROM umrah_bookings ub
             WHERE ub.family_id = ? AND ub.tenant_id = ? AND ub.branch_id = ?
             ORDER BY ub.name
@@ -76,6 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['family_id'])) {
                 'due' => number_format($member['due'] ?? 0, 2),
                 'currency' => $member['currency'] ?? 'USD',
                 'supplier_type' => $member['supplier_type'] ?? '',
+                'route_payment_to_main_account' => (int)($member['route_payment_to_main_account'] ?? 0),
                 'sold_to' => $member['sold_to'] ?? ''
             ];
         }

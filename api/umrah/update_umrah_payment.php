@@ -176,10 +176,24 @@ $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_PO
 
         // Update the booking's paid amount if needed (for balance adjustments)
         $amountDifference = $newAmount - $originalAmount;
+        $isMainAccountTxn = (strtolower($transactionTo) === 'internal account' || empty($transactionTo));
+        if (!$isMainAccountTxn) {
+            // Bank payments for Nusuk-flagged suppliers are credited to the main account
+            $routeLookupStmt = $pdo->prepare("SELECT s.route_payment_to_main_account FROM umrah_booking_services ubs JOIN suppliers s ON ubs.supplier_id = s.id WHERE ubs.booking_id = ? AND (ubs.service_type = 'all' OR FIND_IN_SET('visa', REPLACE(ubs.service_type, '+', ',')) > 0) AND ubs.tenant_id = ? AND ubs.branch_id = ? LIMIT 1");
+            $routeLookupStmt->bindParam(1, $umrahId, PDO::PARAM_INT);
+            $routeLookupStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+            $routeLookupStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+            $routeLookupStmt->execute();
+            $routeLookup = $routeLookupStmt->fetch(PDO::FETCH_ASSOC);
+            if ($routeLookup && (int)$routeLookup['route_payment_to_main_account'] === 1) {
+                $isMainAccountTxn = true;
+            }
+        }
+
         if ($amountDifference != 0) {
 
             // Check if transaction is to internal account or bank/supplier
-            if (strtolower($transactionTo) === 'internal account' || empty($transactionTo)) {
+            if ($isMainAccountTxn) {
                 // Handle internal account transaction
                 $mainTxStmt = $pdo->prepare("SELECT id, amount, type, currency, main_account_id, balance FROM main_account_transactions
                                              WHERE reference_id = ? AND transaction_of = 'umrah_transaction' AND tenant_id = ? AND branch_id = ?");
@@ -200,7 +214,8 @@ $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_PO
                         'USD' => 'usd_balance',
                         'AFS' => 'afs_balance',
                         'EUR' => 'euro_balance',
-                        'DARHAM' => 'darham_balance'
+                'DARHAM' => 'darham_balance',
+                'SAR' => 'sar_balance',
                     ];
 
                     // Check if the currency is in our map
@@ -513,7 +528,7 @@ $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_PO
         }
 
         // Sync receipt to related tables
-        if (strtolower($transactionTo) === 'internal account' || empty($transactionTo)) {
+        if ($isMainAccountTxn) {
             $stmt = $pdo->prepare("UPDATE main_account_transactions SET receipt = ? WHERE reference_id = ? AND transaction_of = 'umrah_transaction' AND tenant_id = ? AND branch_id = ?");
             $stmt->bindParam(1, $receipt, PDO::PARAM_STR);
             $stmt->bindParam(2, $transactionId, PDO::PARAM_INT);

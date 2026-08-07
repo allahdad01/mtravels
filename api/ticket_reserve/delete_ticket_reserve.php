@@ -144,6 +144,8 @@ try {
                         $stmt_update_main = $pdo->prepare("UPDATE main_account SET euro_balance = euro_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                     } elseif ($main_currency === 'DARHAM') {
                         $stmt_update_main = $pdo->prepare("UPDATE main_account SET darham_balance = darham_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                    } elseif ($main_currency === 'SAR') {
+                        $stmt_update_main = $pdo->prepare("UPDATE main_account SET sar_balance = sar_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                     } else {
                         throw new PDOException("Unsupported currency type for main account balance update.");
                     }
@@ -166,6 +168,8 @@ try {
                         $stmt_update_main = $pdo->prepare("UPDATE main_account SET euro_balance = euro_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                     } elseif ($main_currency === 'DARHAM') {
                         $stmt_update_main = $pdo->prepare("UPDATE main_account SET darham_balance = darham_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                    } elseif ($main_currency === 'SAR') {
+                        $stmt_update_main = $pdo->prepare("UPDATE main_account SET sar_balance = sar_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                     } else {
                         throw new PDOException("Unsupported currency type for main account balance update.");
                     }

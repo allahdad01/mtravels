@@ -257,7 +257,7 @@ include '../includes/header.php';
              display: flex !important;
         }
 
-        .modal {
+        .overlay .modal {
              background: var(--bg-surface) !important;
              border: 1px solid var(--border) !important;
              border-radius: var(--radius-lg);
@@ -280,7 +280,7 @@ include '../includes/header.php';
             to   { opacity: 1; transform: translateY(0)   scale(1); }
         }
 
-        .modal-head {
+        .overlay .modal-head {
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -288,19 +288,19 @@ include '../includes/header.php';
             padding-bottom: 1rem;
             border-bottom: 1px solid var(--border);
         }
-        .modal-head h2 { font-size: 15px; font-weight: 600; }
-        .modal-close {
+        .overlay .modal-head h2 { font-size: 15px; font-weight: 600; }
+        .overlay .modal-close {
             width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
             border-radius: var(--radius-sm); background: none; border: none; cursor: pointer;
             font-size: 18px; line-height: 1; color: var(--text-muted);
         }
-        .modal-close:hover { background: var(--bg-muted); color: var(--text-primary); }
+        .overlay .modal-close:hover { background: var(--bg-muted); color: var(--text-primary); }
 
-        .field { margin-bottom: 1rem; }
-        .field label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.3px; }
-        .field input,
-        .field select,
-        .field textarea {
+        .overlay .field { margin-bottom: 1rem; }
+        .overlay .field label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.3px; }
+        .overlay .field input,
+        .overlay .field select,
+        .overlay .field textarea {
             width: 100%;
             padding: 8px 10px;
             font-size: 13px;
@@ -311,18 +311,18 @@ include '../includes/header.php';
             font-family: inherit;
             transition: border-color 0.15s, box-shadow 0.15s;
         }
-        .field input:focus,
-        .field select:focus,
-        .field textarea:focus {
+        .overlay .field input:focus,
+        .overlay .field select:focus,
+        .overlay .field textarea:focus {
             outline: none;
             border-color: var(--blue);
             box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
         }
-        .field textarea { resize: vertical; }
-        .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .overlay .field textarea { resize: vertical; }
+        .overlay .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-        .modal-footer { display: flex; gap: 8px; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border); }
-        .modal-footer .btn { flex: 1; justify-content: center; }
+        .overlay .modal-footer { display: flex; gap: 8px; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+        .overlay .modal-footer .btn { flex: 1; justify-content: center; }
 
         .warn-box {
             background: var(--amber-bg);

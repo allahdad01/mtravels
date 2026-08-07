@@ -42,6 +42,23 @@ if (!empty($_GET)) {
     $redirect_url .= '?' . http_build_query($_GET);
 }
 
+// In-place (journal) submissions return JSON instead of a redirect.
+$is_ajax = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+function sarafi_finish($is_ajax, $success, $message, $redirect_url) {
+    if ($is_ajax) {
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode(['success' => (bool)$success, 'message' => $message]);
+        exit;
+    }
+    if ($success) {
+        $_SESSION['success_message'] = $message;
+    } else {
+        $_SESSION['error_message'] = $message;
+    }
+    header('Location: ' . $redirect_url);
+    exit;
+}
+
 // ── DEPOSIT ──────────────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_deposit'])) {
     $customer_id = $_POST['customer_id'];
@@ -102,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_deposit'])) {
         }
         $stmt->execute();
 
-        $balanceField = $currency === 'USD' ? 'usd_balance' : ($currency === 'AFS' ? 'afs_balance' : ($currency === 'EUR' ? 'euro_balance' : 'darham_balance'));
+        $balanceField = $currency === 'USD' ? 'usd_balance' : ($currency === 'AFS' ? 'afs_balance' : ($currency === 'EUR' ? 'euro_balance' : ($currency === 'SAR' ? 'sar_balance' : 'darham_balance')));
         $stmt = $pdo->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
         $stmt->bindParam(1, $main_account_id, PDO::PARAM_INT);
         $stmt->bindParam(2, $tenant_id,       PDO::PARAM_INT);
@@ -119,7 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_deposit'])) {
         $stmt->execute();
 
         $transaction_of = 'deposit_sarafi';
-        $stmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id, branch_id) VALUES (?, 'credit', ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id, branch_id, created_by) VALUES (?, 'credit', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->bindParam(1,  $main_account_id,  PDO::PARAM_INT);
         $stmt->bindParam(2,  $amount,            PDO::PARAM_STR);
         $stmt->bindParam(3,  $currency,          PDO::PARAM_STR);
@@ -130,6 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_deposit'])) {
         $stmt->bindParam(8,  $reference,         PDO::PARAM_STR);
         $stmt->bindParam(9,  $tenant_id,         PDO::PARAM_INT);
         $stmt->bindParam(10, $branch_id,         PDO::PARAM_INT);
+        $stmt->bindValue(11, $_SESSION['user_id'] ?? null, PDO::PARAM_INT);
         $stmt->execute();
         $main_transaction_id = $pdo->lastInsertId();
 
@@ -160,14 +178,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_deposit'])) {
         }
 
         $pdo->commit();
-        $_SESSION['success_message'] = __('deposit_success');
-        header('Location: ' . $redirect_url);
-        exit();
+        sarafi_finish($is_ajax, true, __('deposit_success'), $redirect_url);
     } catch (Exception $e) {
         $pdo->rollback();
-        $_SESSION['error_message'] = sprintf(__('processing_error'), __('deposit'), $e->getMessage());
-        header('Location: ' . $redirect_url);
-        exit();
+        sarafi_finish($is_ajax, false, sprintf(__('processing_error'), __('deposit'), $e->getMessage()), $redirect_url);
     }
 }
 
@@ -201,7 +215,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_withdrawal'])) {
             throw new Exception(__('insufficient_balance'));
         }
 
-        $balanceField = $currency === 'USD' ? 'usd_balance' : ($currency === 'AFS' ? 'afs_balance' : ($currency === 'EUR' ? 'euro_balance' : 'darham_balance'));
+        $balanceField = $currency === 'USD' ? 'usd_balance' : ($currency === 'AFS' ? 'afs_balance' : ($currency === 'EUR' ? 'euro_balance' : ($currency === 'SAR' ? 'sar_balance' : 'darham_balance')));
         $stmt = $pdo->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
         $stmt->bindParam(1, $main_account_id, PDO::PARAM_INT);
         $stmt->bindParam(2, $tenant_id,       PDO::PARAM_INT);
@@ -241,7 +255,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_withdrawal'])) {
         $stmt->execute();
 
         $transaction_of = 'withdrawal_sarafi';
-        $stmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id, branch_id) VALUES (?, 'debit', ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id, branch_id, created_by) VALUES (?, 'debit', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->bindParam(1,  $main_account_id, PDO::PARAM_INT);
         $stmt->bindParam(2,  $amount,          PDO::PARAM_STR);
         $stmt->bindParam(3,  $currency,        PDO::PARAM_STR);
@@ -252,6 +266,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_withdrawal'])) {
         $stmt->bindParam(8,  $reference,       PDO::PARAM_STR);
         $stmt->bindParam(9,  $tenant_id,       PDO::PARAM_INT);
         $stmt->bindParam(10, $branch_id,       PDO::PARAM_INT);
+        $stmt->bindValue(11, $_SESSION['user_id'] ?? null, PDO::PARAM_INT);
         $stmt->execute();
         $main_transaction_id = $pdo->lastInsertId();
 
@@ -282,14 +297,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_withdrawal'])) {
         }
 
         $pdo->commit();
-        $_SESSION['success_message'] = __('withdrawal_success');
-        header('Location: ' . $redirect_url);
-        exit();
+        sarafi_finish($is_ajax, true, __('withdrawal_success'), $redirect_url);
     } catch (Exception $e) {
         $pdo->rollback();
-        $_SESSION['error_message'] = sprintf(__('processing_error'), __('withdrawal'), $e->getMessage());
-        header('Location: ' . $redirect_url);
-        exit();
+        sarafi_finish($is_ajax, false, sprintf(__('processing_error'), __('withdrawal'), $e->getMessage()), $redirect_url);
     }
 }
 
@@ -319,7 +330,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_hawala'])) {
         $stmt->execute();
         $sender = $stmt->fetch(PDO::FETCH_ASSOC);
         $net_amount   = $data['send_amount'] - $data['commission_amount'];
-        $balanceField = $data['send_currency'] === 'USD' ? 'usd_balance' : ($data['send_currency'] === 'AFS' ? 'afs_balance' : ($data['send_currency'] === 'EUR' ? 'euro_balance' : 'darham_balance'));
+        $balanceField = $data['send_currency'] === 'USD' ? 'usd_balance' : ($data['send_currency'] === 'AFS' ? 'afs_balance' : ($data['send_currency'] === 'EUR' ? 'euro_balance' : ($data['send_currency'] === 'SAR' ? 'sar_balance' : 'darham_balance')));
 
         $stmt = $pdo->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
         $stmt->bindParam(1, $data['main_account_id'], PDO::PARAM_INT);
@@ -344,7 +355,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_hawala'])) {
 
         if ($result['success']) {
             $transaction_of = 'hawala_sarafi';
-            $stmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id, branch_id) VALUES (?, 'debit', ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id, branch_id, created_by) VALUES (?, 'debit', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             $stmt->bindParam(1,  $data['main_account_id'], PDO::PARAM_INT);
             $stmt->bindParam(2,  $net_amount,              PDO::PARAM_STR);
             $stmt->bindParam(3,  $data['send_currency'],   PDO::PARAM_STR);
@@ -355,6 +366,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_hawala'])) {
             $stmt->bindParam(8,  $data['reference'],       PDO::PARAM_STR);
             $stmt->bindParam(9,  $tenant_id,               PDO::PARAM_INT);
             $stmt->bindParam(10, $branch_id,               PDO::PARAM_INT);
+            $stmt->bindValue(11, $_SESSION['user_id'] ?? null, PDO::PARAM_INT);
             $stmt->execute();
             $main_transaction_id = $pdo->lastInsertId();
 
@@ -369,6 +381,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_hawala'])) {
 
             $pdo->commit();
             $_SESSION['success_message'] = $result['message'];
+            $hawala_ok = true;
+            $hawala_message = $result['message'];
         } else {
             throw new Exception($result['message']);
         }
@@ -379,17 +393,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_hawala'])) {
             // Transaction may not have been started
         }
         $_SESSION['error_message'] = $e->getMessage();
+        $hawala_ok = false;
+        $hawala_message = $e->getMessage();
     }
-    header('Location: ' . $redirect_url);
-    exit();
+    sarafi_finish($is_ajax, $hawala_ok, $hawala_message, $redirect_url);
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_exchange'])) {
     $data   = ['customer_id' => $_POST['customer_id'], 'from_amount' => $_POST['from_amount'], 'from_currency' => $_POST['from_currency'], 'to_amount' => $_POST['to_amount'], 'to_currency' => $_POST['to_currency'], 'rate' => $_POST['rate'], 'notes' => $_POST['notes']];
     $result = processCurrencyExchange($pdo, $data);
-    if ($result['success']) { $_SESSION['success_message'] = $result['message']; } else { $_SESSION['error_message'] = $result['message']; }
-    header('Location: ' . $redirect_url);
-    exit();
+    sarafi_finish($is_ajax, $result['success'], $result['message'], $redirect_url);
 }
 
 // ── DATA QUERIES ─────────────────────────────────────────────────────────────
@@ -435,6 +448,7 @@ $currency_config = [
     'AFS' => ['class' => 'afs', 'label' => 'AFS Total Balance'],
     'EUR' => ['class' => 'eur', 'label' => 'EUR Total Balance'],
     'AED' => ['class' => 'aed', 'label' => 'AED Total Balance'],
+    'SAR' => ['class' => 'sar', 'label' => 'SAR Total Balance'],
 ];
 ?>
 <?php require_once __DIR__ . '/../includes/auth_check.php'; ?>
@@ -495,8 +509,8 @@ $currency_config = [
 
               <!-- ── CURRENCY STAT CARDS ────────────────────── -->
               <?php
-              $stat_classes = ['USD'=>'usd','AFS'=>'afs','EUR'=>'eur','AED'=>'aed'];
-              $stat_labels  = ['USD'=>'USD '.__('total'),'AFS'=>'AFS '.__('total'),'EUR'=>'EUR '.__('total'),'AED'=>'AED '.__('total')];
+              $stat_classes = ['USD'=>'usd','AFS'=>'afs','EUR'=>'eur','AED'=>'aed','SAR'=>'sar'];
+              $stat_labels  = ['USD'=>'USD '.__('total'),'AFS'=>'AFS '.__('total'),'EUR'=>'EUR '.__('total'),'AED'=>'AED '.__('total'),'SAR'=>'SAR '.__('total')];
               ?>
               <div class="stats-row">
                 <?php foreach ($stat_classes as $cur => $cls): ?>
@@ -1141,7 +1155,7 @@ function editTransaction(transactionId) {
         $('#editToCurrency').val(exchange.to_currency || '');
         $('#editToAmount').val(parseFloat(exchange.to_amount || 0).toFixed(2));
         $('#editRate').val(parseFloat(exchange.rate || 0).toFixed(4));
-        const dividePairs = ['AFS->USD', 'AFS->EUR', 'AFS->AED', 'AED->USD', 'AED->EUR'];
+        const dividePairs = ['AFS->USD', 'AFS->EUR', 'AFS->AED', 'AED->USD', 'AED->EUR', 'AFS->SAR', 'SAR->USD', 'SAR->EUR'];
         const fromC = exchange.from_currency || '';
         const toC = exchange.to_currency || '';
         const isDivide = dividePairs.includes(fromC + '->' + toC);
@@ -1166,7 +1180,7 @@ $(document).on('input', '#editRate, #editAmount', function() {
   if ($('#exchangeEditFields').is(':visible')) {
     const fromAmt = parseFloat($('#editAmount').val()) || 0;
     const rate = parseFloat($('#editRate').val()) || 0;
-    const dividePairs = ['AFS->USD', 'AFS->EUR', 'AFS->AED', 'AED->USD', 'AED->EUR'];
+    const dividePairs = ['AFS->USD', 'AFS->EUR', 'AFS->AED', 'AED->USD', 'AED->EUR', 'AFS->SAR', 'SAR->USD', 'SAR->EUR'];
     const fromC = $('#editFromCurrency').val() || '';
     const toC = $('#editToCurrency').val() || '';
     const divide = dividePairs.includes(fromC + '->' + toC);

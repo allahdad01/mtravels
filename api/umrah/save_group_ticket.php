@@ -77,14 +77,52 @@ try {
     }
     
     // Update flight_date and return_date in umrah_bookings
+    // NOTE: the member's own `duration` is intentionally NOT overwritten.
+    // The group ticket must fit inside each member's existing package duration,
+    // otherwise we abort below and tell the user which members conflict.
     $duration_days = $returnDateTime->diff($flightDateTime)->days;
     $duration = ($duration_days + 1) . ' Days';
-    
+
+    // Load each selected member's stored duration (single query) so we can
+    // validate it against the group ticket's return date before saving.
+    $bookingPlaceholders = implode(',', array_fill(0, count($booking_ids), '?'));
+    $durationStmt = $pdo->prepare("
+        SELECT booking_id, name, duration
+        FROM umrah_bookings
+        WHERE booking_id IN ($bookingPlaceholders) AND tenant_id = ? AND branch_id = ?
+    ");
+    $durationStmt->execute(array_merge($booking_ids, [$tenant_id, $branch_id]));
+    $existingDurations = $durationStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // A member's own return falls on flight_date + (duration - 1) days. If that
+    // extends past the group ticket's return date, the member's package duration
+    // is longer than the trip allows, so block the save and explain.
+    $conflictingMembers = [];
+    foreach ($existingDurations as $bm) {
+        $durationValue = trim((string)($bm['duration'] ?? ''));
+        if ($durationValue === '' || !preg_match('/^\s*(\d+)\s*(?:days?)/i', $durationValue, $m)) {
+            continue;
+        }
+        $memberDays = max(1, (int)$m[1]);
+        $memberReturn = (clone $flightDateTime)->modify('+' . ($memberDays - 1) . ' days');
+        if ($memberReturn > $returnDateTime) {
+            $conflictingMembers[] = $bm['name'] ?: ('Booking #' . $bm['booking_id']);
+        }
+    }
+
+    if (!empty($conflictingMembers)) {
+        throw new Exception(
+            'Cannot save group ticket: these members\' duration exceeds the return date (' . $returnDate . '): ' .
+            implode(', ', $conflictingMembers) . '. ' .
+            'Their existing duration is longer than the group flight period. ' .
+            'Adjust the group return date or change those members\' duration first.'
+        );
+    }
+
     $updateBookingsStmt = $pdo->prepare("
         UPDATE umrah_bookings 
         SET flight_date = ?, 
             return_date = ?,
-            duration = ?,
             updated_at = NOW()
         WHERE booking_id = ? 
         AND tenant_id = ? 
@@ -94,12 +132,11 @@ try {
     // Start transaction
     $pdo->beginTransaction();
     
-    // Update each booking with flight and return dates
+    // Update each booking with flight and return dates (duration left untouched)
     foreach ($booking_ids as $booking_id) {
         $updateBookingsStmt->execute([
             $flight_date,
             $return_date,
-            $duration,
             $booking_id,
             $tenant_id,
             $branch_id

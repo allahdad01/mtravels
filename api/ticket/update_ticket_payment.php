@@ -92,7 +92,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'USD' => 'usd_balance',
             'AFS' => 'afs_balance',
             'EUR' => 'euro_balance',
-            'DARHAM' => 'darham_balance'
+                'DARHAM' => 'darham_balance',
+                'SAR' => 'sar_balance',
         ];
         
         // Check if the currency is in our map

@@ -67,6 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'AFS': $balanceField = 'afs_balance'; break;
             case 'EUR': $balanceField = 'euro_balance'; break;
             case 'DARHAM': $balanceField = 'darham_balance'; break;
+            case 'SAR': $balanceField = 'sar_balance'; break;
             default: $balanceField = 'afs_balance'; break;
         }
         $updateStmt = $pdo->prepare("

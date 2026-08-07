@@ -711,6 +711,7 @@ $payments = $stmt->fetchAll();
                                                             $usdToAfs        = 70;
                                                             $usdToEur        = 0.9;
                                                             $usdToDarham     = 3.61;
+                                                            $usdToSar        = 3.75;
                                                             $badgeClass      = 'ap-status-neutral';
                                                             $badgeIcon       = 'fas fa-minus-circle';
                                                             $badgeLabel      = 'N/A';
@@ -724,6 +725,7 @@ $payments = $stmt->fetchAll();
                                                                         if ($t['currency'] === 'AFS')         $usdToAfs    = $er;
                                                                         elseif ($t['currency'] === 'EUR')     $usdToEur    = $er;
                                                                         elseif ($t['currency'] === 'DARHAM')  $usdToDarham = $er;
+                                                                        elseif ($t['currency'] === 'SAR')     $usdToSar    = $er;
                                                                     }
                                                                 }
                                                                 foreach ($transactions as $t) {
@@ -737,11 +739,13 @@ $payments = $stmt->fetchAll();
                                                                         if ($transCur === 'AFS')         $inUsd = $amount / ($er ?? $usdToAfs);
                                                                         elseif ($transCur === 'EUR')     $inUsd = $amount / ($er ?? $usdToEur);
                                                                         elseif ($transCur === 'DARHAM')  $inUsd = $amount / ($er ?? $usdToDarham);
+                                                                        elseif ($transCur === 'SAR')     $inUsd = $amount / ($er ?? $usdToSar);
 
                                                                         if ($baseCurrency === 'USD')         $converted = $inUsd;
                                                                         elseif ($baseCurrency === 'AFS')    $converted = $inUsd * $usdToAfs;
                                                                         elseif ($baseCurrency === 'EUR')    $converted = $inUsd * $usdToEur;
                                                                         elseif ($baseCurrency === 'DARHAM') $converted = $inUsd * $usdToDarham;
+                                                                        elseif ($baseCurrency === 'SAR')    $converted = $inUsd * $usdToSar;
                                                                     }
                                                                     $totalPaidInBase += $converted;
                                                                 }
@@ -967,7 +971,7 @@ $payments = $stmt->fetchAll();
     <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
     <script src="../assets/js/pcoded.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <script src="../js/additional_payments/transactions.js"></script>
+    <script src="../js/additional_payments/transactions.js<?= '?v=' . time() ?>"></script>
     <script src="../js/additional_payments/main.js"></script>
 
 <?php include '../includes/admin_footer.php'; ?>

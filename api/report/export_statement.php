@@ -743,7 +743,8 @@ try {
         $balanceField = strtolower($currency) == 'usd' ? 'usd_balance' : 
                        (strtolower($currency) == 'afs' ? 'afs_balance' : 
                        (strtolower($currency) == 'darham' ? 'darham_balance' :
-                       (strtolower($currency) == 'euro' ? 'euro_balance' : 'balance')));
+                       (strtolower($currency) == 'sar' ? 'sar_balance' :
+                       (strtolower($currency) == 'euro' ? 'euro_balance' : 'balance'))));
                        
         $balanceQuery = "SELECT $balanceField AS balance FROM main_account WHERE id = ? And tenant_id = ? And branch_id = ?";
         $stmt = $pdo->prepare($balanceQuery);

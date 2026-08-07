@@ -46,6 +46,7 @@
                                     <option value="USD"><?= __('usd') ?></option>
                                     <option value="EUR"><?= __('eur') ?></option>
                                     <option value="DARHAM"><?= __('darham') ?></option>
+                                    <option value="SAR"><?= __('sar') ?></option>
                                 </select>
                             </div>
                         </div>
@@ -60,6 +61,7 @@
                             <div class="form-group mb-3">
                                 <label class="form-label"><?= __('supplier_type') ?></label>
                                 <select class="form-control" id="supplierType" name="supplier_type" required>
+                                    <option value="" disabled selected><?= __('select_supplier_type') ?></option>
                                     <option value="Internal"><?= __('internal') ?></option>
                                     <option value="External"><?= __('external') ?></option>
                                 </select>
@@ -81,6 +83,13 @@
                     <div class="form-group mb-3">
                         <label class="form-label"><?= __('address') ?></label>
                         <textarea class="form-control" id="supplierAddress" name="address" rows="3"></textarea>
+                    </div>
+                    <div class="custom-control custom-checkbox mb-2">
+                        <input type="checkbox" class="custom-control-input" id="routePaymentToMainAccount" name="route_payment_to_main_account" value="1">
+                        <label class="custom-control-label" for="routePaymentToMainAccount">
+                            <?= __('route_payments_to_main_account') ?>
+                        </label>
+                        <small class="form-text text-muted"><?= __('route_payments_to_main_account_hint') ?></small>
                     </div>
                 </div>
                 <div class="modal-footer border-0">

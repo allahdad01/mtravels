@@ -141,8 +141,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_debtor'])) {
 
             // Create main account transaction
             $tranasction_of = 'debtor';
-            $stmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, amount, balance, currency, type, description, transaction_of, reference_id, receipt, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$main_account_id, $balance, $new_main_balance, $currency, $transaction_type, $description, $tranasction_of, $debtor_transaction_id, $reference_number, $tenant_id, $branch_id]);
+            $stmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, amount, balance, currency, type, description, transaction_of, reference_id, receipt, tenant_id, branch_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$main_account_id, $balance, $new_main_balance, $currency, $transaction_type, $description, $tranasction_of, $debtor_transaction_id, $reference_number, $tenant_id, $branch_id, $_SESSION['user_id'] ?? null]);
         } else {
             // If skip_deduction is true, still create a transaction record for the debtor but not for main account
             $transaction_type = 'debit';
@@ -390,8 +390,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pay'])) {
         $updateMainStmt->execute([$new_main_balance, $paid_to, $tenant_id, $branch_id]);
 
         // Create main account transaction in PAYMENT currency
-         $mainTransStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, amount, balance, currency, type, description, transaction_of, reference_id, receipt, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-         $mainTransStmt->execute([$paid_to, $main_amount, $new_main_balance, $main_currency, 'credit', $description, 'debtor', $transaction_id, $reference_number, $tenant_id, $branch_id]);
+         $mainTransStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, amount, balance, currency, type, description, transaction_of, reference_id, receipt, tenant_id, branch_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+         $mainTransStmt->execute([$paid_to, $main_amount, $new_main_balance, $main_currency, 'credit', $description, 'debtor', $transaction_id, $reference_number, $tenant_id, $branch_id, $_SESSION['user_id'] ?? null]);
          $main_transaction_id = $pdo->lastInsertId();
 
          // Create notification

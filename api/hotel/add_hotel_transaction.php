@@ -55,6 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'AFS' => 'afs_balance',
             'EURO' => 'euro_balance',
             'DARHAM' => 'darham_balance',
+            'SAR' => 'sar_balance',
             default => throw new Exception("Unsupported currency: $currency")
         };
         $stmt = $pdo->prepare("
@@ -97,8 +98,8 @@ $payment_date = isset($_POST['payment_date']) ? DbSecurity::validateInput($_POST
 $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['booking_id'], 'int', ['min' => 0]) : null;
             $stmt = $pdo->prepare("
                 INSERT INTO main_account_transactions 
-                (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, tenant_id, exchange_rate, branch_id, receipt)
-                VALUES (?, ?, ?, ?, ?, 'hotel', ?, ?, ?, ?, ?, ?, ?)
+                (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, tenant_id, exchange_rate, branch_id, receipt, created_by)
+                VALUES (?, ?, ?, ?, ?, 'hotel', ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             
             $stmt->execute([
@@ -113,7 +114,8 @@ $booking_id = isset($_POST['booking_id']) ? DbSecurity::validateInput($_POST['bo
                 $tenant_id,
                 $exchange_rate,
                 $branch_id,
-                $receipt_number
+                $receipt_number,
+                $_SESSION['user_id'] ?? null
             ]);
         
 

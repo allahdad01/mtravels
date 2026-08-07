@@ -237,7 +237,7 @@ Each card shows:
 | `api/expense/export_comprehensive_report.php` | Multi-sheet P&L Excel report |
 | `api/expense/export_financial_data.php` | Generic financial data export |
 | `api/expense/get_financial_data.php` | JSON for Chart.js charts |
-| `api/expense/generate_category_pdf.php` | mPDF monthly category report |
+| `admin/expense_category_report.php` | Printable HTML monthly category report (parent includes sub-categories) |
 | `api/report/load_expense_categories.php` | Categories JSON for report filters |
 
 ### Global Allocation Handler

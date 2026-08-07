@@ -42,7 +42,7 @@ function toggleWithdrawExchangeRateVisibility() {
     const norm = c => c === 'DARHAM' ? 'AED' : c;
     const normFrom = norm(paymentCurrency);
     const normTo = norm(supplierCurrency);
-    const dividePairs = ['AFS->AED', 'AFS->EUR', 'AFS->USD', 'AED->EUR', 'AED->USD', 'EUR->USD'];
+    const dividePairs = ['AFS->AED', 'AFS->EUR', 'AFS->USD', 'AED->EUR', 'AED->USD', 'EUR->USD', 'AFS->SAR', 'SAR->USD', 'SAR->EUR'];
     const isDivide = dividePairs.includes(normFrom + '->' + normTo);
     if (badge) badge.textContent = isDivide ? '÷' : '×';
     label.textContent = 'Exchange rate (' + paymentCurrency + ' → ' + supplierCurrency + ')';
@@ -53,6 +53,10 @@ function toggleWithdrawExchangeRateVisibility() {
         'AED->EUR': 3.99, 'EUR->AED': 3.99,
         'AED->USD': 3.67, 'USD->AED': 3.67,
         'EUR->USD': 1.09, 'USD->EUR': 0.92,
+        'AFS->SAR': 18.67, 'SAR->AFS': 18.67,
+        'USD->SAR': 3.75, 'SAR->USD': 3.75,
+        'EUR->SAR': 4.07, 'SAR->EUR': 4.07,
+        'AED->SAR': 1.02, 'SAR->AED': 1.02,
     };
     const rate = sampleRates[normFrom + '->' + normTo];
     if (rate) {

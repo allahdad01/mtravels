@@ -33,9 +33,11 @@ if (($user['role'] ?? '') === 'admin' && isset($pdo, $tenant_id)) {
                    CASE WHEN n.transaction_type='visa' THEN va.base
                         WHEN n.transaction_type='supplier' THEN st.amount
                         WHEN n.transaction_type='umrah' THEN ub.sold_price
+                        WHEN n.transaction_type='cash_settlement' THEN cs.amount
                         ELSE 0 END AS transaction_amount,
                    CASE WHEN n.transaction_type='visa' THEN va.currency
                         WHEN n.transaction_type='supplier' THEN s.currency
+                        WHEN n.transaction_type='cash_settlement' THEN cs.currency
                         ELSE NULL END AS transaction_currency,
                    CASE WHEN n.transaction_type='umrah' THEN ut.transaction_to
                         ELSE NULL END AS umrah_transaction_to
@@ -45,6 +47,7 @@ if (($user['role'] ?? '') === 'admin' && isset($pdo, $tenant_id)) {
             LEFT JOIN umrah_transactions ut ON n.transaction_id=ut.id AND n.transaction_type='umrah'
             LEFT JOIN supplier_transactions st ON n.transaction_id=st.id AND n.transaction_type='supplier'
             LEFT JOIN suppliers s ON st.supplier_id=s.id OR va.supplier=s.id
+            LEFT JOIN cash_settlements cs ON n.transaction_id=cs.id AND n.transaction_type='cash_settlement'
             WHERE LOWER(n.status)=? AND n.tenant_id=?
         ";
 
@@ -167,12 +170,13 @@ if (!function_exists('renderHeaderNotifications')) {
                     case 'deposit_sarafi':
                     case 'hawala_sarafi':
                     case 'withdrawal_sarafi': $dot_class = 'tld-sarafi'; $icon = 'fa-exchange-alt'; break;
+                    case 'cash_settlement': $dot_class = 'tld-settle'; $icon = 'fa-hand-holding-usd'; break;
                 }
 
                 $is_deleted = stripos($raw_msg, 'deleted') !== false;
                 $has_receipt = $receipt_value !== '';
                 $is_bank_transaction = ($row['transaction_type'] ?? '') === 'umrah' && $umrah_transaction_to === 'Bank';
-                $read_only = in_array(($row['transaction_type'] ?? ''), ['deposit_sarafi','hawala_sarafi','withdrawal_sarafi','supplier_fund','client_fund','expense','expense_update','expense_delete','refund','ticket_refund'], true) || $is_deleted || $is_bank_transaction || $has_receipt;
+                $read_only = in_array(($row['transaction_type'] ?? ''), ['deposit_sarafi','hawala_sarafi','withdrawal_sarafi','supplier_fund','client_fund','expense','expense_update','expense_delete','refund','ticket_refund','cash_settlement'], true) || $is_deleted || $is_bank_transaction || $has_receipt;
 
                 echo '<div class="tl-item notification-' . h($status) . '" data-id="' . $id . '">';
                 echo '<div class="tl-dot ' . h($dot_class) . ($status === 'unread' ? ' unread' : '') . '"><i class="' . h($icon_prefix . ' ' . $icon) . '"></i></div>';

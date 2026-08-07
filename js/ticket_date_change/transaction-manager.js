@@ -32,7 +32,17 @@ const transactionManager = {
         
         // AED pairs - show "1 AED = X" format
         'AED-AFS': 'Example: 1 AED = 23.99 AFS, enter 23.99',
-        'AFS-AED': 'Example: 1 AED = 23.99 AFS, enter 23.99'
+        'AFS-AED': 'Example: 1 AED = 23.99 AFS, enter 23.99',
+        
+        // SAR pairs - show "1 ANCHOR = X SAR" format
+        'USD-SAR': 'Example: 1 USD = 3.75 SAR, enter 3.75',
+        'SAR-USD': 'Example: 1 USD = 3.75 SAR, enter 3.75',
+        'EUR-SAR': 'Example: 1 EUR = 4.07 SAR, enter 4.07',
+        'SAR-EUR': 'Example: 1 EUR = 4.07 SAR, enter 4.07',
+        'AED-SAR': 'Example: 1 AED = 1.02 SAR, enter 1.02',
+        'SAR-AED': 'Example: 1 AED = 1.02 SAR, enter 1.02',
+        'AFS-SAR': 'Example: 1 AFS = 18.67 SAR, enter 18.67',
+        'SAR-AFS': 'Example: 1 AFS = 18.67 SAR, enter 18.67'
         };
         const key = `${baseCurrency}-${targetCurrency}`;
         return examples[key] || 'Enter the exchange rate';
@@ -56,6 +66,12 @@ const transactionManager = {
 
     // Show toast notification
     showToast: function(message, type = 'success', duration = 5000) {
+        // When embedded in the Payments Journal, use its styled toast instead.
+        if (typeof pjlToast === 'function') {
+            pjlToast(message, type === 'error' ? 'error' : 'success');
+            return;
+        }
+
         const toastId = 'toast_' + Date.now();
         const iconClass = type === 'success' ? 'feather icon-check-circle' : 
                          type === 'error' ? 'feather icon-x-circle' : 
@@ -356,7 +372,7 @@ const transactionManager = {
     
                 // Initialize totals
                 let totals = { USD: 0, AFS: 0, EUR: 0, DARHAM: 0 };
-                let hasCurrency = { USD: false, AFS: false, EUR: false, DARHAM: false };
+                let hasCurrency = { USD: false, AFS: false, EUR: false, DARHAM: false, SAR: false };
                 let rates = {}; // DB-provided exchange rates
     
                 // Build table rows and gather rates
@@ -421,7 +437,7 @@ const transactionManager = {
                 const remainingBase = Math.max(0, totalAmount - totalPaidInBase);
     
                 // Update paid and remaining for each currency
-                ['USD','AFS','EUR','DARHAM'].forEach(cur => {
+                ['USD','AFS','EUR','DARHAM','SAR'].forEach(cur => {
                     if (hasCurrency[cur]) {
                         $(`#paidAmount${cur==='DARHAM'?'AED':cur}`).text(`${cur==='DARHAM'?'AED':cur} ${totals[cur].toFixed(2)}`);
     
@@ -455,6 +471,7 @@ const transactionManager = {
                 $('#afsSection').toggle(hasCurrency.AFS);
                 $('#eurSection').toggle(hasCurrency.EUR);
                 $('#aedSection').toggle(hasCurrency.DARHAM);
+                $('#sarSection').toggle(hasCurrency.SAR);
             },
             error: function(xhr, status, error) {
 
@@ -831,3 +848,8 @@ $(document).ready(function() {
 function manageTransactions(ticketId) {
     transactionManager.loadTransactionModal(ticketId);
 }
+
+// Expose to global scope so inline onclick handlers in the rendered rows work
+// (when embedded via new Function they are not global lexical bindings).
+window.transactionManager = transactionManager;
+window.printReceipt = printReceipt;

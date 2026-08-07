@@ -112,7 +112,8 @@ $transaction_id = isset($_POST['transaction_id']) ? DbSecurity::validateInput($_
             'USD' => 'usd_balance',
             'AFS' => 'afs_balance',
             'EUR' => 'euro_balance',
-            'DARHAM' => 'darham_balance'
+                'DARHAM' => 'darham_balance',
+                'SAR' => 'sar_balance',
         ];
         
         // Check if the currency is in our map

@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     
     // Additional validation for currency
-    $validCurrencies = ['USD', 'AFS', 'EUR', 'DARHAM'];
+    $validCurrencies = ['USD', 'AFS', 'EUR', 'DARHAM', 'SAR'];
     if (!in_array($currency, $validCurrencies)) {
         echo json_encode(['success' => false, 'message' => 'Invalid currency']);
         exit;
@@ -83,7 +83,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'USD' => 'usd_balance',
             'AFS' => 'afs_balance',
             'EUR' => 'euro_balance',
-            'DARHAM' => 'darham_balance'
+            'DARHAM' => 'darham_balance',
+            'SAR' => 'sar_balance'
         ];
         
         // Check if the currency is in our map

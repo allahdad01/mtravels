@@ -1140,7 +1140,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="../assets/js/vendor-all.min.js"></script>
 <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
 <script src="../assets/js/pcoded.min.js"></script>
-<script src="../js/hotel/transactions.js"></script>
+<script src="../js/hotel/transactions.js<?= '?v=' . time() ?>"></script>
 <script src="../js/hotel/bookings.js"></script>
 <script src="../js/hotel/invoices.js"></script>
 <script src="../js/hotel/refunds.js"></script>

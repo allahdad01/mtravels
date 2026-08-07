@@ -769,11 +769,9 @@ window.csrfToken = '<?php echo $_SESSION['csrf_token']; ?>';
               <div class="em-stat-n danger"><?php echo count($fired_employees); ?></div>
               <div class="em-stat-l">Terminated</div>
             </div>
-            <?php if (!$user_id): ?>
             <button class="em-banner-add-btn" onclick="showAddEmployeeModal()">
               <i class="feather icon-user-plus"></i><?php echo __('add_employee'); ?>
             </button>
-            <?php endif; ?>
           </div>
         </div>
 

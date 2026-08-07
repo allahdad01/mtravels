@@ -61,8 +61,11 @@ $balance = filter_var(trim($_POST['balance']), FILTER_VALIDATE_FLOAT);
 $supplier_type = htmlspecialchars(trim($_POST['supplier_type']));
 $category = htmlspecialchars(trim($category));
 
+// Validate route_payment_to_main_account (checkbox: absent => 0)
+$route_payment_to_main_account = isset($_POST['route_payment_to_main_account']) ? 1 : 0;
+
 // Prepare and bind
-$stmt = $pdo->prepare("INSERT INTO suppliers (name, contact_person, phone, email, address, currency, balance, supplier_type, category, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+$stmt = $pdo->prepare("INSERT INTO suppliers (name, contact_person, phone, email, address, currency, balance, supplier_type, category, route_payment_to_main_account, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 $stmt->bindParam(1, $name, PDO::PARAM_STR);
 $stmt->bindParam(2, $contact_person, PDO::PARAM_STR);
 $stmt->bindParam(3, $phone, PDO::PARAM_STR);
@@ -72,8 +75,9 @@ $stmt->bindParam(6, $currency, PDO::PARAM_STR);
 $stmt->bindParam(7, $balance, PDO::PARAM_STR);
 $stmt->bindParam(8, $supplier_type, PDO::PARAM_STR);
 $stmt->bindParam(9, $category, PDO::PARAM_STR);
-$stmt->bindParam(10, $tenant_id, PDO::PARAM_INT);
-$stmt->bindParam(11, $branch_id, PDO::PARAM_INT);
+$stmt->bindParam(10, $route_payment_to_main_account, PDO::PARAM_INT);
+$stmt->bindParam(11, $tenant_id, PDO::PARAM_INT);
+$stmt->bindParam(12, $branch_id, PDO::PARAM_INT);
 
 // Execute and check for errors
 if ($stmt->execute()) {
@@ -92,6 +96,7 @@ if ($stmt->execute()) {
         'balance' => $balance,
         'supplier_type' => $supplier_type,
         'category' => $category,
+        'route_payment_to_main_account' => $route_payment_to_main_account,
         'branch_id' => $branch_id
     ]);
     

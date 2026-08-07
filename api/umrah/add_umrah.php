@@ -49,6 +49,10 @@ $relation = isset($_POST['relation']) ? DbSecurity::validateInput($_POST['relati
 $g_name = isset($_POST['g_name']) ? DbSecurity::validateInput($_POST['g_name'], 'string') : null;
 $father_name = isset($_POST['father_name']) ? DbSecurity::validateInput($_POST['father_name'], 'string') : null;
 $discount = isset($_POST['discount']) ? DbSecurity::validateInput($_POST['discount'], 'float') : 0;
+$sale_currency = isset($_POST['sale_currency']) ? DbSecurity::validateInput($_POST['sale_currency'], 'string') : 'USD';
+if (!in_array(strtoupper($sale_currency), ['USD', 'AFS'])) { $sale_currency = 'USD'; }
+$exchange_rate = isset($_POST['exchange_rate']) ? (float)$_POST['exchange_rate'] : 1.0;
+if ($exchange_rate <= 0) { $exchange_rate = 1.0; }
 $photo_path = isset($_POST['photo_path']) ? DbSecurity::validateInput($_POST['photo_path'], 'string') : null;
 $passport_path = isset($_POST['passport_path']) ? DbSecurity::validateInput($_POST['passport_path'], 'string') : null;
 
@@ -65,7 +69,9 @@ foreach ($services as $service) {
     $currency = isset($service['currency']) ? DbSecurity::validateInput($service['currency'], 'string') : null;
     $base_price = isset($service['base_price']) ? DbSecurity::validateInput($service['base_price'], 'float') : 0;
     $sold_price = isset($service['sold_price']) ? DbSecurity::validateInput($service['sold_price'], 'float') : 0;
-    $profit = $sold_price - $base_price;
+    $base_currency = strtoupper(trim((string)$currency));
+    $base_in_sale = (empty($base_currency) || $base_currency === strtoupper($sale_currency)) ? $base_price : ($base_price / $exchange_rate);
+    $profit = $sold_price - $base_in_sale;
 
     if (!empty($service_type) && !empty($supplier_id)) {
         $processed_services[] = [
@@ -77,7 +83,7 @@ foreach ($services as $service) {
             'profit' => $profit
         ];
 
-        $total_base_price += $base_price;
+        $total_base_price += $base_in_sale;
         $total_sold_price += $sold_price;
         $total_profit += $profit;
     }
@@ -187,6 +193,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // Booking created - transactions will be processed when approved
+
+        // Store sale currency + exchange rate (base -> sale) on the booking
+        $stmt_upd_currency = $pdo->prepare("UPDATE umrah_bookings SET currency = ?, exchange_rate = ? WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt_upd_currency->bindParam(1, $sale_currency, PDO::PARAM_STR);
+        $stmt_upd_currency->bindParam(2, $exchange_rate, PDO::PARAM_STR);
+        $stmt_upd_currency->bindParam(3, $umrah_id, PDO::PARAM_INT);
+        $stmt_upd_currency->bindParam(4, $tenant_id, PDO::PARAM_INT);
+        $stmt_upd_currency->bindParam(5, $branch_id, PDO::PARAM_INT);
+        $stmt_upd_currency->execute();
 
         // Log the activity
         $old_values = json_encode([]);

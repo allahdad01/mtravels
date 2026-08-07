@@ -56,6 +56,8 @@ function getFinancialWealthData($pdo, $period, $currency, $tenant_id, $branch_id
             $accountsQuery = "SELECT SUM(euro_balance) as balance FROM main_account WHERE tenant_id = ? AND branch_id = ?";
         } elseif ($currency == 'AED') {
             $accountsQuery = "SELECT SUM(darham_balance) as balance FROM main_account WHERE tenant_id = ? AND branch_id = ?";
+        } elseif ($currency == 'SAR') {
+            $accountsQuery = "SELECT SUM(sar_balance) as balance FROM main_account WHERE tenant_id = ? AND branch_id = ?";
         }
         $stmt = $pdo->prepare($accountsQuery);
         $stmt->execute([$tenant_id, $branch_id]);
@@ -75,7 +77,7 @@ function getFinancialWealthData($pdo, $period, $currency, $tenant_id, $branch_id
             $clientQuery = "SELECT ABS(SUM(CASE WHEN usd_balance < 0 THEN usd_balance ELSE 0 END)) as balance FROM clients WHERE tenant_id = ? AND branch_id = ?";
         } elseif ($currency == 'AFS') {
             $clientQuery = "SELECT ABS(SUM(CASE WHEN afs_balance < 0 THEN afs_balance ELSE 0 END)) as balance FROM clients WHERE tenant_id = ? AND branch_id = ?";
-        } elseif ($currency == 'EUR' || $currency == 'AED') {
+        } elseif ($currency == 'EUR' || $currency == 'AED' || $currency == 'SAR') {
             // For EUR and AED currencies, clients don't have these balances
             // Return 0 as default value
             $result['client_credits'] = 0;

@@ -10,7 +10,7 @@
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
                 <form id="editTransactionForm">
                     <!-- CSRF Protection -->
                     <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
@@ -56,6 +56,7 @@
                                     <option value="AFS"><?= __('afs') ?></option>
                                     <option value="EUR"><?= __('eur') ?></option>
                                     <option value="DARHAM"><?= __('darham') ?></option>
+                                    <option value="SAR"><?= __('sar') ?></option>
                                 </select>
                                 <input type="hidden" name="currency" id="edit_currency_hidden">
                             </div>

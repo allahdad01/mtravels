@@ -65,6 +65,7 @@ try {
         case 'AFS': $balanceColumn = 'afs_balance'; break;
         case 'EUR': $balanceColumn = 'euro_balance'; break;
         case 'DARHAM': $balanceColumn = 'darham_balance'; break;
+        case 'SAR': $Column = 'sar_balance'; break;
         default: throw new PDOException('Unsupported currency: ' . $transaction['currency']);
     }
 

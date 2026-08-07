@@ -93,6 +93,7 @@
                                                         <option value="AFS">AFS</option>
                                                         <option value="EUR">EUR</option>
                                                         <option value="DARHAM">DARHAM</option>
+                                                        <option value="SAR"><?= __('sar') ?></option>
                                                     </select>
                                                 </div>
                                             </div>
@@ -213,8 +214,8 @@ $(document).ready(function() {
 
         if (transactionTo === 'Bank') {
             if ($('#familyTransactionTo').prop('disabled')) {
-                // Regular client — use pre-stored majority supplier
-                if (window.familyMajoritySupplier === 'Internal') {
+                // Regular client â€” use pre-stored majority supplier
+                if (window.familyMajoritySupplier === 'Internal' || window.familyRouteToMainMajority === true) {
                     loadFamilyMainAccounts();
                     $('#familyMainAccountField').slideDown();
                 } else {
@@ -242,7 +243,8 @@ function checkAndLoadFamilyMainAccounts() {
         success: function(response) {
             if (response.success) {
                 const supplierType = response.supplier_type;
-                if (supplierType === 'Internal') {
+                const routeToMain = parseInt(response.route_payment_to_main_account || 0, 10) === 1;
+                if (supplierType === 'Internal' || routeToMain) {
                     // Load main accounts
                     loadFamilyMainAccounts();
                     $('#familyMainAccountField').slideDown();

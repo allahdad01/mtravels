@@ -205,6 +205,16 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 </li>
 <?php endif; ?>
 
+<!-- ── Payments Journal ──────────────────────────────────────────────── -->
+<?php if (staffCanSeeMenu($user['role'])): ?>
+<li class="nav-item <?= navActive('payment_journal.php') ?>">
+    <a href="payment_journal.php" class="nav-link">
+        <span class="pcoded-micon"><i class="feather icon-book"></i></span>
+        <span class="pcoded-mtext"><?= __('payments_journal') ?></span>
+    </a>
+</li>
+<?php endif; ?>
+
 <!-- ── Debtors ───────────────────────────────────────────────────────── -->
 <?php if (hasFeature('debtors', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
 <li class="nav-item <?= navActive('debtors.php') ?>">
@@ -282,6 +292,16 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
     <a href="finance_tracker.php" class="nav-link">
         <span class="pcoded-micon"><i class="fas fa-chart-line"></i></span>
         <span class="pcoded-mtext">Finance Wallet</span>
+    </a>
+</li>
+<?php endif; ?>
+
+<!-- ── Cash Settlement (Finance + Admin) ──────────────────────────── -->
+<?php if (in_array($user['role'], ['finance', 'admin'], true)): ?>
+<li class="nav-item <?= navActive('cash_settlement.php') ?>">
+    <a href="cash_settlement.php" class="nav-link">
+        <span class="pcoded-micon"><i class="fas fa-hand-holding-usd"></i></span>
+        <span class="pcoded-mtext">Cash Settlement</span>
     </a>
 </li>
 <?php endif; ?>

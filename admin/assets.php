@@ -59,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_asset'])) {
     $purchase_date  = InputValidator::getDate($_POST['purchase_date']    ?? '', 'Y-m-d', '');
     $purchase_value = InputValidator::getString($_POST['purchase_value'] ?? '', 20);
     $current_value  = InputValidator::getString($_POST['current_value']  ?? '', 20);
-    $currency       = InputValidator::getEnum($_POST['currency'] ?? '', ['USD','EUR','AFS','DARHAM','PKR','INR'], 'USD');
+    $currency       = InputValidator::getEnum($_POST['currency'] ?? '', ['USD','EUR','AFS','DARHAM','SAR','PKR','INR'], 'USD');
     $description    = InputValidator::getString($_POST['description']    ?? '', 1000);
     $location       = InputValidator::getString($_POST['location']       ?? '', 255);
     $serial_number  = InputValidator::getString($_POST['serial_number']  ?? '', 100);
@@ -100,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_asset'])) {
     $purchase_date  = InputValidator::getDate($_POST['purchase_date']    ?? '', 'Y-m-d', '');
     $purchase_value = InputValidator::getString($_POST['purchase_value'] ?? '', 20);
     $current_value  = InputValidator::getString($_POST['current_value']  ?? '', 20);
-    $currency       = InputValidator::getEnum($_POST['currency'] ?? '', ['USD','EUR','AFS','DARHAM','PKR','INR'], 'USD');
+    $currency       = InputValidator::getEnum($_POST['currency'] ?? '', ['USD','EUR','AFS','DARHAM','SAR','PKR','INR'], 'USD');
     $description    = InputValidator::getString($_POST['description']    ?? '', 1000);
     $location       = InputValidator::getString($_POST['location']       ?? '', 255);
     $serial_number  = InputValidator::getString($_POST['serial_number']  ?? '', 100);
@@ -916,6 +916,7 @@ table.ap-table { width:100%;border-collapse:collapse; }
             <select class="ap-select" name="currency">
               <option value="USD">USD</option><option value="EUR">EUR</option>
               <option value="AFS">AFS</option><option value="DARHAM">AED</option>
+              <option value="SAR">SAR</option>
               <option value="PKR">PKR</option><option value="INR">INR</option>
             </select>
           </div>
@@ -1043,7 +1044,7 @@ table.ap-table { width:100%;border-collapse:collapse; }
           <div class="ap-form-group">
             <label class="ap-label"><?= __('currency') ?></label>
             <select class="ap-select" name="currency">
-              <?php foreach (['USD','EUR','AFS','DARHAM','PKR','INR'] as $c): ?>
+              <?php foreach (['USD','EUR','AFS','DARHAM','SAR','PKR','INR'] as $c): ?>
               <option value="<?= $c ?>" <?= $a['currency']==$c?'selected':'' ?>><?= $c ?></option>
               <?php endforeach; ?>
             </select>

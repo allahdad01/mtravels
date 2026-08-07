@@ -328,7 +328,7 @@ class DbSecurity {
                 return null;
                 
             case 'currency':
-                if (!in_array(strtoupper($input), ['USD', 'AFS', 'EUR', 'DARHAM'])) {
+                if (!in_array(strtoupper($input), ['USD', 'AFS', 'EUR', 'DARHAM', 'SAR'])) {
                     return null;
                 }
                 return strtoupper($input);

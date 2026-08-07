@@ -87,8 +87,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Insert transaction record (for both types, but only agency affects balance)
         $stmt = $pdo->prepare("INSERT INTO main_account_transactions
-            (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, tenant_id, branch_id, exchange_rate, receipt)
-            VALUES (?, 'debit', ?, ?, ?, 'ticket_refund', ?, ?, ?, ?, ?, ?, ?)");
+            (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, tenant_id, branch_id, created_by, exchange_rate, receipt)
+            VALUES (?, 'debit', ?, ?, ?, 'ticket_refund', ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $booking['paid_to'],
             $amount,
@@ -99,6 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $payment_date,
             $tenant_id,
             $branch_id,
+            $_SESSION['user_id'] ?? null,
             $exchange_rate,
             $receipt_number
         ]);

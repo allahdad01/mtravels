@@ -14,6 +14,10 @@ function checkCreditorCurrency(selectElement, creditorCurrency, creditorId) {
         'AFS->EUR': 78.8, 'EUR->AFS': 78.8,
         'AFS->DARHAM': 19.75, 'DARHAM->AFS': 19.75,
         'EUR->DARHAM': 3.99, 'DARHAM->EUR': 3.99,
+        'USD->SAR': 3.75, 'SAR->USD': 3.75,
+        'AFS->SAR': 18.67, 'SAR->AFS': 18.67,
+        'EUR->SAR': 4.07, 'SAR->EUR': 4.07,
+        'DARHAM->SAR': 1.02, 'SAR->DARHAM': 1.02,
     };
 
     if (selectedCurrency !== creditorCurrency) {

@@ -7,7 +7,7 @@
  * stored DB rate (units of to per 1 from) must be 1/user_rate.
  */
 function needsRateInversion($from_currency, $to_currency) {
-    $dividePairs = ['AFS->USD', 'AFS->EUR', 'AFS->AED', 'AED->USD', 'AED->EUR'];
+    $dividePairs = ['AFS->USD', 'AFS->EUR', 'AFS->AED', 'AED->USD', 'AED->EUR', 'AFS->SAR', 'SAR->USD', 'SAR->EUR'];
     return in_array("{$from_currency}->{$to_currency}", $dividePairs);
 }
 

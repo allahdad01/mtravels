@@ -24,6 +24,7 @@
                             <option value="AFS">AFS</option>
                             <option value="EUR">EUR</option>
                             <option value="DARHAM">DARHAM</option>
+                            <option value="SAR"><?= __('sar') ?></option>
                         </select>
                     </div>
                     

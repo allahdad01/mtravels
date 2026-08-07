@@ -55,6 +55,7 @@
                             <option value="AFS"><?= __('afs') ?></option>
                             <option value="EUR"><?= __('eur') ?></option>
                             <option value="DARHAM"><?= __('darham') ?></option>
+                            <option value="SAR"><?= __('sar') ?></option>
                         </select>
                     </div>
                     <div class="form-group">

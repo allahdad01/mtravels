@@ -230,7 +230,7 @@ CSV via `?export=1` query parameter
 | Statements | 2 | `generateStatement.php`, `export_statement.php` |
 | HR | 1 | `generate_hr_report.php` |
 | Financial Dashboard | 4 | `get_financial_data.php`, `export_comprehensive_report.php`, `export_financial_data.php`, `export_expenses.php` |
-| Expense Reports | 3 | `generate_category_pdf.php`, `print_expense.php`, `expense_actions.php` |
+| Expense Reports | 3 | `expense_category_report.php`, `print_expense.php`, `expense_actions.php` |
 
 ### JavaScript: 4 files
 | File | Purpose |

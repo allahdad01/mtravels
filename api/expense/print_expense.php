@@ -36,9 +36,10 @@ if (isset($_GET['id'])) {
     if (!$expenseId) {
         $errorMessage = "Invalid expense ID.";
     } else {
-        $query = "SELECT e.*, ec.name as category_name, ma.name as account_name, mat.receipt as receipt_number
+        $query = "SELECT e.*, ec.name as category_name, esc.name as sub_category_name, ma.name as account_name, mat.receipt as receipt_number
                   FROM expenses e
                   LEFT JOIN expense_categories ec ON e.category_id = ec.id
+                  LEFT JOIN expense_categories esc ON e.sub_category_id = esc.id
                   LEFT JOIN main_account ma ON e.main_account_id = ma.id
                   LEFT JOIN main_account_transactions mat ON e.id = mat.reference_id AND mat.transaction_of = 'expense'
                   WHERE e.id = ? AND e.tenant_id = ? AND e.branch_id = ?";
@@ -485,6 +486,12 @@ try {
                     <div class="kv-key">Category</div>
                     <div class="kv-val"><?php echo h($expense['category_name']); ?></div>
                 </div>
+                <?php if (!empty($expense['sub_category_name'])): ?>
+                <div class="kv-row">
+                    <div class="kv-key">Sub-Category</div>
+                    <div class="kv-val"><?php echo h($expense['sub_category_name']); ?></div>
+                </div>
+                <?php endif; ?>
                 <div class="kv-row">
                     <div class="kv-key">Date</div>
                     <div class="kv-val"><?php echo h(date('F d, Y', strtotime($expense['date']))); ?></div>

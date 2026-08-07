@@ -284,6 +284,7 @@ require_once '../api/dashboard/client_notification.php';
 .ac-mc-bal-val.afs { color: var(--ac-teal); }
 .ac-mc-bal-val.eur { color: var(--ac-blue); }
 .ac-mc-bal-val.aed { color: var(--ac-amber); }
+.ac-mc-bal-val.sar { color: var(--ac-green); }
 .ac-mc-gauge { display: flex; align-items: center; gap: 10px; padding: 9px 14px; background: var(--ac-surface-2); border-bottom: 1px solid var(--ac-border); }
 .ac-mc-gauge-label { font-size: 11px; color: var(--ac-text-3); font-weight: 500; flex-shrink: 0; }
 .ac-mc-gauge-track { flex: 1; height: 5px; background: var(--ac-border); border-radius: 99px; overflow: visible; }
@@ -689,6 +690,10 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                                 <div class="ac-mc-bal-cur"><?= __('aed_balance') ?></div>
                                                 <div class="ac-mc-bal-val aed">AED <?= number_format($account['darham_balance'], 2) ?></div>
                                             </div>
+                                            <div class="ac-mc-bal-cell">
+                                                <div class="ac-mc-bal-cur"><?= __('sar_balance') ?></div>
+                                                <div class="ac-mc-bal-val sar">SAR <?= number_format($account['sar_balance'], 2) ?></div>
+                                            </div>
                                         </div>
 
                                         <div class="ac-mc-fund">
@@ -697,6 +702,7 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                                 <option value="AFS"><?= __('afs') ?></option>
                                                 <option value="EUR"><?= __('eur') ?></option>
                                                 <option value="DARHAM"><?= __('darham') ?></option>
+                                                <option value="SAR"><?= __('sar') ?></option>
                                             </select>
                                             <input type="number" id="amount-<?= $account['id'] ?>" placeholder="Enter amount" <?= $isInactive ? 'disabled' : '' ?>>
                                             <button class="btn btn-primary btn-sm fund-account-btn" data-account-id="<?= $account['id'] ?>" <?= $isInactive ? 'disabled style="opacity:.5"' : '' ?>>
@@ -758,6 +764,11 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                     <div class="ac-section-count"><?= count($supplier) ?> <?= __('accounts') ?></div>
                                 </div>
                                 <div class="ac-section-actions">
+                                    <?php if ($isAdmin): ?>
+                                    <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#addSupplierModal">
+                                        <i class="feather icon-plus"></i> <?= __('add_supplier') ?>
+                                    </button>
+                                    <?php endif; ?>
                                     <button class="ac-collapse-btn" id="acSupplierCollapseBtn" onclick="acToggleSection('acSupplierBody','acSupplierCollapseBtn')">
                                         <i class="feather icon-chevron-down"></i>
                                     </button>
@@ -794,7 +805,7 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                 </div>
                                 <div class="ac-pill-row">
                                     <span class="ac-pill-label">Filter:</span>
-                                    <span class="ac-pill active" onclick="acPill(this,'acSupplierList','currency','all')">All</span>
+                                    <span class="ac-pill active" onclick="acPill(this,'acSupplierList','currency','all'); acPill(this,'acSupplierList','balance','all')">All</span>
                                     <span class="ac-pill" onclick="acPill(this,'acSupplierList','currency','USD')">USD</span>
                                     <span class="ac-pill" onclick="acPill(this,'acSupplierList','currency','AFS')">AFS</span>
                                     <span class="ac-pill" onclick="acPill(this,'acSupplierList','balance','positive')"><?= __('positive_balance') ?></span>
@@ -906,6 +917,11 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                     <div class="ac-section-count"><?= count($clientAccounts) ?> <?= __('accounts') ?></div>
                                 </div>
                                 <div class="ac-section-actions">
+                                    <?php if ($isAdmin): ?>
+                                    <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#addClientModal">
+                                        <i class="feather icon-plus"></i> <?= __('add_client') ?>
+                                    </button>
+                                    <?php endif; ?>
                                     <button class="ac-collapse-btn" id="acClientCollapseBtn" onclick="acToggleSection('acClientBody','acClientCollapseBtn')">
                                         <i class="feather icon-chevron-down"></i>
                                     </button>
@@ -1034,6 +1050,8 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
 <?php include '../modals/accounts/add_main_account_modal.php'; ?>
 <?php include '../modals/accounts/withdraw_main_modal.php'; ?>
 <?php include '../modals/accounts/client_withdraw_modal.php'; ?>
+<?php include '../modals/supplier/add_supplier.php'; ?>
+<?php include '../modals/client/add_client.php'; ?>
 
 <!-- Hidden form for transaction deletion — untouched -->
 <form id="deleteTransactionForm" class="d-none">
@@ -1069,6 +1087,75 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
 <script src="../js/accounts/main-account-withdrawal.js"></script>
 <script src="../js/accounts/transaction-management.js"></script>
 <script src="../js/accounts/status-management.js?v=1.1"></script>
+
+<!-- ADD SUPPLIER / ADD CLIENT FORMS (loading state) -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var addSupplierForm = document.getElementById('addSupplierForm');
+    if (addSupplierForm) {
+        addSupplierForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            var btn = this.querySelector('button[type="submit"]');
+            var originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
+
+            fetch('../api/supplier/add_supplier.php', {
+                method: 'POST',
+                body: new FormData(this)
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    showSuccessToast('Supplier added successfully');
+                    setTimeout(function() { location.reload(); }, 1000);
+                } else {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                    showErrorToast('Error: ' + (data.message || 'Could not add supplier'));
+                }
+            })
+            .catch(function() {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+                showErrorToast('An error occurred while adding the supplier.');
+            });
+        });
+    }
+
+    var addClientForm = document.getElementById('addClientForm');
+    if (addClientForm) {
+        addClientForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            var btn = this.querySelector('button[type="submit"]');
+            var originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
+
+            fetch('../api/client/add_clients.php', {
+                method: 'POST',
+                body: new FormData(this)
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.status === 'success' || data.success) {
+                    showSuccessToast(data.message || 'Client added successfully');
+                    setTimeout(function() { location.reload(); }, 1000);
+                } else {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                    showErrorToast('Error: ' + (data.message || 'Could not add client'));
+                }
+            })
+            .catch(function() {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+                showErrorToast('An error occurred while adding the client.');
+            });
+        });
+    }
+});
+</script>
 
 <!-- NEW UI SCRIPTS: collapse, pill filters, bar animations -->
 <script>

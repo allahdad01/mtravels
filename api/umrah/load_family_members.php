@@ -115,9 +115,12 @@ try {
     </div>
 
     <div class="members-list">
-        <?php foreach ($members as $member): 
+        <?php $hasPendingMember = false;
+        foreach ($members as $member):
             $isRefunded = isset($member['status']) && $member['status'] === 'refunded';
             $isCancelled = isset($member['status']) && $member['status'] === 'cancelled';
+            $isPending = isset($member['status']) && $member['status'] === 'pending';
+            if ($isPending) { $hasPendingMember = true; }
             $isDisabled = $isRefunded || $isCancelled;
             
             // Get main account transactions
@@ -284,6 +287,11 @@ try {
                 <span><?= __('select_all') ?></span>
             </label>
             <div class="bulk-action-buttons">
+                <?php if ($hasPendingMember): ?>
+                <button type="button" class="btn btn-success btn-sm" onclick="bulkApproveSelected()" id="bulkApproveBtn" disabled>
+                    <i class="fas fa-check-circle"></i> <?= __('approve_selected') ?>
+                </button>
+                <?php endif; ?>
                 <button type="button" class="btn btn-warning btn-sm" onclick="bulkCancelSelected()">
                     <i class="fas fa-times-circle"></i> Cancel Selected
                 </button>
@@ -682,7 +690,8 @@ try {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        gap: 1rem;
+        gap: 0.75rem 1rem;
+        flex-wrap: wrap;
     }
     
     .bulk-select-all {
@@ -693,11 +702,14 @@ try {
         cursor: pointer;
         font-weight: 500;
         color: var(--gray-700);
+        white-space: nowrap;
     }
     
     .bulk-action-buttons {
         display: flex;
         gap: 0.5rem;
+        flex-wrap: wrap;
+        margin-left: auto;
     }
     
     .no-members-message {
@@ -734,6 +746,22 @@ try {
         background-color: #fde68a !important;
     }
     
+    @media (max-width: 992px) {
+        .bulk-actions-content {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .bulk-action-buttons {
+            flex-direction: column;
+            margin-left: 0;
+        }
+        
+        .bulk-action-buttons .btn {
+            width: 100%;
+        }
+    }
+    
     @media (max-width: 768px) {
         .members-list {
             grid-template-columns: 1fr;
@@ -747,11 +775,6 @@ try {
         
         .member-detail-grid {
             grid-template-columns: 1fr;
-        }
-        
-        .bulk-actions-content {
-            flex-direction: column;
-            align-items: stretch;
         }
         
         .bulk-action-buttons {

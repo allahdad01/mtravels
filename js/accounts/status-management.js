@@ -50,10 +50,8 @@ document.addEventListener('DOMContentLoaded', function() {
             // Hide the modal
             $('#statusConfirmationModal').modal('hide');
             
-            // Execute the callback after modal is hidden
-            $('#statusConfirmationModal').on('hidden.bs.modal', function() {
-                confirmCallback();
-                // Reset button after callback completes (callback may reload page)
+            // Execute the callback; pass done() to restore the button once the request settles
+            confirmCallback(function() {
                 confirmBtn.disabled = false;
                 confirmBtn.innerHTML = originalHtml;
             });
@@ -71,7 +69,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const title = `${currentStatus === 'active' ? 'Deactivate' : 'Activate'} Account`;
             const message = `Are you sure you want to ${currentStatus === 'active' ? 'deactivate' : 'activate'} the account "${accountName}"?`;
             
-            showConfirmationModal(title, message, function() {
+            showConfirmationModal(title, message, function(done) {
                 // Get CSRF token
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
                 
@@ -101,7 +99,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 .catch(error => {
 
                     showErrorToast('An error occurred while updating the account status. Please try again.');
-                });
+                })
+                .finally(() => done());
             });
         });
     });
@@ -117,7 +116,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const title = `${currentStatus === 'active' ? 'Deactivate' : 'Activate'} Client`;
             const message = `Are you sure you want to ${currentStatus === 'active' ? 'deactivate' : 'activate'} the client "${clientName}"?`;
             
-            showConfirmationModal(title, message, function() {
+            showConfirmationModal(title, message, function(done) {
                 // Get CSRF token
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
                 
@@ -147,7 +146,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 .catch(error => {
 
                     showErrorToast('An error occurred while updating the client status. Please try again.');
-                });
+                })
+                .finally(() => done());
             });
         });
     });
@@ -164,7 +164,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const title = `${currentStatus === 'active' ? 'Deactivate' : 'Activate'} Supplier`;
             const message = `Are you sure you want to ${currentStatus === 'active' ? 'deactivate' : 'activate'} the supplier "${supplierName}"?`;
             
-            showConfirmationModal(title, message, function() {
+            showConfirmationModal(title, message, function(done) {
                 // Get CSRF token
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
                 
@@ -194,7 +194,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 .catch(error => {
 
                     showErrorToast('An error occurred while updating the supplier status. Please try again.');
-                });
+                })
+                .finally(() => done());
             });
         });
     });

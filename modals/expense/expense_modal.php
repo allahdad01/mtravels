@@ -26,8 +26,18 @@
                                     <label class="form-label"><?= __('category') ?></label>
                                     <select class="form-control" id="expenseCategory" name="expenseCategory" required>
                                         <?php foreach($categories as $category): ?>
+                                            <?php if (empty($category['parent_id'])): ?>
                                             <option value="<?php echo h($category['id']); ?>"><?php echo htmlspecialchars($category['name']); ?></option>
+                                            <?php endif; ?>
                                         <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label"><?= __('sub_category') ?> <span class="text-muted font-weight-normal">(<?= __('optional') ?>)</span></label>
+                                    <select class="form-control" id="expenseSubCategory" name="expenseSubCategory">
+                                        <option value=""><?= __('no_sub_category') ?></option>
                                     </select>
                                 </div>
                             </div>
@@ -86,6 +96,7 @@
                                         <option value="USD"><?= __('usd') ?></option>
                                         <option value="AFS"><?= __('afs') ?></option>
                                         <option value="DARHAM"><?= __('darham') ?></option>
+                                        <option value="SAR"><?= __('sar') ?></option>
                                         <option value="EUR"><?= __('eur') ?></option>
                                     </select>
                                 </div>

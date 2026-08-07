@@ -49,6 +49,11 @@ $room_type = isset($_POST['room_type']) ? DbSecurity::validateInput($_POST['room
 $remarks = isset($_POST['remarks']) ? DbSecurity::validateInput($_POST['remarks'], 'string') : null;
 $discount = isset($_POST['discount']) ? DbSecurity::validateInput($_POST['discount'], 'float') : 0;
 
+$sale_currency = isset($_POST['sale_currency']) ? DbSecurity::validateInput($_POST['sale_currency'], 'string') : 'USD';
+if (!in_array(strtoupper($sale_currency), ['USD', 'AFS'])) { $sale_currency = 'USD'; }
+$exchange_rate = isset($_POST['exchange_rate']) ? (float)$_POST['exchange_rate'] : 1.0;
+if ($exchange_rate <= 0) { $exchange_rate = 1.0; }
+
 // Hidden fields
 $received_bank_payment = isset($_POST['received_bank_payment']) ? DbSecurity::validateInput($_POST['received_bank_payment'], 'float') : 0;
 $bank_receipt_number = isset($_POST['bank_receipt_number']) ? DbSecurity::validateInput($_POST['bank_receipt_number'], 'string') : null;
@@ -70,7 +75,9 @@ foreach ($services as $service) {
     $currency = isset($service['currency']) ? DbSecurity::validateInput($service['currency'], 'string') : null;
     $base_price = isset($service['base_price']) ? DbSecurity::validateInput($service['base_price'], 'float') : 0;
     $sold_price = isset($service['sold_price']) ? DbSecurity::validateInput($service['sold_price'], 'float') : 0;
-    $profit = $sold_price - $base_price;
+    $base_currency = strtoupper(trim((string)$currency));
+    $base_in_sale = (empty($base_currency) || $base_currency === strtoupper($sale_currency)) ? $base_price : ($base_price / $exchange_rate);
+    $profit = $sold_price - $base_in_sale;
 
     if (!empty($service_type) && !empty($supplier_id)) {
         $processed_services[] = [
@@ -82,7 +89,7 @@ foreach ($services as $service) {
             'profit' => $profit
         ];
 
-        $total_base_price += $base_price;
+        $total_base_price += $base_in_sale;
         $total_sold_price += $sold_price;
         $total_profit += $profit;
     }
@@ -223,6 +230,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $service_stmt->execute();
                 }
             }
+
+            // Store sale currency + exchange rate (base -> sale) on the booking
+            $stmt_upd_currency = $pdo->prepare("UPDATE umrah_bookings SET currency = ?, exchange_rate = ? WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmt_upd_currency->execute([$sale_currency, $exchange_rate, $umrah_id, $tenant_id, $branch_id]);
 
             // Log the activity
             $new_values = json_encode([

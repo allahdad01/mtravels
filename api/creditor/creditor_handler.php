@@ -120,7 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_creditor'])) {
             $creditor_transaction_id = $pdo->lastInsertId();
             
             // Create main account transaction record
-            $stmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, amount, balance, currency, type, description, transaction_of, reference_id, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, amount, balance, currency, type, description, transaction_of, reference_id, tenant_id, branch_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             $stmt->bindParam(1, $main_account_id, PDO::PARAM_INT);
             $stmt->bindParam(2, $balance, PDO::PARAM_STR);
             $stmt->bindParam(3, $new_main_balance, PDO::PARAM_STR);
@@ -131,6 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_creditor'])) {
             $stmt->bindParam(8, $creditor_transaction_id, PDO::PARAM_INT);
             $stmt->bindParam(9, $tenant_id, PDO::PARAM_INT);
             $stmt->bindParam(10, $branch_id, PDO::PARAM_INT);
+            $stmt->bindValue(11, $_SESSION['user_id'] ?? null, PDO::PARAM_INT);
             $stmt->execute();
 
             $_SESSION['success_message'] = __("creditor_added_successfully_with_main_account_transaction");
@@ -272,7 +273,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pay'])) {
             $tranasction_of = 'creditor';
             // Create main account transaction
             $main_transaction_description = $description;
-            $stmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, amount, balance, currency, type, description, transaction_of, reference_id, receipt, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, amount, balance, currency, type, description, transaction_of, reference_id, receipt, tenant_id, branch_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             $stmt->bindParam(1, $paid_to, PDO::PARAM_INT);
             $stmt->bindParam(2, $amount, PDO::PARAM_STR);
             $stmt->bindParam(3, $new_main_balance, PDO::PARAM_STR);
@@ -284,6 +285,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pay'])) {
             $stmt->bindParam(9, $receipt, PDO::PARAM_STR);
             $stmt->bindParam(10, $tenant_id, PDO::PARAM_INT);
             $stmt->bindParam(11, $branch_id, PDO::PARAM_INT);
+            $stmt->bindValue(12, $_SESSION['user_id'] ?? null, PDO::PARAM_INT);
             if (!$stmt->execute()) {
                 error_log("[creditor_pay] INSERT main_account_transactions FAILED");
                 throw new Exception("Failed to create main account transaction");

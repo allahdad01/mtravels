@@ -161,6 +161,9 @@ try {
         } elseif ($currency === 'DARHAM') {
             $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET darham_balance = darham_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
             $updateMainAccountStmt->execute([$amountDifference, $accountId, $tenant_id, $branch_id]);
+        } elseif ($currency === 'SAR') {
+            $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET sar_balance = sar_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $updateMainAccountStmt->execute([$amountDifference, $accountId, $tenant_id, $branch_id]);
         }
         
     } elseif ($transactionType === 'supplier') {
@@ -315,6 +318,9 @@ try {
                 $updateMainAccountStmt->execute([$amountDifference, $mainTransaction['main_account_id'], $tenant_id, $branch_id]);
             } elseif ($currency === 'DARHAM') {
                 $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET darham_balance = darham_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $updateMainAccountStmt->execute([$amountDifference, $mainTransaction['main_account_id'], $tenant_id, $branch_id]);
+            } elseif ($currency === 'SAR') {
+                $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET sar_balance = sar_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                 $updateMainAccountStmt->execute([$amountDifference, $mainTransaction['main_account_id'], $tenant_id, $branch_id]);
             }
         }
@@ -509,6 +515,9 @@ try {
                 $updateMainAccountStmt->execute([$mainAmountDifference, $mainTransaction['main_account_id'], $tenant_id, $branch_id]);
             } elseif ($mainCurrency === 'DARHAM') {
                 $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET darham_balance = darham_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $updateMainAccountStmt->execute([$mainAmountDifference, $mainTransaction['main_account_id'], $tenant_id, $branch_id]);
+            } elseif ($mainCurrency === 'SAR') {
+                $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET sar_balance = sar_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                 $updateMainAccountStmt->execute([$mainAmountDifference, $mainTransaction['main_account_id'], $tenant_id, $branch_id]);
             }
         }

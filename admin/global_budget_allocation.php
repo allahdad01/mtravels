@@ -828,6 +828,7 @@ $availableCurrencies = array_column($allocatedCurrencies, 'currency');
                                     <option value="AFS">AFS</option>
                                     <option value="EUR">EUR</option>
                                     <option value="DARHAM">AED</option>
+                                    <option value="SAR">SAR</option>
                                 </select>
                             </div>
                         </div>

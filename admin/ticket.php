@@ -1001,7 +1001,7 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
 <script src="../js/ticket/weight-management.js"></script>
 <script src="../js/ticket/refund-calc.js"></script>
 <script src="../js/ticket/search.js"></script>
-<script src="../js/ticket/transaction-manager.js"></script>
+<script src="../js/ticket/transaction-manager.js<?= '?v=' . time() ?>"></script>
 <script src="../js/ticket/trip-type.js"></script>
 <script src="../js/ticket/payment-calculation.js"></script>
 <script src="../js/ticket/passenger-count.js"></script>

@@ -359,6 +359,7 @@ $selected_date = InputValidator::getDate($_GET['departure_date'] ?? '', 'Y-m-d',
 .tld-hotel{background:rgba(249,115,22,.15);color:var(--orange);}
 .tld-refund{background:rgba(14,165,233,.15);color:var(--sky);}
 .tld-sarafi{background:rgba(20,184,166,.15);color:var(--teal);}
+.tld-settle{background:rgba(37,99,235,.15);color:#3b82f6;}
 .tld-default{background:rgba(255,255,255,.07);color:var(--text-muted);}
 .tl-body{flex:1;}
 .tl-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px;}
@@ -605,6 +606,7 @@ $selected_date = InputValidator::getDate($_GET['departure_date'] ?? '', 'Y-m-d',
                     <option value="AFS"><?= __('afs') ?></option>
                     <option value="EUR"><?= __('eur') ?></option>
                     <option value="AED"><?= __('aed') ?></option>
+                    <option value="SAR"><?= __('sar') ?></option>
                   </select>
                 </div>
               </div>

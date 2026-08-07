@@ -87,6 +87,7 @@ $currencyColors = [
     'EUR' => ['bg' => '#ebf5fb', 'text' => '#2471a3', 'border' => '#2980b9'],
     'AFS' => ['bg' => '#f4ecf7', 'text' => '#7d3c98', 'border' => '#8e44ad'],
     'DARHAM' => ['bg' => '#fef9e7', 'text' => '#b7950b', 'border' => '#d4ac17'],
+    'SAR' => ['bg' => '#eafaf1', 'text' => '#148f77', 'border' => '#1abc9c'],
     'PKR' => ['bg' => '#fdf2e9', 'text' => '#ca6f1e', 'border' => '#d35400'],
     'INR' => ['bg' => '#fdedec', 'text' => '#a93226', 'border' => '#c0392b'],
 ];

@@ -32,7 +32,17 @@
                 
                 // AED pairs - show "1 AED = X" format
                 'AED-AFS': 'Example: 1 AED = 23.99 AFS, enter 23.99',
-                'AFS-AED': 'Example: 1 AED = 23.99 AFS, enter 23.99'
+                'AFS-AED': 'Example: 1 AED = 23.99 AFS, enter 23.99',
+                
+                // SAR pairs - show "1 ANCHOR = X SAR" format
+                'USD-SAR': 'Example: 1 USD = 3.75 SAR, enter 3.75',
+                'SAR-USD': 'Example: 1 USD = 3.75 SAR, enter 3.75',
+                'EUR-SAR': 'Example: 1 EUR = 4.07 SAR, enter 4.07',
+                'SAR-EUR': 'Example: 1 EUR = 4.07 SAR, enter 4.07',
+                'AED-SAR': 'Example: 1 AED = 1.02 SAR, enter 1.02',
+                'SAR-AED': 'Example: 1 AED = 1.02 SAR, enter 1.02',
+                'AFS-SAR': 'Example: 1 AFS = 18.67 SAR, enter 18.67',
+                'SAR-AFS': 'Example: 1 AFS = 18.67 SAR, enter 18.67'
             };
             const key = `${baseCurrency}-${targetCurrency}`;
             return examples[key] || 'Enter the exchange rate';
@@ -148,7 +158,7 @@
                         });
 
                         // Track currencies present in transactions
-                        let hasCurrency = { USD: false, AFS: false, EUR: false, DARHAM: false };
+                        let hasCurrency = { USD: false, AFS: false, EUR: false, DARHAM: false, SAR: false };
 
                         // Render transactions table
                         transactionList.forEach(tx => {
@@ -205,7 +215,7 @@
                         const remainingBase = Math.max(0, totalAmount - totalPaidBase);
 
                         // Display paid and remaining amounts for each currency
-                        ['USD','AFS','EUR','DARHAM'].forEach(cur => {
+                        ['USD','AFS','EUR','DARHAM','SAR'].forEach(cur => {
                             if (hasCurrency[cur]) {
                                 const paid = transactionList.filter(t => t.currency === cur)
                                                  .reduce((a,b) => a + parseFloat(b.amount), 0);
@@ -240,6 +250,7 @@
                         $('#afsSection').toggle(hasCurrency.AFS);
                         $('#eurSection').toggle(hasCurrency.EUR);
                         $('#aedSection').toggle(hasCurrency.DARHAM);
+                        $('#sarSection').toggle(hasCurrency.SAR);
 
                     } catch(e) {
                         console.log(e);
@@ -611,3 +622,8 @@
             }
         }, 10000);
     });
+
+// Expose to global scope so inline onclick handlers in the rendered rows work
+// (when embedded via new Function they are not global lexical bindings).
+window.transactionManager = transactionManager;
+window.printReceipt = printReceipt;

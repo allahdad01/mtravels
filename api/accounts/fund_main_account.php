@@ -47,7 +47,7 @@ if ($amount <= 0) {
 }
 
 // Fetch the main account balances (USD and AFS) based on account ID
-$mainAccountQuery = "SELECT usd_balance, afs_balance, darham_balance, euro_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+$mainAccountQuery = "SELECT usd_balance, afs_balance, darham_balance, euro_balance, sar_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?";
 $stmt = $pdo->prepare($mainAccountQuery);
 $stmt->bindParam(1, $accountId, PDO::PARAM_INT);
 $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
@@ -76,8 +76,8 @@ if ($currency === 'USD') {
     $stmt->execute();
 
     // Log the transaction (funding)
-    $transactionStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id, branch_id)
-                                       VALUES (?, 'credit', ?, ?, ?, 'fund', ?, ?, ?, ?, ?)");
+    $transactionStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id, branch_id, created_by)
+                                       VALUES (?, 'credit', ?, ?, ?, 'fund', ?, ?, ?, ?, ?, ?)");
     $transactionStmt->bindParam(1, $accountId, PDO::PARAM_INT);
     $transactionStmt->bindParam(2, $amount, PDO::PARAM_STR);
     $transactionStmt->bindParam(3, $currency, PDO::PARAM_STR);
@@ -87,6 +87,7 @@ if ($currency === 'USD') {
     $transactionStmt->bindParam(7, $receipt, PDO::PARAM_STR);
     $transactionStmt->bindParam(8, $tenant_id, PDO::PARAM_INT);
     $transactionStmt->bindParam(9, $branch_id, PDO::PARAM_INT);
+    $transactionStmt->bindValue(10, $_SESSION['user_id'] ?? null, PDO::PARAM_INT);
     $transactionStmt->execute();
 
     // Get the transaction ID
@@ -136,8 +137,8 @@ if ($currency === 'USD') {
     $stmt->execute();
 
     // Log the transaction (funding)
-    $transactionStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id, branch_id)
-                                       VALUES (?, 'credit', ?, ?, ?, 'fund', ?, ?, ?, ?, ?)");
+    $transactionStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id, branch_id, created_by)
+                                       VALUES (?, 'credit', ?, ?, ?, 'fund', ?, ?, ?, ?, ?, ?)");
     $transactionStmt->bindParam(1, $accountId, PDO::PARAM_INT);
     $transactionStmt->bindParam(2, $amount, PDO::PARAM_STR);
     $transactionStmt->bindParam(3, $currency, PDO::PARAM_STR);
@@ -147,6 +148,7 @@ if ($currency === 'USD') {
     $transactionStmt->bindParam(7, $receipt, PDO::PARAM_STR);
     $transactionStmt->bindParam(8, $tenant_id, PDO::PARAM_INT);
     $transactionStmt->bindParam(9, $branch_id, PDO::PARAM_INT);
+    $transactionStmt->bindValue(10, $_SESSION['user_id'] ?? null, PDO::PARAM_INT);
     $transactionStmt->execute();
 
     // Get the transaction ID
@@ -196,8 +198,8 @@ if ($currency === 'USD') {
     $stmt->execute();
 
     // Log the transaction (funding)
-    $transactionStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id, branch_id)
-                                       VALUES (?, 'credit', ?, ?, ?, 'fund', ?, ?, ?, ?, ?)");
+    $transactionStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id, branch_id, created_by)
+                                       VALUES (?, 'credit', ?, ?, ?, 'fund', ?, ?, ?, ?, ?, ?)");
     $transactionStmt->bindParam(1, $accountId, PDO::PARAM_INT);
     $transactionStmt->bindParam(2, $amount, PDO::PARAM_STR);
     $transactionStmt->bindParam(3, $currency, PDO::PARAM_STR);
@@ -207,6 +209,7 @@ if ($currency === 'USD') {
     $transactionStmt->bindParam(7, $receipt, PDO::PARAM_STR);
     $transactionStmt->bindParam(8, $tenant_id, PDO::PARAM_INT);
     $transactionStmt->bindParam(9, $branch_id, PDO::PARAM_INT);
+    $transactionStmt->bindValue(10, $_SESSION['user_id'] ?? null, PDO::PARAM_INT);
     $transactionStmt->execute();
 
     // Get the transaction ID
@@ -256,8 +259,8 @@ if ($currency === 'USD') {
     $stmt->execute();
 
     // Log the transaction (funding)
-    $transactionStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id, branch_id)
-                                       VALUES (?, 'credit', ?, ?, ?, 'fund', ?, ?, ?, ?, ?)");
+    $transactionStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id, branch_id, created_by)
+                                       VALUES (?, 'credit', ?, ?, ?, 'fund', ?, ?, ?, ?, ?, ?)");
     $transactionStmt->bindParam(1, $accountId, PDO::PARAM_INT);
     $transactionStmt->bindParam(2, $amount, PDO::PARAM_STR);
     $transactionStmt->bindParam(3, $currency, PDO::PARAM_STR);
@@ -267,6 +270,7 @@ if ($currency === 'USD') {
     $transactionStmt->bindParam(7, $receipt, PDO::PARAM_STR);
     $transactionStmt->bindParam(8, $tenant_id, PDO::PARAM_INT);
     $transactionStmt->bindParam(9, $branch_id, PDO::PARAM_INT);
+    $transactionStmt->bindValue(10, $_SESSION['user_id'] ?? null, PDO::PARAM_INT);
     $transactionStmt->execute();
 
     // Get the transaction ID
@@ -305,6 +309,67 @@ if ($currency === 'USD') {
     $activityStmt->execute();
 
     echo json_encode(['success' => true, 'message' => 'Main account funded with EUR.']);
+} elseif ($currency === 'SAR') {
+    $newSarBalance = $mainAccount['sar_balance'] + $amount;
+    $updateQuery = "UPDATE main_account SET sar_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+    $stmt = $pdo->prepare($updateQuery);
+    $stmt->bindParam(1, $newSarBalance, PDO::PARAM_STR);
+    $stmt->bindParam(2, $accountId, PDO::PARAM_INT);
+    $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
+    $stmt->execute();
+
+    // Log the transaction (funding)
+    $transactionStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, receipt, tenant_id, branch_id, created_by)
+                                       VALUES (?, 'credit', ?, ?, ?, 'fund', ?, ?, ?, ?, ?, ?)");
+    $transactionStmt->bindParam(1, $accountId, PDO::PARAM_INT);
+    $transactionStmt->bindParam(2, $amount, PDO::PARAM_STR);
+    $transactionStmt->bindParam(3, $currency, PDO::PARAM_STR);
+    $transactionStmt->bindParam(4, $fullRemark, PDO::PARAM_STR);
+    $transactionStmt->bindParam(5, $user_id, PDO::PARAM_INT);
+    $transactionStmt->bindParam(6, $newSarBalance, PDO::PARAM_STR);
+    $transactionStmt->bindParam(7, $receipt, PDO::PARAM_STR);
+    $transactionStmt->bindParam(8, $tenant_id, PDO::PARAM_INT);
+    $transactionStmt->bindParam(9, $branch_id, PDO::PARAM_INT);
+    $transactionStmt->bindValue(10, $_SESSION['user_id'] ?? null, PDO::PARAM_INT);
+    $transactionStmt->execute();
+
+    // Get the transaction ID
+    $transactionId = $pdo->lastInsertId();
+
+    // Log the activity
+    $old_values = json_encode([
+        'account_id' => $accountId,
+        'sar_balance' => $mainAccount['sar_balance']
+    ]);
+    $new_values = json_encode([
+        'account_id' => $accountId,
+        'sar_balance' => $newSarBalance,
+        'amount' => $amount,
+        'currency' => $currency,
+        'description' => $fullRemark
+    ]);
+
+    $user_id = $_SESSION['user_id'] ?? 0;
+    $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
+    $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+
+    $activityStmt = $pdo->prepare("
+        INSERT INTO activity_log
+        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+        VALUES (?, 'fund', 'main_account', ?, ?, ?, ?, ?, NOW(), ?, ?)
+    ");
+    $activityStmt->bindParam(1, $user_id, PDO::PARAM_INT);
+    $activityStmt->bindParam(2, $accountId, PDO::PARAM_INT);
+    $activityStmt->bindParam(3, $old_values, PDO::PARAM_STR);
+    $activityStmt->bindParam(4, $new_values, PDO::PARAM_STR);
+    $activityStmt->bindParam(5, $ip_address, PDO::PARAM_STR);
+    $activityStmt->bindParam(6, $user_agent, PDO::PARAM_STR);
+    $activityStmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
+    $activityStmt->bindParam(8, $branch_id, PDO::PARAM_INT);
+    $activityStmt->execute();
+
+    echo json_encode(['success' => true, 'message' => 'Main account funded with SAR.']);
 } else  {
     echo json_encode(['success' => false, 'message' => 'Invalid currency type.']);
 }

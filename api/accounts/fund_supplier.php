@@ -57,7 +57,7 @@ $supplierName = $supplier['name'];
 
 // Fetch main account balances and name
 $mainAccountQuery = "
-    SELECT usd_balance, afs_balance, euro_balance, darham_balance, name
+    SELECT usd_balance, afs_balance, euro_balance, darham_balance, sar_balance, name
     FROM main_account
     WHERE id = ? AND tenant_id = ? AND branch_id = ?
 ";
@@ -80,6 +80,7 @@ $currencyFieldMap = [
     'AFS' => ['field' => 'afs_balance', 'label' => 'AFS'],
     'EUR' => ['field' => 'euro_balance', 'label' => 'EUR'],
     'DARHAM' => ['field' => 'darham_balance', 'label' => 'DARHAM'],
+    'SAR' => ['field' => 'sar_balance', 'label' => 'SAR'],
 ];
 if (!isset($currencyFieldMap[$paymentCurrency])) {
     echo json_encode(['success' => false, 'message' => 'Invalid payment currency.']);
@@ -129,7 +130,7 @@ if ($paymentCurrency !== $supplierCurrency) {
         throw new Exception('Missing or invalid exchange rate.');
     }
     $normCur = function($c) { return $c === 'DARHAM' ? 'AED' : $c; };
-    $dividePairs = ['AFS->AED', 'AFS->EUR', 'AFS->USD', 'AED->EUR', 'AED->USD', 'EUR->USD'];
+    $dividePairs = ['AFS->AED', 'AFS->EUR', 'AFS->USD', 'AED->EUR', 'AED->USD', 'EUR->USD', 'AFS->SAR', 'SAR->USD', 'SAR->EUR'];
     $pairKey = $normCur($paymentCurrency) . '->' . $normCur($supplierCurrency);
     if (in_array($pairKey, $dividePairs)) {
         $creditedAmount = $amount / $exchangeRate;
@@ -216,12 +217,14 @@ $supplierUpdateStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
             currency,
             receipt,
             tenant_id,
-            branch_id
+            branch_id,
+            created_by
         ) VALUES (
             ?,
             'debit',
             ?,
             'supplier_fund',
+            ?,
             ?,
             ?,
             ?,
@@ -241,6 +244,7 @@ $supplierUpdateStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
     $mainTransactionStmt->bindParam(7, $receiptNumber, PDO::PARAM_STR);
     $mainTransactionStmt->bindParam(8, $tenant_id, PDO::PARAM_INT);
     $mainTransactionStmt->bindParam(9, $branch_id, PDO::PARAM_INT);
+    $mainTransactionStmt->bindValue(10, $_SESSION['user_id'] ?? null, PDO::PARAM_INT);
     if (!$mainTransactionStmt->execute()) {
         throw new Exception("Failed to log the main account transaction.");
     }

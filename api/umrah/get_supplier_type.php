@@ -45,7 +45,7 @@ try {
     
     // Fetch Supplier Type
     $stmt_fetch_supplier = $pdo->prepare("
-        SELECT supplier_type FROM suppliers 
+        SELECT supplier_type, route_payment_to_main_account FROM suppliers 
         WHERE id = ? AND tenant_id = ? AND branch_id = ?
     ");
     $stmt_fetch_supplier->bindParam(1, $supplier_id, PDO::PARAM_INT);
@@ -65,7 +65,8 @@ try {
     echo json_encode([
         'success' => true,
         'supplier_id' => $supplier_id,
-        'supplier_type' => $supplier_data['supplier_type']
+        'supplier_type' => $supplier_data['supplier_type'],
+        'route_payment_to_main_account' => (int)($supplier_data['route_payment_to_main_account'] ?? 0)
     ]);
 } catch (PDOException $e) {
     echo json_encode([

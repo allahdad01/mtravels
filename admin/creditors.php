@@ -633,6 +633,7 @@ try {
                                         <option value="AFS"><?= __("afs") ?></option>
                                         <option value="EUR"><?= __("eur") ?></option>
                                         <option value="DARHAM"><?= __("darham") ?></option>
+                                        <option value="SAR"><?= __("sar") ?></option>
                                     </select>
                                 </div>
                             </div>
@@ -796,6 +797,7 @@ try {
                                     <option value="AFS" <?php echo h($creditor['currency']) == 'AFS' ? 'selected' : ''; ?>>AFS</option>
                                     <option value="EUR" <?php echo h($creditor['currency']) == 'EUR' ? 'selected' : ''; ?>>EUR</option>
                                     <option value="DARHAM" <?php echo h($creditor['currency']) == 'DARHAM' ? 'selected' : ''; ?>>AED</option>
+                                    <option value="SAR" <?php echo h($creditor['currency']) == 'SAR' ? 'selected' : ''; ?>>SAR</option>
                                 </select>
                             </div>
                         </div>
@@ -887,6 +889,7 @@ try {
                                  <option value="AFS" <?php echo h($creditor['currency']) == 'AFS' ? 'selected' : ''; ?>>AFS</option>
                                  <option value="EUR" <?php echo h($creditor['currency']) == 'EUR' ? 'selected' : ''; ?>>EUR</option>
                                  <option value="DARHAM" <?php echo h($creditor['currency']) == 'DARHAM' ? 'selected' : ''; ?>>AED</option>
+                                 <option value="SAR" <?php echo h($creditor['currency']) == 'SAR' ? 'selected' : ''; ?>>SAR</option>
                              </select>
                              <small class="form-text text-muted"><?= __("currency_cannot_be_changed") ?></small>
                          </div>

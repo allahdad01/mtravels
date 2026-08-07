@@ -159,6 +159,7 @@ function getSourceQuery($source) {
                     SUM(CASE WHEN tb.currency = 'AFS' THEN tb.profit ELSE 0 END) as afs_amount,
                     SUM(CASE WHEN tb.currency = 'EUR' THEN tb.profit ELSE 0 END) as eur_amount,
                     SUM(CASE WHEN tb.currency = 'DARHAM' THEN tb.profit ELSE 0 END) as darham_amount,
+                    SUM(CASE WHEN tb.currency = 'SAR' THEN tb.profit ELSE 0 END) as sar_amount,
                     SUM(CASE
                         WHEN tb.currency = 'USD' AND mat.exchange_rate > 0 THEN tb.profit * mat.exchange_rate
                         ELSE 0
@@ -176,6 +177,7 @@ function getSourceQuery($source) {
                     SUM(CASE WHEN tr.currency = 'AFS' THEN tr.profit ELSE 0 END) as afs_amount,
                     SUM(CASE WHEN tr.currency = 'EUR' THEN tr.profit ELSE 0 END) as eur_amount,
                     SUM(CASE WHEN tr.currency = 'DARHAM' THEN tr.profit ELSE 0 END) as darham_amount,
+                    SUM(CASE WHEN tr.currency = 'SAR' THEN tr.profit ELSE 0 END) as sar_amount,
                     SUM(CASE
                         WHEN tr.currency = 'USD' AND mat.exchange_rate > 0 THEN tr.profit * mat.exchange_rate
                         ELSE 0
@@ -225,6 +227,15 @@ function getSourceQuery($source) {
                         ELSE 0
                     END) as darham_amount,
                     SUM(CASE
+                        WHEN rt.currency = 'SAR' THEN
+                            CASE
+                                WHEN rt.calculation_method = 'base' THEN rt.service_penalty
+                                WHEN rt.calculation_method = 'sold' THEN (rt.service_penalty - COALESCE(tb.profit, 0))
+                                ELSE rt.service_penalty
+                            END
+                        ELSE 0
+                    END) as sar_amount,
+                    SUM(CASE
                         WHEN rt.currency = 'USD' THEN
                             CASE
                                 WHEN mat.exchange_rate > 0 THEN
@@ -250,6 +261,7 @@ function getSourceQuery($source) {
                     SUM(CASE WHEN dt.currency = 'AFS' THEN dt.service_penalty ELSE 0 END) as afs_amount,
                     SUM(CASE WHEN dt.currency = 'EUR' THEN dt.service_penalty ELSE 0 END) as eur_amount,
                     SUM(CASE WHEN dt.currency = 'DARHAM' THEN dt.service_penalty ELSE 0 END) as darham_amount,
+                    SUM(CASE WHEN dt.currency = 'SAR' THEN dt.service_penalty ELSE 0 END) as sar_amount,
                     SUM(CASE
                         WHEN dt.currency = 'USD' THEN
                             CASE
@@ -271,6 +283,7 @@ function getSourceQuery($source) {
                     SUM(CASE WHEN va.currency = 'AFS' THEN va.profit ELSE 0 END) as afs_amount,
                     SUM(CASE WHEN va.currency = 'EUR' THEN va.profit ELSE 0 END) as eur_amount,
                     SUM(CASE WHEN va.currency = 'DARHAM' THEN va.profit ELSE 0 END) as darham_amount,
+                    SUM(CASE WHEN va.currency = 'SAR' THEN va.profit ELSE 0 END) as sar_amount,
                     SUM(CASE
                         WHEN va.currency = 'USD' AND mat.exchange_rate > 0 THEN va.profit * mat.exchange_rate
                         ELSE 0
@@ -287,6 +300,7 @@ function getSourceQuery($source) {
                     SUM(CASE WHEN ub.currency = 'AFS' THEN ub.profit ELSE 0 END) as afs_amount,
                     SUM(CASE WHEN ub.currency = 'EUR' THEN ub.profit ELSE 0 END) as eur_amount,
                     SUM(CASE WHEN ub.currency = 'DARHAM' THEN ub.profit ELSE 0 END) as darham_amount,
+                    SUM(CASE WHEN ub.currency = 'SAR' THEN ub.profit ELSE 0 END) as sar_amount,
                     SUM(CASE
                         WHEN ub.currency = 'USD' AND mat.exchange_rate > 0 THEN ub.profit * mat.exchange_rate
                         ELSE 0
@@ -303,6 +317,7 @@ function getSourceQuery($source) {
                     SUM(CASE WHEN hb.currency = 'AFS' THEN hb.profit ELSE 0 END) as afs_amount,
                     SUM(CASE WHEN hb.currency = 'EUR' THEN hb.profit ELSE 0 END) as eur_amount,
                     SUM(CASE WHEN hb.currency = 'DARHAM' THEN hb.profit ELSE 0 END) as darham_amount,
+                    SUM(CASE WHEN hb.currency = 'SAR' THEN hb.profit ELSE 0 END) as sar_amount,
                     SUM(CASE
                         WHEN hb.currency = 'USD' AND mat.exchange_rate > 0 THEN hb.profit * mat.exchange_rate
                         ELSE 0
@@ -319,6 +334,7 @@ function getSourceQuery($source) {
                     SUM(CASE WHEN tb.currency = 'AFS' THEN tw.profit ELSE 0 END) as afs_amount,
                     SUM(CASE WHEN tb.currency = 'EUR' THEN tw.profit ELSE 0 END) as eur_amount,
                     SUM(CASE WHEN tb.currency = 'DARHAM' THEN tw.profit ELSE 0 END) as darham_amount,
+                    SUM(CASE WHEN tb.currency = 'SAR' THEN tw.profit ELSE 0 END) as sar_amount,
                     SUM(CASE
                         WHEN tb.currency = 'USD' AND mat.exchange_rate > 0 THEN tw.profit * mat.exchange_rate
                         ELSE 0
@@ -336,6 +352,7 @@ function getSourceQuery($source) {
                     SUM(CASE WHEN ap.currency = 'AFS' THEN ap.profit ELSE 0 END) as afs_amount,
                     SUM(CASE WHEN ap.currency = 'EUR' THEN ap.profit ELSE 0 END) as eur_amount,
                     SUM(CASE WHEN ap.currency = 'DARHAM' THEN ap.profit ELSE 0 END) as darham_amount,
+                    SUM(CASE WHEN ap.currency = 'SAR' THEN ap.profit ELSE 0 END) as sar_amount,
                     0 as afs_converted
                 FROM additional_payments ap
                 WHERE ap.created_at BETWEEN ? AND ?
@@ -418,6 +435,7 @@ try {
             'AFS' => 0,
             'EUR' => 0,
             'DARHAM' => 0,
+            'SAR' => 0,
             'usd_to_afs' => 0
         ];
 
@@ -532,15 +550,15 @@ try {
 
     // Initialize sources array with separate tracking for pure AFS and converted AFS
     $sources = [
-        'Ticket Sales' => ['USD' => 0, 'AFS' => 0, 'EUR' => 0, 'DARHAM' => 0, 'pure_afs' => 0, 'usd_to_afs' => 0],
-        'Ticket Reservations' => ['USD' => 0, 'AFS' => 0, 'EUR' => 0, 'DARHAM' => 0, 'pure_afs' => 0, 'usd_to_afs' => 0],
-        'Ticket Refunds' => ['USD' => 0, 'AFS' => 0, 'EUR' => 0, 'DARHAM' => 0, 'pure_afs' => 0, 'usd_to_afs' => 0],
-        'Date Changes' => ['USD' => 0, 'AFS' => 0, 'EUR' => 0, 'DARHAM' => 0, 'pure_afs' => 0, 'usd_to_afs' => 0],
-        'Visa Services' => ['USD' => 0, 'AFS' => 0, 'EUR' => 0, 'DARHAM' => 0, 'pure_afs' => 0, 'usd_to_afs' => 0],
-        'Umrah Bookings' => ['USD' => 0, 'AFS' => 0, 'EUR' => 0, 'DARHAM' => 0, 'pure_afs' => 0, 'usd_to_afs' => 0],
-        'Hotel Bookings' => ['USD' => 0, 'AFS' => 0, 'EUR' => 0, 'DARHAM' => 0, 'pure_afs' => 0, 'usd_to_afs' => 0],
-        'Ticket Weights' => ['USD' => 0, 'AFS' => 0, 'EUR' => 0, 'DARHAM' => 0, 'pure_afs' => 0, 'usd_to_afs' => 0],
-        'Additional Payments' => ['USD' => 0, 'AFS' => 0, 'EUR' => 0, 'DARHAM' => 0, 'pure_afs' => 0, 'usd_to_afs' => 0]
+        'Ticket Sales' => ['USD' => 0, 'AFS' => 0, 'EUR' => 0, 'DARHAM' => 0, 'SAR' => 0, 'pure_afs' => 0, 'usd_to_afs' => 0],
+        'Ticket Reservations' => ['USD' => 0, 'AFS' => 0, 'EUR' => 0, 'DARHAM' => 0, 'SAR' => 0, 'pure_afs' => 0, 'usd_to_afs' => 0],
+        'Ticket Refunds' => ['USD' => 0, 'AFS' => 0, 'EUR' => 0, 'DARHAM' => 0, 'SAR' => 0, 'pure_afs' => 0, 'usd_to_afs' => 0],
+        'Date Changes' => ['USD' => 0, 'AFS' => 0, 'EUR' => 0, 'DARHAM' => 0, 'SAR' => 0, 'pure_afs' => 0, 'usd_to_afs' => 0],
+        'Visa Services' => ['USD' => 0, 'AFS' => 0, 'EUR' => 0, 'DARHAM' => 0, 'SAR' => 0, 'pure_afs' => 0, 'usd_to_afs' => 0],
+        'Umrah Bookings' => ['USD' => 0, 'AFS' => 0, 'EUR' => 0, 'DARHAM' => 0, 'SAR' => 0, 'pure_afs' => 0, 'usd_to_afs' => 0],
+        'Hotel Bookings' => ['USD' => 0, 'AFS' => 0, 'EUR' => 0, 'DARHAM' => 0, 'SAR' => 0, 'pure_afs' => 0, 'usd_to_afs' => 0],
+        'Ticket Weights' => ['USD' => 0, 'AFS' => 0, 'EUR' => 0, 'DARHAM' => 0, 'SAR' => 0, 'pure_afs' => 0, 'usd_to_afs' => 0],
+        'Additional Payments' => ['USD' => 0, 'AFS' => 0, 'EUR' => 0, 'DARHAM' => 0, 'SAR' => 0, 'pure_afs' => 0, 'usd_to_afs' => 0]
     ];
 
     // Fetch ticket bookings income
@@ -860,6 +878,13 @@ try {
             } else {
                 $currencies['DARHAM'] = floatval($row['darham_amount'] ?? 0);
             }
+
+            // Store SAR amount
+            if (isset($currencies['SAR'])) {
+                $currencies['SAR'] += floatval($row['sar_amount'] ?? 0);
+            } else {
+                $currencies['SAR'] = floatval($row['sar_amount'] ?? 0);
+            }
         } catch (PDOException $e) {
             continue;
         }
@@ -877,7 +902,7 @@ try {
     $usdToAfsTotal = 0;
 
     foreach ($sources as $source => $amounts) {
-        foreach (['USD', 'AFS', 'EUR', 'DARHAM'] as $currency) {
+        foreach (['USD', 'AFS', 'EUR', 'DARHAM', 'SAR'] as $currency) {
             if (isset($amounts[$currency])) {
                 $incomeData[$currency] += $amounts[$currency];
             }
@@ -1321,6 +1346,7 @@ try {
                 'AFS' => 0,
                 'EUR' => 0,
                 'DARHAM' => 0,
+                'SAR' => 0,
                 'usd_to_afs' => 0
             ];
         }

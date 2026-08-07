@@ -22,6 +22,7 @@ require_once('../includes/db.php');
 
 // Check if user is admin or finance
 $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
+$isAdmin = $_SESSION['role'] === 'admin';
 ?>
 
 <?php include '../includes/header.php'; ?>
@@ -79,11 +80,12 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                     $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
                     $search = isset($_GET['search']) ? trim($_GET['search']) : '';
                     $visaStatus = isset($_GET['visa_status']) ? trim($_GET['visa_status']) : '';
-                    $filter = isset($_GET['filter']) ? trim($_GET['filter']) : '';
+                    $filter = isset($_GET['filter']) ? trim($_GET['filter']) : 'families';
                     $offset = ($page - 1) * $resultsPerPage;
 
-                    // Flights tab: group members by flight ticket
+                    // Views: 'families' (default / All), 'members', 'flights', 'refunded', 'cancelled', 'families' (+ visa_status)
                     $showFlights = ($filter === 'flights');
+                    $showMembers = ($filter === 'members');
 
                     // Total of active tickets (badge on the Flights pill)
                     $flightsCountStmt = $pdo->prepare("SELECT COUNT(*) FROM group_tickets WHERE tenant_id = ? AND branch_id = ? AND status = 'active'");
@@ -136,6 +138,79 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                         $totalPages = 1;
                         $resultFamilies = [];
                         $regularClientFamilies = [];
+                        $resultMembers = [];
+                        $totalMembers = 0;
+                    } elseif ($showMembers) {
+                    // MEMBERS VIEW: one card per member (All tab)
+                    $membersCountSql = "SELECT COUNT(*)
+                                        FROM umrah_bookings b
+                                        LEFT JOIN families f ON b.family_id = f.family_id
+                                        LEFT JOIN clients c ON b.sold_to = c.id
+                                        WHERE b.tenant_id = ? AND b.branch_id = ?";
+                    $membersCountParams = [$tenant_id, $branch_id];
+                    $membersCountTypes = "ii";
+
+                    if (!empty($search)) {
+                        $membersCountSql .= " AND (
+                            b.name LIKE ? OR
+                            b.fname LIKE ? OR
+                            b.passport_number LIKE ? OR
+                            f.head_of_family LIKE ? OR
+                            f.contact LIKE ? OR
+                            c.name LIKE ?
+                        )";
+                        $searchTerm = "%$search%";
+                        $membersCountParams = array_merge($membersCountParams, [$searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm]);
+                        $membersCountTypes .= "ssssss";
+                    }
+
+                    $membersCountStmt = $pdo->prepare($membersCountSql);
+                    $membersCountStmt->execute($membersCountParams);
+                    $totalMembers = (int)$membersCountStmt->fetchColumn();
+                    $totalPages = ceil($totalMembers / $resultsPerPage);
+
+                    $membersSql = "SELECT
+                                        b.booking_id, b.family_id, b.name, b.fname, b.gender, b.duration, b.room_type,
+                                        b.passport_number, b.sold_price, b.paid, b.due, b.currency, b.status, b.sold_to,
+                                        b.price, b.profit, b.flight_date, b.return_date,
+                                        f.head_of_family, f.package_type, f.location, f.visa_status, f.contact,
+                                        c.name AS client_name
+                                    FROM umrah_bookings b
+                                    LEFT JOIN families f ON b.family_id = f.family_id
+                                    LEFT JOIN clients c ON b.sold_to = c.id
+                                    WHERE b.tenant_id = ? AND b.branch_id = ?";
+                    $membersParams = [$tenant_id, $branch_id];
+                    $membersTypes = "ii";
+
+                    if (!empty($search)) {
+                        $membersSql .= " AND (
+                            b.name LIKE ? OR
+                            b.fname LIKE ? OR
+                            b.passport_number LIKE ? OR
+                            f.head_of_family LIKE ? OR
+                            f.contact LIKE ? OR
+                            c.name LIKE ?
+                        )";
+                        $searchTerm = "%$search%";
+                        $membersParams = array_merge($membersParams, [$searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm]);
+                        $membersTypes .= "ssssss";
+                    }
+
+                    $membersSql .= " ORDER BY b.created_at DESC LIMIT ? OFFSET ?";
+                    $membersParams[] = $resultsPerPage;
+                    $membersParams[] = $offset;
+                    $membersTypes .= "ii";
+
+                    $membersStmt = $pdo->prepare($membersSql);
+                    $membersStmt->execute($membersParams);
+                    $resultMembers = $membersStmt->fetchAll(PDO::FETCH_ASSOC);
+
+                    // Fallbacks needed by the shared header/pagination markup
+                    $familiesCountStmt = $pdo->prepare("SELECT COUNT(DISTINCT family_id) AS total FROM families WHERE tenant_id = ? AND branch_id = ?");
+                    $familiesCountStmt->execute([$tenant_id, $branch_id]);
+                    $totalFamilies = (int)$familiesCountStmt->fetchColumn();
+                    $resultFamilies = [];
+                    $regularClientFamilies = [];
                     } else {
                     // COUNT QUERY
                     if ($filter === 'refunded' || $filter === 'cancelled') {
@@ -281,6 +356,12 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                         $clientTypeStmt->execute(array_merge([$tenant_id, $branch_id], $familyIds));
                         $regularClientFamilies = array_flip($clientTypeStmt->fetchAll(PDO::FETCH_COLUMN));
                     }
+
+                    // Total member count (badge on the All pill)
+                    $membersCountStmt = $pdo->prepare("SELECT COUNT(*) FROM umrah_bookings WHERE tenant_id = ? AND branch_id = ?");
+                    $membersCountStmt->execute([$tenant_id, $branch_id]);
+                    $totalMembers = (int)$membersCountStmt->fetchColumn();
+                    $resultMembers = [];
                     }
                 ?>
 
@@ -289,20 +370,25 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                     <div class="filters-wrapper">
                         <!-- Filter Pills -->
                         <div class="filter-pills">
-                            <a href="?visa_status=" class="filter-pill <?= empty($filter) && empty($visaStatus) ? 'active' : '' ?>">
+                            <a href="?filter=families" class="filter-pill <?= $filter === 'families' && empty($visaStatus) ? 'active' : '' ?>">
                                 <i class="fas fa-layer-group"></i>
-                                <span><?= __('all') ?></span>
+                                <span><?= __('families') ?></span>
                                 <span class="pill-badge"><?= $totalFamilies ?></span>
                             </a>
-                            <a href="?visa_status=Not Applied" class="filter-pill <?= empty($filter) && $visaStatus === 'Not Applied' ? 'active' : '' ?>">
+                            <a href="?filter=members" class="filter-pill <?= $filter === 'members' ? 'active' : '' ?>">
+                                <i class="fas fa-users"></i>
+                                <span><?= __('members') ?></span>
+                                <span class="pill-badge"><?= $totalMembers ?></span>
+                            </a>
+                            <a href="?filter=families&visa_status=Not Applied" class="filter-pill <?= $filter === 'families' && $visaStatus === 'Not Applied' ? 'active' : '' ?>">
                                 <i class="fas fa-clock"></i>
                                 <span><?= __('not_applied') ?></span>
                             </a>
-                            <a href="?visa_status=Applied" class="filter-pill <?= empty($filter) && $visaStatus === 'Applied' ? 'active' : '' ?>">
+                            <a href="?filter=families&visa_status=Applied" class="filter-pill <?= $filter === 'families' && $visaStatus === 'Applied' ? 'active' : '' ?>">
                                 <i class="fas fa-hourglass-half"></i>
                                 <span><?= __('applied') ?></span>
                             </a>
-                            <a href="?visa_status=Issued" class="filter-pill <?= empty($filter) && $visaStatus === 'Issued' ? 'active' : '' ?>">
+                            <a href="?filter=families&visa_status=Issued" class="filter-pill <?= $filter === 'families' && $visaStatus === 'Issued' ? 'active' : '' ?>">
                                 <i class="fas fa-check-circle"></i>
                                 <span><?= __('issued') ?></span>
                             </a>
@@ -351,6 +437,22 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                 <div class="container-fluid px-4">
                     <?php if ($showFlights): ?>
                         <!-- Flights View: group members by flight, then by family -->
+                        <div class="rooming-toolbar">
+                            <label class="rooming-tick-toggle">
+                                <input type="checkbox" id="roomingSelectAll" class="rooming-select-all">
+                                <i class="fas fa-check-square"></i>
+                                <span><?= __('select_all') ?></span>
+                            </label>
+                            <span class="rooming-selected-count" id="roomingSelectedCount">0 <?= __('tickets') ?></span>
+                            <div class="rooming-actions-dropdown" id="roomingActions">
+                                <button type="button" class="btn-icon btn-icon-rooming rooming-actions-btn" title="<?= __('rooming_list') ?>" aria-label="<?= __('rooming_list') ?>">
+                                    <i class="fas fa-bed"></i>
+                                </button>
+                                <button type="button" class="btn-icon btn-icon-client client-report-btn" title="<?= __('client_report') ?>" aria-label="<?= __('client_report') ?>">
+                                    <i class="fas fa-users"></i>
+                                </button>
+                            </div>
+                        </div>
                         <div class="flights-list">
                             <?php foreach ($resultFlights as $flight):
                                 $memberIds = json_decode($flight['member_ids'] ?? '[]', true);
@@ -381,6 +483,9 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                             ?>
                                 <div class="flight-card" data-flight-id="<?= (int)$flight['ticket_id'] ?>">
                                     <div class="flight-card-header">
+                                        <label class="flight-tick-wrap" title="<?= __('select_all') ?>">
+                                            <input type="checkbox" class="rooming-ticket-check" value="<?= (int)$flight['ticket_id'] ?>">
+                                        </label>
                                         <div class="flight-avatar">
                                             <i class="fas fa-plane"></i>
                                         </div>
@@ -412,6 +517,9 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                                             </div>
                                         </div>
                                         <span class="flight-type-badge"><?= $flightType ?></span>
+                                        <button type="button" class="btn-icon btn-icon-manifest manifest-actions-btn" data-ticket-id="<?= (int)$flight['ticket_id'] ?>" title="<?= __('passenger_manifest') ?>" aria-label="<?= __('passenger_manifest') ?>">
+                                            <i class="fas fa-list-alt"></i>
+                                        </button>
                                         <button type="button" class="btn-icon btn-icon-print" onclick="window.open('../api/umrah/generate_group_ticket.php?ticket_id=<?= (int)$flight['ticket_id'] ?>', '_blank')" title="<?= __('print_group_ticket') ?>" aria-label="<?= __('print_group_ticket') ?>">
                                             <i class="fas fa-print"></i>
                                         </button>
@@ -514,6 +622,212 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                             <button class="btn btn-gradient-primary" data-toggle="modal" data-target="#createFamilyModal">
                                 <i class="fas fa-plus mr-2"></i><?= __('add_new_family') ?>
                             </button>
+                        </div>
+                        <?php endif; ?>
+                    <?php elseif ($showMembers): ?>
+                        <?php if (!empty($resultMembers)): ?>
+                        <div class="members-table-wrapper">
+                            <table class="table table-hover members-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th><?= __('name') ?></th>
+                                        <th><?= __('passport') ?></th>
+                                        <th><?= __('family_head') ?></th>
+                                        <th><?= __('client') ?></th>
+                                        <th><?= __('duration') ?></th>
+                                        <th><?= __('room_type') ?></th>
+                                        <th><?= __('visa_status') ?></th>
+                                        <th><?= __('status') ?></th>
+                                        <th><?= __('price') ?></th>
+                                        <th><?= __('actions') ?></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                <?php $memberRowNo = ($page - 1) * $resultsPerPage; ?>
+                                <?php foreach ($resultMembers as $m):
+                                    $memberRowNo++;
+                                    $mStatus = $m['status'] ?? '';
+                                    if ($mStatus === 'refunded') {
+                                        $mBadgeClass = 'badge-danger'; $mBadgeIcon = 'fa-times-circle'; $mBadgeText = __('refunded');
+                                    } elseif ($mStatus === 'cancelled') {
+                                        $mBadgeClass = 'badge-secondary'; $mBadgeIcon = 'fa-ban'; $mBadgeText = __('cancelled');
+                                    } elseif ($mStatus === 'pending') {
+                                        $mBadgeClass = 'badge-warning'; $mBadgeIcon = 'fa-clock'; $mBadgeText = __('pending');
+                                    } else {
+                                        $mBadgeClass = 'badge-success'; $mBadgeIcon = 'fa-check-circle'; $mBadgeText = __('active');
+                                    }
+                                    $mCurrency = strtoupper((string)($m['currency'] ?: 'USD'));
+                                ?>
+                                    <tr class="member-row" data-booking-id="<?= (int)$m['booking_id'] ?>">
+                                        <td class="member-row-no"><?= $memberRowNo ?></td>
+                                        <td>
+                                            <div class="member-cell-name">
+                                                <span class="member-cell-avatar"><i class="fas fa-user"></i></span>
+                                                <span class="member-cell-name-text"><?= htmlspecialchars($m['name']) ?></span>
+                                            </div>
+                                        </td>
+                                        <td><?= htmlspecialchars($m['passport_number']) ?></td>
+                                        <td><?= htmlspecialchars($m['head_of_family']) ?></td>
+                                        <td><?= htmlspecialchars($m['client_name']) ?: '—' ?></td>
+                                        <td><?= htmlspecialchars($m['duration']) ?: '—' ?></td>
+                                        <td><?= htmlspecialchars($m['room_type']) ?: '—' ?></td>
+                                        <td><?= htmlspecialchars($m['visa_status']) ?: '—' ?></td>
+                                        <td><span class="flight-member-badge <?= $mBadgeClass ?>"><i class="fas <?= $mBadgeIcon ?>"></i> <?= $mBadgeText ?></span></td>
+                                        <td class="member-cell-finance">
+                                            <b><?= number_format((float)($m['sold_price'] ?? 0), 2) ?> <?= $mCurrency ?></b><br>
+                                            <span class="text-muted"><?= __('paid') ?>: <?= number_format((float)($m['paid'] ?? 0), 2) ?></span><br>
+                                            <span class="<?= ((float)($m['due'] ?? 0) > 0) ? 'text-danger' : 'text-success' ?>"><?= __('due') ?>: <?= number_format((float)($m['due'] ?? 0), 2) ?></span>
+                                        </td>
+                                        <td class="member-cell-actions">
+                                            <button class="btn-icon-sm" type="button" title="<?= __('view_details') ?>" aria-label="<?= __('view_details') ?>" onclick="viewMemberDetails(<?= (int)$m['booking_id'] ?>)">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <div class="dropdown">
+                                                <button class="btn-icon-sm" type="button" data-toggle="dropdown" title="<?= __('more_actions') ?>" aria-label="<?= __('more_actions') ?>">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <div class="dropdown-menu dropdown-menu-right">
+                                                    <h6 class="dropdown-header"><?= __('primary_actions') ?></h6>
+                                                    <a class="dropdown-item" href="#" onclick="viewMemberDetails(<?= (int)$m['booking_id'] ?>); return false;">
+                                                        <i class="fas fa-eye"></i><?= __('view_details') ?>
+                                                    </a>
+                                                    <?php if ($mStatus !== 'active' || $canEdit): ?>
+                                                    <a class="dropdown-item" href="#" onclick="openEditMemberModal(<?= (int)$m['booking_id'] ?>); return false;">
+                                                        <i class="fas fa-edit"></i><?= __('edit') ?>
+                                                    </a>
+                                                    <?php endif; ?>
+                                                    <?php if ($canEdit): ?>
+                                                    <a class="dropdown-item" href="#" onclick="openTransactionTab(<?= (int)$m['booking_id'] ?>, <?= (float)($m['sold_price'] ?? 0) ?>); return false;">
+                                                        <i class="fas fa-credit-card"></i><?= __('transaction') ?>
+                                                    </a>
+                                                    <?php endif; ?>
+
+                                                    <div class="dropdown-divider"></div>
+                                                    <h6 class="dropdown-header"><?= __('documents') ?></h6>
+                                                    <a class="dropdown-item" href="#" onclick="generateTazminAgreement(<?= (int)$m['booking_id'] ?>); return false;">
+                                                        <i class="fas fa-shield-alt"></i><?= __('generate_tazmin') ?>
+                                                    </a>
+                                                    <a class="dropdown-item" href="#" onclick="generateAgreement(<?= (int)$m['booking_id'] ?>); return false;">
+                                                        <i class="fas fa-file-contract"></i><?= __('generate_agreement') ?>
+                                                    </a>
+                                                    <a class="dropdown-item" href="#" onclick="generateCompletionForm(<?= (int)$m['booking_id'] ?>); return false;">
+                                                        <i class="fas fa-check-circle"></i><?= __('generate_completion_form') ?>
+                                                    </a>
+                                                    <a class="dropdown-item" href="#" onclick="selectForIdCard(<?= (int)$m['booking_id'] ?>, '<?= htmlspecialchars(addslashes($m['name']), ENT_QUOTES) ?>'); return false;">
+                                                        <i class="fas fa-id-card"></i><?= __('select_for_id_card') ?>
+                                                    </a>
+                                                    <a class="dropdown-item" href="#" onclick="selectForGroupTicket(<?= (int)$m['booking_id'] ?>, '<?= htmlspecialchars(addslashes($m['name']), ENT_QUOTES) ?>'); return false;">
+                                                        <i class="fas fa-plane"></i><?= __('select_for_group_ticket') ?>
+                                                    </a>
+                                                    <a class="dropdown-item" href="#" onclick="openMemberDocumentsModal(<?= (int)$m['booking_id'] ?>, '<?= htmlspecialchars(addslashes($m['name']), ENT_QUOTES) ?>'); return false;">
+                                                        <i class="fas fa-file-upload"></i>Photo & Passport & Visa
+                                                    </a>
+
+                                                    <?php if ($mStatus === 'pending'): ?>
+                                                    <div class="dropdown-divider"></div>
+                                                    <h6 class="dropdown-header"><?= __('approval') ?></h6>
+                                                    <a class="dropdown-item" href="#" onclick="approveMemberBooking(<?= (int)$m['booking_id'] ?>, '<?= htmlspecialchars(addslashes($m['name']), ENT_QUOTES) ?>'); return false;">
+                                                        <i class="fas fa-check"></i><?= __('approve_booking') ?>
+                                                    </a>
+                                                    <?php endif; ?>
+
+                                                    <div class="dropdown-divider"></div>
+                                                    <h6 class="dropdown-header"><?= __('advanced_actions') ?></h6>
+                                                    <?php if ($mStatus === 'active'): ?>
+                                                    <a class="dropdown-item" href="#" onclick="openRefundModal(<?= (int)$m['booking_id'] ?>, <?= (float)($m['sold_price'] ?? 0) ?>, <?= (float)($m['price'] ?? 0) ?>, '<?= htmlspecialchars(addslashes($m['currency'] ?? 'USD'), ENT_QUOTES) ?>'); return false;">
+                                                        <i class="fas fa-undo"></i><?= __('process_refund') ?>
+                                                    </a>
+                                                    <?php endif; ?>
+                                                    <a class="dropdown-item" href="#" onclick="openCancellationReapplyModal(<?= (int)$m['booking_id'] ?>, <?= (float)($m['price'] ?? 0) ?>, <?= (float)($m['sold_price'] ?? 0) ?>, <?= (float)($m['profit'] ?? 0) ?>, '<?= htmlspecialchars(addslashes($m['currency'] ?? 'USD'), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($mStatus), ENT_QUOTES) ?>'); return false;">
+                                                        <i class="fas fa-cog"></i>Manage Booking Status
+                                                    </a>
+                                                    <a class="dropdown-item" href="#" onclick="openDateChangeModal(<?= (int)$m['booking_id'] ?>, '<?= htmlspecialchars(addslashes($m['name'] ?? ''), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($m['flight_date'] ?? ''), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($m['return_date'] ?? ''), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($m['duration'] ?? ''), ENT_QUOTES) ?>', <?= (float)($m['price'] ?? 0) ?>, '<?= htmlspecialchars(addslashes($m['currency'] ?? 'USD'), ENT_QUOTES) ?>'); return false;">
+                                                        <i class="fas fa-calendar"></i><?= __('request_date_change') ?>
+                                                    </a>
+                                                    <a class="dropdown-item" href="#" onclick="generateCancellationForm(<?= (int)$m['booking_id'] ?>); return false;">
+                                                        <i class="fas fa-times-circle"></i><?= __('generate_cancellation_form') ?>
+                                                    </a>
+
+                                                    <?php if ($canEdit && ($mStatus !== 'active' || $isAdmin)): ?>
+                                                    <div class="dropdown-divider"></div>
+                                                    <h6 class="dropdown-header text-danger"><?= __('danger_zone') ?></h6>
+                                                    <a class="dropdown-item text-danger" href="#" onclick="deleteBooking(<?= (int)$m['booking_id'] ?>); return false;">
+                                                        <i class="fas fa-trash"></i><?= __('delete') ?>
+                                                    </a>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Enhanced Pagination -->
+                        <nav class="pagination-wrapper" aria-label="Member list pagination">
+                            <ul class="pagination-list">
+                                <?php
+                                $queryString = "";
+                                if (!empty($search)) {
+                                    $queryString .= "&search=" . urlencode($search);
+                                }
+                                if (!empty($filter)) {
+                                    $queryString .= "&filter=" . urlencode($filter);
+                                }
+
+                                if ($page > 1): ?>
+                                    <li>
+                                        <a href="?page=<?= $page - 1 . $queryString ?>" class="pagination-link">
+                                            <i class="fas fa-chevron-left"></i>
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
+
+                                <?php
+                                $startPage = max(1, $page - 2);
+                                $endPage = min($totalPages, $page + 2);
+
+                                for ($i = $startPage; $i <= $endPage; $i++): ?>
+                                    <li>
+                                        <a href="?page=<?= $i . $queryString ?>" 
+                                           class="pagination-link <?= $i == $page ? 'active' : '' ?>">
+                                            <?= $i ?>
+                                        </a>
+                                    </li>
+                                <?php endfor; ?>
+
+                                <?php if ($page < $totalPages): ?>
+                                    <li>
+                                        <a href="?page=<?= $page + 1 . $queryString ?>" class="pagination-link">
+                                            <i class="fas fa-chevron-right"></i>
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
+                            </ul>
+                            <div class="pagination-info">
+                                <?= sprintf(__('showing_page_x_of_y'), $page, $totalPages) ?> 
+                                (<?= $totalMembers ?> <?= __('members') ?>)
+                            </div>
+                        </nav>
+                        <?php else: ?>
+                        <!-- Empty State -->
+                        <div class="empty-state">
+                            <div class="empty-state-icon">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <h3><?= !empty($search) ? sprintf(__('no_members_found_for_search'), htmlspecialchars($search)) : __('no_members_available') ?></h3>
+                            <?php if (!empty($search)): ?>
+                                <a href="?" class="btn btn-primary">
+                                    <i class="fas fa-times mr-2"></i><?= __('clear_search') ?>
+                                </a>
+                            <?php else: ?>
+                                <p><?= __('start_by_adding_a_new_family') ?></p>
+                                <button class="btn btn-gradient-primary" data-toggle="modal" data-target="#createFamilyModal">
+                                    <i class="fas fa-plus mr-2"></i><?= __('add_new_family') ?>
+                                </button>
+                            <?php endif; ?>
                         </div>
                         <?php endif; ?>
                     <?php elseif (!empty($resultFamilies)): ?>
@@ -1085,7 +1399,218 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
     } else {
         loadFlightStatusForFamilies();
     }
+
+    // Manifest document type chooser (printable page / Excel), then language chooser
+    let manifestDocUrl = '';
+    let manifestDocBlank = false;
+    let manifestTypeContext = ''; // 'rooming' | 'manifest'
+    let manifestRoomingIds = '';
+    let manifestTicketId = '';
+
+    function openManifestTypeModal() {
+        document.getElementById('manifestTypeModal').classList.add('open');
+    }
+
+    function closeManifestTypeModal() {
+        document.getElementById('manifestTypeModal').classList.remove('open');
+    }
+
+    document.addEventListener('click', function (e) {
+        // Rooming list button (toolbar) -> type chooser
+        const roomingBtn = e.target.closest('.rooming-actions-btn');
+        if (roomingBtn) {
+            e.preventDefault();
+            const ticketIds = Array.from(document.querySelectorAll('.rooming-ticket-check:checked'))
+                .map(cb => cb.value);
+            if (ticketIds.length === 0) {
+                const count = document.getElementById('roomingSelectedCount');
+                if (count) {
+                    count.textContent = <?= json_encode(__('no_tickets_selected')) ?>;
+                    count.classList.add('rooming-count-error');
+                }
+                return;
+            }
+            manifestTypeContext = 'rooming';
+            manifestRoomingIds = ticketIds.join(',');
+            openManifestTypeModal();
+            return;
+        }
+        // Client report button (toolbar) -> type chooser
+        const clientBtn = e.target.closest('.client-report-btn');
+        if (clientBtn) {
+            e.preventDefault();
+            const ticketIds = Array.from(document.querySelectorAll('.rooming-ticket-check:checked'))
+                .map(cb => cb.value);
+            if (ticketIds.length === 0) {
+                const count = document.getElementById('roomingSelectedCount');
+                if (count) {
+                    count.textContent = <?= json_encode(__('no_tickets_selected')) ?>;
+                    count.classList.add('rooming-count-error');
+                }
+                return;
+            }
+            manifestTypeContext = 'client';
+            manifestRoomingIds = ticketIds.join(',');
+            openManifestTypeModal();
+            return;
+        }
+        // Passenger manifest button (per flight) -> type chooser
+        const manifestBtn = e.target.closest('.manifest-actions-btn');
+        if (manifestBtn) {
+            e.preventDefault();
+            manifestTypeContext = 'manifest';
+            manifestTicketId = manifestBtn.getAttribute('data-ticket-id');
+            openManifestTypeModal();
+            return;
+        }
+        // Type chooser selection -> build doc URL, then open language chooser
+        const typeBtn = e.target.closest('[data-doc-type]');
+        if (typeBtn && manifestTypeContext) {
+            const type = typeBtn.getAttribute('data-doc-type');
+            if (manifestTypeContext === 'client') {
+                manifestDocUrl = '../api/umrah/' + (type === 'print' ? 'client_report_template' : 'client_report_excel') + '.php?ticket_ids=' + manifestRoomingIds;
+                manifestDocBlank = (type === 'print');
+            } else if (manifestTypeContext === 'rooming') {
+                manifestDocUrl = '../api/umrah/' + (type === 'print' ? 'saudi_agent_template' : 'rooming_list_excel') + '.php?ticket_ids=' + manifestRoomingIds;
+                manifestDocBlank = (type === 'print');
+            } else {
+                manifestDocUrl = '../api/umrah/passenger_manifest_' + (type === 'print' ? 'template' : 'excel') + '.php?ticket_id=' + manifestTicketId;
+                manifestDocBlank = (type === 'print');
+            }
+            closeManifestTypeModal();
+            document.getElementById('manifestLangModal').classList.add('open');
+            return;
+        }
+        // Close type chooser (backdrop or close button)
+        if (e.target.closest('#manifestTypeModal') && (e.target.classList.contains('manifest-lang-modal') || e.target.closest('.manifest-lang-close'))) {
+            closeManifestTypeModal();
+            return;
+        }
+        // Language selection -> generate document
+        const langBtn = e.target.closest('[data-doc-lang]');
+        if (langBtn && manifestDocUrl) {
+            e.preventDefault();
+            const url = manifestDocUrl + (manifestDocUrl.indexOf('?') !== -1 ? '&' : '?') + 'language=' + langBtn.getAttribute('data-doc-lang');
+            document.getElementById('manifestLangModal').classList.remove('open');
+            if (manifestDocBlank) {
+                showDocLoading();
+                const win = window.open(url, '_blank');
+                if (win) {
+                    win.onload = hideDocLoading;
+                    setTimeout(hideDocLoading, 15000);
+                } else {
+                    hideDocLoading();
+                }
+            } else {
+                showDocLoading();
+                downloadDocAsFile(url);
+            }
+            return;
+        }
+        // Close language chooser (backdrop or close button)
+        if (e.target.closest('#manifestLangModal') && (e.target.classList.contains('manifest-lang-modal') || e.target.closest('.manifest-lang-close'))) {
+            document.getElementById('manifestLangModal').classList.remove('open');
+        }
+    });
+
+    // Rooming multi-ticket selection (checkbox on each flight card)
+    function updateRoomingSelection() {
+        const checks = Array.from(document.querySelectorAll('.rooming-ticket-check'));
+        const selected = checks.filter(cb => cb.checked).length;
+        const countEl = document.getElementById('roomingSelectedCount');
+        if (countEl) {
+            countEl.textContent = selected + ' <?= __('tickets') ?>';
+            countEl.classList.remove('rooming-count-error');
+        }
+        checks.forEach(cb => {
+            cb.closest('.flight-card').classList.toggle('rooming-selected', cb.checked);
+        });
+        const selectAll = document.getElementById('roomingSelectAll');
+        if (selectAll) {
+            selectAll.checked = checks.length > 0 && selected === checks.length;
+        }
+    }
+    document.addEventListener('change', function (e) {
+        if (e.target.classList.contains('rooming-ticket-check')) {
+            updateRoomingSelection();
+        }
+        if (e.target.id === 'roomingSelectAll') {
+            document.querySelectorAll('.rooming-ticket-check').forEach(cb => {
+                cb.checked = e.target.checked;
+            });
+            updateRoomingSelection();
+        }
+    });
+
+    // Document generation loading overlay
+    function showDocLoading() {
+        document.getElementById('docLoadingOverlay').classList.add('open');
+    }
+
+    function hideDocLoading() {
+        document.getElementById('docLoadingOverlay').classList.remove('open');
+    }
+
+    // Fetch the generated file and trigger a download (Excel exports)
+    async function downloadDocAsFile(url) {
+        try {
+            const res = await fetch(url);
+            if (!res.ok) {
+                throw new Error('HTTP ' + res.status);
+            }
+            const blob = await res.blob();
+            let filename = 'document.xlsx';
+            const cd = res.headers.get('Content-Disposition');
+            const m = cd && cd.match(/filename="?([^";]+)"?/i);
+            if (m) {
+                filename = m[1];
+            }
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+            hideDocLoading();
+        } catch (err) {
+            hideDocLoading();
+            alert(<?= json_encode(__('error_generating_document_please_try_again')) ?>);
+        }
+    }
 </script>
+
+<div class="manifest-lang-modal" id="manifestTypeModal">
+    <div class="manifest-lang-dialog">
+        <button type="button" class="manifest-lang-close" aria-label="Close">×</button>
+        <div class="manifest-lang-title"><?= __('select_document_type') ?></div>
+        <div class="manifest-lang-actions">
+            <button type="button" class="manifest-lang-btn" data-doc-type="print">
+                <i class="fas fa-file-alt"></i> <?= __('printable_page') ?>
+            </button>
+            <button type="button" class="manifest-lang-btn" data-doc-type="excel">
+                <i class="fas fa-file-excel"></i> <?= __('excel') ?>
+            </button>
+        </div>
+    </div>
+</div>
+<div class="manifest-lang-modal" id="manifestLangModal">
+    <div class="manifest-lang-dialog">
+        <button type="button" class="manifest-lang-close" aria-label="Close">×</button>
+        <div class="manifest-lang-title"><?= __('language') ?></div>
+        <div class="manifest-lang-actions">
+            <button type="button" class="manifest-lang-btn" data-doc-lang="dari"><?= __('dari') ?></button>
+            <button type="button" class="manifest-lang-btn" data-doc-lang="ps"><?= __('pashto') ?></button>
+            <button type="button" class="manifest-lang-btn" data-doc-lang="en"><?= __('english') ?></button>
+        </div>
+    </div>
+</div>
+<div class="doc-loading-overlay" id="docLoadingOverlay">
+    <div class="doc-loading-box">
+        <div class="doc-loading-spinner"></div>
+        <div class="doc-loading-text"><?= __('generating_document') ?>...</div>
+    </div>
+</div>
 <?php include '../includes/admin_footer.php'; ?>
 </body>
 </html>

@@ -57,9 +57,10 @@
                                         </div>
                                             <select class="form-control" id="editTransactionCurrency" name="currency" required disabled>
                                                 <option value="USD"><?= __('usd') ?> ($)</option>
-                                                <option value="AFS"><?= __('afs') ?> (؋)</option>
-                                                <option value="EUR"><?= __('eur') ?> (€)</option>
+                                                <option value="AFS"><?= __('afs') ?> (Ø‹)</option>
+                                                <option value="EUR"><?= __('eur') ?> (â‚¬)</option>
                                                 <option value="DARHAM"><?= __('darham') ?> (AED)</option>
+                                                <option value="SAR"><?= __('sar') ?></option>
                                             </select>
                                         </div>
                                     </div>

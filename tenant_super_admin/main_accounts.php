@@ -45,7 +45,7 @@ $total_accounts = $cs->fetch(PDO::FETCH_ASSOC)['total'];
 $total_pages    = max(1, ceil($total_accounts / $results_per_page));
 
 $sq = "SELECT SUM(usd_balance) as total_usd, SUM(afs_balance) as total_afs,
-              SUM(euro_balance) as total_euro, SUM(darham_balance) as total_darham
+              SUM(euro_balance) as total_euro, SUM(darham_balance) as total_darham, SUM(sar_balance) as total_sar
        FROM main_account WHERE tenant_id = ? AND status = 'active'";
 $sp2 = [$tenant_id];
 if ($selected_branch !== 'all') { $sq .= " AND branch_id = ?"; $sp2[] = $selected_branch; }
@@ -87,6 +87,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 .stat-card.afs   {background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);box-shadow:0 6px 20px rgba(15,118,110,0.3)}
 .stat-card.euro  {background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);box-shadow:0 6px 20px rgba(180,83,9,0.3)}
 .stat-card.darham{background:linear-gradient(135deg,#4099ff 0%,#2ed8b6 100%);box-shadow:0 6px 20px rgba(124,58,237,0.3)}
+.stat-card.sar{background:linear-gradient(135deg,#0f766e 0%,#22c55e 100%);box-shadow:0 6px 20px rgba(15,118,110,0.3)}
 .stat-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;opacity:.8;margin-bottom:8px}
 .stat-value{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:800;line-height:1}
 .stat-icon{position:absolute;right:18px;top:50%;transform:translateY(-50%);font-size:32px;opacity:.25}
@@ -129,9 +130,9 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 
 .bal-row{display:flex;align-items:center;gap:5px;margin-bottom:3px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600}
 .bal-row:last-child{margin-bottom:0}
-.bal-usd{color:#1d4ed8} .bal-afs{color:#0f766e} .bal-euro{color:#b45309} .bal-darham{color:#7c3aed}
+.bal-usd{color:#1d4ed8} .bal-afs{color:#0f766e} .bal-euro{color:#b45309} .bal-darham{color:#7c3aed} .bal-sar{color:#16a34a}
 .bal-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.bd-usd{background:#1d4ed8} .bd-afs{background:#0f766e} .bd-euro{background:#b45309} .bd-darham{background:#7c3aed}
+.bd-usd{background:#1d4ed8} .bd-afs{background:#0f766e} .bd-euro{background:#b45309} .bd-darham{background:#7c3aed} .bd-sar{background:#16a34a}
 
 .txn-count{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--text-main);margin-bottom:3px}
 .txn-flows{display:flex;gap:10px;font-size:11px;font-family:'JetBrains Mono',monospace}
@@ -174,7 +175,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 .ms-cell:last-child{border-right:none}
 .ms-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sub);margin-bottom:4px}
 .ms-val{font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;line-height:1}
-.ms-val.usd-c{color:#1d4ed8} .ms-val.afs-c{color:#0f766e} .ms-val.euro-c{color:#b45309} .ms-val.darham-c{color:#7c3aed}
+.ms-val.usd-c{color:#1d4ed8} .ms-val.afs-c{color:#0f766e} .ms-val.euro-c{color:#b45309} .ms-val.darham-c{color:#7c3aed} .ms-val.sar-c{color:#16a34a}
 
 .modal-body{padding:0}
 .modal-tabs{display:flex;gap:6px;padding:16px 24px 0;border-bottom:1px solid var(--border)}
@@ -236,6 +237,12 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
     <div class="stat-label">Total AED</div>
     <div class="stat-value">د.إ <?= number_format($summary['total_darham'] ?? 0, 2) ?></div>
     <i class="feather icon-package stat-icon"></i>
+</div>
+
+<div class="stat-card sar">
+    <div class="stat-label">Total SAR</div>
+    <div class="stat-value">﷼ <?= number_format($summary['total_sar'] ?? 0, 2) ?></div>
+    <i class="feather icon-briefcase stat-icon"></i>
 </div>
     </div>
 
@@ -345,6 +352,13 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
         د.إ <?= number_format($acc['darham_balance'], 2) ?>
     </div>
 <?php endif; ?>
+
+<?php if (floatval($acc['sar_balance']) > 0): ?>
+    <div class="bal-row bal-sar">
+        <span class="bal-dot bd-sar"></span>
+        ﷼ <?= number_format($acc['sar_balance'], 2) ?>
+    </div>
+<?php endif; ?>
                     </td>
                     <td>
                         <div class="txn-count"><?= number_format($acc['transaction_count']) ?> txns</div>
@@ -403,6 +417,7 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                 <div class="ms-cell"><div class="ms-label">AFS</div><div class="ms-val afs-c" id="afs-balance">— </div></div>
                 <div class="ms-cell"><div class="ms-label">Euro</div><div class="ms-val euro-c" id="euro-balance">— </div></div>
                 <div class="ms-cell"><div class="ms-label">AED</div><div class="ms-val darham-c" id="darham-balance">— </div></div>
+                <div class="ms-cell"><div class="ms-label">SAR</div><div class="ms-val sar-c" id="sar-balance">— </div></div>
             </div>
             <div class="modal-body">
                 <div class="modal-tabs">
@@ -514,6 +529,7 @@ document.querySelectorAll('.view-details').forEach(btn => {
 document.getElementById('afs-balance').textContent    = 'AFS ' + parseFloat(a.afs_balance    || 0).toFixed(2);
 document.getElementById('euro-balance').textContent   = '€'    + parseFloat(a.euro_balance   || 0).toFixed(2);
 document.getElementById('darham-balance').textContent = 'د.إ ' + parseFloat(a.darham_balance || 0).toFixed(2);
+document.getElementById('sar-balance').textContent    = '﷼ ' + parseFloat(a.sar_balance    || 0).toFixed(2);
 
 document.getElementById('account-name').textContent   = a.name || '—';
 document.getElementById('account-type').textContent   = (a.account_type || '').charAt(0).toUpperCase() + (a.account_type || '').slice(1);

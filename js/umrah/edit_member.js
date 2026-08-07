@@ -43,6 +43,7 @@ function addEditServiceRow(serviceType = '', supplierId = '', basePrice = 0, sol
                 <div class="form-group">
                     <label>Base Price</label>
                     <input type="number" class="form-control edit-service-base-price" name="edit_services[${editServiceRowCounter}][base_price]" value="${basePrice}" min="0" step="0.01" required>
+                    <small class="edit-service-currency-hint d-block text-info"></small>
                 </div>
                 <div class="form-group">
                     <label>Sold Price</label>
@@ -72,15 +73,32 @@ function addEditServiceRow(serviceType = '', supplierId = '', basePrice = 0, sol
 
 function removeEditServiceRow(rowId) { $('#' + rowId).remove(); updateEditTotals(); }
 
+function updateEditCurrencyHint($row) {
+    const cur = ($row.find('.edit-service-currency').val() || '').trim().toUpperCase();
+    const sale = getEditSaleCurrency();
+    const hint = $row.find('.edit-service-currency-hint');
+    if (!cur || cur === sale) { hint.addClass('d-none').text(''); return; }
+    hint.removeClass('d-none').text(`Enter Base Price in ${cur} — converted to ${sale} at rate ${getEditExchangeRate()}`);
+}
+
+function getEditSaleCurrency() { return ($('#editSaleCurrency').val() || 'USD').toUpperCase(); }
+
+function getEditExchangeRate() { const r = parseFloat($('#editExchangeRate').val()); return (r && r > 0) ? r : 1; }
+
 function updateEditTotals() {
     let totalBase=0, totalSold=0, totalProfit=0;
     const discount = parseFloat($('#editDiscount').val()) || 0;
+    const sale = getEditSaleCurrency();
+    const rate = getEditExchangeRate();
     $('.edit-services-grid-body .edit-service-row-grid').each(function() {
+        updateEditCurrencyHint($(this));
         const base = parseFloat($(this).find('.edit-service-base-price').val()) || 0;
         const sold = parseFloat($(this).find('.edit-service-sold-price').val()) || 0;
-        const profit = sold - base;
+        const cur = ($(this).find('.edit-service-currency').val() || '').trim().toUpperCase();
+        const baseInSale = (!cur || cur === sale) ? base : base / rate;
+        const profit = sold - baseInSale;
         $(this).find('.edit-service-profit').val(profit.toFixed(2));
-        totalBase += base; totalSold += sold; totalProfit += profit;
+        totalBase += baseInSale; totalSold += sold; totalProfit += profit;
     });
     const discountedSold = totalSold - discount;
     const finalProfit = discountedSold - totalBase;
@@ -134,10 +152,23 @@ function updateEditTotals() {
 // Event bindings
 $(document).on('click', '#editAddServiceBtn', () => addEditServiceRow());
 $(document).on('change', '.edit-service-supplier', function() {
-    const currency = $(this).find('option:selected').data('currency') || '';
-    $(this).closest('.edit-service-row-grid').find('.edit-service-currency').val(currency);
+    const $row = $(this).closest('.edit-service-row-grid');
+    const oldCur = ($row.find('.edit-service-currency').val() || '').trim().toUpperCase();
+    const newCur = ($(this).find('option:selected').data('currency') || '').trim().toUpperCase();
+    if (oldCur && newCur && oldCur !== newCur) {
+        const base = parseFloat($row.find('.edit-service-base-price').val()) || 0;
+        if (base > 0) {
+            const sale = getEditSaleCurrency();
+            const rate = getEditExchangeRate();
+            const inSale = oldCur === sale ? base : base / rate;
+            $row.find('.edit-service-base-price').val(parseFloat(newCur === sale ? inSale : inSale * rate).toFixed(2));
+        }
+    }
+    $row.find('.edit-service-currency').val(newCur);
+    updateEditTotals();
 });
-$(document).on('input', '.edit-service-base-price, .edit-service-sold-price, #editDiscount', updateEditTotals);
+$(document).on('input', '.edit-service-base-price, .edit-service-sold-price, #editDiscount, #editExchangeRate', updateEditTotals);
+$(document).on('change', '#editSaleCurrency', updateEditTotals);
 
 $(document).on('submit', '#editMemberForm', function(event) {
     event.preventDefault();
@@ -210,6 +241,8 @@ function openEditMemberModal(bookingId) {
                 document.getElementById('editRoom_type').value = member.room_type;
                 document.getElementById('editDiscount').value = member.discount || 0;
                 document.getElementById('editRemarks').value = member.remarks || '';
+                document.getElementById('editSaleCurrency').value = member.currency || 'USD';
+                document.getElementById('editExchangeRate').value = (member.exchange_rate && member.exchange_rate > 0) ? member.exchange_rate : 1;
 
                 // Clear existing services
                 $('.edit-services-grid-body').empty();

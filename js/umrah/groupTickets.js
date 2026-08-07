@@ -192,9 +192,15 @@ function submitGroupTicketForm() {
                 setTimeout(() => location.reload(), 2000);
             }, 500);
         } else {
-            showToast('error', data.message || 'Failed to save group ticket');
             btn.disabled = false;
             btn.innerHTML = originalHtml;
+            Swal.fire({
+                target: document.getElementById('groupTicketModal'),
+                icon: 'error',
+                title: 'Unable to save group ticket',
+                html: (data.message || 'Failed to save group ticket').replace(/\n/g, '<br>'),
+                confirmButtonText: 'OK'
+            });
         }
     })
     .catch(error => {
