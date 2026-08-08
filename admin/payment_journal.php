@@ -74,6 +74,8 @@ $module_list = [
   --accent-soft: #f4f4f2;
   --green:       #16a34a;
   --green-bg:    #f0fdf4;
+  --teal:        #0d9488;
+  --teal-bg:     #f0fdfa;
   --amber:       #b45309;
   --amber-bg:    #fffbeb;
   --blue:        #1d4ed8;
@@ -171,7 +173,7 @@ $module_list = [
 /* ─── KPI strip ────────────────────────────────────────── */
 .pjl-kpi-strip {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 10px;
   margin-bottom: 18px;
 }
@@ -203,6 +205,47 @@ $module_list = [
 .pjl-kpi.in .pjl-kpi-value { color: var(--green); }
 .pjl-kpi.out .pjl-kpi-value { color: var(--red); }
 .pjl-kpi.net .pjl-kpi-value { color: var(--blue); }
+.pjl-kpi-cur {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.pjl-kpi-cur-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.pjl-kpi-cur-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.pjl-kpi-cur-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+}
+.pjl-kpi-cur-row .in  { color: var(--green); }
+.pjl-kpi-cur-row .out { color: var(--red); }
+.pjl-kpi-cur-net {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px dashed var(--border);
+  color: var(--blue);
+}
+.pjl-kpi-cur-net.pos { color: var(--green); }
+.pjl-kpi-cur-net.neg { color: var(--red); }
 
 /* ─── Toolbar / filters ────────────────────────────────── */
 .pjl-toolbar {
@@ -643,6 +686,9 @@ $module_list = [
 @keyframes pjlToastIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ─── Responsive ───────────────────────────────────────── */
+@media (max-width: 1200px) {
+  .pjl-kpi-strip { grid-template-columns: repeat(3, 1fr); }
+}
 @media (max-width: 900px) {
   .pjl-kpi-strip { grid-template-columns: repeat(2, 1fr); }
   .pjl-hub-grid { grid-template-columns: repeat(2, 1fr); }
@@ -689,38 +735,12 @@ $module_list = [
             </div>
           </div>
 
-          <!-- ── KPI strip ──────────────────────────────── -->
-          <div class="pjl-kpi-strip">
-            <div class="pjl-kpi in">
-              <div class="pjl-kpi-label">
-                <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 9V3M3.5 5.5L6 3l2.5 2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                <?php echo __('inflow'); ?>
-              </div>
-              <div class="pjl-kpi-value" id="pjlKpiIn">—</div>
-              <div class="pjl-kpi-sub" id="pjlKpiInSub"></div>
-            </div>
-            <div class="pjl-kpi out">
-              <div class="pjl-kpi-label">
-                <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 3v6M3.5 6.5L6 9l2.5-2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                <?php echo __('outflow'); ?>
-              </div>
-              <div class="pjl-kpi-value" id="pjlKpiOut">—</div>
-              <div class="pjl-kpi-sub" id="pjlKpiOutSub"></div>
-            </div>
-            <div class="pjl-kpi net">
-              <div class="pjl-kpi-label"><?php echo __('net_flow'); ?></div>
-              <div class="pjl-kpi-value" id="pjlKpiNet">—</div>
-              <div class="pjl-kpi-sub"><?php echo __('in_usd_base'); ?></div>
-            </div>
+          <!-- ── KPI strip (per currency) ─────────────────── -->
+          <div class="pjl-kpi-strip" id="pjlKpiStrip">
             <div class="pjl-kpi">
               <div class="pjl-kpi-label"><?php echo __('entries'); ?></div>
               <div class="pjl-kpi-value" id="pjlKpiCount">—</div>
               <div class="pjl-kpi-sub" id="pjlKpiCountSub"></div>
-            </div>
-            <div class="pjl-kpi">
-              <div class="pjl-kpi-label"><?php echo __('by_currency'); ?></div>
-              <div class="pjl-kpi-value" id="pjlKpiCurrencies" style="font-size:13px;padding-top:4px">—</div>
-              <div class="pjl-kpi-sub"><?php echo __('in_out'); ?></div>
             </div>
           </div>
 
@@ -1427,22 +1447,37 @@ function renderRows(rows) {
   }).join('');
 }
 
+const PJL_CURRENCIES = ['USD', 'AFS', 'EUR', 'DARHAM', 'SAR'];
+
 function renderKpis(summary) {
   const byCurr = summary.by_currency || {};
-  document.getElementById('pjlKpiIn').textContent = fmtNum(summary.total_in);
-  document.getElementById('pjlKpiInSub').textContent = '(' + fmtNum(summary.count) + ' entries)';
-  document.getElementById('pjlKpiOut').textContent = fmtNum(summary.total_out);
-  document.getElementById('pjlKpiOutSub').textContent = '(USD base)';
-  document.getElementById('pjlKpiNet').textContent = fmtNum(summary.total_in - summary.total_out);
-  document.getElementById('pjlKpiCount').textContent = fmtNum(summary.count, 0);
-  document.getElementById('pjlKpiCountSub').textContent = 'filtered entries';
+  const strip  = document.getElementById('pjlKpiStrip');
+  const count  = document.getElementById('pjlKpiCount');
+  const sub    = document.getElementById('pjlKpiCountSub');
 
-  const chips = Object.keys(byCurr).map(c => {
-    const v = byCurr[c];
+  count.textContent = fmtNum(summary.count, 0);
+  sub.textContent   = 'filtered entries';
+
+  const cards = PJL_CURRENCIES.map(c => {
+    const v   = byCurr[c] || { in: 0, out: 0 };
     const net = v.in - v.out;
-    return '<span style="white-space:nowrap">' + esc(c) + ': ' + fmtNum(net) + '</span>';
-  }).join('&nbsp;&nbsp;');
-  document.getElementById('pjlKpiCurrencies').innerHTML = chips || '—';
+    const cls = net > 0 ? 'pos' : (net < 0 ? 'neg' : '');
+    return `<div class="pjl-kpi pjl-kpi-cur">
+      <div class="pjl-kpi-cur-head">
+        <span class="pjl-kpi-cur-name">
+          <span class="pjl-currency-badge ${String(c).toLowerCase()}">${esc(c)}</span>
+        </span>
+      </div>
+      <div class="pjl-kpi-cur-row">
+        <span class="in">+${fmtNum(v.in)}</span>
+        <span class="out">−${fmtNum(v.out)}</span>
+      </div>
+      <div class="pjl-kpi-cur-net ${cls}">Net ${fmtNum(net)}</div>
+    </div>`;
+  }).join('');
+
+  document.querySelectorAll('#pjlKpiStrip .pjl-kpi-cur').forEach(el => el.remove());
+  count.closest('.pjl-kpi-strip').insertAdjacentHTML('beforeend', cards);
 }
 
 function renderPagination(data) {
