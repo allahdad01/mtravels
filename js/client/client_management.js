@@ -115,7 +115,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (c.status !== currentTab) return false;
         if (currentType && c.type !== currentType) return false;
         if (q && !c.name.toLowerCase().includes(q) &&
-                 !c.email.toLowerCase().includes(q) &&
+                 !(c.email || '').toLowerCase().includes(q) &&
                  !(c.phone || '').toLowerCase().includes(q)) return false;
         return true;
       });
@@ -175,7 +175,7 @@ document.addEventListener('DOMContentLoaded', function () {
           <td><span class="${escHtml(c.type)}">${escHtml(typeLabel)}</span></td>
           <td class="col-email">
             <div class="contact-cell">
-              <span class="contact-email">${escHtml(c.email)}</span>
+              <span class="contact-email">${escHtml(c.email || '—')}</span>
               <span class="contact-phone">${escHtml(c.phone || '—')}</span>
             </div>
           </td>
@@ -275,7 +275,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
       editClientIdEl.value = client.id;
       editNameEl.value = client.name;
-      editEmailEl.value = client.email;
+      editEmailEl.value = client.email || '';
       if (editPhoneEl) editPhoneEl.value = client.phone || '';
       if (editAddressEl) editAddressEl.value = client.address || '';
       if (editTypeEl) editTypeEl.value = client.type;

@@ -265,15 +265,24 @@ try {
             $id = (int) ($_POST['id'] ?? 0);
             if (!$id) throw new Exception('Settlement ID required');
 
+            // Admin signature (drawn on a canvas, sent as a PNG data URL) is
+            // required as proof that the cash was actually handed over.
+            $signature = trim($_POST['signature'] ?? '');
+            if ($signature === '') throw new Exception('Admin signature is required to confirm the settlement');
+            if (strlen($signature) > 300000) throw new Exception('Signature image too large');
+            if (!preg_match('/^data:image\/png;base64,[A-Za-z0-9+\/=]+$/', $signature)) {
+                throw new Exception('Invalid signature image');
+            }
+
             $stmt = $pdo->prepare("SELECT * FROM cash_settlements WHERE id=? AND tenant_id=? AND branch_id=? AND status='pending'");
             $stmt->execute([$id, $tenant_id, $branch_id]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$row) throw new Exception('Pending settlement not found');
 
             $stmt = $pdo->prepare("UPDATE cash_settlements
-                SET status='confirmed', confirmed_by=?, confirmed_at=NOW()
+                SET status='confirmed', confirmed_by=?, confirmed_at=NOW(), signature_data=?, signed_at=NOW()
                 WHERE id=?");
-            $stmt->execute([$current_user, $id]);
+            $stmt->execute([$current_user, $signature, $id]);
 
             logActivity($pdo, $current_user, $tenant_id, $branch_id, 'confirm', $id,
                 json_encode($row, JSON_UNESCAPED_UNICODE), json_encode(['status' => 'confirmed']));
@@ -333,12 +342,116 @@ try {
             echo json_encode(['success' => true, 'message' => 'Settlement deleted']);
             break;
 
+        case 'breakdown':
+            // Income items that make up a single settlement (FIFO match),
+            // mirroring the print receipt.
+            $id = (int) ($_GET['id'] ?? 0);
+            if (!$id) throw new Exception('Settlement ID required');
+
+            $stmt = $pdo->prepare("SELECT cs.*, u.name AS user_name, cu.name AS confirmed_name
+                FROM cash_settlements cs
+                LEFT JOIN users u  ON u.id  = cs.user_id
+                LEFT JOIN users cu ON cu.id = cs.confirmed_by
+                WHERE cs.id=? AND cs.tenant_id=? AND cs.branch_id=?");
+            $stmt->execute([$id, $tenant_id, $branch_id]);
+            $s = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$s) throw new Exception('Settlement not found');
+            if ($role === 'finance' && (int) $s['user_id'] !== $current_user) {
+                throw new Exception('You can only view your own settlements');
+            }
+
+            $stmt = $pdo->prepare("SELECT mat.id, mat.description, mat.transaction_of, mat.reference_id, mat.created_at, mat.amount
+                FROM main_account_transactions mat
+                JOIN main_account ma ON ma.id = mat.main_account_id
+                WHERE mat.tenant_id=? AND mat.branch_id=? AND mat.created_by=?
+                  AND UPPER(mat.currency)=? AND ma.account_type='internal' AND mat.type='credit'
+                ORDER BY mat.created_at ASC, mat.id ASC");
+            $stmt->execute([$tenant_id, $branch_id, $s['user_id'], strtoupper($s['currency'])]);
+            $credits = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $stmt = $pdo->prepare("SELECT id, amount FROM cash_settlements
+                WHERE tenant_id=? AND branch_id=? AND user_id=? AND currency=? AND status='confirmed'
+                ORDER BY confirmed_at ASC, id ASC");
+            $stmt->execute([$tenant_id, $branch_id, $s['user_id'], $s['currency']]);
+            $settledList = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $targetIdx = -1;
+            $before = 0.0;
+            foreach ($settledList as $i => $se) {
+                if ((int) $se['id'] === (int) $id) { $targetIdx = $i; break; }
+                $before += (float) $se['amount'];
+            }
+
+            $items = [];
+            $total = 0.0;
+            $note = '';
+            if ($targetIdx >= 0) {
+                $start = $before;
+                $end = $before + (float) $s['amount'];
+                $running = 0.0;
+                foreach ($credits as $c) {
+                    $amt = (float) $c['amount'];
+                    $cStart = $running;
+                    $cEnd = $running + $amt;
+                    $running = $cEnd;
+                    if ($cEnd <= $start || $cStart >= $end) continue;
+                    $covered = min($cEnd, $end) - max($cStart, $start);
+                    $items[] = [
+                        'id'           => (int) $c['id'],
+                        'description'  => $c['description'],
+                        'source'       => str_replace('_', ' ', $c['transaction_of']),
+                        'reference_id' => (int) $c['reference_id'],
+                        'created_at'   => $c['created_at'],
+                        'covered'      => round($covered, 2),
+                        'partial'      => $covered < $amt - 0.005,
+                    ];
+                    $total += $covered;
+                    if ($cEnd >= $end) break;
+                }
+                if (!$items) $note = 'No income items found for this settlement.';
+            } else {
+                foreach ($credits as $c) {
+                    $items[] = [
+                        'id'           => (int) $c['id'],
+                        'description'  => $c['description'],
+                        'source'       => str_replace('_', ' ', $c['transaction_of']),
+                        'reference_id' => (int) $c['reference_id'],
+                        'created_at'   => $c['created_at'],
+                        'covered'      => round((float) $c['amount'], 2),
+                        'partial'      => false,
+                    ];
+                    $total += (float) $c['amount'];
+                }
+                $total = round($total, 2);
+                if ($items) $note = 'Not yet confirmed — showing all income items for ' . $s['currency'] . '.';
+            }
+
+            echo json_encode([
+                'success' => true,
+                'settlement' => [
+                    'id' => (int) $s['id'], 'user_name' => $s['user_name'],
+                    'currency' => $s['currency'], 'amount' => (float) $s['amount'],
+                    'status' => $s['status'], 'created_at' => $s['created_at'],
+                    'request_note' => $s['request_note'],
+                    'confirmed_name' => $s['confirmed_name'],
+                    'confirmed_at' => $s['confirmed_at'],
+                    'signed_at' => $s['signed_at'],
+                ],
+                'items' => $items,
+                'total' => round($total, 2),
+                'note' => $note,
+            ]);
+            break;
+
         case 'list':
             $targetUser = (int) ($_GET['user'] ?? 0);
             $statusFilter = $_GET['status'] ?? '';
             $searchUserId = ($role === 'finance') ? $current_user : ($targetUser ?: 0);
 
-            $sql = "SELECT cs.*, u.name AS user_name, cu.name AS confirmed_name
+            $sql = "SELECT cs.id, cs.user_id, cs.currency, cs.amount, cs.status, cs.request_note,
+                           cs.requested_by, cs.created_at, cs.confirmed_by, cs.confirmed_at,
+                           cs.signed_at, cs.rejected_by, cs.rejected_at, cs.reject_reason,
+                           u.name AS user_name, cu.name AS confirmed_name
                     FROM cash_settlements cs
                     LEFT JOIN users u  ON u.id  = cs.user_id
                     LEFT JOIN users cu ON cu.id = cs.confirmed_by

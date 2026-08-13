@@ -1148,7 +1148,12 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
             <div class="card-icon amber"><i class="fa fa-building"></i></div>
             <span class="card-title">Supplier Services</span>
           </div>
-          <span class="card-badge"><?= count($umrahData['supplier_services']) ?> services</span>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="card-badge"><?= count($umrahData['supplier_services']) ?> services</span>
+            <?php if (umrah_can('fulfill')): ?>
+            <button type="button" class="btn-action primary" onclick="applySupplierToAll()" style="padding:6px 12px;font-size:.78rem;"><i class="fa fa-users"></i> Apply to All</button>
+            <?php endif; ?>
+          </div>
         </div>
         <div class="card-body flush">
           <table class="data-table">
@@ -1549,7 +1554,51 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 <script src="../assets/js/vendor-all.min.js"></script>
 <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
 <script src="../assets/js/pcoded.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
 <script>
+function applySupplierToAll() {
+  const bookingId = <?= (int)$umrahData['booking_id'] ?>;
+  Swal.fire({
+    title: 'Apply Supplier to All Services',
+    html: '<p style="font-size:.85rem;color:var(--ink-400);margin-bottom:12px;">Pick the supplier to assign to every service on this booking.</p>',
+    input: 'select',
+    inputOptions: {},
+    inputPlaceholder: 'Loading suppliers...',
+    showCancelButton: true,
+    confirmButtonText: '<i class="fa fa-check"></i> Apply',
+    cancelButtonText: 'Cancel',
+    didOpen: () => {
+      fetch('../api/umrah/get_suppliers.php', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(r => r.json())
+        .then(data => {
+          const options = {};
+          (data.suppliers || []).forEach(s => { options[s.id] = s.name + ' (' + s.currency + ')'; });
+          const el = Swal.getPopup().querySelector('select');
+          el.innerHTML = Object.entries(options).map(([v, t]) => `<option value="${v}">${t}</option>`).join('') || '<option value="">No active suppliers</option>';
+          el.disabled = Object.keys(options).length === 0;
+        })
+        .catch(() => Swal.showValidationMessage('Failed to load suppliers'));
+    },
+    preConfirm: (v) => { if (!v) Swal.showValidationMessage('Select a supplier'); return v; }
+  }).then(result => {
+    if (!result.isConfirmed) return;
+    const supplierId = result.value;
+    Swal.fire({ title: 'Applying...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    const fd = new FormData();
+    fd.append('booking_id', bookingId);
+    fd.append('supplier_id', supplierId);
+    fd.append('csrf_token', window.csrfToken);
+    fetch('../api/umrah/apply_supplier_to_services.php', { method: 'POST', body: fd })
+      .then(r => r.json().then(d => ({ ok: r.ok, d })))
+      .then(({ ok, d }) => {
+        Swal.close();
+        Swal.fire({ icon: ok ? 'success' : 'error', title: ok ? 'Done' : d.message || 'Failed', text: ok ? d.message || 'Supplier applied.' : '', timer: 1800, showConfirmButton: false });
+        if (ok) setTimeout(() => location.reload(), 1200);
+      })
+      .catch(() => { Swal.close(); Swal.fire({ icon: 'error', title: 'Request failed' }); });
+  });
+}
+
 function switchTab(id, btn) {
   document.querySelectorAll('.tx-pane').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tx-tab').forEach(b => b.classList.remove('active'));

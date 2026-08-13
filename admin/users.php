@@ -533,6 +533,9 @@ try {
                                 <option value="finance">Finance</option>
                                 <option value="sales">Sales</option>
                                 <option value="umrah">Umrah</option>
+                                <option value="operations">Operations</option>
+                                <option value="hotel_manager">Hotel Manager</option>
+                                <option value="viewer">Viewer</option>
                                 <option value="staff">Staff</option>
                             </select>
                         </div>
@@ -625,6 +628,9 @@ try {
                                 <option value="finance">Finance</option>
                                 <option value="sales">Sales</option>
                                 <option value="umrah">Umrah</option>
+                                <option value="operations">Operations</option>
+                                <option value="hotel_manager">Hotel Manager</option>
+                                <option value="viewer">Viewer</option>
                                 <option value="staff">Staff</option>
                             </select>
                         </div>

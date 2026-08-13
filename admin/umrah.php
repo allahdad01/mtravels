@@ -66,7 +66,10 @@ $isAdmin = $_SESSION['role'] === 'admin';
                             </div>
                             <div class="col-md-6 text-right">
 
-                                <button class="btn btn-gradient-primary" data-toggle="modal" data-target="#createFamilyModal">
+                                <button class="btn btn-gradient-primary" data-toggle="modal" data-target="#createGroupModal">
+                                    <i class="fas fa-plus-circle mr-2"></i><?= __('add_group') ?>
+                                </button>
+                                <button class="btn btn-gradient-primary" data-toggle="modal" data-target="#createFamilyModal" <?= !empty($groupFilter) && (int)$groupFilter > 0 ? 'onclick="setPendingFamilyGroup(' . (int)$groupFilter . ')"' : '' ?>>
                                     <i class="fas fa-plus-circle mr-2"></i><?= __('add_family') ?>
                                 </button>
                             </div>
@@ -80,10 +83,12 @@ $isAdmin = $_SESSION['role'] === 'admin';
                     $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
                     $search = isset($_GET['search']) ? trim($_GET['search']) : '';
                     $visaStatus = isset($_GET['visa_status']) ? trim($_GET['visa_status']) : '';
-                    $filter = isset($_GET['filter']) ? trim($_GET['filter']) : 'families';
+                    $filter = isset($_GET['filter']) ? trim($_GET['filter']) : 'groups';
+                    $groupFilter = isset($_GET['group_id']) ? trim($_GET['group_id']) : '';
                     $offset = ($page - 1) * $resultsPerPage;
 
-                    // Views: 'families' (default / All), 'members', 'flights', 'refunded', 'cancelled', 'families' (+ visa_status)
+                    // Views: 'groups' (default), 'families', 'members', 'flights', 'refunded', 'cancelled'
+                    $showGroups = ($filter === 'groups');
                     $showFlights = ($filter === 'flights');
                     $showMembers = ($filter === 'members');
 
@@ -91,8 +96,101 @@ $isAdmin = $_SESSION['role'] === 'admin';
                     $flightsCountStmt = $pdo->prepare("SELECT COUNT(*) FROM group_tickets WHERE tenant_id = ? AND branch_id = ? AND status = 'active'");
                     $flightsCountStmt->execute([$tenant_id, $branch_id]);
                     $totalFlights = (int)$flightsCountStmt->fetchColumn();
+                    $fulfillCountStmt = $pdo->prepare("
+                        SELECT COUNT(*) FROM (
+                            SELECT CONCAT_WS('|',
+                                COALESCE(ff.airline,''), COALESCE(ff.flight_number,''), COALESCE(ff.pnr,''),
+                                COALESCE(ff.ticket_number,''), COALESCE(ff.departure_city,''), COALESCE(ff.arrival_city,''),
+                                COALESCE(ff.return_flight_number,''), COALESCE(ff.return_departure_time,''))
+                            FROM umrah_flight_fulfillments ff
+                            JOIN umrah_fulfillments f ON f.id = ff.fulfillment_id
+                            JOIN umrah_booking_services bs ON bs.id = f.booking_service_id
+                            JOIN umrah_bookings ub ON ub.booking_id = bs.booking_id
+                            WHERE f.tenant_id = ? AND ub.branch_id = ? AND ub.status NOT IN ('refunded','cancelled')
+                            GROUP BY 1
+                        ) t");
+                    $fulfillCountStmt->execute([$tenant_id, $branch_id]);
+                    $totalFlights += (int)$fulfillCountStmt->fetchColumn();
 
-                    if ($showFlights) {
+                    if ($showGroups) {
+                        // GROUPS VIEW: one card per group with family/member counts + finance rollup
+                        $groupsCountSql = "SELECT COUNT(*) FROM umrah_groups WHERE tenant_id = ? AND (branch_id = ? OR branch_id = 0)";
+                        $groupsCountParams = [$tenant_id, $branch_id];
+                        if (!empty($search)) {
+                            $groupsCountSql .= " AND (group_number LIKE ? OR group_name LIKE ?)";
+                            $searchTerm = "%$search%";
+                            $groupsCountParams = array_merge($groupsCountParams, [$searchTerm, $searchTerm]);
+                        }
+                        $groupsCountStmt = $pdo->prepare($groupsCountSql);
+                        $groupsCountStmt->execute($groupsCountParams);
+                        $totalGroups = (int)$groupsCountStmt->fetchColumn();
+                        $totalPages = ceil($totalGroups / $resultsPerPage);
+
+                        $groupsSql = "SELECT
+                                        g.*,
+                                        u.name AS created_by,
+                                        COUNT(DISTINCT f.family_id) AS family_count,
+                                        COUNT(ub.booking_id) AS member_count,
+                                        COALESCE(fam.total_price, 0) AS total_price,
+                                        COALESCE(fam.total_paid, 0) AS total_paid,
+                                        COALESCE(fam.total_due, 0) AS total_due
+                                    FROM umrah_groups g
+                                    LEFT JOIN users u ON g.created_by = u.id
+                                    LEFT JOIN families f ON f.group_id = g.group_id AND f.tenant_id = g.tenant_id
+                                    LEFT JOIN umrah_bookings ub ON ub.family_id = f.family_id
+                                    LEFT JOIN (
+                                        SELECT group_id, tenant_id,
+                                               SUM(total_price) AS total_price,
+                                               SUM(total_paid) AS total_paid,
+                                               SUM(total_due) AS total_due
+                                        FROM families
+                                        GROUP BY group_id, tenant_id
+                                    ) fam ON fam.group_id = g.group_id AND fam.tenant_id = g.tenant_id
+                                    WHERE g.tenant_id = ? AND (g.branch_id = ? OR g.branch_id = 0)";
+                        $groupsParams = [$tenant_id, $branch_id];
+                        if (!empty($search)) {
+                            $groupsSql .= " AND (g.group_number LIKE ? OR g.group_name LIKE ?)";
+                            $searchTerm = "%$search%";
+                            $groupsParams = array_merge($groupsParams, [$searchTerm, $searchTerm]);
+                        }
+                        $groupsSql .= " GROUP BY g.group_id
+                                    ORDER BY CAST(g.group_number AS UNSIGNED) ASC, g.group_id ASC
+                                    LIMIT ? OFFSET ?";
+                        $groupsParams[] = $resultsPerPage;
+                        $groupsParams[] = $offset;
+                        $groupsStmt = $pdo->prepare($groupsSql);
+                        $groupsStmt->execute($groupsParams);
+                        $resultGroups = $groupsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+                        // Badges on the pills
+                        $familiesCountStmt = $pdo->prepare("SELECT COUNT(*) FROM families WHERE tenant_id = ? AND branch_id = ?");
+                        $familiesCountStmt->execute([$tenant_id, $branch_id]);
+                        $totalFamilies = (int)$familiesCountStmt->fetchColumn();
+                        $membersCountStmt = $pdo->prepare("SELECT COUNT(*) FROM umrah_bookings WHERE tenant_id = ? AND branch_id = ?");
+                        $membersCountStmt->execute([$tenant_id, $branch_id]);
+                        $totalMembers = (int)$membersCountStmt->fetchColumn();
+                        $flightsCountStmt = $pdo->prepare("SELECT COUNT(*) FROM group_tickets WHERE tenant_id = ? AND branch_id = ? AND status = 'active'");
+                        $flightsCountStmt->execute([$tenant_id, $branch_id]);
+                        $totalFlights = (int)$flightsCountStmt->fetchColumn();
+                        $fulfillCountStmt = $pdo->prepare("
+                            SELECT COUNT(*) FROM (
+                                SELECT CONCAT_WS('|',
+                                    COALESCE(ff.airline,''), COALESCE(ff.flight_number,''), COALESCE(ff.pnr,''),
+                                    COALESCE(ff.ticket_number,''), COALESCE(ff.departure_city,''), COALESCE(ff.arrival_city,''),
+                                    COALESCE(ff.return_flight_number,''), COALESCE(ff.return_departure_time,''))
+                                FROM umrah_flight_fulfillments ff
+                                JOIN umrah_fulfillments f ON f.id = ff.fulfillment_id
+                                JOIN umrah_booking_services bs ON bs.id = f.booking_service_id
+                                JOIN umrah_bookings ub ON ub.booking_id = bs.booking_id
+                                WHERE f.tenant_id = ? AND ub.branch_id = ? AND ub.status NOT IN ('refunded','cancelled')
+                                GROUP BY 1
+                            ) t");
+                        $fulfillCountStmt->execute([$tenant_id, $branch_id]);
+                        $totalFlights += (int)$fulfillCountStmt->fetchColumn();
+
+                        $resultFamilies = [];
+                        $resultMembers = [];
+                    } elseif ($showFlights) {
                         // FLIGHTS VIEW: fetch all flights for this tenant/branch
                         $flightsStmt = $pdo->prepare("SELECT gt.*, u.name AS created_by_name
                                                     FROM group_tickets gt
@@ -101,6 +199,61 @@ $isAdmin = $_SESSION['role'] === 'admin';
                                                     ORDER BY gt.created_at DESC");
                         $flightsStmt->execute([$tenant_id, $branch_id]);
                         $resultFlights = $flightsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+                        // Fulfillment-based flight tickets: per-member flight fulfillments
+                        // saved from the fulfillment flow. Members on the same flight
+                        // (airline + flight + pnr + ticket + route) share one card.
+                        $fulfillStmt = $pdo->prepare("
+                            SELECT ff.airline, ff.flight_number, ff.pnr, ff.ticket_number,
+                                   ff.departure_city, ff.arrival_city, ff.departure_time,
+                                   ff.return_flight_number, ff.return_departure_time, ff.return_arrival_time,
+                                   f.status AS fulfillment_status,
+                                   ub.booking_id, ub.family_id, ub.name, ub.status AS booking_status,
+                                   fh.head_of_family, ub.sold_price, ub.paid, ub.due, ub.currency
+                            FROM umrah_flight_fulfillments ff
+                            JOIN umrah_fulfillments f ON f.id = ff.fulfillment_id
+                            JOIN umrah_booking_services bs ON bs.id = f.booking_service_id
+                            JOIN umrah_bookings ub ON ub.booking_id = bs.booking_id
+                            LEFT JOIN families fh ON ub.family_id = fh.family_id
+                            WHERE f.tenant_id = ? AND ub.branch_id = ? AND ub.status NOT IN ('refunded', 'cancelled')
+                            ORDER BY ff.created_at DESC");
+                        $fulfillStmt->execute([$tenant_id, $branch_id]);
+                        $flightTicketMap = [];
+                        foreach ($fulfillStmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                            $key = implode('|', [(string)$r['airline'], (string)$r['flight_number'], (string)$r['pnr'], (string)$r['ticket_number'], (string)$r['departure_city'], (string)$r['arrival_city'], (string)$r['return_flight_number'], (string)$r['return_departure_time']]);
+                            if (!isset($flightTicketMap[$key])) {
+                                $flightTicketMap[$key] = [
+                                    '_fulfillment' => true,
+                                    'ticket_id' => 0,
+                                    'member_ids' => [],
+                                    'airline_name' => (string)$r['airline'],
+                                    'pnr' => (string)$r['pnr'],
+                                    'ticket_number' => (string)$r['ticket_number'],
+                                    'flight_number' => (string)$r['flight_number'],
+                                    'flight_date' => !empty($r['departure_time']) ? date('Y-m-d', strtotime($r['departure_time'])) : '',
+                                    'return_date' => !empty($r['return_departure_time']) ? date('Y-m-d', strtotime($r['return_departure_time'])) : '',
+                                    'return_time' => !empty($r['return_departure_time']) ? date('H:i', strtotime($r['return_departure_time'])) : '',
+                                    'return_arrival_time' => !empty($r['return_arrival_time']) ? date('H:i', strtotime($r['return_arrival_time'])) : '',
+                                    'return_flight_number' => (string)$r['return_flight_number'],
+                                    'departure_city' => (string)$r['departure_city'],
+                                    'arrival_city' => (string)$r['arrival_city'],
+                                    'duration' => '',
+                                    'flight_type' => '',
+                                    'fulfillment_status' => (string)$r['fulfillment_status'],
+                                    'created_by_name' => '',
+                                ];
+                            }
+                                    $flightTicketMap[$key]['member_ids'][] = (int)$r['booking_id'];
+                                    if (!isset($flightTicketMap[$key]['first_booking_id'])) {
+                                        $flightTicketMap[$key]['first_booking_id'] = (int)$r['booking_id'];
+                                    }
+                                }
+                                $fulfillFlights = array_map(function ($t) {
+                                    $t['member_ids_csv'] = implode(',', $t['member_ids']);
+                                    $t['member_ids'] = $t['member_ids'] ? json_encode($t['member_ids']) : '[]';
+                                    return $t;
+                                }, array_values($flightTicketMap));
+                        $resultFlights = array_merge($resultFlights, $fulfillFlights);
 
                         // Collect every member id referenced by all tickets (single query)
                         $allMemberIds = [];
@@ -120,7 +273,12 @@ $isAdmin = $_SESSION['role'] === 'admin';
                             $flightMemberStmt = $pdo->prepare("
                                 SELECT ub.booking_id, ub.family_id, ub.name, ub.passport_number, ub.status,
                                        ub.sold_price, ub.paid, ub.due, ub.currency,
-                                       f.head_of_family
+                                       f.head_of_family,
+                                       (SELECT MIN(bs2.id)
+                                        FROM umrah_booking_services bs2
+                                        JOIN umrah_fulfillments f2 ON f2.booking_service_id = bs2.id AND f2.tenant_id = bs2.tenant_id
+                                        JOIN umrah_flight_fulfillments ff2 ON ff2.fulfillment_id = f2.id
+                                        WHERE bs2.booking_id = ub.booking_id AND bs2.tenant_id = ub.tenant_id) AS flight_svc_id
                                 FROM umrah_bookings ub
                                 LEFT JOIN families f ON ub.family_id = f.family_id
                                 WHERE ub.booking_id IN ({$placeholders}) AND ub.tenant_id = ? AND ub.branch_id = ?
@@ -139,7 +297,12 @@ $isAdmin = $_SESSION['role'] === 'admin';
                         $resultFamilies = [];
                         $regularClientFamilies = [];
                         $resultMembers = [];
-                        $totalMembers = 0;
+                        $membersCountStmt = $pdo->prepare("SELECT COUNT(*) FROM umrah_bookings WHERE tenant_id = ? AND branch_id = ?");
+                        $membersCountStmt->execute([$tenant_id, $branch_id]);
+                        $totalMembers = (int)$membersCountStmt->fetchColumn();
+                        $groupsCountStmt = $pdo->prepare("SELECT COUNT(*) FROM umrah_groups WHERE tenant_id = ? AND (branch_id = ? OR branch_id = 0)");
+                        $groupsCountStmt->execute([$tenant_id, $branch_id]);
+                        $totalGroups = (int)$groupsCountStmt->fetchColumn();
                     } elseif ($showMembers) {
                     // MEMBERS VIEW: one card per member (All tab)
                     $membersCountSql = "SELECT COUNT(*)
@@ -211,6 +374,9 @@ $isAdmin = $_SESSION['role'] === 'admin';
                     $totalFamilies = (int)$familiesCountStmt->fetchColumn();
                     $resultFamilies = [];
                     $regularClientFamilies = [];
+                    $groupsCountStmt = $pdo->prepare("SELECT COUNT(*) FROM umrah_groups WHERE tenant_id = ? AND (branch_id = ? OR branch_id = 0)");
+                    $groupsCountStmt->execute([$tenant_id, $branch_id]);
+                    $totalGroups = (int)$groupsCountStmt->fetchColumn();
                     } else {
                     // COUNT QUERY
                     if ($filter === 'refunded' || $filter === 'cancelled') {
@@ -301,6 +467,19 @@ $isAdmin = $_SESSION['role'] === 'admin';
                     $familiesParams = [$tenant_id, $branch_id];
                     $familiesTypes = "ii";
 
+                    $currentGroupName = '';
+                    if ((int)$groupFilter > 0) {
+                        $sqlFamilies .= " AND f.group_id = ?";
+                        $familiesParams[] = (int)$groupFilter;
+                        $familiesTypes .= "i";
+                        $gnStmt = $pdo->prepare("SELECT group_name FROM umrah_groups WHERE group_id = ? AND tenant_id = ? AND (branch_id = ? OR branch_id = 0)");
+                        $gnStmt->execute([(int)$groupFilter, $tenant_id, $branch_id]);
+                        $currentGroupName = (string)$gnStmt->fetchColumn();
+                    } elseif ($groupFilter === 'unassigned') {
+                        $sqlFamilies .= " AND f.group_id IS NULL";
+                        $currentGroupName = __('unassigned');
+                    }
+
                     if (($filter !== 'refunded' && $filter !== 'cancelled') && !empty($visaStatus)) {
                         $sqlFamilies .= " AND f.visa_status = ?";
                         $familiesParams[] = $visaStatus;
@@ -362,6 +541,9 @@ $isAdmin = $_SESSION['role'] === 'admin';
                     $membersCountStmt->execute([$tenant_id, $branch_id]);
                     $totalMembers = (int)$membersCountStmt->fetchColumn();
                     $resultMembers = [];
+                    $groupsCountStmt = $pdo->prepare("SELECT COUNT(*) FROM umrah_groups WHERE tenant_id = ? AND (branch_id = ? OR branch_id = 0)");
+                    $groupsCountStmt->execute([$tenant_id, $branch_id]);
+                    $totalGroups = (int)$groupsCountStmt->fetchColumn();
                     }
                 ?>
 
@@ -370,7 +552,12 @@ $isAdmin = $_SESSION['role'] === 'admin';
                     <div class="filters-wrapper">
                         <!-- Filter Pills -->
                         <div class="filter-pills">
-                            <a href="?filter=families" class="filter-pill <?= $filter === 'families' && empty($visaStatus) ? 'active' : '' ?>">
+                            <a href="?filter=groups" class="filter-pill <?= $filter === 'groups' ? 'active' : '' ?>">
+                                <i class="fas fa-object-group"></i>
+                                <span><?= __('groups') ?></span>
+                                <span class="pill-badge"><?= $totalGroups ?? 0 ?></span>
+                            </a>
+                            <a href="?filter=families<?= !empty($groupFilter) ? '&group_id=' . urlencode($groupFilter) : '' ?>" class="filter-pill <?= $filter === 'families' && empty($visaStatus) ? 'active' : '' ?>">
                                 <i class="fas fa-layer-group"></i>
                                 <span><?= __('families') ?></span>
                                 <span class="pill-badge"><?= $totalFamilies ?></span>
@@ -379,18 +566,6 @@ $isAdmin = $_SESSION['role'] === 'admin';
                                 <i class="fas fa-users"></i>
                                 <span><?= __('members') ?></span>
                                 <span class="pill-badge"><?= $totalMembers ?></span>
-                            </a>
-                            <a href="?filter=families&visa_status=Not Applied" class="filter-pill <?= $filter === 'families' && $visaStatus === 'Not Applied' ? 'active' : '' ?>">
-                                <i class="fas fa-clock"></i>
-                                <span><?= __('not_applied') ?></span>
-                            </a>
-                            <a href="?filter=families&visa_status=Applied" class="filter-pill <?= $filter === 'families' && $visaStatus === 'Applied' ? 'active' : '' ?>">
-                                <i class="fas fa-hourglass-half"></i>
-                                <span><?= __('applied') ?></span>
-                            </a>
-                            <a href="?filter=families&visa_status=Issued" class="filter-pill <?= $filter === 'families' && $visaStatus === 'Issued' ? 'active' : '' ?>">
-                                <i class="fas fa-check-circle"></i>
-                                <span><?= __('issued') ?></span>
                             </a>
                             <a href="?filter=flights" class="filter-pill <?= $filter === 'flights' ? 'active' : '' ?>">
                                 <i class="fas fa-plane"></i>
@@ -417,7 +592,7 @@ $isAdmin = $_SESSION['role'] === 'admin';
                                            value="<?= htmlspecialchars($search) ?>"
                                            placeholder="<?= __('search_families_members_passports') ?>"
                                            class="search-input">
-                                    <input type="hidden" name="visa_status" value="<?= htmlspecialchars($visaStatus) ?>">
+                                    <input type="hidden" name="group_id" value="<?= htmlspecialchars($groupFilter) ?>">
                                     <input type="hidden" name="filter" value="<?= htmlspecialchars($filter) ?>">
                                     <?php if (!empty($search)): ?>
                                         <a href="?" class="clear-search">
@@ -435,7 +610,158 @@ $isAdmin = $_SESSION['role'] === 'admin';
 
                 <!-- Family Cards Grid -->
                 <div class="container-fluid px-4">
-                    <?php if ($showFlights): ?>
+                    <?php if ($showGroups): ?>
+                        <?php if (!empty($resultGroups)): ?>
+                        <div class="family-cards-grid group-cards-grid">
+                            <?php foreach ($resultGroups as $group):
+                                $memberCount = (int)($group['member_count'] ?? 0);
+                                $familyCount = (int)($group['family_count'] ?? 0);
+                                $groupTotal = floatval($group['total_price'] ?? 0);
+                                $groupPaid = floatval($group['total_paid'] ?? 0);
+                                $groupDue = floatval($group['total_due'] ?? 0);
+                                $groupPercentage = $groupTotal > 0 ? ($groupPaid / $groupTotal) * 100 : 0;
+                            ?>
+                                <div class="family-card group-card" data-group-id="<?= (int)$group['group_id'] ?>">
+                                    <div class="card-header-section">
+                                        <div class="family-avatar">
+                                            <i class="fas fa-object-group"></i>
+                                        </div>
+                                        <div class="family-main-info">
+                                            <h3 class="family-name"><?= htmlspecialchars($group['group_name']) ?></h3>
+                                            <div class="family-meta">
+                                                <span class="meta-item group-number-chip">
+                                                    <i class="fas fa-hashtag"></i>
+                                                    <?= htmlspecialchars($group['group_number']) ?>
+                                                </span>
+                                                <span class="meta-item">
+                                                    <i class="fas fa-users"></i>
+                                                    <?= $familyCount ?> <?= __('families') ?>
+                                                </span>
+                                                <span class="meta-item">
+                                                    <i class="fas fa-user"></i>
+                                                    <?= $memberCount ?> <?= __('members') ?>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div class="card-actions">
+                                            <a class="btn-icon" href="?filter=families&group_id=<?= (int)$group['group_id'] ?>" title="<?= __('view') ?>">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <button class="btn-icon btn-icon-add" type="button" title="<?= __('add_member') ?>" onclick="openAddMemberModal(<?= (int)$group['group_id'] ?>)">
+                                                <i class="fas fa-user-plus"></i>
+                                            </button>
+                                            <button class="btn-icon" type="button" title="<?= __('edit_group') ?>" onclick="openEditGroupModal(<?= (int)$group['group_id'] ?>, '<?= htmlspecialchars(addslashes($group['group_number']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($group['group_name']), ENT_QUOTES) ?>')">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <div class="dropdown">
+                                                <button class="btn-icon" type="button" data-toggle="dropdown" aria-haspopup="true">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <div class="dropdown-menu dropdown-menu-right">
+                                                    <a class="dropdown-item" href="javascript:void(0)" onclick="openGroupFulfillmentModal(<?= (int)$group['group_id'] ?>, '<?= htmlspecialchars(addslashes($group['group_name']), ENT_QUOTES) ?>')">
+                                                        <i class="fas fa-truck-loading"></i><?= __('fulfill_group_services') ?>
+                                                    </a>
+                                                    <div class="dropdown-divider"></div>
+                                                    <a class="dropdown-item text-danger" href="javascript:void(0)" onclick="deleteGroup(<?= (int)$group['group_id'] ?>, '<?= htmlspecialchars(addslashes($group['group_name']), ENT_QUOTES) ?>')">
+                                                        <i class="fas fa-trash"></i><?= __('delete_group') ?>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body-section">
+                                        <div class="info-row">
+                                            <i class="fas fa-calendar-alt"></i>
+                                            <span><?= __('created_by') ?>: <?= htmlspecialchars($group['created_by'] ?: '—') ?> · <?= date('Y-m-d', strtotime($group['created_at'])) ?></span>
+                                        </div>
+                                        <div class="financial-summary">
+                                            <div class="financial-details">
+                                                <div class="financial-item">
+                                                    <span class="label"><?= __('total_price') ?></span>
+                                                    <span class="value"><?= number_format($groupTotal) ?> <?= __('usd') ?></span>
+                                                </div>
+                                                <div class="financial-item success">
+                                                    <span class="label"><?= __('paid') ?></span>
+                                                    <span class="value"><?= number_format($groupPaid) ?> <?= __('usd') ?></span>
+                                                </div>
+                                                <div class="financial-item warning">
+                                                    <span class="label"><?= __('due') ?></span>
+                                                    <span class="value"><?= number_format($groupDue) ?> <?= __('usd') ?></span>
+                                                </div>
+                                            </div>
+                                            <?php if ($groupTotal > 0): ?>
+                                            <div class="payment-progress">
+                                                <span class="percentage"><?= number_format($groupPercentage, 1) ?>%</span>
+                                                <div class="progress-bar-container">
+                                                    <div class="progress-bar-fill" style="width: <?= $groupPercentage ?>%"></div>
+                                                </div>
+                                            </div>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+
+                        <nav class="pagination-wrapper" aria-label="Group list pagination">
+                            <ul class="pagination-list">
+                                <?php
+                                $groupQueryString = "";
+                                if (!empty($search)) {
+                                    $groupQueryString .= "&search=" . urlencode($search);
+                                }
+                                $groupQueryString .= "&filter=groups";
+                                ?>
+                                <?php if ($page > 1): ?>
+                                    <li>
+                                        <a href="?page=<?= $page - 1 . $groupQueryString ?>" class="pagination-link">
+                                            <i class="fas fa-chevron-left"></i>
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
+                                <?php
+                                $startPage = max(1, $page - 2);
+                                $endPage = min($totalPages, $page + 2);
+                                for ($i = $startPage; $i <= $endPage; $i++): ?>
+                                    <li>
+                                        <a href="?page=<?= $i . $groupQueryString ?>"
+                                           class="pagination-link <?= $i == $page ? 'active' : '' ?>">
+                                            <?= $i ?>
+                                        </a>
+                                    </li>
+                                <?php endfor; ?>
+                                <?php if ($page < $totalPages): ?>
+                                    <li>
+                                        <a href="?page=<?= $page + 1 . $groupQueryString ?>" class="pagination-link">
+                                            <i class="fas fa-chevron-right"></i>
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
+                            </ul>
+                            <div class="pagination-info">
+                                <?= sprintf(__('showing_page_x_of_y'), $page, $totalPages) ?>
+                                (<?= $totalGroups ?> <?= __('groups') ?>)
+                            </div>
+                        </nav>
+                        <?php else: ?>
+                        <div class="empty-state">
+                            <div class="empty-state-icon">
+                                <i class="fas fa-object-group"></i>
+                            </div>
+                            <h3><?= !empty($search) ? sprintf(__('no_groups_found_for_search'), htmlspecialchars($search)) : __('no_groups_available') ?></h3>
+                            <?php if (!empty($search)): ?>
+                                <a href="?" class="btn btn-primary">
+                                    <i class="fas fa-times mr-2"></i><?= __('clear_search') ?>
+                                </a>
+                            <?php else: ?>
+                                <p><?= __('start_by_adding_a_new_group') ?></p>
+                                <button class="btn btn-gradient-primary" data-toggle="modal" data-target="#createGroupModal">
+                                    <i class="fas fa-plus mr-2"></i><?= __('add_new_group') ?>
+                                </button>
+                            <?php endif; ?>
+                        </div>
+                        <?php endif; ?>
+                    <?php elseif ($showFlights): ?>
                         <!-- Flights View: group members by flight, then by family -->
                         <div class="rooming-toolbar">
                             <label class="rooming-tick-toggle">
@@ -483,19 +809,39 @@ $isAdmin = $_SESSION['role'] === 'admin';
                             ?>
                                 <div class="flight-card" data-flight-id="<?= (int)$flight['ticket_id'] ?>">
                                     <div class="flight-card-header">
+                                        <?php if (empty($flight['_fulfillment'])): ?>
                                         <label class="flight-tick-wrap" title="<?= __('select_all') ?>">
                                             <input type="checkbox" class="rooming-ticket-check" value="<?= (int)$flight['ticket_id'] ?>">
                                         </label>
+                                        <?php else: ?>
+                                        <label class="flight-tick-wrap" title="<?= __('select_all') ?>">
+                                            <input type="checkbox" class="rooming-ticket-check" value="b<?= htmlspecialchars($flight['member_ids_csv']) ?>">
+                                        </label>
+                                        <?php endif; ?>
                                         <div class="flight-avatar">
                                             <i class="fas fa-plane"></i>
                                         </div>
                                         <div class="flight-main-info">
-                                            <h3 class="flight-name"><?= htmlspecialchars($flight['airline_name'] ?? '') ?> <span class="flight-pnr"><i class="fas fa-ticket-alt"></i> <?= htmlspecialchars($flight['pnr'] ?? '') ?></span></h3>
+                                            <h3 class="flight-name"><?= htmlspecialchars($flight['airline_name'] ?? '') ?> <span class="flight-pnr"><i class="fas fa-ticket-alt"></i> <?= htmlspecialchars($flight['pnr'] ?: ($flight['ticket_number'] ?? '')) ?></span></h3>
                                             <div class="flight-meta">
+                                                <?php if (!empty($flight['flight_date'])): ?>
                                                 <span class="meta-item">
                                                     <i class="fas fa-calendar-alt"></i>
-                                                    <?= htmlspecialchars($flight['flight_date'] ?? '') ?> <i class="fas fa-long-arrow-alt-right"></i> <?= htmlspecialchars($flight['return_date'] ?? '') ?>
+                                                    <?= htmlspecialchars($flight['flight_date']) ?> <i class="fas fa-long-arrow-alt-right"></i> <?= htmlspecialchars($flight['return_date'] ?? '') ?>
                                                 </span>
+                                                <?php endif; ?>
+                                                <?php if (!empty($flight['flight_number'])): ?>
+                                                <span class="meta-item">
+                                                    <i class="fas fa-fighter-jet"></i>
+                                                    <?= htmlspecialchars($flight['flight_number']) ?>
+                                                </span>
+                                                <?php endif; ?>
+                                                <?php if (!empty($flight['ticket_number'])): ?>
+                                                <span class="meta-item">
+                                                    <i class="fas fa-hashtag"></i>
+                                                    <?= __('ticket_number') ?>: <?= htmlspecialchars($flight['ticket_number']) ?>
+                                                </span>
+                                                <?php endif; ?>
                                                 <span class="meta-item">
                                                     <i class="fas fa-route"></i>
                                                     <?= htmlspecialchars($flight['departure_city'] ?? '') ?> <i class="fas fa-long-arrow-alt-right"></i> <?= htmlspecialchars($flight['arrival_city'] ?? '') ?>
@@ -516,13 +862,22 @@ $isAdmin = $_SESSION['role'] === 'admin';
                                                 <?php endif; ?>
                                             </div>
                                         </div>
-                                        <span class="flight-type-badge"><?= $flightType ?></span>
+                                        <span class="flight-type-badge"><?= !empty($flight['_fulfillment']) ? htmlspecialchars($flight['fulfillment_status']) : $flightType ?></span>
+                                        <?php if (empty($flight['_fulfillment'])): ?>
                                         <button type="button" class="btn-icon btn-icon-manifest manifest-actions-btn" data-ticket-id="<?= (int)$flight['ticket_id'] ?>" title="<?= __('passenger_manifest') ?>" aria-label="<?= __('passenger_manifest') ?>">
                                             <i class="fas fa-list-alt"></i>
                                         </button>
                                         <button type="button" class="btn-icon btn-icon-print" onclick="window.open('../api/umrah/generate_group_ticket.php?ticket_id=<?= (int)$flight['ticket_id'] ?>', '_blank')" title="<?= __('print_group_ticket') ?>" aria-label="<?= __('print_group_ticket') ?>">
                                             <i class="fas fa-print"></i>
                                         </button>
+                                        <?php else: ?>
+                                        <button type="button" class="btn-icon btn-icon-manifest manifest-actions-btn" data-ticket-id="<?= (int)$flight['first_booking_id'] ?>" data-src="fulfillment" title="<?= __('passenger_manifest') ?>" aria-label="<?= __('passenger_manifest') ?>">
+                                            <i class="fas fa-list-alt"></i>
+                                        </button>
+                                        <button type="button" class="btn-icon btn-icon-print btn-print-fulfillment" data-booking-id="<?= (int)$flight['first_booking_id'] ?>" data-has-return="<?= (!empty($flight['return_flight_number']) || !empty($flight['return_date'])) ? '1' : '0' ?>" title="<?= __('print_group_ticket') ?>" aria-label="<?= __('print_group_ticket') ?>">
+                                            <i class="fas fa-print"></i>
+                                        </button>
+                                        <?php endif; ?>
                                     </div>
                                     <?php if (!empty($flightTotals)): ?>
                                     <div class="flight-summary">
@@ -601,6 +956,11 @@ $isAdmin = $_SESSION['role'] === 'admin';
                                                         <span class="flight-member-passport"><i class="fas fa-id-card"></i> <?= htmlspecialchars($member['passport_number'] ?? '') ?></span>
                                                     </div>
                                                     <span class="flight-member-badge <?= $mBadgeClass ?>"><i class="fas <?= $mBadgeIcon ?>"></i> <?= $mBadgeText ?></span>
+                                                    <?php if (!empty($flight['_fulfillment']) && !empty($member['flight_svc_id'])): ?>
+                                                    <button type="button" class="btn-icon btn-icon-print" style="width:26px;height:26px;font-size:.7rem;" onclick="event.stopPropagation(); window.open('../api/umrah/generate_fulfillment_ticket.php?booking_service_id=<?= (int)$member['flight_svc_id'] ?>', '_blank')" title="<?= __('print_ticket') ?>" aria-label="<?= __('print_ticket') ?>">
+                                                        <i class="fas fa-print"></i>
+                                                    </button>
+                                                    <?php endif; ?>
                                                 </div>
                                                 <?php endforeach; ?>
                                             </div>
@@ -689,6 +1049,9 @@ $isAdmin = $_SESSION['role'] === 'admin';
                                                 </button>
                                                 <div class="dropdown-menu dropdown-menu-right">
                                                     <h6 class="dropdown-header"><?= __('primary_actions') ?></h6>
+                                                    <a class="dropdown-item" href="#" onclick="openMemberDashboard(<?= (int)$m['booking_id'] ?>, '<?= htmlspecialchars(addslashes($m['name']), ENT_QUOTES) ?>'); return false;">
+                                                        <i class="feather icon-layout"></i><?= __('member_dashboard') ?>
+                                                    </a>
                                                     <a class="dropdown-item" href="#" onclick="viewMemberDetails(<?= (int)$m['booking_id'] ?>); return false;">
                                                         <i class="fas fa-eye"></i><?= __('view_details') ?>
                                                     </a>
@@ -702,6 +1065,9 @@ $isAdmin = $_SESSION['role'] === 'admin';
                                                         <i class="fas fa-credit-card"></i><?= __('transaction') ?>
                                                     </a>
                                                     <?php endif; ?>
+                                                    <a class="dropdown-item" href="#" onclick="openFulfillmentModal(<?= (int)$m['booking_id'] ?>, '<?= htmlspecialchars(addslashes($m['name']), ENT_QUOTES) ?>'); return false;">
+                                                        <i class="fas fa-truck-loading"></i><?= __('fulfill_services') ?>
+                                                    </a>
 
                                                     <div class="dropdown-divider"></div>
                                                     <h6 class="dropdown-header"><?= __('documents') ?></h6>
@@ -723,14 +1089,6 @@ $isAdmin = $_SESSION['role'] === 'admin';
                                                     <a class="dropdown-item" href="#" onclick="openMemberDocumentsModal(<?= (int)$m['booking_id'] ?>, '<?= htmlspecialchars(addslashes($m['name']), ENT_QUOTES) ?>'); return false;">
                                                         <i class="fas fa-file-upload"></i>Photo & Passport & Visa
                                                     </a>
-
-                                                    <?php if ($mStatus === 'pending'): ?>
-                                                    <div class="dropdown-divider"></div>
-                                                    <h6 class="dropdown-header"><?= __('approval') ?></h6>
-                                                    <a class="dropdown-item" href="#" onclick="approveMemberBooking(<?= (int)$m['booking_id'] ?>, '<?= htmlspecialchars(addslashes($m['name']), ENT_QUOTES) ?>'); return false;">
-                                                        <i class="fas fa-check"></i><?= __('approve_booking') ?>
-                                                    </a>
-                                                    <?php endif; ?>
 
                                                     <div class="dropdown-divider"></div>
                                                     <h6 class="dropdown-header"><?= __('advanced_actions') ?></h6>
@@ -831,6 +1189,14 @@ $isAdmin = $_SESSION['role'] === 'admin';
                         </div>
                         <?php endif; ?>
                     <?php elseif (!empty($resultFamilies)): ?>
+                        <?php if (!empty($groupFilter)): ?>
+                        <div class="group-breadcrumb">
+                            <a href="?filter=groups" class="crumb-link"><i class="fas fa-object-group"></i> <?= __('all_groups') ?></a>
+                            <span class="crumb-sep"><i class="fas fa-chevron-right"></i></span>
+                            <span class="crumb-current"><?= htmlspecialchars($currentGroupName ?: __('families')) ?></span>
+                            <span class="crumb-count"><?= count($resultFamilies) ?> <?= __('families') ?></span>
+                        </div>
+                        <?php endif; ?>
                         <div class="family-cards-grid">
                             <?php foreach ($resultFamilies as $row): 
                                 $familyId = $row['family_id'];
@@ -840,20 +1206,6 @@ $isAdmin = $_SESSION['role'] === 'admin';
                                 $totalPrice = floatval($row['total_price'] ?? 0);
                                 $totalPaid = floatval($row['total_paid'] ?? 0);
                                 $paymentPercentage = $totalPrice > 0 ? ($totalPaid / $totalPrice) * 100 : 0;
-                                
-                                // Get visa status color
-                                $visaStatusClass = 'default';
-                                switch ($row['visa_status']) {
-                                    case 'Not Applied':
-                                        $visaStatusClass = 'warning';
-                                        break;
-                                    case 'Applied':
-                                        $visaStatusClass = 'info';
-                                        break;
-                                    case 'Issued':
-                                        $visaStatusClass = 'success';
-                                        break;
-                                }
                             ?>
                                 <div class="family-card <?= $isFullyRefunded ? 'refunded-family' : '' ?>" data-family-id="<?= $familyId ?>">
                                     <!-- Card Header -->
@@ -864,10 +1216,6 @@ $isAdmin = $_SESSION['role'] === 'admin';
                                         <div class="family-main-info">
                                             <h3 class="family-name"><?= htmlspecialchars($row['head_of_family']) ?></h3>
                                             <div class="family-meta">
-                                                    <span class="meta-item">
-                                                        <i class="fas fa-map-marker-alt"></i>
-                                                        <?= htmlspecialchars($row['location']) ?>
-                                                    </span>
                                                     <span class="meta-item">
                                                         <i class="fas fa-users"></i>
                                                         <?= $row['total_members'] ?> <?= __('members') ?>
@@ -895,9 +1243,7 @@ $isAdmin = $_SESSION['role'] === 'admin';
                                              </button>
                                              <button class="btn-icon" type="button" title="<?= __('edit') ?>" aria-label="<?= __('edit') ?>" onclick="openEditFamilyModal(<?= $familyId ?>, '<?= htmlspecialchars(addslashes($row['head_of_family']), ENT_QUOTES) ?>',
                                                   '<?= htmlspecialchars(addslashes($row['contact']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($row['address']), ENT_QUOTES) ?>',
-                                                  '<?= htmlspecialchars(addslashes($row['package_type']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($row['location']), ENT_QUOTES) ?>',
-                                                  '<?= htmlspecialchars(addslashes($row['tazmin']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($row['visa_status']), ENT_QUOTES) ?>',
-                                                  '<?= htmlspecialchars(addslashes($row['province']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($row['district']), ENT_QUOTES) ?>')">
+                                                  '<?= htmlspecialchars(addslashes($row['tazmin']), ENT_QUOTES) ?>', <?= (int)($row['group_id'] ?? 0) ?>)">
                                                  <i class="fas fa-edit"></i>
                                              </button>
                                             <div class="dropdown">
@@ -909,6 +1255,9 @@ $isAdmin = $_SESSION['role'] === 'admin';
                                                      <h6 class="dropdown-header"><?= __('finance') ?></h6>
                                                      <a class="dropdown-item" href="javascript:void(0)" onclick="openFamilyTransactionModal(<?= $familyId ?>, '<?= htmlspecialchars(addslashes($row['head_of_family']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($row['package_type']), ENT_QUOTES) ?>', <?= (int)$row['total_members'] ?>)">
                                                          <i class="fas fa-credit-card"></i><?= __('family_transaction') ?>
+                                                     </a>
+                                                     <a class="dropdown-item" href="javascript:void(0)" onclick="openFamilyFulfillmentModal(<?= $familyId ?>, '<?= htmlspecialchars(addslashes($row['head_of_family']), ENT_QUOTES) ?>')">
+                                                         <i class="fas fa-truck-loading"></i><?= __('fulfill_family_services') ?>
                                                      </a>
                                                      <?php endif; ?>
                                                     <h6 class="dropdown-header"><?= __('documents') ?></h6>
@@ -952,22 +1301,6 @@ $isAdmin = $_SESSION['role'] === 'admin';
                                             <i class="fas fa-map-marker-alt"></i>
                                             <span><?= htmlspecialchars($row['address']) ?></span>
                                         </div>
-                                        <div class="info-row">
-                                            <i class="fas fa-globe"></i>
-                                            <span><?= htmlspecialchars($row['province']) ?> - <?= htmlspecialchars($row['district']) ?></span>
-                                        </div>
-
-                                        <!-- Package Info -->
-                                         <div class="package-info">
-                                             <div class="package-badge">
-                                                 <i class="fas fa-box"></i>
-                                                 <?= htmlspecialchars($row['package_type']) ?>
-                                             </div>
-                                             <div class="visa-badge visa-<?= $visaStatusClass ?>">
-                                                 <i class="fas fa-passport"></i>
-                                                 <?= htmlspecialchars($row['visa_status']) ?>
-                                             </div>
-                                         </div>
 
                                          <!-- Flight Status Badge -->
                                          <div class="flight-badge flight-loading" id="flight-status-<?= $familyId ?>">
@@ -1080,6 +1413,9 @@ $isAdmin = $_SESSION['role'] === 'admin';
                                 if (!empty($filter)) {
                                     $queryString .= "&filter=" . urlencode($filter);
                                 }
+                                if (!empty($groupFilter)) {
+                                    $queryString .= "&group_id=" . urlencode($groupFilter);
+                                }
 
                                 if ($page > 1): ?>
                                     <li>
@@ -1122,7 +1458,11 @@ $isAdmin = $_SESSION['role'] === 'admin';
                                 <i class="fas fa-search"></i>
                             </div>
                             <h3><?= !empty($search) ? sprintf(__('no_families_found_for_search'), htmlspecialchars($search)) : __('no_families_available') ?></h3>
-                            <?php if (!empty($search)): ?>
+                            <?php if (!empty($groupFilter)): ?>
+                                <a href="?filter=groups" class="btn btn-primary">
+                                    <i class="fas fa-object-group mr-2"></i><?= __('back_to_groups') ?>
+                                </a>
+                            <?php elseif (!empty($search)): ?>
                                 <a href="?" class="btn btn-primary">
                                     <i class="fas fa-times mr-2"></i><?= __('clear_search') ?>
                                 </a>
@@ -1144,6 +1484,8 @@ $isAdmin = $_SESSION['role'] === 'admin';
 <?php include '../modals/umrah/language_modal.php'; ?>
 <?php include '../modals/umrah/edit_member_modal.php'; ?>
 <?php include '../modals/umrah/umrah_modal.php'; ?>
+<?php include '../modals/umrah/create_group_modal.php'; ?>
+<?php include '../modals/umrah/edit_group_modal.php'; ?>
 <?php include '../modals/umrah/create_family_modal.php'; ?>
 <?php include '../modals/umrah/transaction_modal.php'; ?>
 <?php include '../modals/umrah/edit_family_modal.php'; ?>
@@ -1157,6 +1499,7 @@ $isAdmin = $_SESSION['role'] === 'admin';
 <?php include '../modals/umrah/family_cancellation_details_modal.php'; ?>
 <?php include '../modals/umrah/member_document_template.php'; ?>
 <?php include '../modals/umrah/member_details_modal.php'; ?>
+<?php include '../modals/umrah/member_dashboard_modal.php'; ?>
 <?php include '../modals/umrah/member_documents_modal.php'; ?>
 <?php include '../modals/umrah/date_change_modal.php'; ?>
 <?php include '../modals/umrah/bank_receipt_modal.php'; ?>
@@ -1165,6 +1508,7 @@ $isAdmin = $_SESSION['role'] === 'admin';
 <?php include '../modals/umrah/id_card_modal.php'; ?>
 <?php include '../modals/umrah/family_transaction_modal.php'; ?>
 <?php include '../modals/umrah/flight_details_modal.php'; ?>
+<?php include '../modals/umrah/fulfillment_modal.php'; ?>
 
 <!-- Floating action buttons -->
 <div id="groupTicketFloatingButton" class="floating-action-btn" style="display: none; bottom: 220px; right: 23px;">
@@ -1406,6 +1750,7 @@ $isAdmin = $_SESSION['role'] === 'admin';
     let manifestTypeContext = ''; // 'rooming' | 'manifest'
     let manifestRoomingIds = '';
     let manifestTicketId = '';
+    let manifestSrc = '';
 
     function openManifestTypeModal() {
         document.getElementById('manifestTypeModal').classList.add('open');
@@ -1420,8 +1765,18 @@ $isAdmin = $_SESSION['role'] === 'admin';
         const roomingBtn = e.target.closest('.rooming-actions-btn');
         if (roomingBtn) {
             e.preventDefault();
-            const ticketIds = Array.from(document.querySelectorAll('.rooming-ticket-check:checked'))
-                .map(cb => cb.value);
+            const ticketIds = [];
+            document.querySelectorAll('.rooming-ticket-check:checked').forEach(cb => {
+                const v = cb.value;
+                if (v.charAt(0) === 'b') {
+                    // Fulfillment card: "b<id1>,<id2>,..." -> one b-entry per member
+                    v.slice(1).split(',').forEach(bid => {
+                        if (bid) ticketIds.push('b' + bid);
+                    });
+                } else if (v) {
+                    ticketIds.push(v);
+                }
+            });
             if (ticketIds.length === 0) {
                 const count = document.getElementById('roomingSelectedCount');
                 if (count) {
@@ -1432,6 +1787,7 @@ $isAdmin = $_SESSION['role'] === 'admin';
             }
             manifestTypeContext = 'rooming';
             manifestRoomingIds = ticketIds.join(',');
+            manifestSrc = '';
             openManifestTypeModal();
             return;
         }
@@ -1439,8 +1795,17 @@ $isAdmin = $_SESSION['role'] === 'admin';
         const clientBtn = e.target.closest('.client-report-btn');
         if (clientBtn) {
             e.preventDefault();
-            const ticketIds = Array.from(document.querySelectorAll('.rooming-ticket-check:checked'))
-                .map(cb => cb.value);
+            const ticketIds = [];
+            document.querySelectorAll('.rooming-ticket-check:checked').forEach(cb => {
+                const v = cb.value;
+                if (v.charAt(0) === 'b') {
+                    v.slice(1).split(',').forEach(bid => {
+                        if (bid) ticketIds.push('b' + bid);
+                    });
+                } else if (v) {
+                    ticketIds.push(v);
+                }
+            });
             if (ticketIds.length === 0) {
                 const count = document.getElementById('roomingSelectedCount');
                 if (count) {
@@ -1451,7 +1816,15 @@ $isAdmin = $_SESSION['role'] === 'admin';
             }
             manifestTypeContext = 'client';
             manifestRoomingIds = ticketIds.join(',');
+            manifestSrc = '';
             openManifestTypeModal();
+            return;
+        }
+        // Fulfillment flight card: print outbound + return in one ticket window
+        const ffPrintBtn = e.target.closest('.btn-print-fulfillment');
+        if (ffPrintBtn) {
+            e.preventDefault();
+            window.open('../api/umrah/generate_group_ticket.php?src=fulfillment&ticket_id=' + ffPrintBtn.getAttribute('data-booking-id'), '_blank');
             return;
         }
         // Passenger manifest button (per flight) -> type chooser
@@ -1460,6 +1833,7 @@ $isAdmin = $_SESSION['role'] === 'admin';
             e.preventDefault();
             manifestTypeContext = 'manifest';
             manifestTicketId = manifestBtn.getAttribute('data-ticket-id');
+            manifestSrc = manifestBtn.getAttribute('data-src') || '';
             openManifestTypeModal();
             return;
         }
@@ -1474,7 +1848,7 @@ $isAdmin = $_SESSION['role'] === 'admin';
                 manifestDocUrl = '../api/umrah/' + (type === 'print' ? 'saudi_agent_template' : 'rooming_list_excel') + '.php?ticket_ids=' + manifestRoomingIds;
                 manifestDocBlank = (type === 'print');
             } else {
-                manifestDocUrl = '../api/umrah/passenger_manifest_' + (type === 'print' ? 'template' : 'excel') + '.php?ticket_id=' + manifestTicketId;
+                manifestDocUrl = '../api/umrah/passenger_manifest_' + (type === 'print' ? 'template' : 'excel') + '.php?ticket_id=' + manifestTicketId + (manifestSrc ? '&src=' + manifestSrc : '');
                 manifestDocBlank = (type === 'print');
             }
             closeManifestTypeModal();

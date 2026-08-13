@@ -51,22 +51,22 @@ $name = isset($_POST['name']) ? DbSecurity::validateInput($_POST['name'], 'strin
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $name = $_POST['name'];
-    $email = $_POST['email'];
+    $email = isset($_POST['email']) && trim($_POST['email']) !== '' ? $_POST['email'] : null;
     $clientType = $_POST['client_type'];
     $phone = $_POST['phone'] ?? null;
-    $password = $_POST['password'];
+    $password = $_POST['password'] ?? null;
     $usd_balance = $_POST['usd_balance'] ?? 0.00;
     $afs_balance = $_POST['afs_balance'] ?? 0.00;
     $address = $_POST['address'] ?? null;
 
     // Validate inputs
-    if (empty($name) || empty($email) || empty($password)) {
+    if (empty($name)) {
         echo json_encode(["status" => "error", "message" => "Required fields are missing"]);
         exit;
     }
 
-    // Hash the password
-    $password_hash = password_hash($password, PASSWORD_BCRYPT);
+    // Hash the password (clients without a password cannot log in)
+    $password_hash = ($password !== null && $password !== '') ? password_hash($password, PASSWORD_BCRYPT) : null;
 
     // Prepare SQL query
     $stmt = $pdo->prepare("

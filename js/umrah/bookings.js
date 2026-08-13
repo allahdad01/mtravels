@@ -187,19 +187,13 @@ function submitCreateFamilyForm() {
 }
 
 // Keep these functions as they are since they're called directly from HTML
-function openEditFamilyModal(familyId, headOfFamily, contact,
-     address, packageType, location, tazmin, visa_status, 
-     province, district) {
+function openEditFamilyModal(familyId, headOfFamily, contact, address, tazmin, familyGroupId) {
     $('#editFamilyId').val(familyId);
     $('#editHeadOfFamily').val(headOfFamily);
     $('#editContact').val(contact);
     $('#editAddress').val(address);
-    $('#editPackageType').val(packageType);
-    $('#editLocation').val(location);
     $('#editTazmin').val(tazmin);
-    $('#editStatus').val(visa_status).change();
-    $('#editProvince').val(province);
-    $('#editDistrict').val(district);
+    $('#editFamilyGroupId').val(familyGroupId || '');
     $('#editFamilyModal').modal('show');
 }
 

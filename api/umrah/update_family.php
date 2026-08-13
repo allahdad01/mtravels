@@ -50,15 +50,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $head_of_family = $_POST['head_of_family'];
     $contact = $_POST['contact'];
     $address = $_POST['address'];
-    $package_type = $_POST['package_type'];
-    $location = $_POST['location'];
     $tazmin = $_POST['tazmin'];
-    $visa = isset($_POST['visa_status']) ? trim($_POST['visa_status']) : null;
-    $province = isset($_POST['province']) ? trim($_POST['province']) : null;
-    $district = isset($_POST['district']) ? trim($_POST['district']) : null;
 
+$cur = $pdo->prepare("SELECT package_type, location, visa_status, province, district, group_id FROM families WHERE family_id = ? AND tenant_id = ? AND branch_id = ?");
+    $cur->execute([$family_id, $tenant_id, $branch_id]);
+    $existing = $cur->fetch(PDO::FETCH_ASSOC);
 
-    $sql = "UPDATE families SET head_of_family = ?, contact = ?, address = ?, package_type = ?, location = ?, tazmin = ?, visa_status = ?, province = ?, district = ? WHERE family_id = ? AND tenant_id = ? AND branch_id = ?";
+    $package_type = !empty($_POST['package_type']) ? $_POST['package_type'] : ($existing['package_type'] ?? null);
+    $location = !empty($_POST['location']) ? $_POST['location'] : ($existing['location'] ?? null);
+    $visa = !empty($_POST['visa_status']) ? trim($_POST['visa_status']) : ($existing['visa_status'] ?? 'Applied');
+    $province = !empty($_POST['province']) ? trim($_POST['province']) : ($existing['province'] ?? '');
+    $district = !empty($_POST['district']) ? trim($_POST['district']) : ($existing['district'] ?? '');
+    $group_id = !empty($_POST['group_id']) ? (int)$_POST['group_id'] : (int)($existing['group_id'] ?? 0);
+
+    if ($group_id > 0) {
+        $groupCheck = $pdo->prepare("SELECT COUNT(*) FROM umrah_groups WHERE group_id = ? AND tenant_id = ? AND (branch_id = ? OR branch_id = 0)");
+        $groupCheck->execute([$group_id, $tenant_id, $branch_id]);
+        if ((int)$groupCheck->fetchColumn() === 0) {
+            $group_id = (int)($existing['group_id'] ?? 0);
+        }
+    }
+
+    $sql = "UPDATE families SET head_of_family = ?, contact = ?, address = ?, package_type = ?, location = ?, tazmin = ?, visa_status = ?, province = ?, district = ?, group_id = ? WHERE family_id = ? AND tenant_id = ? AND branch_id = ?";
 
     $stmt = $pdo->prepare($sql);
     $stmt->bindParam(1, $head_of_family, PDO::PARAM_STR);
@@ -70,9 +83,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->bindParam(7, $visa, PDO::PARAM_STR);
     $stmt->bindParam(8, $province, PDO::PARAM_STR);
     $stmt->bindParam(9, $district, PDO::PARAM_STR);
-    $stmt->bindParam(10, $family_id, PDO::PARAM_INT);
-    $stmt->bindParam(11, $tenant_id, PDO::PARAM_INT);
-    $stmt->bindParam(12, $branch_id, PDO::PARAM_INT);
+    $stmt->bindParam(10, $group_id, PDO::PARAM_INT);
+    $stmt->bindParam(11, $family_id, PDO::PARAM_INT);
+    $stmt->bindParam(12, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(13, $branch_id, PDO::PARAM_INT);
 
     if ($stmt->execute()) {
         // Add activity logging

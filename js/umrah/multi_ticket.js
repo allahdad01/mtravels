@@ -6,6 +6,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const indirectFields = document.getElementById('indirectFlightFields');
     const directDates = document.getElementById('directFlightDates');
 
+    // Flight fields only exist on the (multi-)ticket forms — other umrah pages
+    // bundle this script without the modal, so bail out instead of crashing.
+    if (!directRadio || !indirectRadio || !directFields || !indirectFields || !directDates) return;
+
     function toggleFlightType() {
         if (directRadio.checked) {
             directFields.style.display = 'block';

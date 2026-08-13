@@ -13,6 +13,7 @@
                         <!-- CSRF Protection -->
                         <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
                         <input type="hidden" id="editFamilyId" name="family_id">
+                        <input type="hidden" id="editFamilyGroupId">
                     <div class="row">
                         <div class="col-md-4">
                             <div class="form-group">
@@ -36,54 +37,19 @@
                     <div class="row">
                         <div class="col-md-4">
                             <div class="form-group">
-                                <label for="editPackageType"><?= __('package_type') ?></label>
-                                <select class="form-control" id="editPackageType" name="package_type" required>
-                                    <option value="Full Package"><?= __('full_package') ?></option>
-                                    <option value="Visa"><?= __('visa') ?></option>
-                                    <option value="Services"><?= __('services') ?></option>
-                                    <option value="Ticket+Visa"><?= __('ticket_visa') ?></option>
-                                    <option value="Visa+Services"><?= __('visa_services') ?></option>
-                                    <option value="Visa+Transport"><?= __('visa_transport') ?></option>
+                                <label for="editGroup"><?= __('group') ?></label>
+                                <select class="form-control" id="editGroup" name="group_id" required>
+                                    <option value=""><?= __('select_group') ?></option>
                                 </select>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="form-group">
-                                <label for="editLocation"><?= __('location') ?></label>
-                                <input type="text" class="form-control" id="editLocation" name="location" required>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                    <label for="editTazmin"><?= __('tazmin') ?></label>
+                                <label for="editTazmin"><?= __('tazmin') ?></label>
                                 <select class="form-control" id="editTazmin" name="tazmin" required>
                                     <option value="Done"><?= __('done') ?></option>
                                     <option value="Not Done"><?= __('not_done') ?></option>
                                 </select>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                    <label for="editStatus"><?= __('visa_status') ?></label>
-                                    <select class="form-control" id="editStatus" name="visa_status" required>
-                                        <option value="Not Applied"><?= __('not_applied') ?></option>
-                                        <option value="Applied"><?= __('applied') ?></option>
-                                        <option value="Issued"><?= __('issued') ?></option>
-                                    </select>
-                                </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="editProvince"><?= __('province') ?></label>
-                                <input type="text" class="form-control" id="editProvince" name="province" required>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="editDistrict"><?= __('district') ?></label>
-                                <input type="text" class="form-control" id="editDistrict" name="district" required>
                             </div>
                         </div>
                     </div>

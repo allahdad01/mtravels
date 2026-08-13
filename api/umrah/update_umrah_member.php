@@ -25,34 +25,25 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit();
 }
 
-// Validate required fields
+// Validate required fields.
+// total_sold_price is never posted: the edit modal sends grand_sold_price,
+// which overrides per-service sold sums (see below).
 $requiredFields = [
     'booking_id', 'soldTo', 'paidTo', 'entry_date',
-    'name', 'dob', 'passport_number', 'id_type',
-    'duration', 'room_type', 'total_base_price', 'total_sold_price', 'total_profit'
+    'name', 'duration', 'room_type', 'total_base_price', 'total_profit'
 ];
 
 // Check if suppliers data is provided (multi-supplier support)
 $suppliers = isset($_POST['edit_services']) ? $_POST['edit_services'] : (isset($_POST['suppliers']) ? json_decode($_POST['suppliers'], true) : null);
 
-// Validate that either suppliers array or single supplier is provided
-if (!$suppliers) {
+// An empty array is allowed for unpriced package bookings where the grand sold price carries the price
+if (!is_array($suppliers)) {
     header('Content-Type: application/json');
     echo json_encode(['success' => false, 'message' => 'Either suppliers array or supplier field is required']);
     exit();
 }
 
-
-
-// Validate suppliers array if provided
-if ($suppliers) {
-    if (!is_array($suppliers) || empty($suppliers)) {
-        header('Content-Type: application/json');
-        echo json_encode(['success' => false, 'message' => 'Suppliers must be a non-empty array']);
-        exit();
-    }
-
-    foreach ($suppliers as $index => $supplier) {
+    foreach ($suppliers as $index => &$supplier) {
         if (!isset($supplier['service_type']) || !isset($supplier['supplier_id']) ||
             !isset($supplier['base_price']) || !isset($supplier['sold_price']) ||
             !isset($supplier['profit']) || !isset($supplier['currency'])) {
@@ -62,10 +53,13 @@ if ($suppliers) {
         }
 
         // Validate each supplier's data
-        $supplier['supplier_id'] = DbSecurity::validateInput($supplier['supplier_id'], 'int', ['min' => 1]);
+        // Empty supplier_id is allowed for unpriced package skeleton rows (NULL supplier)
+        $supplier['supplier_id'] = (!isset($supplier['supplier_id']) || $supplier['supplier_id'] === '' || $supplier['supplier_id'] === null)
+            ? null
+            : DbSecurity::validateInput($supplier['supplier_id'], 'int', ['min' => 1]);
         $supplier['base_price'] = DbSecurity::validateInput($supplier['base_price'], 'float', ['min' => 0]);
         $supplier['sold_price'] = DbSecurity::validateInput($supplier['sold_price'], 'float', ['min' => 0]);
-        $supplier['profit'] = DbSecurity::validateInput($supplier['profit'], 'float', ['min' => 0]);
+        $supplier['profit'] = DbSecurity::validateInput($supplier['profit'], 'float');
         $supplier['currency'] = DbSecurity::validateInput($supplier['currency'], 'string', ['maxlength' => 10]);
 
         // Validate service_type (single service or compound like 'ticket+visa')
@@ -77,8 +71,15 @@ if ($suppliers) {
             echo json_encode(['success' => false, 'message' => "Invalid service_type for supplier at index $index"]);
             exit();
         }
+
+        // Price-engine snapshot fields (optional; kept for fulfillment + collapsed display)
+        $supplier['service_id'] = isset($supplier['service_id']) ? DbSecurity::validateInput($supplier['service_id'], 'int') : null;
+        $supplier['pricing_unit'] = isset($supplier['pricing_unit']) ? DbSecurity::validateInput($supplier['pricing_unit'], 'string', ['maxlength' => 50]) : null;
+        $supplier['quantity'] = isset($supplier['quantity']) ? max(1, (int)DbSecurity::validateInput($supplier['quantity'], 'int')) : 1;
+        $supplier['is_optional'] = isset($supplier['is_optional']) ? (int)$supplier['is_optional'] : 0;
+        $supplier['hotel_id'] = isset($supplier['hotel_id']) ? DbSecurity::validateInput($supplier['hotel_id'], 'int') : null;
+        $supplier['room_type_id'] = isset($supplier['room_type_id']) ? DbSecurity::validateInput($supplier['room_type_id'], 'int') : null;
     }
-}
 
 foreach ($requiredFields as $field) {
     if (!isset($_POST[$field]) || empty($_POST[$field])) {
@@ -133,6 +134,9 @@ $passport_number = isset($_POST['passport_number']) ? DbSecurity::validateInput(
 // Validate dob
 $dob = isset($_POST['dob']) ? DbSecurity::validateInput($_POST['dob'], 'string', ['maxlength' => 255]) : null;
 
+// Empty date fields must be NULL, not '' (MySQL DATE columns reject '')
+$dob = trim((string)$dob) === '' ? null : $dob;
+
 // Validate name
 $name = isset($_POST['name']) ? DbSecurity::validateInput($_POST['name'], 'string', ['maxlength' => 255]) : null;
 
@@ -154,26 +158,43 @@ $remarks = isset($_POST['remarks']) ? DbSecurity::validateInput($_POST['remarks'
 // New fields
 $gender = isset($_POST['gender']) ? DbSecurity::validateInput($_POST['gender'], 'string', ['maxlength' => 255]) : null;
 $passport_expiry = isset($_POST['passport_expiry']) ? DbSecurity::validateInput($_POST['passport_expiry'], 'date') : null;
-$relation = isset($_POST['relation']) ? DbSecurity::validateInput($_POST['relation'], 'string', ['maxlength' => 255]) : null;
-$g_name = isset($_POST['g_name']) ? DbSecurity::validateInput($_POST['g_name'], 'string', ['maxlength' => 255]) : null;
-$father_name = isset($_POST['father_name']) ? DbSecurity::validateInput($_POST['father_name'], 'string', ['maxlength' => 255]) : null;
+$relation = isset($_POST['relation']) ? DbSecurity::validateInput($_POST['relation'], 'string', ['maxlength' => 255]) : '';
+$g_name = isset($_POST['g_name']) ? DbSecurity::validateInput($_POST['g_name'], 'string', ['maxlength' => 255]) : '';
+$father_name = isset($_POST['father_name']) ? DbSecurity::validateInput($_POST['father_name'], 'string', ['maxlength' => 255]) : '';
 $discount = isset($_POST['discount']) ? DbSecurity::validateInput($_POST['discount'], 'float', ['min' => 0]) : null;
+
+// Grand sold price agreed with the customer (overrides per-service sold sums when set)
+$grand_sold_price = isset($_POST['grand_sold_price']) ? DbSecurity::validateInput($_POST['grand_sold_price'], 'float', ['min' => 0]) : 0;
 
 $sale_currency = isset($_POST['sale_currency']) ? DbSecurity::validateInput($_POST['sale_currency'], 'string') : 'USD';
 if (!in_array(strtoupper($sale_currency), ['USD', 'AFS'])) { $sale_currency = 'USD'; }
 $exchange_rate = isset($_POST['exchange_rate']) ? (float)$_POST['exchange_rate'] : 1.0;
 if ($exchange_rate <= 0) { $exchange_rate = 1.0; }
 
-// Validate passport expiry (must be at least 6 months from today)
+// Package chip rows submit an empty currency; fall back to the booking's sale currency
+foreach ($suppliers as &$curSvc) {
+    if (empty($curSvc['currency'])) {
+        $curSvc['currency'] = $sale_currency;
+    }
+}
+unset($curSvc);
+
+// Validate passport expiry (must be at least 6 months from today).
+// Invalid or past dates are treated as "not provided" — only real
+// future expiries are enforced.
 if (!empty($passport_expiry)) {
-    $today = new DateTime();
-    $sixMonthsLater = (new DateTime())->modify('+6 months');
-    $expiryDate = new DateTime($passport_expiry);
-    
-    if ($expiryDate < $sixMonthsLater) {
-        header('Content-Type: application/json');
-        echo json_encode(['success' => false, 'message' => 'Passport must be valid for at least 6 months from today for Umrah visa requirements']);
-        exit();
+    try {
+        $expiryDate = new DateTime($passport_expiry);
+    } catch (Exception $e) {
+        $expiryDate = null;
+    }
+    if ($expiryDate !== null && $expiryDate >= (new DateTime())->setTime(0, 0)) {
+        $sixMonthsLater = (new DateTime())->modify('+6 months');
+        if ($expiryDate < $sixMonthsLater) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Passport must be valid for at least 6 months from today for Umrah visa requirements']);
+            exit();
+        }
     }
 }
 
@@ -241,6 +262,12 @@ try {
         $totalProfit += $svc['profit'];
     }
     unset($svc);
+
+    // Grand agreed price overrides per-service sold sums
+    if ($grand_sold_price > 0) {
+        $totalSoldPrice = $grand_sold_price;
+        $totalProfit = $totalSoldPrice - $totalBasePrice;
+    }
 
     // Calculate totals from current services (not from main booking record)
     $currentCurrency = strtoupper(trim((string)($currentData['currency'] ?? 'USD')));
@@ -515,17 +542,45 @@ try {
         }
     }
 
-    // Update or replace services in umrah_booking_services table
+    // Update or replace services in umrah_booking_services table.
+    // Capture the old rows first: umrah_fulfillments has ON DELETE CASCADE
+    // from umrah_booking_services, so a plain delete would silently destroy
+    // all flight/hotel/visa/transport fulfillment data. The fulfillments and
+    // statuses are migrated to the replacement rows after the re-insert.
+    $oldServices = [];
+    $oldSvcStmt = $pdo->prepare("SELECT id, service_type, status FROM umrah_booking_services WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?");
+    $oldSvcStmt->execute([$booking_id, $tenant_id, $branch_id]);
+    $oldServices = $oldSvcStmt->fetchAll(PDO::FETCH_ASSOC);
+
     $deleteServicesStmt = $pdo->prepare("DELETE FROM umrah_booking_services WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?");
     $deleteServicesStmt->execute([$booking_id, $tenant_id, $branch_id]);
 
     // Insert new services
     $insertServiceStmt = $pdo->prepare("
-        INSERT INTO umrah_booking_services (tenant_id, branch_id, booking_id, service_type, supplier_id, base_price, sold_price, profit, currency)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO umrah_booking_services (tenant_id, branch_id, booking_id, service_type, supplier_id, base_price, sold_price, profit, currency, service_id, pricing_unit, quantity, is_optional, price_snapshot)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
+    $newServiceIds = [];
+
     foreach ($suppliers as $service) {
+        $snapshot = null;
+        if (!empty($service['service_id'])) {
+            $snapshot = json_encode([
+                'service_id'      => $service['service_id'],
+                'package_quantity'=> $service['quantity'],
+                'pricing_unit'    => $service['pricing_unit'],
+                'is_optional'     => $service['is_optional'],
+                'hotel_id'        => $service['hotel_id'],
+                'room_type_id'    => $service['room_type_id'],
+                'currency'        => $service['currency'],
+                'base_price'      => (float)$service['base_price'],
+                'sold_price'      => (float)$service['sold_price'],
+                'profit'          => (float)$service['profit'],
+                'sale_currency'   => $sale_currency,
+                'sale_exchange_rate' => (!empty($service['currency']) && strtoupper($service['currency']) !== strtoupper($sale_currency)) ? $exchange_rate : null
+            ], JSON_UNESCAPED_UNICODE);
+        }
         $insertServiceStmt->execute([
             $tenant_id,
             $branch_id,
@@ -535,8 +590,48 @@ try {
             $service['base_price'],
             $service['sold_price'],
             $service['profit'],
-            $service['currency']
+            $service['currency'],
+            $service['service_id'],
+            $service['pricing_unit'],
+            $service['quantity'],
+            $service['is_optional'],
+            $snapshot
         ]);
+        $newServiceIds[] = (int)$pdo->lastInsertId();
+    }
+
+    // Migrate fulfillments + statuses from the old rows to their replacements
+    $usedOldIds = [];
+    $migrateFulfStmt = $pdo->prepare("UPDATE umrah_fulfillments SET booking_service_id = ? WHERE booking_service_id = ? AND tenant_id = ?");
+    $restoreStatusStmt = $pdo->prepare("UPDATE umrah_booking_services SET status = ? WHERE id = ? AND tenant_id = ?");
+    foreach ($suppliers as $i => $service) {
+        if (!isset($newServiceIds[$i])) {
+            continue;
+        }
+        $oldMatch = null;
+        foreach ($oldServices as $os) {
+            if (in_array((int)$os['id'], $usedOldIds, true)) {
+                continue;
+            }
+            if ($os['service_type'] === $service['service_type']) {
+                $oldMatch = $os;
+                break;
+            }
+        }
+        if ($oldMatch === null) {
+            foreach ($oldServices as $os) {
+                if (in_array((int)$os['id'], $usedOldIds, true)) {
+                    continue;
+                }
+                $oldMatch = $os;
+                break;
+            }
+        }
+        if ($oldMatch) {
+            $usedOldIds[] = (int)$oldMatch['id'];
+            $migrateFulfStmt->execute([$newServiceIds[$i], (int)$oldMatch['id'], $tenant_id]);
+            $restoreStatusStmt->execute([$oldMatch['status'], $newServiceIds[$i], $tenant_id]);
+        }
     }
 
     // Handle client balance updates - SAME AS SINGLE SUPPLIER VERSION (only if status is active)

@@ -969,6 +969,12 @@ if (!function_exists('h')) {
                         <li><a href="backup_settings.php" style="display:block;padding:6px 12px;font-size:.82rem;color:<?= basename($_SERVER['PHP_SELF']) == 'backup_settings.php' ? '#4099ff' : 'rgba(255,255,255,.6)' ?>;">Auto Backup Settings</a></li>
                     </ul>
                 </li>
+                <li data-username="db_migrate" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'db_migrate.php' ? 'active' : ''; ?>">
+                    <a href="db_migrate.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="feather icon-database"></i></span>
+                        <span class="pcoded-mtext">DB Migration</span>
+                    </a>
+                </li>
                 <li data-username="file_browser" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'file_browser.php' ? 'active' : ''; ?>">
                     <a href="file_browser.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-folder"></i></span>

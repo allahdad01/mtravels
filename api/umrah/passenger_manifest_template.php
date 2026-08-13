@@ -39,16 +39,27 @@ if (!isset($_GET['ticket_id']) || empty($_GET['ticket_id'])) {
 }
 $ticketId = (int)$_GET['ticket_id'];
 
-// Fetch the group ticket
-$ticketStmt = $pdo->prepare("SELECT * FROM group_tickets WHERE ticket_id = ? AND tenant_id = ? AND branch_id = ?");
-$ticketStmt->execute([$ticketId, $tenant_id, $branch_id]);
-$ticket = $ticketStmt->fetch(PDO::FETCH_ASSOC);
-if (!$ticket) {
-    die('Invalid request: ticket not found');
-}
+// Fulfillment mode: ticket_id is a booking id whose flight fulfillment is used
+$isFulfillment = ($_GET['src'] ?? '') === 'fulfillment';
 
-// Members in ticket order
-$memberIds = json_decode($ticket['member_ids'] ?? '[]', true) ?: [];
+if ($isFulfillment) {
+    require_once __DIR__ . '/fulfillment_flight_context.php';
+    $ffCtx = fulfillment_flight_context($pdo, (int)$tenant_id, (int)$branch_id, $ticketId);
+    if (!$ffCtx) {
+        die('Invalid request: flight fulfillment not found');
+    }
+    $ticket = $ffCtx['ticket'];
+    $memberIds = $ffCtx['member_ids'];
+} else {
+    // Fetch the group ticket
+    $ticketStmt = $pdo->prepare("SELECT * FROM group_tickets WHERE ticket_id = ? AND tenant_id = ? AND branch_id = ?");
+    $ticketStmt->execute([$ticketId, $tenant_id, $branch_id]);
+    $ticket = $ticketStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$ticket) {
+        die('Invalid request: ticket not found');
+    }
+    $memberIds = json_decode($ticket['member_ids'] ?? '[]', true) ?: [];
+}
 $memberMap = [];
 if (!empty($memberIds)) {
     $placeholders = implode(',', array_fill(0, count($memberIds), '?'));

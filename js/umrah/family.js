@@ -109,8 +109,12 @@
             });
         }
 
-        // Open Booking Modal
+        // Open Booking Modal (member already has a family)
         window.openBookingModal = function(familyId) {
+            const chooser = document.getElementById("familyChooserCard");
+            if (chooser) {
+                chooser.style.display = "none";
+            }
             const familyIdInput = document.getElementById("familyId");
             if (familyIdInput) {
                 familyIdInput.value = familyId;
@@ -119,6 +123,107 @@
             if (typeof $ !== 'undefined' && $.fn.modal) {
                 $('#umrahModal').modal('show');
             }
+        };
+
+        // Open Add Member Modal from a Group card (no family yet):
+        // family chooser at top — add a new family OR pick an existing one,
+        // then add members to it inside the same modal.
+        window.openAddMemberModal = function(groupId) {
+            const chooser = document.getElementById("familyChooserCard");
+            if (chooser) {
+                chooser.style.display = "block";
+            }
+
+            // Default to "Add New Family" mode
+            setUmrahFamilyMode('new');
+
+            const familyIdInput = document.getElementById("familyId");
+            if (familyIdInput) familyIdInput.value = "";
+
+            // Preselect the group we came from in the New Family form
+            const groupSelect = document.querySelector('#umrahForm select[name="group_id"]');
+            preselectUmrahGroup(groupSelect, groupId);
+
+            // Restrict the Existing Family list to families of this group when possible
+            const existingSelect = document.getElementById("existingFamilySelect");
+            if (existingSelect) {
+                existingSelect.value = "";
+                let matched = 0;
+                Array.prototype.forEach.call(existingSelect.options, function(opt) {
+                    if (!opt.value) return;
+                    const match = String(opt.getAttribute('data-group-id')) === String(groupId);
+                    opt.style.display = match ? "" : "none";
+                    if (match) matched++;
+                });
+                // No families in this group yet — show all families
+                if (matched === 0) {
+                    Array.prototype.forEach.call(existingSelect.options, function(opt) {
+                        if (opt.value) opt.style.display = "";
+                    });
+                }
+            }
+
+            // Use jQuery for Bootstrap modal if available
+            if (typeof $ !== 'undefined' && $.fn.modal) {
+                $('#umrahModal').modal('show');
+            }
+        };
+
+        function preselectUmrahGroup(groupSelect, groupId, attempt) {
+            if (!groupSelect || !groupId) return;
+            attempt = attempt || 0;
+            if (groupSelect.options.length === 0) {
+                // groups.js fills the select async — retry shortly
+                if (attempt < 10) {
+                    setTimeout(function() { preselectUmrahGroup(groupSelect, groupId, attempt + 1); }, 250);
+                }
+                return;
+            }
+            groupSelect.value = String(groupId);
+            // Re-select any group option that was disabled by the initial fill
+            Array.prototype.forEach.call(groupSelect.options, function(opt) {
+                opt.disabled = false;
+            });
+        }
+
+        // Switch between "Add New Family" and "Select Existing Family"
+        window.setUmrahFamilyMode = function(mode) {
+            const newPanel = document.getElementById("newFamilyPanel");
+            const existingPanel = document.getElementById("existingFamilyPanel");
+            const newBtn = document.getElementById("familyModeNewBtn");
+            const existingBtn = document.getElementById("familyModeExistingBtn");
+            const familyIdInput = document.getElementById("familyId");
+            const existingSelect = document.getElementById("existingFamilySelect");
+
+            function activate(btn, on) {
+                if (!btn) return;
+                if (on) {
+                    btn.classList.add("active", "btn-primary");
+                    btn.classList.remove("btn-outline-primary");
+                } else {
+                    btn.classList.remove("active", "btn-primary");
+                    btn.classList.add("btn-outline-primary");
+                }
+            }
+
+            if (mode === "existing") {
+                if (newPanel) newPanel.style.display = "none";
+                if (existingPanel) existingPanel.style.display = "block";
+                if (familyIdInput) familyIdInput.value = existingSelect ? (existingSelect.value || "") : "";
+                activate(newBtn, false);
+                activate(existingBtn, true);
+            } else {
+                if (existingPanel) existingPanel.style.display = "none";
+                if (newPanel) newPanel.style.display = "block";
+                if (familyIdInput) familyIdInput.value = "";
+                activate(existingBtn, false);
+                activate(newBtn, true);
+            }
+        };
+
+        window.setUmrahFamilyFromSelect = function(select) {
+            const familyIdInput = document.getElementById("familyId");
+            if (familyIdInput) familyIdInput.value = select ? select.value : "";
         };
 
 

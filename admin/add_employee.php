@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $password = $_POST['password'] ?? '';
         $role = InputValidator::getEnum(
             $_POST['role'] ?? '',
-            ['admin', 'staff', 'sales', 'umrah', 'finance'],
+            ['admin', 'staff', 'sales', 'umrah', 'finance', 'operations', 'hotel_manager', 'viewer'],
             ''
         );
         $hire_date = InputValidator::getDate($_POST['hire_date'] ?? '', 'Y-m-d', '');
@@ -661,6 +661,9 @@ include '../includes/header.php';
                                 <option value="sales" <?php echo ($role ?? '') === 'sales' ? 'selected' : ''; ?>><?php echo __('sales'); ?></option>
                                 <?php if (hasFeature('umrah_bookings', $allowed_features ?? [])): ?>
                                 <option value="umrah" <?php echo ($role ?? '') === 'umrah' ? 'selected' : ''; ?>><?php echo __('umrah'); ?></option>
+                                <option value="operations" <?php echo ($role ?? '') === 'operations' ? 'selected' : ''; ?>><?php echo __('operations'); ?></option>
+                                <option value="hotel_manager" <?php echo ($role ?? '') === 'hotel_manager' ? 'selected' : ''; ?>><?php echo __('hotel_manager'); ?></option>
+                                <option value="viewer" <?php echo ($role ?? '') === 'viewer' ? 'selected' : ''; ?>><?php echo __('viewer'); ?></option>
                                 <?php endif; ?>
                                 <option value="staff" <?php echo ($role ?? '') === 'staff' ? 'selected' : ''; ?>><?php echo __('staff'); ?></option>
                               </select>

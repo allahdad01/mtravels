@@ -45,10 +45,13 @@ try {
         exit;
     }
 
-    if (empty($name) || empty($email) || empty($client_type)) {
-        echo json_encode(['success' => false, 'message' => 'Name, email, and client type are required']);
+    if (empty($name) || empty($client_type)) {
+        echo json_encode(['success' => false, 'message' => 'Name and client type are required']);
         exit;
     }
+
+    // Email is optional — store NULL when empty so the unique index is not violated
+    if ($email === '') $email = null;
 
     // Database connection
     include '../../includes/db.php';

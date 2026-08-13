@@ -237,14 +237,6 @@ try {
                             </a>
                             <?php endif; ?>
                             
-                            <?php if (empty($member['status']) || $member['status'] === 'pending'): ?>
-                            <div class="dropdown-divider"></div>
-                            <h6 class="dropdown-header"><?= __('approval') ?></h6>
-                            <a class="dropdown-item" href="#" onclick="approveMemberBooking(<?= $member['booking_id'] ?>, '<?= htmlspecialchars($member['name']) ?>'); return false;">
-                                <i class="fas fa-check"></i><?= __('approve_booking') ?>
-                            </a>
-                            <?php endif; ?>
-                            
                             <div class="dropdown-divider"></div>
                             <h6 class="dropdown-header"><?= __('advanced_actions') ?></h6>
                             <?php if ($member['status'] === 'active'): ?>

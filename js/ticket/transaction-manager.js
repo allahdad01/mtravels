@@ -350,6 +350,13 @@ const transactionManager = {
                         tbody.html('<tr><td colspan="7" class="text-center">No transactions found</td></tr>');
                         $('#exchangeRateDisplay').text('No exchange rates found');
                         $('#exchangedAmount').text('No conversions available');
+                        // Hide currency summary sections and reset values so no stale data
+                        // from a previously opened ticket remains visible
+                        $('#usdSection, #afsSection, #eurSection, #aedSection, #sarSection').hide();
+                        ['USD','AFS','EUR','AED','SAR'].forEach(cur => {
+                            $(`#paidAmount${cur==='AED'?'AED':cur}`).text(`${cur==='AED'?'AED':cur} 0.00`);
+                            $(`#remainingAmount${cur==='AED'?'AED':cur}`).text(`${cur==='AED'?'AED':cur} 0.00`);
+                        });
                         return;
                     }
 

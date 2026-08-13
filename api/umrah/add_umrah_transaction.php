@@ -7,6 +7,7 @@ require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
+umrah_require('payment_record');
 
 // ✅ CSRF Token Validation
 if (!verify_csrf_token()) {
@@ -63,15 +64,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // ---- Phase 31: payment integrity validation ------------------------------
+    if ($payment_amount <= 0) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Payment amount must be greater than zero.']);
+        exit;
+    }
+    if (!empty($currency) && !in_array(strtoupper(trim((string)$currency)), ['USD', 'AFS'])) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Invalid payment currency. Allowed: USD, AFS.']);
+        exit;
+    }
+    $bookingExists = $pdo->prepare("SELECT 1 FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? AND (branch_id = ? OR (branch_id IS NULL AND ? IS NULL))");
+    $bookingExists->execute([$umrah_id, $tenant_id, $branch_id, $branch_id]);
+    if (!$bookingExists->fetchColumn()) {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'message' => 'Booking not found for this tenant/branch.']);
+        exit;
+    }
+
     // Start a transaction
     $pdo->beginTransaction();
 
     try {
          // Step 1: Get the umrah booking details including currency and exchange rate
-         $stmt_fetch_umrah_details = $pdo->prepare("SELECT paid_to, sold_to, received_bank_payment, currency as booking_currency FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?");
+         $stmt_fetch_umrah_details = $pdo->prepare("SELECT paid_to, sold_to, received_bank_payment, currency as booking_currency FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? AND (branch_id = ? OR (branch_id IS NULL AND ? IS NULL))");
          $stmt_fetch_umrah_details->bindParam(1, $umrah_id, PDO::PARAM_INT);
          $stmt_fetch_umrah_details->bindParam(2, $tenant_id, PDO::PARAM_INT);
          $stmt_fetch_umrah_details->bindParam(3, $branch_id, PDO::PARAM_INT);
+         $stmt_fetch_umrah_details->bindParam(4, $branch_id, PDO::PARAM_INT);
          $stmt_fetch_umrah_details->execute();
          $umrah_details = $stmt_fetch_umrah_details->fetch(PDO::FETCH_ASSOC);
 
@@ -89,10 +110,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
          $booking_currency = $umrah_details['booking_currency'];
 
         // Get supplier_id from umrah_booking_services where service_type is 'all' or 'visa'
-        $stmt_fetch_supplier_id = $pdo->prepare("SELECT supplier_id FROM umrah_booking_services WHERE booking_id = ? AND tenant_id = ? AND branch_id = ? AND (service_type = 'all' OR FIND_IN_SET('visa', REPLACE(service_type, '+', ',')) > 0) LIMIT 1");
+        $stmt_fetch_supplier_id = $pdo->prepare("SELECT supplier_id FROM umrah_booking_services WHERE booking_id = ? AND tenant_id = ? AND (branch_id = ? OR (branch_id IS NULL AND ? IS NULL)) AND (service_type = 'all' OR FIND_IN_SET('visa', REPLACE(service_type, '+', ',')) > 0) LIMIT 1");
         $stmt_fetch_supplier_id->bindParam(1, $umrah_id, PDO::PARAM_INT);
         $stmt_fetch_supplier_id->bindParam(2, $tenant_id, PDO::PARAM_INT);
         $stmt_fetch_supplier_id->bindParam(3, $branch_id, PDO::PARAM_INT);
+        $stmt_fetch_supplier_id->bindParam(4, $branch_id, PDO::PARAM_INT);
         $stmt_fetch_supplier_id->execute();
         $supplier_result = $stmt_fetch_supplier_id->fetch(PDO::FETCH_ASSOC);
 
@@ -123,10 +145,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $umrah_transaction_id = $pdo->lastInsertId();
 
         // Fetch Supplier Type
-        $stmt_fetch_supplier = $pdo->prepare("SELECT supplier_type, currency, route_payment_to_main_account FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt_fetch_supplier = $pdo->prepare("SELECT supplier_type, currency, route_payment_to_main_account FROM suppliers WHERE id = ? AND tenant_id = ? AND (branch_id = ? OR (branch_id IS NULL AND ? IS NULL))");
         $stmt_fetch_supplier->bindParam(1, $supplier_id, PDO::PARAM_INT);
         $stmt_fetch_supplier->bindParam(2, $tenant_id, PDO::PARAM_INT);
         $stmt_fetch_supplier->bindParam(3, $branch_id, PDO::PARAM_INT);
+        $stmt_fetch_supplier->bindParam(4, $branch_id, PDO::PARAM_INT);
         $stmt_fetch_supplier->execute();
         $supplier_data = $stmt_fetch_supplier->fetch(PDO::FETCH_ASSOC);
 
@@ -144,23 +167,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($transaction_to_lower === 'bank') {
             if ($supplier_type === 'External' && $route_payment_to_main_account !== 1) {
                 // Get current supplier balance
-                $stmt_get_supplier_balance = $pdo->prepare("SELECT balance FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $stmt_get_supplier_balance = $pdo->prepare("SELECT balance FROM suppliers WHERE id = ? AND tenant_id = ? AND (branch_id = ? OR (branch_id IS NULL AND ? IS NULL))");
                 $stmt_get_supplier_balance->bindParam(1, $supplier_id, PDO::PARAM_INT);
                 $stmt_get_supplier_balance->bindParam(2, $tenant_id, PDO::PARAM_INT);
                 $stmt_get_supplier_balance->bindParam(3, $branch_id, PDO::PARAM_INT);
+                $stmt_get_supplier_balance->bindParam(4, $branch_id, PDO::PARAM_INT);
                 $stmt_get_supplier_balance->execute();
                 $supplier_balance_result = $stmt_get_supplier_balance->fetch(PDO::FETCH_ASSOC);
-                $current_supplier_balance = $supplier_balance_result['balance'];
+                $current_supplier_balance = (float)($supplier_balance_result['balance'] ?? 0);
 
                 // Calculate new supplier balance
                 $new_supplier_balance = $current_supplier_balance + $payment_amount;
 
                 // Update supplier balance for external suppliers
-                $stmt_update_supplier = $pdo->prepare("UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $stmt_update_supplier = $pdo->prepare("UPDATE suppliers SET balance = ? WHERE id = ? AND tenant_id = ? AND (branch_id = ? OR (branch_id IS NULL AND ? IS NULL))");
                 $stmt_update_supplier->bindParam(1, $new_supplier_balance, PDO::PARAM_STR);
                 $stmt_update_supplier->bindParam(2, $supplier_id, PDO::PARAM_INT);
                 $stmt_update_supplier->bindParam(3, $tenant_id, PDO::PARAM_INT);
                 $stmt_update_supplier->bindParam(4, $branch_id, PDO::PARAM_INT);
+                $stmt_update_supplier->bindParam(5, $branch_id, PDO::PARAM_INT);
                 if (!$stmt_update_supplier->execute()) {
                     throw new PDOException('Failed to update supplier balance: ' . $stmt_update_supplier->error);
                 }
@@ -185,15 +210,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Get current main account balance
                 $stmt_get_main_balance = $pdo->prepare(
                     $currency === 'USD'
-                        ? "SELECT usd_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?"
-                        : "SELECT afs_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?"
+                        ? "SELECT usd_balance FROM main_account WHERE id = ? AND tenant_id = ? AND (branch_id = ? OR (branch_id IS NULL AND ? IS NULL))"
+                        : "SELECT afs_balance FROM main_account WHERE id = ? AND tenant_id = ? AND (branch_id = ? OR (branch_id IS NULL AND ? IS NULL))"
                 );
                 $stmt_get_main_balance->bindParam(1, $paid_to, PDO::PARAM_INT);
                 $stmt_get_main_balance->bindParam(2, $tenant_id, PDO::PARAM_INT);
                 $stmt_get_main_balance->bindParam(3, $branch_id, PDO::PARAM_INT);
+                $stmt_get_main_balance->bindParam(4, $branch_id, PDO::PARAM_INT);
                 $stmt_get_main_balance->execute();
                 $main_balance_result = $stmt_get_main_balance->fetch(PDO::FETCH_ASSOC);
-                $current_main_balance = $main_balance_result[$currency === 'USD' ? 'usd_balance' : 'afs_balance'];
+                $current_main_balance = (float)($main_balance_result[$currency === 'USD' ? 'usd_balance' : 'afs_balance'] ?? 0);
 
                 // Calculate new main account balance
                 $new_main_balance = $current_main_balance + $payment_amount;
@@ -236,21 +262,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Update received_bank_payment in umrah_bookings
              $new_received_bank_payment = $received_bank_payment + $payment_amount;
-             $stmt_update_umrah_booking = $pdo->prepare("UPDATE umrah_bookings SET received_bank_payment = ? WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?");
+             $stmt_update_umrah_booking = $pdo->prepare("UPDATE umrah_bookings SET received_bank_payment = ? WHERE booking_id = ? AND tenant_id = ? AND (branch_id = ? OR (branch_id IS NULL AND ? IS NULL))");
              $stmt_update_umrah_booking->bindParam(1, $new_received_bank_payment, PDO::PARAM_STR);
              $stmt_update_umrah_booking->bindParam(2, $umrah_id, PDO::PARAM_INT);
              $stmt_update_umrah_booking->bindParam(3, $tenant_id, PDO::PARAM_INT);
              $stmt_update_umrah_booking->bindParam(4, $branch_id, PDO::PARAM_INT);
+             $stmt_update_umrah_booking->bindParam(5, $branch_id, PDO::PARAM_INT);
              if (!$stmt_update_umrah_booking->execute()) {
                  throw new PDOException('Failed to update received bank payment in umrah_bookings: ' . $stmt_update_umrah_booking->error);
              }
 
              // update bank receipt number
-             $stmt_update_bank_receipt = $pdo->prepare("UPDATE umrah_bookings SET bank_receipt_number = ? WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?");
+             $stmt_update_bank_receipt = $pdo->prepare("UPDATE umrah_bookings SET bank_receipt_number = ? WHERE booking_id = ? AND tenant_id = ? AND (branch_id = ? OR (branch_id IS NULL AND ? IS NULL))");
              $stmt_update_bank_receipt->bindParam(1, $receipt_number, PDO::PARAM_STR);
              $stmt_update_bank_receipt->bindParam(2, $umrah_id, PDO::PARAM_INT);
              $stmt_update_bank_receipt->bindParam(3, $tenant_id, PDO::PARAM_INT);
              $stmt_update_bank_receipt->bindParam(4, $branch_id, PDO::PARAM_INT);
+             $stmt_update_bank_receipt->bindParam(5, $branch_id, PDO::PARAM_INT);
              if (!$stmt_update_bank_receipt->execute()) {
                  throw new PDOException('Failed to update bank receipt number in umrah_bookings: ' . $stmt_update_bank_receipt->error);
              }
@@ -376,11 +404,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt_get_transactions = $pdo->prepare("
             SELECT payment_amount, currency, exchange_rate
             FROM umrah_transactions
-            WHERE umrah_booking_id = ? AND transaction_type = 'Credit' AND tenant_id = ? AND branch_id = ?
+            WHERE umrah_booking_id = ? AND transaction_type = 'Credit' AND tenant_id = ? AND (branch_id = ? OR (branch_id IS NULL AND ? IS NULL))
         ");
         $stmt_get_transactions->bindParam(1, $umrah_id, PDO::PARAM_INT);
         $stmt_get_transactions->bindParam(2, $tenant_id, PDO::PARAM_INT);
         $stmt_get_transactions->bindParam(3, $branch_id, PDO::PARAM_INT);
+        $stmt_get_transactions->bindParam(4, $branch_id, PDO::PARAM_INT);
         $stmt_get_transactions->execute();
         $transactions = $stmt_get_transactions->fetchAll(PDO::FETCH_ASSOC);
 
@@ -411,20 +440,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // Update paid amount in umrah_bookings with the converted total
-        $stmt_update_paid = $pdo->prepare("UPDATE umrah_bookings SET paid = ? WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt_update_paid = $pdo->prepare("UPDATE umrah_bookings SET paid = ? WHERE booking_id = ? AND tenant_id = ? AND (branch_id = ? OR (branch_id IS NULL AND ? IS NULL))");
         $stmt_update_paid->bindParam(1, $total_paid_in_base_currency, PDO::PARAM_STR);
         $stmt_update_paid->bindParam(2, $umrah_id, PDO::PARAM_INT);
         $stmt_update_paid->bindParam(3, $tenant_id, PDO::PARAM_INT);
         $stmt_update_paid->bindParam(4, $branch_id, PDO::PARAM_INT);
+        $stmt_update_paid->bindParam(5, $branch_id, PDO::PARAM_INT);
         if (!$stmt_update_paid->execute()) {
             throw new PDOException('Failed to update paid amount in umrah_bookings: ' . $stmt_update_paid->error);
         }
 
         // Update due amount: due = sold_price - paid
-        $stmt_update_due = $pdo->prepare("UPDATE umrah_bookings SET due = sold_price - paid WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmt_update_due = $pdo->prepare("UPDATE umrah_bookings SET due = sold_price - paid WHERE booking_id = ? AND tenant_id = ? AND (branch_id = ? OR (branch_id IS NULL AND ? IS NULL))");
         $stmt_update_due->bindParam(1, $umrah_id, PDO::PARAM_INT);
         $stmt_update_due->bindParam(2, $tenant_id, PDO::PARAM_INT);
         $stmt_update_due->bindParam(3, $branch_id, PDO::PARAM_INT);
+        $stmt_update_due->bindParam(4, $branch_id, PDO::PARAM_INT);
         if (!$stmt_update_due->execute()) {
             throw new PDOException('Failed to update due amount in umrah_bookings: ' . $stmt_update_due->error);
         }
@@ -461,12 +492,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             FROM umrah_bookings ub
             INNER JOIN umrah_booking_services ubs ON ub.booking_id = ubs.booking_id AND (ubs.service_type = 'all' OR FIND_IN_SET('visa', REPLACE(ubs.service_type, '+', ',')) > 0)
             INNER JOIN suppliers s ON ubs.supplier_id = s.id
-            WHERE ub.booking_id = ? AND ub.tenant_id = ? AND ub.branch_id = ?
+            WHERE ub.booking_id = ? AND ub.tenant_id = ? AND (ub.branch_id = ? OR (ub.branch_id IS NULL AND ? IS NULL))
             LIMIT 1
         ");
         $supplierStmt->bindParam(1, $umrah_id, PDO::PARAM_INT);
         $supplierStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
         $supplierStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+        $supplierStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
         $supplierStmt->execute();
         $supplier = $supplierStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -542,7 +574,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (PDOException $e) {
         // Rollback the transaction on error
         $pdo->rollBack();
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
     }
 } else {
     echo json_encode(['success' => false]);

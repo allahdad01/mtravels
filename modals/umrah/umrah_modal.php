@@ -17,6 +17,78 @@
                     <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
                     <input type="hidden" name="family_id" id="familyId">
 
+                    <!-- SECTION 0: FAMILY SELECTION (Add New Family / Select Existing Family)
+                         Shown only when the modal is opened from a Group (no family preselected) -->
+                    <div class="card mb-4" id="familyChooserCard" style="display:none; border: 2px solid #4099ff;">
+                        <div class="card-header" style="background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%); color: white; border-radius: 8px 8px 0 0;">
+                            <h6 class="mb-0">
+                                <i class="feather icon-users mr-2"></i><?= __('family') ?>
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="btn-group w-100 mb-3" role="group" aria-label="Family mode">
+                                <button type="button" class="btn btn-primary active" id="familyModeNewBtn" onclick="setUmrahFamilyMode('new')">
+                                    <i class="feather icon-user-plus mr-1"></i><?= __('add_new_family') ?>
+                                </button>
+                                <button type="button" class="btn btn-outline-primary" id="familyModeExistingBtn" onclick="setUmrahFamilyMode('existing')">
+                                    <i class="feather icon-users mr-1"></i><?= __('select_existing_family') ?>
+                                </button>
+                            </div>
+
+                            <!-- New Family panel -->
+                            <div id="newFamilyPanel">
+                                <div class="row">
+                                    <div class="form-group col-md-4">
+                                        <label for="newHeadOfFamily"><?= __('family_head') ?></label>
+                                        <input type="text" class="form-control" id="newHeadOfFamily" name="head_of_family">
+                                    </div>
+                                    <div class="form-group col-md-4">
+                                        <label for="newContact"><?= __('contact_number') ?></label>
+                                        <input type="text" class="form-control" id="newContact" name="contact" inputmode="tel">
+                                    </div>
+                                    <div class="form-group col-md-4">
+                                        <label for="newAddress"><?= __('address') ?></label>
+                                        <input type="text" class="form-control" id="newAddress" name="address">
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="form-group col-md-4">
+                                        <label for="newTazmin"><?= __('tazmin') ?></label>
+                                        <select class="form-control" id="newTazmin" name="tazmin">
+                                            <option value="Not Done"><?= __('not_done') ?></option>
+                                            <option value="Done"><?= __('done') ?></option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group col-md-4">
+                                        <label><?= __('group') ?></label>
+                                        <select class="form-control" name="group_id">
+                                            <option value=""><?= __('select_group') ?></option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Existing Family panel -->
+                            <div id="existingFamilyPanel" style="display:none;">
+                                <div class="form-group mb-0">
+                                    <label for="existingFamilySelect"><?= __('select_existing_family') ?></label>
+                                    <select class="form-control" id="existingFamilySelect" name="existing_family_id" onchange="setUmrahFamilyFromSelect(this)">
+                                        <option value=""><?= __('select') ?></option>
+                                        <?php
+                                        $famStmt = $pdo->prepare("SELECT family_id, head_of_family, contact, group_id FROM families WHERE tenant_id = ? AND branch_id = ? ORDER BY head_of_family");
+                                        $famStmt->execute([$tenant_id, $branch_id]);
+                                        foreach ($famStmt->fetchAll(PDO::FETCH_ASSOC) as $famRow) {
+                                            $label = $famRow['head_of_family'];
+                                            if (!empty($famRow['contact'])) { $label .= ' — ' . $famRow['contact']; }
+                                            echo "<option value='{$famRow['family_id']}' data-group-id='{$famRow['group_id']}'>{$label}</option>";
+                                        }
+                                        ?>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- SECTION 1: MULTI-FILE DOCUMENT UPLOAD -->
                     <div class="card mb-4" style="background: linear-gradient(135deg, #f0f9ff 0%, #f5f3ff 100%); border: none;">
                         <div class="card-header" style="background: linear-gradient(135deg, #4099ff 0%, #2ed8b6 100%); color: white; border-radius: 8px 8px 0 0;">
@@ -103,37 +175,49 @@
 
                     <!-- SECTION 3: SHARED SERVICES -->
                     <div class="card mb-4">
-                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap">
                             <h6 class="mb-0"><i class="feather icon-package mr-2"></i><?= __('services') ?> (Shared for all members)</h6>
-                            <button type="button" class="btn btn-sm btn-outline-primary" id="addServiceBtn">
-                                <i class="feather icon-plus"></i> Add Service
-                            </button>
+                            <div class="d-flex align-items-center" style="gap: 6px;">
+                                <select class="form-control form-control-sm" id="packageSelect" name="package_id" style="min-width: 220px;">
+                                    <option value="">-- <?= __('select_package') ?> --</option>
+                                    <?php
+                                    try {
+                                        $stmt = $pdo->prepare("SELECT id, name, code FROM umrah_packages WHERE tenant_id = :tenant_id AND status = 'active' ORDER BY sort_order, name");
+                                        $stmt->bindParam(':tenant_id', $tenant_id, PDO::PARAM_INT);
+                                        $stmt->execute();
+                                        $packages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                                        foreach ($packages as $packageRow) {
+                                            $label = $packageRow['name'];
+                                            if (!empty($packageRow['code'])) { $label .= ' (' . $packageRow['code'] . ')'; }
+                                            echo "<option value='{$packageRow['id']}'>{$label}</option>";
+                                        }
+                                    } catch (PDOException $e) {
+                                        error_log("Error fetching packages: " . $e->getMessage());
+                                    }
+                                    ?>
+                                </select>
+                            </div>
                         </div>
                         <div class="card-body">
-                            <div class="row mb-3">
-                                <div class="form-group col-md-4">
-                                    <label for="saleCurrency"><?= __('sale_currency') ?></label>
-                                    <select class="form-control" id="saleCurrency" name="sale_currency">
-                                        <option value="USD" selected>USD</option>
-                                        <option value="AFS">AFS</option>
-                                    </select>
-                                    <small class="text-muted d-block"><?= __('sale_currency_hint') ?></small>
-                                </div>
-                                <div class="form-group col-md-4">
-                                    <label for="exchangeRate"><?= __('exchange_rate') ?></label>
-                                    <input type="number" class="form-control" id="exchangeRate" name="exchange_rate" value="1" min="0" step="0.0001">
-                                    <small class="text-muted d-block"><?= __('exchange_rate_hint') ?></small>
-                                </div>
-                                <div class="form-group col-md-4">
-                                    <label>&nbsp;</label>
-                                    <small class="text-muted d-block"><?= __('exchange_rate_note') ?></small>
-                                </div>
+                            <div class="alert alert-info py-2 mb-3" style="font-size: 0.85rem;">
+                                <i class="feather icon-info mr-1"></i>
+                                <?= __('select_package_hint') ?> — services and prices load from the package. Optional lines can be removed.
                             </div>
+                            <div id="packageEmptyState" class="text-center py-4">
+                                <i class="feather icon-package" style="font-size: 2rem; color: #adb5bd;"></i>
+                                <div class="text-muted mt-2"><?= __('select_package') ?> <?= __('select_package_to_continue') ?></div>
+                            </div>
+                            <div id="packageServicesPanel" class="d-none">
                             <div class="services-grid-wrapper">
-                                <div class="services-grid-header">
-                                    <div class="header-item header-column-1"><?= __('service_info') ?></div>
-                                    <div class="header-item header-column-2"><?= __('pricing_info') ?></div>
-                                    <div class="header-item header-column-3"><?= __('actions') ?></div>
+                                <div class="services-grid-header" style="display:flex; flex-wrap:wrap; align-items:flex-end; gap:16px; border-bottom:1px solid #dee2e6;">
+                                    <div class="header-item" style="align-self:center; padding-bottom:10px;"><?= __('service_info') ?></div>
+                                    <div style="margin-left:auto; min-width:260px; max-width:320px; padding-bottom:10px;">
+                                        <label class="d-block text-muted" style="margin:0 0 4px; font-size:0.75rem; font-weight:400;"><?= __('sale_currency') ?> (<?= __('sale_currency_hint') ?>)</label>
+                                        <select class="form-control form-control-sm" id="saleCurrency" name="sale_currency">
+                                            <option value="USD" selected>USD</option>
+                                            <option value="AFS">AFS</option>
+                                        </select>
+                                    </div>
                                 </div>
                                 <div id="servicesTableBody" class="services-grid-body">
                                     <!-- Service rows will be added here -->
@@ -150,7 +234,7 @@
                                             </div>
                                             <div class="total-input-group">
                                                 <label><?= __('sold_price') ?>:</label>
-                                                <input type="number" class="form-control form-control-sm" id="totalSoldPrice" readonly value="0">
+                                                <input type="number" class="form-control form-control-sm" id="totalSoldPrice" name="grand_sold_price" value="0" min="0" step="0.01">
                                             </div>
                                         </div>
                                     </div>
@@ -165,6 +249,7 @@
                                         </div>
                                     </div>
                                 </div>
+                            </div>
                             </div>
                         </div>
                     </div>
@@ -218,6 +303,9 @@
                                         <option value="1 Bed"><?= __('1_bed') ?></option>
                                         <option value="2 Beds"><?= __('2_beds') ?></option>
                                         <option value="3 Beds"><?= __('3_beds') ?></option>
+                                        <option value="4 Beds"><?= __('4_beds') ?></option>
+                                        <option value="5 Beds"><?= __('5_beds') ?></option>
+                                        <option value="6 Beds"><?= __('6_beds') ?></option>
                                         <option value="Shared"><?= __('shared') ?></option>
                                         <option value="No Room"><?= __('no_room') ?></option>
                                     </select>
@@ -252,6 +340,9 @@
                                         <option value="28 Days"><?= __('28_days') ?></option>
                                         <option value="29 Days"><?= __('29_days') ?></option>
                                         <option value="30 Days"><?= __('30_days') ?></option>
+                                        <option value="45 Days"><?= __('45_days') ?></option>
+                                        <option value="60 Days"><?= __('60_days') ?></option>
+                                        <option value="90 Days"><?= __('90_days') ?></option>
                                     </select>
                                 </div>
                             </div>

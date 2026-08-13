@@ -39,6 +39,15 @@ if ($member) {
     $servicesStmt = $pdo->prepare($servicesSql);
     $servicesStmt->execute([$bookingId, $tenant_id, $branch_id]);
     $services = $servicesStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Expose the package-pinned hotel/room (from the sale snapshot) on each
+    // service so the edit form preserves them across member edits.
+    foreach ($services as &$svc) {
+        $snap = json_decode((string)($svc['price_snapshot'] ?? ''), true) ?: [];
+        if (empty($svc['hotel_id']) && !empty($snap['hotel_id'])) { $svc['hotel_id'] = (int)$snap['hotel_id']; }
+        if (empty($svc['room_type_id']) && !empty($snap['room_type_id'])) { $svc['room_type_id'] = (int)$snap['room_type_id']; }
+    }
+    unset($svc);
     $member['services'] = $services;
 
     // Format dates for display

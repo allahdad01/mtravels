@@ -28,10 +28,20 @@ try {
 if (isset($_GET['ticket_ids']) && $_GET['ticket_ids'] !== '') {
     $rawIds = explode(',', (string)$_GET['ticket_ids']);
     $ticketIds = [];
+    $directMemberIds = [];
     foreach ($rawIds as $rid) {
-        $rid = (int)trim($rid);
-        if ($rid > 0 && !in_array($rid, $ticketIds)) {
-            $ticketIds[] = $rid;
+        $rid = trim($rid);
+        // 'b<booking_id>' entries come from fulfillment flight cards (direct booking ids)
+        if (stripos($rid, 'b') === 0 && is_numeric(substr($rid, 1))) {
+            $bid = (int)substr($rid, 1);
+            if ($bid > 0 && !in_array($bid, $directMemberIds)) {
+                $directMemberIds[] = $bid;
+            }
+        } else {
+            $rid = (int)$rid;
+            if ($rid > 0 && !in_array($rid, $ticketIds)) {
+                $ticketIds[] = $rid;
+            }
         }
     }
 } elseif (isset($_GET['ticket_id']) && !empty($_GET['ticket_id'])) {
@@ -39,23 +49,26 @@ if (isset($_GET['ticket_ids']) && $_GET['ticket_ids'] !== '') {
 } else {
     $ticketIds = [];
 }
-if (empty($ticketIds)) {
+if (empty($ticketIds) && empty($directMemberIds)) {
     die('Invalid request: ticket_id required');
 }
-$ticketId = $ticketIds[0];
+$ticketId = $ticketIds[0] ?? 0;
 
 // Fetch the group tickets (all selected, in order)
-$ticketPh = implode(',', array_fill(0, count($ticketIds), '?'));
-$ticketStmt = $pdo->prepare("SELECT * FROM group_tickets WHERE ticket_id IN ({$ticketPh}) AND tenant_id = ? AND branch_id = ?");
-$ticketStmt->execute(array_merge($ticketIds, [$tenant_id, $branch_id]));
-$tickets = $ticketStmt->fetchAll(PDO::FETCH_ASSOC);
-if (count($tickets) !== count($ticketIds)) {
-    die('Invalid request: ticket not found');
+$tickets = [];
+if (!empty($ticketIds)) {
+    $ticketPh = implode(',', array_fill(0, count($ticketIds), '?'));
+    $ticketStmt = $pdo->prepare("SELECT * FROM group_tickets WHERE ticket_id IN ({$ticketPh}) AND tenant_id = ? AND branch_id = ?");
+    $ticketStmt->execute(array_merge($ticketIds, [$tenant_id, $branch_id]));
+    $tickets = $ticketStmt->fetchAll(PDO::FETCH_ASSOC);
+    if (count($tickets) !== count($ticketIds)) {
+        die('Invalid request: ticket not found');
+    }
 }
-$ticket = $tickets[0];
+$ticket = $tickets[0] ?? [];
 
 // Members in ticket order, joined with client (sold_to) data
-$memberIds = [];
+$memberIds = $directMemberIds;
 foreach ($tickets as $t) {
     foreach (json_decode($t['member_ids'] ?? '[]', true) ?: [] as $mid) {
         $memberIds[] = (int)$mid;
@@ -388,7 +401,7 @@ $sheet->getStyle('A' . ($headerRow + 1) . ':' . $lastCol . $row)->getAlignment()
 // Freeze header
 $sheet->freezePane('A' . ($headerRow + 1));
 
-$filename = 'client_report_' . preg_replace('/[^A-Za-z0-9_-]/', '', (string)($ticket['pnr'] ?? $ticketId)) . '.xlsx';
+$filename = 'client_report_' . preg_replace('/[^A-Za-z0-9_-]/', '', (string)($ticket['pnr'] ?? ($memberIds[0] ?? $ticketId))) . '.xlsx';
 
 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 header('Content-Disposition: attachment; filename="' . $filename . '"');

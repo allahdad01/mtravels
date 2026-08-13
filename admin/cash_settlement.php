@@ -246,6 +246,46 @@ include '../includes/header.php';
     </div>
 </div>
 
+<!-- Sign & confirm modal -->
+<div class="cs-overlay" id="sigOverlay">
+    <div class="cs-modal cs-modal-lg">
+        <div class="cs-modal-head">
+            <h2>Confirm &amp; Sign</h2>
+            <button class="cs-modal-close" data-close="sig">&times;</button>
+        </div>
+        <div id="sigSummary" class="cs-tx-section"></div>
+        <div class="cs-warn">Confirming reduces the finance counter by this amount. Your signature below is the official proof of cash handover and will appear on the settlement receipt.</div>
+        <div class="cs-field">
+            <label>Admin Signature</label>
+            <div style="border:1px solid var(--cs-border-md); border-radius: var(--cs-r-md); overflow:hidden; background:#fff;">
+                <canvas id="sigCanvas" width="700" height="180" style="display:block; width:100%; cursor:crosshair; touch-action:none;"></canvas>
+            </div>
+            <div style="display:flex; gap:8px; margin-top:8px;">
+                <button type="button" class="cs-btn cs-btn-sm" id="sigClearBtn">Clear</button>
+            </div>
+        </div>
+        <div class="cs-modal-footer">
+            <button type="button" class="cs-btn" data-close="sig">Cancel</button>
+            <button type="button" class="cs-btn cs-btn-green" id="sigConfirmBtn">Confirm &amp; Sign</button>
+        </div>
+    </div>
+</div>
+
+<!-- Income items breakdown modal -->
+<div class="cs-overlay" id="itemsOverlay">
+    <div class="cs-modal cs-modal-lg">
+        <div class="cs-modal-head">
+            <h2 id="itemsModalTitle">Income Items</h2>
+            <button class="cs-modal-close" data-close="items">&times;</button>
+        </div>
+        <div id="itemsNote" class="cs-t-dim" style="margin-bottom:0.75rem;"></div>
+        <div id="itemsBody"></div>
+        <div class="cs-modal-footer" style="justify-content:flex-end; border-top:none; padding-top:0;">
+            <button type="button" class="cs-btn" data-close="items" style="flex:0 0 auto;">Close</button>
+        </div>
+    </div>
+</div>
+
 <script src="../assets/js/vendor-all.min.js"></script>
 <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
 <script src="../assets/js/pcoded.min.js"></script>
@@ -340,7 +380,9 @@ function renderFinanceList(list) {
             <span class="cs-t-note" title="${esc(s.request_note)}">${esc(s.request_note) || '—'}</span>
             <span>${renderPill(s.status)}</span>
             <span class="cs-t-dim">${esc(s.confirmed_name) || '—'}
+                <button class="cs-btn cs-btn-sm" style="margin-left:8px;" onclick="viewItems(${s.id})">Items</button>
                 ${s.status === 'pending' ? `<button class="cs-btn cs-btn-red cs-btn-sm" style="margin-left:8px;" onclick="deleteSettlement(${s.id})">Delete</button>` : ''}
+                ${s.status === 'confirmed' ? `<button class="cs-btn cs-btn-sm" style="margin-left:8px;" onclick="printSettlement(${s.id})">Print</button>` : ''}
             </span>
         </div>`).join('');
 }
@@ -372,6 +414,7 @@ function loadAdmin() {
 function renderPending(list) {
     const wrap = qs('#pendingList');
     if (!list.length) { wrap.innerHTML = '<div class="cs-empty-state">No pending settlements.</div>'; return; }
+    list.forEach(s => { pendingRows[s.id] = s; });
     wrap.innerHTML = list.map(s => `
         <div class="cs-t-row">
             <span class="cs-t-dim">${dateTime(s.created_at)}</span>
@@ -380,8 +423,9 @@ function renderPending(list) {
             <span style="font-weight:600;">${money(s.amount)}</span>
             <span class="cs-t-note" title="${esc(s.request_note)}">${esc(s.request_note) || '—'}</span>
             <span>
-                <button class="cs-btn cs-btn-green cs-btn-sm" onclick="confirmSettlement(${s.id})">Confirm</button>
+                <button class="cs-btn cs-btn-green cs-btn-sm" onclick="openConfirm(${s.id})">Confirm &amp; Sign</button>
                 <button class="cs-btn cs-btn-red cs-btn-sm" onclick="openReject(${s.id})">Reject</button>
+                <button class="cs-btn cs-btn-sm" onclick="viewItems(${s.id})" title="View income items">Items</button>
             </span>
         </div>`).join('');
 }
@@ -398,6 +442,10 @@ function renderAdminList(list) {
             <span class="cs-t-note" title="${esc(s.request_note)}">${esc(s.request_note) || '—'}</span>
             <span>${renderPill(s.status)}
                 ${s.status === 'rejected' && s.reject_reason ? '<div class="cs-t-dim">' + esc(s.reject_reason) + '</div>' : ''}
+                <div class="cs-t-dim" style="margin-top:4px;">
+                    <a href="#" onclick="viewItems(${s.id}); return false;" style="color:var(--cs-blue-tx);">Items</a>
+                    ${s.status === 'confirmed' ? `<span style="color:var(--cs-text-hint);"> · <a href="#" onclick="printSettlement(${s.id}); return false;" style="color:var(--cs-blue-tx);">Print receipt</a></span>` : ''}
+                </div>
             </span>
         </div>`).join('');
 }
@@ -520,6 +568,174 @@ function openModal(id) { qs('#' + id).classList.add('open'); }
 function closeAll() { qsa('.cs-overlay').forEach(o => o.classList.remove('open')); }
 qsa('[data-close]').forEach(b => b.addEventListener('click', closeAll));
 qsa('.cs-overlay').forEach(o => o.addEventListener('click', e => { if (e.target === o) closeAll(); }));
+
+/* ── Sign & confirm ── */
+const pendingRows = {};
+let sigConfirmingId = 0;
+
+function openConfirm(id) {
+    const s = pendingRows[id];
+    if (!s) { showAlert('Settlement data not found', 'danger'); return; }
+    sigConfirmingId = id;
+    qs('#sigSummary').innerHTML =
+        '<div class="cs-tx-section-title">Handover summary</div>'
+        + '<table class="cs-tx-table"><tbody>'
+        + '<tr><td class="cs-t-dim">Finance user</td><td>' + esc(s.user_name) + '</td></tr>'
+        + '<tr><td class="cs-t-dim">Currency</td><td>' + esc(s.currency) + '</td></tr>'
+        + '<tr><td class="cs-t-dim">Amount</td><td style="font-weight:700;">' + money(s.amount) + '</td></tr>'
+        + '<tr><td class="cs-t-dim">Note</td><td>' + (esc(s.request_note) || '—') + '</td></tr>'
+        + '<tr><td class="cs-t-dim">Submitted</td><td>' + dateTime(s.created_at) + '</td></tr>'
+        + '</tbody></table>';
+    resetSigPad();
+    openModal('sigOverlay');
+}
+
+const sigCanvas = qs('#sigCanvas');
+const sigCtx = sigCanvas.getContext('2d');
+let sigDrawing = false;
+let sigLast = null;
+
+function sigPos(e) {
+    const rect = sigCanvas.getBoundingClientRect();
+    const sx = sigCanvas.width / rect.width;
+    const sy = sigCanvas.height / rect.height;
+    const c = e.touches ? e.touches[0] : e;
+    return { x: (c.clientX - rect.left) * sx, y: (c.clientY - rect.top) * sy };
+}
+function sigDown(e) {
+    e.preventDefault();
+    sigDrawing = true;
+    const p = sigPos(e);
+    sigLast = p;
+    sigCtx.beginPath();
+    sigCtx.moveTo(p.x, p.y);
+}
+function sigMove(e) {
+    if (!sigDrawing) return;
+    e.preventDefault();
+    const p = sigPos(e);
+    sigCtx.lineWidth = 2.5;
+    sigCtx.lineCap = 'round';
+    sigCtx.lineJoin = 'round';
+    sigCtx.strokeStyle = '#0f172a';
+    sigCtx.lineTo(p.x, p.y);
+    sigCtx.stroke();
+    sigLast = p;
+}
+function sigUp() { sigDrawing = false; }
+function resetSigPad() {
+    sigCtx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
+    sigDrawing = false;
+    sigLast = null;
+}
+function sigIsEmpty() {
+    const d = sigCtx.getImageData(0, 0, sigCanvas.width, sigCanvas.height).data;
+    for (let i = 3; i < d.length; i += 4) {
+        if (d[i] > 40 && (d[i - 3] < 150 || d[i - 2] < 150 || d[i - 1] < 150)) return false;
+    }
+    return true;
+}
+sigCanvas.addEventListener('mousedown', sigDown);
+sigCanvas.addEventListener('mousemove', sigMove);
+window.addEventListener('mouseup', sigUp);
+sigCanvas.addEventListener('touchstart', sigDown, { passive: false });
+sigCanvas.addEventListener('touchmove', sigMove, { passive: false });
+sigCanvas.addEventListener('touchend', sigUp);
+qs('#sigClearBtn').addEventListener('click', resetSigPad);
+
+qs('#sigConfirmBtn').addEventListener('click', () => {
+    if (sigIsEmpty()) { showAlert('Please draw your signature before confirming', 'danger'); return; }
+    const id = sigConfirmingId;
+    const signature = sigCanvas.toDataURL('image/png');
+    closeAll();
+    const fd = new FormData();
+    fd.append('action', 'confirm');
+    fd.append('csrf_token', CSRF);
+    fd.append('id', id);
+    fd.append('signature', signature);
+    fetch('../api/finance/cash_settlements.php', { method: 'POST', credentials: 'include', body: fd })
+        .then(r => r.json())
+        .then(res => {
+            if (!res.success) throw new Error(res.message);
+            showAlert(res.message, 'success');
+            loadAdmin();
+        })
+        .catch(err => showAlert(err.message, 'danger'));
+});
+
+/* ── Print receipt ── */
+function printSettlement(id) {
+    window.open('../api/finance/print_cash_settlement_receipt.php?id=' + id, '_blank');
+}
+
+/* ── Income items breakdown ── */
+function viewItems(id) {
+    openModal('itemsOverlay');
+    qs('#itemsModalTitle').textContent = 'Income Items';
+    qs('#itemsNote').textContent = 'Loading…';
+    qs('#itemsBody').innerHTML = '';
+    fetch('../api/finance/cash_settlements.php?action=breakdown&id=' + id, { credentials: 'include' })
+        .then(r => r.json())
+        .then(res => {
+            if (!res.success) throw new Error(res.message);
+            renderItemsModal(res);
+        })
+        .catch(e => { qs('#itemsNote').textContent = e.message; });
+}
+
+function renderItemsModal(res) {
+    const st = res.settlement;
+    qs('#itemsModalTitle').textContent = 'Settlement #' + st.id;
+    qs('#itemsNote').textContent = res.note || '';
+    const body = qs('#itemsBody');
+    if (!res.items.length) {
+        body.innerHTML = '<div class="cs-empty-state">No items found.</div>';
+        return;
+    }
+
+    const thead = '<thead><tr><th>#</th><th>Date</th><th>Item / Description</th><th>Source</th><th>Ref</th><th style="text-align:right;">Amount</th></tr></thead>';
+    const rowHtml = (it, idx) => `
+        <tr>
+            <td class="cs-t-dim">${idx + 1}</td>
+            <td class="cs-t-dim">${dateTime(it.created_at)}</td>
+            <td class="cs-t-note" style="max-width:240px;" title="${esc(it.description)}">${esc(it.description) || '—'}
+                ${it.partial ? '<span class="cs-pill cs-pending">partial</span>' : ''}
+            </td>
+            <td class="cs-t-dim">${esc(it.source)}</td>
+            <td class="cs-t-dim">${esc(it.reference_id)}</td>
+            <td style="font-weight:600; text-align:right;">${money(it.covered)}</td>
+        </tr>`;
+
+    const detailRow = (label, value) =>
+        '<tr><td class="cs-t-dim">' + label + '</td><td style="font-weight:600; text-align:right;">' + value + '</td></tr>';
+
+    const details =
+        '<div style="flex:0 0 215px; min-width:195px;">'
+        + '<table class="cs-tx-table"><tbody>'
+        + detailRow('Finance', esc(st.user_name))
+        + detailRow('Currency', esc(st.currency))
+        + detailRow('Amount', money(st.amount))
+        + detailRow('Status', renderPill(st.status))
+        + detailRow('Submitted', dateTime(st.created_at))
+        + (st.status === 'confirmed'
+            ? detailRow('Confirmed By', esc(st.confirmed_name) || '—')
+                + detailRow('Confirmed At', dateTime(st.confirmed_at))
+            : '')
+        + (st.request_note ? detailRow('Note', esc(st.request_note)) : '')
+        + '</tbody></table></div>';
+
+    body.innerHTML =
+        '<div style="display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap;">'
+        + details
+        + '<div style="flex:1 1 330px; min-width:0;">'
+        + '<table class="cs-tx-table">' + thead + '<tbody>' + res.items.map(rowHtml).join('') + '</tbody></table>'
+        + '<table class="cs-tx-table" style="margin-top:12px;"><tbody>'
+        + '<tr style="background:var(--cs-muted);">'
+        + '<td style="font-weight:700;">Total handed over</td>'
+        + '<td style="font-weight:700; text-align:right;">' + money(res.total) + '</td>'
+        + '</tr></tbody></table>'
+        + '</div></div>';
+}
 
 /* ── Init ── */
 (function() {

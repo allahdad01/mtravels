@@ -18,8 +18,8 @@
                         <input type="text" class="form-control" id="editName" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label"><?= __('email') ?></label>
-                        <input type="email" class="form-control" id="editEmail" required>
+                        <label class="form-label"><?= __('email') ?> <span class="text-muted font-weight-normal">(<?= __('optional') ?>)</span></label>
+                        <input type="email" class="form-control" id="editEmail">
                     </div>
                     <div class="mb-3">
                         <label class="form-label"><?= __('phone') ?></label>

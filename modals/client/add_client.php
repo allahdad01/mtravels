@@ -22,8 +22,8 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group mb-2">
-                                <label class="small font-weight-bold mb-1"><?= __('email') ?></label>
-                                <input type="email" class="form-control form-control-sm" name="email" required>
+                                <label class="small font-weight-bold mb-1"><?= __('email') ?> <span class="text-muted font-weight-normal">(<?= __('optional') ?>)</span></label>
+                                <input type="email" class="form-control form-control-sm" name="email">
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -36,8 +36,8 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group mb-2">
-                                <label class="small font-weight-bold mb-1"><?= __('password') ?></label>
-                                <input type="password" class="form-control form-control-sm" name="password" required>
+                                <label class="small font-weight-bold mb-1"><?= __('password') ?> <span class="text-muted font-weight-normal">(<?= __('optional') ?>)</span></label>
+                                <input type="password" class="form-control form-control-sm" name="password" autocomplete="new-password">
                             </div>
                         </div>
                         <div class="col-md-6">

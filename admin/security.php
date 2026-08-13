@@ -53,7 +53,13 @@ if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
 }
 
 // Define allowed roles for admin panel
-$admin_roles = ['admin', 'finance', 'sales', 'umrah', 'staff', 'client'];
+$admin_roles = ['admin', 'finance', 'sales', 'umrah', 'staff', 'client', 'operations', 'hotel_manager', 'viewer'];
+
+// Load Umrah capability-based permissions (Phase 29)
+require_once __DIR__ . '/includes/umrah_permissions.php';
+
+// Load Umrah audit helper (Phase 30)
+require_once __DIR__ . '/includes/umrah_audit.php';
 
 // Check session timeout (30 minutes = 1800 seconds)
 $sessionTimeout = 1800; // 30 minutes in seconds

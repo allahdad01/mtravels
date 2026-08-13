@@ -19,7 +19,7 @@ $dashboardRoutes = [
     'user'                => 'user/dashboard.php',
 ];
 // These roles all map to the admin dashboard
-$adminRoleGroup = ['admin', 'sales', 'finance', 'umrah', 'staff'];
+$adminRoleGroup = ['admin', 'sales', 'finance', 'umrah', 'staff', 'operations', 'hotel_manager', 'viewer'];
 $isLoggedIn = isset($_SESSION['user_id']);
 $dashboardUrl = null;
 if ($isLoggedIn) {

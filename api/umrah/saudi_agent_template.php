@@ -38,10 +38,20 @@ try {
 if (isset($_GET['ticket_ids']) && $_GET['ticket_ids'] !== '') {
     $rawIds = explode(',', (string)$_GET['ticket_ids']);
     $ticketIds = [];
+    $directMemberIds = [];
     foreach ($rawIds as $rid) {
-        $rid = (int)trim($rid);
-        if ($rid > 0 && !in_array($rid, $ticketIds)) {
-            $ticketIds[] = $rid;
+        $rid = trim($rid);
+        // 'b<booking_id>' entries come from fulfillment flight cards (direct booking ids)
+        if (stripos($rid, 'b') === 0 && is_numeric(substr($rid, 1))) {
+            $bid = (int)substr($rid, 1);
+            if ($bid > 0 && !in_array($bid, $directMemberIds)) {
+                $directMemberIds[] = $bid;
+            }
+        } else {
+            $rid = (int)$rid;
+            if ($rid > 0 && !in_array($rid, $ticketIds)) {
+                $ticketIds[] = $rid;
+            }
         }
     }
 } elseif (isset($_GET['ticket_id']) && !empty($_GET['ticket_id'])) {
@@ -49,23 +59,45 @@ if (isset($_GET['ticket_ids']) && $_GET['ticket_ids'] !== '') {
 } else {
     $ticketIds = [];
 }
-if (empty($ticketIds)) {
+if (empty($ticketIds) && empty($directMemberIds)) {
     die('Invalid request: ticket_id required');
 }
-$ticketId = $ticketIds[0];
+$ticketId = $ticketIds[0] ?? 0;
 
-// Fetch the group tickets (all selected, in order)
-$ticketPh = implode(',', array_fill(0, count($ticketIds), '?'));
-$ticketStmt = $pdo->prepare("SELECT * FROM group_tickets WHERE ticket_id IN ({$ticketPh}) AND tenant_id = ? AND branch_id = ?");
-$ticketStmt->execute(array_merge($ticketIds, [$tenant_id, $branch_id]));
-$tickets = $ticketStmt->fetchAll(PDO::FETCH_ASSOC);
-if (count($tickets) !== count($ticketIds)) {
+// Fetch the group tickets (all selected, in order). Raw ids that are not
+// group_tickets ids are treated as booking ids (fulfillment selections).
+$tickets = [];
+if (!empty($ticketIds)) {
+    $ticketPh = implode(',', array_fill(0, count($ticketIds), '?'));
+    $ticketStmt = $pdo->prepare("SELECT * FROM group_tickets WHERE ticket_id IN ({$ticketPh}) AND tenant_id = ? AND branch_id = ?");
+    $ticketStmt->execute(array_merge($ticketIds, [$tenant_id, $branch_id]));
+    $foundTickets = $ticketStmt->fetchAll(PDO::FETCH_ASSOC);
+    $foundTicketIds = array_map('intval', array_column($foundTickets, 'ticket_id'));
+    $missingIds = [];
+    foreach ($ticketIds as $tid) {
+        if (!in_array((int)$tid, $foundTicketIds, true)) {
+            $missingIds[] = (int)$tid;
+        }
+    }
+    if (!empty($missingIds)) {
+        $mbPh = implode(',', array_fill(0, count($missingIds), '?'));
+        $mbStmt = $pdo->prepare("SELECT booking_id FROM umrah_bookings WHERE booking_id IN ({$mbPh}) AND tenant_id = ? AND branch_id = ?");
+        $mbStmt->execute(array_merge($missingIds, [$tenant_id, $branch_id]));
+        foreach ($mbStmt->fetchAll(PDO::FETCH_COLUMN) as $bid) {
+            if (!in_array((int)$bid, $directMemberIds, true)) {
+                $directMemberIds[] = (int)$bid;
+            }
+        }
+    }
+    $tickets = $foundTickets;
+}
+if (empty($tickets) && empty($directMemberIds)) {
     die('Invalid request: ticket not found');
 }
-$ticket = $tickets[0];
+$ticket = $tickets[0] ?? [];
 
 // Members in ticket order, joined with family data (family = room group)
-$memberIds = [];
+$memberIds = $directMemberIds;
 foreach ($tickets as $t) {
     foreach (json_decode($t['member_ids'] ?? '[]', true) ?: [] as $mid) {
         $memberIds[] = (int)$mid;
@@ -77,9 +109,20 @@ if (!empty($memberIds)) {
     $placeholders = implode(',', array_fill(0, count($memberIds), '?'));
     $memberStmt = $pdo->prepare("
         SELECT b.booking_id, b.family_id, b.name, b.fname, b.gender, b.duration, b.room_type,
-               b.passport_number, f.head_of_family, f.location
+               b.passport_number, f.head_of_family, f.location,
+               hr.room_number, hr.floor
         FROM umrah_bookings b
         LEFT JOIN families f ON f.family_id = b.family_id AND f.tenant_id = b.tenant_id
+        LEFT JOIN umrah_hotel_fulfillments hf ON hf.fulfillment_id = (
+            SELECT f3.id
+            FROM umrah_booking_services bs3
+            JOIN umrah_fulfillments f3 ON f3.booking_service_id = bs3.id
+                 AND f3.fulfillment_type = 'hotel' AND f3.tenant_id = bs3.tenant_id
+            WHERE bs3.booking_id = b.booking_id AND bs3.service_type = 'hotel'
+                  AND bs3.tenant_id = b.tenant_id
+            ORDER BY f3.id LIMIT 1
+        )
+        LEFT JOIN umrah_hotel_rooms hr ON hr.id = hf.room_id
         WHERE b.booking_id IN ({$placeholders}) AND b.tenant_id = ? AND b.branch_id = ?
     ");
     $memberStmt->execute(array_merge($memberIds, [$tenant_id, $branch_id]));
@@ -118,6 +161,9 @@ $langLabels = [
         'print' => 'چاپ',
         'empty' => 'هیچ مسافری در این پرواز ثبت نشده است',
         'family_head' => 'سرپرست خانواده',
+        'males' => 'مردان',
+        'females' => 'زنان',
+        'unspecified' => 'نامشخص',
         'room_type' => ['shared' => 'مشترک', 'share' => 'مشترک', 'private' => 'خاص', 'خاص' => 'خاص', 'special' => 'خاص', 'single' => 'خاص', 'double' => 'دو نفره', 'triple' => 'سه نفره', 'quad' => 'چهار نفره', '1 bed' => 'اطاق خاص ۱ نفره', '2 beds' => 'اطاق خاص ۲ نفره', '3 beds' => 'اطاق خاص ۳ نفره', '4 beds' => 'اطاق خاص ۴ نفره'],
         'hijri_suffix' => 'هـ',
     ],
@@ -137,6 +183,9 @@ $langLabels = [
         'print' => 'چاپ',
         'empty' => 'په دې الوتکه کې هېڅ مسافر ثبت شوی نه دی',
         'family_head' => 'د کورنۍ مشر',
+        'males' => 'نرینه',
+        'females' => 'ښځې',
+        'unspecified' => 'نامعلوم',
         'room_type' => ['shared' => 'شریک', 'share' => 'شریک', 'private' => 'خصوصي', 'خاص' => 'خصوصي', 'special' => 'خصوصي', 'single' => 'خصوصي', '1 bed' => 'اطاق خاص ۱ نفره', '2 beds' => 'اطاق خاص ۲ نفره', '3 beds' => 'اطاق خاص ۳ نفره', '4 beds' => 'اطاق خاص ۴ نفره'],
         'hijri_suffix' => 'هـ',
     ],
@@ -156,18 +205,43 @@ $langLabels = [
         'print' => 'Print',
         'empty' => 'No passengers registered on this flight',
         'family_head' => 'Family Head',
+        'males' => 'Males',
+        'females' => 'Females',
+        'unspecified' => 'Unspecified',
         'room_type' => ['shared' => 'Shared', 'share' => 'Shared', 'private' => 'Private', 'خاص' => 'Private', 'special' => 'Private', 'single' => 'Private', '1 bed' => '1 Bed', '2 beds' => '2 Beds', '3 beds' => '3 Beds', '4 beds' => '4 Beds'],
         'hijri_suffix' => 'AH',
     ],
 ];
 $L = $langLabels[$docLanguage];
 
-// Rooms: family = room, members in ticket order
+// Rooms: family = room. Shared-room members are aggregated globally and
+// split by gender (all males in one room, all females in another) so the
+// printed sheet matches the hotel's shared-room assignment.
 $rooms = [];
+$sharedBuckets = ['male' => [], 'female' => [], 'other' => []];
+$sharedSeen = false;
 foreach ($memberIds as $id) {
-    if (isset($memberMap[(int)$id])) {
-        $fid = (int)($memberMap[(int)$id]['family_id'] ?? 0);
-        $rooms[$fid][] = $memberMap[(int)$id];
+    if (!isset($memberMap[(int)$id])) {
+        continue;
+    }
+    $m = $memberMap[(int)$id];
+    $rtLow = mb_strtolower(trim((string)($m['room_type'] ?? '')));
+    if ($rtLow === 'shared' || $rtLow === 'share') {
+        $g = (string)($m['gender'] ?? '');
+        $bk = $g === 'Male' ? 'male' : ($g === 'Female' ? 'female' : 'other');
+        $sharedBuckets[$bk][] = $m;
+        $sharedSeen = true;
+        continue;
+    }
+    $fid = (int)($m['family_id'] ?? 0);
+    $rooms[$fid][] = $m;
+}
+if ($sharedSeen) {
+    foreach (['male', 'female', 'other'] as $bk) {
+        if (empty($sharedBuckets[$bk])) {
+            continue;
+        }
+        $rooms['__shared_' . $bk] = $sharedBuckets[$bk];
     }
 }
 
@@ -332,7 +406,7 @@ $today = date('Y/m/d H:i');
             vertical-align: middle;
         }
 
-        .room-table .col-room { width: 8%; font-weight: 700; }
+        .room-table .col-room { width: 9%; font-weight: 700; }
         .room-table .col-title { width: 9%; font-weight: 700; }
         .room-table .col-name { width: 40%; text-align: right; padding-right: 8px; }
         .room-table .col-passport { width: 25%; direction: ltr; }
@@ -459,7 +533,33 @@ $today = date('Y/m/d H:i');
             ?>
             <tr style="background-color: <?php echo $roomTint; ?>;">
                 <?php if ($ri === 0): ?>
-                <td class="col-room" rowspan="<?php echo $rowspan + 1; ?>"><?php echo $roomNum; ?></td>
+                <?php
+                    // A room group usually shares one hotel room; when the
+                    // stored assignments differ (e.g. a shared gender bucket
+                    // spread across two rooms) every row shows its own room.
+                    $roomDisplays = [];
+                    foreach ($room as $rm0) {
+                        $rd = '';
+                        if (trim((string)($rm0['room_number'] ?? '')) !== '') {
+                            $rd = trim((string)$rm0['room_number']);
+                            $floorTxt = trim((string)($rm0['floor'] ?? ''));
+                            if ($floorTxt !== '') {
+                                $rd .= ' / ' . $floorTxt;
+                            }
+                        }
+                        if ($rd === '') {
+                            $rd = (string)$roomNum;
+                        }
+                        $roomDisplays[] = $rd;
+                    }
+                    $mergeRoomCell = count(array_unique($roomDisplays)) === 1;
+                ?>
+                <?php if ($mergeRoomCell): ?>
+                <td class="col-room" rowspan="<?php echo $rowspan + 1; ?>"><?php echo htmlspecialchars($roomDisplays[0]); ?></td>
+                <?php endif; ?>
+                <?php endif; ?>
+                <?php if (!$mergeRoomCell): ?>
+                <td class="col-room"><?php echo htmlspecialchars($roomDisplays[$ri]); ?></td>
                 <?php endif; ?>
                 <td class="col-title" style="background-color: <?php echo $roomAccent; ?>; color: #fff;"><?php echo htmlspecialchars(room_title($rm['gender'] ?? '', $L)); ?></td>
                 <td class="col-name"><?php echo htmlspecialchars($fullName); ?></td>
@@ -475,7 +575,16 @@ $today = date('Y/m/d H:i');
             </tr>
             <?php endforeach; ?>
             <tr class="family-foot" style="background-color: <?php echo $roomTint; ?>;">
-                <td colspan="5"><?php echo htmlspecialchars($L['family_head']); ?>: <b><?php echo htmlspecialchars($room[0]['head_of_family'] ?? ''); ?></b></td>
+                <td colspan="5"><?php
+                    $rtFoot = mb_strtolower(trim((string)($room[0]['room_type'] ?? '')));
+                    if ($rtFoot === 'shared' || $rtFoot === 'share') {
+                        $gFoot = (string)($room[0]['gender'] ?? '');
+                        $grpFoot = $gFoot === 'Male' ? $L['males'] : ($gFoot === 'Female' ? $L['females'] : ($L['unspecified'] ?? ''));
+                        echo htmlspecialchars(room_type_label('shared', $L) . ' · ' . $grpFoot);
+                    } else {
+                        echo htmlspecialchars($L['family_head']); ?>: <b><?php echo htmlspecialchars($room[0]['head_of_family'] ?? ''); ?></b><?php
+                    }
+                ?></td>
                 <td class="col-otagh"></td>
             </tr>
             <?php endforeach; ?>

@@ -664,6 +664,9 @@ include '../includes/header.php';
                                                                 <option value="finance" <?php echo ($employee['role'] ?? '') === 'finance' ? 'selected' : ''; ?>><?php echo __('finance'); ?></option>
                                                                 <option value="sales" <?php echo ($employee['role'] ?? '') === 'sales' ? 'selected' : ''; ?>><?php echo __('sales'); ?></option>
                                                                 <option value="umrah" <?php echo ($employee['role'] ?? '') === 'umrah' ? 'selected' : ''; ?>><?php echo __('umrah'); ?></option>
+                                                                <option value="operations" <?php echo ($employee['role'] ?? '') === 'operations' ? 'selected' : ''; ?>><?php echo __('operations'); ?></option>
+                                                                <option value="hotel_manager" <?php echo ($employee['role'] ?? '') === 'hotel_manager' ? 'selected' : ''; ?>><?php echo __('hotel_manager'); ?></option>
+                                                                <option value="viewer" <?php echo ($employee['role'] ?? '') === 'viewer' ? 'selected' : ''; ?>><?php echo __('viewer'); ?></option>
                                                                 <option value="staff" <?php echo ($employee['role'] ?? '') === 'staff' ? 'selected' : ''; ?>><?php echo __('staff'); ?></option>
                                                             </select>
                                                         </div>

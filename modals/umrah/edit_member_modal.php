@@ -76,40 +76,38 @@
 
                     <!-- Services Section -->
                     <div class="card mb-4">
-                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        <div class="card-header bg-light">
                             <h6 class="mb-0"><i class="feather icon-package mr-2"></i><?= __('services') ?></h6>
-                            <button type="button" class="btn btn-sm btn-outline-primary" id="editAddServiceBtn">
-                                <i class="feather icon-plus"></i> Add Service
-                            </button>
+                            <small class="text-muted d-block">Package services are listed here; supplier &amp; pricing are assigned at fulfillment.</small>
                         </div>
                         <div class="card-body">
                             <div class="row mb-3">
-                                <div class="form-group col-md-4">
-                                    <label for="editSaleCurrency"><?= __('sale_currency') ?></label>
-                                    <select class="form-control" id="editSaleCurrency" name="sale_currency">
-                                        <option value="USD" selected>USD</option>
-                                        <option value="AFS">AFS</option>
-                                    </select>
-                                    <small class="text-muted d-block"><?= __('sale_currency_hint') ?></small>
-                                </div>
-                                <div class="form-group col-md-4">
+                                <div class="form-group col-md-6">
                                     <label for="editExchangeRate"><?= __('exchange_rate') ?></label>
                                     <input type="number" class="form-control" id="editExchangeRate" name="exchange_rate" value="1" min="0" step="0.0001">
                                     <small class="text-muted d-block"><?= __('exchange_rate_hint') ?></small>
                                 </div>
-                                <div class="form-group col-md-4">
+                                <div class="form-group col-md-6">
                                     <label>&nbsp;</label>
                                     <small class="text-muted d-block"><?= __('exchange_rate_note') ?></small>
                                 </div>
                             </div>
                             <div class="edit-services-grid-wrapper">
-                                <div class="edit-services-grid-header">
-                                    <div class="edit-header-item edit-header-column-1"><?= __('service_info') ?></div>
-                                    <div class="edit-header-item edit-header-column-2"><?= __('pricing_info') ?></div>
-                                    <div class="edit-header-item edit-header-column-3"><?= __('actions') ?></div>
+                                <div class="edit-services-grid-header" style="display:flex; flex-wrap:wrap; align-items:flex-end; gap:16px; border-bottom:1px solid #dee2e6;">
+                                    <div class="edit-header-item" style="align-self:center; padding-bottom:10px;"><?= __('service_info') ?></div>
+                                    <div style="margin-left:auto; min-width:260px; max-width:320px; padding-bottom:10px;">
+                                        <label class="d-block text-muted" style="margin:0 0 4px; font-size:0.75rem; font-weight:400;"><?= __('sale_currency') ?> (<?= __('sale_currency_hint') ?>)</label>
+                                        <select class="form-control form-control-sm" id="editSaleCurrency" name="sale_currency">
+                                            <option value="USD" selected>USD</option>
+                                            <option value="AFS">AFS</option>
+                                        </select>
+                                    </div>
                                 </div>
                                 <div id="editServicesTableBody" class="edit-services-grid-body">
                                     <!-- Service rows will be added here -->
+                                </div>
+                                <div id="editEmptyServicesNote" class="d-none text-muted small px-2 py-2">
+                                    No package services are priced yet — the agreed package price (Sold Price) is recorded on the booking, and supplier &amp; pricing are assigned later at fulfillment.
                                 </div>
                                 <div class="edit-services-grid-footer">
                                     <div class="edit-footer-item edit-footer-column-1">
@@ -123,7 +121,7 @@
                                             </div>
                                             <div class="edit-total-input-group">
                                                 <label><?= __('sold_price') ?>:</label>
-                                                <input type="number" class="form-control form-control-sm" id="editTotalSoldPrice" readonly value="0">
+                                                <input type="number" class="form-control form-control-sm" id="editTotalSoldPrice" name="grand_sold_price" value="0" min="0" step="0.01">
                                             </div>
                                         </div>
                                     </div>
@@ -155,7 +153,7 @@
                         </div>
                         <div class="form-group col-md-4">
                             <label for="editDob"><?= __('date_of_birth') ?></label>
-                            <input type="date" class="form-control" id="editDob" name="dob" required>
+                            <input type="date" class="form-control" id="editDob" name="dob">
                         </div>
                     </div>
 
@@ -170,42 +168,7 @@
                         </div>
                         <div class="form-group col-md-4">
                             <label for="editFather_name"><?= __('father_name') ?></label>
-                            <input type="text" class="form-control" id="editFather_name" name="father_name" required>
-                        </div>
-                        <div class="form-group col-md-4">
-                            <label for="editG_name"><?= __('g_name') ?></label>
-                            <input type="text" class="form-control" id="editG_name" name="g_name" required>
-                        </div>
-                        <div class="form-group col-md-4">
-                            <label for="editRelation"><?= __('relation') ?></label>
-                            <select class="form-control" id="editRelation" name="relation" required>
-                                <option value=""><?= __('select_relation') ?></option>
-                                <option value="Ownself"><?= __('ownself') ?></option>
-                                <option value="Friend"><?= __('friend') ?></option>
-                                <option value="Father"><?= __('father') ?></option>
-                                <option value="Mother"><?= __('mother') ?></option>
-                                <option value="Brother"><?= __('brother') ?></option>
-                                <option value="Sister"><?= __('sister') ?></option>
-                                <option value="Son"><?= __('son') ?></option>
-                                <option value="Daughter"><?= __('daughter') ?></option>
-                                <option value="Wife"><?= __('wife') ?></option>
-                                <option value="Husband"><?= __('husband') ?></option>
-                                <option value="Grandfather"><?= __('grand_father') ?></option>
-                                <option value="Grandmother"><?= __('grand_mother') ?></option>
-                                <option value="Uncle"><?= __('uncle') ?></option>
-                                <option value="Aunt"><?= __('aunt') ?></option>
-                                <option value="Cousin"><?= __('cousin') ?></option>
-                                <option value="Nephew"><?= __('nephew') ?></option>
-                                <option value="Niece"><?= __('niece') ?></option>
-                                <option value="Son-in-law"><?= __('son_in_law') ?></option>
-                                <option value="Daughter-in-law"><?= __('daughter_in_law') ?></option>
-                                <option value="Brother-in-law"><?= __('brother_in_law') ?></option>
-                                <option value="Sister-in-law"><?= __('sister_in_law') ?></option>
-                                <option value="Grandson"><?= __('grandson') ?></option>
-                                <option value="Granddaughter"><?= __('granddaughter') ?></option>
-                                <option value="Father-in-law"><?= __('father_in_law') ?></option>
-                                <option value="Mother-in-law"><?= __('mother_in_law') ?></option>
-                            </select>
+                            <input type="text" class="form-control" id="editFather_name" name="father_name">
                         </div>
                         <div class="form-group col-md-4">
                             <label for="editRoom_type"><?= __('room_type') ?></label>
@@ -214,6 +177,9 @@
                                 <option value="1 Bed"><?= __('1_bed') ?></option>
                                 <option value="2 Beds"><?= __('2_beds') ?></option>
                                 <option value="3 Beds"><?= __('3_beds') ?></option>
+                                <option value="4 Beds"><?= __('4_beds') ?></option>
+                                <option value="5 Beds"><?= __('5_beds') ?></option>
+                                <option value="6 Beds"><?= __('6_beds') ?></option>
                                 <option value="Shared"><?= __('shared') ?></option>
                                 <option value="No Room"><?= __('no_room') ?></option>
                             </select>
@@ -224,15 +190,15 @@
                     <div class="row">
                         <div class="form-group col-md-4">
                             <label for="editPassport_number"><?= __('passport_number') ?></label>
-                            <input type="text" class="form-control" id="editPassport_number" name="passport_number" required>
+                            <input type="text" class="form-control" id="editPassport_number" name="passport_number">
                         </div>
                         <div class="form-group col-md-4">
                             <label for="editPassport_expiry"><?= __('passport_expiry') ?></label>
-                            <input type="date" class="form-control" id="editPassport_expiry" name="passport_expiry" required>
+                            <input type="date" class="form-control" id="editPassport_expiry" name="passport_expiry">
                         </div>
                         <div class="form-group col-md-4">
                             <label for="editId_type"><?= __('id_type') ?></label>
-                            <select class="form-control" id="editId_type" name="id_type" required>
+                            <select class="form-control" id="editId_type" name="id_type">
                             <option value="ID Original + Passport Original"><?= __('ID Original + Passport Original') ?></option>
                             <option value="ID Original + Passport Copy"><?= __('ID Original + Passport Copy') ?></option>
                             <option value="ID Copy + Passport Original"><?= __('ID Copy + Passport Original') ?></option>
@@ -280,6 +246,9 @@
                                 <option value="28 Days"><?= __('28_days') ?></option>
                                 <option value="29 Days"><?= __('29_days') ?></option>
                                 <option value="30 Days"><?= __('30_days') ?></option>
+                                <option value="45 Days"><?= __('45_days') ?></option>
+                                <option value="60 Days"><?= __('60_days') ?></option>
+                                <option value="90 Days"><?= __('90_days') ?></option>
                             </select>
                         </div>
                     </div>

@@ -36,54 +36,19 @@
                     <div class="row">
                         <div class="col-md-4">
                             <div class="form-group">
-                                <label for="package_type"><?= __('package_type') ?></label>
-                                <select class="form-control" id="package_type" name="package_type" required>
-                                    <option value="Full Package"><?= __('full_package') ?></option>
-                                    <option value="Visa"><?= __('visa') ?></option>
-                                    <option value="Services"><?= __('services') ?></option>
-                                    <option value="Ticket+Visa"><?= __('ticket_visa') ?></option>
-                                    <option value="Visa+Services"><?= __('visa_services') ?></option>
-                                    <option value="Visa+Transport"><?= __('visa_transport') ?></option>
+                                <label for="group_id"><?= __('group') ?></label>
+                                <select class="form-control" id="group_id" name="group_id" required>
+                                    <option value=""><?= __('select_group') ?></option>
                                 </select>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="form-group">
-                                <label for="location"><?= __('location') ?></label>
-                                <input type="text" class="form-control" id="location" name="location" required>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                    <label for="tazmin"><?= __('tazmin') ?></label>
+                                <label for="tazmin"><?= __('tazmin') ?></label>
                                 <select class="form-control" id="tazmin" name="tazmin" required>
                                     <option value="Done"><?= __('done') ?></option>
                                     <option value="Not Done"><?= __('not_done') ?></option>
                                 </select>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                    <label for="visa_status"><?= __('visa_status') ?></label>
-                                    <select class="form-control" id="visa_status" name="visa_status" required>
-                                        <option value="Not Applied"><?= __('not_applied') ?></option>
-                                        <option value="Applied"><?= __('applied') ?></option>
-                                        <option value="Issued"><?= __('issued') ?></option>
-                                    </select>
-                                </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="province"><?= __('province') ?></label>
-                                <input type="text" class="form-control" id="province" name="province" required>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="district"><?= __('district') ?></label>
-                                <input type="text" class="form-control" id="district" name="district" required>
                             </div>
                         </div>
                     </div>

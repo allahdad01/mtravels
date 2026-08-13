@@ -103,37 +103,21 @@
 
                     <!-- SECTION 3: SHARED SERVICES -->
                     <div class="card mb-4">
-                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        <div class="card-header bg-light">
                             <h6 class="mb-0"><i class="feather icon-package mr-2"></i><?= __('services') ?> (Shared for all members)</h6>
-                            <button type="button" class="btn btn-sm btn-outline-primary" id="addServiceBtn">
-                                <i class="feather icon-plus"></i> Add Service
-                            </button>
+                            <small class="text-muted d-block">Select a package below; supplier &amp; pricing are assigned at fulfillment.</small>
                         </div>
                         <div class="card-body">
-                            <div class="row mb-3">
-                                <div class="form-group col-md-4">
-                                    <label for="saleCurrency"><?= __('sale_currency') ?></label>
-                                    <select class="form-control" id="saleCurrency" name="sale_currency">
-                                        <option value="USD" selected>USD</option>
-                                        <option value="AFS">AFS</option>
-                                    </select>
-                                    <small class="text-muted d-block"><?= __('sale_currency_hint') ?></small>
-                                </div>
-                                <div class="form-group col-md-4">
-                                    <label for="exchangeRate"><?= __('exchange_rate') ?></label>
-                                    <input type="number" class="form-control" id="exchangeRate" name="exchange_rate" value="1" min="0" step="0.0001">
-                                    <small class="text-muted d-block"><?= __('exchange_rate_hint') ?></small>
-                                </div>
-                                <div class="form-group col-md-4">
-                                    <label>&nbsp;</label>
-                                    <small class="text-muted d-block"><?= __('exchange_rate_note') ?></small>
-                                </div>
-                            </div>
                             <div class="services-grid-wrapper">
-                                <div class="services-grid-header">
-                                    <div class="header-item header-column-1"><?= __('service_info') ?></div>
-                                    <div class="header-item header-column-2"><?= __('pricing_info') ?></div>
-                                    <div class="header-item header-column-3"><?= __('actions') ?></div>
+                                <div class="services-grid-header" style="display:flex; flex-wrap:wrap; align-items:flex-end; gap:16px; border-bottom:1px solid #dee2e6;">
+                                    <div class="header-item" style="align-self:center; padding-bottom:10px;"><?= __('service_info') ?></div>
+                                    <div style="margin-left:auto; min-width:260px; max-width:320px; padding-bottom:10px;">
+                                        <label class="d-block text-muted" style="margin:0 0 4px; font-size:0.75rem; font-weight:400;"><?= __('sale_currency') ?> (<?= __('sale_currency_hint') ?>)</label>
+                                        <select class="form-control form-control-sm" id="saleCurrency" name="sale_currency">
+                                            <option value="USD" selected>USD</option>
+                                            <option value="AFS">AFS</option>
+                                        </select>
+                                    </div>
                                 </div>
                                 <div id="servicesTableBody" class="services-grid-body">
                                     <!-- Service rows will be added here -->
@@ -150,7 +134,7 @@
                                             </div>
                                             <div class="total-input-group">
                                                 <label><?= __('sold_price') ?>:</label>
-                                                <input type="number" class="form-control form-control-sm" id="totalSoldPrice" readonly value="0">
+                                                <input type="number" class="form-control form-control-sm" id="totalSoldPrice" name="grand_sold_price" value="0" min="0" step="0.01">
                                             </div>
                                         </div>
                                     </div>
@@ -218,6 +202,9 @@
                                         <option value="1 Bed"><?= __('1_bed') ?></option>
                                         <option value="2 Beds"><?= __('2_beds') ?></option>
                                         <option value="3 Beds"><?= __('3_beds') ?></option>
+                                        <option value="4 Beds"><?= __('4_beds') ?></option>
+                                        <option value="5 Beds"><?= __('5_beds') ?></option>
+                                        <option value="6 Beds"><?= __('6_beds') ?></option>
                                         <option value="Shared"><?= __('shared') ?></option>
                                         <option value="No Room"><?= __('no_room') ?></option>
                                     </select>
@@ -252,6 +239,9 @@
                                         <option value="28 Days"><?= __('28_days') ?></option>
                                         <option value="29 Days"><?= __('29_days') ?></option>
                                         <option value="30 Days"><?= __('30_days') ?></option>
+                                        <option value="45 Days"><?= __('45_days') ?></option>
+                                        <option value="60 Days"><?= __('60_days') ?></option>
+                                        <option value="90 Days"><?= __('90_days') ?></option>
                                     </select>
                                 </div>
                             </div>

@@ -1189,6 +1189,7 @@ CREATE TABLE `expense_report_config` (
 
 CREATE TABLE `families` (
   `family_id` int(11) NOT NULL,
+  `group_id` int(11) DEFAULT NULL,
   `tenant_id` int(11) NOT NULL,
   `head_of_family` varchar(100) DEFAULT NULL,
   `contact` varchar(50) DEFAULT NULL,
@@ -1208,6 +1209,26 @@ CREATE TABLE `families` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `branch_id` bigint(20) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `umrah_groups`
+--
+
+CREATE TABLE `umrah_groups` (
+  `group_id` int(11) NOT NULL AUTO_INCREMENT,
+  `group_number` varchar(50) NOT NULL,
+  `group_name` varchar(255) NOT NULL,
+  `tenant_id` int(11) NOT NULL,
+  `branch_id` bigint(20) DEFAULT NULL,
+  `created_by` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`group_id`),
+  UNIQUE KEY `uq_group_number` (`tenant_id`,`branch_id`,`group_number`),
+  KEY `idx_tenant_branch` (`tenant_id`,`branch_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -2948,7 +2969,7 @@ CREATE TABLE `umrah_booking_services` (
   `tenant_id` int(11) NOT NULL,
   `booking_id` int(11) NOT NULL,
   `service_type` varchar(50) NOT NULL,
-  `supplier_id` int(11) NOT NULL,
+  `supplier_id` int(11) DEFAULT NULL,
   `base_price` decimal(10,3) NOT NULL DEFAULT 0.000,
   `sold_price` decimal(10,3) NOT NULL DEFAULT 0.000,
   `profit` decimal(10,3) NOT NULL DEFAULT 0.000,
@@ -6104,7 +6125,8 @@ ALTER TABLE `expense_report_config`
 -- Constraints for table `families`
 --
 ALTER TABLE `families`
-  ADD CONSTRAINT `fk_families_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `fk_families_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_families_group` FOREIGN KEY (`group_id`) REFERENCES `umrah_groups` (`group_id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `finance_tracker`

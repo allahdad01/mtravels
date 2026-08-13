@@ -28,10 +28,20 @@ try {
 if (isset($_GET['ticket_ids']) && $_GET['ticket_ids'] !== '') {
     $rawIds = explode(',', (string)$_GET['ticket_ids']);
     $ticketIds = [];
+    $directMemberIds = [];
     foreach ($rawIds as $rid) {
-        $rid = (int)trim($rid);
-        if ($rid > 0 && !in_array($rid, $ticketIds)) {
-            $ticketIds[] = $rid;
+        $rid = trim($rid);
+        // 'b<booking_id>' entries come from fulfillment flight cards (direct booking ids)
+        if (stripos($rid, 'b') === 0 && is_numeric(substr($rid, 1))) {
+            $bid = (int)substr($rid, 1);
+            if ($bid > 0 && !in_array($bid, $directMemberIds)) {
+                $directMemberIds[] = $bid;
+            }
+        } else {
+            $rid = (int)$rid;
+            if ($rid > 0 && !in_array($rid, $ticketIds)) {
+                $ticketIds[] = $rid;
+            }
         }
     }
 } elseif (isset($_GET['ticket_id']) && !empty($_GET['ticket_id'])) {
@@ -39,23 +49,26 @@ if (isset($_GET['ticket_ids']) && $_GET['ticket_ids'] !== '') {
 } else {
     $ticketIds = [];
 }
-if (empty($ticketIds)) {
+if (empty($ticketIds) && empty($directMemberIds)) {
     die('Invalid request: ticket_id required');
 }
-$ticketId = $ticketIds[0];
+$ticketId = $ticketIds[0] ?? 0;
 
 // Fetch the group tickets (all selected, in order)
-$ticketPh = implode(',', array_fill(0, count($ticketIds), '?'));
-$ticketStmt = $pdo->prepare("SELECT * FROM group_tickets WHERE ticket_id IN ({$ticketPh}) AND tenant_id = ? AND branch_id = ?");
-$ticketStmt->execute(array_merge($ticketIds, [$tenant_id, $branch_id]));
-$tickets = $ticketStmt->fetchAll(PDO::FETCH_ASSOC);
-if (count($tickets) !== count($ticketIds)) {
-    die('Invalid request: ticket not found');
+$tickets = [];
+if (!empty($ticketIds)) {
+    $ticketPh = implode(',', array_fill(0, count($ticketIds), '?'));
+    $ticketStmt = $pdo->prepare("SELECT * FROM group_tickets WHERE ticket_id IN ({$ticketPh}) AND tenant_id = ? AND branch_id = ?");
+    $ticketStmt->execute(array_merge($ticketIds, [$tenant_id, $branch_id]));
+    $tickets = $ticketStmt->fetchAll(PDO::FETCH_ASSOC);
+    if (count($tickets) !== count($ticketIds)) {
+        die('Invalid request: ticket not found');
+    }
 }
-$ticket = $tickets[0];
+$ticket = $tickets[0] ?? [];
 
 // Members in ticket order, joined with family data (family = room group)
-$memberIds = [];
+$memberIds = $directMemberIds;
 foreach ($tickets as $t) {
     foreach (json_decode($t['member_ids'] ?? '[]', true) ?: [] as $mid) {
         $memberIds[] = (int)$mid;
@@ -67,9 +80,20 @@ if (!empty($memberIds)) {
     $placeholders = implode(',', array_fill(0, count($memberIds), '?'));
     $memberStmt = $pdo->prepare("
         SELECT b.booking_id, b.family_id, b.name, b.fname, b.gender, b.duration, b.room_type,
-               b.passport_number, f.head_of_family
+               b.passport_number, f.head_of_family,
+               hr.room_number, hr.floor
         FROM umrah_bookings b
         LEFT JOIN families f ON f.family_id = b.family_id AND f.tenant_id = b.tenant_id
+        LEFT JOIN umrah_hotel_fulfillments hf ON hf.fulfillment_id = (
+            SELECT f3.id
+            FROM umrah_booking_services bs3
+            JOIN umrah_fulfillments f3 ON f3.booking_service_id = bs3.id
+                 AND f3.fulfillment_type = 'hotel' AND f3.tenant_id = bs3.tenant_id
+            WHERE bs3.booking_id = b.booking_id AND bs3.service_type = 'hotel'
+                  AND bs3.tenant_id = b.tenant_id
+            ORDER BY f3.id LIMIT 1
+        )
+        LEFT JOIN umrah_hotel_rooms hr ON hr.id = hf.room_id
         WHERE b.booking_id IN ({$placeholders}) AND b.tenant_id = ? AND b.branch_id = ?
     ");
     $memberStmt->execute(array_merge($memberIds, [$tenant_id, $branch_id]));
@@ -106,6 +130,9 @@ $langLabels = [
         'services' => 'خدمات',
         'days' => 'روز',
         'empty' => 'هیچ مسافری در این پرواز ثبت نشده است',
+        'males' => 'مردان',
+        'females' => 'زنان',
+        'unspecified' => 'نامشخص',
         'family_head' => 'سرپرست خانواده',
         'total_passengers' => 'مجموع مسافرین',
         'total_rooms' => 'مجموع اتاق‌ها',
@@ -126,6 +153,9 @@ $langLabels = [
         'services' => 'خدمت',
         'days' => 'ورځې',
         'empty' => 'په دې الوتکه کې هېڅ مسافر ثبت شوی نه دی',
+        'males' => 'نرینه',
+        'females' => 'ښځې',
+        'unspecified' => 'نامعلوم',
         'family_head' => 'د کورنۍ مشر',
         'total_passengers' => 'ټول مسافرین',
         'total_rooms' => 'ټول اتاقونه',
@@ -146,6 +176,9 @@ $langLabels = [
         'services' => 'Service',
         'days' => 'Days',
         'empty' => 'No passengers registered on this flight',
+        'males' => 'Males',
+        'females' => 'Females',
+        'unspecified' => 'Unspecified',
         'family_head' => 'Family Head',
         'total_passengers' => 'Total Passengers',
         'total_rooms' => 'Total Rooms',
@@ -155,18 +188,63 @@ $langLabels = [
 ];
 $L = $langLabels[$docLanguage];
 
-// Rooms: family = room, members in ticket order
+// Rooms: family = room, members in ticket order. Each room carries its
+// members plus the family head and an optional gender-split label.
 $rooms = [];
 foreach ($memberIds as $id) {
     if (isset($memberMap[(int)$id])) {
-        $fid = (int)($memberMap[(int)$id]['family_id'] ?? 0);
-        $rooms[$fid][] = $memberMap[(int)$id];
+        $m = $memberMap[(int)$id];
+        $fid = (int)($m['family_id'] ?? 0);
+        if (!isset($rooms[$fid])) {
+            $rooms[$fid] = ['members' => [], 'head' => (string)($m['head_of_family'] ?? ''), 'split' => '', 'shared' => false];
+        }
+        $rooms[$fid]['members'][] = $m;
     }
 }
 
+// Shared-room members (room_type = shared) are pulled out of their families
+// and grouped globally: all males in one room, all females in another (plus
+// one bucket for members whose gender is unknown), matching the hotel's
+// shared-room assignment. The shared rooms are appended after all private
+// families so they are displayed together on the sheet.
+$sharedBuckets = ['male' => [], 'female' => [], 'other' => []];
+$sharedSeen = false;
+$groupedRooms = [];
+foreach ($rooms as $fid => $roomData) {
+    $rt = '';
+    foreach ($roomData['members'] as $m) {
+        if ($rt === '' && trim((string)($m['room_type'] ?? '')) !== '') { $rt = trim((string)$m['room_type']); }
+    }
+    $rtLow = mb_strtolower(trim($rt));
+    if ($rtLow === 'shared' || $rtLow === 'share') {
+        foreach ($roomData['members'] as $m) {
+            $g = (string)($m['gender'] ?? '');
+            $bk = $g === 'Male' ? 'male' : ($g === 'Female' ? 'female' : 'other');
+            $sharedBuckets[$bk][] = $m;
+            $sharedSeen = true;
+        }
+        continue;
+    }
+    $groupedRooms[$fid] = $roomData;
+}
+if ($sharedSeen) {
+    foreach (['male', 'female', 'other'] as $bk) {
+        if (empty($sharedBuckets[$bk])) { continue; }
+        $splitLabel = $bk === 'male' ? $L['males'] : ($bk === 'female' ? $L['females'] : $L['unspecified']);
+        $groupedRooms['__shared_' . $bk] = [
+            'members' => $sharedBuckets[$bk],
+            'head' => '',
+            'split' => $splitLabel,
+            'shared' => true,
+        ];
+    }
+}
+$rooms = $groupedRooms;
+
 // Service sections: rooms grouped by (duration, room_type); separator inserted when group changes
 $sections = [];
-foreach ($rooms as $members) {
+foreach ($rooms as $roomData) {
+    $members = $roomData['members'];
     $dur = '';
     $rt = '';
     foreach ($members as $m) {
@@ -177,9 +255,9 @@ foreach ($rooms as $members) {
     $key = $dur . "\x1f" . $rt;
     $lastIdx = count($sections) - 1;
     if ($lastIdx >= 0 && $sections[$lastIdx]['key'] === $key) {
-        $sections[$lastIdx]['rooms'][] = $members;
+        $sections[$lastIdx]['rooms'][] = $roomData;
     } else {
-        $sections[] = ['key' => $key, 'duration' => $dur, 'room_type' => $rt, 'rooms' => [$members]];
+        $sections[] = ['key' => $key, 'duration' => $dur, 'room_type' => $rt, 'rooms' => [$roomData]];
     }
 }
 
@@ -232,6 +310,20 @@ function rooming_days($m) {
 
 function rooming_full_name($m) {
     return trim((string)($m['name'] ?? ''));
+}
+
+// One room group normally shares a single hotel room. When the members'
+// stored assignments differ (e.g. a shared gender bucket the hotel spread
+// across two rooms), each row falls back to its own room instead of the
+// group's first member being shown for everyone.
+function rooming_member_room($m, $fallback) {
+    $r = trim((string)($m['room_number'] ?? ''));
+    if ($r !== '') {
+        $f = trim((string)($m['floor'] ?? ''));
+        if ($f !== '') { $r .= ' / ' . $f; }
+        return $r;
+    }
+    return (string)$fallback;
 }
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -292,7 +384,8 @@ foreach ($sections as $si => $section) {
         $row++;
     }
 
-    foreach ($section['rooms'] as $room) {
+    foreach ($section['rooms'] as $roomData) {
+        $room = $roomData['members'];
         $roomNum++;
         $totalRooms++;
         $palette = $roomColors[$colorIdx % count($roomColors)];
@@ -307,8 +400,15 @@ foreach ($sections as $si => $section) {
         }
         $mergeOtagh = count($roomTypeSet) <= 1;
 
+        $roomDisplays = [];
+        foreach ($room as $rm) {
+            $roomDisplays[] = rooming_member_room($rm, $roomNum);
+        }
+        $mergeRoom = count(array_unique($roomDisplays)) === 1;
+        $roomDisplay = (string)$roomDisplays[0];
+
         foreach ($room as $ri => $m) {
-            $sheet->setCellValue('A' . $row, $roomNum);
+            $sheet->setCellValue('A' . $row, $mergeRoom ? $roomDisplay : (string)$roomDisplays[$ri]);
             $sheet->setCellValue('B' . $row, rooming_title($m['gender'] ?? '', $L));
             $sheet->setCellValue('C' . $row, rooming_full_name($m));
             $sheet->setCellValue('D' . $row, $m['passport_number'] ?? '');
@@ -323,18 +423,27 @@ foreach ($sections as $si => $section) {
             $row++;
         }
 
-        // Family foot row: merged A:E label, empty F
+        // Family foot row: merged A:E label, empty F (split rooms append the
+        // gender group, e.g. "Family Head: X · Males")
         $footRow = $row;
+        if (!empty($roomData['shared'])) {
+            $footLabel = ($L['room_type']['shared'] ?? 'Shared') . ' · ' . ($roomData['split'] ?? '');
+        } else {
+            $footLabel = $L['family_head'] . ': ' . ($roomData['head'] ?? '');
+            if (($roomData['split'] ?? '') !== '') { $footLabel .= ' · ' . $roomData['split']; }
+        }
         $sheet->mergeCells('A' . $footRow . ':E' . $footRow);
-        $sheet->setCellValue('A' . $footRow, $L['family_head'] . ': ' . ($room[0]['head_of_family'] ?? ''));
+        $sheet->setCellValue('A' . $footRow, $footLabel);
         $sheet->setCellValue('F' . $footRow, '');
         $sheet->getStyle('A' . $footRow . ':' . $lastCol . $footRow)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($tint);
         $sheet->getStyle('A' . $footRow)->getFont()->setBold(true)->setSize(10);
         $sheet->getStyle('A' . $footRow . ':' . $lastCol . $footRow)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
         $row++;
 
-        // Merge the room number cell across the member rows
-        if ($footRow - $roomStart > 1) {
+        // Merge the room number cell across the member rows (only when the
+        // whole group shares one assignment; otherwise each row already got
+        // its own room in the loop above)
+        if ($mergeRoom && $footRow - $roomStart > 1) {
             $sheet->mergeCells('A' . $roomStart . ':A' . ($footRow - 1));
         }
         // Merge the room type cell when all members share one room type
@@ -372,7 +481,7 @@ $sheet->getStyle('A' . ($headerRow + 1) . ':' . $lastCol . $row)->getAlignment()
 // Freeze header
 $sheet->freezePane('A' . ($headerRow + 1));
 
-$filename = 'rooming_list_' . preg_replace('/[^A-Za-z0-9_-]/', '', (string)($ticket['pnr'] ?? $ticketId)) . '.xlsx';
+$filename = 'rooming_list_' . preg_replace('/[^A-Za-z0-9_-]/', '', (string)($ticket['pnr'] ?? ($memberIds[0] ?? $ticketId))) . '.xlsx';
 
 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 header('Content-Disposition: attachment; filename="' . $filename . '"');

@@ -5,6 +5,9 @@
 $config = require __DIR__ . '/bundle_files.php';
 
 header('Content-Type: application/javascript; charset=UTF-8');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: 0');
 
 $base = realpath(__DIR__ . '/..');
 $out = '';

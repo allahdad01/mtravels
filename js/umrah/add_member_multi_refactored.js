@@ -28,6 +28,21 @@ document.addEventListener('DOMContentLoaded', function() {
 // SECTION 2: SUPPLIERS & SERVICES
 // ============================================
 
+// Collapsed package line as a compact chip in one horizontal row
+function buildCollapsedChip(rowId, label, unitText, isOptional, hiddenInputs, serviceId) {
+    const action = isOptional
+        ? `<button type="button" class="btn btn-sm btn-outline-danger" style="padding:1px 8px; font-size:0.75rem; border-radius:999px;" onclick="removeServiceRow('${rowId}')"><i class="feather icon-x"></i></button>`
+        : `<i class="feather icon-lock" style="width:0.8rem; height:0.8rem; color:#c2410c;"></i>`;
+    return `
+        <div id="${rowId}" data-from-package="1" data-service-id="${serviceId || ''}" style="display:inline-flex; align-items:center; gap:6px; background:#fff; border:1px solid #e5e7eb; border-radius:999px; padding:4px 12px;">
+            ${action}
+            <strong style="font-size:0.8rem; color:#1f2937;">${label}</strong>
+            <span style="color:#6b7280; font-size:0.75rem;">${unitText}</span>
+            ${hiddenInputs}
+        </div>
+    `;
+}
+
 function loadSuppliers() {
     return $.ajax({
         url: '../api/umrah/get_suppliers.php',
@@ -43,7 +58,7 @@ function loadSuppliers() {
 
 let serviceRowCounter = 0;
 
-function addServiceRow(serviceType = '', supplierId = '', basePrice = 0, soldPrice = 0) {
+function addServiceRow(serviceType = '', supplierId = '', basePrice = 0, soldPrice = 0, opts = null) {
     serviceRowCounter++;
     const rowId = 'serviceRow_' + serviceRowCounter;
 
@@ -51,48 +66,76 @@ function addServiceRow(serviceType = '', supplierId = '', basePrice = 0, soldPri
         `<option value="${s.id}" data-currency="${s.currency}">${s.name}</option>`
     ).join('');
 
+    const fromPackage = !!(opts && opts.service_id);
+    const collapse = fromPackage && !!opts.collapse;
+    const rowServiceValue = fromPackage ? (opts.name || serviceType) : '';
+    const rowIsRequired = fromPackage ? !!opts.is_required : false;
+
+    // Service-type field: locked text input for package rows, select for manual rows
+    let serviceField = '';
+    if (fromPackage) {
+        serviceField = `
+            <div class="form-group">
+                <label>Service Type</label>
+                <input type="text" class="form-control" value="${rowServiceValue}" readonly>
+                <input type="hidden" name="services[${serviceRowCounter}][service_type]" value="${rowServiceValue}">
+                <input type="hidden" name="services[${serviceRowCounter}][service_id]" value="${opts.service_id || ''}">
+                <input type="hidden" name="services[${serviceRowCounter}][pricing_unit]" value="${opts.pricing_unit || ''}">
+                <input type="hidden" name="services[${serviceRowCounter}][quantity]" value="${opts.quantity || 1}">
+                <input type="hidden" name="services[${serviceRowCounter}][is_optional]" value="${opts.is_required ? 0 : 1}">
+                <input type="hidden" name="services[${serviceRowCounter}][hotel_id]" value="${opts.hotel_id || ''}">
+                <input type="hidden" name="services[${serviceRowCounter}][room_type_id]" value="${opts.room_type_id || ''}">
+            </div>`;
+    } else {
+        serviceField = `
+            <div class="form-group">
+                <label>Service Type</label>
+                <select class="form-control service-type" name="services[${serviceRowCounter}][service_type]" required>
+                    <option value="">Select Service Type</option>
+                    <option value="all" ${serviceType==='all'?'selected':''}>All Services</option>
+                    <option value="ticket" ${serviceType==='ticket'?'selected':''}>Ticket</option>
+                    <option value="visa" ${serviceType==='visa'?'selected':''}>Visa</option>
+                    <option value="hotel" ${serviceType==='hotel'?'selected':''}>Hotel</option>
+                    <option value="transport" ${serviceType==='transport'?'selected':''}>Transport</option>
+                    <option value="ticket+visa" ${serviceType==='ticket+visa'?'selected':''}>Ticket + Visa</option>
+                    <option value="ticket+hotel" ${serviceType==='ticket+hotel'?'selected':''}>Ticket + Hotel</option>
+                    <option value="ticket+transport" ${serviceType==='ticket+transport'?'selected':''}>Ticket + Transport</option>
+                    <option value="visa+services" ${serviceType==='visa+services'?'selected':''}>Visa + Services</option>
+                    <option value="visa+hotel" ${serviceType==='visa+hotel'?'selected':''}>Visa + Hotel</option>
+                    <option value="visa+transport" ${serviceType==='visa+transport'?'selected':''}>Visa + Transport</option>
+                    <option value="hotel+transport" ${serviceType==='hotel+transport'?'selected':''}>Hotel + Transport</option>
+                </select>
+            </div>`;
+    }
+
+    const rowCurrency = fromPackage ? (opts.base_currency || 'USD') : '';
+    const initialHint = fromPackage && opts.hint ? `<small class="service-currency-hint d-block text-info">${opts.hint}</small>` : '<small class="service-currency-hint d-block text-info"></small>';
+
     const rowHtml = `
-        <div id="${rowId}" class="service-row-grid">
+        <div id="${rowId}" class="service-row-grid"${fromPackage ? ` data-service-id="${opts.service_id}" data-from-package="1"` : ''}>
             <div class="grid-column-1">
-                <div class="form-group">
-                    <label>Service Type</label>
-                    <select class="form-control service-type" name="services[${serviceRowCounter}][service_type]" required>
-                        <option value="">Select Service Type</option>
-                        <option value="all" ${serviceType==='all'?'selected':''}>All Services</option>
-                        <option value="ticket" ${serviceType==='ticket'?'selected':''}>Ticket</option>
-                        <option value="visa" ${serviceType==='visa'?'selected':''}>Visa</option>
-                        <option value="hotel" ${serviceType==='hotel'?'selected':''}>Hotel</option>
-                        <option value="transport" ${serviceType==='transport'?'selected':''}>Transport</option>
-                        <option value="ticket+visa" ${serviceType==='ticket+visa'?'selected':''}>Ticket + Visa</option>
-                        <option value="ticket+hotel" ${serviceType==='ticket+hotel'?'selected':''}>Ticket + Hotel</option>
-                        <option value="ticket+transport" ${serviceType==='ticket+transport'?'selected':''}>Ticket + Transport</option>
-                        <option value="visa+services" ${serviceType==='visa+services'?'selected':''}>Visa + Services</option>
-                        <option value="visa+hotel" ${serviceType==='visa+hotel'?'selected':''}>Visa + Hotel</option>
-                        <option value="visa+transport" ${serviceType==='visa+transport'?'selected':''}>Visa + Transport</option>
-                        <option value="hotel+transport" ${serviceType==='hotel+transport'?'selected':''}>Hotel + Transport</option>
-                    </select>
-                </div>
+                ${serviceField}
                 <div class="form-group">
                     <label>Supplier</label>
-                    <select class="form-control service-supplier" name="services[${serviceRowCounter}][supplier_id]" required>
+                    <select class="form-control service-supplier" name="services[${serviceRowCounter}][supplier_id]" ${fromPackage ? '' : 'required'}>
                         <option value="">Select Supplier</option>
                         ${suppliersOptions}
                     </select>
                 </div>
                 <div class="form-group">
                     <label>Currency</label>
-                    <input type="text" class="form-control service-currency" name="services[${serviceRowCounter}][currency]" readonly>
+                    <input type="text" class="form-control service-currency" name="services[${serviceRowCounter}][currency]" value="${rowCurrency}" readonly>
                 </div>
             </div>
             <div class="grid-column-2">
                 <div class="form-group">
                     <label>Base Price</label>
-                    <input type="number" class="form-control service-base-price" name="services[${serviceRowCounter}][base_price]" value="${basePrice}" min="0" step="0.01" required>
-                    <small class="service-currency-hint d-block text-info"></small>
+                    <input type="number" class="form-control service-base-price" name="services[${serviceRowCounter}][base_price]" value="${basePrice}" min="0" step="0.01" required ${fromPackage ? 'readonly' : ''}>
+                    ${initialHint}
                 </div>
                 <div class="form-group">
                     <label>Sold Price</label>
-                    <input type="number" class="form-control service-sold-price" name="services[${serviceRowCounter}][sold_price]" value="${soldPrice}" min="0" step="0.01" required>
+                    <input type="number" class="form-control service-sold-price" name="services[${serviceRowCounter}][sold_price]" value="${soldPrice}" min="0" step="0.01" required ${fromPackage ? 'readonly' : ''}>
                 </div>
                 <div class="form-group">
                     <label>Profit</label>
@@ -102,9 +145,11 @@ function addServiceRow(serviceType = '', supplierId = '', basePrice = 0, soldPri
             <div class="grid-column-3">
                 <div class="form-group">
                     <label>&nbsp;</label>
-                    <button type="button" class="btn btn-sm btn-danger btn-block" onclick="removeServiceRow('${rowId}')">
-                        <i class="feather icon-trash-2"></i> Remove
-                    </button>
+                    ${fromPackage && rowIsRequired
+                        ? `<span class="text-muted d-block text-center" style="font-size: 0.8rem;"><i class="feather icon-lock mr-1"></i>Required</span>`
+                        : `<button type="button" class="btn btn-sm btn-danger btn-block" onclick="removeServiceRow('${rowId}')">
+                            <i class="feather icon-trash-2"></i> Remove
+                        </button>`}
                 </div>
             </div>
         </div>
@@ -116,7 +161,15 @@ function addServiceRow(serviceType = '', supplierId = '', basePrice = 0, soldPri
 }
 
 function removeServiceRow(rowId) {
-    $('#' + rowId).remove();
+    const $row = $('#' + rowId);
+    if ($row.data('from-package') && $row.data('service-id')) {
+        removedPackageLines.add(String($row.data('service-id')));
+    }
+    $row.remove();
+    const $container = $row.closest('.service-row-collapsed');
+    if ($container.length && $container.find('[id^="collapsedChip_"]').length === 0) {
+        $container.remove();
+    }
     updateTotals();
 }
 
@@ -130,7 +183,7 @@ function updateCurrencyHint($row) {
 
 function getSaleCurrency() { return ($('#saleCurrency').val() || 'USD').toUpperCase(); }
 
-function getExchangeRate() { const r = parseFloat($('#exchangeRate').val()); return (r && r > 0) ? r : 1; }
+function getExchangeRate() { return 1; }
 
 function updateTotals() {
     let totalBase = 0, totalSold = 0, totalProfit = 0;
@@ -151,14 +204,16 @@ function updateTotals() {
         totalProfit += profit;
     });
     
+    if (!grandSoldEdited) {
+        $('#totalSoldPrice').val(totalSold.toFixed(2));
+    }
+    totalSold = parseFloat($('#totalSoldPrice').val()) || 0;
     const discountedSold = totalSold - discount;
     $('#totalBasePrice').val(totalBase.toFixed(2));
-    $('#totalSoldPrice').val(discountedSold.toFixed(2));
     $('#totalProfit').val((discountedSold - totalBase).toFixed(2));
 }
 
 // Service event bindings
-$(document).on('click', '#addServiceBtn', () => addServiceRow());
 $(document).on('change', '.service-supplier', function() {
     const $row = $(this).closest('.service-row-grid');
     const oldCur = ($row.find('.service-currency').val() || '').trim().toUpperCase();
@@ -175,15 +230,182 @@ $(document).on('change', '.service-supplier', function() {
     $row.find('.service-currency').val(newCur);
     updateTotals();
 });
-$(document).on('input', '.service-base-price, .service-sold-price, #discount, #exchangeRate', updateTotals);
+$(document).on('input', '.service-base-price, .service-sold-price, #discount', updateTotals);
+$(document).on('input', '#totalSoldPrice', function() { grandSoldEdited = true; updateTotals(); });
 $(document).on('change', '#saleCurrency', updateTotals);
+
+// Sale currency change re-renders package rows with the new conversion
+$(document).on('change', '#saleCurrency', function() {
+    if (lastPackageData) buildPackageRows(lastPackageData);
+});
+
+// ============================================
+// PACKAGE SELECTION (fills the services grid from the price engine)
+// ============================================
+
+let lastPackageData = null;
+let removedPackageLines = new Set();
+let grandSoldEdited = false;
+
+function loadPackage(packageId) {
+    if (!packageId) return;
+    return $.ajax({
+        url: '../api/umrah/get_package.php?package_id=' + encodeURIComponent(packageId),
+        type: 'GET',
+        dataType: 'json'
+    }).then(data => {
+        if (!data.success) {
+            showToast('error', data.message || 'Failed to load package');
+            return;
+        }
+        lastPackageData = data;
+        removedPackageLines = new Set();
+        grandSoldEdited = false;
+        buildPackageRows(data);
+        if (data.package) {
+            showToast('success', 'Package "' + data.package.name + '" loaded');
+        }
+    }).catch(err => {
+        console.error('Error loading package:', err);
+        showToast('error', 'Failed to load package');
+    });
+}
+
+function buildPackageRows(data) {
+    const sale = getSaleCurrency();
+    const rate = getExchangeRate();
+    serviceRowCounter = 0;
+    $('.services-grid-body').empty();
+    $('#packageEmptyState').addClass('d-none');
+    $('#packageServicesPanel').removeClass('d-none');
+
+    const collapsedChips = [];
+
+    (data.lines || []).forEach(line => {
+        if (removedPackageLines.has(String(line.service_id))) return;
+        const qty = parseFloat(line.quantity) || 1;
+        const basePerUnit = parseFloat(line.base_per_unit);
+        const sellPerUnit = parseFloat(line.selling_per_unit);
+
+        let baseTotal = (!isNaN(basePerUnit) && line.base_per_unit !== null) ? basePerUnit * qty : 0;
+        let soldTotal = (!isNaN(sellPerUnit) && line.selling_per_unit !== null) ? sellPerUnit * qty : 0;
+
+        // Convert selling total into the selected sale currency when it differs
+        if (line.selling_currency && line.selling_currency.toString().toUpperCase() !== sale && rate !== 1 && !isNaN(soldTotal) && soldTotal !== 0) {
+            soldTotal = soldTotal / rate;
+        }
+
+        const hintParts = [];
+        if (line.pricing_unit) hintParts.push(line.pricing_unit + (qty > 1 ? ' × ' + qty : ''));
+        if (sellPerUnit !== null) hintParts.push('unit ' + sellPerUnit + ' ' + (line.selling_currency || ''));
+        if (line.hotel_name) hintParts.push(line.hotel_name);
+        if (line.room_type_name) hintParts.push(line.room_type_name);
+        if (!line.supplier) hintParts.push('pick a supplier');
+
+        const hasBasePrice = line.base_per_unit !== null && line.base_per_unit !== '' && isFinite(parseFloat(line.base_per_unit)) && parseFloat(line.base_per_unit) > 0;
+        const hasSellPrice = line.selling_per_unit !== null && line.selling_per_unit !== '' && isFinite(parseFloat(line.selling_per_unit)) && parseFloat(line.selling_per_unit) > 0;
+        const collapse = !(line.supplier && line.supplier.id) || !(hasBasePrice || hasSellPrice);
+
+        if (collapse) {
+            serviceRowCounter++;
+            const chipId = 'collapsedChip_' + serviceRowCounter;
+            const unitText = (line.pricing_unit ? (qty > 1 ? qty + ' × ' : '') + line.pricing_unit : (qty > 1 ? '× ' + qty : '')).trim();
+            const hidden = `
+                <input type="hidden" name="services[${serviceRowCounter}][service_type]" value="${line.service_type || 'all'}">
+                <input type="hidden" name="services[${serviceRowCounter}][service_id]" value="${line.service_id || ''}">
+                <input type="hidden" name="services[${serviceRowCounter}][pricing_unit]" value="${line.pricing_unit || ''}">
+                <input type="hidden" name="services[${serviceRowCounter}][quantity]" value="${qty}">
+                <input type="hidden" name="services[${serviceRowCounter}][is_optional]" value="${parseInt(line.is_required) !== 0 ? 0 : 1}">
+                <input type="hidden" name="services[${serviceRowCounter}][hotel_id]" value="${line.hotel_id || ''}">
+                <input type="hidden" name="services[${serviceRowCounter}][room_type_id]" value="${line.room_type_id || ''}">
+            `;
+            collapsedChips.push(buildCollapsedChip(
+                chipId,
+                line.service_name || (line.service_type || 'service'),
+                unitText || 'unit',
+                parseInt(line.is_required) === 0,
+                hidden,
+                line.service_id
+            ));
+            return;
+        }
+
+        addServiceRow(
+            line.service_type || 'all',
+            (line.supplier && line.supplier.id) ? line.supplier.id : '',
+            baseTotal.toFixed(2),
+            soldTotal.toFixed(2),
+            {
+                service_id: line.service_id,
+                name: line.service_name,
+                pricing_unit: line.pricing_unit,
+                quantity: qty,
+                is_required: parseInt(line.is_required) !== 0,
+                hotel_id: line.hotel_id,
+                room_type_id: line.room_type_id,
+                base_currency: line.base_currency || (line.supplier ? line.supplier.currency : 'USD'),
+                exchange_rate: line.exchange_rate,
+                hint: hintParts.join(' · ')
+            });
+    });
+
+    if (collapsedChips.length) {
+        $('.services-grid-body').append(`
+            <div class="service-row-collapsed" style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; background:#f8fafc; border:1px dashed #dee2e6; border-radius:8px; padding:10px 14px;">
+                ${collapsedChips.join('')}
+            </div>
+        `);
+    }
+    updateTotals();
+}
+
+function resetPackagePanel() {
+    lastPackageData = null;
+    removedPackageLines = new Set();
+    serviceRowCounter = 0;
+    $('.services-grid-body').empty();
+    $('#packageServicesPanel').addClass('d-none');
+    $('#packageEmptyState').removeClass('d-none');
+    updateTotals();
+}
+
+$(document).on('change', '#packageSelect', function() {
+    const pid = $(this).val();
+    if (!pid) {
+        resetPackagePanel();
+        return;
+    }
+    const $grid = $('.services-grid-body');
+    const hasRows = $grid.find('.service-row-grid').length > 0;
+    if (hasRows) {
+        const replaceIt = (typeof Swal !== 'undefined' && Swal.fire)
+            ? Swal.fire({
+                title: 'Replace services?',
+                text: 'Selecting a package will replace the current service rows.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, load package',
+                cancelButtonText: 'Cancel'
+            }).then(result => result.isConfirmed)
+            : Promise.resolve(confirm('Replace current services with this package?'));
+        replaceIt.then(ok => {
+            if (ok) {
+                loadPackage(pid);
+            } else {
+                $(this).val('');
+            }
+        });
+    } else {
+        loadPackage(pid);
+    }
+});
 
 // ============================================
 // SECTION 3: MEMBER ROW MANAGEMENT
 // ============================================
 
 function addMemberRow(name = '', dob = '', gender = 'Male', passport_number = '', passport_expiry = '', 
-                     father_name = '', g_name = '', relation = '', id_type = '', photo_path = '', passport_path = '') {
+                     father_name = '', id_type = '', photo_path = '', passport_path = '') {
     memberRowCounter++;
     const rowId = 'memberRow_' + memberRowCounter;
     console.log(`✨ addMemberRow called: memberRowCounter=${memberRowCounter}, rowId=${rowId}`);
@@ -203,18 +425,18 @@ function addMemberRow(name = '', dob = '', gender = 'Male', passport_number = ''
             <div class="card-body" style="padding: 15px;">
                 <!-- Member Personal Information -->
                 <div class="row">
-                    <div class="form-group col-md-3">
+                    <div class="form-group col-md-4">
                         <label for="members_${memberRowCounter}_name">Name *</label>
                         <input type="text" class="form-control member-name" id="members_${memberRowCounter}_name" 
                                name="members[${memberRowCounter}][name]" value="${name}" required 
                                placeholder="Full Name">
                     </div>
-                    <div class="form-group col-md-3">
-                        <label for="members_${memberRowCounter}_dob">Date of Birth *</label>
+                    <div class="form-group col-md-4">
+                        <label for="members_${memberRowCounter}_dob">Date of Birth</label>
                         <input type="date" class="form-control" id="members_${memberRowCounter}_dob" 
-                               name="members[${memberRowCounter}][dob]" value="${dob}" required>
+                               name="members[${memberRowCounter}][dob]" value="${dob}">
                     </div>
-                    <div class="form-group col-md-3">
+                    <div class="form-group col-md-4">
                         <label for="members_${memberRowCounter}_gender">Gender *</label>
                         <select class="form-control" id="members_${memberRowCounter}_gender" 
                                 name="members[${memberRowCounter}][gender]" required>
@@ -222,55 +444,17 @@ function addMemberRow(name = '', dob = '', gender = 'Male', passport_number = ''
                             <option value="Female" ${gender === 'Female' ? 'selected' : ''}>Female</option>
                         </select>
                     </div>
-                    <div class="form-group col-md-3">
-                        <label for="members_${memberRowCounter}_relation">Relation *</label>
-                        <select class="form-control" id="members_${memberRowCounter}_relation" 
-                                name="members[${memberRowCounter}][relation]" value="${relation}" required>
-                            <option value="">Select Relation</option>
-                            <option value="Ownself" ${relation === 'Ownself' ? 'selected' : ''}>Ownself</option>
-                            <option value="Friend" ${relation === 'Friend' ? 'selected' : ''}>Friend</option>
-                            <option value="Father" ${relation === 'Father' ? 'selected' : ''}>Father</option>
-                            <option value="Mother" ${relation === 'Mother' ? 'selected' : ''}>Mother</option>
-                            <option value="Brother" ${relation === 'Brother' ? 'selected' : ''}>Brother</option>
-                            <option value="Sister" ${relation === 'Sister' ? 'selected' : ''}>Sister</option>
-                            <option value="Son" ${relation === 'Son' ? 'selected' : ''}>Son</option>
-                            <option value="Daughter" ${relation === 'Daughter' ? 'selected' : ''}>Daughter</option>
-                            <option value="Wife" ${relation === 'Wife' ? 'selected' : ''}>Wife</option>
-                            <option value="Husband" ${relation === 'Husband' ? 'selected' : ''}>Husband</option>
-                            <option value="Grandfather" ${relation === 'Grandfather' ? 'selected' : ''}>Grandfather</option>
-                            <option value="Grandmother" ${relation === 'Grandmother' ? 'selected' : ''}>Grandmother</option>
-                            <option value="Uncle" ${relation === 'Uncle' ? 'selected' : ''}>Uncle</option>
-                            <option value="Aunt" ${relation === 'Aunt' ? 'selected' : ''}>Aunt</option>
-                            <option value="Cousin" ${relation === 'Cousin' ? 'selected' : ''}>Cousin</option>
-                            <option value="Nephew" ${relation === 'Nephew' ? 'selected' : ''}>Nephew</option>
-                            <option value="Niece" ${relation === 'Niece' ? 'selected' : ''}>Niece</option>
-                            <option value="Son-in-law" ${relation === 'Son-in-law' ? 'selected' : ''}>Son-in-law</option>
-                            <option value="Daughter-in-law" ${relation === 'Daughter-in-law' ? 'selected' : ''}>Daughter-in-law</option>
-                            <option value="Brother-in-law" ${relation === 'Brother-in-law' ? 'selected' : ''}>Brother-in-law</option>
-                            <option value="Sister-in-law" ${relation === 'Sister-in-law' ? 'selected' : ''}>Sister-in-law</option>
-                            <option value="Grandson" ${relation === 'Grandson' ? 'selected' : ''}>Grandson</option>
-                            <option value="Granddaughter" ${relation === 'Granddaughter' ? 'selected' : ''}>Granddaughter</option>
-                            <option value="Father-in-law" ${relation === 'Father-in-law' ? 'selected' : ''}>Father-in-law</option>
-                            <option value="Mother-in-law" ${relation === 'Mother-in-law' ? 'selected' : ''}>Mother-in-law</option>
-                        </select>
-                    </div>
                 </div>
 
-                <!-- Father Name and Grandfather Name -->
+                <!-- Father Name -->
                 <div class="row">
-                    <div class="form-group col-md-4">
-                        <label for="members_${memberRowCounter}_father_name">Father Name *</label>
+                    <div class="form-group col-md-6">
+                        <label for="members_${memberRowCounter}_father_name">Father Name</label>
                         <input type="text" class="form-control" id="members_${memberRowCounter}_father_name" 
-                               name="members[${memberRowCounter}][father_name]" value="${father_name}" required 
+                               name="members[${memberRowCounter}][father_name]" value="${father_name}" 
                                placeholder="Father's Full Name">
                     </div>
-                    <div class="form-group col-md-4">
-                        <label for="members_${memberRowCounter}_g_name">Grandfather Name *</label>
-                        <input type="text" class="form-control" id="members_${memberRowCounter}_g_name" 
-                               name="members[${memberRowCounter}][g_name]" value="${g_name}" required 
-                               placeholder="Grandfather's Full Name">
-                    </div>
-                    <div class="form-group col-md-4">
+                    <div class="form-group col-md-6">
                         <label>&nbsp;</label>
                         <button type="button" class="btn btn-sm btn-info btn-block" onclick="autoFillMemberDocument('${rowId}', ${memberRowCounter})">
                             <i class="feather icon-upload-cloud mr-1"></i>Upload Passport
@@ -281,20 +465,20 @@ function addMemberRow(name = '', dob = '', gender = 'Male', passport_number = ''
                 <!-- Passport Information -->
                 <div class="row">
                     <div class="form-group col-md-4">
-                        <label for="members_${memberRowCounter}_passport_number">Passport Number *</label>
+                        <label for="members_${memberRowCounter}_passport_number">Passport Number</label>
                         <input type="text" class="form-control" id="members_${memberRowCounter}_passport_number" 
-                               name="members[${memberRowCounter}][passport_number]" value="${passport_number}" required 
+                               name="members[${memberRowCounter}][passport_number]" value="${passport_number}" 
                                placeholder="e.g., AB123456">
                     </div>
                     <div class="form-group col-md-4">
-                        <label for="members_${memberRowCounter}_passport_expiry">Passport Expiry *</label>
+                        <label for="members_${memberRowCounter}_passport_expiry">Passport Expiry</label>
                         <input type="date" class="form-control" id="members_${memberRowCounter}_passport_expiry" 
-                               name="members[${memberRowCounter}][passport_expiry]" value="${passport_expiry}" required>
+                               name="members[${memberRowCounter}][passport_expiry]" value="${passport_expiry}">
                     </div>
                     <div class="form-group col-md-4">
-                        <label for="members_${memberRowCounter}_id_type">ID Type *</label>
+                        <label for="members_${memberRowCounter}_id_type">ID Type</label>
                         <select class="form-control" id="members_${memberRowCounter}_id_type" 
-                                name="members[${memberRowCounter}][id_type]" required>
+                                name="members[${memberRowCounter}][id_type]">
                             <option value="">Select ID Type</option>
                             <option value="ID Original + Passport Original" ${id_type === 'ID Original + Passport Original' ? 'selected' : ''}>ID Original + Passport Original</option>
                             <option value="ID Original + Passport Copy" ${id_type === 'ID Original + Passport Copy' ? 'selected' : ''}>ID Original + Passport Copy</option>
@@ -1045,6 +1229,16 @@ function updateMembersSummary() {
 }
 
 function validateForm() {
+    if (!$('#packageSelect').val()) {
+        showToast('error', 'Please select a package first');
+        return false;
+    }
+
+    if ($('.services-grid-body .service-row-grid').length === 0 && $('.services-grid-body .service-row-collapsed').length === 0) {
+        showToast('error', 'No services loaded — select a package');
+        return false;
+    }
+
     const memberCount = $('#membersContainer .card').length;
     
     if (memberCount === 0) {
@@ -1089,14 +1283,12 @@ function validateForm() {
 // ============================================
 
 $('#umrahModal').on('shown.bs.modal', function() {
+    if (!$('#packageSelect').val()) {
+        resetPackagePanel();
+    }
     // Load suppliers if not already loaded
     if (suppliersData.length === 0) {
-        loadSuppliers().then(() => {
-            // Add first service row
-            if ($('.services-grid-body .service-row-grid').length === 0) {
-                addServiceRow();
-            }
-        });
+        loadSuppliers();
     }
     
     // Add first member row if none exist

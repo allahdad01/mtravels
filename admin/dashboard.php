@@ -15,7 +15,7 @@ if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 
 }
 $_SESSION['last_activity'] = time();
 
-$allowed_roles = ['admin', 'finance', 'sales', 'umrah', 'staff'];
+$allowed_roles = ['admin', 'finance', 'sales', 'umrah', 'staff', 'operations', 'hotel_manager', 'viewer'];
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
     header('Location: ../login.php'); exit();
 }

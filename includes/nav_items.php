@@ -15,6 +15,12 @@
  *   8. Support – Support Tickets, Tutorials
  */
 
+// Umrah capability helper (navigation visibility) — pages like dashboard.php
+// include this partial without admin/security.php, so boot it on demand.
+if (!function_exists('umrah_can')) {
+    require_once __DIR__ . '/../admin/includes/umrah_permissions.php';
+}
+
 // Current page for active-state detection
 $currentPage = basename($_SERVER['PHP_SELF']);
 
@@ -139,7 +145,7 @@ $showHotel = hasFeature('hotel_bookings', $allowed_features) || hasFeature('hote
 
 <!-- ── Umrah Management ───────────────────────────────────────────────── -->
 <?php if (hasFeature('umrah_bookings', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
-<li class="nav-item pcoded-hasmenu <?= navTrigger('umrah.php','umrah_services.php','umrah_refunds.php','umrah_date_changes.php') ?>">
+<li class="nav-item pcoded-hasmenu <?= navTrigger('umrah.php','umrah_refunds.php','umrah_date_changes.php','umrah_catalog.php','umrah_hotels.php','umrah_transport.php','umrah_finance.php') ?>">
     <a href="javascript:" class="nav-link">
         <span class="pcoded-micon"><i class="feather icon-map"></i></span>
         <span class="pcoded-mtext"><?= __('umrah_management') ?></span>
@@ -147,9 +153,6 @@ $showHotel = hasFeature('hotel_bookings', $allowed_features) || hasFeature('hote
     <ul class="pcoded-submenu">
         <li class="<?= navActive('umrah.php') ?>">
             <a href="umrah.php"><i class="fas fa-map mr-2"></i><?= __('umrah_bookings') ?></a>
-        </li>
-        <li class="<?= navActive('umrah_services.php') ?>">
-            <a href="umrah_services.php"><i class="fas fa-bell mr-2"></i><?= __('umrah_services') ?></a>
         </li>
         <?php if (hasFeature('umrah_refunds', $allowed_features)): ?>
         <li class="<?= navActive('umrah_refunds.php') ?>">
@@ -159,6 +162,26 @@ $showHotel = hasFeature('hotel_bookings', $allowed_features) || hasFeature('hote
         <li class="<?= navActive('umrah_date_changes.php') ?>">
             <a href="umrah_date_changes.php"><i class="fas fa-calendar-alt mr-2"></i><?= __('umrah_date_changes') ?></a>
         </li>
+        <?php if (umrah_can('package_manage') && umrah_can('service_manage')): ?>
+        <li class="<?= navActive('umrah_catalog.php') ?>">
+            <a href="umrah_catalog.php"><i class="fas fa-layer-group mr-2"></i><?= __('services_packages') ?></a>
+        </li>
+        <?php endif; ?>
+        <?php if (umrah_can('hotel_manage')): ?>
+        <li class="<?= navActive('umrah_hotels.php') ?>">
+            <a href="umrah_hotels.php"><i class="fas fa-hotel mr-2"></i><?= __('hotel_management') ?></a>
+        </li>
+        <?php endif; ?>
+        <?php if (umrah_can('transport_manage')): ?>
+        <li class="<?= navActive('umrah_transport.php') ?>">
+            <a href="umrah_transport.php"><i class="fas fa-truck mr-2"></i><?= __('transport_management') ?></a>
+        </li>
+        <?php endif; ?>
+        <?php if (umrah_can('finance_view')): ?>
+        <li class="<?= navActive('umrah_finance.php') ?>">
+            <a href="umrah_finance.php"><i class="fas fa-chart-line mr-2"></i><?= __('finance_management') ?></a>
+        </li>
+        <?php endif; ?>
     </ul>
 </li>
 <?php endif; ?>
