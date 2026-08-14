@@ -719,7 +719,11 @@ Thank you for choosing {{agency_name}}!
                 WHERE tenant_id = ? AND status = 'pending' 
                 ORDER BY created_at ASC LIMIT ?
             ");
-            $stmt->execute([$this->tenant_id, $limit]);
+            // Native prepares (ATTR_EMULATE_PREPARES=false) bind LIMIT as string
+            // unless typed as int, causing SQLSTATE[42000] near ''10''
+            $stmt->bindValue(1, $this->tenant_id, PDO::PARAM_INT);
+            $stmt->bindValue(2, $limit, PDO::PARAM_INT);
+            $stmt->execute();
             $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             $results = [];
