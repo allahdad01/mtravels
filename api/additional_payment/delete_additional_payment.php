@@ -173,7 +173,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
             foreach ($transactions as $transaction) {
                 // Update main account balance
-                $balanceField = $transaction['currency'] === 'USD' ? 'usd_balance' : 'afs_balance';
+                $balanceFields = [
+                    'USD' => 'usd_balance',
+                    'AFS' => 'afs_balance',
+                    'EUR' => 'euro_balance',
+                    'DARHAM' => 'darham_balance',
+                    'SAR' => 'sar_balance',
+                ];
+                $balanceField = $balanceFields[$transaction['currency']] ?? null;
+                if (!$balanceField) {
+                    throw new Exception("Unknown currency: " . $transaction['currency']);
+                }
                 $updateMainAccStmt = $pdo->prepare("
                     UPDATE main_account
                     SET $balanceField = $balanceField - ?

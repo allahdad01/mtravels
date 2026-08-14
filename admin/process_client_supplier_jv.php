@@ -49,10 +49,12 @@ $clientId = intval($_POST['client_id'] ?? 0);
 $supplierId = intval($_POST['supplier_id'] ?? 0);
 $amount = floatval($_POST['total_amount'] ?? 0);
 $currency = $_POST['currency'] ?? 'USD';
+$balanceCurrency = $_POST['balance_currency'] ?? 'USD';
 $remarks = $_POST['remarks'] ?? '';
 $receipt = $_POST['receipt'] ?? '';
 $jvName = $_POST['jv_name'] ?? 'Client-Supplier JV Payment';
 $exchangeRate = floatval($_POST['exchange_rate'] ?? 0);
+$supplierRate = floatval($_POST['supplier_rate'] ?? 0);
 
 // Validate required fields
 if ($clientId <= 0 || $supplierId <= 0 || $amount <= 0 || empty($receipt)) {
@@ -83,6 +85,18 @@ if (!empty($validated_remarks)) {
 
 // Validate currency
 $currency = isset($_POST['currency']) ? DbSecurity::validateInput($_POST['currency'], 'currency') : 'USD';
+
+// Validate balance currency (client accounts only hold USD/AFS)
+$balanceCurrency = isset($_POST['balance_currency']) ? DbSecurity::validateInput($_POST['balance_currency'], 'currency') : 'USD';
+if (!in_array($balanceCurrency, ['USD', 'AFS'])) {
+    $balanceCurrency = 'USD';
+}
+
+// Validate supplier rate (payment → supplier currency conversion)
+$validatedSupplierRate = isset($_POST['supplier_rate']) ? DbSecurity::validateInput($_POST['supplier_rate'], 'float', ['min' => 0]) : 0;
+if ($validatedSupplierRate > 0) {
+    $supplierRate = $validatedSupplierRate;
+}
 
 // Validate total_amount
 $total_amount = isset($_POST['total_amount']) ? DbSecurity::validateInput($_POST['total_amount'], 'float', ['min' => 0]) : 0;
@@ -130,37 +144,52 @@ try {
     
     $supplierName = $supplier['name'];
     $supplierCurrency = $supplier['supplier_currency'];
-    
-    // Determine client balance field and check if sufficient balance exists
-    if ($currency === 'USD') {
-        $clientCurrentBalance = $client['usd_balance'];
-        $clientBalanceField = 'usd_balance';
-    } else {
-        $clientCurrentBalance = $client['afs_balance'];
-        $clientBalanceField = 'afs_balance';
+
+    // Require the client exchange rate when balance and payment currencies differ
+    if ($balanceCurrency !== $currency && $exchangeRate <= 0) {
+        throw new Exception('A valid exchange rate is required when client balance and payment currencies differ');
     }
-    
-   
-    
-    // Calculate new client balance after deduction
-    $clientNewBalance = $clientCurrentBalance + $amount;
-    
+
+    // Require the supplier exchange rate when payment and supplier currencies differ
+    if ($currency !== $supplierCurrency && $supplierRate <= 0) {
+        throw new Exception('A valid supplier exchange rate is required when payment and supplier currencies differ');
+    }
+
+    // Determine client balance field from the selected balance currency
+    $clientBalanceField = ($balanceCurrency === 'USD') ? 'usd_balance' : 'afs_balance';
+    $clientCurrentBalance = $client[$clientBalanceField];
+
+    // Amount credited to the client balance (payment currency → balance currency).
+    // Same convention as fund client: rate is "1 <balance> = X <payment>"
+    if ($balanceCurrency === $currency) {
+        $clientCredit = $amount;                     // same currency
+    } elseif ($balanceCurrency === 'USD') {
+        $clientCredit = $amount / $exchangeRate;     // 1 USD = X <payment>
+    } elseif ($currency === 'USD') {
+        $clientCredit = $amount * $exchangeRate;     // 1 USD = X AFS
+    } else {
+        $clientCredit = $amount / $exchangeRate;     // 1 AFS = X <payment>
+    }
+
+    // Calculate new client balance
+    $clientNewBalance = $clientCurrentBalance + $clientCredit;
+
     // Update client balance
     $updateClientQuery = "UPDATE clients SET {$clientBalanceField} = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
     $updateClientStmt = $pdo->prepare($updateClientQuery);
     $updateClientStmt->execute([$clientNewBalance, $clientId, $tenant_id, $branch_id]);
-    
-    // Calculate amount to add to supplier based on currencies
+
+    // Amount to add to supplier (payment currency → supplier currency).
+    // Rate is "1 <payment> = X <supplier currency>", same divide/multiply
+    // convention used by balance transfers
+    $pairFrom = ($currency === 'DARHAM') ? 'AED' : $currency;
+    $pairTo = ($supplierCurrency === 'DARHAM') ? 'AED' : $supplierCurrency;
+    $dividePairs = ['AFS->AED', 'AFS->EUR', 'AFS->USD', 'AED->EUR', 'AED->USD', 'EUR->USD', 'AFS->SAR', 'SAR->USD', 'SAR->EUR'];
+
     $supplierAddAmount = $amount;
     if ($currency !== $supplierCurrency) {
-        // Convert amount if currencies differ
-        if ($currency === 'USD' && $supplierCurrency === 'AFS') {
-            // Convert USD to AFS
-            $supplierAddAmount = $amount * $exchangeRate;
-        } else if ($currency === 'AFS' && $supplierCurrency === 'USD') {
-            // Convert AFS to USD
-            $supplierAddAmount = $amount / $exchangeRate;
-        }
+        $pairKey = "{$pairFrom}->{$pairTo}";
+        $supplierAddAmount = in_array($pairKey, $dividePairs) ? $amount / $supplierRate : $amount * $supplierRate;
     }
     
     // Calculate new supplier balance
@@ -174,29 +203,22 @@ try {
     
     // Insert into jv_payments table
     $insertJvQuery = "INSERT INTO jv_payments (
-        jv_name, exchange_rate,
-        total_amount, currency, receipt, remarks, created_by,
+        jv_name, exchange_rate, supplier_rate,
+        total_amount, currency, balance_currency, receipt, remarks, created_by,
         client_id, supplier_id, tenant_id, branch_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-    // Set appropriate USD/AFS amounts
-    $usdAmount = ($currency === 'USD') ? $amount : 0;
-    $afsAmount = ($currency === 'AFS') ? $amount : 0;
-
-    // For JV payments between client and supplier, we'll use 0 as main_account_id
-    // since no main account is involved
-    $mainAccountId = 0;
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
     $insertJvStmt = $pdo->prepare($insertJvQuery);
     $insertJvStmt->execute([
-        $jvName, $exchangeRate, $amount, $currency, $receipt, $remarks, $user_id,
+        $jvName, $exchangeRate, $supplierRate, $amount, $currency, $balanceCurrency,
+        $receipt, $remarks, $user_id,
         $clientId, $supplierId, $tenant_id, $branch_id
     ]);
     
     $jvPaymentId = $pdo->lastInsertId();
     
     // Create the full remarks for transaction logs
-    $clientRemark = "JV Payment: Client {$clientName} paid {$amount} {$currency} to supplier {$supplierName}. Receipt: {$receipt}. Processed by: {$username}. {$remarks}";
+    $clientRemark = "JV Payment: Client {$clientName} paid {$amount} {$currency} to supplier {$supplierName}. Credited {$clientCredit} {$balanceCurrency}. Receipt: {$receipt}. Processed by: {$username}. {$remarks}";
     $supplierRemark = "JV Payment: Received {$supplierAddAmount} {$supplierCurrency} from client {$clientName}. Processed by: {$username}. {$remarks}";
     
     // Record JV transaction
@@ -213,7 +235,7 @@ try {
     
     $jvTransactionId = $pdo->lastInsertId();
     
-    // Record client transaction (debit)
+    // Record client transaction (credit, in the balance currency)
     $clientTransactionQuery = "INSERT INTO client_transactions (
         client_id, type, amount, balance, currency,
         `description`, transaction_of, reference_id, receipt, tenant_id, branch_id
@@ -221,7 +243,7 @@ try {
 
     $clientTransactionStmt = $pdo->prepare($clientTransactionQuery);
     $clientTransactionStmt->execute([
-        $clientId, 'credit', $amount, $clientNewBalance, $currency,
+        $clientId, 'credit', $clientCredit, $clientNewBalance, $balanceCurrency,
         $clientRemark, 'jv_payment', $jvTransactionId, $receipt, $tenant_id, $branch_id
     ]);
     
@@ -250,10 +272,13 @@ try {
         'supplier_id' => $supplierId,
         'supplier_name' => $supplierName,
         'amount' => $amount,
+        'client_credit' => $clientCredit,
         'supplier_amount' => $supplierAddAmount,
         'currency' => $currency,
+        'balance_currency' => $balanceCurrency,
         'supplier_currency' => $supplierCurrency,
         'exchange_rate' => $exchangeRate,
+        'supplier_rate' => $supplierRate,
         'receipt' => $receipt,
         'remarks' => $remarks
     ];

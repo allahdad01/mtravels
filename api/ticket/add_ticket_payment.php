@@ -71,9 +71,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     break;
                 case 'DARHAM':
                     $balanceField = 'darham_balance';
-                case 'SAR':
-                    $Field = 'sar_balance';
                     break;
+                case 'SAR':
+                    $balanceField = 'sar_balance';
                     break;
                 default:
                     throw new Exception("Unsupported currency: $currency");

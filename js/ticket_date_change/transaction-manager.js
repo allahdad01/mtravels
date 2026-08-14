@@ -371,7 +371,7 @@ const transactionManager = {
                 }
     
                 // Initialize totals
-                let totals = { USD: 0, AFS: 0, EUR: 0, DARHAM: 0 };
+                let totals = { USD: 0, AFS: 0, EUR: 0, DARHAM: 0, SAR: 0 };
                 let hasCurrency = { USD: false, AFS: false, EUR: false, DARHAM: false, SAR: false };
                 let rates = {}; // DB-provided exchange rates
     

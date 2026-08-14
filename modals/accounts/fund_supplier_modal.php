@@ -109,9 +109,9 @@
                         <div class="mb-3 d-none" id="exchangeRateGroup">
                             <label for="exchangeRate" class="form-label" id="exchangeRateLabel"><?= __('exchange_rate') ?></label>
                             <div class="input-group">
-                                <input type="number" id="exchangeRate" name="exchange_rate" class="form-control" step="0.0001" placeholder="e.g., 70" min="0">
+                                <input type="number" id="exchangeRate" name="exchange_rate" class="form-control" step="0.0001" placeholder="0.00" min="0">
                                 <div class="input-group-append">
-                                    <span class="input-group-text bg-light" id="fundFormulaBadge" style="font-weight:700;font-size:16px;">Ã—</span>
+                                    <span class="input-group-text bg-light" id="fundFormulaBadge" style="font-weight:700;font-size:16px;">×</span>
                                 </div>
                             </div>
                             <small class="form-text text-muted" id="exchangeHint" style="font-size:11px;margin-top:4px;"></small>

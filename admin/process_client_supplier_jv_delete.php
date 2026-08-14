@@ -100,18 +100,29 @@ try {
         }
         
         // Calculate amounts for reversal
-        $clientAmount = $payment['total_amount'];
-        $clientCurrency = $payment['currency'];
-        
-        // Calculate the amount to revert from supplier based on currency conversion if needed
-        $supplierAmount = $payment['total_amount'];
-        if (isset($supplier['currency']) && $supplier['currency'] !== $payment['currency']) {
-            if ($payment['currency'] === 'USD' && $supplier['currency'] === 'AFS') {
-                // Convert USD to AFS
-                $supplierAmount = $payment['total_amount'] * $payment['exchange_rate'];
-            } else if ($payment['currency'] === 'AFS' && $supplier['currency'] === 'USD') {
-                // Convert AFS to USD
-                $supplierAmount = $payment['total_amount'] / $payment['exchange_rate'];
+        // Client was credited in the balance currency (fallback: payment currency for legacy rows)
+        $clientCurrency = $payment['balance_currency'] ?: $payment['currency'];
+        $oldExchangeRate = floatval($payment['exchange_rate'] ?? 0);
+        $clientAmount = floatval($payment['total_amount']);
+        if ($clientCurrency === $payment['currency']) {
+            $clientAmount = floatval($payment['total_amount']);                      // same currency
+        } elseif ($clientCurrency === 'USD') {
+            $clientAmount = floatval($payment['total_amount']) / ($oldExchangeRate ?: 1);      // 1 USD = X <payment>
+        } elseif ($payment['currency'] === 'USD') {
+            $clientAmount = floatval($payment['total_amount']) * ($oldExchangeRate ?: 1);      // 1 USD = X AFS
+        } else {
+            $clientAmount = floatval($payment['total_amount']) / ($oldExchangeRate ?: 1);      // 1 AFS = X <payment>
+        }
+
+        // Calculate the amount to revert from supplier (payment → supplier currency conversion)
+        $supplierAmount = floatval($payment['total_amount']);
+        if (isset($supplier['currency'])) {
+            $supplierRate = (isset($payment['supplier_rate']) && $payment['supplier_rate'] > 0) ? floatval($payment['supplier_rate']) : floatval($payment['exchange_rate'] ?? 0);
+            if ($payment['currency'] !== $supplier['currency'] && $supplierRate > 0) {
+                $pairFrom = ($payment['currency'] === 'DARHAM') ? 'AED' : $payment['currency'];
+                $pairTo = ($supplier['currency'] === 'DARHAM') ? 'AED' : $supplier['currency'];
+                $dividePairs = ['AFS->AED', 'AFS->EUR', 'AFS->USD', 'AED->EUR', 'AED->USD', 'EUR->USD', 'AFS->SAR', 'SAR->USD', 'SAR->EUR'];
+                $supplierAmount = in_array("{$pairFrom}->{$pairTo}", $dividePairs) ? $supplierAmount / $supplierRate : $supplierAmount * $supplierRate;
             }
         }
         
@@ -328,21 +339,14 @@ try {
         }
         
         // 3. ADJUST MAIN BALANCES
-        // Revert the client transaction - SUBTRACT the amount since it was a credit transaction
-        if ($client && isset($payment['currency'])) {
-            if ($payment['currency'] === 'USD') {
-                $newUsdBalance = $client['usd_balance'] - $payment['total_amount'];
-                
-                // Update client balance
-                 $updateClientStmt = $pdo->prepare("UPDATE clients SET usd_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                 $updateClientStmt->execute([$newUsdBalance, $clientId, $tenant_id, $branch_id]);
-            } else {
-                $newAfsBalance = $client['afs_balance'] - $payment['total_amount'];
-                
-                // Update client balance
-                $updateClientStmt = $pdo->prepare("UPDATE clients SET afs_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                $updateClientStmt->execute([$newAfsBalance, $clientId, $tenant_id, $branch_id]);
-            }
+        // Revert the client transaction - SUBTRACT the credit from the balance currency column
+        if ($client && $clientCurrency) {
+            $clientField = ($clientCurrency === 'USD') ? 'usd_balance' : 'afs_balance';
+            $newClientBalance = $client[$clientField] - $clientAmount;
+            
+            // Update client balance
+            $updateClientStmt = $pdo->prepare("UPDATE clients SET {$clientField} = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $updateClientStmt->execute([$newClientBalance, $clientId, $tenant_id, $branch_id]);
         }
         
         // Revert the supplier transaction - SUBTRACT the amount since it was a credit
@@ -371,8 +375,10 @@ try {
             'supplier_id' => $supplierId ?? null,
             'supplier_name' => $supplier['name'] ?? null,
             'currency' => $payment['currency'] ?? null,
+            'balance_currency' => $clientCurrency ?? null,
             'total_amount' => $payment['total_amount'] ?? null,
-            'exchange_rate' => $payment['exchange_rate'] ?? null
+            'exchange_rate' => $payment['exchange_rate'] ?? null,
+            'supplier_rate' => $payment['supplier_rate'] ?? null
         ];
         
         // Insert activity log

@@ -35,7 +35,7 @@ $clientName = isset($data['client_name']) ? $data['client_name'] : null;
 // Balance currency: which balance are we updating (USD or AFS)
 $balanceCurrency = isset($data['payment_currency']) ? $data['payment_currency'] : null;
 
-// Payment currency: what currency is the client paying in (USD or AFS)
+// Payment currency: what currency is the client paying in
 $paymentCurrency = isset($data['payment_currency_actual']) ? $data['payment_currency_actual'] : null;
 
 // Amount: always in the payment currency
@@ -51,6 +51,15 @@ $exchangeRate = isset($data['exchange_rate']) ? (float)$data['exchange_rate'] : 
 $remarks = isset($data['remarks']) ? $data['remarks'] : '';
 $receipt = isset($data['receipt_number']) ? strval($data['receipt_number']) : '';
 $mainAccountId = isset($data['main_account']) ? $data['main_account'] : null;
+
+// Currency → main_account balance field mapping
+$balanceFields = [
+    'USD'    => 'usd_balance',
+    'AFS'    => 'afs_balance',
+    'EUR'    => 'euro_balance',
+    'DARHAM' => 'darham_balance',
+    'SAR'    => 'sar_balance',
+];
 
 // Validate receipt
 if (empty($receipt)) {
@@ -74,7 +83,7 @@ if (empty($balanceCurrency) || !in_array($balanceCurrency, ['USD', 'AFS'])) {
 }
 
 // Validate payment currency (what they're paying with)
-if (empty($paymentCurrency) || !in_array($paymentCurrency, ['USD', 'AFS'])) {
+if (empty($paymentCurrency) || !isset($balanceFields[$paymentCurrency])) {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'Valid payment currency is required']);
     exit;
@@ -93,6 +102,13 @@ if ($paymentAmount <= 0) {
     exit;
 }
 
+// Validate exchange rate when currencies differ
+if ($balanceCurrency !== $paymentCurrency && $exchangeRate <= 0) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'A valid exchange rate is required when payment and balance currencies differ']);
+    exit;
+}
+
 // Fetch the client's account balances (USD and AFS) based on client ID
 $clientAccountQuery = "SELECT name, usd_balance, afs_balance FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?";
 $stmt = $pdo->prepare($clientAccountQuery);
@@ -108,8 +124,8 @@ if (!$clientAccount) {
     exit;
 }
 
-// Fetch main account details
-$mainAccountQuery = "SELECT id, name, usd_balance, afs_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+// Fetch main account details (all currency balances)
+$mainAccountQuery = "SELECT id, name, usd_balance, afs_balance, euro_balance, darham_balance, sar_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?";
 $mainAccountStmt = $pdo->prepare($mainAccountQuery);
 $mainAccountStmt->bindParam(1, $mainAccountId, PDO::PARAM_INT);
 $mainAccountStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
@@ -129,246 +145,96 @@ $timestamp = date('Y-m-d H:i:s');
 $pdo->beginTransaction();
 
 try {
-    // Calculate the amount to credit to the balance
-    $amountToCredit = $paymentAmount;
-    
-    // If currencies differ, convert payment currency to balance currency
-    if ($balanceCurrency !== $paymentCurrency) {
-        if ($balanceCurrency === 'USD' && $paymentCurrency === 'AFS') {
-            // Client pays AFS → credit USD: divide by rate
-            $amountToCredit = $paymentAmount / $exchangeRate;
-        } else if ($balanceCurrency === 'AFS' && $paymentCurrency === 'USD') {
-            // Client pays USD → credit AFS: multiply by rate
-            $amountToCredit = $paymentAmount * $exchangeRate;
-        }
+    // Calculate the amount to credit to the client balance (balance currency)
+    if ($balanceCurrency === $paymentCurrency) {
+        $amountToCredit = $paymentAmount;
+    } elseif ($balanceCurrency === 'USD') {
+        // 1 USD = X <payment> → USD = payment / X
+        $amountToCredit = $paymentAmount / $exchangeRate;
+    } elseif ($paymentCurrency === 'USD') {
+        // 1 USD = X AFS → AFS = USD × X
+        $amountToCredit = $paymentAmount * $exchangeRate;
+    } else {
+        // 1 AFS = X <payment> → AFS = payment / X
+        $amountToCredit = $paymentAmount / $exchangeRate;
     }
-    
-    // Determine which balance to update based on $balanceCurrency
-    if ($balanceCurrency === 'USD') {
-        // Update client USD balance
-        $newUsdBalance = $clientAccount['usd_balance'] + $amountToCredit;
-        $updateQuery = "UPDATE clients SET usd_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-        $stmt = $pdo->prepare($updateQuery);
-        $stmt->bindParam(1, $newUsdBalance, PDO::PARAM_STR);
-        $stmt->bindParam(2, $clientId, PDO::PARAM_INT);
-        $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-        $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
-        $stmt->execute();
 
-        // Update main account (deduct from payment currency, add to balance currency)
-        if ($paymentCurrency === 'AFS') {
-            // Client paid AFS, so deduct from main AFS and add to client USD
-            $newMainAfsBalance = $mainAccount['afs_balance'] + $paymentAmount;
-            $updateMainQuery = "UPDATE main_account SET afs_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-            $mainStmt = $pdo->prepare($updateMainQuery);
-            $mainStmt->bindParam(1, $newMainAfsBalance, PDO::PARAM_STR);
-            $mainStmt->bindParam(2, $mainAccountId, PDO::PARAM_INT);
-            $mainStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-            $mainStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
-            $mainStmt->execute();
+    // Update client balance (balance currency column)
+    $clientField = $balanceFields[$balanceCurrency];
+    $newClientBalance = $clientAccount[$clientField] + $amountToCredit;
+    $updateClientStmt = $pdo->prepare("UPDATE clients SET $clientField = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $updateClientStmt->bindParam(1, $newClientBalance, PDO::PARAM_STR);
+    $updateClientStmt->bindParam(2, $clientId, PDO::PARAM_INT);
+    $updateClientStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+    $updateClientStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
+    $updateClientStmt->execute();
 
-            // Record client transaction
-            $transactionStmt = $pdo->prepare("INSERT INTO client_transactions (client_id, type, currency, amount, balance, transaction_of, description, reference_id, receipt, exchange_rate, tenant_id, branch_id)
-                                            VALUES (?, 'Credit', 'USD', ?, ?, 'fund', ?, ?, ?, ?, ?, ?)");
-            $transactionStmt->bindParam(1, $clientId, PDO::PARAM_INT);
-            $transactionStmt->bindParam(2, $amountToCredit, PDO::PARAM_STR);
-            $transactionStmt->bindParam(3, $newUsdBalance, PDO::PARAM_STR);
-            $transactionStmt->bindParam(4, $fullRemark, PDO::PARAM_STR);
-            $transactionStmt->bindParam(5, $user_id, PDO::PARAM_INT);
-            $transactionStmt->bindParam(6, $receipt, PDO::PARAM_STR);
-            $transactionStmt->bindParam(7, $exchangeRate, PDO::PARAM_STR);
-            $transactionStmt->bindParam(8, $tenant_id, PDO::PARAM_INT);
-            $transactionStmt->bindParam(9, $branch_id, PDO::PARAM_INT);
-            $transactionStmt->execute();
-            $lastInsertId = $pdo->lastInsertId();
+    // Update main account (credit the payment currency balance)
+    $mainField = $balanceFields[$paymentCurrency];
+    $newMainBalance = $mainAccount[$mainField] + $paymentAmount;
+    $updateMainStmt = $pdo->prepare("UPDATE main_account SET $mainField = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $updateMainStmt->bindParam(1, $newMainBalance, PDO::PARAM_STR);
+    $updateMainStmt->bindParam(2, $mainAccountId, PDO::PARAM_INT);
+    $updateMainStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+    $updateMainStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
+    $updateMainStmt->execute();
 
-            // Record main account transaction
-            $mainTransactionRemarks = "Client: $clientName, Paid ؋$paymentAmount AFS (= $$amountToCredit USD) for account funding, processed by: $username, Remarks: $remarks";
-            $mainTransactionStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, transaction_of, reference_id, description, balance, receipt, currency, tenant_id, branch_id, created_by)
-                                                VALUES (?, 'credit', ?, 'client_fund', ?, ?, ?, ?, 'AFS', ?, ?, ?)");
-            $mainTransactionStmt->bindParam(1, $mainAccountId, PDO::PARAM_INT);
-            $mainTransactionStmt->bindParam(2, $paymentAmount, PDO::PARAM_STR);
-            $mainTransactionStmt->bindParam(3, $lastInsertId, PDO::PARAM_INT);
-            $mainTransactionStmt->bindParam(4, $mainTransactionRemarks, PDO::PARAM_STR);
-            $mainTransactionStmt->bindParam(5, $newMainAfsBalance, PDO::PARAM_STR);
-            $mainTransactionStmt->bindParam(6, $receipt, PDO::PARAM_STR);
-            $mainTransactionStmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
-            $mainTransactionStmt->bindParam(8, $branch_id, PDO::PARAM_INT);
-            $mainTransactionStmt->bindValue(9, $_SESSION['user_id'] ?? null, PDO::PARAM_INT);
-            $mainTransactionStmt->execute();
-        } else {
-            // Client paid USD, so add to main account USD balance
-            $newMainUsdBalance = $mainAccount['usd_balance'] + $paymentAmount;
-            $updateMainQuery = "UPDATE main_account SET usd_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-            $mainStmt = $pdo->prepare($updateMainQuery);
-            $mainStmt->bindParam(1, $newMainUsdBalance, PDO::PARAM_STR);
-            $mainStmt->bindParam(2, $mainAccountId, PDO::PARAM_INT);
-            $mainStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-            $mainStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
-            $mainStmt->execute();
+    // Record client transaction (in balance currency)
+    $transactionStmt = $pdo->prepare("INSERT INTO client_transactions (client_id, type, currency, amount, balance, transaction_of, description, reference_id, receipt, exchange_rate, tenant_id, branch_id)
+                                    VALUES (?, 'Credit', ?, ?, ?, 'fund', ?, ?, ?, ?, ?, ?)");
+    $transactionStmt->bindParam(1, $clientId, PDO::PARAM_INT);
+    $transactionStmt->bindParam(2, $balanceCurrency, PDO::PARAM_STR);
+    $transactionStmt->bindParam(3, $amountToCredit, PDO::PARAM_STR);
+    $transactionStmt->bindParam(4, $newClientBalance, PDO::PARAM_STR);
+    $transactionStmt->bindParam(5, $fullRemark, PDO::PARAM_STR);
+    $transactionStmt->bindParam(6, $user_id, PDO::PARAM_INT);
+    $transactionStmt->bindParam(7, $receipt, PDO::PARAM_STR);
+    $transactionStmt->bindParam(8, $exchangeRate, PDO::PARAM_STR);
+    $transactionStmt->bindParam(9, $tenant_id, PDO::PARAM_INT);
+    $transactionStmt->bindParam(10, $branch_id, PDO::PARAM_INT);
+    $transactionStmt->execute();
+    $lastInsertId = $pdo->lastInsertId();
 
-            // Record client transaction
-            $transactionStmt = $pdo->prepare("INSERT INTO client_transactions (client_id, type, currency, amount, balance, transaction_of, description, reference_id, receipt, tenant_id, branch_id)
-                                            VALUES (?, 'Credit', 'USD', ?, ?, 'fund', ?, ?, ?, ?, ?)");
-            $transactionStmt->bindParam(1, $clientId, PDO::PARAM_INT);
-            $transactionStmt->bindParam(2, $paymentAmount, PDO::PARAM_STR);
-            $transactionStmt->bindParam(3, $newUsdBalance, PDO::PARAM_STR);
-            $transactionStmt->bindParam(4, $fullRemark, PDO::PARAM_STR);
-            $transactionStmt->bindParam(5, $user_id, PDO::PARAM_INT);
-            $transactionStmt->bindParam(6, $receipt, PDO::PARAM_STR);
-            $transactionStmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
-            $transactionStmt->bindParam(8, $branch_id, PDO::PARAM_INT);
-            $transactionStmt->execute();
-            $lastInsertId = $pdo->lastInsertId();
+    // Record main account transaction (in payment currency)
+    $rateText = ($balanceCurrency !== $paymentCurrency) ? " (rate: 1 " . $balanceCurrency . " = " . $exchangeRate . " " . $paymentCurrency . ")" : "";
+    $mainTransactionRemarks = "Client: $clientName, Paid $paymentAmount $paymentCurrency (= " . round($amountToCredit, 2) . " $balanceCurrency) for account funding, processed by: $username, Remarks: $remarks";
+    $mainTransactionStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, transaction_of, reference_id, description, balance, receipt, currency, tenant_id, branch_id, created_by)
+                                        VALUES (?, 'credit', ?, 'client_fund', ?, ?, ?, ?, ?, ?, ?, ?)");
+    $mainTransactionStmt->bindParam(1, $mainAccountId, PDO::PARAM_INT);
+    $mainTransactionStmt->bindParam(2, $paymentAmount, PDO::PARAM_STR);
+    $mainTransactionStmt->bindParam(3, $lastInsertId, PDO::PARAM_INT);
+    $mainTransactionStmt->bindParam(4, $mainTransactionRemarks, PDO::PARAM_STR);
+    $mainTransactionStmt->bindParam(5, $newMainBalance, PDO::PARAM_STR);
+    $mainTransactionStmt->bindParam(6, $receipt, PDO::PARAM_STR);
+    $mainTransactionStmt->bindParam(7, $paymentCurrency, PDO::PARAM_STR);
+    $mainTransactionStmt->bindParam(8, $tenant_id, PDO::PARAM_INT);
+    $mainTransactionStmt->bindParam(9, $branch_id, PDO::PARAM_INT);
+    $mainTransactionStmt->bindValue(10, $_SESSION['user_id'] ?? null, PDO::PARAM_INT);
+    $mainTransactionStmt->execute();
 
-            // Record main account transaction
-            $mainTransactionRemarks = "Client: $clientName, Paid \$$paymentAmount USD for account funding, processed by: $username, Remarks: $remarks";
-            $mainTransactionStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, transaction_of, reference_id, description, balance, receipt, currency, tenant_id, branch_id, created_by)
-                                                VALUES (?, 'credit', ?, 'client_fund', ?, ?, ?, ?, 'USD', ?, ?, ?)");
-            $mainTransactionStmt->bindParam(1, $mainAccountId, PDO::PARAM_INT);
-            $mainTransactionStmt->bindParam(2, $paymentAmount, PDO::PARAM_STR);
-            $mainTransactionStmt->bindParam(3, $lastInsertId, PDO::PARAM_INT);
-            $mainTransactionStmt->bindParam(4, $mainTransactionRemarks, PDO::PARAM_STR);
-            $mainTransactionStmt->bindParam(5, $newMainUsdBalance, PDO::PARAM_STR);
-            $mainTransactionStmt->bindParam(6, $receipt, PDO::PARAM_STR);
-            $mainTransactionStmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
-            $mainTransactionStmt->bindParam(8, $branch_id, PDO::PARAM_INT);
-            $mainTransactionStmt->bindValue(9, $_SESSION['user_id'] ?? null, PDO::PARAM_INT);
-            $mainTransactionStmt->execute();
-        }
+    // Notification
+    $notificationMessage = "Client: $clientName, Paid $paymentAmount $paymentCurrency for account funding (credited " . round($amountToCredit, 2) . " $balanceCurrency), processed by: $username, Remarks: $remarks";
+    $transaction_type = 'client_fund';
+    $status = 'Unread';
+    $notificationQuery = "INSERT INTO notifications (transaction_id, transaction_type, message, status, created_at, tenant_id, branch_id)
+                         VALUES (?, ?, ?, ?, NOW(), ?, ?)";
+    $notificationStmt = $pdo->prepare($notificationQuery);
+    $notificationStmt->bindParam(1, $lastInsertId, PDO::PARAM_INT);
+    $notificationStmt->bindParam(2, $transaction_type, PDO::PARAM_STR);
+    $notificationStmt->bindParam(3, $notificationMessage, PDO::PARAM_STR);
+    $notificationStmt->bindParam(4, $status, PDO::PARAM_STR);
+    $notificationStmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
+    $notificationStmt->bindParam(6, $branch_id, PDO::PARAM_INT);
+    $notificationStmt->execute();
 
-        // Notification
-        $notificationMessage = "Client: $clientName, Paid $paymentAmount $paymentCurrency for account funding (credited $$amountToCredit USD), processed by: $username, Remarks: $remarks";
-        $transaction_type = 'client_fund';
-        $status = 'Unread';
-        $notificationQuery = "INSERT INTO notifications (transaction_id, transaction_type, message, status, created_at, tenant_id, branch_id)
-                             VALUES (?, ?, ?, ?, NOW(), ?, ?)";
-        $notificationStmt = $pdo->prepare($notificationQuery);
-        $notificationStmt->bindParam(1, $lastInsertId, PDO::PARAM_INT);
-        $notificationStmt->bindParam(2, $transaction_type, PDO::PARAM_STR);
-        $notificationStmt->bindParam(3, $notificationMessage, PDO::PARAM_STR);
-        $notificationStmt->bindParam(4, $status, PDO::PARAM_STR);
-        $notificationStmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
-        $notificationStmt->bindParam(6, $branch_id, PDO::PARAM_INT);
-        $notificationStmt->execute();
-
-    } else if ($balanceCurrency === 'AFS') {
-        // Update client AFS balance
-        $newAfsBalance = $clientAccount['afs_balance'] + $amountToCredit;
-        $updateQuery = "UPDATE clients SET afs_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-        $stmt = $pdo->prepare($updateQuery);
-        $stmt->bindParam(1, $newAfsBalance, PDO::PARAM_STR);
-        $stmt->bindParam(2, $clientId, PDO::PARAM_INT);
-        $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-        $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
-        $stmt->execute();
-
-        // Update main account
-        if ($paymentCurrency === 'USD') {
-            // Client paid USD, so add to main USD and client AFS
-            $newMainUsdBalance = $mainAccount['usd_balance'] + $paymentAmount;
-            $updateMainQuery = "UPDATE main_account SET usd_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-            $mainStmt = $pdo->prepare($updateMainQuery);
-            $mainStmt->bindParam(1, $newMainUsdBalance, PDO::PARAM_STR);
-            $mainStmt->bindParam(2, $mainAccountId, PDO::PARAM_INT);
-            $mainStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-            $mainStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
-            $mainStmt->execute();
-
-            // Record client transaction
-            $transactionStmt = $pdo->prepare("INSERT INTO client_transactions (client_id, type, currency, amount, balance, transaction_of, description, reference_id, receipt, exchange_rate, tenant_id, branch_id)
-                                            VALUES (?, 'Credit', 'AFS', ?, ?, 'fund', ?, ?, ?, ?, ?, ?)");
-            $transactionStmt->bindParam(1, $clientId, PDO::PARAM_INT);
-            $transactionStmt->bindParam(2, $amountToCredit, PDO::PARAM_STR);
-            $transactionStmt->bindParam(3, $newAfsBalance, PDO::PARAM_STR);
-            $transactionStmt->bindParam(4, $fullRemark, PDO::PARAM_STR);
-            $transactionStmt->bindParam(5, $user_id, PDO::PARAM_INT);
-            $transactionStmt->bindParam(6, $receipt, PDO::PARAM_STR);
-            $transactionStmt->bindParam(7, $exchangeRate, PDO::PARAM_STR);
-            $transactionStmt->bindParam(8, $tenant_id, PDO::PARAM_INT);
-            $transactionStmt->bindParam(9, $branch_id, PDO::PARAM_INT);
-            $transactionStmt->execute();
-            $lastInsertId = $pdo->lastInsertId();
-
-            // Record main account transaction
-            $mainTransactionRemarks = "Client: $clientName, Paid \$$paymentAmount USD (= ؋$amountToCredit AFS) for account funding, processed by: $username, Remarks: $remarks";
-            $mainTransactionStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, transaction_of, reference_id, description, balance, receipt, currency, tenant_id, branch_id, created_by)
-                                                VALUES (?, 'credit', ?, 'client_fund', ?, ?, ?, ?, 'USD', ?, ?, ?)");
-            $mainTransactionStmt->bindParam(1, $mainAccountId, PDO::PARAM_INT);
-            $mainTransactionStmt->bindParam(2, $paymentAmount, PDO::PARAM_STR);
-            $mainTransactionStmt->bindParam(3, $lastInsertId, PDO::PARAM_INT);
-            $mainTransactionStmt->bindParam(4, $mainTransactionRemarks, PDO::PARAM_STR);
-            $mainTransactionStmt->bindParam(5, $newMainUsdBalance, PDO::PARAM_STR);
-            $mainTransactionStmt->bindParam(6, $receipt, PDO::PARAM_STR);
-            $mainTransactionStmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
-            $mainTransactionStmt->bindParam(8, $branch_id, PDO::PARAM_INT);
-            $mainTransactionStmt->bindValue(9, $_SESSION['user_id'] ?? null, PDO::PARAM_INT);
-            $mainTransactionStmt->execute();
-        } else {
-            // Client paid AFS, so add to main account AFS balance
-            $newMainAfsBalance = $mainAccount['afs_balance'] + $paymentAmount;
-            $updateMainQuery = "UPDATE main_account SET afs_balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-            $mainStmt = $pdo->prepare($updateMainQuery);
-            $mainStmt->bindParam(1, $newMainAfsBalance, PDO::PARAM_STR);
-            $mainStmt->bindParam(2, $mainAccountId, PDO::PARAM_INT);
-            $mainStmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-            $mainStmt->bindParam(4, $branch_id, PDO::PARAM_INT);
-            $mainStmt->execute();
-
-            // Record client transaction
-            $transactionStmt = $pdo->prepare("INSERT INTO client_transactions (client_id, type, currency, amount, balance, transaction_of, description, reference_id, receipt, tenant_id, branch_id)
-                                            VALUES (?, 'Credit', 'AFS', ?, ?, 'fund', ?, ?, ?, ?, ?)");
-            $transactionStmt->bindParam(1, $clientId, PDO::PARAM_INT);
-            $transactionStmt->bindParam(2, $paymentAmount, PDO::PARAM_STR);
-            $transactionStmt->bindParam(3, $newAfsBalance, PDO::PARAM_STR);
-            $transactionStmt->bindParam(4, $fullRemark, PDO::PARAM_STR);
-            $transactionStmt->bindParam(5, $user_id, PDO::PARAM_INT);
-            $transactionStmt->bindParam(6, $receipt, PDO::PARAM_STR);
-            $transactionStmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
-            $transactionStmt->bindParam(8, $branch_id, PDO::PARAM_INT);
-            $transactionStmt->execute();
-            $lastInsertId = $pdo->lastInsertId();
-
-            // Record main account transaction
-            $mainTransactionRemarks = "Client: $clientName, Paid ؋$paymentAmount AFS for account funding, processed by: $username, Remarks: $remarks";
-            $mainTransactionStmt = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, transaction_of, reference_id, description, balance, receipt, currency, tenant_id, branch_id, created_by)
-                                                VALUES (?, 'credit', ?, 'client_fund', ?, ?, ?, ?, 'AFS', ?, ?, ?)");
-            $mainTransactionStmt->bindParam(1, $mainAccountId, PDO::PARAM_INT);
-            $mainTransactionStmt->bindParam(2, $paymentAmount, PDO::PARAM_STR);
-            $mainTransactionStmt->bindParam(3, $lastInsertId, PDO::PARAM_INT);
-            $mainTransactionStmt->bindParam(4, $mainTransactionRemarks, PDO::PARAM_STR);
-            $mainTransactionStmt->bindParam(5, $newMainAfsBalance, PDO::PARAM_STR);
-            $mainTransactionStmt->bindParam(6, $receipt, PDO::PARAM_STR);
-            $mainTransactionStmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
-            $mainTransactionStmt->bindParam(8, $branch_id, PDO::PARAM_INT);
-            $mainTransactionStmt->bindValue(9, $_SESSION['user_id'] ?? null, PDO::PARAM_INT);
-            $mainTransactionStmt->execute();
-        }
-
-        // Notification
-        $notificationMessage = "Client: $clientName, Paid $paymentAmount $paymentCurrency for account funding (credited ؋$amountToCredit AFS), processed by: $username, Remarks: $remarks";
-        $transaction_type = 'client_fund';
-        $status = 'Unread';
-        $notificationQuery = "INSERT INTO notifications (transaction_id, transaction_type, message, status, created_at, tenant_id, branch_id)
-                             VALUES (?, ?, ?, ?, NOW(), ?, ?)";
-        $notificationStmt = $pdo->prepare($notificationQuery);
-        $notificationStmt->bindParam(1, $lastInsertId, PDO::PARAM_INT);
-        $notificationStmt->bindParam(2, $transaction_type, PDO::PARAM_STR);
-        $notificationStmt->bindParam(3, $notificationMessage, PDO::PARAM_STR);
-        $notificationStmt->bindParam(4, $status, PDO::PARAM_STR);
-        $notificationStmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
-        $notificationStmt->bindParam(6, $branch_id, PDO::PARAM_INT);
-        $notificationStmt->execute();
-    }
-    
     $pdo->commit();
-    
+
     // Send WhatsApp notification for client fund (if configured)
     try {
         require_once '../../api/whatsapp/WhatsAppManager.php';
         $whatsappManager = new WhatsAppManager($tenant_id);
         $whatsapp_result = $whatsappManager->sendBookingNotification('client_fund', $lastInsertId);
-        
+
         if ($whatsapp_result['success']) {
             error_log("WhatsApp notification sent for Client Fund ID: $lastInsertId");
         } else {
@@ -378,7 +244,7 @@ try {
         // Don't fail the operation if WhatsApp fails
         error_log("WhatsApp integration error for Client Fund ID: $lastInsertId - " . $e->getMessage());
     }
-    
+
     echo json_encode(['success' => true, 'message' => 'Client account funded successfully.']);
 } catch (Exception $e) {
     $pdo->rollBack();

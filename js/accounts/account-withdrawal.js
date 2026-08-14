@@ -63,8 +63,10 @@ function toggleWithdrawExchangeRateVisibility() {
         hint.textContent = isDivide
             ? 'e.g. 1 ' + supplierCurrency + ' = ' + rate.toFixed(2) + ' ' + paymentCurrency + ' → enter ' + rate.toFixed(2)
             : 'e.g. 1 ' + paymentCurrency + ' = ' + rate.toFixed(2) + ' ' + supplierCurrency + ' → enter ' + rate.toFixed(2);
+        if (exchangeInput) exchangeInput.placeholder = 'e.g. ' + rate.toFixed(2);
     } else {
         hint.textContent = 'Enter the exchange rate';
+        if (exchangeInput) exchangeInput.placeholder = '0.00';
     }
 }
 

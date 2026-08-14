@@ -327,8 +327,11 @@ $search_param_str = !empty($search_query) ? '&search=' . urlencode($search_query
 .jvp-party-role { font-size: 11px; color: var(--text-dim); }
 .jvp-amount     { font-family: var(--font-mono); font-size: 13px; font-weight: 500; }
 .jvp-currency-badge { display: inline-block; font-family: var(--font-mono); font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 3px; letter-spacing: .04em; }
-.jvp-currency-badge.usd { background: var(--blue-bg); color: var(--blue); border: 1px solid #bfdbfe; }
-.jvp-currency-badge.afs { background: var(--amber-bg); color: var(--amber); border: 1px solid #fde68a; }
+  .jvp-currency-badge.usd { background: var(--blue-bg); color: var(--blue); border: 1px solid #bfdbfe; }
+  .jvp-currency-badge.afs { background: var(--amber-bg); color: var(--amber); border: 1px solid #fde68a; }
+  .jvp-currency-badge.eur { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+  .jvp-currency-badge.darham { background: #f8fafc; color: #334155; border: 1px solid #cbd5e1; }
+  .jvp-currency-badge.sar { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
 .jvp-receipt-code { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); background: var(--border-soft); padding: 2px 7px; border-radius: 3px; border: 1px solid var(--border); }
 
 /* Row actions — fade in on hover */
@@ -607,7 +610,7 @@ $search_param_str = !empty($search_query) ? '&search=' . urlencode($search_query
                         </td>
                       </tr>
                       <?php else: foreach ($csPayments as $payment):
-                        $currClass = strtolower($payment['currency']) === 'usd' ? 'usd' : 'afs';
+                        $currClass = strtolower($payment['currency']);
                       ?>
                       <tr>
                         <td>
@@ -774,22 +777,43 @@ $search_param_str = !empty($search_query) ? '&search=' . urlencode($search_query
         <div class="jvp-section-title"><?php echo __('amount_currency'); ?></div>
         <div class="jvp-form-grid jvp-form-three" style="grid-template-columns:1fr 1fr 1fr">
           <div class="jvp-field">
+            <label>Client Balance</label>
+            <select name="balance_currency" id="balance_currency">
+              <option value="USD">USD – US Dollar</option>
+              <option value="AFS">AFS – Afghani</option>
+            </select>
+            <p class="jvp-field-hint">Which client balance to credit</p>
+          </div>
+          <div class="jvp-field">
             <label><?php echo __('currency'); ?></label>
             <select name="currency" id="currency">
               <option value="USD">USD – US Dollar</option>
               <option value="AFS">AFS – Afghani</option>
+              <option value="EUR">EUR – Euro</option>
+              <option value="DARHAM">DARHAM – UAE Dirham</option>
+              <option value="SAR">SAR – Saudi Riyal</option>
             </select>
+            <p class="jvp-field-hint">What the client pays in</p>
           </div>
           <div class="jvp-field">
             <label><?php echo __('amount'); ?></label>
             <input type="number" step="0.01" name="total_amount" id="total_amount" required placeholder="0.00">
-          </div>
-          <div class="jvp-field" id="exchangeRateField" style="display:none">
-            <label><?php echo __('exchange_rate'); ?></label>
-            <input type="number" step="0.00001" name="exchange_rate" id="exchange_rate" placeholder="1.00000">
-            <p class="jvp-field-hint" id="exchangeRateHint"><?php echo __('required_if_currencies_differ'); ?></p>
+            <p class="jvp-field-hint" id="addAmountHint">in USD</p>
           </div>
         </div>
+        <div class="jvp-form-grid jvp-form-three" style="grid-template-columns:1fr 1fr 1fr">
+          <div class="jvp-field" id="exchangeRateField" style="display:none">
+            <label>Exchange Rate (client)</label>
+            <input type="number" step="0.00001" name="exchange_rate" id="exchange_rate" placeholder="1.00000">
+            <p class="jvp-field-hint" id="exchangeRateHint">1 USD = X AFS, enter X</p>
+          </div>
+          <div class="jvp-field" id="supplierRateField" style="display:none">
+            <label>Exchange Rate (supplier)</label>
+            <input type="number" step="0.00001" name="supplier_rate" id="supplier_rate" placeholder="1.00000">
+            <p class="jvp-field-hint" id="supplierRateHint">1 USD = X AFS, enter X</p>
+          </div>
+        </div>
+        <div id="addConversionPreview" style="background:var(--blue-bg);border:1px solid #bfdbfe;border-radius:8px;padding:12px 14px;font-size:13px;color:#1e3a8a;line-height:1.7;display:none"></div>
 
         <div class="jvp-section-title"><?php echo __('additional_details'); ?></div>
         <div class="jvp-form-grid">
@@ -933,18 +957,37 @@ $search_param_str = !empty($search_query) ? '&search=' . urlencode($search_query
         <div class="jvp-section-title"><?php echo __('amount_currency'); ?></div>
         <div class="jvp-form-grid jvp-form-three" style="grid-template-columns:1fr 1fr 1fr">
           <div class="jvp-field">
+            <label>Client Balance</label>
+            <select name="balance_currency" id="edit_balance_currency">
+              <option value="USD">USD – US Dollar</option>
+              <option value="AFS">AFS – Afghani</option>
+            </select>
+          </div>
+          <div class="jvp-field">
             <label><?php echo __('currency'); ?></label>
-            <input type="text" id="edit_currency_display" readonly style="background:#e9ecef;">
-            <input type="hidden" name="currency" id="edit_currency">
+            <select name="currency" id="edit_currency">
+              <option value="USD">USD – US Dollar</option>
+              <option value="AFS">AFS – Afghani</option>
+              <option value="EUR">EUR – Euro</option>
+              <option value="DARHAM">DARHAM – UAE Dirham</option>
+              <option value="SAR">SAR – Saudi Riyal</option>
+            </select>
           </div>
           <div class="jvp-field">
             <label><?php echo __('amount'); ?></label>
             <input type="number" step="0.01" name="total_amount" id="edit_total_amount" required placeholder="0.00">
           </div>
+        </div>
+        <div class="jvp-form-grid jvp-form-three" style="grid-template-columns:1fr 1fr 1fr">
           <div class="jvp-field" id="editExchangeRateField" style="display:none">
-            <label><?php echo __('exchange_rate'); ?></label>
+            <label>Exchange Rate (client)</label>
             <input type="number" step="0.00001" name="exchange_rate" id="edit_exchange_rate" placeholder="1.00000">
-            <p class="jvp-field-hint" id="editExchangeRateHint"><?php echo __('required_if_currencies_differ'); ?></p>
+            <p class="jvp-field-hint" id="editExchangeRateHint">1 USD = X AFS, enter X</p>
+          </div>
+          <div class="jvp-field" id="editSupplierRateField" style="display:none">
+            <label>Exchange Rate (supplier)</label>
+            <input type="number" step="0.00001" name="supplier_rate" id="edit_supplier_rate" placeholder="1.00000">
+            <p class="jvp-field-hint" id="editSupplierRateHint">1 USD = X AFS, enter X</p>
           </div>
         </div>
 
@@ -1063,7 +1106,7 @@ document.querySelectorAll('.view-cs-btn').forEach(btn => {
         const fmtDate  = createdDate.toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' });
         const fmtTime  = createdDate.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
         const fmtAmt   = parseFloat(p.total_amount).toLocaleString(undefined, { minimumFractionDigits:2, maximumFractionDigits:2 });
-        const currClass = (p.currency || '').toLowerCase() === 'usd' ? 'usd' : 'afs';
+        const currClass = (p.currency || '').toLowerCase();
 
         document.getElementById('viewModalSubtitle').textContent = p.jv_name;
 
@@ -1088,7 +1131,10 @@ document.querySelectorAll('.view-cs-btn').forEach(btn => {
             </div>
           </div>
           <div class="jvp-detail-grid">
-            <div class="jvp-detail-cell"><div class="dc-label"><?php echo __('exchange_rate'); ?></div><div class="dc-value">${p.exchange_rate || '—'}</div></div>
+            <div class="jvp-detail-cell"><div class="dc-label"><?php echo __('client'); ?> Balance</div><div class="dc-value">${$('<div>').text(p.balance_currency || p.currency).html()}</div></div>
+            <div class="jvp-detail-cell"><div class="dc-label"><?php echo __('currency'); ?> (paid)</div><div class="dc-value">${$('<div>').text(p.currency).html()}</div></div>
+            <div class="jvp-detail-cell"><div class="dc-label"><?php echo __('exchange_rate'); ?> (client)</div><div class="dc-value">${p.exchange_rate > 0 ? p.exchange_rate : '—'}</div></div>
+            <div class="jvp-detail-cell"><div class="dc-label"><?php echo __('exchange_rate'); ?> (supplier)</div><div class="dc-value">${p.supplier_rate > 0 ? p.supplier_rate : '—'}</div></div>
             <div class="jvp-detail-cell"><div class="dc-label"><?php echo __('receipt'); ?></div><span class="jvp-receipt-code">${$('<div>').text(p.receipt || '—').html()}</span></div>
             <div class="jvp-detail-cell"><div class="dc-label"><?php echo __('created_by'); ?></div><div class="dc-value">${$('<div>').text(p.created_by_name || 'System').html()}</div></div>
             <div class="jvp-detail-cell"><div class="dc-label"><?php echo __('date'); ?></div><div class="dc-value">${fmtDate}</div></div>
@@ -1120,33 +1166,11 @@ document.getElementById('viewEditBtn').addEventListener('click', function () {
   document.getElementById('edit_client_id').value = p.client_id || '';
   document.getElementById('edit_supplier_name').value = p.supplier_name || '';
   document.getElementById('edit_supplier_id').value = p.supplier_id || '';
-  document.getElementById('edit_currency_display').value = p.currency;
-  document.getElementById('edit_currency').value = p.currency;
   document.getElementById('edit_total_amount').value = p.total_amount;
   document.getElementById('edit_receipt').value = p.receipt || '';
   document.getElementById('edit_remarks').value = p.remarks || '';
-  document.getElementById('edit_exchange_rate').value = p.exchange_rate || '';
 
-  // Get supplier currency for exchange rate field show/hide
-  const supplierOpt = document.querySelector('#supplier_id option[value="' + p.supplier_id + '"]');
-  const supplierCurrency = supplierOpt ? supplierOpt.dataset.currency : '';
-  document.getElementById('edit_supplier_currency').value = supplierCurrency;
-
-  // Show/hide exchange rate field and update hint
-  const editRateField = document.getElementById('editExchangeRateField');
-  const editRateHint = document.getElementById('editExchangeRateHint');
-  const editRateInput = document.getElementById('edit_exchange_rate');
-  if (supplierCurrency && supplierCurrency !== p.currency) {
-    editRateField.style.display = 'block';
-    editRateHint.textContent = 'e.g. 1 USD = 72.5 AFS → enter 72.5';
-  } else {
-    editRateField.style.display = 'none';
-    editRateInput.required = false;
-  }
-
-  // Update balance preview
-  document.getElementById('edit_client_balance_preview').textContent = '—';
-  document.getElementById('edit_supplier_balance_preview').textContent = '—';
+  populateEditCurrency(p);
 
   jvpCloseModal('viewModal');
   jvpOpenModal('editModal');
@@ -1175,30 +1199,11 @@ document.querySelectorAll('.edit-cs-btn').forEach(btn => {
         document.getElementById('edit_client_id').value = p.client_id || '';
         document.getElementById('edit_supplier_name').value = p.supplier_name || '';
         document.getElementById('edit_supplier_id').value = p.supplier_id || '';
-        document.getElementById('edit_currency_display').value = p.currency;
-        document.getElementById('edit_currency').value = p.currency;
         document.getElementById('edit_total_amount').value = p.total_amount;
         document.getElementById('edit_receipt').value = p.receipt || '';
         document.getElementById('edit_remarks').value = p.remarks || '';
-        document.getElementById('edit_exchange_rate').value = p.exchange_rate || '';
 
-        const supplierOpt = document.querySelector('#supplier_id option[value="' + p.supplier_id + '"]');
-        const supplierCurrency = supplierOpt ? supplierOpt.dataset.currency : '';
-        document.getElementById('edit_supplier_currency').value = supplierCurrency;
-
-        const editRateField = document.getElementById('editExchangeRateField');
-        const editRateHint = document.getElementById('editExchangeRateHint');
-        const editRateInput = document.getElementById('edit_exchange_rate');
-        if (supplierCurrency && supplierCurrency !== p.currency) {
-          editRateField.style.display = 'block';
-          editRateHint.textContent = 'e.g. 1 USD = 72.5 AFS → enter 72.5';
-        } else {
-          editRateField.style.display = 'none';
-          editRateInput.required = false;
-        }
-
-        document.getElementById('edit_client_balance_preview').textContent = '—';
-        document.getElementById('edit_supplier_balance_preview').textContent = '—';
+        populateEditCurrency(p);
 
         jvpOpenModal('editModal');
       },
@@ -1229,58 +1234,194 @@ document.querySelectorAll('.delete-cs-btn').forEach(btn => {
   });
 });
 
-/* ─── Exchange rate field show/hide ──────────────────────── */
-function updateExchangeRateField() {
-    const field = document.getElementById('exchangeRateField');
-    const rateInput = document.getElementById('exchange_rate');
-    const hint = document.getElementById('exchangeRateHint');
-    const currency = document.getElementById('currency').value;
-    const supplierOpt = document.getElementById('supplier_id').selectedOptions[0];
-    const supplierCurr = supplierOpt?.dataset?.currency;
+/* ─── Multi-currency logic (fund-client style) ───────────── */
+const CUR_INFO = {
+  USD:    { sym: '$',   name: 'USD' },
+  AFS:    { sym: '؋',   name: 'AFS' },
+  EUR:    { sym: '€',   name: 'EUR' },
+  DARHAM: { sym: 'د.إ', name: 'AED' },
+  SAR:    { sym: '﷼',   name: 'SAR' },
+};
+const DIVIDE_PAIRS = ['AFS->AED','AFS->EUR','AFS->USD','AED->EUR','AED->USD','EUR->USD','AFS->SAR','SAR->USD','SAR->EUR'];
+function curName(c) { return (CUR_INFO[c] || { name: c }).name; }
 
-    if (supplierCurr && supplierCurr !== currency) {
-        field.style.display = 'block';
-        rateInput.required = true;
-        hint.textContent = 'e.g. 1 USD = 72.5 AFS → enter 72.5';
-    } else {
-        field.style.display = 'none';
-        rateInput.required = false;
-        rateInput.value = '';
-    }
+// Client credit: rate is "1 <balance> = X <payment>" (same convention as fund client)
+function computeClientCredit(balance, payment, amount, rate) {
+  if (balance === payment) return amount;
+  if (balance === 'USD') return amount / rate;   // 1 USD = X <payment>
+  if (payment === 'USD') return amount * rate;   // 1 USD = X AFS
+  return amount / rate;                          // 1 AFS = X <payment>
 }
-document.getElementById('currency').addEventListener('change', updateExchangeRateField);
-document.getElementById('supplier_id').addEventListener('change', updateExchangeRateField);
-document.addEventListener('DOMContentLoaded', updateExchangeRateField);
 
-/* ─── Edit modal balance preview ─────────────────────────── */
+// Supplier credit: rate is "1 <payment> = X <supplier currency>"
+function computeSupplierCredit(payment, supplierCurr, amount, rate) {
+  if (payment === supplierCurr) return amount;
+  const pf = payment === 'DARHAM' ? 'AED' : payment;
+  const pt = supplierCurr === 'DARHAM' ? 'AED' : supplierCurr;
+  return DIVIDE_PAIRS.includes(pf + '->' + pt) ? amount / rate : amount * rate;
+}
+
+/* ─── Add modal ──────────────────────────────────────────── */
+function updateAddCurrencyUI() {
+  const balance  = document.getElementById('balance_currency').value;
+  const payment  = document.getElementById('currency').value;
+  const supplierOpt = document.getElementById('supplier_id').selectedOptions[0];
+  const supplierCurr = supplierOpt ? supplierOpt.dataset.currency : '';
+
+  const rateField1 = document.getElementById('exchangeRateField');
+  const rate1 = document.getElementById('exchange_rate');
+  const hint1 = document.getElementById('exchangeRateHint');
+  const rateField2 = document.getElementById('supplierRateField');
+  const rate2 = document.getElementById('supplier_rate');
+  const hint2 = document.getElementById('supplierRateHint');
+
+  if (balance !== payment) {
+    const base   = (balance === 'AFS' && payment === 'USD') ? 'USD' : balance;
+    const target = (balance === 'AFS' && payment === 'USD') ? 'AFS' : payment;
+    rateField1.style.display = 'block';
+    rate1.required = true;
+    hint1.textContent = '1 ' + curName(base) + ' = X ' + curName(target) + ', enter X';
+  } else {
+    rateField1.style.display = 'none';
+    rate1.required = false;
+    rate1.value = '';
+  }
+
+  if (supplierCurr && payment !== supplierCurr) {
+    rateField2.style.display = 'block';
+    rate2.required = true;
+    hint2.textContent = '1 ' + curName(payment) + ' = X ' + curName(supplierCurr) + ', enter X';
+  } else {
+    rateField2.style.display = 'none';
+    rate2.required = false;
+    rate2.value = '';
+  }
+
+  document.getElementById('addAmountHint').textContent = 'in ' + curName(payment);
+  updateAddConversionPreview();
+}
+
+function updateAddConversionPreview() {
+  const balance  = document.getElementById('balance_currency').value;
+  const payment  = document.getElementById('currency').value;
+  const supplierOpt = document.getElementById('supplier_id').selectedOptions[0];
+  const supplierCurr = supplierOpt ? supplierOpt.dataset.currency : '';
+  const amount = parseFloat(document.getElementById('total_amount').value) || 0;
+  const r1 = parseFloat(document.getElementById('exchange_rate').value) || 0;
+  const r2 = parseFloat(document.getElementById('supplier_rate').value) || 0;
+  const prev = document.getElementById('addConversionPreview');
+
+  if (!amount) { prev.style.display = 'none'; return; }
+
+  const needR1 = balance !== payment;
+  const needR2 = !!supplierCurr && payment !== supplierCurr;
+  if ((needR1 && !r1) || (needR2 && !r2)) {
+    prev.style.display = 'block';
+    prev.textContent = 'Enter ' + [needR1 ? 'client' : null, needR2 ? 'supplier' : null].filter(Boolean).join(' and ') + ' exchange rate to preview balances.';
+    return;
+  }
+
+  const credit  = computeClientCredit(balance, payment, amount, r1 || 1);
+  const lines = ['<strong>Client:</strong> +' + credit.toFixed(2) + ' ' + curName(balance) + ' credited to ' + curName(balance) + ' balance'];
+  if (supplierCurr) {
+    const suppAmt = computeSupplierCredit(payment, supplierCurr, amount, r2 || 1);
+    lines.push('<strong>Supplier:</strong> +' + suppAmt.toFixed(2) + ' ' + curName(supplierCurr) + ' received');
+  } else {
+    lines.push('<strong>Supplier:</strong> select a supplier to preview');
+  }
+  prev.style.display = 'block';
+  prev.innerHTML = '<div>' + lines.join('</div><div>') + '</div>';
+}
+
+document.getElementById('balance_currency').addEventListener('change', updateAddCurrencyUI);
+document.getElementById('currency').addEventListener('change', updateAddCurrencyUI);
+document.getElementById('supplier_id').addEventListener('change', updateAddCurrencyUI);
+document.getElementById('exchange_rate').addEventListener('input', updateAddConversionPreview);
+document.getElementById('supplier_rate').addEventListener('input', updateAddConversionPreview);
+document.getElementById('total_amount').addEventListener('input', updateAddConversionPreview);
+document.addEventListener('DOMContentLoaded', updateAddCurrencyUI);
+
+/* ─── Edit modal ─────────────────────────────────────────── */
+function populateEditCurrency(p) {
+  document.getElementById('edit_balance_currency').value = p.balance_currency || p.currency;
+  document.getElementById('edit_currency').value = p.currency;
+  document.getElementById('edit_exchange_rate').value = p.exchange_rate > 0 ? p.exchange_rate : '';
+  document.getElementById('edit_supplier_rate').value = (p.supplier_rate > 0) ? p.supplier_rate : (p.exchange_rate > 0 ? p.exchange_rate : '');
+
+  const supplierOpt = document.querySelector('#supplier_id option[value="' + p.supplier_id + '"]');
+  const supplierCurrency = supplierOpt ? supplierOpt.dataset.currency : '';
+  document.getElementById('edit_supplier_currency').value = supplierCurrency;
+
+  updateEditCurrencyUI();
+  updateEditBalancePreview();
+}
+
+function updateEditCurrencyUI() {
+  const balance  = document.getElementById('edit_balance_currency').value;
+  const payment  = document.getElementById('edit_currency').value;
+  const supplierCurr = document.getElementById('edit_supplier_currency').value;
+
+  const rateField1 = document.getElementById('editExchangeRateField');
+  const rate1 = document.getElementById('edit_exchange_rate');
+  const hint1 = document.getElementById('editExchangeRateHint');
+  const rateField2 = document.getElementById('editSupplierRateField');
+  const rate2 = document.getElementById('edit_supplier_rate');
+  const hint2 = document.getElementById('editSupplierRateHint');
+
+  if (balance !== payment) {
+    const base   = (balance === 'AFS' && payment === 'USD') ? 'USD' : balance;
+    const target = (balance === 'AFS' && payment === 'USD') ? 'AFS' : payment;
+    rateField1.style.display = 'block';
+    rate1.required = true;
+    hint1.textContent = '1 ' + curName(base) + ' = X ' + curName(target) + ', enter X';
+  } else {
+    rateField1.style.display = 'none';
+    rate1.required = false;
+  }
+
+  if (supplierCurr && payment !== supplierCurr) {
+    rateField2.style.display = 'block';
+    rate2.required = true;
+    hint2.textContent = '1 ' + curName(payment) + ' = X ' + curName(supplierCurr) + ', enter X';
+  } else {
+    rateField2.style.display = 'none';
+    rate2.required = false;
+  }
+}
+
 document.getElementById('edit_total_amount').addEventListener('input', updateEditBalancePreview);
 document.getElementById('edit_exchange_rate').addEventListener('input', updateEditBalancePreview);
+document.getElementById('edit_supplier_rate').addEventListener('input', updateEditBalancePreview);
+document.getElementById('edit_balance_currency').addEventListener('change', function () { updateEditCurrencyUI(); updateEditBalancePreview(); });
+document.getElementById('edit_currency').addEventListener('change', function () { updateEditCurrencyUI(); updateEditBalancePreview(); });
+
 function updateEditBalancePreview() {
   const p = window._currentPayment;
   if (!p) return;
-  const newAmt = parseFloat(document.getElementById('edit_total_amount').value) || 0;
-  const rate = parseFloat(document.getElementById('edit_exchange_rate').value) || 0;
+  const newAmt     = parseFloat(document.getElementById('edit_total_amount').value) || 0;
+  const newBalance = document.getElementById('edit_balance_currency').value;
+  const newPayment = document.getElementById('edit_currency').value;
+  const rate1 = parseFloat(document.getElementById('edit_exchange_rate').value) || 0;
+  const rate2 = parseFloat(document.getElementById('edit_supplier_rate').value) || 0;
   const supplierCurrency = document.getElementById('edit_supplier_currency').value;
 
-  const clientDiff = newAmt - parseFloat(p.total_amount);
-  let supplierDiff = clientDiff;
+  const oldBalance = p.balance_currency || p.currency;
+  const oldRate1 = parseFloat(p.exchange_rate) || 0;
+  const oldRate2 = (p.supplier_rate > 0) ? parseFloat(p.supplier_rate) : (parseFloat(p.exchange_rate) || 0);
 
-  if (supplierCurrency && supplierCurrency !== p.currency) {
-    const oldSupplierAmt = p.exchange_rate
-      ? (p.currency === 'USD' ? parseFloat(p.total_amount) * parseFloat(p.exchange_rate) : parseFloat(p.total_amount) / parseFloat(p.exchange_rate))
-      : parseFloat(p.total_amount);
-    const newSupplierAmt = rate > 0
-      ? (p.currency === 'USD' ? newAmt * rate : newAmt / rate)
-      : newAmt;
-    supplierDiff = newSupplierAmt - oldSupplierAmt;
-  }
+  const oldClientCredit = computeClientCredit(oldBalance, p.currency, parseFloat(p.total_amount), oldRate1 || 1);
+  const newClientCredit = computeClientCredit(newBalance, newPayment, newAmt, rate1 || 1);
+  const oldSupplierAmt  = computeSupplierCredit(p.currency, supplierCurrency, parseFloat(p.total_amount), oldRate2 || 1);
+  const newSupplierAmt  = computeSupplierCredit(newPayment, supplierCurrency, newAmt, rate2 || 1);
 
-  const clientSign = clientDiff >= 0 ? '+' : '';
-  const supplierSign = supplierDiff >= 0 ? '+' : '';
+  const clientDiff = newClientCredit - oldClientCredit;
+  const supplierDiff = newSupplierAmt - oldSupplierAmt;
+
+  const sign = d => (d > 0 ? '+' : '') + d.toFixed(2);
   document.getElementById('edit_client_balance_preview').textContent =
-    (clientDiff !== 0 ? clientSign + clientDiff.toFixed(2) + ' ' + p.currency : 'No change');
+    (clientDiff !== 0 ? sign(clientDiff) + ' ' + newBalance + ' (was ' + oldBalance + ')' : 'No change');
   document.getElementById('edit_supplier_balance_preview').textContent =
-    (supplierDiff !== 0 ? supplierSign + supplierDiff.toFixed(2) + ' ' + (supplierCurrency || p.currency) : 'No change');
+    (supplierDiff !== 0 ? sign(supplierDiff) + ' ' + (supplierCurrency || newPayment) : 'No change');
 }
 
 /* ─── Form validation ────────────────────────────────────── */
@@ -1288,8 +1429,10 @@ document.getElementById('clientSupplierForm').addEventListener('submit', functio
   const clientId     = document.getElementById('client_id').value;
   const supplierId   = document.getElementById('supplier_id').value;
   const amount       = parseFloat(document.getElementById('total_amount').value);
+  const balanceCurr  = document.getElementById('balance_currency').value;
   const currency     = document.getElementById('currency').value;
-  const exchangeRate = parseFloat(document.getElementById('exchange_rate').value);
+  const rate1        = parseFloat(document.getElementById('exchange_rate').value);
+  const rate2        = parseFloat(document.getElementById('supplier_rate').value);
   const supplierOpt  = document.getElementById('supplier_id').selectedOptions[0];
   const supplierCurr = supplierOpt?.dataset?.currency;
 
@@ -1303,7 +1446,12 @@ document.getElementById('clientSupplierForm').addEventListener('submit', functio
     jvpToast('<?php echo __('please_enter_a_valid_amount_greater_than_zero'); ?>', 'error');
     return;
   }
-  if (supplierCurr && supplierCurr !== currency && (isNaN(exchangeRate) || exchangeRate <= 0)) {
+  if (balanceCurr !== currency && (isNaN(rate1) || rate1 <= 0)) {
+    e.preventDefault();
+    jvpToast('<?php echo __('please_enter_a_valid_exchange_rate_for_currency_conversion'); ?>', 'error');
+    return;
+  }
+  if (supplierCurr && supplierCurr !== currency && (isNaN(rate2) || rate2 <= 0)) {
     e.preventDefault();
     jvpToast('<?php echo __('please_enter_a_valid_exchange_rate_for_currency_conversion'); ?>', 'error');
     return;
@@ -1317,8 +1465,10 @@ document.getElementById('deleteForm').addEventListener('submit', function () {
 
 document.getElementById('editForm').addEventListener('submit', function (e) {
   const amount = parseFloat(document.getElementById('edit_total_amount').value);
-  const rate = parseFloat(document.getElementById('edit_exchange_rate').value);
+  const balanceCurr = document.getElementById('edit_balance_currency').value;
   const currency = document.getElementById('edit_currency').value;
+  const rate1 = parseFloat(document.getElementById('edit_exchange_rate').value);
+  const rate2 = parseFloat(document.getElementById('edit_supplier_rate').value);
   const supplierCurrency = document.getElementById('edit_supplier_currency').value;
 
   if (isNaN(amount) || amount <= 0) {
@@ -1326,7 +1476,12 @@ document.getElementById('editForm').addEventListener('submit', function (e) {
     jvpToast('<?php echo __('please_enter_a_valid_amount_greater_than_zero'); ?>', 'error');
     return;
   }
-  if (supplierCurrency && supplierCurrency !== currency && (isNaN(rate) || rate <= 0)) {
+  if (balanceCurr !== currency && (isNaN(rate1) || rate1 <= 0)) {
+    e.preventDefault();
+    jvpToast('<?php echo __('please_enter_a_valid_exchange_rate_for_currency_conversion'); ?>', 'error');
+    return;
+  }
+  if (supplierCurrency && supplierCurrency !== currency && (isNaN(rate2) || rate2 <= 0)) {
     e.preventDefault();
     jvpToast('<?php echo __('please_enter_a_valid_exchange_rate_for_currency_conversion'); ?>', 'error');
     return;

@@ -74,6 +74,15 @@
                         <button type="button" class="pm-toggle" data-value="AFS" data-target="paymentCurrency">
                             <i class="fas fa-money-bill-wave"></i> Paying in AFS
                         </button>
+                        <button type="button" class="pm-toggle" data-value="EUR" data-target="paymentCurrency">
+                            <i class="fas fa-euro-sign"></i> Paying in EUR
+                        </button>
+                        <button type="button" class="pm-toggle" data-value="DARHAM" data-target="paymentCurrency">
+                            <i class="fas fa-coins"></i> Paying in AED
+                        </button>
+                        <button type="button" class="pm-toggle" data-value="SAR" data-target="paymentCurrency">
+                            <i class="fas fa-money-bill-wave"></i> Paying in SAR
+                        </button>
                     </div>
                     <input type="hidden" id="paymentCurrency" name="payment_currency_actual">
                 </div>
@@ -82,14 +91,16 @@
                 <div class="pm-field pm-hidden" id="fieldExchangeRate">
                     <label class="pm-label">
                         <span class="pm-step">3</span>
-                        Exchange Rate
+                        <span id="rateFieldLabel">USD to AFS Exchange Rate</span>
                     </label>
                     <div class="pm-input-wrap">
-                        <span class="pm-input-pre">1 USD =</span>
+                        <span class="pm-input-pre" id="rateLabel">1 USD =</span>
                         <input type="number" class="pm-input" id="pmExchangeRate" name="exchange_rate"
-                               step="0.01" min="0.01" placeholder="e.g. 70">
-                        <span class="pm-input-suf">AFS</span>
+                               step="0.01" min="0.01" placeholder="0.00">
+                        <span class="pm-input-suf" id="rateSuffix">AFS</span>
                     </div>
+                    <small class="pm-rate-hint" id="rateInstruction">Enter how many AFS equals 1 USD</small>
+                    <small class="pm-rate-hint pm-rate-example" id="rateExample">Example: 1 USD = 88 AFS, enter 88</small>
                 </div>
 
                 <!-- ④ Amount -->
@@ -316,6 +327,14 @@
     min-height: 1rem;
 }
 
+/* Exchange rate helper text */
+.pm-rate-hint {
+    display: block;
+    margin-top: .4rem;
+    font-size: .74rem; color: #64748b;
+}
+.pm-rate-example { color: #94a3b8; }
+
 /* Footer */
 .pm-footer {
     display: flex; align-items: center; justify-content: flex-end;
@@ -349,6 +368,34 @@
 
     // ── State ──────────────────────────────────────────────────────────────────
     const s = { balance: null, payment: null };
+
+    // ── Currency display info ──────────────────────────────────────────────────
+    const CUR_INFO = {
+        USD:    { sym: '$',   name: 'USD' },
+        AFS:    { sym: '؋',   name: 'AFS' },
+        EUR:    { sym: '€',   name: 'EUR' },
+        DARHAM: { sym: 'د.إ', name: 'AED' },
+        SAR:    { sym: '﷼',   name: 'SAR' },
+    };
+
+    // Reference examples per balance/payment pair, same orientation as the rate label
+    const RATE_EXAMPLES = {
+        'USD-AFS':    'Example: 1 USD = 88 AFS, enter 88',
+        'USD-EUR':    'Example: 1 USD = 0.95 EUR, enter 0.95',
+        'USD-DARHAM': 'Example: 1 USD = 3.67 AED, enter 3.67',
+        'USD-SAR':    'Example: 1 USD = 3.75 SAR, enter 3.75',
+        'AFS-USD':    'Example: 1 USD = 88 AFS, enter 88',
+        'AFS-EUR':    'Example: 1 AFS = 0.0108 EUR, enter 0.0108',
+        'AFS-DARHAM': 'Example: 1 AFS = 0.0417 AED, enter 0.0417',
+        'AFS-SAR':    'Example: 1 AFS = 0.0426 SAR, enter 0.0426'
+    };
+
+    // Rate orientation: which currency is the "1" of the rate
+    function getRateOrientation() {
+        // AFS balance + USD payment keeps the market-standard "1 USD = X AFS"
+        if (s.balance === 'AFS' && s.payment === 'USD') return { base: 'USD', target: 'AFS' };
+        return { base: s.balance, target: s.payment };
+    }
 
     // ── Refs ───────────────────────────────────────────────────────────────────
     const $ = id => document.getElementById(id);
@@ -415,8 +462,40 @@
     // Update amount field symbol/hint to reflect payment currency
     function configureAmountField() {
         if (!s.payment) return;
-        $('amountSymbol').textContent = s.payment === 'USD' ? '$' : '؋';
-        $('amountHint').textContent   = s.payment === 'USD' ? 'USD cash received' : 'AFS cash received';
+        const info = CUR_INFO[s.payment] || { sym: s.payment, name: s.payment };
+        $('amountSymbol').textContent = info.sym;
+        $('amountHint').textContent   = info.name + ' cash received';
+    }
+
+    // Update exchange rate label/helper text to match the balance/payment pair
+    function updateRateLabels() {
+        if (!s.balance || !s.payment) return;
+        const { base, target } = getRateOrientation();
+        const baseInfo   = CUR_INFO[base]   || { name: base };
+        const targetInfo = CUR_INFO[target] || { name: target };
+
+        // Prefix/suffix of the input itself
+        $('rateLabel').textContent  = `1 ${baseInfo.name} =`;
+        $('rateSuffix').textContent = targetInfo.name;
+
+        // Field label, instruction and example (same convention as transaction managers)
+        $('rateFieldLabel').textContent = `${baseInfo.name} to ${targetInfo.name} Exchange Rate`;
+        $('rateInstruction').textContent = `Enter how many ${targetInfo.name} equals 1 ${baseInfo.name}`;
+        $('rateExample').textContent = RATE_EXAMPLES[`${s.balance}-${s.payment}`]
+            || `Example: 1 ${baseInfo.name} = X ${targetInfo.name}, enter X`;
+
+        // Placeholder derived from the example value (e.g. "e.g. 0.95")
+        const example = $('rateExample').textContent;
+        const m = example.match(/= ([\d.]+)/);
+        $('pmExchangeRate').placeholder = m ? `e.g. ${m[1]}` : '0.00';
+    }
+
+    // Amount actually credited to the selected balance, per current pair rules
+    function computeCredit(amount, rate) {
+        if (s.balance === s.payment) return amount;
+        if (s.balance === 'USD') return amount / rate;          // 1 USD = X <payment>
+        if (s.payment === 'USD') return amount * rate;          // 1 USD = X AFS
+        return amount / rate;                                   // 1 AFS = X <payment>
     }
 
     // Live conversion preview under amount field
@@ -431,14 +510,16 @@
             return;
         }
 
-        if (s.balance === 'USD' && s.payment === 'AFS') {
-            // Client pays AFS → credit USD balance
-            const inUsd = (amount / rate).toFixed(2);
-            prev.textContent = `؋${amount.toLocaleString()} ÷ ${rate} = $${inUsd} credited to USD balance`;
-        } else if (s.balance === 'AFS' && s.payment === 'USD') {
-            // Client pays USD → credit AFS balance
-            const inAfs = (amount * rate).toFixed(2);
-            prev.textContent = `$${amount.toLocaleString()} × ${rate} = ؋${inAfs} credited to AFS balance`;
+        const bal  = CUR_INFO[s.balance]  || { sym: s.balance, name: s.balance };
+        const pay  = CUR_INFO[s.payment]  || { sym: s.payment, name: s.payment };
+        const credit = computeCredit(amount, rate);
+
+        if (s.balance === 'USD') {
+            prev.textContent = `${pay.sym}${amount.toLocaleString()} ÷ ${rate} = $${credit.toFixed(2)} credited to USD balance`;
+        } else if (s.payment === 'USD') {
+            prev.textContent = `$${amount.toLocaleString()} × ${rate} = ؋${credit.toFixed(2)} credited to AFS balance`;
+        } else {
+            prev.textContent = `${pay.sym}${amount.toLocaleString()} ÷ ${rate} = ؋${credit.toFixed(2)} credited to AFS balance`;
         }
     }
 
@@ -495,6 +576,7 @@
                 if (s.balance !== s.payment) {
                     // Currencies differ → show exchange rate field
                     reveal(fields.exchangeRate);
+                    updateRateLabels();
                     configureAmountField();
                     reveal(fields.amount);
                     updateSteps();

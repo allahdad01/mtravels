@@ -70,23 +70,38 @@ try {
         throw new Exception("Destination account not found");
     }
 
+    // Normalize currency codes
+    $fromCurrencyNorm = strtoupper($fromCurrency) === 'EURO' ? 'EUR' : strtoupper($fromCurrency);
+    $toCurrencyNorm = strtoupper($toCurrency) === 'EURO' ? 'EUR' : strtoupper($toCurrency);
+
+    // Map currency codes to the correct main_account balance columns
+    $balanceFieldMap = [
+        'USD'    => 'usd_balance',
+        'AFS'    => 'afs_balance',
+        'EUR'    => 'euro_balance',
+        'DARHAM' => 'darham_balance',
+        'SAR'    => 'sar_balance'
+    ];
+    if (!isset($balanceFieldMap[$fromCurrencyNorm]) || !isset($balanceFieldMap[$toCurrencyNorm])) {
+        throw new Exception("Invalid currency");
+    }
+    $fromBalanceField = $balanceFieldMap[$fromCurrencyNorm];
+    $toBalanceField = $balanceFieldMap[$toCurrencyNorm];
+
     // Check if source account has sufficient balance
-    $fromBalanceField = strtolower($fromCurrency) . '_balance';
     if (!isset($fromAccount[$fromBalanceField]) || $fromAccount[$fromBalanceField] < $amount) {
         throw new Exception("Insufficient balance in source account");
     }
 
-
-
-    // Normalize currency codes
-    $fromCurrencyNorm = strtoupper($fromCurrency) === 'EURO' ? 'EUR' : strtoupper($fromCurrency);
-    $toCurrencyNorm = strtoupper($toCurrency) === 'EURO' ? 'EUR' : strtoupper($toCurrency);
+    // Normalize DARHAM -> AED for the pair list only (divide/multiply rules)
+    $pairFrom = $fromCurrencyNorm === 'DARHAM' ? 'AED' : $fromCurrencyNorm;
+    $pairTo = $toCurrencyNorm === 'DARHAM' ? 'AED' : $toCurrencyNorm;
 
     // Calculate converted amount based on currency pairs
     $convertedAmount = 0;
 
     $dividePairs = ['AFS->AED', 'AFS->EUR', 'AFS->USD', 'AED->EUR', 'AED->USD', 'EUR->USD', 'AFS->SAR', 'SAR->USD', 'SAR->EUR'];
-    $pairKey = "{$fromCurrencyNorm}->{$toCurrencyNorm}";
+    $pairKey = "{$pairFrom}->{$pairTo}";
 
     if ($fromCurrencyNorm === $toCurrencyNorm) {
         $convertedAmount = $amount;
@@ -105,7 +120,6 @@ try {
     $updateFromStmt->execute();
 
     // Update destination account balance
-    $toBalanceField = strtolower($toCurrency) . '_balance';
     $updateToStmt = $pdo->prepare("UPDATE main_account SET {$toBalanceField} = {$toBalanceField} + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
     $updateToStmt->bindParam(1, $convertedAmount, PDO::PARAM_STR);
     $updateToStmt->bindParam(2, $toAccountId, PDO::PARAM_INT);

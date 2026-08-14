@@ -80,13 +80,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $balanceField = 'afs_balance';
                 break;
             case 'EUR':
-                $balanceField = 'eur_balance';
+                $balanceField = 'euro_balance';
                 break;
             case 'DARHAM':
                 $balanceField = 'darham_balance';
-            case 'SAR':
-                $Field = 'sar_balance';
-                break;
                 break;
             case 'SAR':
                 $balanceField = 'sar_balance';

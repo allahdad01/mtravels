@@ -39,6 +39,7 @@ function txnBuildActionsCell(transaction, accountType, amount, dateField) {
     } else if (accountType === 'supplier') {
         const tof = (transaction.transaction_of || '').toLowerCase();
         showDelete = isUserAdmin && ['supplier_bonus', 'fund', 'fund_withdrawal'].includes(tof);
+        showEdit   = tof === 'fund' || tof === 'fund_withdrawal';
         showReceipt = true;
         showPrintReceipt = false;
     } else if (accountType === 'client') {
@@ -55,6 +56,8 @@ function txnBuildActionsCell(transaction, accountType, amount, dateField) {
 
     const abs  = Math.abs(amount).toFixed(3);
     const type = transaction.type || transaction.transaction_type || '';
+    // Supplier transactions store their narrative in 'remarks' (no description column)
+    const descAttr = accountType === 'supplier' ? (transaction.remarks || '') : (transaction.description || '');
 
     let html = `<td><div class="txn-actions">`;
 
@@ -64,7 +67,7 @@ function txnBuildActionsCell(transaction, accountType, amount, dateField) {
             data-transaction-type="${accountType}"
             data-amount="${abs}"
             data-transaction-date="${dateField || ''}"
-            data-description="${transaction.description || ''}"
+            data-description="${descAttr}"
             data-currency="${transaction.currency || ''}"
             data-remarks="${transaction.remarks || ''}"
             data-receipt="${transaction.receipt || ''}"

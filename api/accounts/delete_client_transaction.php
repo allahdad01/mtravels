@@ -47,7 +47,7 @@ $pdo->beginTransaction();
 
 try {
     // Get transaction details first
-    $getQuery = "SELECT client_id, amount, currency, type, reference_id, created_at, balance FROM client_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+    $getQuery = "SELECT client_id, amount, currency, type, reference_id, created_at, balance FROM client_transactions WHERE id = ? AND transaction_of IN ('fund', 'client_withdrawal') AND tenant_id = ? AND branch_id = ?";
     $getStmt = $pdo->prepare($getQuery);
     $getStmt->bindParam(1, $transactionId, PDO::PARAM_INT);
     $getStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
@@ -71,6 +71,15 @@ try {
         'USD' => 'usd_balance',
         'AFS' => 'afs_balance'
     ];
+
+    // Map main account transaction currency (client fund payments can be EUR/SAR/DARHAM)
+    $mainAccountFieldMap = [
+        'USD'    => 'usd_balance',
+        'AFS'    => 'afs_balance',
+        'EUR'    => 'euro_balance',
+        'DARHAM' => 'darham_balance',
+        'SAR'    => 'sar_balance'
+    ];
     
     // Check if the currency is in our map
     if (!isset($currencyFieldMap[$currency])) {
@@ -87,8 +96,7 @@ try {
                                 SET balance = balance + ?
                                 WHERE client_id = ?
                                 AND currency = ?
-                                AND created_at > ?
-                                AND id != ?
+                                AND id > ?
                                 AND tenant_id = ?
                                 AND branch_id = ?";
     } else { // credit
@@ -97,8 +105,7 @@ try {
                                 SET balance = balance - ?
                                 WHERE client_id = ?
                                 AND currency = ?
-                                AND created_at > ?
-                                AND id != ?
+                                AND id > ?
                                 AND tenant_id = ?
                                 AND branch_id = ?";
     }
@@ -107,10 +114,9 @@ try {
     $updateSubsequentStmt->bindParam(1, $amount, PDO::PARAM_STR);
     $updateSubsequentStmt->bindParam(2, $clientId, PDO::PARAM_INT);
     $updateSubsequentStmt->bindParam(3, $currency, PDO::PARAM_STR);
-    $updateSubsequentStmt->bindParam(4, $transactionDate, PDO::PARAM_STR);
-    $updateSubsequentStmt->bindParam(5, $transactionId, PDO::PARAM_INT);
-    $updateSubsequentStmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
-    $updateSubsequentStmt->bindParam(7, $branch_id, PDO::PARAM_INT);
+    $updateSubsequentStmt->bindParam(4, $transactionId, PDO::PARAM_INT);
+    $updateSubsequentStmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
+    $updateSubsequentStmt->bindParam(6, $branch_id, PDO::PARAM_INT);
     $updateSubsequentStmt->execute();
     
     // Reverse the transaction based on its type
@@ -134,7 +140,7 @@ try {
     // Handle main account transaction if it exists
     if ($referenceId) {
         // Get main account transaction details
-        $mainTxQuery = "SELECT main_account_id, amount, type, currency, created_at FROM main_account_transactions WHERE reference_id = ? AND transaction_of IN ('client_fund', 'client_withdraw') AND tenant_id = ? AND branch_id = ?";
+        $mainTxQuery = "SELECT id, main_account_id, amount, type, currency FROM main_account_transactions WHERE reference_id = ? AND transaction_of IN ('client_fund', 'client_withdraw') AND tenant_id = ? AND branch_id = ?";
         $mainTxStmt = $pdo->prepare($mainTxQuery);
         $mainTxStmt->bindParam(1, $transactionId, PDO::PARAM_INT);
         $mainTxStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
@@ -145,12 +151,15 @@ try {
         if ($mainTx) {
             $mainAmount = $mainTx['amount'];
             $mainType = strtolower($mainTx['type']); // credit or debit
-            $mainCurrency = $mainTx['currency'];
+            $mainCurrency = strtoupper($mainTx['currency']) === 'EURO' ? 'EUR' : strtoupper($mainTx['currency']);
             $mainAccountId = $mainTx['main_account_id'];
-            $mainTxDate = $mainTx['created_at'];
+            $mainTxId = $mainTx['id'];
 
             // Get the correct field name for main account
-            $mainUpdateField = $currencyFieldMap[$mainCurrency];
+            if (!isset($mainAccountFieldMap[$mainCurrency])) {
+                throw new Exception("Unknown currency: " . $mainCurrency);
+            }
+            $mainUpdateField = $mainAccountFieldMap[$mainCurrency];
 
             // Update balances of all subsequent main account transactions
             // For credit transactions to main account, we need to subtract the amount from subsequent balances
@@ -160,8 +169,7 @@ try {
                                             SET balance = balance - ?
                                             WHERE main_account_id = ?
                                             AND currency = ?
-                                            AND created_at > ?
-                                            AND reference_id != ?
+                                            AND id > ?
                                             AND tenant_id = ?
                                             AND branch_id = ?";
             } else {
@@ -169,8 +177,7 @@ try {
                                             SET balance = balance + ?
                                             WHERE main_account_id = ?
                                             AND currency = ?
-                                            AND created_at > ?
-                                            AND reference_id != ?
+                                            AND id > ?
                                             AND tenant_id = ?
                                             AND branch_id = ?";
             }
@@ -179,10 +186,9 @@ try {
             $updateMainSubsequentStmt->bindParam(1, $mainAmount, PDO::PARAM_STR);
             $updateMainSubsequentStmt->bindParam(2, $mainAccountId, PDO::PARAM_INT);
             $updateMainSubsequentStmt->bindParam(3, $mainCurrency, PDO::PARAM_STR);
-            $updateMainSubsequentStmt->bindParam(4, $mainTxDate, PDO::PARAM_STR);
-            $updateMainSubsequentStmt->bindParam(5, $transactionId, PDO::PARAM_INT);
-            $updateMainSubsequentStmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
-            $updateMainSubsequentStmt->bindParam(7, $branch_id, PDO::PARAM_INT);
+            $updateMainSubsequentStmt->bindParam(4, $mainTxId, PDO::PARAM_INT);
+            $updateMainSubsequentStmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
+            $updateMainSubsequentStmt->bindParam(6, $branch_id, PDO::PARAM_INT);
             $updateMainSubsequentStmt->execute();
 
             // Reverse the main account balance

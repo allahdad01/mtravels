@@ -117,14 +117,17 @@ function toggleExchangeRateVisibility() {
     const label = document.getElementById('exchangeRateLabel');
     const hint = document.getElementById('exchangeHint');
     const exchangeInput = document.getElementById('exchangeRate');
+    const badge = document.getElementById('fundFormulaBadge');
     const needsRate = supplierCurrency !== paymentCurrency;
     group.classList.toggle('d-none', !needsRate);
     exchangeInput.required = needsRate;
+    if (!needsRate) return;
     const norm = c => c === 'DARHAM' ? 'AED' : c;
     const normFrom = norm(paymentCurrency);
     const normTo = norm(supplierCurrency);
     const dividePairs = ['AFS->AED', 'AFS->EUR', 'AFS->USD', 'AED->EUR', 'AED->USD', 'EUR->USD', 'AFS->SAR', 'SAR->USD', 'SAR->EUR'];
     const isDivide = dividePairs.includes(normFrom + '->' + normTo);
+    if (badge) badge.textContent = isDivide ? '÷' : '×';
     label.textContent = 'Exchange rate (' + paymentCurrency + ' → ' + supplierCurrency + ')';
     const sampleRates = {
         'AFS->AED': 19.75, 'AED->AFS': 19.75,
@@ -143,8 +146,10 @@ function toggleExchangeRateVisibility() {
         hint.textContent = isDivide
             ? 'e.g. 1 ' + supplierCurrency + ' = ' + rate.toFixed(2) + ' ' + paymentCurrency + ' → enter ' + rate.toFixed(2)
             : 'e.g. 1 ' + paymentCurrency + ' = ' + rate.toFixed(2) + ' ' + supplierCurrency + ' → enter ' + rate.toFixed(2);
+        if (exchangeInput) exchangeInput.placeholder = 'e.g. ' + rate.toFixed(2);
     } else {
         hint.textContent = 'Enter the exchange rate';
+        if (exchangeInput) exchangeInput.placeholder = '0.00';
     }
 }
 
@@ -413,16 +418,19 @@ document.addEventListener('DOMContentLoaded', function() {
             preview.style.display = 'none';
             return;
         }
-        const pairKey = fromCur + '->' + toCur;
+        const pairKey = (fromCur === 'DARHAM' ? 'AED' : fromCur) + '->' + (toCur === 'DARHAM' ? 'AED' : toCur);
         const isDivide = transferDividePairs.includes(pairKey);
         badge.textContent = isDivide ? '÷' : '×';
         const rate = transferSampleRates[pairKey];
+        const rateInput = document.getElementById('exchangeRate');
         if (rate) {
             help.textContent = isDivide
                 ? 'e.g. 1 ' + toCur + ' = ' + rate.toFixed(2) + ' ' + fromCur + ' → enter ' + rate.toFixed(2)
                 : 'e.g. 1 ' + fromCur + ' = ' + rate.toFixed(2) + ' ' + toCur + ' → enter ' + rate.toFixed(2);
+            if (rateInput) rateInput.placeholder = 'e.g. ' + rate.toFixed(2);
         } else {
             help.textContent = 'Enter the exchange rate';
+            if (rateInput) rateInput.placeholder = '0.00';
         }
         const amount = parseFloat(document.getElementById('amount').value) || 0;
         const exchangeRate = parseFloat(document.getElementById('exchangeRate').value) || 0;

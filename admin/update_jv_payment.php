@@ -13,6 +13,32 @@ $username = $_SESSION['name'] ?? 'Unknown';
 
 require_once '../includes/db.php';
 
+// Payment currency → supplier currency conversion (rate is "1 <payment> = X <supplier>")
+function jvSupplierConvert($paymentCurrency, $supplierCurrency, $amount, $rate) {
+    if ($paymentCurrency === $supplierCurrency || $rate <= 0) {
+        return $amount;
+    }
+    $pairFrom = ($paymentCurrency === 'DARHAM') ? 'AED' : $paymentCurrency;
+    $pairTo = ($supplierCurrency === 'DARHAM') ? 'AED' : $supplierCurrency;
+    $dividePairs = ['AFS->AED', 'AFS->EUR', 'AFS->USD', 'AED->EUR', 'AED->USD', 'EUR->USD', 'AFS->SAR', 'SAR->USD', 'SAR->EUR'];
+    return in_array("{$pairFrom}->{$pairTo}", $dividePairs) ? $amount / $rate : $amount * $rate;
+}
+
+// Payment currency → client balance currency conversion (rate is "1 <balance> = X <payment>")
+function jvClientCredit($balanceCurrency, $paymentCurrency, $amount, $rate) {
+    if ($balanceCurrency === $paymentCurrency) {
+        return $amount;
+    }
+    $safeRate = $rate > 0 ? $rate : 1;
+    if ($balanceCurrency === 'USD') {
+        return $amount / $safeRate;     // 1 USD = X <payment>
+    }
+    if ($paymentCurrency === 'USD') {
+        return $amount * $safeRate;     // 1 USD = X AFS
+    }
+    return $amount / $safeRate;         // 1 AFS = X <payment>
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     $_SESSION['error_message'] = 'Invalid request method';
     header('Location: jv_payments.php');
@@ -23,11 +49,15 @@ $paymentId = intval($_POST['id'] ?? 0);
 $jv_name = $_POST['jv_name'] ?? '';
 $total_amount = floatval($_POST['total_amount'] ?? 0);
 $currency = $_POST['currency'] ?? '';
+$balanceCurrency = $_POST['balance_currency'] ?? '';
 $receipt = $_POST['receipt'] ?? '';
 $remarks = $_POST['remarks'] ?? '';
 $exchange_rate = isset($_POST['exchange_rate']) && $_POST['exchange_rate'] !== '' ? floatval($_POST['exchange_rate']) : 0;
+$supplierRate = isset($_POST['supplier_rate']) && $_POST['supplier_rate'] !== '' ? floatval($_POST['supplier_rate']) : 0;
 
-if ($paymentId <= 0 || $total_amount <= 0 || empty($currency) || empty($receipt)) {
+if ($paymentId <= 0 || $total_amount <= 0 || empty($currency) || empty($receipt) ||
+    !in_array($currency, ['USD', 'AFS', 'EUR', 'DARHAM', 'SAR']) ||
+    !in_array($balanceCurrency, ['USD', 'AFS'])) {
     $_SESSION['error_message'] = 'All required fields must be filled out';
     header('Location: jv_payments.php');
     exit();
@@ -46,7 +76,10 @@ try {
     }
 
     $oldAmount = floatval($payment['total_amount']);
+    $oldPaymentCurrency = $payment['currency'];
+    $oldBalanceCurrency = $payment['balance_currency'] ?: $oldPaymentCurrency;
     $oldExchangeRate = floatval($payment['exchange_rate'] ?? 0);
+    $oldSupplierRate = (isset($payment['supplier_rate']) && $payment['supplier_rate'] > 0) ? floatval($payment['supplier_rate']) : floatval($payment['exchange_rate'] ?? 0);
     $clientId = $payment['client_id'];
     $supplierId = $payment['supplier_id'];
 
@@ -65,38 +98,43 @@ try {
 
     $supplierCurrency = $supplier['currency'];
 
-    // Calculate old supplier amount
-    $oldSupplierAmount = $oldAmount;
-    if ($supplierCurrency !== $currency) {
-        if ($currency === 'USD' && $supplierCurrency === 'AFS') {
-            $oldSupplierAmount = $oldAmount * ($oldExchangeRate ?: 1);
-        } elseif ($currency === 'AFS' && $supplierCurrency === 'USD') {
-            $oldSupplierAmount = $oldAmount / ($oldExchangeRate ?: 1);
-        }
+    // Require rates only when the respective currencies differ
+    if ($balanceCurrency !== $currency && $exchange_rate <= 0) {
+        throw new Exception('A valid exchange rate is required when client balance and payment currencies differ');
+    }
+    if ($currency !== $supplierCurrency && $supplierRate <= 0) {
+        throw new Exception('A valid supplier exchange rate is required when payment and supplier currencies differ');
     }
 
-    // Calculate new supplier amount
-    $newSupplierAmount = $total_amount;
-    if ($supplierCurrency !== $currency) {
-        if ($currency === 'USD' && $supplierCurrency === 'AFS') {
-            $newSupplierAmount = $total_amount * ($exchange_rate ?: 1);
-        } elseif ($currency === 'AFS' && $supplierCurrency === 'USD') {
-            $newSupplierAmount = $total_amount / ($exchange_rate ?: 1);
-        }
-    }
+    // Client amounts credited to the balance currency
+    $oldClientCredit = jvClientCredit($oldBalanceCurrency, $oldPaymentCurrency, $oldAmount, $oldExchangeRate);
+    $newClientCredit = jvClientCredit($balanceCurrency, $currency, $total_amount, $exchange_rate);
+
+    // Supplier amounts in the supplier's own currency
+    $oldSupplierAmount = jvSupplierConvert($oldPaymentCurrency, $supplierCurrency, $oldAmount, $oldSupplierRate);
+    $newSupplierAmount = jvSupplierConvert($currency, $supplierCurrency, $total_amount, $supplierRate);
 
     // Calculate diffs
-    $amountDiff = $total_amount - $oldAmount;
+    $amountDiff = $newClientCredit - $oldClientCredit;
     $supplierAmountDiff = $newSupplierAmount - $oldSupplierAmount;
 
     // 1. Update jv_payments record
-    $updateStmt = $pdo->prepare("UPDATE jv_payments SET jv_name = ?, total_amount = ?, exchange_rate = ?, receipt = ?, remarks = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-    $updateStmt->execute([$jv_name, $total_amount, $exchange_rate ?: 0, $receipt, $remarks, $paymentId, $tenant_id, $branch_id]);
+    $updateStmt = $pdo->prepare("UPDATE jv_payments SET jv_name = ?, total_amount = ?, exchange_rate = ?, supplier_rate = ?, currency = ?, balance_currency = ?, receipt = ?, remarks = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $updateStmt->execute([$jv_name, $total_amount, $exchange_rate ?: 0, $supplierRate, $currency, $balanceCurrency, $receipt, $remarks, $paymentId, $tenant_id, $branch_id]);
 
-    // 2. Update client master balance
-    $balanceField = ($currency === 'USD') ? 'usd_balance' : 'afs_balance';
-    $updateClientStmt = $pdo->prepare("UPDATE clients SET {$balanceField} = {$balanceField} + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-    $updateClientStmt->execute([$amountDiff, $clientId, $tenant_id, $branch_id]);
+    // 2. Update client master balance (old credit reversed from old column, new credit applied to new column)
+    $oldClientField = ($oldBalanceCurrency === 'USD') ? 'usd_balance' : 'afs_balance';
+    $newClientField = ($balanceCurrency === 'USD') ? 'usd_balance' : 'afs_balance';
+
+    if ($oldClientField === $newClientField) {
+        $updateClientStmt = $pdo->prepare("UPDATE clients SET {$newClientField} = {$newClientField} + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $updateClientStmt->execute([$amountDiff, $clientId, $tenant_id, $branch_id]);
+    } else {
+        $updateClientOldStmt = $pdo->prepare("UPDATE clients SET {$oldClientField} = {$oldClientField} - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $updateClientOldStmt->execute([$oldClientCredit, $clientId, $tenant_id, $branch_id]);
+        $updateClientNewStmt = $pdo->prepare("UPDATE clients SET {$newClientField} = {$newClientField} + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $updateClientNewStmt->execute([$newClientCredit, $clientId, $tenant_id, $branch_id]);
+    }
 
     // 3. Find and update client transaction
     $clientTransStmt = $pdo->prepare("SELECT id, balance FROM client_transactions WHERE client_id = ? AND transaction_of = 'jv_payment' AND reference_id IN (SELECT id FROM jv_transactions WHERE jv_payment_id = ?) AND tenant_id = ? AND branch_id = ? ORDER BY id DESC LIMIT 1");
@@ -105,13 +143,17 @@ try {
 
     if ($clientTrans) {
         $clientTransId = $clientTrans['id'];
-        // Update the transaction amount and balance
-        $updateClientTransStmt = $pdo->prepare("UPDATE client_transactions SET amount = ?, balance = balance + ?, description = CONCAT('Updated: ', description) WHERE id = ?");
-        $updateClientTransStmt->execute([$total_amount, $amountDiff, $clientTransId]);
+        // Update the transaction amount, currency and balance
+        $updateClientTransStmt = $pdo->prepare("UPDATE client_transactions SET amount = ?, currency = ?, balance = balance - ? + ?, description = CONCAT('Updated: ', description) WHERE id = ?");
+        $updateClientTransStmt->execute([$newClientCredit, $balanceCurrency, $oldClientCredit, $newClientCredit, $clientTransId]);
 
-        // Update subsequent client transactions
-        $updateSubClientStmt = $pdo->prepare("UPDATE client_transactions SET balance = balance + ? WHERE client_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ? AND id > ? ORDER BY id ASC");
-        $updateSubClientStmt->execute([$amountDiff, $clientId, $currency, $tenant_id, $branch_id, $clientTransId]);
+        // Subsequent transactions in the OLD balance currency: the old credit no longer precedes them
+        $updateSubClientOldStmt = $pdo->prepare("UPDATE client_transactions SET balance = balance - ? WHERE client_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ? AND id > ?");
+        $updateSubClientOldStmt->execute([$oldClientCredit, $clientId, $oldBalanceCurrency, $tenant_id, $branch_id, $clientTransId]);
+
+        // Subsequent transactions in the NEW balance currency: the new credit now precedes them
+        $updateSubClientNewStmt = $pdo->prepare("UPDATE client_transactions SET balance = balance + ? WHERE client_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ? AND id > ?");
+        $updateSubClientNewStmt->execute([$newClientCredit, $clientId, $balanceCurrency, $tenant_id, $branch_id, $clientTransId]);
     }
 
     // 4. Update supplier master balance
@@ -141,21 +183,27 @@ try {
     $old_values = [
         'jv_name' => $payment['jv_name'],
         'total_amount' => $oldAmount,
-        'exchange_rate' => $oldExchangeRate,
         'currency' => $payment['currency'],
+        'balance_currency' => $oldBalanceCurrency,
+        'exchange_rate' => $oldExchangeRate,
+        'supplier_rate' => $oldSupplierRate,
+        'client_credit' => $oldClientCredit,
+        'supplier_amount' => $oldSupplierAmount,
         'receipt' => $payment['receipt'],
         'remarks' => $payment['remarks'],
-        'supplier_amount' => $oldSupplierAmount,
     ];
 
     $new_values = [
         'jv_name' => $jv_name,
         'total_amount' => $total_amount,
-        'exchange_rate' => $exchange_rate,
         'currency' => $currency,
+        'balance_currency' => $balanceCurrency,
+        'exchange_rate' => $exchange_rate,
+        'supplier_rate' => $supplierRate,
+        'client_credit' => $newClientCredit,
+        'supplier_amount' => $newSupplierAmount,
         'receipt' => $receipt,
         'remarks' => $remarks,
-        'supplier_amount' => $newSupplierAmount,
     ];
 
     $activity_stmt = $pdo->prepare("INSERT INTO activity_log (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id) VALUES (?, 'update', 'jv_payments', ?, ?, ?, ?, ?, NOW(), ?, ?)");

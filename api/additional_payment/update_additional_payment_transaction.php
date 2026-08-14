@@ -123,7 +123,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Update main account balance if amount changed
         if ($amountDifference != 0) {
-            $balanceField = $transaction['currency'] === 'USD' ? 'usd_balance' : 'afs_balance';
+            $balanceFields = [
+                'USD' => 'usd_balance',
+                'AFS' => 'afs_balance',
+                'EUR' => 'euro_balance',
+                'DARHAM' => 'darham_balance',
+                'SAR' => 'sar_balance',
+            ];
+            $balanceField = $balanceFields[$transaction['currency']] ?? null;
+            if (!$balanceField) {
+                throw new Exception("Unknown currency: " . $transaction['currency']);
+            }
             $updateStmt = $pdo->prepare("
                 UPDATE main_account
                 SET $balanceField = $balanceField + ?

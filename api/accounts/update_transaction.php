@@ -112,8 +112,8 @@ try {
         $accountName = $account['name'] ?? 'Unknown Account';
         
         // Calculate the difference in amount
-        $originalSignedAmount = $originalType === 'credit' ? $originalAmount : -$originalAmount;
-        $newSignedAmount = $newType === 'credit' ? $newAmount : -$newAmount;
+        $originalSignedAmount = strtolower($originalType) === 'credit' ? $originalAmount : -$originalAmount;
+        $newSignedAmount = strtolower($newType) === 'credit' ? $newAmount : -$newAmount;
         $amountDifference = $newSignedAmount - $originalSignedAmount;
         
         // Update the transaction - removed created_at from the update
@@ -193,8 +193,8 @@ try {
         $currency = $supplier['currency'] ?? 'USD'; // Get currency from suppliers table
         
         // Calculate the difference in amount
-        $originalSignedAmount = $originalType === 'Credit' ? $originalAmount : -$originalAmount;
-        $newSignedAmount = $newType === 'Credit' ? $newAmount : -$newAmount;
+        $originalSignedAmount = strtolower($originalType) === 'credit' ? $originalAmount : -$originalAmount;
+        $newSignedAmount = strtolower($newType) === 'credit' ? $newAmount : -$newAmount;
         $amountDifference = $newSignedAmount - $originalSignedAmount;
         
         // Update the transaction - transaction_date already removed
@@ -260,27 +260,35 @@ try {
         // Get main transaction details by transaction_of and reference_id instead of main_transaction_id
         $mainTransStmt = $pdo->prepare("
             SELECT * FROM main_account_transactions
-            WHERE transaction_of = 'supplier_fund' AND reference_id = ? AND tenant_id = ? AND branch_id = ?
+            WHERE transaction_of IN ('supplier_fund', 'supplier_fund_withdrawal') AND reference_id = ? AND tenant_id = ? AND branch_id = ?
         ");
         $mainTransStmt->execute([$transactionId, $tenant_id, $branch_id]);
         $mainTransaction = $mainTransStmt->fetch(PDO::FETCH_ASSOC);
         
         if ($mainTransaction) {
-            // Calculate the new balance for the main transaction
-            $mainType = $newType === 'credit' ? 'debit' : 'credit';
-            $mainAmountDifference = -$amountDifference; // Opposite effect on main account
-            $newMainBalance = $mainTransaction['balance'] + $mainAmountDifference;
+            // Work in the main transaction's own currency (may differ from the supplier's)
+            $mainCurrency = strtoupper($mainTransaction['currency']) === 'EURO' ? 'EUR' : strtoupper($mainTransaction['currency']);
+            $origMainAmount = (float)$mainTransaction['amount'];
             
-            // Update main transaction including balance - removed created_at from the update
+            // Preserve the effective rate: scale the main amount proportionally to the supplier amount change
+            $newMainAmount = $originalAmount > 0 ? $origMainAmount * ($newAmount / $originalAmount) : $origMainAmount;
+            $mainDiff = $newMainAmount - $origMainAmount;
+            
+            // Sign depends on the main transaction type: debit (fund) lowers main balance, credit (withdrawal) raises it
+            $mainType = $newType === 'credit' ? 'debit' : 'credit';
+            $mainSigned = strtolower($mainType) === 'debit' ? -$mainDiff : $mainDiff;
+            $newMainBalance = $mainTransaction['balance'] + $mainSigned;
+            
+            // Update main transaction (keep the edited description instead of hardcoding)
             $updateMainStmt = $pdo->prepare("
                 UPDATE main_account_transactions
                 SET amount = ?, type = ?, description = ?, receipt = ?, balance = ?
                 WHERE id = ? AND tenant_id = ? AND branch_id = ?
             ");
             $updateMainStmt->execute([
-                $newAmount,
+                $newMainAmount,
                 $mainType,
-                "Fund transfer to supplier: $accountName",
+                $description,
                 $receipt,
                 $newMainBalance,
                 $mainTransaction['id'],
@@ -296,32 +304,28 @@ try {
                 AND id > ?
                 AND currency = ?
             ");
-            $laterMainTransStmt->execute([$mainTransaction['main_account_id'], $tenant_id, $branch_id, $mainTransaction['id'], $currency]);
+            $laterMainTransStmt->execute([$mainTransaction['main_account_id'], $tenant_id, $branch_id, $mainTransaction['id'], $mainCurrency]);
             $laterMainTransactions = $laterMainTransStmt->fetchAll(PDO::FETCH_ASSOC);
             
             // Update all subsequent transactions' balances
             foreach ($laterMainTransactions as $laterMainTrans) {
-                $newMainBalance = $laterMainTrans['balance'] + $mainAmountDifference;
+                $newMainBalance = $laterMainTrans['balance'] + $mainSigned;
                 $updateMainBalanceStmt = $pdo->prepare("UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
                 $updateMainBalanceStmt->execute([$newMainBalance, $laterMainTrans['id'], $tenant_id, $branch_id]);
             }
             
-            // Update the main account balance - using direct currency check
-            if ($currency === 'USD') {
-                $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET usd_balance = usd_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                $updateMainAccountStmt->execute([$amountDifference, $mainTransaction['main_account_id'], $tenant_id, $branch_id]);
-            } elseif ($currency === 'AFS') {
-                $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET afs_balance = afs_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                $updateMainAccountStmt->execute([$amountDifference, $mainTransaction['main_account_id'], $tenant_id, $branch_id]);
-            } elseif ($currency === 'EURO') {
-                $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET euro_balance = euro_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                $updateMainAccountStmt->execute([$amountDifference, $mainTransaction['main_account_id'], $tenant_id, $branch_id]);
-            } elseif ($currency === 'DARHAM') {
-                $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET darham_balance = darham_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                $updateMainAccountStmt->execute([$amountDifference, $mainTransaction['main_account_id'], $tenant_id, $branch_id]);
-            } elseif ($currency === 'SAR') {
-                $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET sar_balance = sar_balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-                $updateMainAccountStmt->execute([$amountDifference, $mainTransaction['main_account_id'], $tenant_id, $branch_id]);
+            // Update the main account balance using the main transaction's currency column
+            $mainBalanceFieldMap = [
+                'USD'    => 'usd_balance',
+                'AFS'    => 'afs_balance',
+                'EUR'    => 'euro_balance',
+                'DARHAM' => 'darham_balance',
+                'SAR'    => 'sar_balance'
+            ];
+            if (isset($mainBalanceFieldMap[$mainCurrency])) {
+                $mainField = $mainBalanceFieldMap[$mainCurrency];
+                $updateMainAccountStmt = $pdo->prepare("UPDATE main_account SET {$mainField} = {$mainField} + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $updateMainAccountStmt->execute([$mainSigned, $mainTransaction['main_account_id'], $tenant_id, $branch_id]);
             }
         }
         
@@ -351,8 +355,8 @@ try {
         $accountId = $clientId;
         
         // Calculate the difference in amount
-        $originalSignedAmount = $originalType === 'credit' ? $originalAmount : -$originalAmount;
-        $newSignedAmount = $newType === 'credit' ? $newAmount : -$newAmount;
+        $originalSignedAmount = strtolower($originalType) === 'credit' ? $originalAmount : -$originalAmount;
+        $newSignedAmount = strtolower($newType) === 'credit' ? $newAmount : -$newAmount;
         $amountDifference = $newSignedAmount - $originalSignedAmount;
         
         // Update the transaction - created_at already removed
@@ -451,13 +455,13 @@ try {
             // Recalculate main amount for cross-currency
             $newMainAmount = $newAmount;
             if ($exchangeRate && $exchangeRate > 0 && $mainCurrency !== $currency) {
-                // rate = how many AFS per 1 USD
-                if ($mainCurrency === 'AFS') {
-                    // Payment is AFS, balance is USD: main = client * rate
-                    $newMainAmount = $newAmount * $exchangeRate;
-                } else {
+                // rate orientation: "1 X = Y <payment>" as stored on the client transaction
+                if ($mainCurrency === 'USD') {
                     // Payment is USD, balance is AFS: main = client / rate
                     $newMainAmount = $newAmount / $exchangeRate;
+                } else {
+                    // Payment is AFS/EUR/DARHAM/SAR: main = client * rate
+                    $newMainAmount = $newAmount * $exchangeRate;
                 }
             }
 
@@ -468,7 +472,7 @@ try {
 
             $newMainBalance = $mainTransaction['balance'] + $mainAmountDifference;
 
-            // Update main transaction
+            // Update main transaction (keep the edited description instead of hardcoding)
             $updateMainStmt = $pdo->prepare("
                 UPDATE main_account_transactions
                 SET amount = ?, type = ?, description = ?, balance = ?
@@ -477,7 +481,7 @@ try {
             $updateMainStmt->execute([
                 $newMainAmount,
                 $newType,
-                "Fund transfer from client: $accountName",
+                $description,
                 $newMainBalance,
                 $mainTransaction['id'],
                 $tenant_id,

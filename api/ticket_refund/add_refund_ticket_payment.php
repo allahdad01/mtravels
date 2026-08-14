@@ -72,7 +72,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Only deduct from main account if client is an agency
         if ($booking['client_type'] === 'agency') {
             // Get current balance
-            $balanceField = $currency === 'USD' ? 'usd_balance' : 'afs_balance';
+            $balanceFields = [
+                'USD' => 'usd_balance',
+                'AFS' => 'afs_balance',
+                'EUR' => 'euro_balance',
+                'DARHAM' => 'darham_balance',
+                'SAR' => 'sar_balance',
+            ];
+            $balanceField = $balanceFields[$currency] ?? null;
+            if (!$balanceField) {
+                throw new Exception("Unsupported currency: $currency");
+            }
             $stmt = $pdo->prepare("SELECT $balanceField as current_balance FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
             $stmt->execute([$booking['paid_to'], $tenant_id, $branch_id]);
             $balanceResult = $stmt->fetch(PDO::FETCH_ASSOC);
