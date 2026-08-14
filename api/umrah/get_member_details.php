@@ -31,10 +31,15 @@ $stmt->execute([$tenant_id, $branch_id, $tenant_id, $branch_id, $tenant_id, $bra
 $member = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if ($member) {
-    // Fetch services with supplier information
+    // Fetch services with supplier information. Since Phase 19-21 the assigned
+    // supplier lives on the fulfillment row (umrah_fulfillments.supplier_id),
+    // not on the sold-service line — join the service's first (cost-bearing)
+    // fulfillment, with a legacy fallback to the old line-level supplier.
     $servicesSql = "SELECT ubs.*, s.name as supplier_name
                     FROM umrah_booking_services ubs
-                    LEFT JOIN suppliers s ON ubs.supplier_id = s.id
+                    LEFT JOIN umrah_fulfillments f ON f.booking_service_id = ubs.id
+                      AND f.id = (SELECT MIN(f2.id) FROM umrah_fulfillments f2 WHERE f2.booking_service_id = ubs.id AND f2.tenant_id = ubs.tenant_id)
+                    LEFT JOIN suppliers s ON s.id = COALESCE(f.supplier_id, ubs.supplier_id)
                     WHERE ubs.booking_id = ? AND ubs.tenant_id = ? AND ubs.branch_id = ?";
     $servicesStmt = $pdo->prepare($servicesSql);
     $servicesStmt->execute([$bookingId, $tenant_id, $branch_id]);

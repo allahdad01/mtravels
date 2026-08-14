@@ -216,15 +216,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // If refund decreased, client gets less money back (credit)
                 if ($refundDifference > 0) {
                     // Refund decreased, client gets less money back
-                    $updateClientQuery = "UPDATE clients SET $balanceField = $balanceField + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
-                    $newBalance = $currentBalance + $refundDifference;
-                    $transactionType = 'credit';
-                } else {
-                    // Refund increased, client gets more money back
                     $updateClientQuery = "UPDATE clients SET $balanceField = $balanceField - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                     $absRefundDiff = abs($refundDifference);
                     $newBalance = $currentBalance - $absRefundDiff;
                     $transactionType = 'debit';
+                } else {
+                    // Refund increased, client gets more money back
+                    $updateClientQuery = "UPDATE clients SET $balanceField = $balanceField + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+                    $absRefundDiff = abs($refundDifference);
+                    $newBalance = $currentBalance + $absRefundDiff;
+                    $transactionType = 'credit';
                 }
 
                 // Update client balance
@@ -255,11 +256,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Calculate the new balance for this transaction
                     $newTransactionBalance = $currentTransactionBalance;
                     if ($refundDifference > 0) {
-                        // Refund decreased - balance should increase
-                        $newTransactionBalance = $currentTransactionBalance + abs($amountDifference);
-                    } else if ($refundDifference < 0) {
-                        // Refund increased - balance should decrease
+                        // Refund decreased - balance should decrease
                         $newTransactionBalance = $currentTransactionBalance - abs($amountDifference);
+                    } else if ($refundDifference < 0) {
+                        // Refund increased - balance should increase
+                        $newTransactionBalance = $currentTransactionBalance + abs($amountDifference);
                     }
 
                     // Update existing transaction - maintain the original transaction type

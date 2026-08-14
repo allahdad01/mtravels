@@ -78,10 +78,14 @@ if ($booking_id !== null) {
             exit();
         }
 
-        // Get all services/suppliers for this booking
-        $servicesQuery = "SELECT ubs.id as service_id, ubs.supplier_id, ubs.service_type, ubs.base_price, ubs.sold_price, ubs.profit, ubs.currency, s.supplier_type
+        // Get all services/suppliers for this booking, preferring the fulfillment-
+        // assigned supplier (umrah_fulfillments.supplier_id) with a legacy
+        // fallback to the sold-service line supplier.
+        $servicesQuery = "SELECT ubs.id as service_id, COALESCE(f.supplier_id, ubs.supplier_id) as supplier_id, ubs.service_type, ubs.base_price, ubs.sold_price, ubs.profit, ubs.currency, s.supplier_type
                           FROM umrah_booking_services ubs
-                          JOIN suppliers s ON ubs.supplier_id = s.id
+                          LEFT JOIN umrah_fulfillments f ON f.booking_service_id = ubs.id
+                            AND f.id = (SELECT MIN(f2.id) FROM umrah_fulfillments f2 WHERE f2.booking_service_id = ubs.id AND f2.tenant_id = ubs.tenant_id)
+                          JOIN suppliers s ON s.id = COALESCE(f.supplier_id, ubs.supplier_id)
                           WHERE ubs.booking_id = ? AND ubs.tenant_id = ? AND ubs.branch_id = ? AND s.tenant_id = ? AND s.branch_id = ?";
         $stmtServices = $pdo->prepare($servicesQuery);
         $stmtServices->bindParam(1, $booking_id, PDO::PARAM_INT);

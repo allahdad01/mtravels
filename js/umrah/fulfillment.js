@@ -59,6 +59,7 @@ function openFulfillmentFor(params, entityName, mode) {
         }
         fulfillmentData = data;
         currentFulfillmentCurrency = ((data.booking && data.booking.currency) || 'USD').toString().trim().toUpperCase();
+        currentFulfillmentBookingId = (data.booking && data.booking.booking_id) ? parseInt(data.booking.booking_id, 10) : 0;
         currentFulfillmentFamilyId = (data.booking && data.booking.family_id) ? parseInt(data.booking.family_id, 10) : 0;
         currentFulfillmentGroupId = data.group_id ? parseInt(data.group_id, 10) : 0;
         currentFulfillmentGroupName = data.group_name || '';
@@ -1299,6 +1300,9 @@ function renderFulfillmentServices(data) {
     const $container = $('#fulfillmentServicesContainer');
     $container.empty();
 
+    // Optional BRN procurement cost — rendered even when no services exist.
+    renderBrnCard(data);
+
     if (!data.services || data.services.length === 0) {
         $('#fulfillmentEmptyState').removeClass('d-none');
         return;
@@ -1640,6 +1644,104 @@ function renderFulfillmentServices(data) {
     });
 }
 
+// Optional BRN (Booking Reference Number) procurement cost. Member mode: one
+// record for the member's booking; family/group mode: the shared cost is bulk
+// applied to every covered member (one umrah_brn_costs row per booking) via
+// the f-scope selector. Reuses the standard card cost fields so the currency /
+// rate helpers and the profit summary work unchanged (data-cost feeds
+// updateFulfillmentSummary).
+function renderBrnCard(data) {
+    if (currentFulfillmentMode !== 'member' && !currentFulfillmentFamilyId) return;
+    const brnRows = Array.isArray(data.brn_costs) ? data.brn_costs : [];
+    const totalCost = brnRows.reduce((a, r) => a + (parseFloat(r.cost_amount) || 0), 0);
+    const pre = brnRows[0] || {};
+    const suppliersOptions = data.suppliers.map(s =>
+        `<option value="${s.id}" data-currency="${escapeHtml(s.currency || 'USD')}" ${String(pre.supplier_id) === String(s.id) ? 'selected' : ''}>${escapeHtml(s.name)}</option>`
+    ).join('');
+    const scopeSelector = currentFulfillmentMode === 'family' ? `
+        <label class="mb-0" style="font-size:0.85rem;">${__t('apply_to')}
+            <select class="form-control form-control-sm d-inline-block ml-1 f-scope" style="width:auto;">
+                <option value="family">${__t('all_family_members')}</option>
+                <option value="group">${__t('entire_group')}</option>
+            </select>
+        </label>` : (currentFulfillmentMode === 'group' ? `
+        <span class="mb-0" style="font-size:0.85rem;">
+            <i class="feather icon-users mr-1" style="color:#0e7490;"></i>${__t('applying_to')} <b>${__t('entire_group')}</b>${currentFulfillmentGroupName ? ': ' + escapeHtml(currentFulfillmentGroupName) : ''}
+            <input type="hidden" class="f-scope" value="group">
+        </span>` : '<span></span>');
+    const html = `
+    <div class="card mb-3 fulfillment-service-card fulfillment-brn-card" data-group="brn" data-cost="${totalCost}">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap">
+            <div>
+                <strong>BRN <span class="text-muted">(${__t('booking_reference_number')})</span></strong>
+                <span class="fulfillment-chip fulfillment-chip-optional ml-2">optional</span>
+                <span class="ml-2 text-muted" style="font-size: 0.85rem;">
+                    Cost: <b class="f-card-cost">${totalCost.toFixed(2)}</b> <span class="f-card-cost-cur">${escapeHtml(currentFulfillmentCurrency)}</span>
+                </span>
+            </div>
+            <button type="button" class="btn btn-sm btn-light" data-toggle="collapse" data-target="#fulfillmentBrnCollapse" aria-expanded="false" aria-controls="fulfillmentBrnCollapse" title="${__t('show_hide_brn_fields')}">
+                <i class="feather icon-chevron-down"></i>
+            </button>
+        </div>
+        <div class="collapse" id="fulfillmentBrnCollapse">
+        <div class="card-body pt-3">
+            <div class="row">
+                <div class="form-group col-md-12">
+                    <label>${__t('supplier')}</label>
+                    <select class="form-control form-control-sm f-supplier">
+                        <option value="">— ${__t('select_supplier')} —</option>
+                        ${suppliersOptions}
+                    </select>
+                </div>
+            </div>
+            <div class="row">
+                <div class="form-group col-md-3">
+                    <label>Currency</label>
+                    <input type="text" class="form-control form-control-sm f-currency" value="${escapeHtml(pre.supplier_currency || 'USD')}">
+                </div>
+                <div class="form-group col-md-3">
+                    <label>Cost</label>
+                    <input type="number" class="form-control form-control-sm f-cost" min="0" step="0.01" value="${pre.supplier_cost !== null && pre.supplier_cost !== undefined ? pre.supplier_cost : ''}">
+                    <div class="small text-muted mt-1" style="font-size:0.75rem;">${__t('enter_rate_per_member')}</div>
+                </div>
+                <div class="form-group col-md-3 f-rate-field" style="display: none;">
+                    <label>Rate</label>
+                    <input type="number" class="form-control form-control-sm f-rate" min="0" step="0.0001" value="${pre.exchange_rate !== null && pre.exchange_rate !== undefined ? pre.exchange_rate : ''}">
+                </div>
+                <div class="form-group col-md-3">
+                    <label>Cost (${escapeHtml(currentFulfillmentCurrency)})</label>
+                    <input type="number" class="form-control form-control-sm f-cost-usd" readonly value="${totalCost ? totalCost : ''}">
+                </div>
+            </div>
+            <div class="row">
+                <div class="form-group col-md-12">
+                    <label>${__t('notes')}</label>
+                    <input type="text" class="form-control form-control-sm f-notes" value="${escapeHtml(pre.notes || '')}">
+                </div>
+            </div>
+            <div class="d-flex justify-content-between align-items-center flex-wrap mt-2">
+                ${scopeSelector}
+                <div>
+                    <button type="button" class="btn btn-sm btn-primary btn-save-brn">
+                        <i class="feather icon-save mr-1"></i>${__t('save')}
+                    </button>
+                </div>
+            </div>
+            <div class="small text-muted mt-2" style="font-size:0.8rem;">
+                <i class="feather icon-info mr-1" style="color:#0e7490;"></i>${__t('remove_brn_hint')}
+            </div>
+        </div>
+        </div>
+    </div>`;
+    $('#fulfillmentServicesContainer').append(html);
+    const $card = $('#fulfillmentServicesContainer').children().last();
+    $card.data('cost', totalCost);
+    if ($card.find('.f-supplier').val()) {
+        applySuggestion($card);
+    }
+    syncFulfillmentRateField($card);
+}
+
 function applySuggestion($card) {
     const serviceId = $card.data('service-id');
     const supplierId = $card.find('.f-supplier').val();
@@ -1979,6 +2081,71 @@ function bindFulfillmentEvents() {
 
     $(document).off('click.fulfillment', '.btn-save-fulfillment').on('click.fulfillment', '.btn-save-fulfillment', function() {
         saveFulfillment($(this).closest('.fulfillment-service-card'));
+    });
+
+    $(document).off('click.fulfillment', '.btn-save-brn').on('click.fulfillment', '.btn-save-brn', function() {
+        saveBrn($(this).closest('.fulfillment-service-card'));
+    });
+}
+
+// Optional BRN (Booking Reference Number) procurement cost — saved via
+// save_brn.php. Member mode posts the booking; family/group mode posts the
+// family (+ group scope) so the server applies the shared cost to every
+// covered member. Empty supplier + cost = record removal.
+function saveBrn($card) {
+    const btn = $card.find('.btn-save-brn');
+    const originalHtml = btn.html();
+    const isMulti = currentFulfillmentMode !== 'member';
+    let scope = 'family';
+    if (currentFulfillmentMode === 'family') {
+        scope = $card.find('.f-scope').val() || 'family';
+    } else if (currentFulfillmentMode === 'group') {
+        scope = 'group';
+    }
+
+    const formData = new FormData();
+    formData.append('csrf_token', window.csrfToken || '');
+    formData.append('booking_id', currentFulfillmentBookingId || '');
+    formData.append('supplier_id', $card.find('.f-supplier').val() || '');
+    formData.append('supplier_currency', $card.find('.f-currency').val() || '');
+    formData.append('supplier_cost', $card.find('.f-cost').val() || '');
+    formData.append('exchange_rate', $card.find('.f-rate').val() || '');
+    formData.append('notes', $card.find('.f-notes').val() || '');
+    if (isMulti) {
+        formData.append('family_id', currentFulfillmentFamilyId);
+        if (scope === 'group') {
+            formData.append('scope', 'group');
+        }
+    }
+
+    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Saving...');
+
+    $.ajax({
+        url: '../api/umrah/save_brn.php',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        dataType: 'json'
+    }).then(data => {
+        btn.prop('disabled', false).html(originalHtml);
+        if (data.success) {
+            showToast('success', data.message || (data.removed ? 'BRN removed' : 'BRN saved'));
+            if (data.errors && data.errors.length) {
+                console.warn('BRN save errors:', data.errors);
+                showToast('error', (data.errors[0].member || 'Member') + ': ' + data.errors[0].message);
+            }
+            const newCost = parseFloat($card.find('.f-cost-usd').val()) || 0;
+            $card.data('cost', newCost);
+            $card.find('.f-card-cost').text(newCost.toFixed(2));
+            updateFulfillmentSummary();
+        } else {
+            showToast('error', data.message || 'Failed to save BRN');
+        }
+    }).catch(err => {
+        console.error('Error saving BRN:', err);
+        btn.prop('disabled', false).html(originalHtml);
+        showToast('error', 'An error occurred while saving BRN');
     });
 }
 

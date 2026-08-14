@@ -55,6 +55,12 @@ function loadFamilyTransactionData(familyId) {
                 }).length;
                 window.familyRouteToMainMajority = routeCount >= (data.members || []).length / 2;
 
+                // Show package (some families store it on the bookings, not
+                // on the family row — the API derives it from member bookings)
+                if (data.package_type) {
+                    $('#familyTransactionPackage').text(data.package_type);
+                }
+
                 // Update financial summary
                 $('#familyTotalPrice').text(data.total_price || '0.00');
                 $('#familyTotalPaid').text(data.total_paid || '0.00');

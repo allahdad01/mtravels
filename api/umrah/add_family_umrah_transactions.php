@@ -87,8 +87,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
              $received_bank_payment = $umrah_details['received_bank_payment'];
              $booking_currency = $umrah_details['booking_currency'];
 
-            // Get supplier_id from umrah_booking_services
-            $stmt_fetch_supplier_id = $pdo->prepare("SELECT supplier_id FROM umrah_booking_services WHERE booking_id = ? AND tenant_id = ? AND branch_id = ? AND (service_type = 'all' OR FIND_IN_SET('visa', REPLACE(service_type, '+', ',')) > 0) LIMIT 1");
+            // Get supplier_id from umrah_booking_services, preferring the
+            // fulfillment-assigned supplier (umrah_fulfillments.supplier_id)
+            // with a legacy fallback to the sold-service line supplier.
+            $stmt_fetch_supplier_id = $pdo->prepare("SELECT COALESCE(f.supplier_id, ubs.supplier_id) AS supplier_id FROM umrah_booking_services ubs LEFT JOIN umrah_fulfillments f ON f.booking_service_id = ubs.id AND f.id = (SELECT MIN(f2.id) FROM umrah_fulfillments f2 WHERE f2.booking_service_id = ubs.id AND f2.tenant_id = ubs.tenant_id) WHERE ubs.booking_id = ? AND ubs.tenant_id = ? AND ubs.branch_id = ? AND (ubs.service_type = 'all' OR FIND_IN_SET('visa', REPLACE(ubs.service_type, '+', ',')) > 0) AND COALESCE(f.supplier_id, ubs.supplier_id) IS NOT NULL LIMIT 1");
             $stmt_fetch_supplier_id->bindParam(1, $booking_id, PDO::PARAM_INT);
             $stmt_fetch_supplier_id->bindParam(2, $tenant_id, PDO::PARAM_INT);
             $stmt_fetch_supplier_id->bindParam(3, $branch_id, PDO::PARAM_INT);
@@ -205,9 +207,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                      $main_acct_receipt = !empty($member_receipt_number) ? $member_receipt_number : $receipt_number;
                      $created_by = $_SESSION['user_id'] ?? null;
                      $stmt_insert_main_account_transaction = $pdo->prepare("INSERT INTO main_account_transactions (main_account_id, type, amount, currency, description, transaction_of, reference_id, balance, created_at, receipt, tenant_id, exchange_rate, branch_id, created_by) VALUES (?, ?, ?, ?, ?, 'umrah_transaction', ?, ?, NOW(), ?, ?, ?, ?, ?)");
-                     $stmt_insert_main_account_transaction->bindParam(1, $paid_to, PDO::PARAM_INT);
-                     $stmt_insert_main_account_transaction->bindParam(2, 'Credit', PDO::PARAM_STR);
-                     $stmt_insert_main_account_transaction->bindParam(3, $payment_amount, PDO::PARAM_STR);
+                 $stmt_insert_main_account_transaction->bindParam(1, $paid_to, PDO::PARAM_INT);
+                 $stmt_insert_main_account_transaction->bindValue(2, 'credit', PDO::PARAM_STR);
+                 $stmt_insert_main_account_transaction->bindParam(3, $payment_amount, PDO::PARAM_STR);
                      $stmt_insert_main_account_transaction->bindParam(4, $payment_currency, PDO::PARAM_STR);
                      $stmt_insert_main_account_transaction->bindParam(5, $payment_description, PDO::PARAM_STR);
                      $stmt_insert_main_account_transaction->bindParam(6, $umrah_transaction_id, PDO::PARAM_INT);

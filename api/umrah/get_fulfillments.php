@@ -401,6 +401,48 @@ if ($isAggregate) {
     }
 }
 
+// ---- BRN (Booking Reference Number) optional procurement cost ---------------------
+// One umrah_brn_costs row per booking. Member mode: the booking's row;
+// family/group mode: every active member's row (the aggregate card pre-fills
+// from the first row and the modal summary counts the whole sum).
+$brnCosts = [];
+$brnBookingIds = [];
+if ($scopeMode === 'member') {
+    $brnBookingIds = [$booking_id];
+} else {
+    $brnBookingIds = array_column($members, 'booking_id');
+}
+if ($brnBookingIds) {
+    $brnPh = implode(',', array_fill(0, count($brnBookingIds), '?'));
+    $brnStmt = $pdo->prepare("
+        SELECT bc.id, bc.booking_id, ub.name, bc.supplier_id, bc.supplier_currency,
+               bc.supplier_cost, bc.exchange_rate, bc.cost_amount, bc.notes
+        FROM umrah_brn_costs bc
+        JOIN umrah_bookings ub ON ub.booking_id = bc.booking_id
+        WHERE bc.booking_id IN ($brnPh) AND bc.tenant_id = ?
+        ORDER BY bc.booking_id");
+    $brnStmt->execute(array_merge($brnBookingIds, [$tenant_id]));
+    foreach ($brnStmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $brnCosts[] = [
+            'id' => (int)$r['id'],
+            'booking_id' => (int)$r['booking_id'],
+            'name' => (string)$r['name'],
+            'supplier_id' => !empty($r['supplier_id']) ? (int)$r['supplier_id'] : null,
+            'supplier_currency' => (string)($r['supplier_currency'] ?? ''),
+            'supplier_cost' => $r['supplier_cost'] !== null ? (float)$r['supplier_cost'] : null,
+            'exchange_rate' => $r['exchange_rate'] !== null ? (float)$r['exchange_rate'] : null,
+            'cost_amount' => $r['cost_amount'] !== null ? (float)$r['cost_amount'] : null,
+            'notes' => (string)($r['notes'] ?? ''),
+        ];
+    }
+}
+// BRN costs count into the scope-level cost figure shown in the modal summary
+// (profit preview = sold - discount - costs).
+if ($isAggregate) {
+    $brnSum = array_sum(array_column($brnCosts, 'cost_amount'));
+    $booking['cost_total'] = round((float)$booking['cost_total'] + $brnSum, 2);
+}
+
 // ---- Transport details (vehicle / trip date) from the generic detail store -------
 $fIds = [];
 foreach ($services as $sv) { if (!empty($sv['fulfillment_id'])) $fIds[(int)$sv['fulfillment_id']] = 1; }
@@ -563,6 +605,7 @@ echo json_encode([
     'services' => $services,
     'families' => $familyNames,
     'suppliers' => $suppliers,
+    'brn_costs' => $brnCosts,
     'statuses' => $statuses,
     'hotels' => $hotels,
     'room_types' => $roomTypes,

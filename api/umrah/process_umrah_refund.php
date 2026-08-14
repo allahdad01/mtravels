@@ -108,8 +108,14 @@ try {
     }
     $refundId = $pdo->lastInsertId();
 
-    // Process services (multi-supplier)
-    $servicesQuery = $pdo->prepare("SELECT * FROM umrah_booking_services WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?");
+    // Process services (multi-supplier), preferring the fulfillment-assigned
+    // supplier (umrah_fulfillments.supplier_id) with a legacy fallback to the
+    // sold-service line supplier.
+    $servicesQuery = $pdo->prepare("SELECT ubs.*, COALESCE(f.supplier_id, ubs.supplier_id) AS supplier_id
+        FROM umrah_booking_services ubs
+        LEFT JOIN umrah_fulfillments f ON f.booking_service_id = ubs.id
+          AND f.id = (SELECT MIN(f2.id) FROM umrah_fulfillments f2 WHERE f2.booking_service_id = ubs.id AND f2.tenant_id = ubs.tenant_id)
+        WHERE ubs.booking_id = ? AND ubs.tenant_id = ? AND ubs.branch_id = ?");
     $servicesQuery->bindParam(1, $bookingId, PDO::PARAM_INT);
     $servicesQuery->bindParam(2, $tenant_id, PDO::PARAM_INT);
     $servicesQuery->bindParam(3, $branch_id, PDO::PARAM_INT);

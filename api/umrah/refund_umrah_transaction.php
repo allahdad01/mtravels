@@ -67,8 +67,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Get the inserted umrah transaction ID
         $umrah_transaction_id = $pdo->lastInsertId();
 
-        // Fetch Umrah booking details
-        $stmt_fetch_umrah_app = $pdo->prepare("SELECT paid_to, supplier, received_bank_payment FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?");
+        // Fetch Umrah booking details, preferring the fulfillment-assigned
+        // supplier (umrah_fulfillments.supplier_id) with a legacy fallback to
+        // the sold-service line supplier.
+        $stmt_fetch_umrah_app = $pdo->prepare("SELECT ub.paid_to, ub.received_bank_payment,
+            (SELECT COALESCE(f.supplier_id, ubs.supplier_id)
+             FROM umrah_booking_services ubs
+             LEFT JOIN umrah_fulfillments f ON f.booking_service_id = ubs.id
+               AND f.id = (SELECT MIN(f2.id) FROM umrah_fulfillments f2 WHERE f2.booking_service_id = ubs.id AND f2.tenant_id = ubs.tenant_id)
+             WHERE ubs.booking_id = ub.booking_id AND ubs.tenant_id = ub.tenant_id
+               AND (ubs.branch_id = ub.branch_id OR (ubs.branch_id IS NULL AND ub.branch_id IS NULL))
+               AND COALESCE(f.supplier_id, ubs.supplier_id) IS NOT NULL
+             LIMIT 1) AS supplier_id
+            FROM umrah_bookings ub WHERE ub.booking_id = ? AND ub.tenant_id = ? AND ub.branch_id = ?");
         $stmt_fetch_umrah_app->bindParam(1, $umrah_id, PDO::PARAM_INT);
         $stmt_fetch_umrah_app->bindParam(2, $tenant_id, PDO::PARAM_INT);
         $stmt_fetch_umrah_app->bindParam(3, $branch_id, PDO::PARAM_INT);
@@ -78,7 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new PDOException('Umrah booking details not found.');
         }
         $paid_to = $umrah_app_result['paid_to'];
-        $supplier_id = $umrah_app_result['supplier'];
+        $supplier_id = $umrah_app_result['supplier_id'];
         $received_bank_payment = $umrah_app_result['received_bank_payment'];
 
         // Fetch Supplier Type
@@ -281,7 +292,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 s.name AS supplier_name,
                 s.id AS supplier_id
             FROM umrah_bookings ub
-            INNER JOIN suppliers s ON ub.supplier = s.id
+            INNER JOIN suppliers s ON s.id = (
+                SELECT COALESCE(f.supplier_id, ubs.supplier_id)
+                FROM umrah_booking_services ubs
+                LEFT JOIN umrah_fulfillments f ON f.booking_service_id = ubs.id
+                  AND f.id = (SELECT MIN(f2.id) FROM umrah_fulfillments f2 WHERE f2.booking_service_id = ubs.id AND f2.tenant_id = ubs.tenant_id)
+                WHERE ubs.booking_id = ub.booking_id AND ubs.tenant_id = ub.tenant_id
+                  AND (ubs.branch_id = ub.branch_id OR (ubs.branch_id IS NULL AND ub.branch_id IS NULL))
+                  AND COALESCE(f.supplier_id, ubs.supplier_id) IS NOT NULL
+                LIMIT 1
+            )
             WHERE ub.booking_id = ? AND ub.tenant_id = ? AND ub.branch_id = ?
         ");
         $supplierStmt->bindParam(1, $umrah_id, PDO::PARAM_INT);

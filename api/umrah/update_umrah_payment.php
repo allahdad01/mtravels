@@ -178,8 +178,9 @@ $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_PO
         $amountDifference = $newAmount - $originalAmount;
         $isMainAccountTxn = (strtolower($transactionTo) === 'internal account' || empty($transactionTo));
         if (!$isMainAccountTxn) {
-            // Bank payments for Nusuk-flagged suppliers are credited to the main account
-            $routeLookupStmt = $pdo->prepare("SELECT s.route_payment_to_main_account FROM umrah_booking_services ubs JOIN suppliers s ON ubs.supplier_id = s.id WHERE ubs.booking_id = ? AND (ubs.service_type = 'all' OR FIND_IN_SET('visa', REPLACE(ubs.service_type, '+', ',')) > 0) AND ubs.tenant_id = ? AND ubs.branch_id = ? LIMIT 1");
+            // Bank payments for Nusuk-flagged suppliers are credited to the main account.
+            // Resolve the supplier from the fulfillment first (legacy fallback to the line).
+            $routeLookupStmt = $pdo->prepare("SELECT s.route_payment_to_main_account FROM umrah_booking_services ubs LEFT JOIN umrah_fulfillments f ON f.booking_service_id = ubs.id AND f.id = (SELECT MIN(f2.id) FROM umrah_fulfillments f2 WHERE f2.booking_service_id = ubs.id AND f2.tenant_id = ubs.tenant_id) JOIN suppliers s ON s.id = COALESCE(f.supplier_id, ubs.supplier_id) WHERE ubs.booking_id = ? AND (ubs.service_type = 'all' OR FIND_IN_SET('visa', REPLACE(ubs.service_type, '+', ',')) > 0) AND ubs.tenant_id = ? AND ubs.branch_id = ? LIMIT 1");
             $routeLookupStmt->bindParam(1, $umrahId, PDO::PARAM_INT);
             $routeLookupStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
             $routeLookupStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
@@ -293,8 +294,9 @@ $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_PO
                 }
             } else {
                  // Handle bank/supplier transaction
-                 // Get supplier ID from umrah_booking_services
-                 $bookingStmt = $pdo->prepare("SELECT supplier_id FROM umrah_booking_services WHERE booking_id = ? AND (service_type = 'all' OR FIND_IN_SET('visa', REPLACE(service_type, '+', ',')) > 0) AND tenant_id = ? AND branch_id = ? LIMIT 1");
+                 // Get supplier ID from umrah_booking_services, preferring the
+                 // fulfillment-assigned supplier (legacy fallback to the line).
+                 $bookingStmt = $pdo->prepare("SELECT COALESCE(f.supplier_id, ubs.supplier_id) AS supplier_id FROM umrah_booking_services ubs LEFT JOIN umrah_fulfillments f ON f.booking_service_id = ubs.id AND f.id = (SELECT MIN(f2.id) FROM umrah_fulfillments f2 WHERE f2.booking_service_id = ubs.id AND f2.tenant_id = ubs.tenant_id) WHERE ubs.booking_id = ? AND (ubs.service_type = 'all' OR FIND_IN_SET('visa', REPLACE(ubs.service_type, '+', ',')) > 0) AND ubs.tenant_id = ? AND ubs.branch_id = ? AND COALESCE(f.supplier_id, ubs.supplier_id) IS NOT NULL LIMIT 1");
                  $bookingStmt->bindParam(1, $umrahId, PDO::PARAM_INT);
                  $bookingStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
                  $bookingStmt->bindParam(3, $branch_id, PDO::PARAM_INT);

@@ -48,19 +48,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['family_id'])) {
                 ub.due,
                 ub.currency,
                 ub.sold_to,
+                p.name AS package_name,
                 (SELECT s.supplier_type FROM umrah_booking_services ubs
-                 JOIN suppliers s ON ubs.supplier_id = s.id
+                 LEFT JOIN umrah_fulfillments f ON f.booking_service_id = ubs.id
+                   AND f.id = (SELECT MIN(f2.id) FROM umrah_fulfillments f2 WHERE f2.booking_service_id = ubs.id AND f2.tenant_id = ubs.tenant_id)
+                 JOIN suppliers s ON s.id = COALESCE(f.supplier_id, ubs.supplier_id)
                  WHERE ubs.booking_id = ub.booking_id AND ubs.tenant_id = ub.tenant_id
                  AND ubs.branch_id = ub.branch_id
                  AND (ubs.service_type = 'all' OR FIND_IN_SET('visa', REPLACE(ubs.service_type, '+', ',')) > 0)
                  LIMIT 1) as supplier_type,
                 (SELECT s.route_payment_to_main_account FROM umrah_booking_services ubs
-                 JOIN suppliers s ON ubs.supplier_id = s.id
+                 LEFT JOIN umrah_fulfillments f ON f.booking_service_id = ubs.id
+                   AND f.id = (SELECT MIN(f2.id) FROM umrah_fulfillments f2 WHERE f2.booking_service_id = ubs.id AND f2.tenant_id = ubs.tenant_id)
+                 JOIN suppliers s ON s.id = COALESCE(f.supplier_id, ubs.supplier_id)
                  WHERE ubs.booking_id = ub.booking_id AND ubs.tenant_id = ub.tenant_id
                  AND ubs.branch_id = ub.branch_id
                  AND (ubs.service_type = 'all' OR FIND_IN_SET('visa', REPLACE(ubs.service_type, '+', ',')) > 0)
                  LIMIT 1) as route_payment_to_main_account
             FROM umrah_bookings ub
+            LEFT JOIN umrah_packages p ON ub.package_id = p.id AND p.tenant_id = ub.tenant_id
             WHERE ub.family_id = ? AND ub.tenant_id = ? AND ub.branch_id = ?
             ORDER BY ub.name
         ";
@@ -83,8 +89,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['family_id'])) {
                 'currency' => $member['currency'] ?? 'USD',
                 'supplier_type' => $member['supplier_type'] ?? '',
                 'route_payment_to_main_account' => (int)($member['route_payment_to_main_account'] ?? 0),
+                'package' => $member['package_name'] ?? '',
                 'sold_to' => $member['sold_to'] ?? ''
             ];
+        }
+
+        // Family package label: stored family package_type when set, otherwise
+        // the most common package name across the family's member bookings
+        // (families created from a booking are saved with package_type NULL).
+        $packageType = $familyData['package_type'] ?? '';
+        if (empty($packageType)) {
+            $pkgCounts = [];
+            foreach ($members as $m) {
+                if (!empty($m['package'])) {
+                    $pkgCounts[$m['package']] = ($pkgCounts[$m['package']] ?? 0) + 1;
+                }
+            }
+            if ($pkgCounts) {
+                arsort($pkgCounts);
+                $packageType = key($pkgCounts);
+            }
         }
 
         // Prepare response data
@@ -96,6 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['family_id'])) {
                 'total_due' => number_format($familyData['total_due'] ?? 0, 2),
                 'member_count' => $familyData['member_count'] ?? 0,
                 'client_type' => $familyData['client_type'] ?? '',
+                'package_type' => $packageType,
                 'members' => $members
             ]
         ];

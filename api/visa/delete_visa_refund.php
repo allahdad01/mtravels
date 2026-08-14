@@ -81,7 +81,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
 
                 // Reverse logic: If original was 'credit', subtract; if 'debit', add.
                 $adjustClientBalance = "UPDATE clients
-                                       SET $clientBalanceField = $clientBalanceField " . ($row['type'] == 'credit' ? '-' : '+') . " ?
+                                       SET $clientBalanceField = $clientBalanceField " . (strtolower($row['type']) == 'credit' ? '-' : '+') . " ?
                                        WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                 $stmt = $pdo->prepare($adjustClientBalance);
                 $stmt->bindParam(1, $amount, PDO::PARAM_STR);
@@ -92,7 +92,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
 
                 // Update subsequent transactions' running balances
                 $updateSubsequentBalances = "UPDATE client_transactions
-                                           SET balance = balance " . ($row['type'] == 'credit' ? '-' : '+') . " ?
+                                           SET balance = balance " . (strtolower($row['type']) == 'credit' ? '-' : '+') . " ?
                                            WHERE client_id = ?
                                            AND id > ?
                                            AND currency = ?
@@ -170,7 +170,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
                 if ($supplierType === 'External') {
                     // Adjust Supplier Balance
                     $adjustSupplierBalance = "UPDATE suppliers
-                                            SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ?
+                                            SET balance = balance " . (strtolower($row['transaction_type']) == 'credit' ? '-' : '+') . " ?
                                             WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                     $stmt = $pdo->prepare($adjustSupplierBalance);
                     $stmt->bindParam(1, $amount, PDO::PARAM_STR);
@@ -181,7 +181,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
 
                     // Update subsequent transactions' running balances
                     $updateSubsequentSupplierBalances = "UPDATE supplier_transactions
-                                                        SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ?
+                                                        SET balance = balance " . (strtolower($row['transaction_type']) == 'credit' ? '-' : '+') . " ?
                                                         WHERE supplier_id = ?
                                                         AND id > ?
                                                         AND tenant_id = ? AND branch_id = ?";
@@ -233,7 +233,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
                 default: $balanceField = 'afs_balance'; break;
             }
             $adjustMainBalance = "UPDATE main_account
-                                SET $balanceField = $balanceField " . ($type == 'credit' ? '-' : '+') . " ?
+                                SET $balanceField = $balanceField " . (strtolower($type) == 'credit' ? '-' : '+') . " ?
                                 WHERE id = ? AND tenant_id = ? AND branch_id = ?";
             $stmt = $pdo->prepare($adjustMainBalance);
             $stmt->bindParam(1, $amount, PDO::PARAM_STR);
@@ -244,7 +244,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
 
             // Update subsequent transactions' running balances
             $updateSubsequentMainBalances = "UPDATE main_account_transactions
-                                           SET balance = balance " . ($type == 'credit' ? '-' : '+') . " ?
+                                           SET balance = balance " . (strtolower($type) == 'credit' ? '-' : '+') . " ?
                                            WHERE main_account_id = ?
                                            AND id > ?
                                            AND currency = ?

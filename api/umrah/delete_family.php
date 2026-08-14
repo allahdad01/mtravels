@@ -60,10 +60,15 @@ try {
         $mainAccountId = $member['paid_to'];
         $isActiveStatus = ($member['status'] === 'active');
 
-        // Fetch supplier_id from umrah_booking_services (multi-supplier support)
+        // Fetch supplier_id from umrah_booking_services (multi-supplier support),
+        // preferring the fulfillment-assigned supplier (umrah_fulfillments.supplier_id)
+        // with a legacy fallback to the sold-service line supplier.
         $stmt_fetch_supplier = $pdo->prepare("
-            SELECT supplier_id FROM umrah_booking_services 
-            WHERE booking_id = ? AND tenant_id = ? AND branch_id = ? 
+            SELECT COALESCE(f.supplier_id, ubs.supplier_id) AS supplier_id FROM umrah_booking_services ubs
+            LEFT JOIN umrah_fulfillments f ON f.booking_service_id = ubs.id
+              AND f.id = (SELECT MIN(f2.id) FROM umrah_fulfillments f2 WHERE f2.booking_service_id = ubs.id AND f2.tenant_id = ubs.tenant_id)
+            WHERE ubs.booking_id = ? AND ubs.tenant_id = ? AND ubs.branch_id = ?
+            AND COALESCE(f.supplier_id, ubs.supplier_id) IS NOT NULL
             LIMIT 1
         ");
         $stmt_fetch_supplier->bindParam(1, $booking_id, PDO::PARAM_INT);

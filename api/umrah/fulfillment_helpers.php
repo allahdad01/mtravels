@@ -670,6 +670,12 @@ function fulfillment_save(PDO $pdo, array $in): array
             $sumStmt = $pdo->prepare("SELECT COALESCE(SUM(COALESCE(base_price, 0)), 0) FROM umrah_booking_services WHERE booking_id = ?");
             $sumStmt->execute([$booking_id]);
             $booking_price = round((float)$sumStmt->fetchColumn(), 3);
+            // BRN procurement costs (saved via save_brn.php) count into the
+            // booking totals the same way — recalc with the current snapshot
+            // so a fulfillment save never drops a recorded BRN from price.
+            $brnStmt = $pdo->prepare("SELECT COALESCE(SUM(COALESCE(cost_amount, 0)), 0) FROM umrah_brn_costs WHERE booking_id = ? AND tenant_id = ?");
+            $brnStmt->execute([$booking_id, $tenant_id]);
+            $booking_price = round($booking_price + (float)$brnStmt->fetchColumn(), 3);
             $booking_profit = round(((float)$bRow['sold_price'] - (float)$bRow['discount']) - $booking_price, 3);
             $pdo->prepare("UPDATE umrah_bookings SET price = ?, profit = ? WHERE booking_id = ?")
                 ->execute([$booking_price, $booking_profit, $booking_id]);

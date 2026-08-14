@@ -77,7 +77,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
 
                 // Reverse logic: If original was 'credit', subtract; if 'debit', add.
                 $adjustClientBalance = "UPDATE clients
-                                        SET $clientBalanceField = $clientBalanceField " . ($row['type'] == 'credit' ? '-' : '+') . " ?
+                                        SET $clientBalanceField = $clientBalanceField " . (strtolower($row['type']) == 'credit' ? '-' : '+') . " ?
                                         WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                 $stmt = $pdo->prepare($adjustClientBalance);
                 $stmt->bindParam(1, $amount, PDO::PARAM_STR);
@@ -90,7 +90,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
                 // If the deleted transaction was a credit, we need to subtract that amount from all later transactions
                 // If it was a debit, we need to add that amount to all later transactions
                 $updateSubsequentBalances = "UPDATE client_transactions
-                                            SET balance = balance " . ($row['type'] == 'credit' ? '-' : '+') . " ?
+                                            SET balance = balance " . (strtolower($row['type']) == 'credit' ? '-' : '+') . " ?
                                             WHERE client_id = ?
                                             AND id > ?
                                             AND currency = ?
@@ -144,7 +144,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
             if ($supplierType === 'External') {
                 // Adjust Supplier Balance
                 $adjustSupplierBalance = "UPDATE suppliers
-                                          SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ?
+                                          SET balance = balance " . (strtolower($row['transaction_type']) == 'credit' ? '-' : '+') . " ?
                                           WHERE id = ? AND tenant_id = ? AND branch_id = ?";
                 $stmt = $pdo->prepare($adjustSupplierBalance);
                 $stmt->bindParam(1, $amount, PDO::PARAM_STR);
@@ -157,7 +157,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($data['id'])) {
                 // If the deleted transaction was a Credit, we need to subtract that amount from all later transactions
                 // If it was a Debit, we need to add that amount to all later transactions
                 $updateSubsequentSupplierBalances = "UPDATE supplier_transactions
-                                                    SET balance = balance " . ($row['transaction_type'] == 'Credit' ? '-' : '+') . " ?
+                                                    SET balance = balance " . (strtolower($row['transaction_type']) == 'credit' ? '-' : '+') . " ?
                                                     WHERE supplier_id = ?
                                                     AND id > ?
                                                     AND tenant_id = ? AND branch_id = ?";

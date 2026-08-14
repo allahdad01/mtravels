@@ -94,7 +94,15 @@ window.fulfillmentLabels = {
     vehicle: <?= json_encode(__('vehicle')) ?>,
     vehicle_placeholder: <?= json_encode(__('vehicle_placeholder')) ?>,
     trip_date: <?= json_encode(__('trip_date')) ?>,
-    trip_members: <?= json_encode(__('trip_members')) ?>
+    trip_members: <?= json_encode(__('trip_members')) ?>,
+    booking_reference_number: <?= json_encode(__('booking_reference_number')) ?>,
+    enter_rate_per_member: <?= json_encode(__('enter_rate_per_member')) ?>,
+    remove_brn_hint: <?= json_encode(__('remove_brn_hint')) ?>,
+    apply_to: <?= json_encode(__('apply_to')) ?>,
+    all_family_members: <?= json_encode(__('all_family_members')) ?>,
+    entire_group: <?= json_encode(__('entire_group')) ?>,
+    applying_to: <?= json_encode(__('applying_to')) ?>,
+    show_hide_brn_fields: <?= json_encode(__('show_hide_brn_fields')) ?>
 };
 </script>
 </div>
