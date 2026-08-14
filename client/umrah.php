@@ -74,10 +74,20 @@ $total_pages = $total > 0 ? ceil($total / $per_page) : 1;
 $umrahs = [];
 try {
     $stmt = $pdo->prepare("
-        SELECT *
-        FROM umrah_bookings
-        WHERE sold_to = ? AND tenant_id = ?
-        ORDER BY created_at DESC
+        SELECT ub.*,
+            (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                WHERE ubs2.booking_id = ub.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                ORDER BY ff.id DESC LIMIT 1) AS flight_date,
+            (SELECT DATE(ff.return_departure_time) FROM umrah_flight_fulfillments ff
+                JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                WHERE ubs2.booking_id = ub.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                ORDER BY ff.id DESC LIMIT 1) AS return_date
+        FROM umrah_bookings ub
+        WHERE ub.sold_to = ? AND ub.tenant_id = ?
+        ORDER BY ub.created_at DESC
         LIMIT ? OFFSET ?
     ");
     $stmt->execute([$client_id, $tenant_id, $per_page, $offset]);

@@ -130,13 +130,17 @@ try {
 
 try {
     $s = $pdo->prepare("
-        SELECT booking_id AS id,
-               CONCAT(name, ' b. ', fname) AS passenger_name,
-               flight_date AS umrah_start_date,
-               sold_price AS total_price, status, created_at
-        FROM umrah_bookings
-        WHERE sold_to = ? AND tenant_id = ?
-        ORDER BY created_at DESC LIMIT 5
+        SELECT ub.booking_id AS id,
+               CONCAT(ub.name, ' b. ', ub.fname) AS passenger_name,
+               (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                   JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                   JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                   WHERE ubs2.booking_id = ub.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                   ORDER BY ff.id DESC LIMIT 1) AS umrah_start_date,
+               ub.sold_price AS total_price, ub.status, ub.created_at
+        FROM umrah_bookings ub
+        WHERE ub.sold_to = ? AND ub.tenant_id = ?
+        ORDER BY ub.created_at DESC LIMIT 5
     ");
     $s->execute([$client_id, $tenant_id]);
     $recent['umrah'] = $s->fetchAll(PDO::FETCH_ASSOC);

@@ -41,7 +41,18 @@ $bookingId = intval($_GET['booking_id']);
 try {
     // Get booking details with related information
     $query = "
-        SELECT um.*, f.package_type, f.head_of_family as family_name,
+        SELECT um.*,
+               (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                   JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                   JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                   WHERE ubs2.booking_id = um.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                   ORDER BY ff.id DESC LIMIT 1) AS flight_date,
+               (SELECT DATE(ff.return_departure_time) FROM umrah_flight_fulfillments ff
+                   JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                   JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                   WHERE ubs2.booking_id = um.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                   ORDER BY ff.id DESC LIMIT 1) AS return_date,
+               f.package_type, f.head_of_family as family_name,
                 u.name as processed_by_name, m.name as account_name,
                 GROUP_CONCAT(DISTINCT s.name) as supplier_name, c.name as client_name
         FROM umrah_bookings um
@@ -49,7 +60,8 @@ try {
         LEFT JOIN users u ON u.id = ? AND u.tenant_id = ? AND u.branch_id = ?
         LEFT JOIN main_account m ON um.paid_to = m.id AND m.tenant_id = ? AND m.branch_id = ?
         LEFT JOIN umrah_booking_services ubs ON um.booking_id = ubs.booking_id
-        LEFT JOIN suppliers s ON ubs.supplier_id = s.id AND s.tenant_id = ? AND s.branch_id = ?
+        LEFT JOIN umrah_fulfillments uff ON uff.booking_service_id = ubs.id AND uff.fulfillment_type = 'flight' AND uff.status <> 'cancelled' AND uff.id = (SELECT MIN(uff2.id) FROM umrah_fulfillments uff2 WHERE uff2.booking_service_id = ubs.id)
+        LEFT JOIN suppliers s ON s.id = COALESCE(uff.supplier_id, ubs.supplier_id) AND s.tenant_id = ? AND s.branch_id = ?
         LEFT JOIN clients c ON um.sold_to = c.id AND c.tenant_id = ? AND c.branch_id = ?
         WHERE um.booking_id = ? AND um.tenant_id = ? AND um.branch_id = ?
         GROUP BY um.booking_id

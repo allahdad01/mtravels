@@ -7,175 +7,267 @@ require_once '../../includes/db.php';
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
+$user_id = $_SESSION['user_id'];
 
 header('Content-Type: application/json');
 
-// Check if request is POST
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'message' => 'Method not allowed']);
-    exit;
-}
+// Get date change ID
+$date_change_id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
 
-// Get POST data
-$id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
-
-if (!$id) {
-    echo json_encode(['success' => false, 'message' => 'Request ID is required']);
+if (!$date_change_id) {
+    echo json_encode(['success' => false, 'message' => 'Date change ID is required']);
     exit;
 }
 
 try {
-    // Get the date change request details
-    $stmt = $pdo->prepare("
-        SELECT dc.*, ub.price as current_price, ub.sold_price, ub.profit, ub.due, ubs.supplier_id as supplier, ub.sold_to, ub.currency, ub.family_id,
-               s.name as supplier_name, s.balance as supplier_balance, s.supplier_type,
-               c.name as client_name, c.usd_balance, c.afs_balance, c.client_type
-        FROM date_change_umrah dc
-        LEFT JOIN umrah_bookings ub ON dc.umrah_booking_id = ub.booking_id AND ub.tenant_id = ? AND ub.branch_id = ?
-        LEFT JOIN umrah_booking_services ubs ON ub.booking_id = ubs.booking_id AND (ubs.service_type = 'all' OR FIND_IN_SET('ticket', REPLACE(ubs.service_type, '+', ',')) > 0) AND ubs.tenant_id = ? AND ubs.branch_id = ?
-        LEFT JOIN suppliers s ON ubs.supplier_id = s.id AND s.tenant_id = ? AND s.branch_id = ?
-        LEFT JOIN clients c ON ub.sold_to = c.id AND c.tenant_id = ? AND c.branch_id = ?
-        WHERE dc.id = ? AND dc.tenant_id = ? AND dc.branch_id = ?
-    ");
-    $stmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
-    $stmt->bindParam(2, $branch_id, PDO::PARAM_INT);
-    $stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
-    $stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
-    $stmt->bindParam(5, $tenant_id, PDO::PARAM_INT);
-    $stmt->bindParam(6, $branch_id, PDO::PARAM_INT);
-    $stmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
-    $stmt->bindParam(8, $branch_id, PDO::PARAM_INT);
-    $stmt->bindParam(9, $id, PDO::PARAM_INT);
-    $stmt->bindParam(10, $tenant_id, PDO::PARAM_INT);
-    $stmt->bindParam(11, $branch_id, PDO::PARAM_INT);
+    // Load the date change record
+    $stmt = $pdo->prepare("SELECT * FROM date_change_umrah WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->bindParam(1, $date_change_id, PDO::PARAM_INT);
+    $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
     $stmt->execute();
-    $request = $stmt->fetch(PDO::FETCH_ASSOC);
+    $dc = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (!$request) {
-        echo json_encode(['success' => false, 'message' => 'Date change request not found']);
+    if (!$dc) {
+        echo json_encode(['success' => false, 'message' => 'Date change record not found']);
         exit;
     }
 
-    // Start transaction
+    $booking_id = (int)$dc['umrah_booking_id'];
+
+    // Only the LATEST date change for a booking can be reverted. Restoring
+    // the old values of an older record over a newer change would corrupt
+    // the booking and the ledger.
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM date_change_umrah WHERE umrah_booking_id = ? AND tenant_id = ? AND branch_id = ? AND id > ?");
+    $stmt->bindParam(1, $booking_id, PDO::PARAM_INT);
+    $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+    $stmt->bindParam(4, $date_change_id, PDO::PARAM_INT);
+    $stmt->execute();
+    if ($stmt->fetchColumn() > 0) {
+        echo json_encode(['success' => false, 'message' => 'This date change cannot be reverted because a newer date change exists for this booking. Revert the newest one first.']);
+        exit;
+    }
+
+    // Booking must still exist to be restored
+    $stmt = $pdo->prepare("SELECT * FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmt->bindParam(1, $booking_id, PDO::PARAM_INT);
+    $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+    $stmt->execute();
+    $booking = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$booking) {
+        echo json_encode(['success' => false, 'message' => 'Booking not found. Cannot revert this date change.']);
+        exit;
+    }
+
     $pdo->beginTransaction();
 
-    try {
-        // If the request was completed, reverse the changes
-        if ($request['status'] === 'Completed') {
-            // Reverse booking price changes
-            $reversed_price = $request['current_price'] - $request['supplier_penalty'];
-            $reversed_sold_price = $request['sold_price'] - $request['total_penalty'];
-            $reversed_profit = $reversed_sold_price - $reversed_price;
-            $new_due = $request['due'] - $request['total_penalty'];
+    // ---- 1. Restore the booking: dates, duration and prices
+    // submit added supplier_penalty to price and total_penalty to sold_price/due
+    $restored_price = $booking['price'] - $dc['supplier_penalty'];
+    $restored_sold = $booking['sold_price'] - $dc['total_penalty'];
+    $restored_profit = $restored_sold - $restored_price;
+    $restored_due = $booking['due'] - $dc['total_penalty'];
 
-            $updateBookingSql = "
-                UPDATE umrah_bookings
-                SET price = ?, sold_price = ?, profit = ?, due = ?
-                WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?
-            ";
+    // Restore the booking duration and prices. The flight/return dates are
+    // NOT stored on the booking row anymore — they live on the flight
+    // fulfillment and are restored below.
+    $old_duration = ($dc['old_duration'] ?? '') !== '' ? $dc['old_duration'] : null;
 
-            $stmt = $pdo->prepare($updateBookingSql);
-            $stmt->bindParam(1, $reversed_price, PDO::PARAM_STR);
-            $stmt->bindParam(2, $reversed_sold_price, PDO::PARAM_STR);
-            $stmt->bindParam(3, $reversed_profit, PDO::PARAM_STR);
-            $stmt->bindParam(4, $new_due, PDO::PARAM_STR);
-            $stmt->bindParam(5, $request['umrah_booking_id'], PDO::PARAM_INT);
-            $stmt->bindParam(6, $tenant_id, PDO::PARAM_INT);
-            $stmt->bindParam(7, $branch_id, PDO::PARAM_INT);
+    $stmt = $pdo->prepare("
+        UPDATE umrah_bookings
+        SET duration = ?,
+            price = ?, sold_price = ?, profit = ?, due = ?
+        WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?
+    ");
+    $stmt->bindParam(1, $old_duration, PDO::PARAM_STR);
+    $stmt->bindParam(2, $restored_price, PDO::PARAM_STR);
+    $stmt->bindParam(3, $restored_sold, PDO::PARAM_STR);
+    $stmt->bindParam(4, $restored_profit, PDO::PARAM_STR);
+    $stmt->bindParam(5, $restored_due, PDO::PARAM_STR);
+    $stmt->bindParam(6, $booking_id, PDO::PARAM_INT);
+    $stmt->bindParam(7, $tenant_id, PDO::PARAM_INT);
+    $stmt->bindParam(8, $branch_id, PDO::PARAM_INT);
+    $stmt->execute();
 
-            if (!$stmt->execute()) {
-                throw new PDOException('Failed to reverse booking price changes');
-            }
+    // ---- 2. Restore the flight fulfillment dates (keep time-of-day)
+    $stmtFf = $pdo->prepare("
+        SELECT ff.id, ff.departure_time, ff.return_departure_time
+        FROM umrah_flight_fulfillments ff
+        JOIN umrah_fulfillments f ON f.id = ff.fulfillment_id
+        JOIN umrah_booking_services bs ON bs.id = f.booking_service_id
+        WHERE bs.booking_id = ? AND bs.tenant_id = ? AND bs.branch_id = ?
+          AND f.fulfillment_type = 'flight' AND f.status <> 'cancelled'
+        ORDER BY ff.id DESC
+    ");
+    $stmtFf->bindParam(1, $booking_id, PDO::PARAM_INT);
+    $stmtFf->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmtFf->bindParam(3, $branch_id, PDO::PARAM_INT);
+    $stmtFf->execute();
+    $flightFulfillments = $stmtFf->fetchAll(PDO::FETCH_ASSOC);
 
-            // Reverse supplier penalty deduction
-            if ($request['supplier_penalty'] > 0) {
-                // Add back to supplier balance if external supplier
-                if ($request['supplier_type'] === 'External') {
-                    $stmt_update_supplier_balance = $pdo->prepare("
-                        UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?
-                    ");
-                    $stmt_update_supplier_balance->bindParam(1, $request['supplier_penalty'], PDO::PARAM_STR);
-                    $stmt_update_supplier_balance->bindParam(2, $request['supplier'], PDO::PARAM_INT);
-                    $stmt_update_supplier_balance->bindParam(3, $tenant_id, PDO::PARAM_INT);
-                    $stmt_update_supplier_balance->bindParam(4, $branch_id, PDO::PARAM_INT);
-
-                    if (!$stmt_update_supplier_balance->execute()) {
-                        throw new PDOException('Failed to reverse supplier balance');
-                    }
-                }
-
-                // Delete supplier transaction
-                $stmt_delete_supplier_transaction = $pdo->prepare("
-                    DELETE FROM supplier_transactions
-                    WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah_date_change' AND tenant_id = ? AND branch_id = ?
-                ");
-                $stmt_delete_supplier_transaction->bindParam(1, $request['supplier'], PDO::PARAM_INT);
-                $stmt_delete_supplier_transaction->bindParam(2, $request['umrah_booking_id'], PDO::PARAM_INT);
-                $stmt_delete_supplier_transaction->bindParam(3, $tenant_id, PDO::PARAM_INT);
-                $stmt_delete_supplier_transaction->bindParam(4, $branch_id, PDO::PARAM_INT);
-
-                if (!$stmt_delete_supplier_transaction->execute()) {
-                    throw new PDOException('Failed to delete supplier transaction');
-                }
-            }
-
-            // Reverse client penalty deduction
-            if ($request['total_penalty'] > 0) {
-                // Add back to client balance if regular client
-                if ($request['client_type'] === 'regular') {
-                    if ($request['currency'] === 'USD') {
-                        $stmt_update_client_balance = $pdo->prepare("
-                            UPDATE clients SET usd_balance = usd_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?
-                        ");
-                    } else {
-                        $stmt_update_client_balance = $pdo->prepare("
-                            UPDATE clients SET afs_balance = afs_balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?
-                        ");
-                    }
-
-                    $stmt_update_client_balance->bindParam(1, $request['total_penalty'], PDO::PARAM_STR);
-                    $stmt_update_client_balance->bindParam(2, $request['sold_to'], PDO::PARAM_INT);
-                    $stmt_update_client_balance->bindParam(3, $tenant_id, PDO::PARAM_INT);
-                    $stmt_update_client_balance->bindParam(4, $branch_id, PDO::PARAM_INT);
-
-                    if (!$stmt_update_client_balance->execute()) {
-                        throw new PDOException('Failed to reverse client balance');
-                    }
-                }
-
-                // Delete client transaction
-                $stmt_delete_client_transaction = $pdo->prepare("
-                    DELETE FROM client_transactions
-                    WHERE client_id = ? AND reference_id = ? AND transaction_of = 'umrah_date_change' AND tenant_id = ? AND branch_id = ?
-                ");
-                $stmt_delete_client_transaction->bindParam(1, $request['sold_to'], PDO::PARAM_INT);
-                $stmt_delete_client_transaction->bindParam(2, $request['umrah_booking_id'], PDO::PARAM_INT);
-                $stmt_delete_client_transaction->bindParam(3, $tenant_id, PDO::PARAM_INT);
-                $stmt_delete_client_transaction->bindParam(4, $branch_id, PDO::PARAM_INT);
-
-                if (!$stmt_delete_client_transaction->execute()) {
-                    throw new PDOException('Failed to delete client transaction');
-                }
-            }
-        }
-
-        // Delete the date change request
-        $stmt = $pdo->prepare("
-            DELETE FROM date_change_umrah WHERE id = ? AND tenant_id = ? AND branch_id = ?
+    if (!empty($flightFulfillments)) {
+        $updateFf = $pdo->prepare("
+            UPDATE umrah_flight_fulfillments
+            SET departure_time = ?, return_departure_time = ?
+            WHERE id = ?
         ");
-        $stmt->bindParam(1, $id, PDO::PARAM_INT);
-        $stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-        $stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+        foreach ($flightFulfillments as $ff) {
+            $old_departure_time = !empty($dc['old_flight_date'])
+                ? $dc['old_flight_date'] . ' ' . date('H:i:s', strtotime($ff['departure_time']))
+                : null;
+            $old_return_time = !empty($dc['old_return_date'])
+                ? $dc['old_return_date'] . ' ' . date('H:i:s', strtotime($ff['return_departure_time']))
+                : null;
 
-        if (!$stmt->execute()) {
-            throw new PDOException('Failed to delete date change request');
+            $updateFf->bindParam(1, $old_departure_time, PDO::PARAM_STR);
+            $updateFf->bindParam(2, $old_return_time, PDO::PARAM_STR);
+            $updateFf->bindParam(3, $ff['id'], PDO::PARAM_INT);
+            $updateFf->execute();
         }
 
-        // Commit transaction
-        $pdo->commit();
+        // Restore the fulfillment planned date
+        $updatePlanned = $pdo->prepare("
+            UPDATE umrah_fulfillments f
+            JOIN umrah_booking_services bs ON bs.id = f.booking_service_id
+            SET f.planned_date = ?
+            WHERE bs.booking_id = ? AND bs.tenant_id = ? AND bs.branch_id = ?
+              AND f.fulfillment_type = 'flight' AND f.status <> 'cancelled'
+        ");
+        $updatePlanned->bindParam(1, $dc['old_flight_date'], PDO::PARAM_STR);
+        $updatePlanned->bindParam(2, $booking_id, PDO::PARAM_INT);
+        $updatePlanned->bindParam(3, $tenant_id, PDO::PARAM_INT);
+        $updatePlanned->bindParam(4, $branch_id, PDO::PARAM_INT);
+        $updatePlanned->execute();
+    }
 
-        // Update family totals
+    // ---- 3. Reverse the supplier penalty
+    if ((float)$dc['supplier_penalty'] > 0 && !empty($dc['supplier'])) {
+        // Locate the supplier transaction created by this date change
+        $stmtSel = $pdo->prepare("
+            SELECT id, transaction_type FROM supplier_transactions
+            WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah_date_change'
+              AND amount = ? AND tenant_id = ? AND branch_id = ?
+            ORDER BY id DESC LIMIT 1
+        ");
+        $stmtSel->bindParam(1, $dc['supplier'], PDO::PARAM_INT);
+        $stmtSel->bindParam(2, $booking_id, PDO::PARAM_INT);
+        $stmtSel->bindParam(3, $dc['supplier_penalty'], PDO::PARAM_STR);
+        $stmtSel->bindParam(4, $tenant_id, PDO::PARAM_INT);
+        $stmtSel->bindParam(5, $branch_id, PDO::PARAM_INT);
+        $stmtSel->execute();
+        $supTx = $stmtSel->fetch(PDO::FETCH_ASSOC);
+
+        if ($supTx) {
+            // Fix the running balances of all subsequent supplier transactions
+            // (deleting a Debit shifts them up, deleting a Credit shifts them down)
+            $shift = ($supTx['transaction_type'] === 'Credit') ? '-' : '+';
+            $stmtShift = $pdo->prepare("
+                UPDATE supplier_transactions
+                SET balance = balance " . $shift . " ?
+                WHERE supplier_id = ? AND id > ? AND tenant_id = ? AND branch_id = ?
+            ");
+            $stmtShift->bindParam(1, $dc['supplier_penalty'], PDO::PARAM_STR);
+            $stmtShift->bindParam(2, $dc['supplier'], PDO::PARAM_INT);
+            $stmtShift->bindParam(3, $supTx['id'], PDO::PARAM_INT);
+            $stmtShift->bindParam(4, $tenant_id, PDO::PARAM_INT);
+            $stmtShift->bindParam(5, $branch_id, PDO::PARAM_INT);
+            $stmtShift->execute();
+
+            // Delete the supplier transaction
+            $stmtDel = $pdo->prepare("DELETE FROM supplier_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmtDel->bindParam(1, $supTx['id'], PDO::PARAM_INT);
+            $stmtDel->bindParam(2, $tenant_id, PDO::PARAM_INT);
+            $stmtDel->bindParam(3, $branch_id, PDO::PARAM_INT);
+            $stmtDel->execute();
+        }
+
+        // Add the amount back to the balance only if it was deducted (External suppliers)
+        $stmtType = $pdo->prepare("SELECT supplier_type FROM suppliers WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmtType->bindParam(1, $dc['supplier'], PDO::PARAM_INT);
+        $stmtType->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmtType->bindParam(3, $branch_id, PDO::PARAM_INT);
+        $stmtType->execute();
+        $supplierType = $stmtType->fetchColumn();
+
+        if ($supplierType === 'External') {
+            $stmtBal = $pdo->prepare("UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmtBal->bindParam(1, $dc['supplier_penalty'], PDO::PARAM_STR);
+            $stmtBal->bindParam(2, $dc['supplier'], PDO::PARAM_INT);
+            $stmtBal->bindParam(3, $tenant_id, PDO::PARAM_INT);
+            $stmtBal->bindParam(4, $branch_id, PDO::PARAM_INT);
+            $stmtBal->execute();
+        }
+    }
+
+    // ---- 4. Reverse the client penalty
+    if ((float)$dc['total_penalty'] > 0 && !empty($dc['sold_to'])) {
+        // Locate the client transaction created by this date change
+        $stmtSel = $pdo->prepare("
+            SELECT id, type FROM client_transactions
+            WHERE client_id = ? AND reference_id = ? AND transaction_of = 'umrah_date_change'
+              AND amount = ? AND tenant_id = ? AND branch_id = ?
+            ORDER BY id DESC LIMIT 1
+        ");
+        $stmtSel->bindParam(1, $dc['sold_to'], PDO::PARAM_INT);
+        $stmtSel->bindParam(2, $booking_id, PDO::PARAM_INT);
+        $stmtSel->bindParam(3, $dc['total_penalty'], PDO::PARAM_STR);
+        $stmtSel->bindParam(4, $tenant_id, PDO::PARAM_INT);
+        $stmtSel->bindParam(5, $branch_id, PDO::PARAM_INT);
+        $stmtSel->execute();
+        $cliTx = $stmtSel->fetch(PDO::FETCH_ASSOC);
+
+        if ($cliTx) {
+            $currency = $dc['currency'] ?: ($booking['currency'] ?: 'USD');
+
+            // Fix the running balances of all subsequent client transactions in
+            // this currency (deleting a debit shifts them up, a credit shifts down)
+            $shift = (strtolower($cliTx['type']) === 'credit') ? '-' : '+';
+            $stmtShift = $pdo->prepare("
+                UPDATE client_transactions
+                SET balance = balance " . $shift . " ?
+                WHERE client_id = ? AND id > ? AND currency = ? AND tenant_id = ? AND branch_id = ?
+            ");
+            $stmtShift->bindParam(1, $dc['total_penalty'], PDO::PARAM_STR);
+            $stmtShift->bindParam(2, $dc['sold_to'], PDO::PARAM_INT);
+            $stmtShift->bindParam(3, $cliTx['id'], PDO::PARAM_INT);
+            $stmtShift->bindParam(4, $currency, PDO::PARAM_STR);
+            $stmtShift->bindParam(5, $tenant_id, PDO::PARAM_INT);
+            $stmtShift->bindParam(6, $branch_id, PDO::PARAM_INT);
+            $stmtShift->execute();
+
+            // Delete the client transaction
+            $stmtDel = $pdo->prepare("DELETE FROM client_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmtDel->bindParam(1, $cliTx['id'], PDO::PARAM_INT);
+            $stmtDel->bindParam(2, $tenant_id, PDO::PARAM_INT);
+            $stmtDel->bindParam(3, $branch_id, PDO::PARAM_INT);
+            $stmtDel->execute();
+        }
+
+        // Add the amount back to the balance only if it was deducted (regular clients)
+        $stmtType = $pdo->prepare("SELECT client_type FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+        $stmtType->bindParam(1, $dc['sold_to'], PDO::PARAM_INT);
+        $stmtType->bindParam(2, $tenant_id, PDO::PARAM_INT);
+        $stmtType->bindParam(3, $branch_id, PDO::PARAM_INT);
+        $stmtType->execute();
+        $clientType = $stmtType->fetchColumn();
+
+        if ($clientType === 'regular') {
+            $currency = $dc['currency'] ?: ($booking['currency'] ?: 'USD');
+            $balanceField = ($currency === 'USD') ? 'usd_balance' : 'afs_balance';
+            $stmtBal = $pdo->prepare("UPDATE clients SET $balanceField = $balanceField + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmtBal->bindParam(1, $dc['total_penalty'], PDO::PARAM_STR);
+            $stmtBal->bindParam(2, $dc['sold_to'], PDO::PARAM_INT);
+            $stmtBal->bindParam(3, $tenant_id, PDO::PARAM_INT);
+            $stmtBal->bindParam(4, $branch_id, PDO::PARAM_INT);
+            $stmtBal->execute();
+        }
+    }
+
+    // ---- 5. Recompute family totals if the booking belongs to a family
+    if (!empty($booking['family_id'])) {
         $updateFamilyStmt = $pdo->prepare("
             UPDATE families f
             SET
@@ -196,27 +288,52 @@ try {
         $updateFamilyStmt->bindParam(8, $branch_id, PDO::PARAM_INT);
         $updateFamilyStmt->bindParam(9, $tenant_id, PDO::PARAM_INT);
         $updateFamilyStmt->bindParam(10, $branch_id, PDO::PARAM_INT);
-        $updateFamilyStmt->bindParam(11, $request['family_id'], PDO::PARAM_INT);
+        $updateFamilyStmt->bindParam(11, $booking['family_id'], PDO::PARAM_INT);
         $updateFamilyStmt->bindParam(12, $tenant_id, PDO::PARAM_INT);
         $updateFamilyStmt->bindParam(13, $branch_id, PDO::PARAM_INT);
         $updateFamilyStmt->execute();
-
-        $message = $request['status'] === 'Completed'
-            ? 'Date change request deleted and all associated changes reversed successfully'
-            : 'Date change request deleted successfully';
-
-        echo json_encode([
-            'success' => true,
-            'message' => $message
-        ]);
-
-    } catch (PDOException $e) {
-        // Rollback transaction
-        $pdo->rollBack();
-        throw $e;
     }
 
+    // ---- 6. Delete the date change record
+    $stmtDel = $pdo->prepare("DELETE FROM date_change_umrah WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $stmtDel->bindParam(1, $date_change_id, PDO::PARAM_INT);
+    $stmtDel->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $stmtDel->bindParam(3, $branch_id, PDO::PARAM_INT);
+    $stmtDel->execute();
+
+    // ---- 7. Audit log
+    $old_values = json_encode($dc);
+    $new_values = json_encode([]);
+    $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
+    $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+
+    $stmtLog = $pdo->prepare("
+        INSERT INTO activity_log
+        (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+        VALUES (?, 'delete', 'date_change_umrah', ?, ?, ?, ?, ?, NOW(), ?, ?)
+    ");
+    $stmtLog->bindParam(1, $user_id, PDO::PARAM_INT);
+    $stmtLog->bindParam(2, $date_change_id, PDO::PARAM_INT);
+    $stmtLog->bindParam(3, $old_values, PDO::PARAM_STR);
+    $stmtLog->bindParam(4, $new_values, PDO::PARAM_STR);
+    $stmtLog->bindParam(5, $ip_address, PDO::PARAM_STR);
+    $stmtLog->bindParam(6, $user_agent, PDO::PARAM_STR);
+    $stmtLog->bindParam(7, $tenant_id, PDO::PARAM_INT);
+    $stmtLog->bindParam(8, $branch_id, PDO::PARAM_INT);
+    $stmtLog->execute();
+
+    // Commit transaction
+    $pdo->commit();
+
+    echo json_encode([
+        'success' => true,
+        'message' => 'Date change on booking #' . $booking_id . ' reverted. Dates, prices and balances restored.'
+    ]);
+
 } catch (PDOException $e) {
-    echo json_encode(['success' => false, 'message' => 'An error occurred while deleting the date change request']);
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+    echo json_encode(['success' => false, 'message' => 'An error occurred while reverting the date change']);
 }
 ?>

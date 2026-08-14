@@ -73,7 +73,11 @@ try {
 $ticketIds = array_map('intval', $invoiceData['tickets'] ?? []);
 $placeholders = implode(',', array_fill(0, count($ticketIds), '?'));
 $ticketsQuery = "SELECT um.booking_id, um.name, um.passport_number, f.package_type,
-                um.flight_date, um.sold_price
+                (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                    JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                    JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                    WHERE ubs2.booking_id = um.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                    ORDER BY ff.id DESC LIMIT 1) AS flight_date, um.sold_price
                 FROM umrah_bookings um
                 LEFT JOIN families f ON um.family_id = f.family_id AND f.tenant_id = ? AND f.branch_id = ?
                 WHERE um.booking_id IN ($placeholders) AND um.tenant_id = ? AND um.branch_id = ?

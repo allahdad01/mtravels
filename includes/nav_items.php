@@ -145,7 +145,7 @@ $showHotel = hasFeature('hotel_bookings', $allowed_features) || hasFeature('hote
 
 <!-- ── Umrah Management ───────────────────────────────────────────────── -->
 <?php if (hasFeature('umrah_bookings', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
-<li class="nav-item pcoded-hasmenu <?= navTrigger('umrah.php','umrah_refunds.php','umrah_date_changes.php','umrah_catalog.php','umrah_hotels.php','umrah_transport.php','umrah_finance.php') ?>">
+<li class="nav-item pcoded-hasmenu <?= navTrigger('umrah.php','umrah_refunds.php','umrah_catalog.php','umrah_hotels.php','umrah_transport.php','umrah_finance.php') ?>">
     <a href="javascript:" class="nav-link">
         <span class="pcoded-micon"><i class="feather icon-map"></i></span>
         <span class="pcoded-mtext"><?= __('umrah_management') ?></span>
@@ -159,9 +159,6 @@ $showHotel = hasFeature('hotel_bookings', $allowed_features) || hasFeature('hote
             <a href="umrah_refunds.php"><i class="fas fa-undo mr-2"></i><?= __('umrah_refunds') ?></a>
         </li>
         <?php endif; ?>
-        <li class="<?= navActive('umrah_date_changes.php') ?>">
-            <a href="umrah_date_changes.php"><i class="fas fa-calendar-alt mr-2"></i><?= __('umrah_date_changes') ?></a>
-        </li>
         <?php if (umrah_can('package_manage') && umrah_can('service_manage')): ?>
         <li class="<?= navActive('umrah_catalog.php') ?>">
             <a href="umrah_catalog.php"><i class="fas fa-layer-group mr-2"></i><?= __('services_packages') ?></a>

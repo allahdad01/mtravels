@@ -33,8 +33,16 @@ $query = "
         ut.receipt,
         ub.booking_id,
         ub.name as passenger_name,
-        ub.flight_date as departure_date,
-        ub.return_date,
+        (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+            JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+            JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+            WHERE ubs2.booking_id = ub.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+            ORDER BY ff.id DESC LIMIT 1) as departure_date,
+        (SELECT DATE(ff.return_departure_time) FROM umrah_flight_fulfillments ff
+            JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+            JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+            WHERE ubs2.booking_id = ub.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+            ORDER BY ff.id DESC LIMIT 1) as return_date,
         ub.sold_price as sold,
         ub.currency as booking_currency,
         uc.name as client_name,

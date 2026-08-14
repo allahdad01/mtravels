@@ -822,8 +822,20 @@ function fulfillment_save(PDO $pdo, array $in): array
         // refreshed and notifications fire — exactly once (guarded by the
         // pending status).
         $bkStmt = $pdo->prepare("
-            SELECT booking_id, family_id, sold_to, paid_to, name, flight_date, return_date, room_type,
-                   sold_price, discount, paid, received_bank_payment, due, status, currency
+            SELECT booking_id, family_id, sold_to, paid_to, name,
+                   (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                       JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                       JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                       WHERE ubs2.booking_id = umrah_bookings.booking_id
+                         AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                       ORDER BY ff.id DESC LIMIT 1) AS flight_date,
+                   (SELECT DATE(ff.return_departure_time) FROM umrah_flight_fulfillments ff
+                       JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                       JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                       WHERE ubs2.booking_id = umrah_bookings.booking_id
+                         AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                       ORDER BY ff.id DESC LIMIT 1) AS return_date,
+                   room_type, sold_price, discount, paid, received_bank_payment, due, status, currency
             FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ?");
         $bkStmt->execute([$booking_id, $tenant_id]);
         $bkRow = $bkStmt->fetch(PDO::FETCH_ASSOC);

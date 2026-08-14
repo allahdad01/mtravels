@@ -19,7 +19,18 @@ $page             = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $results_per_page = 25;
 $offset           = ($page - 1) * $results_per_page;
 
-$query = "SELECT ub.*, u.name as created_by_name, b.name as branch_name,
+$query = "SELECT ub.*,
+    (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+        JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+        JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+        WHERE ubs2.booking_id = ub.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+        ORDER BY ff.id DESC LIMIT 1) AS flight_date,
+    (SELECT DATE(ff.return_departure_time) FROM umrah_flight_fulfillments ff
+        JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+        JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+        WHERE ubs2.booking_id = ub.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+        ORDER BY ff.id DESC LIMIT 1) AS return_date,
+    u.name as created_by_name, b.name as branch_name,
     f.head_of_family, f.contact, f.province, f.district
 FROM umrah_bookings ub
 LEFT JOIN users u ON ub.created_by = u.id

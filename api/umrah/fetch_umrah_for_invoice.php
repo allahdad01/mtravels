@@ -21,7 +21,11 @@ if (!isset($_SESSION['name'])) {
 try {
     // Query to get tickets
     $query = "SELECT um.booking_id, um.name, um.passport_number, f.package_type,
-              um.flight_date, um.sold_price,
+              (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                  JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                  JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                  WHERE ubs2.booking_id = um.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                  ORDER BY ff.id DESC LIMIT 1) AS flight_date, um.sold_price,
               um.duration
               FROM umrah_bookings um
               left join families f on um.family_id = f.family_id

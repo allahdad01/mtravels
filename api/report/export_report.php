@@ -30,10 +30,20 @@ if (($umrahFilterType === 'family' || $umrahFamilyType === 'specific') && $speci
     $umrahFilterSql = " AND u.family_id = ?";
     $umrahFilterParams[] = $specificFamily;
 } elseif ($umrahFilterType === 'flight_date' && $umrahFlightDate) {
-    $umrahFilterSql = " AND DATE(u.flight_date) = ?";
+    $umrahFilterSql = " AND EXISTS (
+        SELECT 1 FROM umrah_flight_fulfillments ff2
+        JOIN umrah_fulfillments uf2 ON uf2.id = ff2.fulfillment_id
+        JOIN umrah_booking_services ubs2 ON ubs2.id = uf2.booking_service_id
+        WHERE ubs2.booking_id = u.booking_id AND uf2.fulfillment_type = 'flight' AND uf2.status <> 'cancelled'
+        AND DATE(ff2.departure_time) = ?)";
     $umrahFilterParams[] = $umrahFlightDate;
 } elseif ($umrahFilterType === 'return_date' && $umrahReturnDate) {
-    $umrahFilterSql = " AND DATE(u.return_date) = ?";
+    $umrahFilterSql = " AND EXISTS (
+        SELECT 1 FROM umrah_flight_fulfillments ff2
+        JOIN umrah_fulfillments uf2 ON uf2.id = ff2.fulfillment_id
+        JOIN umrah_booking_services ubs2 ON ubs2.id = uf2.booking_service_id
+        WHERE ubs2.booking_id = u.booking_id AND uf2.fulfillment_type = 'flight' AND uf2.status <> 'cancelled'
+        AND DATE(ff2.return_departure_time) = ?)";
     $umrahFilterParams[] = $umrahReturnDate;
 }
 
@@ -563,8 +573,16 @@ try {
                             u.name,
                             u.passport_number,
                             u.dob,
-                            u.flight_date,
-                            u.return_date,
+                            (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                                JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                                JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                                WHERE ubs2.booking_id = u.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                                ORDER BY ff.id DESC LIMIT 1) AS flight_date,
+                            (SELECT DATE(ff.return_departure_time) FROM umrah_flight_fulfillments ff
+                                JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                                JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                                WHERE ubs2.booking_id = u.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                                ORDER BY ff.id DESC LIMIT 1) AS return_date,
                             u.duration,
                             u.room_type,
                             u.price,
@@ -1302,8 +1320,16 @@ try {
                             u.name,
                             u.passport_number,
                             u.dob,
-                            u.flight_date,
-                            u.return_date,
+                            (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                                JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                                JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                                WHERE ubs2.booking_id = u.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                                ORDER BY ff.id DESC LIMIT 1) AS flight_date,
+                            (SELECT DATE(ff.return_departure_time) FROM umrah_flight_fulfillments ff
+                                JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                                JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                                WHERE ubs2.booking_id = u.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                                ORDER BY ff.id DESC LIMIT 1) AS return_date,
                             u.duration,
                             u.room_type,
                             u.price,
@@ -1743,8 +1769,16 @@ try {
                             u.name,
                             u.passport_number,
                             u.dob,
-                            u.flight_date,
-                            u.return_date,
+                            (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                                JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                                JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                                WHERE ubs2.booking_id = u.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                                ORDER BY ff.id DESC LIMIT 1) AS flight_date,
+                            (SELECT DATE(ff.return_departure_time) FROM umrah_flight_fulfillments ff
+                                JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                                JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                                WHERE ubs2.booking_id = u.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                                ORDER BY ff.id DESC LIMIT 1) AS return_date,
                             u.duration,
                             u.room_type,
                             u.price,
@@ -2192,8 +2226,16 @@ try {
                             u.name,
                             u.passport_number,
                             u.dob,
-                            u.flight_date,
-                            u.return_date,
+                            (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                                JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                                JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                                WHERE ubs2.booking_id = u.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                                ORDER BY ff.id DESC LIMIT 1) AS flight_date,
+                            (SELECT DATE(ff.return_departure_time) FROM umrah_flight_fulfillments ff
+                                JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                                JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                                WHERE ubs2.booking_id = u.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                                ORDER BY ff.id DESC LIMIT 1) AS return_date,
                             u.duration,
                             u.room_type,
                             u.price,

@@ -133,8 +133,16 @@ try {
                             WHEN ct.transaction_of = 'date_change' THEN CONCAT(dc.departure_date)
                             WHEN ct.transaction_of = 'visa_sale' THEN CONCAT(vs.applied_date)
                             WHEN ct.transaction_of = 'visa_refund' THEN CONCAT(vr.refund_date)
-                            WHEN ct.transaction_of = 'umrah' THEN CONCAT(um.flight_date)
-                            WHEN ct.transaction_of = 'umrah_refund' THEN CONCAT(umr.flight_date)
+                            WHEN ct.transaction_of = 'umrah' THEN CONCAT((SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                                JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                                JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                                WHERE ubs2.booking_id = um.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                                ORDER BY ff.id DESC LIMIT 1))
+                            WHEN ct.transaction_of = 'umrah_refund' THEN CONCAT((SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                                JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                                JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                                WHERE ubs2.booking_id = umr.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                                ORDER BY ff.id DESC LIMIT 1))
                             WHEN ct.transaction_of = 'hotel' THEN CONCAT(hb.check_in_date)
                             WHEN ct.transaction_of = 'hotel_refund' THEN CONCAT(hbr.check_in_date)
                             ELSE ''
@@ -391,9 +399,21 @@ try {
                             WHEN st.transaction_of = 'visa_sale' THEN vs.applied_date
                             WHEN st.transaction_of = 'visa_refund' THEN vr.refund_date
                             WHEN st.transaction_of = 'hotel' THEN hb.check_in_date
-                            WHEN st.transaction_of = 'umrah' THEN ub.flight_date
-                            WHEN st.transaction_of = 'umrah_transaction' THEN ub_ut.flight_date
-                            WHEN st.transaction_of = 'umrah_refund' THEN ubr.flight_date
+                            WHEN st.transaction_of = 'umrah' THEN (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                                JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                                JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                                WHERE ubs2.booking_id = ub.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                                ORDER BY ff.id DESC LIMIT 1)
+                            WHEN st.transaction_of = 'umrah_transaction' THEN (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                                JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                                JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                                WHERE ubs2.booking_id = ub_ut.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                                ORDER BY ff.id DESC LIMIT 1)
+                            WHEN st.transaction_of = 'umrah_refund' THEN (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                                JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                                JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                                WHERE ubs2.booking_id = ubr.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                                ORDER BY ff.id DESC LIMIT 1)
                             WHEN st.transaction_of = 'fund' THEN ' '
                             ELSE NULL
                         END), 'N/A'
@@ -574,7 +594,11 @@ try {
                             WHEN mt.transaction_of = 'visa_sale' THEN vs.applied_date
                             WHEN mt.transaction_of = 'visa_refund' THEN vr.refund_date
                             WHEN mt.transaction_of = 'hotel' THEN hb.check_in_date
-                            WHEN mt.transaction_of = 'umrah' THEN um.flight_date
+                            WHEN mt.transaction_of = 'umrah' THEN (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                                JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                                JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                                WHERE ubs2.booking_id = um.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                                ORDER BY ff.id DESC LIMIT 1)
                             WHEN mt.transaction_of = 'fund' THEN ' '
                             WHEN mt.transaction_of = 'additional_payment' THEN ' '
                             WHEN mt.transaction_of = 'creditor' THEN ' '

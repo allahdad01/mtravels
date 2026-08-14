@@ -99,7 +99,11 @@ $entityType = isset($_POST['entityType']) ? DbSecurity::validateInput($_POST['en
                             WHEN ct.transaction_of = 'ticket_refund' THEN CONCAT(rt.departure_date) 
                             WHEN ct.transaction_of = 'date_change' THEN CONCAT(dc.departure_date) 
                             WHEN ct.transaction_of = 'visa_sale' THEN CONCAT(vs.applied_date) 
-                            WHEN ct.transaction_of = 'umrah' THEN CONCAT(um.flight_date) 
+                            WHEN ct.transaction_of = 'umrah' THEN CONCAT((SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                                JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                                JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                                WHERE ubs2.booking_id = um.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                                ORDER BY ff.id DESC LIMIT 1)) 
                             WHEN ct.transaction_of = 'hotel' THEN CONCAT(hb.check_in_date)
                             WHEN ct.transaction_of = 'fund' THEN CONCAT(' ') 
                             ELSE ''
@@ -188,7 +192,11 @@ $entityType = isset($_POST['entityType']) ? DbSecurity::validateInput($_POST['en
                             WHEN st.transaction_of = 'date_change' THEN dc.departure_date
                             WHEN st.transaction_of = 'visa_sale' THEN vs.applied_date
                             WHEN st.transaction_of = 'hotel' THEN hb.check_in_date
-                            WHEN st.transaction_of = 'umrah' THEN um.flight_date
+                            WHEN st.transaction_of = 'umrah' THEN (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                                JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                                JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                                WHERE ubs2.booking_id = um.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                                ORDER BY ff.id DESC LIMIT 1)
                             WHEN st.transaction_of = 'fund' THEN ' '
                             ELSE NULL
                         END), 'N/A'
@@ -268,7 +276,11 @@ $entityType = isset($_POST['entityType']) ? DbSecurity::validateInput($_POST['en
                             WHEN mt.transaction_of = 'date_change' THEN dc.departure_date
                             WHEN mt.transaction_of = 'visa_sale' THEN vs.applied_date
                             WHEN mt.transaction_of = 'hotel' THEN hb.check_in_date
-                            WHEN mt.transaction_of = 'umrah' THEN um.flight_date
+                            WHEN mt.transaction_of = 'umrah' THEN (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                                JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                                JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                                WHERE ubs2.booking_id = um.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                                ORDER BY ff.id DESC LIMIT 1)
                             WHEN mt.transaction_of = 'fund' THEN ' '
                             ELSE NULL
                         END), 'N/A'

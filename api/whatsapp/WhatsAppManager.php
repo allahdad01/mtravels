@@ -150,15 +150,26 @@ class WhatsAppManager {
                 
             case 'umrah':
                 $stmt = $this->pdo->prepare("
-                    SELECT ub.*, f.contact as booking_phone, c.name as client_name, c.phone as client_phone,
+                    SELECT ub.*,
+                           (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                               JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                               JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                               WHERE ubs2.booking_id = ub.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                               ORDER BY ff.id DESC LIMIT 1) AS flight_date,
+                           (SELECT DATE(ff.return_departure_time) FROM umrah_flight_fulfillments ff
+                               JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                               JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                               WHERE ubs2.booking_id = ub.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                               ORDER BY ff.id DESC LIMIT 1) AS return_date,
+                           f.contact as booking_phone, c.name as client_name, c.phone as client_phone,
                            f.head_of_family
                     FROM umrah_bookings ub
                     LEFT JOIN clients c ON ub.sold_to = c.id
                     LEFT JOIN families f ON ub.family_id = f.family_id
-                    WHERE ub.id = ? AND ub.tenant_id = ?
+                    WHERE ub.booking_id = ? AND ub.tenant_id = ?
                 ");
                 break;
-                
+
             case 'hotel':
                 $stmt = $this->pdo->prepare("
                     SELECT hb.*, hb.contact_no as booking_phone, c.name as client_name, c.phone as client_phone,

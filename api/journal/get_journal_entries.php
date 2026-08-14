@@ -450,7 +450,7 @@ function getDrillMap()
         'weight_sale'              => 'ticket_weights.php',
         'visa_refund'              => 'visa_refunds.php',
         'umrah_refund'             => 'umrah_refunds.php',
-        'umrah_date_change'        => 'umrah_date_changes.php',
+        'umrah_date_change'        => 'umrah.php',
         'salary_payment'           => 'salary_payments.php',
         'expense'                  => 'expense_management.php',
         'debtor'                   => 'debtors.php',

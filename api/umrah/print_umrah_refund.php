@@ -22,7 +22,18 @@ $refundId = intval($_GET['id']);
 try {
     // Get refund details with related information
     $query = "
-        SELECT r.*, um.name, um.flight_date, um.return_date, um.room_type, um.duration,
+        SELECT r.*, um.name,
+               (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                   JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                   JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                   WHERE ubs2.booking_id = um.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                   ORDER BY ff.id DESC LIMIT 1) AS flight_date,
+               (SELECT DATE(ff.return_departure_time) FROM umrah_flight_fulfillments ff
+                   JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                   JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                   WHERE ubs2.booking_id = um.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                   ORDER BY ff.id DESC LIMIT 1) AS return_date,
+               um.room_type, um.duration,
                f.package_type, um.currency as booking_currency,
                u.name as processed_by_name, m.name as account_name,
                c.name as client_name

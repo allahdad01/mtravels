@@ -88,7 +88,11 @@ if ($table_exists) {
                 ur.refund_type,
                 ur.created_at,
                 CONCAT(ub.name, ' b. ', ub.fname) AS passenger_name,
-                ub.flight_date
+                (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                    JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                    JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                    WHERE ubs2.booking_id = ub.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                    ORDER BY ff.id DESC LIMIT 1) AS flight_date
             FROM umrah_refunds ur
             JOIN umrah_bookings ub ON ur.booking_id = ub.booking_id
             WHERE ub.sold_to = ? AND ur.tenant_id = ?

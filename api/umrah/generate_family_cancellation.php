@@ -110,7 +110,8 @@ try {
         LEFT JOIN users u ON u.id = ?
         LEFT JOIN main_account m ON um.paid_to = m.id
         LEFT JOIN umrah_booking_services ubs ON um.booking_id = ubs.booking_id
-        LEFT JOIN suppliers s ON ubs.supplier_id = s.id
+        LEFT JOIN umrah_fulfillments uff ON uff.booking_service_id = ubs.id AND uff.fulfillment_type = 'flight' AND uff.status <> 'cancelled' AND uff.id = (SELECT MIN(uff2.id) FROM umrah_fulfillments uff2 WHERE uff2.booking_service_id = ubs.id)
+        LEFT JOIN suppliers s ON s.id = COALESCE(uff.supplier_id, ubs.supplier_id)
         LEFT JOIN clients c ON um.sold_to = c.id
         WHERE um.family_id = ? AND um.tenant_id = ? AND um.branch_id = ?
     ";

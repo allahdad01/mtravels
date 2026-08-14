@@ -772,7 +772,7 @@ if (!function_exists('navTrigger')) {
                 <?php endif; ?>
 
                 <?php if (hasFeature('umrah_bookings', $allowed_features)): ?>
-                <li data-username="umrah" class="nav-item pcoded-hasmenu <?= navTrigger('umrah.php', 'umrah_refunds.php', 'umrah_date_changes.php') ?>">
+                <li data-username="umrah" class="nav-item pcoded-hasmenu <?= navTrigger('umrah.php', 'umrah_refunds.php') ?>">
                     <a href="javascript:" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-map"></i></span>
                         <span class="pcoded-mtext"><?= __('umrah_management') ?></span>

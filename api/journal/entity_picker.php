@@ -117,7 +117,12 @@ try {
             break;
 
         case 'umrah':
-            $sql = "SELECT u.booking_id, u.name, u.fname, u.passport_number, u.flight_date,
+            $sql = "SELECT u.booking_id, u.name, u.fname, u.passport_number,
+                           (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                               JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                               JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                               WHERE ubs2.booking_id = u.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                               ORDER BY ff.id DESC LIMIT 1) AS flight_date,
                            u.sold_price, u.currency, u.status,
                            c.name AS client_name
                     FROM umrah_bookings u
@@ -354,7 +359,12 @@ try {
 
         case 'umrah_refund':
             $sql = "SELECT r.id, r.booking_id, r.refund_type, r.refund_amount, r.currency, r.reason,
-                           u.name, u.passport_number, u.flight_date,
+                           u.name, u.passport_number,
+                           (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                               JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                               JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                               WHERE ubs2.booking_id = u.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                               ORDER BY ff.id DESC LIMIT 1) AS flight_date,
                            c.name AS client_name
                     FROM umrah_refunds r
                     LEFT JOIN umrah_bookings u ON r.booking_id = u.booking_id AND u.tenant_id = ? AND u.branch_id = ?

@@ -42,13 +42,21 @@ try {
         SELECT
             r.*,
             um.name,
-            um.flight_date,
-            um.return_date,
+            (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                WHERE ubs2.booking_id = um.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                ORDER BY ff.id DESC LIMIT 1) AS flight_date,
+            (SELECT DATE(ff.return_departure_time) FROM umrah_flight_fulfillments ff
+                JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                WHERE ubs2.booking_id = um.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                ORDER BY ff.id DESC LIMIT 1) AS return_date,
             um.room_type,
             um.duration,
             f.package_type,
             um.currency as booking_currency,
-            ubs.supplier_id,
+            COALESCE(uff.supplier_id, ubs.supplier_id) as supplier_id,
             COALESCE(s.name, '') as supplier_name,
             COALESCE(c.name, '') as client_name,
             COALESCE(c.client_type, '') as client_type,
@@ -56,8 +64,9 @@ try {
         FROM umrah_refunds r
         LEFT JOIN umrah_bookings um ON r.booking_id = um.booking_id
         LEFT JOIN umrah_booking_services ubs ON um.booking_id = ubs.booking_id
+        LEFT JOIN umrah_fulfillments uff ON uff.booking_service_id = ubs.id AND uff.fulfillment_type = 'flight' AND uff.status <> 'cancelled' AND uff.id = (SELECT MIN(uff2.id) FROM umrah_fulfillments uff2 WHERE uff2.booking_service_id = ubs.id)
         LEFT JOIN families f ON um.family_id = f.family_id
-        LEFT JOIN suppliers s ON ubs.supplier_id = s.id
+        LEFT JOIN suppliers s ON s.id = COALESCE(uff.supplier_id, ubs.supplier_id)
         LEFT JOIN clients c ON um.sold_to = c.id
         LEFT JOIN users u ON r.processed_by = u.id
         WHERE r.id = ? AND r.tenant_id = ? AND r.branch_id = ?

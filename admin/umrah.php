@@ -335,7 +335,17 @@ $isAdmin = $_SESSION['role'] === 'admin';
                     $membersSql = "SELECT
                                         b.booking_id, b.family_id, b.name, b.fname, b.gender, b.duration, b.room_type,
                                         b.passport_number, b.sold_price, b.paid, b.due, b.currency, b.status, b.sold_to,
-                                        b.price, b.profit, b.flight_date, b.return_date,
+                                        b.price, b.profit,
+                                        (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                                            JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                                            JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                                            WHERE ubs2.booking_id = b.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                                            ORDER BY ff.id DESC LIMIT 1) AS flight_date,
+                                        (SELECT DATE(ff.return_departure_time) FROM umrah_flight_fulfillments ff
+                                            JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                                            JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                                            WHERE ubs2.booking_id = b.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                                            ORDER BY ff.id DESC LIMIT 1) AS return_date,
                                         f.head_of_family, f.package_type, f.location, f.visa_status, f.contact,
                                         c.name AS client_name
                                     FROM umrah_bookings b

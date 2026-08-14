@@ -115,7 +115,12 @@ if (isset($_POST['search'])) {
             c.name AS client_name, ub.sold_to AS client_id,
             NULL AS supplier_name, NULL AS supplier_id,
             'Mecca/Medina' AS origin, ub.room_type AS destination,
-            ub.flight_date AS departure_date, ub.created_at AS issue_date,
+            (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                WHERE ubs2.booking_id = ub.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                ORDER BY ff.id DESC LIMIT 1) AS departure_date,
+            ub.created_at AS issue_date,
             'Booked' AS status, ub.currency, ub.sold_price AS amount, ub.passport_number
             FROM umrah_bookings ub
             LEFT JOIN clients c ON ub.sold_to = c.id AND c.branch_id = ?

@@ -44,7 +44,11 @@ try {
             f.contact,
             um.relation,
             um.entry_date,
-            um.flight_date,
+            (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                WHERE ubs2.booking_id = um.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                ORDER BY ff.id DESC LIMIT 1) AS flight_date,
             f.package_type,
             f.head_of_family
         FROM umrah_bookings um

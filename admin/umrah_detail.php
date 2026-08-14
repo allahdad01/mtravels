@@ -23,7 +23,18 @@ $error = null;
 if (!$umrahId) {
     $error = "No Umrah booking ID provided";
 } else {
-    $umrahQuery = "SELECT ub.*, c.name AS client_name, c.email AS client_email, c.phone AS client_phone, f.head_of_family AS family_name
+    $umrahQuery = "SELECT ub.*,
+            (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                WHERE ubs2.booking_id = ub.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                ORDER BY ff.id DESC LIMIT 1) AS flight_date,
+            (SELECT DATE(ff.return_departure_time) FROM umrah_flight_fulfillments ff
+                JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                WHERE ubs2.booking_id = ub.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                ORDER BY ff.id DESC LIMIT 1) AS return_date,
+            c.name AS client_name, c.email AS client_email, c.phone AS client_phone, f.head_of_family AS family_name
         FROM umrah_bookings ub
         LEFT JOIN clients c ON ub.sold_to = c.id
         LEFT JOIN families f ON ub.family_id = f.family_id

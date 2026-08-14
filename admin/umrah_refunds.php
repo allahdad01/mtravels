@@ -59,7 +59,18 @@ if ($tableExists) {
 
     // Then fetch paginated refunds
      $refundsQuery = "
-         SELECT r.*, um.name, um.flight_date, um.return_date, um.room_type, um.duration, um.price, um.sold_price, um.paid, um.received_bank_payment, um.bank_receipt_number, um.due, um.profit,
+         SELECT r.*, um.name,
+                (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                    JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                    JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                    WHERE ubs2.booking_id = um.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                    ORDER BY ff.id DESC LIMIT 1) AS flight_date,
+                (SELECT DATE(ff.return_departure_time) FROM umrah_flight_fulfillments ff
+                    JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                    JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                    WHERE ubs2.booking_id = um.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                    ORDER BY ff.id DESC LIMIT 1) AS return_date,
+                um.room_type, um.duration, um.price, um.sold_price, um.paid, um.received_bank_payment, um.bank_receipt_number, um.due, um.profit,
                 f.package_type, um.currency as booking_currency,
                 u.name as processed_by_name, m.name as account_name,
                 c.name as client_name, c.client_type
@@ -199,7 +210,7 @@ if ($tableExists) {
                                                                                 <?= htmlspecialchars($refund['name']) ?>
                                                                             </span>
                                                                             <small class="text-muted">
-                                                                                <?= __('flight_date') ?>: <?= date('M d, Y', strtotime($refund['flight_date'])) ?>
+                                                                                <?= __('flight_date') ?>: <?= !empty($refund['flight_date']) ? date('M d, Y', strtotime($refund['flight_date'])) : '—' ?>
                                                                             </small>
                                                                             <small class="text-muted">
                                                                                 <?= __('package') ?>: <?= htmlspecialchars($refund['package_type']) ?>

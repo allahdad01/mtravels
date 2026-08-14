@@ -118,10 +118,9 @@ The Umrah module in M.Travels manages family-based Umrah pilgrimage bookings. It
 
 | Feature | Details |
 |---------|---------|
-| **Submit Request** | `date_change_modal.php` — current details display, new flight/return dates, duration (5-30 days), new price, reason, supplier/penalty fields |
-| **Status Lifecycle** | Pending → Approved/Rejected → Completed |
-| **Approval/Rejection** | `approve_date_change_request.php` / `reject_date_change_request.php` |
-| **Audit Trail** | Tracks approved_by, approved_at, processed_by, processed_at |
+| **Single-Step Change** | `date_change_modal.php` — one modal from the member dropdown: new flight/return dates (duration auto-calculated), supplier + service penalties with live total, reason; applied in a single save |
+| **Direct Apply** | `submit_date_change_request.php` — updates booking dates/prices, debits supplier/client balances for penalties, records history, recalculates family totals (no Pending/Approve/Process workflow) |
+| **History Record** | Each change inserts a `Completed` row in `date_change_umrah` for the audit trail (approved_by/processed_by = applying user) |
 | **Per-Booking History** | `get_booking_date_changes.php` |
 
 ---
