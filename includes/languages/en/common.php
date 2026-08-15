@@ -364,6 +364,7 @@ return [
     'accounts' => 'Accounts',
     'internal_accounts' => 'Internal Accounts',
     'transfer_balance' => 'Transfer Balance',
+    'print_summary' => 'Print Summary',
     'add_account' => 'Add Account',
     'account' => 'Account',
     'euro_balance' => 'Euro Balance',

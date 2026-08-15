@@ -333,6 +333,7 @@ return [
      'accounts_management' => 'د حسابونو مدیریت',
      'internal_accounts' => 'داخلي حسابونه',
      'transfer_balance' => 'د بیلانس لیږد',
+     'print_summary' => 'د لنډیز چاپ',
      'add_account' => 'حساب اضافه کړئ',
      'account' => 'حساب',
      'euro_balance' => 'د یورو بیلانس',

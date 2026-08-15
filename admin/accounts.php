@@ -561,7 +561,13 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                 <div class="ac-alert-title">Low Supplier Balance Alert</div>
                                 <div class="ac-alert-chips">
                                     <?php foreach ($suppliersWithLowBalance as $lowBalanceSupplier):
-                                        $cs  = ($lowBalanceSupplier['currency'] === 'USD') ? '$' : '؋';
+                                        $cs  = match ($lowBalanceSupplier['currency']) {
+                                            'USD' => '$',
+                                            'EUR' => '€',
+                                            'AED' => 'AED ',
+                                            'SAR' => 'SAR ',
+                                            default => '؋',
+                                        };
                                         $thr = ($lowBalanceSupplier['currency'] === 'USD') ? '$500' : '؋20,000';
                                     ?>
                                     <span class="ac-chip">
@@ -628,6 +634,9 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                     <div class="ac-section-count"><?= count($mainAccounts) ?> <?= __('accounts') ?></div>
                                 </div>
                                 <div class="ac-section-actions">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm ac-print-summary" data-section="main">
+                                        <i class="feather icon-printer"></i> <?= __('print_summary') ?>
+                                    </button>
                                     <button type="button" class="btn btn-outline-secondary btn-sm" data-toggle="modal" data-target="#transferModal">
                                         <i class="feather icon-exchange"></i> <?= __('transfer_balance') ?>
                                     </button>
@@ -646,7 +655,13 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                         $healthPct  = min(100, max(0, round(($account['usd_balance'] / 200000) * 100)));
                                         $healthColor = $healthPct >= 60 ? 'var(--ac-green)' : ($healthPct >= 30 ? 'var(--ac-amber)' : 'var(--ac-red)');
                                     ?>
-                                    <div class="ac-main-card <?= $isInactive ? 'inactive' : '' ?>">
+                                    <div class="ac-main-card <?= $isInactive ? 'inactive' : '' ?>"
+                                         data-account-name="<?= htmlspecialchars($account['name']) ?>"
+                                         data-usd="<?= $account['usd_balance'] ?>"
+                                         data-afs="<?= $account['afs_balance'] ?>"
+                                         data-euro="<?= $account['euro_balance'] ?>"
+                                         data-aed="<?= $account['darham_balance'] ?>"
+                                         data-sar="<?= $account['sar_balance'] ?>">
 
                                         <div class="ac-mc-head">
                                             <div class="ac-mc-head-left">
@@ -769,6 +784,9 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                         <i class="feather icon-plus"></i> <?= __('add_supplier') ?>
                                     </button>
                                     <?php endif; ?>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm ac-print-summary" data-section="supplier">
+                                        <i class="feather icon-printer"></i> <?= __('print_summary') ?>
+                                    </button>
                                     <button class="ac-collapse-btn" id="acSupplierCollapseBtn" onclick="acToggleSection('acSupplierBody','acSupplierCollapseBtn')">
                                         <i class="feather icon-chevron-down"></i>
                                     </button>
@@ -826,7 +844,13 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                     <?php else: ?>
                                     <?php foreach ($supplier as $row):
                                         $isInactive = isset($row['status']) && $row['status'] === 'inactive';
-                                        $sym        = $row['currency'] === 'USD' ? '$' : '؋';
+                                        $sym        = match ($row['currency']) {
+                                            'USD' => '$',
+                                            'EUR' => '€',
+                                            'AED' => 'AED ',
+                                            'SAR' => 'SAR ',
+                                            default => '؋',
+                                        };
                                         $balClass   = $row['balance'] > 0 ? ($row['currency'] === 'USD' ? 'pos-usd' : 'pos-afs') : ($row['balance'] < 0 ? 'neg' : 'zero');
                                         $barPct     = $row['balance'] >= 0
                                                       ? min(100, round(($row['balance'] / ($row['currency']==='USD' ? 50000 : 500000)) * 100))
@@ -922,6 +946,9 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                         <i class="feather icon-plus"></i> <?= __('add_client') ?>
                                     </button>
                                     <?php endif; ?>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm ac-print-summary" data-section="client">
+                                        <i class="feather icon-printer"></i> <?= __('print_summary') ?>
+                                    </button>
                                     <button class="ac-collapse-btn" id="acClientCollapseBtn" onclick="acToggleSection('acClientBody','acClientCollapseBtn')">
                                         <i class="feather icon-chevron-down"></i>
                                     </button>

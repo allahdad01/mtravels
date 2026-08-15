@@ -329,6 +329,7 @@ return [
      'accounts_management' => 'مدیریت حساب ها',
      'internal_accounts' => 'حساب های داخلی',
      'transfer_balance' => 'انتقال موجودی',
+     'print_summary' => 'چاپ خلاصه',
      'add_account' => 'افزودن حساب',
      'account' => 'حساب',
      'euro_balance' => 'موجودی یورو',
