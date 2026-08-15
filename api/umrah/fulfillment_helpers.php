@@ -553,6 +553,12 @@ function fulfillment_save(PDO $pdo, array $in): array
             // ---- Reconcile: drop stays that were removed in the UI ----------------
             if ($multiStay) {
                 $keepIds = array_column($savedFulfillments, 'id');
+                // Capture suppliers of the fulfillments about to be deleted so
+                // their exposure can be netted back to the live cost below.
+                $delSupStmt = $pdo->prepare("SELECT DISTINCT supplier_id FROM umrah_fulfillments
+                                             WHERE booking_service_id = ? AND tenant_id = ? AND supplier_id IS NOT NULL");
+                $delSupStmt->execute([$booking_service_id, $tenant_id]);
+                $reconcileSuppliers = array_map('intval', $delSupStmt->fetchAll(PDO::FETCH_COLUMN));
                 if ($keepIds) {
                     $ph = implode(',', array_fill(0, count($keepIds), '?'));
                     $pdo->prepare("DELETE hf FROM umrah_hotel_fulfillments hf JOIN umrah_fulfillments f ON f.id = hf.fulfillment_id WHERE f.booking_service_id = ? AND f.tenant_id = ? AND f.id NOT IN ($ph)")
@@ -564,6 +570,17 @@ function fulfillment_save(PDO $pdo, array $in): array
                         ->execute([$booking_service_id, $tenant_id]);
                     $pdo->prepare("DELETE FROM umrah_fulfillments WHERE booking_service_id = ? AND tenant_id = ?")
                         ->execute([$booking_service_id, $tenant_id]);
+                }
+                // Removed stays must never leave phantom exposure behind:
+                // net each affected supplier back to the live fulfillments.
+                if ($reconcileSuppliers) {
+                    $mStmt = $pdo->prepare("SELECT name FROM umrah_bookings WHERE booking_id = ?");
+                    $mStmt->execute([$booking_id]);
+                    $rcMember = (string)($mStmt->fetchColumn() ?: 'Member');
+                    $rcType = (string)($svc['service_type'] ?? $fulfillment_type);
+                    foreach ($reconcileSuppliers as $rcSupplier) {
+                        umrahReconcileSupplierExposure($pdo, $tenant_id, $branch_id, $booking_id, $rcSupplier, $rcMember, $rcType);
+                    }
                 }
             }
         } else {
@@ -721,6 +738,13 @@ function fulfillment_save(PDO $pdo, array $in): array
                 ? ((int)($existingRows[0]['supplier_id'] ?? 0) ?: null)
                 : null;
             if ($oldSupplierId !== null && (int)$oldSupplierId !== (int)$supplier_id) {
+                $oldIdStmt = $pdo->prepare("
+                    SELECT MIN(id) FROM supplier_transactions
+                    WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
+                      AND (remarks = ? OR remarks = ?) AND tenant_id = ?");
+                $oldIdStmt->execute([$oldSupplierId, $booking_id, $remark, $corrRemark, $tenant_id]);
+                $oldDeletedMinId = (int)($oldIdStmt->fetchColumn() ?: 0);
+
                 $oldTxnStmt = $pdo->prepare("
                     SELECT transaction_type, amount FROM supplier_transactions
                     WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
@@ -744,6 +768,11 @@ function fulfillment_save(PDO $pdo, array $in): array
                                    WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
                                      AND (remarks = ? OR remarks = ?) AND tenant_id = ?")
                         ->execute([$oldSupplierId, $booking_id, $remark, $corrRemark, $tenant_id]);
+                }
+                // The deleted exposure rows were part of every subsequent
+                // running balance of the old supplier — bring them back in sync.
+                if ($oldDeletedMinId > 0) {
+                    umrahRebuildRunningBalances($pdo, $tenant_id, $branch_id, $oldSupplierId, $oldDeletedMinId);
                 }
             }
 
@@ -782,36 +811,10 @@ function fulfillment_save(PDO $pdo, array $in): array
                     }
                 }
             } else {
-                // Open-phase cost change — write the delta so the supplier
-                // balance and the fulfillment cost stay consistent.
-                $delta = round($supplierBase - $oldSum, 3);
-                if ($delta != 0.0) {
-                    $cStmt = $pdo->prepare("
-                        SELECT id FROM supplier_transactions
-                        WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
-                          AND remarks = ? AND tenant_id = ? LIMIT 1");
-                    $cStmt->execute([$supplier_id, $booking_id, $corrRemark, $tenant_id]);
-                    if (!$cStmt->fetchColumn()) {
-                        $amount = abs($delta);
-                        $txType = $delta > 0 ? 'Debit' : 'Credit';
-                        if ($supplierType === 'External') {
-                            $pdo->prepare("UPDATE suppliers SET balance = balance - ? WHERE id = ? AND tenant_id = ?")
-                                ->execute([$delta, $supplier_id, $tenant_id]);
-                            $balStmt = $pdo->prepare("SELECT balance FROM suppliers WHERE id = ? AND tenant_id = ?");
-                            $balStmt->execute([$supplier_id, $tenant_id]);
-                            $newBalance = (float)$balStmt->fetchColumn();
-                            $pdo->prepare("
-                                INSERT INTO supplier_transactions (tenant_id, branch_id, supplier_id, reference_id, transaction_type, amount, remarks, balance, transaction_of, receipt)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'umrah', '')")
-                                ->execute([$tenant_id, $branch_id, $supplier_id, $booking_id, $txType, $amount, $corrRemark, $newBalance]);
-                        } else {
-                            $pdo->prepare("
-                                INSERT INTO supplier_transactions (tenant_id, branch_id, supplier_id, reference_id, transaction_type, amount, remarks, balance, transaction_of, receipt)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, 0, 'umrah', '')")
-                                ->execute([$tenant_id, $branch_id, $supplier_id, $booking_id, $txType, $amount, $corrRemark]);
-                        }
-                    }
-                }
+                // Open-phase cost change — net the correction row to the live
+                // cost (rebuild, never skip) so sign flips and deletes can't
+                // leave a stale correction (phantom) behind.
+                umrahReconcileSupplierExposure($pdo, $tenant_id, $branch_id, $booking_id, (int)$supplier_id, (string)$memberName, (string)($svc['service_type'] ?? $fulfillment_type));
             }
         }
 
@@ -998,6 +1001,260 @@ function fulfillment_save(PDO $pdo, array $in): array
     } catch (PDOException $e) {
         if ($pdo->inTransaction()) { $pdo->rollBack(); }
         return ['success' => false, 'code' => 500, 'message' => 'Database error: ' . $e->getMessage()];
+    }
+}
+}
+
+if (!function_exists('umrahReconcileSupplierExposure')) {
+/**
+ * Net the supplier exposure ledger for one booking+supplier back to the live
+ * fulfillment costs. The 'Fulfillment for ...' main rows stay as the baseline;
+ * the single 'Fulfillment cost correction for ...' row is updated IN PLACE
+ * (same id, same position — the running-balance adjustment pattern of
+ * update_ticket_payment.php) so sign flips, deleted fulfillments and
+ * multi-stay removals can never leave phantom debits behind (see the
+ * sync-delete paths).
+ *
+ * BRN rows (remarks LIKE 'BRN%') belong to save_brn.php and are excluded here.
+ */
+function umrahReconcileSupplierExposure(PDO $pdo, int $tenantId, int $branchId, int $bookingId, int $supplierId, string $memberName, string $serviceType): void
+{
+    $corrRemark = "Fulfillment cost correction for {$serviceType}: {$memberName}";
+
+    // Existing correction rows (one canonical row; legacy duplicates from the
+    // old skip-bug are absorbed too).
+    $cStmt = $pdo->prepare("
+        SELECT id, transaction_type, amount FROM supplier_transactions
+        WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
+          AND remarks = ? AND tenant_id = ? ORDER BY id");
+    $cStmt->execute([$supplierId, $bookingId, $corrRemark, $tenantId]);
+    $corrRows = $cStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $tStmt = $pdo->prepare("
+        SELECT COALESCE(SUM(COALESCE(f.supplier_cost, f.cost_amount)), 0)
+        FROM umrah_fulfillments f
+        JOIN umrah_booking_services bs ON f.booking_service_id = bs.id
+        WHERE bs.booking_id = ? AND f.supplier_id = ? AND f.tenant_id = ? AND f.status <> 'cancelled'");
+    $tStmt->execute([$bookingId, $supplierId, $tenantId]);
+    $target = round((float)$tStmt->fetchColumn(), 3);
+
+    // Baseline ledger = the 'Fulfillment for ...' main rows only.
+    $lStmt = $pdo->prepare("
+        SELECT COALESCE(SUM(CASE WHEN LOWER(st.transaction_type) = 'credit' THEN -st.amount ELSE st.amount END), 0)
+        FROM supplier_transactions st
+        WHERE st.supplier_id = ? AND st.reference_id = ? AND st.transaction_of = 'umrah'
+          AND st.remarks LIKE 'Fulfillment for %' AND st.tenant_id = ?");
+    $lStmt->execute([$supplierId, $bookingId, $tenantId]);
+    $mains = round((float)$lStmt->fetchColumn(), 3);
+
+    // The correction row should carry (target - mains); that is its new effect.
+    $newEffect = round($target - $mains, 3);
+
+    // Effects in DEBIT-POSITIVE convention (Debit adds, Credit subtracts) so
+    // the adjustment arithmetic matches the balance-column update exactly.
+    $oldEffect = 0.0;
+    $minCorrId = 0;
+    foreach ($corrRows as $cr) {
+        $oldEffect += strcasecmp((string)$cr['transaction_type'], 'Credit') === 0
+            ? -(float)$cr['amount'] : (float)$cr['amount'];
+        $minCorrId = $minCorrId === 0 ? (int)$cr['id'] : min($minCorrId, (int)$cr['id']);
+    }
+
+    // Running balances (column) and suppliers.balance both move by
+    // -(newEffect - oldEffect), applied as `balance = balance - adjustment`
+    // (the update_ticket_payment.php adjustment pattern, incl. the row's own
+    // balance = the id >= minCorrId bound).
+    $adjustment = round($newEffect - $oldEffect, 3);
+
+    if ($corrRows) {
+        if (abs($newEffect) < 0.001) {
+            // Correction truly obsolete — drop it and restore subsequent rows.
+            $pdo->prepare("DELETE FROM supplier_transactions
+                           WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
+                             AND remarks = ? AND tenant_id = ?")
+                ->execute([$supplierId, $bookingId, $corrRemark, $tenantId]);
+        } else {
+            // Update IN PLACE — same id, same position, audit preserved.
+            // Type flips (Debit<->Credit) when the sign changes.
+            $pdo->prepare("UPDATE supplier_transactions SET transaction_type = ?, amount = ?
+                           WHERE id = ? AND tenant_id = ?")
+                ->execute([$newEffect > 0 ? 'Debit' : 'Credit', abs($newEffect), (int)$corrRows[0]['id'], $tenantId]);
+            if (count($corrRows) > 1) {
+                $pdo->prepare("DELETE FROM supplier_transactions
+                               WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
+                                 AND remarks = ? AND tenant_id = ? AND id <> ?")
+                    ->execute([$supplierId, $bookingId, $corrRemark, $tenantId, (int)$corrRows[0]['id']]);
+            }
+        }
+        if ($adjustment != 0.0) {
+            $pdo->prepare("UPDATE supplier_transactions SET balance = balance - ?
+                           WHERE supplier_id = ? AND tenant_id = ? AND branch_id = ? AND id >= ?")
+                ->execute([$adjustment, $supplierId, $tenantId, $branchId, $minCorrId]);
+            $typeStmt = $pdo->prepare("SELECT supplier_type FROM suppliers WHERE id = ? AND tenant_id = ?");
+            $typeStmt->execute([$supplierId, $tenantId]);
+            if ((string)$typeStmt->fetchColumn() === 'External') {
+                $pdo->prepare("UPDATE suppliers SET balance = balance - ? WHERE id = ? AND tenant_id = ?")
+                    ->execute([$adjustment, $supplierId, $tenantId]);
+            }
+        }
+        return;
+    }
+
+    // No correction row yet — append one at the tail (nothing after it to shift).
+    if (abs($newEffect) >= 0.001) {
+        $amount = abs($newEffect);
+        $txType = $newEffect > 0 ? 'Debit' : 'Credit';
+        $typeStmt = $pdo->prepare("SELECT supplier_type FROM suppliers WHERE id = ? AND tenant_id = ?");
+        $typeStmt->execute([$supplierId, $tenantId]);
+        if ((string)$typeStmt->fetchColumn() === 'External') {
+            $pdo->prepare("UPDATE suppliers SET balance = balance - ? WHERE id = ? AND tenant_id = ?")
+                ->execute([$newEffect, $supplierId, $tenantId]);
+            $balStmt = $pdo->prepare("SELECT balance FROM suppliers WHERE id = ? AND tenant_id = ?");
+            $balStmt->execute([$supplierId, $tenantId]);
+            $newBalance = (float)$balStmt->fetchColumn();
+            $pdo->prepare("
+                INSERT INTO supplier_transactions (tenant_id, branch_id, supplier_id, reference_id, transaction_type, amount, remarks, balance, transaction_of, receipt)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'umrah', '')")
+                ->execute([$tenantId, $branchId, $supplierId, $bookingId, $txType, $amount, $corrRemark, $newBalance]);
+        } else {
+            $pdo->prepare("
+                INSERT INTO supplier_transactions (tenant_id, branch_id, supplier_id, reference_id, transaction_type, amount, remarks, balance, transaction_of, receipt)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 0, 'umrah', '')")
+                ->execute([$tenantId, $branchId, $supplierId, $bookingId, $txType, $amount, $corrRemark]);
+        }
+    }
+}
+}
+
+if (!function_exists('umrahRebuildRunningBalances')) {
+/**
+ * Rebuild the running balance column for one supplier from $fromId onward
+ * (Credit adds, Debit subtracts) — mirroring the subsequent-balance
+ * maintenance of the delete-transaction paths. The row before $fromId is
+ * used as the seed.
+ */
+function umrahRebuildRunningBalances(PDO $pdo, int $tenantId, int $branchId, int $supplierId, int $fromId): void
+{
+    $seed = $pdo->prepare("SELECT balance FROM supplier_transactions
+        WHERE supplier_id = ? AND tenant_id = ? AND branch_id = ? AND id < ?
+        ORDER BY id DESC LIMIT 1");
+    $seed->execute([$supplierId, $tenantId, $branchId, $fromId]);
+    $prev = (float)($seed->fetchColumn() ?: 0);
+
+    $rows = $pdo->prepare("SELECT id, transaction_type, amount FROM supplier_transactions
+        WHERE supplier_id = ? AND tenant_id = ? AND branch_id = ? AND id >= ?
+        ORDER BY id");
+    $rows->execute([$supplierId, $tenantId, $branchId, $fromId]);
+    $upd = $pdo->prepare("UPDATE supplier_transactions SET balance = ? WHERE id = ?");
+    foreach ($rows->fetchAll() as $r) {
+        $prev += strcasecmp((string)$r['transaction_type'], 'Credit') === 0
+            ? (float)$r['amount'] : -(float)$r['amount'];
+        $upd->execute([round($prev, 2), (int)$r['id']]);
+    }
+}
+}
+
+if (!function_exists('brnReconcileSupplierExposure')) {
+/**
+ * Net the BRN exposure ledger for one booking+supplier back to the live
+ * umrah_brn_costs. The 'BRN for ...' main row stays as the baseline; the
+ * single 'BRN cost correction for ...' row is updated IN PLACE (same id,
+ * same position — the update_ticket_payment.php adjustment pattern) so sign
+ * flips and re-saves can never leave a stale correction behind.
+ */
+function brnReconcileSupplierExposure(PDO $pdo, int $tenantId, int $branchId, int $bookingId, int $supplierId, string $memberName): void
+{
+    $corrRemark = "BRN cost correction for {$memberName}";
+
+    $cStmt = $pdo->prepare("
+        SELECT id, transaction_type, amount FROM supplier_transactions
+        WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
+          AND remarks = ? AND tenant_id = ? ORDER BY id");
+    $cStmt->execute([$supplierId, $bookingId, $corrRemark, $tenantId]);
+    $corrRows = $cStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $tStmt = $pdo->prepare("
+        SELECT COALESCE(SUM(COALESCE(supplier_cost, cost_amount)), 0)
+        FROM umrah_brn_costs WHERE booking_id = ? AND tenant_id = ? AND supplier_id = ?");
+    $tStmt->execute([$bookingId, $tenantId, $supplierId]);
+    $target = round((float)$tStmt->fetchColumn(), 3);
+
+    // Baseline ledger = the 'BRN for ...' main row only.
+    $lStmt = $pdo->prepare("
+        SELECT COALESCE(SUM(CASE WHEN LOWER(st.transaction_type) = 'credit' THEN -st.amount ELSE st.amount END), 0)
+        FROM supplier_transactions st
+        WHERE st.supplier_id = ? AND st.reference_id = ? AND st.transaction_of = 'umrah'
+          AND st.remarks LIKE 'BRN for %' AND st.tenant_id = ?");
+    $lStmt->execute([$supplierId, $bookingId, $tenantId]);
+    $mains = round((float)$lStmt->fetchColumn(), 3);
+
+    $newEffect = round($target - $mains, 3);
+
+    // Effects in DEBIT-POSITIVE convention (Debit adds, Credit subtracts).
+    $oldEffect = 0.0;
+    $minCorrId = 0;
+    foreach ($corrRows as $cr) {
+        $oldEffect += strcasecmp((string)$cr['transaction_type'], 'Credit') === 0
+            ? -(float)$cr['amount'] : (float)$cr['amount'];
+        $minCorrId = $minCorrId === 0 ? (int)$cr['id'] : min($minCorrId, (int)$cr['id']);
+    }
+
+    // Running balances (column) and suppliers.balance both move by
+    // -(newEffect - oldEffect), applied as `balance = balance - adjustment`.
+    $adjustment = round($newEffect - $oldEffect, 3);
+
+    if ($corrRows) {
+        if (abs($newEffect) < 0.001) {
+            $pdo->prepare("DELETE FROM supplier_transactions
+                           WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
+                             AND remarks = ? AND tenant_id = ?")
+                ->execute([$supplierId, $bookingId, $corrRemark, $tenantId]);
+        } else {
+            $pdo->prepare("UPDATE supplier_transactions SET transaction_type = ?, amount = ?
+                           WHERE id = ? AND tenant_id = ?")
+                ->execute([$newEffect > 0 ? 'Debit' : 'Credit', abs($newEffect), (int)$corrRows[0]['id'], $tenantId]);
+            if (count($corrRows) > 1) {
+                $pdo->prepare("DELETE FROM supplier_transactions
+                               WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
+                                 AND remarks = ? AND tenant_id = ? AND id <> ?")
+                    ->execute([$supplierId, $bookingId, $corrRemark, $tenantId, (int)$corrRows[0]['id']]);
+            }
+        }
+        if ($adjustment != 0.0) {
+            $pdo->prepare("UPDATE supplier_transactions SET balance = balance - ?
+                           WHERE supplier_id = ? AND tenant_id = ? AND branch_id = ? AND id >= ?")
+                ->execute([$adjustment, $supplierId, $tenantId, $branchId, $minCorrId]);
+            $typeStmt = $pdo->prepare("SELECT supplier_type FROM suppliers WHERE id = ? AND tenant_id = ?");
+            $typeStmt->execute([$supplierId, $tenantId]);
+            if ((string)$typeStmt->fetchColumn() === 'External') {
+                $pdo->prepare("UPDATE suppliers SET balance = balance - ? WHERE id = ? AND tenant_id = ?")
+                    ->execute([$adjustment, $supplierId, $tenantId]);
+            }
+        }
+        return;
+    }
+
+    if (abs($newEffect) >= 0.001) {
+        $amount = abs($newEffect);
+        $txType = $newEffect > 0 ? 'Debit' : 'Credit';
+        $typeStmt = $pdo->prepare("SELECT supplier_type FROM suppliers WHERE id = ? AND tenant_id = ?");
+        $typeStmt->execute([$supplierId, $tenantId]);
+        if ((string)$typeStmt->fetchColumn() === 'External') {
+            $pdo->prepare("UPDATE suppliers SET balance = balance - ? WHERE id = ? AND tenant_id = ?")
+                ->execute([$newEffect, $supplierId, $tenantId]);
+            $balStmt = $pdo->prepare("SELECT balance FROM suppliers WHERE id = ? AND tenant_id = ?");
+            $balStmt->execute([$supplierId, $tenantId]);
+            $newBalance = (float)$balStmt->fetchColumn();
+            $pdo->prepare("
+                INSERT INTO supplier_transactions (tenant_id, branch_id, supplier_id, reference_id, transaction_type, amount, remarks, balance, transaction_of, receipt)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'umrah', '')")
+                ->execute([$tenantId, $branchId, $supplierId, $bookingId, $txType, $amount, $corrRemark, $newBalance]);
+        } else {
+            $pdo->prepare("
+                INSERT INTO supplier_transactions (tenant_id, branch_id, supplier_id, reference_id, transaction_type, amount, remarks, balance, transaction_of, receipt)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 0, 'umrah', '')")
+                ->execute([$tenantId, $branchId, $supplierId, $bookingId, $txType, $amount, $corrRemark]);
+        }
     }
 }
 }

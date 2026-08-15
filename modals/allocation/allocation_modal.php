@@ -11,14 +11,28 @@
                 <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token'] ?? ''); ?>">
                 
                 <div class="modal-body">
-                    <div class="form-group">
-                        <label><?= __('expense_category') ?></label>
-                        <select class="form-control" id="categoryId" name="categoryId" required>
-                            <option value=""><?= __('select_category') ?></option>
-                            <?php foreach($categories as $category): ?>
-                                <option value="<?= $category['id'] ?>"><?= htmlspecialchars($category['name']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label><?= __('expense_category') ?></label>
+                                <select class="form-control" id="categoryId" name="categoryId" required>
+                                    <option value=""><?= __('select_category') ?></option>
+                                    <?php foreach($categories as $category): ?>
+                                        <?php if (empty($category['parent_id'])): ?>
+                                            <option value="<?= $category['id'] ?>"><?= htmlspecialchars($category['name']) ?></option>
+                                        <?php endif; ?>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label><?= __('sub_category') ?> <span class="text-muted font-weight-normal">(<?= __('optional') ?>)</span></label>
+                                <select class="form-control" id="allocationSubCategory" name="sub_category_id">
+                                    <option value=""><?= __('no_sub_category') ?></option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label><?= __('main_account') ?></label>

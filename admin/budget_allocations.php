@@ -36,16 +36,45 @@ $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Allocations with join
 $stmt = $pdo->prepare("
-    SELECT ba.*, ma.name as account_name, ec.name as category_name
+    SELECT ba.*, ma.name as account_name, ec.name as category_name, ec.parent_id as category_parent_id, esc.name as sub_category_name
     FROM budget_allocations ba
     JOIN main_account ma ON ba.main_account_id = ma.id
     JOIN expense_categories ec ON ba.category_id = ec.id
+    LEFT JOIN expense_categories esc ON ba.sub_category_id = esc.id
     WHERE ba.allocation_date BETWEEN ? AND ? AND ba.tenant_id = ? AND ba.branch_id = ?
     ORDER BY ba.allocation_date DESC
 ");
 $stmt->execute([$startDate, $endDate, $tenant_id, $branch_id]);
 $allocations = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $stmt->closeCursor();
+
+// Category name lookup (for rendering parent names)
+$catNameById = [];
+foreach ($categories as $c) {
+    $catNameById[$c['id']] = $c['name'];
+}
+
+// Categories that actually have an allocation in the selected period,
+// with all their sub-categories (for the add-expense modal)
+$allocCats = [];
+foreach ($allocations as $a) {
+    $cid = $a['category_id'];
+    if (!isset($allocCats[$cid])) {
+        $allocCats[$cid] = [
+            'id'        => $cid,
+            'name'      => $a['category_name'],
+            'parent_id' => $a['category_parent_id'],
+            'subs'      => [],
+        ];
+    }
+}
+
+// Attach all sub-categories of each allocated category
+foreach ($categories as $c) {
+    if (!empty($c['parent_id']) && isset($allocCats[$c['parent_id']])) {
+        $allocCats[$c['parent_id']]['subs'][$c['id']] = $c['name'];
+    }
+}
 
 // Summary totals per currency
 $totals    = [];
@@ -473,6 +502,14 @@ body { background: var(--surface); }
     color: #16a34a;
     border: 1px solid #bbf7d0;
 }
+.ba-badge.sub {
+    background: #e3efff;
+    color: #1d4ed8;
+    border: 1px solid #bcd9f7;
+    text-transform: none;
+    font-weight: 600;
+    letter-spacing: 0;
+}
 
 /* ── Action buttons in fund table ──────────────────────────────────────── */
 .ba-action-btn {
@@ -651,7 +688,12 @@ body { background: var(--surface); }
                     <div class="ba-alloc-top">
 
                         <div class="ba-alloc-head">
-                            <div class="ba-alloc-category"><?= htmlspecialchars($alloc['category_name']) ?></div>
+                            <div class="ba-alloc-category">
+                                <?= htmlspecialchars($alloc['category_name']) ?>
+                                <?php if (!empty($alloc['sub_category_name'])): ?>
+                                    <div style="font-size:.78rem;font-weight:600;color:var(--brand-a);margin-top:3px;"><?= htmlspecialchars($alloc['sub_category_name']) ?></div>
+                                <?php endif; ?>
+                            </div>
                             <div class="ba-date-chip">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                                 <?= date('d M Y', strtotime($alloc['allocation_date'])) ?>
@@ -748,10 +790,21 @@ $availableAllocCurrencies = array_column($allocCurrencies, 'currency');
                     <div class="form-group">
                         <label><?= __('expense_category') ?></label>
                         <select class="form-control" id="topExpenseCategory" name="categoryId" required>
-                            <option value=""><?= __('select_category') ?></option>
-                            <?php foreach ($categories as $category): ?>
-                                <option value="<?= $category['id'] ?>"><?= htmlspecialchars($category['name']) ?></option>
-                            <?php endforeach; ?>
+                            <?php if (empty($allocCats)): ?>
+                                <option value=""><?= __('no_budget_allocations_found_for_selected_month') ?></option>
+                            <?php else: ?>
+                                <option value=""><?= __('select_category') ?></option>
+                                <?php foreach ($allocCats as $cat): ?>
+                                    <?php if (!empty($cat['parent_id'])): ?>
+                                        <option value="<?= $cat['id'] ?>"><?= htmlspecialchars(($catNameById[$cat['parent_id']] ?? '') . ' — ' . $cat['name']) ?></option>
+                                    <?php else: ?>
+                                        <option value="<?= $cat['id'] ?>"><?= htmlspecialchars($cat['name']) ?></option>
+                                        <?php foreach ($cat['subs'] as $sid => $sname): ?>
+                                            <option value="<?= $cat['id'] ?>" data-sub="<?= $sid ?>"><?= htmlspecialchars($cat['name'] . ' — ' . $sname) ?></option>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </select>
                     </div>
                     <div class="form-group">

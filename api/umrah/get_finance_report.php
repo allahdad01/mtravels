@@ -117,6 +117,8 @@ if ($report === 'services') {
 
 // ---- Supplier payables (from fulfilled services) ---------------------------------
 if ($report === 'suppliers') {
+    // paid_ccy: fund credits (supplier currency) recorded after the supplier's
+    // first umrah fulfillment assignment, i.e. payments against umrah services.
     $stmt = $pdo->prepare("
         SELECT sup.id, sup.name, sup.currency,
                COUNT(f.id) AS services_count,
@@ -126,16 +128,35 @@ if ($report === 'suppliers') {
                SUM(CASE WHEN f.fulfillment_type = 'transport' THEN f.cost_amount ELSE 0 END) AS transport_cost,
                SUM(CASE WHEN f.fulfillment_type = 'meal'     THEN f.cost_amount ELSE 0 END) AS meal_cost,
                SUM(CASE WHEN f.fulfillment_type = 'ziyarat'  THEN f.cost_amount ELSE 0 END) AS ziyarat_cost,
-               SUM(f.cost_amount) AS total_payable
+               SUM(f.cost_amount) AS total_payable,
+               SUM(COALESCE(f.supplier_cost, f.cost_amount)) AS payable_ccy,
+               COALESCE(pay.paid_ccy, 0) AS paid_ccy
         FROM umrah_fulfillments f
         JOIN suppliers sup ON f.supplier_id = sup.id AND sup.tenant_id = ?
+        LEFT JOIN (
+            SELECT st.supplier_id, SUM(st.amount) AS paid_ccy
+            FROM supplier_transactions st
+            WHERE st.transaction_of = 'fund'
+              AND LOWER(st.transaction_type) = 'credit'
+              AND st.tenant_id = ?
+              AND st.transaction_date >= COALESCE((
+                    SELECT MIN(f2.created_at)
+                    FROM umrah_fulfillments f2
+                    WHERE f2.supplier_id = st.supplier_id
+                      AND f2.tenant_id = st.tenant_id
+                      AND f2.status <> 'cancelled'
+              ), '1970-01-01 00:00:00')
+            GROUP BY st.supplier_id
+        ) pay ON pay.supplier_id = sup.id
         WHERE f.tenant_id = ? AND f.status <> 'cancelled' AND f.cost_amount IS NOT NULL
-        GROUP BY sup.id, sup.name, sup.currency
-        ORDER BY total_payable DESC");
-    $stmt->execute([$tenant_id, $tenant_id]);
+        GROUP BY sup.id, sup.name, sup.currency, pay.paid_ccy
+        ORDER BY payable_ccy DESC");
+    $stmt->execute([$tenant_id, $tenant_id, $tenant_id]);
     $rows = [];
     $totals = ['total_payable' => 0, 'services_count' => 0];
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $paid_ccy = round((float)$r['paid_ccy'], 2);
+        $payable_ccy = round((float)$r['payable_ccy'], 2);
         $row = [
             'supplier_id' => (int)$r['id'],
             'supplier_name' => $r['name'],
@@ -148,6 +169,9 @@ if ($report === 'suppliers') {
             'meal_cost' => (float)$r['meal_cost'],
             'ziyarat_cost' => (float)$r['ziyarat_cost'],
             'total_payable' => (float)$r['total_payable'],
+            'payable_ccy' => $payable_ccy,
+            'paid_ccy' => $paid_ccy,
+            'balance_ccy' => round($payable_ccy - $paid_ccy, 2),
         ];
         $rows[] = $row;
         $totals['total_payable'] += (float)$r['total_payable'];

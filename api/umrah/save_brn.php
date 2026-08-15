@@ -58,6 +58,7 @@ $branch_id = $_SESSION['branch_id'];
 $user_id = $_SESSION['user_id'] ?? 0;
 
 require_once '../../includes/db.php';
+require_once __DIR__ . '/fulfillment_helpers.php';
 
 /**
  * Recompute a booking's totals including its BRN costs:
@@ -249,6 +250,13 @@ try {
             ? $oldSupplierId
             : null;
         if ($undoSupplier !== null) {
+            $oldIdStmt = $pdo->prepare("
+                SELECT MIN(id) FROM supplier_transactions
+                WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
+                  AND (remarks = ? OR remarks = ?) AND tenant_id = ?");
+            $oldIdStmt->execute([$undoSupplier, $tbBookingId, $remark, $corrRemark, $tenant_id]);
+            $oldDeletedMinId = (int)($oldIdStmt->fetchColumn() ?: 0);
+
             $otStmt = $pdo->prepare("
                 SELECT transaction_type, amount FROM supplier_transactions
                 WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
@@ -273,6 +281,11 @@ try {
                     WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
                       AND (remarks = ? OR remarks = ?) AND tenant_id = ?")
                     ->execute([$undoSupplier, $tbBookingId, $remark, $corrRemark, $tenant_id]);
+            }
+            // The deleted exposure rows were part of every subsequent running
+            // balance of the old supplier — bring them back in sync.
+            if ($oldDeletedMinId > 0) {
+                umrahRebuildRunningBalances($pdo, $tenant_id, $branch_id, $undoSupplier, $oldDeletedMinId);
             }
         }
 
@@ -360,36 +373,10 @@ try {
                         ->execute([$tenant_id, $branch_id, $supplier_id, $tbBookingId, $supplierBase, $remark]);
                 }
             } else {
-                // Cost change while the record stays — write the delta so the
-                // supplier balance and the BRN cost stay consistent.
-                $delta = round($supplierBase - $oldSum, 3);
-                if ($delta != 0.0) {
-                    $cStmt = $pdo->prepare("
-                        SELECT id FROM supplier_transactions
-                        WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
-                          AND remarks = ? AND tenant_id = ? LIMIT 1");
-                    $cStmt->execute([$supplier_id, $tbBookingId, $corrRemark, $tenant_id]);
-                    if (!$cStmt->fetchColumn()) {
-                        $amount = abs($delta);
-                        $txType = $delta > 0 ? 'Debit' : 'Credit';
-                        if ($supplierType === 'External') {
-                            $pdo->prepare("UPDATE suppliers SET balance = balance - ? WHERE id = ? AND tenant_id = ?")
-                                ->execute([$delta, $supplier_id, $tenant_id]);
-                            $balStmt = $pdo->prepare("SELECT balance FROM suppliers WHERE id = ? AND tenant_id = ?");
-                            $balStmt->execute([$supplier_id, $tenant_id]);
-                            $newBalance = (float)$balStmt->fetchColumn();
-                            $pdo->prepare("
-                                INSERT INTO supplier_transactions (tenant_id, branch_id, supplier_id, reference_id, transaction_type, amount, remarks, balance, transaction_of, receipt)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'umrah', '')")
-                                ->execute([$tenant_id, $branch_id, $supplier_id, $tbBookingId, $txType, $amount, $corrRemark, $newBalance]);
-                        } else {
-                            $pdo->prepare("
-                                INSERT INTO supplier_transactions (tenant_id, branch_id, supplier_id, reference_id, transaction_type, amount, remarks, balance, transaction_of, receipt)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, 0, 'umrah', '')")
-                                ->execute([$tenant_id, $branch_id, $supplier_id, $tbBookingId, $txType, $amount, $corrRemark]);
-                        }
-                    }
-                }
+                // Cost change while the record stays — net the correction row
+                // to the live BRN cost (rebuild, never skip) so sign flips
+                // and re-saves can't leave a stale BRN correction behind.
+                brnReconcileSupplierExposure($pdo, $tenant_id, $branch_id, (int)$tbBookingId, (int)$supplier_id, (string)$tbName);
             }
         }
 

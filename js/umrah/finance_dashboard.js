@@ -124,14 +124,20 @@ function renderSupplierPayables(rows) {
     let html = '<div class="table-responsive"><table class="table table-sm table-hover mb-0"><thead class="thead-light"><tr>' +
         '<th>' + fnT('supplier') + '</th><th>' + fnT('currency') + '</th><th>' + fnT('services_count') + '</th>';
     types.forEach(t => html += '<th>' + fnT('pay_' + t) + '</th>');
-    html += '<th class="text-right">' + fnT('total_payable') + '</th></tr></thead><tbody>';
+    html += '<th class="text-right">' + fnT('total_payable') + '</th>' +
+        '<th class="text-right">' + fnT('paid') + '</th>' +
+        '<th class="text-right">' + fnT('balance') + '</th></tr></thead><tbody>';
     rows.forEach(r => {
+        const cur = r.currency || 'USD';
+        const bal = parseFloat(r.balance_ccy) || 0;
         html += '<tr>' +
             '<td class="font-weight-bold">' + fnEsc(r.supplier_name) + '</td>' +
-            '<td>' + fnEsc(r.currency || '-') + '</td>' +
+            '<td>' + fnEsc(cur) + '</td>' +
             '<td>' + r.services_count + '</td>';
         types.forEach(t => html += '<td>' + fnMoney(r[t + '_cost'], 'USD') + '</td>');
         html += '<td class="text-right font-weight-bold text-danger">' + fnMoney(r.total_payable, 'USD') + '</td>' +
+            '<td class="text-right">' + fnMoney(r.paid_ccy, cur) + '</td>' +
+            '<td class="text-right font-weight-bold ' + (bal > 0 ? 'text-danger' : 'text-success') + '">' + fnMoney(r.balance_ccy, cur) + '</td>' +
             '</tr>';
     });
     html += '</tbody></table></div>';

@@ -8,6 +8,7 @@ $(document).ready(function() {
         e.preventDefault();
         
         const categoryId = $('#categoryId').val();
+        const subCategoryId = $('#allocationSubCategory').val();
         const mainAccountId = $('#mainAccountId').val();
         const amount = $('#amount').val();
         const currency = $('#currency').val();
@@ -20,7 +21,7 @@ $(document).ready(function() {
         submitBtn.text('Creating...');
         submitBtn.prop('disabled', true);
         
-        createBudgetAllocation(categoryId, mainAccountId, amount, currency, date, description)
+        createBudgetAllocation(categoryId, subCategoryId, mainAccountId, amount, currency, date, description)
             .done(function(response) {
                 if (response.success) {
                     alert(response.message);
@@ -38,6 +39,48 @@ $(document).ready(function() {
                 submitBtn.text(originalText);
                 submitBtn.prop('disabled', false);
             });
+    });
+
+    // Load sub-categories for the selected category into the allocation modal
+    function loadAllocationSubCategories(categoryId, selectedValue) {
+        const csrfToken = $('input[name="csrf_token"]').val();
+        $.ajax({
+            url: '../api/expense/expense_actions.php',
+            type: 'POST',
+            data: {
+                action: 'get_sub_categories',
+                categoryId: categoryId,
+                csrf_token: csrfToken
+            },
+            dataType: 'json',
+            success: function(response) {
+                const $select = $('#allocationSubCategory');
+                $select.empty().append('<option value="">No Sub-Category</option>');
+                if (response.success) {
+                    $.each(response.sub_categories, function(i, sub) {
+                        $select.append($('<option>', { value: sub.id, text: sub.name }));
+                    });
+                }
+                if (selectedValue) {
+                    $select.val(String(selectedValue));
+                }
+            }
+        });
+    }
+
+    // Category change in allocation modal -> load its sub-categories
+    $('#categoryId').on('change', function() {
+        const categoryId = $(this).val();
+        if (categoryId) {
+            loadAllocationSubCategories(categoryId, '');
+        } else {
+            $('#allocationSubCategory').empty().append('<option value="">No Sub-Category</option>');
+        }
+    });
+
+    // Reset sub-category dropdown when allocation modal opens
+    $('#allocationModal').on('show.bs.modal', function() {
+        $('#allocationSubCategory').empty().append('<option value="">No Sub-Category</option>');
     });
     
     // View funds for allocation button click
@@ -231,6 +274,9 @@ $(document).ready(function() {
                     $('#inlineCurrency').val(allocation.currency);
                     $('#inlineEditAllocationId').val(allocation.id);
                     
+                    // Load sub-categories of the allocation's category (pre-select allocation's sub if any)
+                    loadInlineSubCategories(allocation.category_id, allocation.sub_category_id || '');
+                    
                     // Set default date for add form
                     $('#inlineExpenseDate').val(new Date().toISOString().split('T')[0]);
                     
@@ -240,10 +286,13 @@ $(document).ready(function() {
                     
                     if (expenses.length > 0) {
                         expenses.forEach(expense => {
+                            const subBadge = expense.sub_category_name
+                                ? ` <span class="ba-badge sub" style="font-size:.7rem;">${expense.sub_category_name}</span>`
+                                : '';
                             const row = `
                                 <tr>
                                     <td>${new Date(expense.date).toLocaleDateString()}</td>
-                                    <td style="max-width:300px;word-wrap:break-word;white-space:normal;">${expense.description}</td>
+                                    <td style="max-width:300px;word-wrap:break-word;white-space:normal;">${expense.description}${subBadge}</td>
                                     <td>${expense.amount} ${expense.currency}</td>
                                     <td>
                                         <button class="btn btn-sm btn-info edit-expense" data-id="${expense.id}" data-date="${expense.date}" data-description="${expense.description.replace(/"/g, '&quot;')}" data-amount="${expense.amount}">
@@ -279,6 +328,34 @@ $(document).ready(function() {
             });
     });
     
+    // ── Load sub-categories into the inline add-expense form ───────────────
+    function loadInlineSubCategories(categoryId, selectedValue) {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
+                         document.querySelector('input[name="csrf_token"]')?.value;
+        $.ajax({
+            url: '../api/expense/expense_actions.php',
+            type: 'POST',
+            data: {
+                action: 'get_sub_categories',
+                categoryId: categoryId,
+                csrf_token: csrfToken
+            },
+            dataType: 'json',
+            success: function(response) {
+                const $select = $('#inlineExpenseSubCategory');
+                $select.empty().append('<option value="">No Sub-Category</option>');
+                if (response.success) {
+                    $.each(response.sub_categories, function(i, sub) {
+                        $select.append($('<option>', { value: sub.id, text: sub.name }));
+                    });
+                }
+                if (selectedValue) {
+                    $select.val(String(selectedValue));
+                }
+            }
+        });
+    }
+    
     // ── Show/hide inline add expense form ─────────────────────────────────
     $('#showAddExpenseBtn').on('click', function() {
         $('#editExpenseSection').hide();
@@ -297,6 +374,7 @@ $(document).ready(function() {
         
         const allocationId = $('#inlineAllocationId').val();
         const categoryId = $('#inlineCategoryId').val();
+        const subCategoryId = $('#inlineExpenseSubCategory').val();
         const date = $('#inlineExpenseDate').val();
         const description = $('#inlineExpenseDescription').val();
         const amount = $('#inlineExpenseAmount').val();
@@ -306,7 +384,7 @@ $(document).ready(function() {
         const orig = $btn.html();
         $btn.html('<i class="feather icon-loader spinner"></i> Saving...').prop('disabled', true);
         
-        addAllocationExpense(allocationId, categoryId, date, description, amount, currency)
+        addAllocationExpense(allocationId, categoryId, subCategoryId, date, description, amount, currency)
             .done(function(response) {
                 if (response.success) {
                     $('#addExpenseSection').hide();
@@ -422,13 +500,18 @@ $(document).ready(function() {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
                          document.querySelector('input[name="csrf_token"]')?.value;
 
+        const $catSel = $('#topExpenseCategory');
+        const categoryId = $catSel.val();
+        const subCategoryId = $catSel.find('option:selected').data('sub') || '';
+
         $.ajax({
             url: '../api/allocation/allocation_actions.php',
             type: 'POST',
             dataType: 'json',
             data: {
                 action: 'add_auto_allocation_expense',
-                categoryId: $('#topExpenseCategory').val(),
+                categoryId: categoryId,
+                subCategoryId: subCategoryId,
                 date: $('#topExpenseDate').val(),
                 description: $('#topExpenseDescription').val(),
                 amount: $('#topExpenseAmount').val(),

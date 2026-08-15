@@ -119,6 +119,7 @@ function createAllocation($pdo) {
         // Validate inputs
         $mainAccountId = isset($_POST['main_account_id']) ? intval($_POST['main_account_id']) : 0;
         $categoryId = isset($_POST['category_id']) ? intval($_POST['category_id']) : 0;
+        $subCategoryId = isset($_POST['sub_category_id']) ? intval($_POST['sub_category_id']) : 0;
         $amount = isset($_POST['amount']) ? floatval($_POST['amount']) : 0;
         $currency = isset($_POST['currency']) ? $_POST['currency'] : 'USD';
         $date = isset($_POST['date']) ? $_POST['date'] : date('Y-m-d');
@@ -127,6 +128,18 @@ function createAllocation($pdo) {
         if ($mainAccountId <= 0 || $categoryId <= 0 || $amount <= 0) {
             sendResponse(false, 'Invalid input data');
             return;
+        }
+
+        // Validate sub-category belongs to the selected category
+        if ($subCategoryId > 0) {
+            $subCatStmt = $pdo->prepare("SELECT id FROM expense_categories WHERE id = ? AND parent_id = ? AND tenant_id = ? AND branch_id = ?");
+            $subCatStmt->execute([$subCategoryId, $categoryId, $tenant_id, $branch_id]);
+            if ($subCatStmt->rowCount() === 0) {
+                sendResponse(false, 'Invalid sub-category for the selected category');
+                return;
+            }
+        } else {
+            $subCategoryId = null;
         }
 
         // Check if the main account exists for the specified currency
@@ -174,12 +187,13 @@ function createAllocation($pdo) {
         // Create allocation
          $allocationStmt = $pdo->prepare("
              INSERT INTO budget_allocations
-             (main_account_id, category_id, allocated_amount, remaining_amount, currency, allocation_date, description, created_by, tenant_id, branch_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             (main_account_id, category_id, sub_category_id, allocated_amount, remaining_amount, currency, allocation_date, description, created_by, tenant_id, branch_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ");
          $allocationStmt->execute([
              $mainAccountId,
              $categoryId,
+             $subCategoryId,
              $amount,
              $amount, // Initially, remaining amount equals allocated amount
              $currency,
@@ -226,6 +240,7 @@ function createAllocation($pdo) {
         $new_values = json_encode([
             'main_account_id' => $mainAccountId,
             'category_id' => $categoryId,
+            'sub_category_id' => $subCategoryId,
             'allocated_amount' => $amount,
             'remaining_amount' => $amount,
             'currency' => $currency,
@@ -450,10 +465,11 @@ function getAllocations($pdo) {
         $currency = isset($_POST['currency']) ? $_POST['currency'] : null;
         
         $query = "
-            SELECT ba.*, ma.name as account_name, ec.name as category_name
+            SELECT ba.*, ma.name as account_name, ec.name as category_name, esc.name as sub_category_name
             FROM budget_allocations ba
             JOIN main_account ma ON ba.main_account_id = ma.id
             JOIN expense_categories ec ON ba.category_id = ec.id
+            LEFT JOIN expense_categories esc ON ba.sub_category_id = esc.id
             WHERE ba.tenant_id = ? AND ba.branch_id = ?
         ";
         $params = [$tenant_id, $branch_id];
@@ -494,10 +510,11 @@ function getAllocationDetails($pdo) {
         
         // Get allocation details
         $allocationStmt = $pdo->prepare("
-            SELECT ba.*, ma.name as account_name, ec.name as category_name
+            SELECT ba.*, ma.name as account_name, ec.name as category_name, esc.name as sub_category_name
             FROM budget_allocations ba
             JOIN main_account ma ON ba.main_account_id = ma.id
             JOIN expense_categories ec ON ba.category_id = ec.id
+            LEFT JOIN expense_categories esc ON ba.sub_category_id = esc.id
             WHERE ba.id = ? AND ba.tenant_id = ? AND ba.branch_id = ?
         ");
         $allocationStmt->execute([$allocationId, $tenant_id, $branch_id]);
@@ -510,9 +527,11 @@ function getAllocationDetails($pdo) {
         
         // Get expenses associated with this allocation
         $expenseStmt = $pdo->prepare("
-            SELECT * FROM expenses
-            WHERE allocation_id = ? AND tenant_id = ? AND branch_id = ?
-            ORDER BY date DESC
+            SELECT e.*, esc.name as sub_category_name
+            FROM expenses e
+            LEFT JOIN expense_categories esc ON e.sub_category_id = esc.id
+            WHERE e.allocation_id = ? AND e.tenant_id = ? AND e.branch_id = ?
+            ORDER BY e.date DESC
         ");
         $expenseStmt->execute([$allocationId, $tenant_id, $branch_id]);
         $expenses = $expenseStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -709,10 +728,11 @@ function getFundTransactions($pdo) {
         
         // Get allocation details
         $allocationStmt = $pdo->prepare("
-            SELECT ba.*, ma.name as account_name, ec.name as category_name
+            SELECT ba.*, ma.name as account_name, ec.name as category_name, esc.name as sub_category_name
             FROM budget_allocations ba
             JOIN main_account ma ON ba.main_account_id = ma.id
             JOIN expense_categories ec ON ba.category_id = ec.id
+            LEFT JOIN expense_categories esc ON ba.sub_category_id = esc.id
             WHERE ba.id = ? AND ba.tenant_id = ? AND ba.branch_id = ?
         ");
         $allocationStmt->execute([$allocationId, $tenant_id, $branch_id]);
@@ -1131,6 +1151,7 @@ function addAutoAllocationExpense($pdo) {
     $branch_id = $_SESSION['branch_id'];
     try {
         $categoryId  = isset($_POST['categoryId']) ? intval($_POST['categoryId']) : 0;
+        $subCategoryId = isset($_POST['subCategoryId']) ? intval($_POST['subCategoryId']) : 0;
         $date        = isset($_POST['date'])        ? $_POST['date']               : date('Y-m-d');
         $description = isset($_POST['description']) ? $_POST['description']        : '';
         $amount      = isset($_POST['amount'])       ? floatval($_POST['amount'])   : 0;
@@ -1141,16 +1162,42 @@ function addAutoAllocationExpense($pdo) {
             return;
         }
 
+        // Validate sub-category belongs to the selected category
+        if ($subCategoryId > 0) {
+            $subStmt = $pdo->prepare("SELECT id FROM expense_categories WHERE id = ? AND parent_id = ? AND tenant_id = ? AND branch_id = ?");
+            $subStmt->execute([$subCategoryId, $categoryId, $tenant_id, $branch_id]);
+            if ($subStmt->rowCount() === 0) {
+                sendResponse(false, 'Invalid sub-category for the selected category');
+                return;
+            }
+        }
+
         // Find matching budget allocation for this category + currency + month
         $monthStart = date('Y-m-01', strtotime($date));
         $monthEnd   = date('Y-m-t', strtotime($date));
-        $allocStmt = $pdo->prepare("
-            SELECT id, remaining_amount, main_account_id, currency
-            FROM budget_allocations
-            WHERE category_id = ? AND currency = ? AND allocation_date BETWEEN ? AND ? AND tenant_id = ? AND branch_id = ?
-            LIMIT 1
-        ");
-        $allocStmt->execute([$categoryId, $currency, $monthStart, $monthEnd, $tenant_id, $branch_id]);
+
+        if ($subCategoryId > 0) {
+            // Prefer the sub-category-specific allocation, fall back to the general pool
+            $allocStmt = $pdo->prepare("
+                SELECT id, remaining_amount, main_account_id, currency
+                FROM budget_allocations
+                WHERE currency = ? AND allocation_date BETWEEN ? AND ? AND tenant_id = ? AND branch_id = ?
+                  AND (sub_category_id = ? OR (category_id = ? AND sub_category_id IS NULL))
+                ORDER BY (sub_category_id = ?) DESC
+                LIMIT 1
+            ");
+            $allocStmt->execute([$currency, $monthStart, $monthEnd, $tenant_id, $branch_id, $subCategoryId, $categoryId, $subCategoryId]);
+        } else {
+            // Prefer the general (no sub-category) allocation
+            $allocStmt = $pdo->prepare("
+                SELECT id, remaining_amount, main_account_id, currency
+                FROM budget_allocations
+                WHERE category_id = ? AND currency = ? AND allocation_date BETWEEN ? AND ? AND tenant_id = ? AND branch_id = ?
+                ORDER BY (sub_category_id IS NULL) DESC
+                LIMIT 1
+            ");
+            $allocStmt->execute([$categoryId, $currency, $monthStart, $monthEnd, $tenant_id, $branch_id]);
+        }
         $allocation = $allocStmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$allocation) {
@@ -1161,6 +1208,9 @@ function addAutoAllocationExpense($pdo) {
         // Delegate to addAllocationExpense logic
         $_POST['allocation_id'] = $allocation['id'];
         $_POST['category_id']   = $categoryId;
+        if ($subCategoryId > 0) {
+            $_POST['sub_category_id'] = $subCategoryId;
+        }
         // Re-call the standard add function
         addAllocationExpense($pdo);
     } catch (PDOException $e) {
@@ -1175,6 +1225,7 @@ function addAllocationExpense($pdo) {
     try {
         $allocationId = isset($_POST['allocation_id']) ? intval($_POST['allocation_id']) : 0;
         $categoryId   = isset($_POST['category_id'])   ? intval($_POST['category_id'])   : 0;
+        $postedSubId  = isset($_POST['sub_category_id']) ? intval($_POST['sub_category_id']) : 0;
         $date         = isset($_POST['date'])           ? $_POST['date']                  : date('Y-m-d');
         $description  = isset($_POST['description'])    ? $_POST['description']           : '';
         $amount       = isset($_POST['amount'])          ? floatval($_POST['amount'])      : 0;
@@ -1200,15 +1251,28 @@ function addAllocationExpense($pdo) {
             return;
         }
 
+        // Validate sub-category belongs to the allocation's category
+        if ($postedSubId > 0) {
+            $subCheck = $pdo->prepare("SELECT id FROM expense_categories WHERE id = ? AND parent_id = ? AND tenant_id = ? AND branch_id = ?");
+            $subCheck->execute([$postedSubId, $categoryId, $tenant_id, $branch_id]);
+            if ($subCheck->rowCount() === 0) {
+                sendResponse(false, 'Invalid sub-category for the selected category');
+                return;
+            }
+        }
+
         $pdo->beginTransaction();
 
         // Deduct from allocation (allowing negative)
         $updateAlloc = $pdo->prepare("UPDATE budget_allocations SET remaining_amount = remaining_amount - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
         $updateAlloc->execute([$amount, $allocationId, $tenant_id, $branch_id]);
 
+        // Use the user-selected sub-category when given, otherwise inherit the allocation's
+        $expenseSubCategoryId = $postedSubId > 0 ? $postedSubId : ($allocation['sub_category_id'] ?? null);
+
         // Insert expense
-        $stmt = $pdo->prepare("INSERT INTO expenses (category_id, date, description, amount, currency, main_account_id, allocation_id, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$categoryId, $date, $description, $amount, $currency, $allocation['main_account_id'], $allocationId, $tenant_id, $branch_id]);
+        $stmt = $pdo->prepare("INSERT INTO expenses (category_id, sub_category_id, date, description, amount, currency, main_account_id, allocation_id, tenant_id, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$categoryId, $expenseSubCategoryId, $date, $description, $amount, $currency, $allocation['main_account_id'], $allocationId, $tenant_id, $branch_id]);
         $expenseId = $pdo->lastInsertId();
 
         // Notification

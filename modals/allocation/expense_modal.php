@@ -40,6 +40,16 @@
                             <input type="hidden" id="inlineCategoryId" name="category_id">
                             <input type="hidden" id="inlineCurrency" name="currency">
                             <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label style="font-size:12px;"><?= __('sub_category') ?> <span class="text-muted font-weight-normal">(<?= __('optional') ?>)</span></label>
+                                        <select class="form-control form-control-sm" id="inlineExpenseSubCategory" name="sub_category_id">
+                                            <option value=""><?= __('no_sub_category') ?></option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
                                 <div class="col-md-4">
                                     <div class="form-group">
                                         <label style="font-size:12px;"><?= __('date') ?></label>

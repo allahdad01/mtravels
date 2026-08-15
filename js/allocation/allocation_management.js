@@ -1,7 +1,7 @@
 // Budget Allocation Management Core Functions
 
 // Create budget allocation
-function createBudgetAllocation(categoryId, mainAccountId, amount, currency, date, description) {
+function createBudgetAllocation(categoryId, subCategoryId, mainAccountId, amount, currency, date, description) {
     const csrfToken = $('input[name="csrf_token"]').val();
     return $.ajax({
         url: '../api/allocation/allocation_actions.php',
@@ -9,6 +9,7 @@ function createBudgetAllocation(categoryId, mainAccountId, amount, currency, dat
         data: {
             action: 'create_allocation',
             category_id: categoryId,
+            sub_category_id: subCategoryId,
             main_account_id: mainAccountId,
             amount: amount,
             currency: currency,
@@ -135,7 +136,7 @@ function deleteExpense(expenseId) {
 }
 
 // Add expense to allocation
-function addAllocationExpense(allocationId, categoryId, date, description, amount, currency) {
+function addAllocationExpense(allocationId, categoryId, subCategoryId, date, description, amount, currency) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
                      document.querySelector('input[name="csrf_token"]')?.value;
     return $.ajax({
@@ -145,6 +146,7 @@ function addAllocationExpense(allocationId, categoryId, date, description, amoun
             action: 'add_allocation_expense',
             allocation_id: allocationId,
             category_id: categoryId,
+            sub_category_id: subCategoryId,
             date: date,
             description: description,
             amount: amount,
