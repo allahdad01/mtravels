@@ -51,6 +51,18 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_tenant' && isset($_GET['i
     exit();
 }
 
+// Handle AJAX request to list active users of a tenant (for Login As)
+if (isset($_GET['action']) && $_GET['action'] === 'get_users' && isset($_GET['tenant_id'])) {
+    $tenant_id = intval($_GET['tenant_id']);
+    
+    $stmt = $pdo->prepare("SELECT id, tenant_id, branch_id, name, email, role FROM users WHERE tenant_id = ? AND fired = 0 AND deleted_at IS NULL AND role != 'super_admin' ORDER BY role, name");
+    $stmt->execute([$tenant_id]);
+    $users = $stmt->fetchAll();
+    header('Content-Type: application/json');
+    echo json_encode($users);
+    exit();
+}
+
 // Handle form submission for updating tenant
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_tenant') {
     // Verify CSRF token
@@ -180,7 +192,9 @@ $current_page = max(1, min($current_page, $total_pages));
 $offset = ($current_page - 1) * $items_per_page;
 
 // Fetch paginated tenants
-$query = "SELECT id, name, identifier, status, plan, trial_days, trial_end_date, billing_email, created_at FROM tenants WHERE status != 'deleted'";
+$query = "SELECT id, name, identifier, status, plan, trial_days, trial_end_date, billing_email, created_at,
+    EXISTS(SELECT 1 FROM tenant_subscriptions ts WHERE ts.tenant_id = tenants.id AND ts.status = 'active') as has_active_subscription
+    FROM tenants WHERE status != 'deleted'";
 
 if (!empty($search_query)) {
     $query .= " AND (name LIKE ? OR identifier LIKE ? OR billing_email LIKE ?)";
@@ -251,6 +265,7 @@ $inactive_count = $status_counts['inactive'] ?? 0;
                                         case 'tenant_created': $success_message = __('tenant_created_successfully'); break;
                                         case 'tenant_updated': $success_message = __('tenant_updated_successfully'); break;
                                         case 'tenant_deleted': $success_message = __('tenant_deleted_successfully'); break;
+                                        case 'tenant_data_reset': $success_message = 'Tenant data reset successfully' . (isset($_GET['records']) ? ' (' . intval($_GET['records']) . ' records removed)' : '') . '.'; break;
                                         default: $success_message = __('operation_completed_successfully');
                                     }
                                     echo $success_message;
@@ -391,6 +406,14 @@ $inactive_count = $status_counts['inactive'] ?? 0;
                                                 <a href="generate_agreement.php?id=<?= $tenant['id'] ?>" class="sa-icon-btn" target="_blank" title="Agreement">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                                                 </a>
+                                                <button type="button" class="sa-icon-btn login-as-btn" data-tenant-id="<?= $tenant['id'] ?>" data-tenant-name="<?= htmlspecialchars($tenant['name'], ENT_QUOTES) ?>" data-toggle="modal" data-target="#loginAsModal" title="Login as user">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                                                </button>
+                                                <?php if (!$tenant['has_active_subscription']): ?>
+                                                <button class="sa-icon-btn reset-tenant-data" data-id="<?= $tenant['id'] ?>" data-name="<?= htmlspecialchars($tenant['name'], ENT_QUOTES) ?>" title="Reset Data (clear trial test records)">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                                                </button>
+                                                <?php endif; ?>
                                                 <button class="sa-icon-btn sa-icon-btn-danger delete-tenant" data-id="<?= $tenant['id'] ?>" title="Delete">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                                                 </button>
@@ -694,6 +717,34 @@ $inactive_count = $status_counts['inactive'] ?? 0;
                                         <button type="submit" form="editTenantForm" class="sa-btn sa-btn-primary" id="saveEditTenant">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg><?= __('save_changes') ?>
                                         </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Login As User Modal -->
+                        <div class="modal fade" id="loginAsModal" tabindex="-1" role="dialog" aria-labelledby="loginAsModalLabel" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered" role="document">
+                                <div class="modal-content sa-modal-content">
+                                    <div class="sa-modal-header">
+                                        <div class="sa-modal-title-group">
+                                            <h5 class="sa-modal-title" id="loginAsModalLabel">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:8px"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>Login As User
+                                            </h5>
+                                            <p class="sa-modal-subtitle" id="loginAsModalSubtitle">Select a user to log in as</p>
+                                        </div>
+                                        <button type="button" class="sa-modal-close" data-dismiss="modal" aria-label="Close">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                        </button>
+                                    </div>
+                                    <div class="sa-modal-body">
+                                        <div id="loginAsLoader" class="sa-edit-loader">
+                                            <div class="sa-spinner"></div>
+                                            <p>Loading users...</p>
+                                        </div>
+                                        <div id="loginAsUsers" style="display:none;"></div>
+                                    </div>
+                                    <div class="sa-modal-footer">
+                                        <button type="button" class="sa-btn sa-btn-ghost" data-dismiss="modal"><?= __('cancel') ?></button>
                                     </div>
                                 </div>
                             </div>
@@ -1042,6 +1093,18 @@ $inactive_count = $status_counts['inactive'] ?? 0;
     .sa-spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 16px; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .sa-edit-loader p { color: var(--muted); font-size: 0.9rem; margin: 0; }
+
+    /* ─── LOGIN AS USER LIST ──────────────────────────────────── */
+    .sa-login-as-user {
+        display: flex; align-items: center; justify-content: space-between; gap: 12px;
+        width: 100%; padding: 12px 14px; margin-bottom: 8px;
+        border: 1px solid var(--border); border-radius: 8px;
+        background: var(--surface2); color: var(--text); cursor: pointer;
+        text-align: left; transition: all 0.2s; font-family: inherit; font-size: 0.85rem;
+    }
+    .sa-login-as-user:last-child { margin-bottom: 0; }
+    .sa-login-as-user:hover { border-color: var(--primary); background: rgba(64,153,255,0.06); transform: translateX(2px); }
+    .sa-login-as-arrow { font-size: 12px; font-weight: 700; color: var(--primary); white-space: nowrap; flex-shrink: 0; }
     </style>
 
 <!-- Required Js -->
@@ -1234,6 +1297,27 @@ document.querySelectorAll('.delete-tenant').forEach(button => {
     });
 });
 
+// Handle reset tenant data (clear trial test records)
+document.querySelectorAll('.reset-tenant-data').forEach(button => {
+    button.addEventListener('click', function() {
+        const tenantId = this.getAttribute('data-id');
+        const tenantName = this.getAttribute('data-name');
+        const firstConfirm = confirm('Reset ALL business data for "' + tenantName + '"? This permanently deletes all customers, bookings, transactions, expenses, chat messages and other records. Users, settings, branches and billing history are kept. This cannot be undone.');
+        if (!firstConfirm) return;
+        const secondConfirm = confirm('Are you absolutely sure? All of "' + tenantName + '" records will be permanently deleted.');
+        if (!secondConfirm) return;
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = 'reset_tenant_data.php';
+        form.innerHTML = `
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+            <input type="hidden" name="tenant_id" value="${tenantId}">
+        `;
+        document.body.appendChild(form);
+        form.submit();
+    });
+});
+
 // Handle plan selection and display price + trial days
 document.getElementById('plan').addEventListener('change', function() {
     const selectedOption = this.options[this.selectedIndex];
@@ -1266,6 +1350,57 @@ window.addEventListener('load', function() {
         const event = new Event('change');
         planSelect.dispatchEvent(event);
     }
+});
+
+// ─── Login As User ─────────────────────────────────────────────
+function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, function(m) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+    });
+}
+
+$(document).on('click', '.login-as-btn', function() {
+    const tenantId = $(this).data('tenant-id');
+    const tenantName = $(this).data('tenant-name');
+    const csrf = '<?= htmlspecialchars($_SESSION['csrf_token']) ?>';
+
+    $('#loginAsModalSubtitle').text('Select a user from "' + tenantName + '" to log in as');
+    $('#loginAsLoader').show();
+    $('#loginAsUsers').hide().empty();
+
+    $.ajax({
+        url: 'manage_tenants.php',
+        method: 'GET',
+        data: { action: 'get_users', tenant_id: tenantId },
+        dataType: 'json',
+        success: function(users) {
+            $('#loginAsLoader').hide();
+            if (!users || !users.length) {
+                $('#loginAsUsers').html('<div class="sa-empty" style="padding:24px;"><div class="sa-empty-title">No Users Found</div><div class="sa-empty-desc">This tenant has no active users to log in as.</div></div>').show();
+                return;
+            }
+            let html = '';
+            users.forEach(function(u) {
+                html += '<form method="POST" action="login_as.php" style="margin:0;">'
+                    + '<input type="hidden" name="csrf_token" value="' + csrf + '">'
+                    + '<input type="hidden" name="user_id" value="' + u.id + '">'
+                    + '<input type="hidden" name="tenant_id" value="' + u.tenant_id + '">'
+                    + '<button type="submit" class="sa-login-as-user">'
+                    + '<span style="display:flex;flex-direction:column;min-width:0;">'
+                    + '<strong style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(u.name) + '</strong>'
+                    + '<span style="font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(u.email) + ' &middot; ' + escapeHtml(u.role) + '</span>'
+                    + '</span>'
+                    + '<span class="sa-login-as-arrow">Log in as &rarr;</span>'
+                    + '</button></form>';
+            });
+            $('#loginAsUsers').html(html).show();
+        },
+        error: function(xhr, status, error) {
+            console.error('Error loading users:', error);
+            $('#loginAsLoader').hide();
+            $('#loginAsUsers').html('<div class="sa-alert sa-alert-danger"><div class="sa-alert-content">Error loading users. Please try again.</div></div>').show();
+        }
+    });
 });
 </script>
 </body>

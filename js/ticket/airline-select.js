@@ -3,6 +3,9 @@ function initAirlineSelect() {
     const airlineSelects = document.querySelectorAll('#airline, #editAirline');
     
     airlineSelects.forEach(select => {
+        // Airline is a free-text input in the Journey Segments UI
+        if (select.tagName !== 'SELECT') return;
+        
         // Clear existing options
         select.innerHTML = '';
         

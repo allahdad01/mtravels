@@ -38,6 +38,7 @@ $subscription_id = intval($_POST['subscription_id'] ?? 0);
 $amount = floatval($_POST['amount'] ?? 0);
 $currency = $_POST['currency'] ?? 'USD';
 $addon_cost = floatval($_POST['addon_cost'] ?? 0);
+$clean_start = isset($_POST['clean_start']) && $_POST['clean_start'] === '1';
 
 if ($subscription_id <= 0 || $amount <= 0) {
     die("Invalid payment data.");
@@ -64,7 +65,8 @@ $amount_afn = $amount;
 $base_url = 'http://' . $_SERVER['HTTP_HOST'] . '/tenant_super_admin/subscription_payments.php';
 $success_params = http_build_query([
     'payment' => 'success',
-    'subscription_id' => $subscription_id
+    'subscription_id' => $subscription_id,
+    'clean_start' => $clean_start ? '1' : '0'
 ]);
 $failure_params = http_build_query([
     'payment' => 'failed',

@@ -20,6 +20,53 @@ $branch_id = $_SESSION['branch_id'];
 // Database connection
 require_once '../../includes/db.php';
 
+// Ensure flight_legs column exists (multi-leg support)
+$hasFlightLegsColumn = $pdo->query("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ticket_bookings' AND COLUMN_NAME = 'flight_legs'")->fetchColumn();
+if (!$hasFlightLegsColumn) {
+    $pdo->exec("ALTER TABLE ticket_bookings ADD COLUMN flight_legs TEXT NULL AFTER return_destination");
+}
+
+// Ensure return_flight_legs column exists (round-trip segment support)
+$hasReturnFlightLegsColumn = $pdo->query("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ticket_bookings' AND COLUMN_NAME = 'return_flight_legs'")->fetchColumn();
+if (!$hasReturnFlightLegsColumn) {
+    $pdo->exec("ALTER TABLE ticket_bookings ADD COLUMN return_flight_legs TEXT NULL AFTER flight_legs");
+}
+
+// Sanitize an array of journey segment objects into safe DB-ready legs
+function sanitizeLegsArray($rawLegs) {
+    $cleanedLegs = [];
+    if (is_array($rawLegs) && count($rawLegs) > 0) {
+        foreach ($rawLegs as $leg) {
+            $legOrigin = isset($leg['origin']) ? trim(htmlspecialchars($leg['origin'], ENT_QUOTES, 'UTF-8')) : '';
+            $legDestination = isset($leg['destination']) ? trim(htmlspecialchars($leg['destination'], ENT_QUOTES, 'UTF-8')) : '';
+            $legAirline = isset($leg['airline']) ? trim(htmlspecialchars($leg['airline'], ENT_QUOTES, 'UTF-8')) : '';
+            $legFlightNumber = isset($leg['flight_number']) ? trim(htmlspecialchars($leg['flight_number'], ENT_QUOTES, 'UTF-8')) : '';
+            $legDate = isset($leg['date']) && !empty($leg['date']) ? $leg['date'] : null;
+            $legTime = isset($leg['time']) && !empty($leg['time']) ? $leg['time'] : null;
+            $legArrivalDate = isset($leg['arrival_date']) && !empty($leg['arrival_date']) ? $leg['arrival_date'] : null;
+            $legArrivalTime = isset($leg['arrival_time']) && !empty($leg['arrival_time']) ? $leg['arrival_time'] : null;
+            $legDuration = isset($leg['duration']) ? trim(htmlspecialchars($leg['duration'], ENT_QUOTES, 'UTF-8')) : '';
+            $legStopover = isset($leg['stopover']) ? trim(htmlspecialchars($leg['stopover'], ENT_QUOTES, 'UTF-8')) : '';
+
+            if ($legOrigin !== '' || $legDestination !== '') {
+                $cleanedLegs[] = [
+                    'origin' => mb_substr($legOrigin, 0, 100),
+                    'destination' => mb_substr($legDestination, 0, 100),
+                    'airline' => mb_substr($legAirline, 0, 100),
+                    'flight_number' => mb_substr($legFlightNumber, 0, 50),
+                    'date' => $legDate,
+                    'time' => $legTime,
+                    'arrival_date' => $legArrivalDate,
+                    'arrival_time' => $legArrivalTime,
+                    'duration' => mb_substr($legDuration, 0, 50),
+                    'stopover' => mb_substr($legStopover, 0, 50)
+                ];
+            }
+        }
+    }
+    return $cleanedLegs;
+}
+
 // Validate editExchangeRate
 $editExchangeRate = isset($_POST['editExchangeRate']) ? DbSecurity::validateInput($_POST['editExchangeRate'], 'float', ['min' => 0]) : null;
 
@@ -129,6 +176,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $paid_to = isset($_POST['paidTo']) ? intval($_POST['paidTo']) : null;
     $exchangeRate = isset($_POST['editExchangeRate']) ? floatval($_POST['editExchangeRate']) : 1.0;
     $marketExchangeRate = isset($_POST['marketExchangeRate']) ? floatval($_POST['marketExchangeRate']) : 1.0;
+
+    // Parse multi-leg flight data (JSON array of segment objects)
+    $flight_legs = null;
+    if (isset($_POST['flight_legs']) && !empty($_POST['flight_legs'])) {
+        $cleanedLegs = sanitizeLegsArray(json_decode($_POST['flight_legs'], true));
+        if (count($cleanedLegs) > 0) {
+            $flight_legs = json_encode($cleanedLegs);
+            // Overall route = first leg origin -> last leg destination
+            $firstLeg = $cleanedLegs[0];
+            $lastLeg = $cleanedLegs[count($cleanedLegs) - 1];
+            if (!empty($firstLeg['origin'])) $origin = $firstLeg['origin'];
+            if (!empty($lastLeg['destination'])) $destination = $lastLeg['destination'];
+        }
+    }
+
+    // Parse return flight segments (JSON array of segment objects)
+    $return_flight_legs = null;
+    if (isset($_POST['return_flight_legs']) && !empty($_POST['return_flight_legs'])) {
+        $cleanedReturnLegs = sanitizeLegsArray(json_decode($_POST['return_flight_legs'], true));
+        if (count($cleanedReturnLegs) > 0) {
+            $return_flight_legs = json_encode($cleanedReturnLegs);
+            // Derive legacy return fields from the first/last return segment
+            $firstReturnLeg = $cleanedReturnLegs[0];
+            $lastReturnLeg = $cleanedReturnLegs[count($cleanedReturnLegs) - 1];
+            if (!empty($firstReturnLeg['origin'])) $return_origin = $firstReturnLeg['origin'];
+            if (!empty($lastReturnLeg['destination'])) $return_destination = $lastReturnLeg['destination'];
+            if (!empty($firstReturnLeg['date'])) $return_date = $firstReturnLeg['date'];
+            if (!empty($firstReturnLeg['time'])) $return_departure_time = $firstReturnLeg['time'];
+        }
+    }
 
     // Get original values to calculate differences
     $originalQuery = "SELECT price, sold, supplier, sold_to, currency FROM ticket_bookings WHERE id = ? AND tenant_id = ? AND branch_id = ?";
@@ -791,7 +868,9 @@ if ($supplier != $originalSupplier) {
             profit = ?,
             currency = ?,
             description = ?,
-            paid_to = ?
+            paid_to = ?,
+            flight_legs = ?,
+            return_flight_legs = ?
             WHERE id = ? AND tenant_id = ? AND branch_id = ?";
 
         $stmtTicket = $pdo->prepare($updateTicketQuery);
@@ -819,9 +898,11 @@ if ($supplier != $originalSupplier) {
         $stmtTicket->bindParam(22, $currency, PDO::PARAM_STR);
         $stmtTicket->bindParam(23, $description, PDO::PARAM_STR);
         $stmtTicket->bindParam(24, $paid_to, PDO::PARAM_INT);
-        $stmtTicket->bindParam(25, $id, PDO::PARAM_INT);
-        $stmtTicket->bindParam(26, $tenant_id, PDO::PARAM_INT);
-        $stmtTicket->bindParam(27, $branch_id, PDO::PARAM_INT);
+        $stmtTicket->bindParam(25, $flight_legs, $flight_legs === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+        $stmtTicket->bindParam(26, $return_flight_legs, $return_flight_legs === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+        $stmtTicket->bindParam(27, $id, PDO::PARAM_INT);
+        $stmtTicket->bindParam(28, $tenant_id, PDO::PARAM_INT);
+        $stmtTicket->bindParam(29, $branch_id, PDO::PARAM_INT);
 
         $stmtTicket->execute();
         
@@ -866,7 +947,8 @@ if ($supplier != $originalSupplier) {
             'currency' => $currency,
             'description' => $description,
             'paid_to' => $paid_to,
-            'market_exchange_rate' => $marketExchangeRate
+            'market_exchange_rate' => $marketExchangeRate,
+            'flight_legs' => $flight_legs
         ];
         $action = 'update';
         $table_name = 'ticket_bookings';

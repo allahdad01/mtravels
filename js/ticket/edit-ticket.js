@@ -1,238 +1,3 @@
-// Function to populate airline options
-function populateAirlineOptions(selectElement, selectedAirline) {
-    const airlines = [
-          // Middle East & Central Asia (Expanded)
-    { code: 'RQ', name: 'KamAir (RQ)' },
-    { code: 'IR', name: 'Iran Air (IR)' },
-    { code: 'W5', name: 'Mahan Airlines (W5)' },
-    { code: 'EP', name: 'Iran Aseman Airlines (EP)' },
-    { code: 'QB', name: 'Qeshm Airlines (QB)' },
-    { code: 'Y9', name: 'Kish Air (Y9)' },
-    { code: 'NV', name: 'Iranian Naft Airlines (NV)' },
-    { code: 'EK', name: 'Emirates (EK)' },
-    { code: 'QR', name: 'Qatar Airways (QR)' },
-    { code: 'GF', name: 'Gulf Air (GF)' },
-    { code: 'SV', name: 'Saudia (SV)' },
-    { code: 'ME', name: 'Middle East Airlines (ME)' },
-    { code: 'RJ', name: 'Royal Jordanian (RJ)' },
-    { code: 'IY', name: 'Yemenia (IY)' },
-    { code: 'KC', name: 'Air Astana (KC)' },
-    { code: 'HY', name: 'Uzbekistan Airways (HY)' },
-    { code: 'J2', name: 'Azerbaijan Airlines (J2)' },
-    { code: 'Z9', name: 'Tajik Air (Z9)' },
-    { code: 'R2', name: 'ORENAIR (R2)' },
-    { code: 'PS', name: 'Ukraine International Airlines (PS)' },
-    { code: 'FG', name: 'Ariana Afghan Airlines (FG)' },
-    { code: 'RB', name: 'Syrian Arab Airlines (RB)' },
-    { code: 'XY', name: 'Nas Air (XY)' },
-    { code: 'J9', name: 'Jazeera Airways (J9)' },
-
-    // South Asia (Expanded)
-    { code: 'AI', name: 'Air India (AI)' },
-    { code: 'PK', name: 'Pakistan International Airlines (PK)' },
-    { code: '6E', name: 'IndiGo (6E)' },
-    { code: 'SG', name: 'SpiceJet (SG)' },
-    { code: 'G8', name: 'GoAir (G8)' },
-    { code: 'UK', name: 'Vistara (UK)' },
-    { code: 'BG', name: 'Biman Bangladesh Airlines (BG)' },
-    { code: 'UL', name: 'SriLankan Airlines (UL)' },
-    { code: 'RA', name: 'Nepal Airlines (RA)' },
-    { code: 'KB', name: 'Druk Air (KB)' },
-    { code: 'QZ', name: 'AirAsia Indonesia (QZ)' },
-    { code: 'IT', name: 'Air Italy (IT)' },
-    { code: 'S2', name: 'SpiceJet (S2)' },
-    { code: 'I5', name: 'AirAsia India (I5)' },
-    { code: 'D7', name: 'AirAsia X (D7)' },
-    { code: 'U4', name: 'Buddha Air (U4)' },
-    { code: 'H9', name: 'Himalaya Airlines (H9)' },
-    { code: 'GS', name: 'GoAir (GS)' },
-
-    // Southeast Asia (Expanded)
-    { code: 'SQ', name: 'Singapore Airlines (SQ)' },
-    { code: 'MH', name: 'Malaysia Airlines (MH)' },
-    { code: 'GA', name: 'Garuda Indonesia (GA)' },
-    { code: 'TG', name: 'Thai Airways (TG)' },
-    { code: 'VN', name: 'Vietnam Airlines (VN)' },
-    { code: 'PG', name: 'Bangkok Airways (PG)' },
-    { code: 'TR', name: 'Scoot (TR)' },
-    { code: 'AK', name: 'AirAsia (AK)' },
-    { code: 'JQ', name: 'Jetstar Airways (JQ)' },
-    { code: 'Z2', name: 'Philippine Airlines (Z2)' },
-    { code: 'CX', name: 'Cathay Pacific (CX)' },
-    { code: 'PR', name: 'Philippine Airlines (PR)' },
-    { code: 'MI', name: 'SilkAir (MI)' },
-    { code: 'QV', name: 'Lao Airlines (QV)' },
-    { code: 'BK', name: 'Bangkok Airways (BK)' },
-    { code: 'XJ', name: 'Thai AirAsia X (XJ)' },
-    { code: 'OD', name: 'Batik Air (OD)' },
-    { code: 'ID', name: 'Batik Air Malaysia (ID)' },
-
-    // East Asia (Expanded)
-    { code: 'CA', name: 'Air China (CA)' },
-    { code: 'CZ', name: 'China Southern Airlines (CZ)' },
-    { code: 'MU', name: 'China Eastern Airlines (MU)' },
-    { code: 'HU', name: 'Hainan Airlines (HU)' },
-    { code: 'KE', name: 'Korean Air (KE)' },
-    { code: 'OZ', name: 'Asiana Airlines (OZ)' },
-    { code: 'JL', name: 'Japan Airlines (JL)' },
-    { code: 'NH', name: 'All Nippon Airways (NH)' },
-    { code: 'BR', name: 'EVA Air (BR)' },
-    { code: 'CI', name: 'China Airlines (CI)' },
-    { code: 'MF', name: 'Xiamen Airlines (MF)' },
-    { code: 'ZH', name: 'Shenzhen Airlines (ZH)' },
-    { code: 'HO', name: 'Juneyao Airlines (HO)' },
-    { code: 'GS', name: 'Tianjin Airlines (GS)' },
-    { code: 'SC', name: 'Shandong Airlines (SC)' },
-    { code: 'FM', name: 'Shanghai Airlines (FM)' },
-    { code: 'CJ', name: 'North China Airlines (CJ)' },
-    { code: 'TV', name: 'Tibet Airlines (TV)' },
-
-    // Europe (Expanded)
-    { code: 'BA', name: 'British Airways (BA)' },
-    { code: 'LH', name: 'Lufthansa (LH)' },
-    { code: 'AF', name: 'Air France (AF)' },
-    { code: 'KL', name: 'KLM Royal Dutch Airlines (KL)' },
-    { code: 'AY', name: 'Finnair (AY)' },
-    { code: 'SK', name: 'Scandinavian Airlines (SK)' },
-    { code: 'IB', name: 'Iberia (IB)' },
-    { code: 'LX', name: 'SWISS International Air Lines (LX)' },
-    { code: 'OS', name: 'Austrian Airlines (OS)' },
-    { code: 'TK', name: 'Turkish Airlines (TK)' },
-    { code: 'SU', name: 'Aeroflot (SU)' },
-    { code: 'U2', name: 'easyJet (U2)' },
-    { code: 'FR', name: 'Ryanair (FR)' },
-    { code: 'U6', name: 'Ural Airlines (U6)' },
-    { code: 'B2', name: 'Belavia (B2)' },
-    { code: 'FB', name: 'Bulgaria Air (FB)' },
-    { code: 'LO', name: 'LOT Polish Airlines (LO)' },
-    { code: 'A3', name: 'Aegean Airlines (A3)' },
-    { code: 'JU', name: 'Air Serbia (JU)' },
-    { code: 'TP', name: 'TAP Air Portugal (TP)' },
-    { code: 'RO', name: 'TAROM (RO)' },
-    { code: 'EI', name: 'Aer Lingus (EI)' },
-    { code: 'BE', name: 'Flybe (BE)' },
-    { code: 'HV', name: 'Transavia (HV)' },
-    { code: 'VY', name: 'Vueling (VY)' },
-    { code: 'ZB', name: 'Monarch Airlines (ZB)' },
-
-    // North America (Expanded)
-    { code: 'AA', name: 'American Airlines (AA)' },
-    { code: 'UA', name: 'United Airlines (UA)' },
-    { code: 'DL', name: 'Delta Air Lines (DL)' },
-    { code: 'AC', name: 'Air Canada (AC)' },
-    { code: 'WS', name: 'WestJet (WS)' },
-    { code: 'AS', name: 'Alaska Airlines (AS)' },
-    { code: 'B6', name: 'JetBlue Airways (B6)' },
-    { code: 'F9', name: 'Frontier Airlines (F9)' },
-    { code: 'NK', name: 'Spirit Airlines (NK)' },
-    { code: 'WN', name: 'Southwest Airlines (WN)' },
-    { code: 'HA', name: 'Hawaiian Airlines (HA)' },
-    { code: 'VX', name: 'Virgin America (VX)' },
-    { code: 'PD', name: 'Porter Airlines (PD)' },
-    { code: 'C6', name: 'Canjet (C6)' },
-    { code: 'MX', name: 'Mexicana Airlines (MX)' },
-    { code: 'QX', name: 'Horizon Air (QX)' },
-    { code: 'YV', name: 'Mesa Airlines (YV)' },
-    { code: 'EV', name: 'ExpressJet Airlines (EV)' },
-    { code: 'OO', name: 'SkyWest Airlines (OO)' },
-
-    // South America (Expanded)
-    { code: 'LA', name: 'LATAM Airlines (LA)' },
-    { code: 'G3', name: 'GOL Linhas Aéreas (G3)' },
-    { code: 'AD', name: 'Azul Brazilian Airlines (AD)' },
-    { code: 'AR', name: 'Aerolineas Argentinas (AR)' },
-    { code: 'CM', name: 'Copa Airlines (CM)' },
-    { code: 'AV', name: 'Avianca (AV)' },
-    { code: 'JJ', name: 'LATAM Airlines Brasil (JJ)' },
-    { code: 'Y8', name: 'Volaris Costa Rica (Y8)' },
-    { code: 'P5', name: 'Aerorepública (P5)' },
-    { code: '4M', name: 'Líneas Aéreas Privadas Argentinas (4M)' },
-    { code: 'LP', name: 'LATAM Peru (LP)' },
-    { code: 'XL', name: 'LATAM Chile (XL)' },
-    { code: 'O6', name: 'Oceanair (O6)' },
-    { code: 'H2', name: 'SKY Airline (H2)' },
-
-    // Oceania (Expanded)
-    { code: 'QF', name: 'Qantas Airways (QF)' },
-    { code: 'NZ', name: 'Air New Zealand (NZ)' },
-    { code: 'VA', name: 'Virgin Australia (VA)' },
-    { code: 'DJ', name: 'Virgin Australia Regional Airlines (DJ)' },
-    { code: 'TT', name: 'Tigerair Australia (TT)' },
-    { code: 'NF', name: 'Air Vanuatu (NF)' },
-    { code: 'PF', name: 'Air Tahiti (PF)' },
-    { code: 'FJ', name: 'Fiji Airways (FJ)' },
-    { code: 'SB', name: 'Air Calin (SB)' },
-
-    // Africa (Expanded)
-    { code: 'ET', name: 'Ethiopian Airlines (ET)' },
-    { code: 'SA', name: 'South African Airways (SA)' },
-    { code: 'MS', name: 'EgyptAir (MS)' },
-    { code: 'RW', name: 'RwandAir (RW)' },
-    { code: 'KQ', name: 'Kenya Airways (KQ)' },
-    { code: 'DZ', name: 'Air Algerie (DZ)' },
-    { code: 'MK', name: 'Air Mauritius (MK)' },
-    { code: 'KM', name: 'Air Comoros (KM)' },
-    { code: 'AT', name: 'Royal Air Maroc (AT)' },
-    { code: 'TU', name: 'Tunisair (TU)' },
-    { code: 'AH', name: 'Air Algérie (AH)' },
-    { code: 'VT', name: 'Air Tahiti (VT)' },
-    { code: 'WB', name: 'RwandAir (WB)' },
-    { code: 'MN', name: 'Mauritania Airlines (MN)' },
-    { code: 'QU', name: 'Uganda Airlines (QU)' },
-
-    // Additional Airlines
-    { code: 'EY', name: 'Etihad Airways (EY)' },
-    { code: 'VS', name: 'Virgin Atlantic (VS)' },
-    { code: 'BI', name: 'Royal Brunei Airlines (BI)' },
-    { code: 'G9', name: 'Air Arabia (G9)' },
-    { code: 'FZ', name: 'Flydubai (FZ)' },
-    { code: 'PC', name: 'Pegasus Airlines (PC)' },
-    { code: 'W6', name: 'Wizz Air (W6)' },
-    { code: 'U4', name: 'Buddha Air (U4)' },
-    { code: 'H9', name: 'Himalaya Airlines (H9)' },
-    { code: 'WY', name: 'Oman Air (WY)' },
-    { code: 'PW', name: 'Precision Air (PW)' },
-    { code: 'MR', name: 'Mauritius Air (MR)' }
-    ];
-
-    // Clear existing options
-    $(selectElement).empty();
-
-    // Add default option
-    const defaultOption = new Option('Select Airline', '');
-    $(selectElement).append(defaultOption);
-
-    // Add airline options
-    airlines.forEach(airline => {
-        const option = new Option(airline.name, airline.code);
-        $(option).attr('data-tokens', `${airline.name} ${airline.code}`);
-        $(selectElement).append(option);
-    });
-
-    // If we have a selected airline, try to find it in our list
-    if (selectedAirline) {
-        // Try to find by code first
-        let found = airlines.find(a => a.code === selectedAirline);
-        if (found) {
-            $(selectElement).val(found.code);
-        } else {
-            // Try to find by name
-            found = airlines.find(a => a.name === selectedAirline);
-            if (found) {
-                $(selectElement).val(found.code);
-            } else {
-                // If not found, add it as a custom option
-                const option = new Option(selectedAirline, selectedAirline);
-                $(option).attr('data-tokens', selectedAirline);
-                $(selectElement).append(option);
-                $(selectElement).val(selectedAirline);
-            }
-        }
-    }
-
-    // Refresh the Bootstrap Select
-    $(selectElement).selectpicker('refresh');
-}
 
 // Function to edit ticket
 function editTicket(ticketId) {
@@ -249,22 +14,6 @@ function editTicket(ticketId) {
 
             const data = response.ticket;
 
-            // Populate airline dropdown with selected airline
-            const editAirlineSelect = document.getElementById('editAirline');
-            // Initialize Bootstrap Select on the airline dropdown
-            $(editAirlineSelect)
-                .addClass('selectpicker')
-                .attr('data-live-search', 'true')
-                .attr('data-style', 'btn-light');
-            
-            // Ensure we have a valid airline value
-            const airlineValue = data.airline || '';
-
-            populateAirlineOptions(editAirlineSelect, airlineValue);
-            
-            // Refresh the Bootstrap Select
-            $(editAirlineSelect).selectpicker('refresh');
-            
             // Set form values
             document.getElementById('editTicketId').value = data.id;
             document.getElementById('editSupplier').value = data.supplier;
@@ -288,17 +37,15 @@ function editTicket(ticketId) {
             document.getElementById('editPaidTo').value = data.paid_to;
             document.getElementById('editDescription').value = data.description || '';
 
-            // Handle round trip fields
-            if (data.trip_type === 'round_trip') {
-                document.getElementById('editReturnJourneyFields').style.display = 'block';
-                document.getElementById('editReturnDateField').style.display = 'block';
-                document.getElementById('editReturnOrigin').value = data.return_origin || '';
-                document.getElementById('editReturnDestination').value = data.return_destination || '';
-                document.getElementById('editReturnDate').value = data.return_date !== '0000-00-00' ? data.return_date : '';
-                document.getElementById('editReturnDepartureTime').value = data.return_departure_time || '';
-            } else {
-                document.getElementById('editReturnJourneyFields').style.display = 'none';
-                document.getElementById('editReturnDateField').style.display = 'none';
+            // Populate return flight segments (round trip)
+            if (typeof window.populateEditReturnFlightLegs === 'function') {
+                window.populateEditReturnFlightLegs(
+                    data.return_flight_legs || null,
+                    data.return_origin,
+                    data.return_destination,
+                    data.return_date !== '0000-00-00' ? data.return_date : '',
+                    data.return_departure_time || ''
+                );
             }
 
             // Add helper text to show full names for reference
@@ -321,6 +68,18 @@ function editTicket(ticketId) {
                 paidToText.className = 'form-text text-muted';
                 paidToText.textContent = data.paid_to_name;
                 document.getElementById('editPaidTo').after(paidToText);
+            }
+
+            // Populate multi-leg flight data if available
+            if (typeof window.populateEditFlightLegs === 'function') {
+                window.populateEditFlightLegs(
+                    data.flight_legs || null,
+                    data.origin,
+                    data.destination,
+                    data.airline,
+                    data.departure_date,
+                    data.departure_time || ''
+                );
             }
 
             // Store original values for comparison
@@ -409,17 +168,14 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function toggleReturnFields() {
         const isRoundTrip = editTripTypeSelect.value === 'round_trip';
-        document.getElementById('editReturnJourneyFields').style.display = isRoundTrip ? 'block' : 'none';
-        document.getElementById('editReturnDateField').style.display = isRoundTrip ? 'block' : 'none';
-        
-        // Make return fields required if round trip is selected
-        const returnFields = ['editReturnOrigin', 'editReturnDestination', 'editReturnDate', 'editReturnDepartureTime'];
-        returnFields.forEach(fieldId => {
-            const field = document.getElementById(fieldId);
-            if (field) {
+        const returnGroup = document.getElementById('editReturnFlightSegmentsGroup');
+        const returnContainer = document.getElementById('editReturnFlightLegsContainer');
+        if (returnGroup) returnGroup.style.display = isRoundTrip ? 'block' : 'none';
+        if (returnContainer) {
+            returnContainer.querySelectorAll('.flight-leg-row .leg-origin, .flight-leg-row .leg-destination').forEach(function (field) {
                 field.required = isRoundTrip;
-            }
-        });
+            });
+        }
     }
     
     // Calculate profit automatically
@@ -549,24 +305,35 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const formData = new FormData(this);
         
+        // Multi-leg flights: append legs JSON and use the last leg as final destination
+        if (typeof window.collectEditFlightLegs === 'function') {
+            const legsJson = window.collectEditFlightLegs();
+            if (legsJson) {
+                formData.append('flight_legs', legsJson);
+                const finalDestination = window.getEditFlightLegsFinalDestination();
+                if (finalDestination) formData.set('destination', finalDestination);
+            }
+        }
+
+        // Round trip: append return flight segments JSON and derive return destination
+        if (editTripTypeSelect.value === 'round_trip' && typeof window.collectEditReturnFlightLegs === 'function') {
+            const returnLegsJson = window.collectEditReturnFlightLegs();
+            if (returnLegsJson) {
+                formData.append('return_flight_legs', returnLegsJson);
+                const returnFinalDestination = window.getEditReturnFlightLegsFinalDestination();
+                if (returnFinalDestination) formData.set('returnDestination', returnFinalDestination);
+            } else {
+                showToast('Please add at least one return flight segment for a round trip.', 'error');
+                document.getElementById('editLoader').style.display = 'none';
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalButtonText;
+                return;
+            }
+        }
+
         // Add the original values to the form data for server-side comparison
         formData.append('originalBase', originalBase);
         formData.append('originalSold', originalSold);
-        
-        // Validate required fields for round trip
-        if (editTripTypeSelect.value === 'round_trip') {
-            const returnFields = ['editReturnOrigin', 'editReturnDestination', 'editReturnDate', 'editReturnDepartureTime'];
-            for (const fieldId of returnFields) {
-                const field = document.getElementById(fieldId);
-                if (field && !field.value) {
-                    showToast(`Please fill in the ${field.previousElementSibling.textContent} field.`, 'error');
-                    document.getElementById('editLoader').style.display = 'none';
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = originalButtonText;
-                    return;
-                }
-            }
-        }
         
         fetch('../api/ticket/update_ticket.php', {
             method: 'POST',
@@ -621,10 +388,14 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('editDepartureTime').value = ticketData.departure_time || '';
         
         // Set return journey details if applicable
-        if (ticketData.trip_type === 'round_trip') {
-            document.getElementById('editReturnDestination').value = ticketData.return_destination || '';
-            document.getElementById('editReturnDate').value = ticketData.return_date || '';
-            document.getElementById('editReturnDepartureTime').value = ticketData.return_departure_time || '';
+        if (ticketData.trip_type === 'round_trip' && typeof window.populateEditReturnFlightLegs === 'function') {
+            window.populateEditReturnFlightLegs(
+                ticketData.return_flight_legs || null,
+                ticketData.return_origin,
+                ticketData.return_destination,
+                ticketData.return_date !== '0000-00-00' ? ticketData.return_date : '',
+                ticketData.return_departure_time || ''
+            );
         }
         
         // Set financial details

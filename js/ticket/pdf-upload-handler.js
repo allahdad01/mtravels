@@ -39,7 +39,7 @@ function cleanAirlineValue(value) {
     }
     
     // Only try to extract if there are suspicious words or too many words
-    if (words.length > 4) {
+    if (words.length > 4 || true) {
         // Look for airline keywords (usually in uppercase)
         const airlineKeywords = ['DUBAI', 'EMIRATES', 'AIRWAYS', 'AIR', 'AIRLINES', 'QATAR', 'TURKISH', 'KAM', 'ARIANA', 'ARABIA'];
         
@@ -50,12 +50,22 @@ function cleanAirlineValue(value) {
             if (airlineKeywords.some(keyword => word.includes(keyword) && keyword.length > 3)) {
                 // Found a good keyword, take from this position
                 cleaned = words.slice(Math.max(0, i - 1)).join(' ');
-                return cleaned;
+                break;
             }
         }
         
+        // Drop leading junk words (STOP, BAGGAGE, etc.) before the airline name
+        const junkWords = ['STOP', 'BAGGAGE', 'TICKET', 'BOOKING', 'RESERVATION', 'FLIGHT', 'DATE', 'TIME', 'DEPART', 'ARRIVE'];
+        let parts = cleaned.split(' ');
+        while (parts.length > 0 && junkWords.some(word => parts[0].toUpperCase().includes(word))) {
+            parts.shift();
+        }
+        cleaned = parts.join(' ') || cleaned;
+        
         // Fallback: just take the last few words
-        cleaned = words.slice(-3).join(' ');
+        if (parts.length === 0) {
+            cleaned = words.slice(-3).join(' ');
+        }
     }
     
     return cleaned;
@@ -220,129 +230,174 @@ function fillTicketForm(data) {
     // Handle group booking - use first passenger's data for common fields
     const flightData = data.passengers && data.passengers.length > 0 ? data.passengers[0] : data;
     
-    // Map extracted data to modal form field IDs
-    // Must match IDs in modals/ticket/book_ticket_modal.php
-    const flightFields = {
-        'pnr': flightData.pnr,
-        'airline': cleanAirlineValue(flightData.airline),
-        'origin': flightData.origin,
-        'destination': flightData.destination,
-        'departureDate': flightData.departure_date,
-        'departureTime': flightData.departure_time,
-        'issueDate': flightData.issue_date
-    };
+    // Multi-segment flights: populate each leg row from segments
+    const segments = (flightData.segments && Array.isArray(flightData.segments) && flightData.segments.length > 0) ? flightData.segments : null;
     
-
-    
-    // Fill each flight field
-    for (const [fieldId, value] of Object.entries(flightFields)) {
-        const field = document.getElementById(fieldId);
-        if (field && value) {
-            // Format date/time values properly
-            let formattedValue = value;
-            
-            // Convert date format if needed (YYYY-MM-DD is HTML5 date format)
-            if ((fieldId === 'departureDate' || fieldId === 'departureTime' || fieldId === 'issueDate') && value) {
-                formattedValue = value; // Already in correct format
+    if (segments) {
+        // Common fields
+        setFormField('pnr', flightData.pnr);
+        setFormField('issueDate', flightData.issue_date || flightData.booked_date);
+        
+        const fallbackAirline = cleanAirlineValue(flightData.airline);
+        
+        segments.forEach((seg, index) => {
+            const segTime = seg.dep_time || seg.time || seg.departure_time;
+            const segArrTime = seg.arr_time || seg.arrival_time;
+            const segDate = seg.date || seg.departure_date;
+            const segArrDate = seg.arrival_date || seg.date || seg.departure_date;
+            const segAirline = cleanAirlineValue(seg.airline) || fallbackAirline;
+            if (index === 0) {
+                // Static leg 1 (filled by ID for PDF compat)
+                setFormField('origin', seg.origin);
+                setFormField('destination', seg.destination);
+                setFormField('airline', segAirline);
+                setFormField('flightNumber', seg.flight_number);
+                setFormField('departureDate', segDate);
+                setFormField('departureTime', segTime);
+                setFormField('arrivalDate', segArrDate);
+                setFormField('arrivalTime', segArrTime);
+            } else {
+                const addBtn = document.getElementById('addFlightLegBtn');
+                if (addBtn) addBtn.click();
+                const rows = document.querySelectorAll('#flightLegsContainer .flight-leg-row');
+                const row = rows[index];
+                if (!row) return;
+                setLegRowValue(row, 'leg-origin', seg.origin);
+                setLegRowValue(row, 'leg-destination', seg.destination);
+                setLegRowValue(row, 'leg-airline', segAirline);
+                setLegRowValue(row, 'leg-flight-number', seg.flight_number);
+                setLegRowValue(row, 'leg-date', segDate);
+                setLegRowValue(row, 'leg-time', segTime);
+                setLegRowValue(row, 'leg-arrival-date', segArrDate);
+                setLegRowValue(row, 'leg-arrival-time', segArrTime);
             }
-            
-            // Handle select elements (like airline dropdown)
-            if (field.tagName === 'SELECT') {
-                // Try to find option by exact value match
-                let option = Array.from(field.options).find(opt => opt.value === value || opt.text === value);
-                if (option) {
-                    field.value = option.value;
-
-                } else {
-                    // Try fuzzy matching for airline names
-                    if (fieldId === 'airline') {
-                        // Try to match against airline database
-                        let matchedAirline = null;
-                        
-                        if (typeof AIRLINES !== 'undefined') {
-                            const searchTerm = value.toLowerCase().trim();
-                            const words = searchTerm.split(' ');
+        });
+    } else {
+        // Map extracted data to modal form field IDs
+        // Must match IDs in modals/ticket/book_ticket_modal.php
+        const flightFields = {
+            'pnr': flightData.pnr,
+            'airline': cleanAirlineValue(flightData.airline),
+            'origin': flightData.origin,
+            'destination': flightData.destination,
+            'departureDate': flightData.departure_date,
+            'departureTime': flightData.departure_time,
+            'arrivalDate': flightData.arrival_date,
+            'arrivalTime': flightData.arrival_time,
+            'flightNumber': flightData.flight_number,
+            'issueDate': flightData.issue_date
+        };
+        
+        // Fill each flight field
+        for (const [fieldId, value] of Object.entries(flightFields)) {
+            const field = document.getElementById(fieldId);
+            if (field && value) {
+                // Format date/time values properly
+                let formattedValue = value;
+                
+                // Convert date format if needed (YYYY-MM-DD is HTML5 date format)
+                if ((fieldId === 'departureDate' || fieldId === 'departureTime' || fieldId === 'arrivalDate' || fieldId === 'arrivalTime' || fieldId === 'issueDate') && value) {
+                    formattedValue = value; // Already in correct format
+                }
+                
+                // Handle select elements (like airline dropdown)
+                if (field.tagName === 'SELECT') {
+                    // Try to find option by exact value match
+                    let option = Array.from(field.options).find(opt => opt.value === value || opt.text === value);
+                    if (option) {
+                        field.value = option.value;
+    
+                    } else {
+                        // Try fuzzy matching for airline names
+                        if (fieldId === 'airline') {
+                            // Try to match against airline database
+                            let matchedAirline = null;
                             
-                            // Step 1: Try exact match (full name or base name)
-                            matchedAirline = AIRLINES.find(airline => 
-                                airline.name === value || 
-                                airline.name.split(' (')[0] === value ||
-                                value.toLowerCase() === airline.name.toLowerCase() ||
-                                value.toLowerCase() === airline.name.split(' (')[0].toLowerCase()
-                            );
-                            if (matchedAirline) {
-
-                            }
-                            
-                            // Step 2: Try matching by first 2-3 words (e.g., "Ariana Afghan" or "Ariana Afghan Airlines")
-                            if (!matchedAirline && words.length >= 2) {
-                                // Try progressively longer matches
-                                for (let wordCount = Math.min(words.length, 3); wordCount >= 2; wordCount--) {
-                                    const partialTerm = words.slice(0, wordCount).join(' ').toLowerCase();
-                                    matchedAirline = AIRLINES.find(airline => 
-                                        airline.name.split(' (')[0].toLowerCase().startsWith(partialTerm) ||
-                                        partialTerm.startsWith(airline.name.split(' (')[0].toLowerCase().split(' ')[0])
-                                    );
-                                    if (matchedAirline) {
-
-                                        break;
-                                    }
-                                }
-                            }
-                            
-                            // Step 3: Try matching by first word + contains second word
-                            if (!matchedAirline && words.length >= 2) {
-                                matchedAirline = AIRLINES.find(airline => {
-                                    const airlineName = airline.name.split(' (')[0].toLowerCase();
-                                    return airlineName.startsWith(words[0]) && airlineName.includes(words[1]);
-                                });
+                            if (typeof AIRLINES !== 'undefined') {
+                                const searchTerm = value.toLowerCase().trim();
+                                const words = searchTerm.split(' ');
+                                
+                                // Step 1: Try exact match (full name or base name)
+                                matchedAirline = AIRLINES.find(airline => 
+                                    airline.name === value || 
+                                    airline.name.split(' (')[0] === value ||
+                                    value.toLowerCase() === airline.name.toLowerCase() ||
+                                    value.toLowerCase() === airline.name.split(' (')[0].toLowerCase()
+                                );
                                 if (matchedAirline) {
-
+    
+                                }
+                                
+                                // Step 2: Try matching by first 2-3 words (e.g., "Ariana Afghan" or "Ariana Afghan Airlines")
+                                if (!matchedAirline && words.length >= 2) {
+                                    // Try progressively longer matches
+                                    for (let wordCount = Math.min(words.length, 3); wordCount >= 2; wordCount--) {
+                                        const partialTerm = words.slice(0, wordCount).join(' ').toLowerCase();
+                                        matchedAirline = AIRLINES.find(airline => 
+                                            airline.name.split(' (')[0].toLowerCase().startsWith(partialTerm) ||
+                                            partialTerm.startsWith(airline.name.split(' (')[0].toLowerCase().split(' ')[0])
+                                        );
+                                        if (matchedAirline) {
+    
+                                            break;
+                                        }
+                                    }
+                                }
+                                
+                                // Step 3: Try matching by first word + contains second word
+                                if (!matchedAirline && words.length >= 2) {
+                                    matchedAirline = AIRLINES.find(airline => {
+                                        const airlineName = airline.name.split(' (')[0].toLowerCase();
+                                        return airlineName.startsWith(words[0]) && airlineName.includes(words[1]);
+                                    });
+                                    if (matchedAirline) {
+    
+                                    }
+                                }
+                                
+                                // Step 4: Last resort - find airline containing most words from search term
+                                if (!matchedAirline) {
+                                    let bestMatch = null;
+                                    let bestMatchCount = 0;
+                                    AIRLINES.forEach(airline => {
+                                        const airlineName = airline.name.toLowerCase();
+                                        const matchCount = words.filter(word => airlineName.includes(word)).length;
+                                        if (matchCount > bestMatchCount) {
+                                            bestMatchCount = matchCount;
+                                            bestMatch = airline;
+                                        }
+                                    });
+                                    if (bestMatch && bestMatchCount >= Math.ceil(words.length / 2)) {
+                                        matchedAirline = bestMatch;
+    
+                                    }
                                 }
                             }
                             
-                            // Step 4: Last resort - find airline containing most words from search term
-                            if (!matchedAirline) {
-                                let bestMatch = null;
-                                let bestMatchCount = 0;
-                                AIRLINES.forEach(airline => {
-                                    const airlineName = airline.name.toLowerCase();
-                                    const matchCount = words.filter(word => airlineName.includes(word)).length;
-                                    if (matchCount > bestMatchCount) {
-                                        bestMatchCount = matchCount;
-                                        bestMatch = airline;
-                                    }
-                                });
-                                if (bestMatch && bestMatchCount >= Math.ceil(words.length / 2)) {
-                                    matchedAirline = bestMatch;
-
+                            // If found in database, use the airline code to set the select value
+                            if (matchedAirline) {
+                                field.value = matchedAirline.code;
+                                option = Array.from(field.options).find(opt => opt.value === matchedAirline.code);
+                                if (option) {
+    
                                 }
-                            }
-                        }
-                        
-                        // If found in database, use the airline code to set the select value
-                        if (matchedAirline) {
-                            field.value = matchedAirline.code;
-                            option = Array.from(field.options).find(opt => opt.value === matchedAirline.code);
-                            if (option) {
-
+                            } else {
+    
                             }
                         } else {
-
+    
                         }
-                    } else {
-
                     }
+                } else {
+                    // Regular input field
+                    field.value = formattedValue;
+    
                 }
-            } else {
-                // Regular input field
-                field.value = formattedValue;
-
+                
+                triggerFieldChange(field);
+            } else if (!field) {
+    
             }
-            
-            triggerFieldChange(field);
-        } else if (!field) {
-
         }
     }
     
@@ -367,6 +422,30 @@ function fillTicketForm(data) {
     } else if (flightData.passenger_name) {
 
         fillPassengerDataSingle(flightData);
+    }
+}
+
+/**
+ * Set a form field by ID and trigger change (used by multi-segment fill)
+ */
+function setFormField(id, value) {
+    if (!value) return;
+    const field = document.getElementById(id);
+    if (field) {
+        field.value = value;
+        triggerFieldChange(field);
+    }
+}
+
+/**
+ * Set a leg row field by class and trigger change (used by multi-segment fill)
+ */
+function setLegRowValue(row, className, value) {
+    if (!value) return;
+    const field = row.querySelector('.' + className);
+    if (field) {
+        field.value = value;
+        triggerFieldChange(field);
     }
 }
 

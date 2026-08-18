@@ -97,15 +97,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $plan_id = $pdo->lastInsertId();
 
             // 2. Create the tenant
-            $stmt = $pdo->prepare("INSERT INTO tenants (name, identifier, plan, status, trial_days, trial_end_date, created_at, updated_at) VALUES (?, ?, ?, 'trial', ?, DATE_ADD(NOW(), INTERVAL ? DAY), NOW(), NOW())");
-            $stmt->execute([$tenant_name, $tenant_identifier, $plan_name, $trial_days, $trial_days]);
+            $stmt = $pdo->prepare("INSERT INTO tenants (name, identifier, plan, status, trial_days, trial_end_date, billing_email, created_at, updated_at) VALUES (?, ?, ?, 'trial', ?, DATE_ADD(NOW(), INTERVAL ? DAY), ?, NOW(), NOW())");
+            $stmt->execute([$tenant_name, $tenant_identifier, $plan_name, $trial_days, $trial_days, $request['contact_email']]);
             $tenant_id = $pdo->lastInsertId();
 
             // 3. Create tenant settings
             $stmt = $pdo->prepare("INSERT INTO settings (tenant_id, agency_name, title, phone, email, address, logo) VALUES (?, ?, ?, ?, ?, '', '')");
             $stmt->execute([$tenant_id, $tenant_name, $tenant_name, $request['contact_phone'], $request['contact_email']]);
 
-            // 4. Update request status to converted
+            // 4. Create the tenant super admin user with a temporary password
+            $temp_password = bin2hex(random_bytes(6)) . strtoupper(bin2hex(random_bytes(2))) . '!1';
+            $hashed_password = password_hash($temp_password, PASSWORD_DEFAULT);
+            $stmt = $pdo->prepare("INSERT INTO users (tenant_id, name, email, password, role, created_at, updated_at) VALUES (?, ?, ?, ?, 'tenant_super_admin', NOW(), NOW())");
+            $stmt->execute([$tenant_id, $tenant_name, $request['contact_email'], $hashed_password]);
+
+            // 5. Create the trial subscription (first payment due when the trial ends)
+            $billing_cycle = 'monthly';
+            $start_date = date('Y-m-d', strtotime("+{$trial_days} days"));
+            $end_date = date('Y-m-d', strtotime('+1 month', strtotime($start_date)));
+            $stmt = $pdo->prepare("INSERT INTO tenant_subscriptions (tenant_id, plan_id, status, billing_cycle, start_date, end_date, amount, currency, payment_method, next_billing_date, created_at, updated_at) VALUES (?, ?, 'trial', ?, ?, ?, ?, ?, '', ?, NOW(), NOW())");
+            $stmt->execute([$tenant_id, $plan_id, $billing_cycle, $start_date, $end_date, $price, $currency, $start_date]);
+
+            // 6. Send welcome email with login credentials
+            require_once '../includes/functions.php';
+            sendTenantWelcomeEmailWithCredentials($request['contact_email'], $tenant_name, $tenant_name, $temp_password);
+
+            // 7. Update request status to converted
             $stmt = $pdo->prepare("UPDATE custom_plan_requests SET status = 'converted', converted_tenant_id = ?, negotiated_price = COALESCE(negotiated_price, ?), updated_at = NOW() WHERE id = ?");
             $stmt->execute([$tenant_id, $price, $request_id]);
 

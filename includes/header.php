@@ -924,6 +924,8 @@ if (!function_exists('renderHeaderNotifications')) {
 </head>
 <body>
 
+<?php include __DIR__ . '/impersonation_banner.php'; ?>
+
 <!-- [ Pre-loader ] start -->
 <div class="loader-bg">
     <div class="loader-track">

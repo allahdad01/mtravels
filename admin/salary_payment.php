@@ -131,8 +131,8 @@ try {
 
 // Fetch accounts
 try {
-    $acc_stmt = $pdo->prepare("SELECT id,name,usd_balance,afs_balance FROM main_account WHERE status='active' AND tenant_id=?");
-    $acc_stmt->execute([$tenant_id]);
+    $acc_stmt = $pdo->prepare("SELECT id,name,usd_balance,afs_balance FROM main_account WHERE status='active' AND tenant_id=? AND branch_id=?");
+    $acc_stmt->execute([$tenant_id, $branch_id]);
     $accounts = $acc_stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) { $accounts = []; }
 

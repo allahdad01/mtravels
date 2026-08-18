@@ -111,6 +111,30 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                <div class="col-md-12">
+                                    <div class="card border-0 shadow-sm">
+                                        <div class="card-body">
+                                            <h6 class="card-subtitle mb-3 text-muted">Journey Segments</h6>
+                                            <div id="flight-legs">
+                                                <div class="d-flex justify-content-between mb-2">
+                                                    <span class="text-muted"><?= __('route') ?></span>
+                                                    <strong id="flight-legs-route">-</strong>
+                                                </div>
+                                                <div id="flight-legs-list"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-12">
+                                    <div class="card border-0 shadow-sm" id="returnFlightSegmentsCard" style="display: none;">
+                                        <div class="card-body">
+                                            <h6 class="card-subtitle mb-3 text-muted">Return Flight Segments</h6>
+                                            <div id="return-flight-legs-list"></div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 

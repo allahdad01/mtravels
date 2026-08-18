@@ -555,17 +555,30 @@ function fulfillment_save(PDO $pdo, array $in): array
                 $keepIds = array_column($savedFulfillments, 'id');
                 // Capture suppliers of the fulfillments about to be deleted so
                 // their exposure can be netted back to the live cost below.
-                $delSupStmt = $pdo->prepare("SELECT DISTINCT supplier_id FROM umrah_fulfillments
-                                             WHERE booking_service_id = ? AND tenant_id = ? AND supplier_id IS NOT NULL");
-                $delSupStmt->execute([$booking_service_id, $tenant_id]);
-                $reconcileSuppliers = array_map('intval', $delSupStmt->fetchAll(PDO::FETCH_COLUMN));
+                // Only suppliers of REMOVED rows are captured — selecting every
+                // row of the service (incl. the fresh rows just saved) made a
+                // first save reconcile before its main 'Fulfillment for ...'
+                // transaction existed, so every member got a full correction
+                // row on top of the main row (double exposure).
+                $reconcileSuppliers = [];
                 if ($keepIds) {
                     $ph = implode(',', array_fill(0, count($keepIds), '?'));
+                    $delSupStmt = $pdo->prepare("
+                        SELECT DISTINCT supplier_id FROM umrah_fulfillments
+                        WHERE booking_service_id = ? AND tenant_id = ? AND supplier_id IS NOT NULL
+                          AND id NOT IN ($ph)");
+                    $delSupStmt->execute(array_merge([$booking_service_id, $tenant_id], $keepIds));
+                    $reconcileSuppliers = array_map('intval', $delSupStmt->fetchAll(PDO::FETCH_COLUMN));
                     $pdo->prepare("DELETE hf FROM umrah_hotel_fulfillments hf JOIN umrah_fulfillments f ON f.id = hf.fulfillment_id WHERE f.booking_service_id = ? AND f.tenant_id = ? AND f.id NOT IN ($ph)")
                         ->execute(array_merge([$booking_service_id, $tenant_id], $keepIds));
                     $pdo->prepare("DELETE FROM umrah_fulfillments WHERE booking_service_id = ? AND tenant_id = ? AND id NOT IN ($ph)")
                         ->execute(array_merge([$booking_service_id, $tenant_id], $keepIds));
                 } else {
+                    $delSupStmt = $pdo->prepare("
+                        SELECT DISTINCT supplier_id FROM umrah_fulfillments
+                        WHERE booking_service_id = ? AND tenant_id = ? AND supplier_id IS NOT NULL");
+                    $delSupStmt->execute([$booking_service_id, $tenant_id]);
+                    $reconcileSuppliers = array_map('intval', $delSupStmt->fetchAll(PDO::FETCH_COLUMN));
                     $pdo->prepare("DELETE hf FROM umrah_hotel_fulfillments hf JOIN umrah_fulfillments f ON f.id = hf.fulfillment_id WHERE f.booking_service_id = ? AND f.tenant_id = ?")
                         ->execute([$booking_service_id, $tenant_id]);
                     $pdo->prepare("DELETE FROM umrah_fulfillments WHERE booking_service_id = ? AND tenant_id = ?")

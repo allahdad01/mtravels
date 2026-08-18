@@ -116,6 +116,9 @@ function createTicketCard(ticket, ticketData, counter) {
             </div>
         `;
     }
+
+    // Full route for multi-leg itineraries
+    const routeDisplay = ticket.route || `${ticket.origin} → ${ticket.destination}`;
     
     card.innerHTML = `
         <div class="ticket-card-main status-${paymentStatus}">
@@ -146,7 +149,7 @@ function createTicketCard(ticket, ticketData, counter) {
                     </div>
                     <div class="ticket-card-detail-item">
                         <span class="ticket-card-detail-label">Route:</span>
-                        <span>${escapeHtml(ticket.origin)} → ${escapeHtml(ticket.destination)}</span>
+                        <span>${escapeHtml(routeDisplay)}</span>
                     </div>
                     <div class="ticket-card-detail-item">
                         <span class="ticket-card-detail-label">Airline:</span>

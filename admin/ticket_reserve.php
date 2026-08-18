@@ -467,8 +467,10 @@ $supplier_names = array_column($suppliers, 'name', 'id');
                                 $totalPaidInBase = 0.0;
                                 $ticketId        = $ticket['ticket']['id'];
 
-                                $transactionStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE transaction_of = 'ticket_reserve' AND reference_id = ?");
+                                $transactionStmt = $pdo->prepare("SELECT * FROM main_account_transactions WHERE transaction_of = 'ticket_reserve' AND reference_id = ? AND tenant_id = ? AND branch_id = ?");
                                 $transactionStmt->bindParam(1, $ticketId, PDO::PARAM_INT);
+                                $transactionStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                                $transactionStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
                                 $transactionStmt->execute();
                                 $transactionQuery = $transactionStmt->fetchAll(PDO::FETCH_ASSOC);
 

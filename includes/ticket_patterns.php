@@ -178,6 +178,7 @@ const AIRLINES = [
     'BA' => 'British Airways',
     'AA' => 'American Airlines',
     'FZ' => 'Fly Dubai',
+    'RJ' => 'Royal Jordanian',
     // Add more as needed
 ];
 
@@ -590,35 +591,89 @@ function extractTolotripportalTicket($text) {
     $arrivalDate = null;
     $arrivalTime = null;
     
-    // Extract from/to airports - pattern: "Istanbul Arpt (IST),Istanbul" to "Frankfurt Intl (FRA),Frankfurt"
-    if (preg_match('/([A-Z][A-Za-z\s]+)\s*\(([A-Z]{3})\),[^\n]*?\n\s*([A-Z][A-Za-z\s]+)\s*\(([A-Z]{3})\)/i', $text, $match)) {
-        $origin = strtoupper($match[2]);
-        $originCity = getAirportName($origin);
-        $destination = strtoupper($match[4]);
-        $destinationCity = getAirportName($destination);
-    }
-    if ((!$origin || !$destination) && preg_match('/Airline\s+From\/To.*?\(([A-Z]{3})\),[^\n]*?\(([A-Z]{3})\),/is', $text, $match)) {
-        $origin = strtoupper($match[1]);
-        $originCity = getAirportName($origin);
-        $destination = strtoupper($match[2]);
-        $destinationCity = getAirportName($destination);
+    // Multi-segment itinerary parsing (per-leg blocks with date/time on separate lines):
+    // "Dubai Intl Arpt (DXB),Dubai
+    //  Queen Alia Intl Arpt (AMM),Amman
+    //  RJ615 Q(Economy)
+    //  12/03/2026
+    //  22:45
+    //  13/03/2026
+    //  01:35"
+    $segments = [];
+    if (preg_match_all('/([A-Za-z0-9 \-\/\.&]+?)[ ]*\(([A-Z]{3})\),([^\n]*)\n[ ]*([A-Za-z0-9 \-\/\.&]+?)[ ]*\(([A-Z]{3})\)[^\n]*\n[ ]*([A-Z]{2}\d{3,5})\s+[A-Z]\(([^)]+)\)\s*\R\s*(\d{2})\/(\d{2})\/(\d{4})\R\s*(\d{2}):(\d{2})\R\s*(\d{2})\/(\d{2})\/(\d{4})\R\s*(\d{2}):(\d{2})/', $text, $segMatches, PREG_SET_ORDER)) {
+        foreach ($segMatches as $sm) {
+            $segDate = parseTicketDate($sm[8], $sm[9], $sm[10]);
+            $segArrDate = parseTicketDate($sm[13], $sm[14], $sm[15]);
+            $segFlight = strtoupper($sm[6]);
+            $segCode = substr($segFlight, 0, 2);
+            $segments[] = [
+                'airline' => getAirlineName($segCode),
+                'airline_code' => $segCode,
+                'flight_number' => $segFlight,
+                'origin' => strtoupper($sm[2]),
+                'origin_city' => getAirportName(strtoupper($sm[2])),
+                'destination' => strtoupper($sm[5]),
+                'destination_city' => getAirportName(strtoupper($sm[5])),
+                'cabin_class' => trim($sm[7]),
+                'date' => $segDate,
+                'departure_date' => $segDate,
+                'departure_time' => sprintf('%02d:%02d', $sm[11], $sm[12]),
+                'dep_time' => sprintf('%02d:%02d', $sm[11], $sm[12]),
+                'arrival_date' => $segArrDate,
+                'arrival_time' => sprintf('%02d:%02d', $sm[16], $sm[17]),
+                'arr_time' => sprintf('%02d:%02d', $sm[16], $sm[17]),
+            ];
+        }
     }
     
-    // Extract departure and arrival times - pattern: "04/10/2025 11:30" and "04/10/2025 13:40"
-    if (preg_match('/([A-Z]{2})(\d{3,5})\s+[A-Z]\s+\(([A-Za-z\s]+)\)\s+(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})\s+(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/i', $text, $match)) {
-        // Departure date/time
-        $departureDate = parseTicketDate($match[4], $match[5], $match[6]);
-        $departureTime = sprintf('%02d:%02d', $match[7], $match[8]);
+    // Use parsed segments when available
+    if (!empty($segments)) {
+        $firstSeg = $segments[0];
+        $lastSeg = $segments[count($segments) - 1];
+        $origin = $firstSeg['origin'];
+        $originCity = $firstSeg['origin_city'];
+        $destination = $lastSeg['destination'];
+        $destinationCity = $lastSeg['destination_city'];
+        $departureDate = $firstSeg['departure_date'];
+        $departureTime = $firstSeg['departure_time'];
+        $arrivalDate = $lastSeg['arrival_date'];
+        $arrivalTime = $lastSeg['arrival_time'];
+        $flightNumber = implode(', ', array_column($segments, 'flight_number'));
+        $airlineCode = implode(', ', array_unique(array_column($segments, 'airline_code')));
+        $airline = implode(', ', array_unique(array_column($segments, 'airline')));
+    } else {
+        // Legacy fallbacks for tickets with date/time on the same line as the flight
+    
+        // Extract from/to airports - pattern: "Istanbul Arpt (IST),Istanbul" to "Frankfurt Intl (FRA),Frankfurt"
+        if (preg_match('/([A-Z][A-Za-z\s]+)\s*\(([A-Z]{3})\),[^\n]*?\n\s*([A-Z][A-Za-z\s]+)\s*\(([A-Z]{3})\)/i', $text, $match)) {
+            $origin = strtoupper($match[2]);
+            $originCity = getAirportName($origin);
+            $destination = strtoupper($match[4]);
+            $destinationCity = getAirportName($destination);
+        }
+        if ((!$origin || !$destination) && preg_match('/Airline\s+From\/To.*?\(([A-Z]{3})\),[^\n]*?\(([A-Z]{3})\),/is', $text, $match)) {
+            $origin = strtoupper($match[1]);
+            $originCity = getAirportName($origin);
+            $destination = strtoupper($match[2]);
+            $destinationCity = getAirportName($destination);
+        }
         
-        // Arrival date/time
-        $arrivalDate = parseTicketDate($match[9], $match[10], $match[11]);
-        $arrivalTime = sprintf('%02d:%02d', $match[12], $match[13]);
-    }
-    if (!$departureDate && preg_match('/\b([A-Z]{2}\d{3,5})\s+[A-Z]\s+(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})\s+(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/i', $text, $match)) {
-        $departureDate = parseTicketDate($match[2], $match[3], $match[4]);
-        $departureTime = sprintf('%02d:%02d', $match[5], $match[6]);
-        $arrivalDate = parseTicketDate($match[7], $match[8], $match[9]);
-        $arrivalTime = sprintf('%02d:%02d', $match[10], $match[11]);
+        // Extract departure and arrival times - pattern: "04/10/2025 11:30" and "04/10/2025 13:40"
+        if (preg_match('/([A-Z]{2})(\d{3,5})\s+[A-Z]\s+\(([A-Za-z\s]+)\)\s+(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})\s+(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/i', $text, $match)) {
+            // Departure date/time
+            $departureDate = parseTicketDate($match[4], $match[5], $match[6]);
+            $departureTime = sprintf('%02d:%02d', $match[7], $match[8]);
+            
+            // Arrival date/time
+            $arrivalDate = parseTicketDate($match[9], $match[10], $match[11]);
+            $arrivalTime = sprintf('%02d:%02d', $match[12], $match[13]);
+        }
+        if (!$departureDate && preg_match('/\b([A-Z]{2}\d{3,5})\s+[A-Z]\s+(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})\s+(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/i', $text, $match)) {
+            $departureDate = parseTicketDate($match[2], $match[3], $match[4]);
+            $departureTime = sprintf('%02d:%02d', $match[5], $match[6]);
+            $arrivalDate = parseTicketDate($match[7], $match[8], $match[9]);
+            $arrivalTime = sprintf('%02d:%02d', $match[10], $match[11]);
+        }
     }
     
     // Build passenger record
@@ -652,7 +707,8 @@ function extractTolotripportalTicket($text) {
         $passenger['issued_by'] = $issuedBy;
         $passenger['ticket_status'] = 'Confirmed';
         $passenger['is_confirmed'] = true;
-        $passenger['trip_type'] = 'One Way';
+        $passenger['trip_type'] = count($segments) > 1 ? 'Multi Segment' : 'One Way';
+        $passenger['segments'] = !empty($segments) ? $segments : null;
         
         $passenger['extraction_confidence'] = calculateConfidenceScore($passenger);
         $passenger['format_detected'] = 'tolotripportal';
@@ -1524,40 +1580,76 @@ function extractFlydubaiTicket($text) {
     $validAirports = array_keys(AIRPORTS);
     $segments = [];
     
-    // Extract route pairs and times separately
-    // First, find all airport code pairs in the text (e.g., "LED ... DXB" and "DXB ... KBL")
-    $routes = [];
-    if (preg_match_all('/(LED|KBL|DXB|RUH|AUH|DOH|IST|BOM|DEL|HEA|LHR|JFK)\s+[^\n]*\n[^\n]*?(LED|KBL|DXB|RUH|AUH|DOH|IST|BOM|DEL|HEA|LHR|JFK)/i', $text, $matches, PREG_SET_ORDER)) {
-        foreach ($matches as $match) {
-            $origin = strtoupper($match[1]);
-            $dest = strtoupper($match[2]);
-            if ($origin !== $dest && in_array($origin, $validAirports) && in_array($dest, $validAirports)) {
-                $routes[] = ['origin' => $origin, 'destination' => $dest];
+    // Two-column itinerary layout, one block per leg:
+    // "30 May 2026, Saturday	30 May 2026, Saturday
+    //  18:55
+    //  AHB
+    //  22:50
+    //  DXB"
+    // Stacked variant: second date column is the arrival date, and legs may have a "+1 day" line:
+    // "09 June 2026, Tuesday	10 June 2026, Wednesday
+    //  +1 day
+    //  23:55
+    //  DXB
+    //  01:20
+    //  RUH"
+    $fdMonths = 'January|February|March|April|May|June|July|August|September|October|November|December';
+    if (preg_match_all('/(\d{1,2})\s+(' . $fdMonths . ')\s+(\d{4}),\s+\w+\s*(?:(\d{1,2})\s+(' . $fdMonths . ')\s+(\d{4}),\s+\w+)?[^\r\n]*\R\s*(?:\+1\s+day[^\r\n]*\R\s*)?(\d{2}):(\d{2})\R\s*([A-Z]{3})\R\s*(\d{2}):(\d{2})\R\s*([A-Z]{3})/i', $text, $segMatches, PREG_SET_ORDER)) {
+        foreach ($segMatches as $m) {
+            $segDate = parseTicketDate($m[1], substr($m[2], 0, 3), $m[3]);
+            if (!empty($m[4]) && !empty($m[5]) && !empty($m[6])) {
+                $segArrDate = parseTicketDate($m[4], substr($m[5], 0, 3), $m[6]);
+            } else {
+                $segArrDate = $segDate;
+            }
+            $segments[] = [
+                'origin' => strtoupper($m[9]),
+                'dep_time' => sprintf('%02d:%02d', $m[7], $m[8]),
+                'destination' => strtoupper($m[12]),
+                'arr_time' => sprintf('%02d:%02d', $m[10], $m[11]),
+                'date' => $segDate,
+                'departure_date' => $segDate,
+                'arrival_date' => $segArrDate,
+            ];
+        }
+    }
+    
+    // Fallback: extract route pairs and times separately
+    if (empty($segments)) {
+        // First, find all airport code pairs in the text (e.g., "LED ... DXB" and "DXB ... KBL")
+        $routes = [];
+        if (preg_match_all('/(LED|KBL|DXB|RUH|AUH|DOH|IST|BOM|DEL|HEA|LHR|JFK)\s+[^\n]*\n[^\n]*?(LED|KBL|DXB|RUH|AUH|DOH|IST|BOM|DEL|HEA|LHR|JFK)/i', $text, $matches, PREG_SET_ORDER)) {
+            foreach ($matches as $match) {
+                $origin = strtoupper($match[1]);
+                $dest = strtoupper($match[2]);
+                if ($origin !== $dest && in_array($origin, $validAirports) && in_array($dest, $validAirports)) {
+                    $routes[] = ['origin' => $origin, 'destination' => $dest];
+                }
             }
         }
-    }
-    
-    // Now find times near these routes
-    // Extract all times from the text
-    $times = [];
-    preg_match_all('/(\d{2}):(\d{2})/', $text, $timeMatches);
-    if (!empty($timeMatches[0])) {
-        foreach ($timeMatches[0] as $t) {
-            $times[] = $t;
+        
+        // Now find times near these routes
+        // Extract all times from the text
+        $times = [];
+        preg_match_all('/(\d{2}):(\d{2})/', $text, $timeMatches);
+        if (!empty($timeMatches[0])) {
+            foreach ($timeMatches[0] as $t) {
+                $times[] = $t;
+            }
         }
-    }
-    
-    // Match times to routes
-    $timeIndex = 0;
-    foreach ($routes as $idx => $route) {
-        if ($timeIndex + 1 < count($times)) {
-            $segments[] = [
-                'origin' => $route['origin'],
-                'dep_time' => $times[$timeIndex],
-                'destination' => $route['destination'],
-                'arr_time' => $times[$timeIndex + 1],
-            ];
-            $timeIndex += 2;
+        
+        // Match times to routes
+        $timeIndex = 0;
+        foreach ($routes as $idx => $route) {
+            if ($timeIndex + 1 < count($times)) {
+                $segments[] = [
+                    'origin' => $route['origin'],
+                    'dep_time' => $times[$timeIndex],
+                    'destination' => $route['destination'],
+                    'arr_time' => $times[$timeIndex + 1],
+                ];
+                $timeIndex += 2;
+            }
         }
     }
     
@@ -1640,9 +1732,10 @@ function extractFlydubaiTicket($text) {
         $passenger['origin_city'] = getAirportName($firstSegment['origin']);
         $passenger['destination'] = $lastSegment['destination'];
         $passenger['destination_city'] = getAirportName($lastSegment['destination']);
-        $passenger['departure_date'] = $departureDate;
+        $passenger['departure_date'] = $firstSegment['date'] ?? $departureDate;
         $passenger['departure_time'] = $firstSegment['dep_time'];
         $passenger['arrival_time'] = $lastSegment['arr_time'];
+        $passenger['arrival_date'] = $lastSegment['arrival_date'] ?? $departureDate;
         $passenger['segments'] = $segments;
     }
     
@@ -2036,20 +2129,42 @@ function extractKamAirTicket($text) {
         }
     }
     
-    // Merge passengers sharing same PNR (flight info in Block[0], personal info in Block[1])
+    // Merge passengers sharing the same PNR AND ticket number (Kam Air stub + receipt = 2 blocks per passenger).
+    // Group bookings share the PNR but have different ticket numbers and must NOT be merged together.
     $merged = [];
     foreach ($passengers as $p) {
         $pnr = !empty($p['pnr']) ? $p['pnr'] : null;
-        if ($pnr && isset($merged[$pnr])) {
+        $ticketNo = !empty($p['ticket_number']) ? $p['ticket_number'] : null;
+        $mergeKey = ($pnr && $ticketNo) ? $pnr . '|' . $ticketNo : $pnr;
+        if ($mergeKey && isset($merged[$mergeKey])) {
             foreach ($p as $k => $v) {
-                if (($v !== null && $v !== '') && (empty($merged[$pnr][$k]) || $merged[$pnr][$k] === null)) {
-                    $merged[$pnr][$k] = $v;
+                if (($v !== null && $v !== '') && (empty($merged[$mergeKey][$k]) || $merged[$mergeKey][$k] === null)) {
+                    $merged[$mergeKey][$k] = $v;
                 }
             }
-        } elseif ($pnr) {
-            $merged[$pnr] = $p;
+        } elseif ($mergeKey) {
+            $merged[$mergeKey] = $p;
         } else {
             $merged[] = $p;
+        }
+    }
+    
+    // Second pass: attach PNR-only blocks (flight info) to the first passenger holding that PNR
+    $pnrOwners = [];
+    foreach ($merged as $k => $p) {
+        if (!empty($p['pnr']) && !empty($p['ticket_number'])) {
+            $pnrOwners[$p['pnr']] = $k;
+        }
+    }
+    foreach ($merged as $k => $p) {
+        if (!empty($p['pnr']) && empty($p['ticket_number']) && isset($pnrOwners[$p['pnr']])) {
+            $ownerKey = $pnrOwners[$p['pnr']];
+            foreach ($p as $field => $v) {
+                if (($v !== null && $v !== '') && (empty($merged[$ownerKey][$field]) || $merged[$ownerKey][$field] === null)) {
+                    $merged[$ownerKey][$field] = $v;
+                }
+            }
+            unset($merged[$k]);
         }
     }
     $passengers = array_values($merged);
@@ -2139,21 +2254,27 @@ function extractArianaFlightInfo($text) {
     }
     
     // Arrival time and terminal (same patterns)
-    if (preg_match('/([A-Z]{3})\s+(\d{1,2}):(\d{2})\s+terminal[:\s]*([a-z])/i', $text, $match)) {
+    if (preg_match_all('/([A-Z]{3})\s+(\d{1,2}):(\d{2})\s+terminal[:\s]*([a-z])/i', $text, $matches, PREG_SET_ORDER)) {
         $originAirport = $info['departure_airport'] ?? null;
-        if ($originAirport !== $match[1]) {
-            $info['arrival_airport'] = $match[1];
-            $info['arrival_time'] = sprintf('%02d:%02d', $match[2], $match[3]);
-            $info['arrival_terminal'] = strtoupper($match[4]);
+        foreach ($matches as $m) {
+            if ($originAirport !== $m[1]) {
+                $info['arrival_airport'] = $m[1];
+                $info['arrival_time'] = sprintf('%02d:%02d', $m[2], $m[3]);
+                $info['arrival_terminal'] = strtoupper($m[4]);
+                break;
+            }
         }
     }
-    if (!isset($info['arrival_time']) && preg_match('/([A-Z]{3})\s+(\d{1,2}):(\d{2})(?:\s+terminal[:\s]*([a-z]))?/i', $text, $match)) {
+    if (!isset($info['arrival_time']) && preg_match_all('/([A-Z]{3})\s+(\d{1,2}):(\d{2})(?:\s+terminal[:\s]*([a-z]))?/i', $text, $matches, PREG_SET_ORDER)) {
         $originAirport = $info['departure_airport'] ?? null;
-        if ($originAirport !== $match[1] && isset(AIRPORTS[$match[1]])) {
-            $info['arrival_airport'] = $match[1];
-            $info['arrival_time'] = sprintf('%02d:%02d', $match[2], $match[3]);
-            if (!empty($match[4])) {
-                $info['arrival_terminal'] = strtoupper($match[4]);
+        foreach ($matches as $m) {
+            if ($originAirport !== $m[1] && isset(AIRPORTS[$m[1]])) {
+                $info['arrival_airport'] = $m[1];
+                $info['arrival_time'] = sprintf('%02d:%02d', $m[2], $m[3]);
+                if (!empty($m[4])) {
+                    $info['arrival_terminal'] = strtoupper($m[4]);
+                }
+                break;
             }
         }
     }
@@ -2420,6 +2541,23 @@ function extractArianaTicket($text) {
     if (preg_match('/Total\s+Ticket\s+Value:\s+AFN\s+([\d,]+)/i', $text, $match)) {
         $totalFare = $match[1];
     }
+    
+    // Extract issue date if present ("Ticketed on February 1, 2026")
+    $issueDate = null;
+    if (preg_match('/(?:Ticketed|Issued)\s+on\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})/i', $text, $match)) {
+        $issueDate = date('Y-m-d', strtotime($match[1]));
+    }
+    
+    // Post-process: same-day arrival date and issue date fallbacks
+    foreach ($passengers as &$p) {
+        if (!empty($p['arrival_time']) && empty($p['arrival_date']) && !empty($p['departure_date'])) {
+            $p['arrival_date'] = $p['departure_date'];
+        }
+        if ($issueDate && empty($p['issue_date'])) {
+            $p['issue_date'] = $issueDate;
+        }
+    }
+    unset($p);
     
     // If multiple passengers, group them
     if (count($passengers) > 1) {
@@ -2732,20 +2870,26 @@ function extractSkyportalTicket($text) {
             }
         }
         
-        // Extract departure details - pattern: "17:15, 21 Nov 2025, Khwaja Rawash, Kabul(KBL), Terminal I"
-        if (preg_match('/Departure.*?\n\s*(\d{2}):(\d{2}),\s+(\d{1,2})\s+([A-Za-z]+)\s+(\d{4}),.*?\(([A-Z]{3})\),.*?Terminal\s+([^\n,]+)/is', $flightSection, $match)) {
-            $flightData['departure_time'] = $match[1] . ':' . $match[2];
-            $flightData['departure_date'] = parseTicketDate($match[3], $match[4], $match[5]);
-            $flightData['origin'] = $match[6];
-            $flightData['departure_terminal'] = $match[7];
-        }
-        
-        // Extract arrival details - pattern: "19:55, 21 Nov 2025, Dubai International, Dubai(DXB), Terminal 1"
-        if (preg_match('/Arrivals.*?\n\s*(\d{2}):(\d{2}),\s+(\d{1,2})\s+([A-Za-z]+)\s+(\d{4}),.*?\(([A-Z]{3})\),.*?Terminal\s+(\d+|[IVX]+)/is', $flightSection, $match)) {
-            $flightData['arrival_time'] = $match[1] . ':' . $match[2];
-            $flightData['arrival_date'] = parseTicketDate($match[3], $match[4], $match[5]);
-            $flightData['destination'] = $match[6];
-            $flightData['arrival_terminal'] = $match[7];
+        // Extract departure/arrival blocks in order (first block = departure, second = arrival).
+        // "07:00, 13 May 2026,
+        //  Khwaja Rawash,
+        //  Kabul(KBL),
+        //  Terminal I"
+        if (preg_match_all('/\s*(\d{2}):(\d{2}),\s+(\d{1,2})\s+([A-Za-z]+)\s+(\d{4}),\s*\R\s*[^\r\n]+,\s*[^\r\n]*\(([A-Z]{3})\),\s*\R\s*Terminal\s+([^\r\n,]+)/i', $flightSection, $blockMatches, PREG_SET_ORDER)) {
+            if (isset($blockMatches[0])) {
+                $b = $blockMatches[0];
+                $flightData['departure_time'] = sprintf('%02d:%02d', $b[1], $b[2]);
+                $flightData['departure_date'] = parseTicketDate($b[3], substr($b[4], 0, 3), $b[5]);
+                $flightData['origin'] = strtoupper($b[6]);
+                $flightData['departure_terminal'] = trim($b[7]);
+            }
+            if (isset($blockMatches[1])) {
+                $b = $blockMatches[1];
+                $flightData['arrival_time'] = sprintf('%02d:%02d', $b[1], $b[2]);
+                $flightData['arrival_date'] = parseTicketDate($b[3], substr($b[4], 0, 3), $b[5]);
+                $flightData['destination'] = strtoupper($b[6]);
+                $flightData['arrival_terminal'] = trim($b[7]);
+            }
         }
         
         if (preg_match_all('/\b(\d{2}):(\d{2}),\s+\d{1,2}\s+[A-Za-z]+\s+\d{4}/', $flightSection, $timeMatches, PREG_SET_ORDER)) {
@@ -2807,6 +2951,7 @@ function extractSkyportalTicket($text) {
     $cabinClass = $flightData['cabin_class'] ?? null;
     $departureDate = $flightData['departure_date'] ?? null;
     $departureTime = $flightData['departure_time'] ?? null;
+    $arrivalDate = $flightData['arrival_date'] ?? null;
     $arrivalTime = $flightData['arrival_time'] ?? null;
     $departureTerminal = $flightData['departure_terminal'] ?? null;
     $arrivalTerminal = $flightData['arrival_terminal'] ?? null;
@@ -2935,6 +3080,26 @@ function extractSkyportalTicket($text) {
             if (!isset($passenger['arrival_time']) && $arrivalTime) {
                 $passenger['arrival_time'] = $arrivalTime;
             }
+            if (!isset($passenger['arrival_date']) && $arrivalDate) {
+                $passenger['arrival_date'] = $arrivalDate;
+            }
+            // Journey-segments structure for the booking form (single or multi leg)
+            if (!isset($passenger['segments']) && isset($flightData['origin']) && isset($flightData['destination']) && $departureTime && $arrivalTime) {
+                $passenger['segments'] = [[
+                    'airline' => $airlineName,
+                    'airline_code' => $airlineCode,
+                    'flight_number' => $flightNumber,
+                    'origin' => $flightData['origin'],
+                    'destination' => $flightData['destination'],
+                    'date' => $departureDate,
+                    'departure_date' => $departureDate,
+                    'departure_time' => $departureTime,
+                    'dep_time' => $departureTime,
+                    'arrival_date' => $arrivalDate,
+                    'arrival_time' => $arrivalTime,
+                    'arr_time' => $arrivalTime,
+                ]];
+            }
             if (!isset($passenger['departure_terminal']) && $departureTerminal) {
                 $passenger['departure_terminal'] = $departureTerminal;
             }
@@ -3058,14 +3223,23 @@ function extractNSSPortalTicket($text) {
     $flightNumbersFromSegments = [];
     $monthPattern = 'January|February|March|April|May|June|July|August|September|October|November|December';
     $airlinePattern = 'Emirates|Air\s+China|Fly\s+Dubai|Kam\s+Air|Ariana\s+Afghan\s+Airlines|Qatar\s+Airways|Turkish\s+Airlines';
-    if (preg_match_all('/(' . $airlinePattern . ')\s+([A-Z0-9]{2})\s+(\d{2,4}).{0,120}?(\d{1,2})\s+(' . $monthPattern . ')\s+(\d{4})\s+([A-Z]{3})\s+([A-Z]{3})\s+(\d{2}):(\d{2})\s+(\d{2}):(\d{2})/is', $text, $segmentMatches, PREG_SET_ORDER)) {
+    // Flight date is the "Confirm" line: "12 August 2026\nConfirm ✓\nFly Dubai..." (optional for safety)
+    // Route-line date follows the duration: "13 August 2026\nDXB\tRUH\n23:55\t01:20" -> ARRIVAL date
+    $flightDatePattern = '(?:(\d{1,2})\s+(' . $monthPattern . ')\s+(\d{4})\s*\R\s*Confirm[^\r\n]*\R\s*)?';
+    if (preg_match_all('/' . $flightDatePattern . '(' . $airlinePattern . ')\s+([A-Z0-9]{2})\s+(\d{2,4}).{0,120}?(\d{1,2})\s+(' . $monthPattern . ')\s+(\d{4})\s+([A-Z]{3})\s+([A-Z]{3})\s+(\d{2}):(\d{2})\s+(\d{2}):(\d{2})/is', $text, $segmentMatches, PREG_SET_ORDER)) {
         foreach ($segmentMatches as $segmentMatch) {
-            $airlineName = normalizePassengerName($segmentMatch[1]);
-            $airlineCode = strtoupper($segmentMatch[2]);
-            $flightNumber = $airlineCode . $segmentMatch[3];
-            $date = parseTicketDate($segmentMatch[4], substr($segmentMatch[5], 0, 3), $segmentMatch[6]);
-            $origin = strtoupper($segmentMatch[7]);
-            $destination = strtoupper($segmentMatch[8]);
+            $airlineName = normalizePassengerName($segmentMatch[4]);
+            $airlineCode = strtoupper($segmentMatch[5]);
+            $flightNumber = $airlineCode . $segmentMatch[6];
+            $routeDate = parseTicketDate($segmentMatch[7], substr($segmentMatch[8], 0, 3), $segmentMatch[9]);
+            // Flight date (Confirm line) is the departure date; falls back to route date
+            if (!empty($segmentMatch[1]) && !empty($segmentMatch[2]) && !empty($segmentMatch[3])) {
+                $depDate = parseTicketDate($segmentMatch[1], substr($segmentMatch[2], 0, 3), $segmentMatch[3]);
+            } else {
+                $depDate = $routeDate;
+            }
+            $origin = strtoupper($segmentMatch[10]);
+            $destination = strtoupper($segmentMatch[11]);
             
             $segmentDetails[] = [
                 'airline' => $airlineName,
@@ -3073,9 +3247,13 @@ function extractNSSPortalTicket($text) {
                 'flight_number' => $flightNumber,
                 'origin' => $origin,
                 'destination' => $destination,
-                'departure_date' => $date,
-                'departure_time' => sprintf('%02d:%02d', $segmentMatch[9], $segmentMatch[10]),
-                'arrival_time' => sprintf('%02d:%02d', $segmentMatch[11], $segmentMatch[12]),
+                'departure_date' => $depDate,
+                'date' => $depDate,
+                'arrival_date' => $routeDate,
+                'departure_time' => sprintf('%02d:%02d', $segmentMatch[12], $segmentMatch[13]),
+                'dep_time' => sprintf('%02d:%02d', $segmentMatch[12], $segmentMatch[13]),
+                'arrival_time' => sprintf('%02d:%02d', $segmentMatch[14], $segmentMatch[15]),
+                'arr_time' => sprintf('%02d:%02d', $segmentMatch[14], $segmentMatch[15]),
             ];
             $airlineNames[] = $airlineName;
             $airlineCodes[] = $airlineCode;
@@ -3105,10 +3283,26 @@ function extractNSSPortalTicket($text) {
         $agencyName = trim($match[1]);
     }
     
-    // Extract ticket numbers from electronic ticket section
+    // Extract ticket numbers from electronic ticket section (13 digits, no word-boundary requirement
+    // because rows look like "1766905715877KBL - DXB")
     $ticketNumbers = [];
-    if (preg_match_all('/\b(\d{13})\b/i', $text, $matches)) {
+    if (preg_match_all('/(?<!\d)(\d{13})/i', $text, $matches)) {
         $ticketNumbers = array_unique($matches[1]);
+    }
+    
+    // Extract passengers from the electronic ticket table (names are uppercase).
+    // Ticket numbers may be 13-digit ("1766905715877KBL - DXB") or PNR-based ("R37AAJ-1 KBL - DXB")
+    $tablePassengers = [];
+    if (preg_match_all('/([A-Z][A-Z\s]+?)\s*\n\s*((?:\d{13})|(?:[A-Z0-9]{5,7}-\d))(?=\s*[A-Z]{3}\s*-\s*[A-Z]{3})/', $text, $paxMatches, PREG_SET_ORDER)) {
+        foreach ($paxMatches as $pm) {
+            $ticketNo = $pm[2];
+            if (!isset($tablePassengers[$ticketNo])) {
+                $tablePassengers[$ticketNo] = [
+                    'name' => normalizePassengerName($pm[1]),
+                    'ticket_number' => $ticketNo,
+                ];
+            }
+        }
     }
     
     // Extract route information - look for specific airport codes
@@ -3216,6 +3410,7 @@ function extractNSSPortalTicket($text) {
             $passenger['departure_date'] = $segmentDetails[0]['departure_date'];
             $passenger['departure_time'] = $segmentDetails[0]['departure_time'];
             $passenger['arrival_time'] = $segmentDetails[count($segmentDetails) - 1]['arrival_time'];
+            $passenger['arrival_date'] = $segmentDetails[count($segmentDetails) - 1]['arrival_date'];
         }
         
         $passenger['cabin_class'] = $cabinClass ?? 'Economy';
@@ -3223,6 +3418,14 @@ function extractNSSPortalTicket($text) {
         $passenger['is_confirmed'] = true;
         $passenger['baggage_allowance'] = 'None';
         $passenger['meal_service'] = 'Standard meal';
+        
+        // Issue date from the electronic ticket section, e.g. "Confirm 06-Apr-26" (may wrap across lines)
+        if (preg_match('/Confirm\s+(\d{1,2})-([A-Za-z]{3})-[\s]*(\d{2})/i', $text, $match)) {
+            $parsed = strtotime($match[1] . ' ' . $match[2] . ' 20' . $match[3]);
+            if ($parsed !== false) {
+                $passenger['issue_date'] = date('Y-m-d', $parsed);
+            }
+        }
         
         // Agency and booking info
         $passenger['issued_by'] = $agencyName;
@@ -3252,14 +3455,27 @@ function extractNSSPortalTicket($text) {
         }
     }
     
-    // Always return single passenger, never multiple
+    // Build final passenger list — one record per ticket number from the electronic ticket table
+    $finalPassengers = [];
+    if (!empty($tablePassengers)) {
+        foreach ($tablePassengers as $tp) {
+            $pax = $passenger;
+            $pax['passenger_name'] = $tp['name'];
+            $pax['ticket_number'] = $tp['ticket_number'];
+            $finalPassengers[] = $pax;
+        }
+    } elseif (!empty($passengers)) {
+        $finalPassengers[] = $passengers[0];
+    }
+    $passengers = $finalPassengers;
+    
     if (count($passengers) >= 1) {
         return [
-            'is_group_booking' => false,
+            'is_group_booking' => count($passengers) > 1,
             'booking_reference' => $superPnr ?? $pnrMatches[0] ?? 'Unknown',
-            'total_passengers' => 1,
-            'passengers' => [$passengers[0]], // Always single passenger
-            'flight_info' => extractCommonFlightInfo([$passengers[0]]),
+            'total_passengers' => count($passengers),
+            'passengers' => $passengers,
+            'flight_info' => extractCommonFlightInfo($passengers),
             'agency' => $agencyName,
             'format_detected' => 'nsstportal',
         ];

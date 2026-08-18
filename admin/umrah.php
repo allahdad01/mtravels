@@ -671,6 +671,9 @@ $isAdmin = $_SESSION['role'] === 'admin';
                                                     <a class="dropdown-item" href="javascript:void(0)" onclick="openGroupFulfillmentModal(<?= (int)$group['group_id'] ?>, '<?= htmlspecialchars(addslashes($group['group_name']), ENT_QUOTES) ?>')">
                                                         <i class="fas fa-truck-loading"></i><?= __('fulfill_group_services') ?>
                                                     </a>
+                                                    <a class="dropdown-item" href="javascript:void(0)" onclick="openProfitReport('group', <?= (int)$group['group_id'] ?>, '<?= htmlspecialchars(addslashes($group['group_name']), ENT_QUOTES) ?>')">
+                                                        <i class="fas fa-chart-line"></i><?= __('profit_report') ?>
+                                                    </a>
                                                     <div class="dropdown-divider"></div>
                                                     <a class="dropdown-item text-danger" href="javascript:void(0)" onclick="deleteGroup(<?= (int)$group['group_id'] ?>, '<?= htmlspecialchars(addslashes($group['group_name']), ENT_QUOTES) ?>')">
                                                         <i class="fas fa-trash"></i><?= __('delete_group') ?>
@@ -1078,6 +1081,9 @@ $isAdmin = $_SESSION['role'] === 'admin';
                                                     <a class="dropdown-item" href="#" onclick="openFulfillmentModal(<?= (int)$m['booking_id'] ?>, '<?= htmlspecialchars(addslashes($m['name']), ENT_QUOTES) ?>'); return false;">
                                                         <i class="fas fa-truck-loading"></i><?= __('fulfill_services') ?>
                                                     </a>
+                                                    <a class="dropdown-item" href="#" onclick="openProfitReport('member', <?= (int)$m['booking_id'] ?>, '<?= htmlspecialchars(addslashes($m['name']), ENT_QUOTES) ?>'); return false;">
+                                                        <i class="fas fa-chart-line"></i><?= __('profit_report') ?>
+                                                    </a>
 
                                                     <div class="dropdown-divider"></div>
                                                     <h6 class="dropdown-header"><?= __('documents') ?></h6>
@@ -1266,10 +1272,13 @@ $isAdmin = $_SESSION['role'] === 'admin';
                                                      <a class="dropdown-item" href="javascript:void(0)" onclick="openFamilyTransactionModal(<?= $familyId ?>, '<?= htmlspecialchars(addslashes($row['head_of_family']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($row['package_type']), ENT_QUOTES) ?>', <?= (int)$row['total_members'] ?>)">
                                                          <i class="fas fa-credit-card"></i><?= __('family_transaction') ?>
                                                      </a>
-                                                     <a class="dropdown-item" href="javascript:void(0)" onclick="openFamilyFulfillmentModal(<?= $familyId ?>, '<?= htmlspecialchars(addslashes($row['head_of_family']), ENT_QUOTES) ?>')">
-                                                         <i class="fas fa-truck-loading"></i><?= __('fulfill_family_services') ?>
-                                                     </a>
-                                                     <?php endif; ?>
+<a class="dropdown-item" href="javascript:void(0)" onclick="openFamilyFulfillmentModal(<?= $familyId ?>, '<?= htmlspecialchars(addslashes($row['head_of_family']), ENT_QUOTES) ?>')">
+                                                          <i class="fas fa-truck-loading"></i><?= __('fulfill_family_services') ?>
+                                                      </a>
+                                                      <a class="dropdown-item" href="javascript:void(0)" onclick="openProfitReport('family', <?= $familyId ?>, '<?= htmlspecialchars(addslashes($row['head_of_family']), ENT_QUOTES) ?>')">
+                                                          <i class="fas fa-chart-line"></i><?= __('profit_report') ?>
+                                                      </a>
+                                                      <?php endif; ?>
                                                     <h6 class="dropdown-header"><?= __('documents') ?></h6>
                                                     <a class="dropdown-item" href="javascript:void(0)" onclick="generateFamilyTazmin(<?= $familyId ?>)">
                                                         <i class="fas fa-shield-alt"></i><?= __('generate_family_tazmin') ?>
@@ -1757,10 +1766,12 @@ $isAdmin = $_SESSION['role'] === 'admin';
     // Manifest document type chooser (printable page / Excel), then language chooser
     let manifestDocUrl = '';
     let manifestDocBlank = false;
-    let manifestTypeContext = ''; // 'rooming' | 'manifest'
+    let manifestTypeContext = ''; // 'rooming' | 'manifest' | 'client' | 'profit'
     let manifestRoomingIds = '';
     let manifestTicketId = '';
     let manifestSrc = '';
+    let profitReportScope = '';
+    let profitReportId = 0;
 
     function openManifestTypeModal() {
         document.getElementById('manifestTypeModal').classList.add('open');
@@ -1768,6 +1779,16 @@ $isAdmin = $_SESSION['role'] === 'admin';
 
     function closeManifestTypeModal() {
         document.getElementById('manifestTypeModal').classList.remove('open');
+    }
+
+    function openProfitReport(scope, id, name) {
+        profitReportScope = scope;
+        profitReportId = id;
+        manifestTypeContext = 'profit';
+        manifestRoomingIds = '';
+        manifestTicketId = '';
+        manifestSrc = '';
+        openManifestTypeModal();
     }
 
     document.addEventListener('click', function (e) {
@@ -1853,6 +1874,9 @@ $isAdmin = $_SESSION['role'] === 'admin';
             const type = typeBtn.getAttribute('data-doc-type');
             if (manifestTypeContext === 'client') {
                 manifestDocUrl = '../api/umrah/' + (type === 'print' ? 'client_report_template' : 'client_report_excel') + '.php?ticket_ids=' + manifestRoomingIds;
+                manifestDocBlank = (type === 'print');
+            } else if (manifestTypeContext === 'profit') {
+                manifestDocUrl = '../api/umrah/' + (type === 'print' ? 'profit_report_template' : 'profit_report_excel') + '.php?scope=' + profitReportScope + '&id=' + profitReportId;
                 manifestDocBlank = (type === 'print');
             } else if (manifestTypeContext === 'rooming') {
                 manifestDocUrl = '../api/umrah/' + (type === 'print' ? 'saudi_agent_template' : 'rooming_list_excel') + '.php?ticket_ids=' + manifestRoomingIds;

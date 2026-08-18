@@ -51,6 +51,8 @@ require_once(__DIR__ . '/../../includes/auth_check_sales_agent.php');
 
 <body>
 
+<?php include __DIR__ . '/../../includes/impersonation_banner.php'; ?>
+
 <!-- Mobile Floating Hamburger Button -->
 <div class="mobile-menu-float">
     <a class="mobile-menu" id="mobile-collapse" href="javascript:"><span></span></a>

@@ -23,7 +23,7 @@
                              </div>
                              <div class="card-body" style="overflow: visible !important; padding-bottom: 400px;">
                                  <div class="form-row">
-                                    <div class="form-group col-md-4">
+                                    <div class="form-group col-md-6">
                                         <label for="editSupplier">
                                             <i class="feather icon-user mr-1"></i><?= __('supplier') ?>
                                         </label>
@@ -36,7 +36,7 @@
                                         </select>
                                     </div>
                                     
-                                    <div class="form-group col-md-4">
+                                    <div class="form-group col-md-6">
                                         <label for="editSoldTo">
                                             <i class="feather icon-users mr-1"></i><?= __('sold_to') ?>
                                         </label>
@@ -55,17 +55,6 @@
                                                 echo "<option value=''>Database connection failed</option>";
                                             }
                                             ?>
-                                        </select>
-                                    </div>
-                                    
-                                    <div class="form-group col-md-4">
-                                        <label for="editTripType">
-                                            <i class="feather icon-repeat mr-1"></i><?= __('trip_type') ?>
-                                        </label>
-                                        <select class="form-control selectpicker" id="editTripType" name="tripType" required
-                                                data-style="btn-light">
-                                            <option value="one_way"><?= __('one_way') ?></option>
-                                            <option value="round_trip"><?= __('round_trip') ?></option>
                                         </select>
                                     </div>
                                 </div>
@@ -98,17 +87,11 @@
                                             <option value="Female"><?= __('female') ?></option>
                                         </select>
                                     </div>
-                                    <div class="form-group col-md-4">
+                                    <div class="form-group col-md-8">
                                         <label for="editPassengerName">
                                             <i class="feather icon-user mr-1"></i><?= __('passenger_name') ?>
                                         </label>
                                         <input type="text" class="form-control" id="editPassengerName" name="passengerName" required>
-                                    </div>
-                                    <div class="form-group col-md-4">
-                                        <label for="editPhone">
-                                            <i class="feather icon-phone mr-1"></i><?= __('phone') ?>
-                                        </label>
-                                        <input type="text" class="form-control" id="editPhone" name="phone" required>
                                     </div>
                                 </div>
                             </div>
@@ -122,69 +105,190 @@
                             <div class="card-body">
                                 <div class="form-row">
                                     <div class="form-group col-md-3">
-                                        <label for="editPnr">
-                                            <i class="feather icon-hash mr-1"></i><?= __('pnr') ?>
-                                        </label>
-                                        <input type="text" class="form-control" id="editPnr" name="pnr" required>
-                                    </div>
-                                    <div class="form-group col-md-3">
-                                        <label for="editOrigin">
-                                            <i class="feather icon-map-pin mr-1"></i><?= __('from') ?>
-                                        </label>
-                                        <input type="text" class="form-control" id="editOrigin" name="origin" required>
-                                    </div>
-                                    <div class="form-group col-md-3">
-                                        <label for="editDestination">
-                                            <i class="feather icon-map-pin mr-1"></i><?= __('to') ?>
-                                        </label>
-                                        <input type="text" class="form-control" id="editDestination" name="destination" required>
-                                    </div>
-                                    <div id="editReturnJourneyFields" class="form-group col-md-3" style="display: none;">
-                                        <label for="editReturnDestination">
-                                            <i class="feather icon-map-pin mr-1"></i><?= __('return_to') ?>
-                                        </label>
-                                        <input type="text" class="form-control" id="editReturnDestination" name="returnDestination">
-                                    </div>
-                                </div>
-
-                                <div class="form-row">
-                                    <div class="form-group col-md-12">
-                                        <label for="editAirline">
-                                            <i class="feather icon-plane mr-1"></i><?= __('airline') ?>
-                                        </label>
-                                        <select class="form-control select2" id="editAirline" name="airline" required>
-                                            <!-- Airlines will be populated by JavaScript -->
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div class="form-row">
-                                    <div class="form-group col-md-4">
                                         <label for="editIssueDate">
                                             <i class="feather icon-calendar mr-1"></i><?= __('issue_date') ?>
                                         </label>
                                         <input type="date" class="form-control" id="editIssueDate" name="issueDate" required>
                                     </div>
-                                    <div class="form-group col-md-4">
-                                        <label for="editDepartureDate">
-                                            <i class="feather icon-calendar mr-1"></i><?= __('departure_date') ?>
+                                    <div class="form-group col-md-3">
+                                        <label for="editPnr">
+                                            <i class="feather icon-hash mr-1"></i><?= __('pnr') ?>
                                         </label>
-                                        <input type="date" class="form-control" id="editDepartureDate" name="departureDate" required>
-                                        <label for="editDepartureTime">
-                                            <i class="feather icon-clock mr-1"></i><?= __('departure_time') ?>
-                                        </label>
-                                        <input type="time" class="form-control" id="editDepartureTime" name="departureTime" required>
+                                        <input type="text" class="form-control" id="editPnr" name="pnr" placeholder="e.g., ABC123" required>
                                     </div>
-                                    <div id="editReturnDateField" class="form-group col-md-4" style="display: none;">
-                                        <label for="editReturnDate">
-                                            <i class="feather icon-calendar mr-1"></i><?= __('return_date') ?>
+                                    <div class="form-group col-md-3">
+                                        <label for="editTripType">
+                                            <i class="feather icon-repeat mr-1"></i><?= __('trip_type') ?>
                                         </label>
-                                        <input type="date" class="form-control" id="editReturnDate" name="returnDate">
-                                        <label for="editReturnDepartureTime">
-                                            <i class="feather icon-clock mr-1"></i><?= __('return_departure_time') ?>
-                                        </label>
-                                        <input type="time" class="form-control" id="editReturnDepartureTime" name="returnDepartureTime">
+                                        <select class="form-control selectpicker" id="editTripType" name="tripType" required
+                                                data-style="btn-light">
+                                            <option value="one_way"><?= __('one_way') ?></option>
+                                            <option value="round_trip"><?= __('round_trip') ?></option>
+                                        </select>
                                     </div>
+                                    <div class="form-group col-md-3">
+                                        <label for="editPhone">
+                                            <i class="feather icon-phone mr-1"></i><?= __('phone') ?>
+                                        </label>
+                                        <input type="text" class="form-control" id="editPhone" name="phone" required>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Journey Segments (ticket segmentation) -->
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <h6 class="mb-0">
+                                        <i class="feather icon-navigation mr-1"></i>Journey Segments
+                                    </h6>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" id="addEditFlightLegBtn">
+                                        <i class="feather icon-plus-circle mr-1"></i><?= __('add_leg') ?? 'Add Leg' ?>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted small mb-3">
+                                    <?= __('journey_segments_hint') ?? 'Add the flight legs of this journey. Origin, destination and departure/arrival times are filled automatically from the first and last segment.' ?>
+                                </p>
+                                <div id="editFlightLegsContainer">
+                                    <!-- Leg 1 (keeps original field IDs for compatibility) -->
+                                    <div class="flight-leg-row border rounded p-3 mb-3" data-leg="1">
+                                        <div class="d-flex align-items-center justify-content-between mb-2">
+                                            <h6 class="mb-0"><span class="leg-number">Leg 1</span></h6>
+                                            <button type="button" class="btn btn-sm btn-outline-danger remove-leg-btn" disabled
+                                                    title="<?= __('first_leg_required') ?? 'First leg cannot be removed' ?>">
+                                                <i class="feather icon-trash-2"></i>
+                                            </button>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group col-md-3 mb-2">
+                                                <label class="leg-label">From *</label>
+                                                <input type="text" class="form-control leg-origin" id="editOrigin" name="origin" placeholder="e.g., KBL" required>
+                                            </div>
+                                            <div class="form-group col-md-3 mb-2">
+                                                <label class="leg-label">To *</label>
+                                                <input type="text" class="form-control leg-destination" id="editDestination" name="destination" placeholder="e.g., DXB" required>
+                                            </div>
+                                            <div class="form-group col-md-3 mb-2">
+                                                <label class="leg-label">Airline</label>
+                                                <input type="text" class="form-control leg-airline" id="editAirline" name="airline" placeholder="e.g., FlyDubai">
+                                            </div>
+                                            <div class="form-group col-md-3 mb-2">
+                                                <label class="leg-label">Flight Number</label>
+                                                <input type="text" class="form-control leg-flight-number" id="editFlightNumber" placeholder="e.g., FZ302">
+                                            </div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group col-md-3 mb-2">
+                                                <label class="leg-label">Departure Date</label>
+                                                <input type="date" class="form-control leg-date" id="editDepartureDate" name="departureDate" required>
+                                            </div>
+                                            <div class="form-group col-md-3 mb-2">
+                                                <label class="leg-label">Departure Time</label>
+                                                <input type="time" class="form-control leg-time" id="editDepartureTime" name="departureTime" required>
+                                            </div>
+                                            <div class="form-group col-md-3 mb-2">
+                                                <label class="leg-label">Arrival Date</label>
+                                                <input type="date" class="form-control leg-arrival-date" id="editArrivalDate">
+                                            </div>
+                                            <div class="form-group col-md-3 mb-2">
+                                                <label class="leg-label">Arrival Time</label>
+                                                <input type="time" class="form-control leg-arrival-time" id="editArrivalTime">
+                                            </div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group col-md-4 mb-2">
+                                                <label class="leg-label">Duration</label>
+                                                <input type="text" class="form-control leg-duration" id="editDuration" placeholder="e.g., 2h 30m" readonly>
+                                            </div>
+                                            <div class="form-group col-md-4 mb-2 leg-stopover-wrap" style="display: none;">
+                                                <label class="leg-label">Stopover</label>
+                                                <input type="text" class="form-control leg-stopover" id="editStopover" placeholder="e.g., 3h 25m">
+                                            </div>
+                                        </div>
+                                        <small class="form-text text-muted">Origin/Destination auto-filled from segments</small>
+                                    </div>
+                                </div>
+                                <div id="editFlightRoutePreview" class="form-text text-info mb-2" style="font-size:12px;"></div>
+                                <div id="editFlightStops" class="form-text text-muted" style="font-size:12px; display:none;"></div>
+
+                                <!-- Return Flight Segments (round trip) -->
+                                <div id="editReturnFlightSegmentsGroup" style="display: none;">
+                                    <hr class="my-3">
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <h6 class="mb-0">
+                                            <i class="feather icon-corner-up-left mr-1"></i>Return Flight Segments
+                                        </h6>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" id="addEditReturnFlightLegBtn">
+                                            <i class="feather icon-plus-circle mr-1"></i><?= __('add_leg') ?? 'Add Leg' ?>
+                                        </button>
+                                    </div>
+                                    <p class="text-muted small mb-3">
+                                        Add the return flight legs of this journey. Origin, destination and departure/arrival times are filled automatically from the first and last segment.
+                                    </p>
+                                    <div id="editReturnFlightLegsContainer">
+                                        <!-- Return Leg 1 -->
+                                        <div class="flight-leg-row border rounded p-3 mb-3" data-leg="1">
+                                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                                <h6 class="mb-0"><span class="leg-number">Leg 1</span></h6>
+                                                <button type="button" class="btn btn-sm btn-outline-danger remove-leg-btn" disabled
+                                                        title="<?= __('first_leg_required') ?? 'First leg cannot be removed' ?>">
+                                                    <i class="feather icon-trash-2"></i>
+                                                </button>
+                                            </div>
+                                            <div class="form-row">
+                                                <div class="form-group col-md-3 mb-2">
+                                                    <label class="leg-label">From *</label>
+                                                    <input type="text" class="form-control leg-origin" placeholder="e.g., DXB">
+                                                </div>
+                                                <div class="form-group col-md-3 mb-2">
+                                                    <label class="leg-label">To *</label>
+                                                    <input type="text" class="form-control leg-destination" placeholder="e.g., KBL">
+                                                </div>
+                                                <div class="form-group col-md-3 mb-2">
+                                                    <label class="leg-label">Airline</label>
+                                                    <input type="text" class="form-control leg-airline" placeholder="e.g., FlyDubai">
+                                                </div>
+                                                <div class="form-group col-md-3 mb-2">
+                                                    <label class="leg-label">Flight Number</label>
+                                                    <input type="text" class="form-control leg-flight-number" placeholder="e.g., FZ302">
+                                                </div>
+                                            </div>
+                                            <div class="form-row">
+                                                <div class="form-group col-md-3 mb-2">
+                                                    <label class="leg-label">Departure Date</label>
+                                                    <input type="date" class="form-control leg-date">
+                                                </div>
+                                                <div class="form-group col-md-3 mb-2">
+                                                    <label class="leg-label">Departure Time</label>
+                                                    <input type="time" class="form-control leg-time">
+                                                </div>
+                                                <div class="form-group col-md-3 mb-2">
+                                                    <label class="leg-label">Arrival Date</label>
+                                                    <input type="date" class="form-control leg-arrival-date">
+                                                </div>
+                                                <div class="form-group col-md-3 mb-2">
+                                                    <label class="leg-label">Arrival Time</label>
+                                                    <input type="time" class="form-control leg-arrival-time">
+                                                </div>
+                                            </div>
+                                            <div class="form-row">
+                                                <div class="form-group col-md-4 mb-2">
+                                                    <label class="leg-label">Duration</label>
+                                                    <input type="text" class="form-control leg-duration" placeholder="e.g., 2h 30m" readonly>
+                                                </div>
+                                                <div class="form-group col-md-4 mb-2 leg-stopover-wrap" style="display: none;">
+                                                    <label class="leg-label">Stopover</label>
+                                                    <input type="text" class="form-control leg-stopover" placeholder="e.g., 3h 25m">
+                                                </div>
+                                            </div>
+                                            <small class="form-text text-muted">Origin/Destination auto-filled from segments</small>
+                                        </div>
+                                    </div>
+                                    <div id="editReturnFlightRoutePreview" class="form-text text-info mb-2" style="font-size:12px;"></div>
+                                    <div id="editReturnFlightStops" class="form-text text-muted" style="font-size:12px; display:none;"></div>
                                 </div>
                             </div>
                         </div>

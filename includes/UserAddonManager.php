@@ -54,7 +54,7 @@ class UserAddonManager {
         $stmt = $this->conn->prepare("
             SELECT COUNT(*) as user_count
             FROM users
-            WHERE tenant_id = ? AND role != 'super_admin'
+            WHERE tenant_id = ? AND role != 'super_admin' AND fired = 0
         ");
         
         $stmt->execute([$id]);

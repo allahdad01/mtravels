@@ -234,8 +234,8 @@ $entityType = isset($_POST['entityType']) ? DbSecurity::validateInput($_POST['en
 
         case 'main_account':
             // Get main account details
-            $stmt = $pdo->prepare("SELECT * FROM main_account WHERE id = ? AND tenant_id = ?");
-            $stmt->execute([$entity, $tenant_id]);
+            $stmt = $pdo->prepare("SELECT * FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmt->execute([$entity, $tenant_id, $branch_id]);
             $entityDetails = $stmt->fetch(PDO::FETCH_ASSOC);
             
             // Get main account transactions

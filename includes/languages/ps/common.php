@@ -1684,6 +1684,7 @@ return [
 'visa' => 'ویزه',
 'hotel' => 'هوټل',
 'umrah' => 'عمره',
+'general_summary' => 'عمومي لنډیز (عواید او لګښتونه)',
 'no_data_found_for_the_selected_criteria' => 'د ټاکل شویو شرایطو لپاره کوم معلومات ونه موندل شول',
 'report_generated_successfully_you_can_now_export_it_in_your_preferred_format' => 'راپور په بریالیتوب سره جوړ شو. اوس کولای شئ په خپله خوښه بڼه کې یې صادر کړئ.',
 'report_category' => 'د راپور ډول',
@@ -5415,4 +5416,5 @@ return [
 'send_currency' => 'د لېږلو اسعار',
 'new_hawala' => 'نوې حواله',
 'enter_the_exchange_rate_to_convert_between_currencies' => 'د اسعارو ترمنځ د تبادلې نرخ داخل کړئ',
+'profit_report' => 'د ګټې راپور',
 ];

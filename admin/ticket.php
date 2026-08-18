@@ -821,7 +821,7 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                                         </div>
                                         <div class="ticket-card-detail-item">
                                             <span class="ticket-card-detail-label"><?= __('route') ?>:</span>
-                                            <span><?= htmlspecialchars($ticket['ticket']['origin']) ?> → <?= htmlspecialchars($ticket['ticket']['destination']) ?></span>
+                                            <span><?= !empty($ticket['ticket']['route']) ? htmlspecialchars($ticket['ticket']['route']) : htmlspecialchars($ticket['ticket']['origin']) . ' → ' . htmlspecialchars($ticket['ticket']['destination']) ?></span>
                                         </div>
                                         <div class="ticket-card-detail-item">
                                             <span class="ticket-card-detail-label"><?= __('airline') ?>:</span>
@@ -1003,6 +1003,7 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
 <script src="../js/ticket/search.js"></script>
 <script src="../js/ticket/transaction-manager.js<?= '?v=' . time() ?>"></script>
 <script src="../js/ticket/trip-type.js"></script>
+<script src="../js/ticket/flight-legs.js"></script>
 <script src="../js/ticket/payment-calculation.js"></script>
 <script src="../js/ticket/passenger-count.js"></script>
 <script src="../js/ticket/supplier-currency-select.js"></script>

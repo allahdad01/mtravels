@@ -97,6 +97,7 @@ function loadOptions() {
                 { value: 'creditor', label: '💼 Creditor', feature: 'creditors' },
                 { value: 'debtor', label: '📝 Debtor', feature: 'debtors' },
                 { value: 'additional_payment', label: '💵 Additional Payments', feature: 'additional_payments' },
+                { value: 'general_summary', label: '📈 General Summary (Income & Expense)', feature: 'financial_statements' },
                 { value: 'statement', label: '📊 Statement', feature: 'financial_statements' }
             ];
         } else {

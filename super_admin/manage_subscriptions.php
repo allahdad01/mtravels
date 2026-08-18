@@ -122,6 +122,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $errors[] = "Invalid or inactive plan selected.";
     }
     if (empty($errors)) {
+        // Fetch the subscription's tenant before updating (needed for status sync)
+        $tenant_id = null;
+        $stmt = $pdo->prepare("SELECT tenant_id FROM tenant_subscriptions WHERE id = ?");
+        $stmt->execute([$subscription_id]);
+        $sub_row = $stmt->fetch();
+        if ($sub_row) {
+            $tenant_id = intval($sub_row['tenant_id']);
+        }
+
         // Update subscription
         $stmt = $pdo->prepare("
             UPDATE tenant_subscriptions
@@ -130,6 +139,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             WHERE id = ?
         ");
         $stmt->execute([$plan_id, $status, $billing_cycle, $amount, $currency, $payment_method, $next_billing_date, $subscription_id]);
+
+        // Sync tenant status with the subscription status
+        $tenant_synced = false;
+        if ($tenant_id) {
+            if ($status === 'active') {
+                // Promote trial/expired tenant to an active subscription
+                $stmt = $pdo->prepare("
+                    UPDATE tenants
+                    SET status = 'active',
+                        payment_status = 'current',
+                        payment_warning_sent = 0,
+                        trial_days = 0,
+                        trial_end_date = NULL,
+                        payment_due_date = ?,
+                        updated_at = NOW()
+                    WHERE id = ?
+                ");
+                $stmt->execute([$next_billing_date, $tenant_id]);
+                $tenant_synced = true;
+            } elseif ($status === 'expired') {
+                // Mirror the trial-expiry behaviour used by the cron
+                $stmt = $pdo->prepare("UPDATE tenants SET payment_status = 'overdue', updated_at = NOW() WHERE id = ? AND status = 'trial'");
+                $stmt->execute([$tenant_id]);
+                $tenant_synced = true;
+            }
+        }
+
         // Log action
         $user_id = $_SESSION['user_id'];
         $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address, created_at)
@@ -138,7 +174,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             'subscription_id' => $subscription_id,
             'plan_id' => $plan_id,
             'status' => $status,
-            'billing_cycle' => $billing_cycle
+            'billing_cycle' => $billing_cycle,
+            'tenant_synced' => $tenant_synced,
+            'tenant_status' => $tenant_synced ? ($status === 'active' ? 'active' : 'overdue') : null
         ]);
         $ip_address = $_SERVER['REMOTE_ADDR'];
         $stmt->execute([$user_id, $subscription_id, $details, $ip_address]);

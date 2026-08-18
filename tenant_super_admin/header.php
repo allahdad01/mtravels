@@ -2040,6 +2040,8 @@ MOBILE SIDEBAR - CLEAN LAYOUT FIX
 </head>
 <body>
   
+  <?php include '../includes/impersonation_banner.php'; ?>
+
   <!-- [ Pre-loader ] start -->
     <div class="loader-bg">
         <div class="loader-track">

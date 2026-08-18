@@ -289,13 +289,13 @@ function roomOptionLabel(r, used, max, extraBeds) {
 function fulfillmentStayHtml(st, i, data) {
     const fid = st ? (st.fulfillment_id || '') : '';
     const stHotel = st ? (st.hotel_id || '') : '';
-    const hotelOptions = data.hotels.map(h =>
+    const hotelOptions = `<option value="" data-supplier="">—</option>` + data.hotels.map(h =>
         `<option value="${h.id}" data-supplier="${h.supplier_id || ''}" ${st && String(st.hotel_id) === String(h.id) ? 'selected' : ''}>${escapeHtml(h.name)}${h.city ? ' (' + escapeHtml(h.city) + ')' : ''}</option>`
     ).join('');
-    const roomTypeOptions = roomTypeOptionsFor(stHotel).map(rt =>
+    const roomTypeOptions = `<option value="">—</option>` + roomTypeOptionsFor(stHotel).map(rt =>
         `<option value="${rt.id}" ${st && String(st.room_type_id) === String(rt.id) ? 'selected' : ''}>${escapeHtml(rt.name)}</option>`
     ).join('');
-    const roomOptions = roomsOfHotel(stHotel).map(r =>
+    const roomOptions = `<option value="">—</option>` + roomsOfHotel(stHotel).map(r =>
         `<option value="${r.id}" ${st && String(st.room_id) === String(r.id) ? 'selected' : ''}>${roomOptionLabel(r, null, null)}</option>`
     ).join('');
     const nights = st && st.nights != null ? st.nights : '';
@@ -1104,7 +1104,8 @@ function autoAssignBedRooms($card) {
         if ($st.find('.f-room').val()) return; // already assigned
         const hotelId = $st.find('.f-hotel').val();
         if (!hotelId) return;
-        const rtName = String($st.find('.f-room-type option:selected').text() || '').trim();
+        const rtVal = $st.find('.f-room-type').val() || '';
+        const rtName = rtVal ? String($st.find('.f-room-type option:selected').text() || '').trim() : '';
         const $gc = $st.closest('.f-hotel-group');
         const ids = $gc.data('member-ids');
         const first = (Array.isArray(ids) && ids.length) ? membersById[ids[0]] : null;
@@ -1795,7 +1796,7 @@ function syncFulfillmentHotelOptions($card) {
         const current = $hotel.val();
         let clear = false;
         $hotel.find('option').each(function() {
-            const matches = !supplierId || String($(this).data('supplier')) === String(supplierId);
+            const matches = !supplierId || !$(this).val() || String($(this).data('supplier')) === String(supplierId);
             $(this).toggle(matches);
             if ($(this).val() === current && !matches) clear = true;
         });
@@ -1815,7 +1816,7 @@ function syncFulfillmentRoomOptions($card) {
         const curRt = $st.find('.f-room-type').val();
         const curRoom = $st.find('.f-room').val();
 
-        const rtOptions = roomTypeOptionsFor(hotelId).map(rt =>
+        const rtOptions = `<option value="">—</option>` + roomTypeOptionsFor(hotelId).map(rt =>
             `<option value="${rt.id}">${escapeHtml(rt.name)}</option>`).join('');
         $st.find('.f-room-type').html(rtOptions);
         if (curRt && $st.find('.f-room-type option[value="' + curRt + '"]').length) {
@@ -1826,7 +1827,7 @@ function syncFulfillmentRoomOptions($card) {
         // Full rooms are filtered out so they cannot be picked by other
         // families/members sharing the modal (the block's own selection is
         // kept). Labels still show the live used/capacity counts.
-        $st.find('.f-room').html(roomsOfHotel(hotelId)
+        $st.find('.f-room').html(`<option value="">—</option>` + roomsOfHotel(hotelId)
             .filter(r => !rt || String(r.room_type_id) === String(rt))
             .filter(r => !roomIsUnavailable(r.id, $st, curRoom))
             .map(r => {

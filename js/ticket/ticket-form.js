@@ -1,6 +1,31 @@
 document.getElementById('bookTicketForm').addEventListener('submit', function (event) {
     event.preventDefault(); // Prevent default form submission
     const formData = new FormData(this); // Collect form data
+
+    // Multi-leg flights: append legs JSON and use the last leg as final destination
+    if (typeof window.collectFlightLegs === 'function') {
+        const legsJson = window.collectFlightLegs();
+        if (legsJson) {
+            formData.append('flight_legs', legsJson);
+            const finalDestination = window.getFlightLegsFinalDestination();
+            if (finalDestination) formData.set('destination', finalDestination);
+        }
+    }
+
+    // Round trip: append return flight segments JSON and derive return fields
+    const tripType = formData.get('tripType');
+    if (tripType === 'round_trip' && typeof window.collectReturnFlightLegs === 'function') {
+        const returnLegsJson = window.collectReturnFlightLegs();
+        if (returnLegsJson) {
+            formData.append('return_flight_legs', returnLegsJson);
+            const returnFinalDestination = window.getReturnFlightLegsFinalDestination();
+            if (returnFinalDestination) formData.append('returnDestination', returnFinalDestination);
+        } else {
+            showToast('Please add at least one return flight segment for a round trip.', 'error');
+            return;
+        }
+    }
+
     const submitBtn = this.querySelector('button[type="submit"]'); // Get submit button
     const bookTicketForm = this; // Reference to form
     
@@ -56,17 +81,13 @@ function resetBookTicketForm() {
     // 3. Re-sync bootstrap-select UI with the reset values
     $('#bookTicketModal .selectpicker').selectpicker('refresh');
 
-    // 4. Hide round-trip fields left visible from a previous booking
-    const returnJourneyFields = document.getElementById('returnJourneyFields');
-    const returnDateField = document.getElementById('returnDateField');
-    if (returnJourneyFields) returnJourneyFields.style.display = 'none';
-    if (returnDateField) returnDateField.style.display = 'none';
-    const returnDestination = document.getElementById('returnDestination');
-    const returnDate = document.getElementById('returnDate');
-    const returnDepartureTime = document.getElementById('returnDepartureTime');
-    if (returnDestination) returnDestination.value = '';
-    if (returnDate) returnDate.value = '';
-    if (returnDepartureTime) returnDepartureTime.value = '';
+    // 4. Hide round-trip return segments left visible from a previous booking
+    const returnFlightSegmentsGroup = document.getElementById('returnFlightSegmentsGroup');
+    if (returnFlightSegmentsGroup) returnFlightSegmentsGroup.style.display = 'none';
+    const returnFlightStops = document.getElementById('returnFlightStops');
+    const returnFlightRoutePreview = document.getElementById('returnFlightRoutePreview');
+    if (returnFlightStops) { returnFlightStops.textContent = ''; returnFlightStops.style.display = 'none'; }
+    if (returnFlightRoutePreview) returnFlightRoutePreview.textContent = '';
 
     // 5. Clear supplier-derived currency
     const currInput = document.getElementById('curr');

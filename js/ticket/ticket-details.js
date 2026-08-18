@@ -31,7 +31,78 @@ $(document).on('click', '.view-details', function() {
         $('#detailsModal #phone').text(ticketData.ticket.phone || 'N/A');
         $('#detailsModal #gender').text(ticketData.ticket.gender || 'N/A');
         $('#detailsModal #description').text(ticketData.ticket.description || 'N/A');
+
+        // Populate flight legs (multi-leg itineraries)
+        var legs = [];
+        if (ticketData.ticket.flight_legs) {
+            try { legs = JSON.parse(ticketData.ticket.flight_legs); } catch (e) { legs = []; }
+        }
+        if (!legs.length) {
+            legs = [{
+                origin: ticketData.ticket.origin,
+                destination: ticketData.ticket.destination,
+                airline: ticketData.ticket.airline,
+                date: ticketData.ticket.departure_date,
+                time: ticketData.ticket.departure_time
+            }];
+        }
+        var routeCities = legs.map(function (l) { return l.origin; }).filter(Boolean);
+        var lastDest = legs.length ? legs[legs.length - 1].destination : '';
+        if (lastDest) routeCities.push(lastDest);
+        $('#detailsModal #flight-legs-route').text(routeCities.join(' \u2192 ') || 'N/A');
+        var legsList = $('#detailsModal #flight-legs-list');
+        legsList.empty();
+        legs.forEach(function (leg, i) {
+            var route = [leg.origin, leg.destination].filter(Boolean).join(' \u2192 ') || 'N/A';
+            var dep = [leg.date, leg.time].filter(Boolean).join(' @ ');
+            var arr = [leg.arrival_date, leg.arrival_time].filter(Boolean).join(' @ ');
+            var meta = [];
+            if (leg.flight_number) meta.push('FN ' + leg.flight_number);
+            if (leg.duration) meta.push('Duration: ' + leg.duration);
+            if (leg.stopover) meta.push('Stopover: ' + leg.stopover);
+            legsList.append(
+                '<div class="d-flex justify-content-between align-items-start mb-2 pb-2" style="border-bottom: 1px dashed #e3e6eb;">' +
+                '    <div><strong>Leg ' + (i + 1) + ':</strong> ' + route +
+                (dep ? ' <small class="text-muted">Dep: ' + dep + '</small>' : '') +
+                (arr ? ' <small class="text-muted">Arr: ' + arr + '</small>' : '') +
+                (meta.length ? ' <small class="text-muted">(' + meta.join(' | ') + ')</small>' : '') + '</div>' +
+                '    <span class="badge badge-light">' + (leg.airline || 'N/A') + '</span>' +
+                '</div>'
+            );
+        });
         
+        // Populate return flight segments (round trip)
+        var returnLegsCard = $('#detailsModal #returnFlightSegmentsCard');
+        var returnLegsList = $('#detailsModal #return-flight-legs-list');
+        returnLegsList.empty();
+        var returnLegs = [];
+        if (ticketData.ticket.return_flight_legs) {
+            try { returnLegs = JSON.parse(ticketData.ticket.return_flight_legs); } catch (e) { returnLegs = []; }
+        }
+        if (returnLegs.length) {
+            returnLegsCard.show();
+            returnLegs.forEach(function (leg, i) {
+                var route = [leg.origin, leg.destination].filter(Boolean).join(' \u2192 ') || 'N/A';
+                var dep = [leg.date, leg.time].filter(Boolean).join(' @ ');
+                var arr = [leg.arrival_date, leg.arrival_time].filter(Boolean).join(' @ ');
+                var meta = [];
+                if (leg.flight_number) meta.push('FN ' + leg.flight_number);
+                if (leg.duration) meta.push('Duration: ' + leg.duration);
+                if (leg.stopover) meta.push('Stopover: ' + leg.stopover);
+                returnLegsList.append(
+                    '<div class="d-flex justify-content-between align-items-start mb-2 pb-2" style="border-bottom: 1px dashed #e3e6eb;">' +
+                    '    <div><strong>Leg ' + (i + 1) + ':</strong> ' + route +
+                    (dep ? ' <small class="text-muted">Dep: ' + dep + '</small>' : '') +
+                    (arr ? ' <small class="text-muted">Arr: ' + arr + '</small>' : '') +
+                    (meta.length ? ' <small class="text-muted">(' + meta.join(' | ') + ')</small>' : '') + '</div>' +
+                    '    <span class="badge badge-light">' + (leg.airline || 'N/A') + '</span>' +
+                    '</div>'
+                );
+            });
+        } else {
+            returnLegsCard.hide();
+        }
+
         // Disable date change, weight, and refund buttons for refunded tickets
         var isRefunded = ticketData.ticket.status === 'Refunded';
         $('#dateChangeBtn, #addWeightBtn, #refundBtn').prop('disabled', isRefunded);

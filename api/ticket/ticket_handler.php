@@ -76,6 +76,7 @@ $ticketsQuery = "
         tb.origin, tb.destination, tb.issue_date, tb.departure_date, tb.departure_time, tb.sold, tb.price,
         tb.profit, tb.gender, tb.currency, tb.phone, tb.description, tb.status,
         tb.trip_type, tb.return_date, tb.return_departure_time, tb.return_origin, tb.return_destination,
+        tb.flight_legs, tb.return_flight_legs,
 
         s.name as supplier_name,
         c.name as sold_to_name,
@@ -159,12 +160,31 @@ foreach ($ticketsResult as $row) {
                 'return_origin' => $row['return_origin'],
                 'return_destination' => $row['return_destination'],
                 'created_by_name' => $row['created_by_name'],
+                'flight_legs' => $row['flight_legs'],
+                'return_flight_legs' => $row['return_flight_legs'],
+                'route' => null,
                 'weight_count' => $row['weight_count'],
                 'total_weight' => $row['total_weight']
             ],
             'refund_data' => null,
             'date_change_data' => null
         ];
+
+        // Build full route string when multi-leg itinerary is present
+        if (!empty($row['flight_legs'])) {
+            $legs = json_decode($row['flight_legs'], true);
+            if (is_array($legs) && count($legs) > 1) {
+                $cities = [];
+                foreach ($legs as $leg) {
+                    if (!empty($leg['origin'])) $cities[] = $leg['origin'];
+                }
+                $lastLeg = $legs[count($legs) - 1];
+                if (!empty($lastLeg['destination'])) $cities[] = $lastLeg['destination'];
+                if (count($cities) > 1) {
+                    $tickets[$ticket_id]['ticket']['route'] = implode(' → ', $cities);
+                }
+            }
+        }
     }
 
     if (!empty($row['refund_supplier_penalty']) || !empty($row['refund_service_penalty'])) {

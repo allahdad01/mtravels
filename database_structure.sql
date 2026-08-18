@@ -1140,7 +1140,7 @@ CREATE TABLE `expenses` (
   `date` date NOT NULL,
   `description` mediumtext NOT NULL,
   `amount` decimal(10,3) NOT NULL,
-  `currency` enum('USD','AFS') NOT NULL,
+  `currency` enum('USD','AFS','EUR','DARHAM','SAR') NOT NULL DEFAULT 'USD',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `allocation_id` int(11) DEFAULT NULL,
   `global_allocation_id` int(11) DEFAULT NULL,
@@ -2718,6 +2718,8 @@ CREATE TABLE `ticket_bookings` (
   `return_departure_time` time DEFAULT NULL,
   `return_origin` varchar(100) DEFAULT NULL,
   `return_destination` varchar(100) DEFAULT NULL,
+  `flight_legs` text DEFAULT NULL,
+  `return_flight_legs` text DEFAULT NULL,
   `created_by` int(11) NOT NULL,
   `imported` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -1609,6 +1609,7 @@ return [
 'visa' => 'ویزا',
 'hotel' => 'هوتل',
 'umrah' => 'عمره',
+'general_summary' => 'خلاصه عمومی (درآمد و هزینه)',
 'no_data_found_for_the_selected_criteria' => 'هیچ داده‌ای برای معیارهای انتخاب شده یافت نشد',
 'report_generated_successfully_you_can_now_export_it_in_your_preferred_format' => 'گزارش با موفقیت ایجاد شد. اکنون می‌توانید آن را به قالب دلخواه خود صادر کنید.',
 'report_category' => 'دسته‌بندی گزارش',
@@ -5542,4 +5543,5 @@ return [
 'send_currency' => 'اسعار ارسال',
 'new_hawala' => 'حواله جدید',
 'enter_the_exchange_rate_to_convert_between_currencies' => 'نرخ تبدیل را برای تبدیل بین اسعار وارد کنید',
+'profit_report' => 'گزارش لابسته',
 ];

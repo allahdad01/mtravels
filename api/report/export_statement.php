@@ -491,8 +491,8 @@ try {
             
         case 'main_account':
             // Get main account details
-            $stmt = $pdo->prepare("SELECT * FROM main_account WHERE id = ?");
-            $stmt->execute([$entity]);
+            $stmt = $pdo->prepare("SELECT * FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmt->execute([$entity, $tenant_id, $branch_id]);
             $entityDetails = $stmt->fetch(PDO::FETCH_ASSOC);
             
             // Get main account transactions with consolidated view

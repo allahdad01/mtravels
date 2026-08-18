@@ -1,4 +1,15 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // Mark negative balance cells (red) on the table being printed
+    function txnMarkNegativeBalances(table) {
+        table.find('td.txn-balance').each(function () {
+            const text = $(this).text().replace(/[^0-9.-]/g, '');
+            const num = parseFloat(text);
+            if (!isNaN(num) && num < 0) {
+                $(this).addClass('txn-neg');
+            }
+        });
+    }
+
     // Print main account transactions
     const printTransactionsBtn = document.getElementById('printTransactionsBtn');
     if (printTransactionsBtn) {
@@ -11,6 +22,7 @@ document.addEventListener('DOMContentLoaded', function() {
             table.find('tr').each(function() {
                 $(this).find('th:last, td:last').remove();
             });
+            txnMarkNegativeBalances(table);
 
             // Create a new window for printing
             const printWindow = window.open('', '_blank');
@@ -25,6 +37,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             table { width: 100%; border-collapse: collapse; }
                             th, td { padding: 8px; border: 1px solid #ddd; }
                             th { background-color: #f5f5f5; }
+                            td.txn-neg { color: #c00; font-weight: 700; }
                             @media print {
                                 .no-print { display: none; }
                             }
@@ -59,6 +72,7 @@ document.addEventListener('DOMContentLoaded', function() {
             table.find('tr').each(function() {
                 $(this).find('th:last, td:last').remove();
             });
+            txnMarkNegativeBalances(table);
 
             // Create a new window for printing
             const printWindow = window.open('', '_blank');
@@ -73,6 +87,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             table { width: 100%; border-collapse: collapse; }
                             th, td { padding: 8px; border: 1px solid #ddd; }
                             th { background-color: #f5f5f5; }
+                            td.txn-neg { color: #c00; font-weight: 700; }
                             @media print {
                                 .no-print { display: none; }
                             }
@@ -107,6 +122,7 @@ document.addEventListener('DOMContentLoaded', function() {
             table.find('tr').each(function() {
                 $(this).find('th:last, td:last').remove();
             });
+            txnMarkNegativeBalances(table);
 
             // Create a new window for printing
             const printWindow = window.open('', '_blank');
@@ -121,6 +137,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             table { width: 100%; border-collapse: collapse; }
                             th, td { padding: 8px; border: 1px solid #ddd; }
                             th { background-color: #f5f5f5; }
+                            td.txn-neg { color: #c00; font-weight: 700; }
                             @media print {
                                 .no-print { display: none; }
                             }

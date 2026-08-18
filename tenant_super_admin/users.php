@@ -79,12 +79,79 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
                 break;
+            case 'delete':
+                $user_id=intval($_POST['user_id']??0);
+                $permanent = !empty($_POST['permanent']);
+                if (!$user_id) { $message='Invalid user ID.'; $messageType='danger'; }
+                elseif ($user_id===intval($_SESSION['user_id'])) { $message='You cannot delete your own account.'; $messageType='danger'; }
+                else {
+                    try {
+                        $stmt=$pdo->prepare("SELECT id, name, role FROM users WHERE id=? AND tenant_id=?"); $stmt->execute([$user_id,$tenant_id]);
+                        $target=$stmt->fetch(PDO::FETCH_ASSOC);
+                        if (!$target) { $message='User not found.'; $messageType='danger'; }
+                        elseif ($target['role']==='tenant_super_admin') {
+                            $stmt=$pdo->prepare("SELECT COUNT(*) FROM users WHERE tenant_id=? AND role='tenant_super_admin' AND fired=0 AND id!=?"); $stmt->execute([$tenant_id,$user_id]);
+                            if ($stmt->fetchColumn()==0) { $message='Cannot delete the last super admin. You need at least one super admin account.'; $messageType='danger'; }
+                            else { $deletable=true; }
+                        } else { $deletable=true; }
+                        if (!empty($deletable)) {
+                            if ($permanent) {
+                                $pdo->beginTransaction();
+                                $pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
+                                try {
+                                    $owned = [
+                                        ['attendance',          'DELETE FROM attendance WHERE user_id = ?', [$user_id]],
+                                        ['totp_secrets',        'DELETE FROM totp_secrets WHERE user_id = ?', [$user_id]],
+                                        ['totp_recovery_codes', 'DELETE FROM totp_recovery_codes WHERE user_id = ?', [$user_id]],
+                                        ['user_online_sessions','DELETE FROM user_online_sessions WHERE user_id = ?', [$user_id]],
+                                        ['user_typing_status',  'DELETE FROM user_typing_status WHERE user_id = ?', [$user_id]],
+                                        ['user_tutorial_learned','DELETE FROM user_tutorial_learned WHERE user_id = ?', [$user_id]],
+                                        ['floating_tasks',      'DELETE FROM floating_tasks WHERE user_id = ?', [$user_id]],
+                                        ['password_resets',     'DELETE FROM password_resets WHERE user_id = ?', [$user_id]],
+                                        ['user_agreements',     'DELETE FROM user_agreements WHERE user_id = ?', [$user_id]],
+                                        ['user_documents',      'DELETE FROM user_documents WHERE user_id = ?', [$user_id]],
+                                        ['user_blocks',         'DELETE FROM user_blocks WHERE user_id = ? OR blocked_user_id = ?', [$user_id,$user_id]],
+                                        ['user_mutes',          'DELETE FROM user_mutes WHERE user_id = ? OR muted_user_id = ?', [$user_id,$user_id]],
+                                        ['performance_reviews', 'DELETE FROM performance_reviews WHERE user_id = ?', [$user_id]],
+                                        ['payroll_details',     'DELETE FROM payroll_details WHERE user_id = ?', [$user_id]],
+                                        ['salary_adjustments',  'DELETE FROM salary_adjustments WHERE user_id = ?', [$user_id]],
+                                        ['salary_advances',     'DELETE FROM salary_advances WHERE user_id = ?', [$user_id]],
+                                        ['salary_bonuses',      'DELETE FROM salary_bonuses WHERE user_id = ?', [$user_id]],
+                                        ['salary_deductions',   'DELETE FROM salary_deductions WHERE user_id = ?', [$user_id]],
+                                        ['salary_payments',     'DELETE FROM salary_payments WHERE user_id = ?', [$user_id]],
+                                        ['employee_terminations','DELETE FROM employee_terminations WHERE employee_id = ?', [$user_id]],
+                                        ['chat_group_members',  'DELETE FROM chat_group_members WHERE member_id = ?', [$user_id]],
+                                        ['activity_log',        'DELETE FROM activity_log WHERE user_id = ?', [$user_id]],
+                                    ];
+                                    foreach ($owned as [$t, $sql, $params]) {
+                                        $pdo->prepare($sql)->execute($params);
+                                    }
+                                    $pdo->prepare("UPDATE subscription_payments SET processed_by = NULL WHERE processed_by = ?")->execute([$user_id]);
+                                    $pdo->prepare("DELETE FROM users WHERE id = ? AND tenant_id = ?")->execute([$user_id,$tenant_id]);
+                                    $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
+                                    $pdo->commit();
+                                    logActivity($pdo,$tenant_id,$_SESSION['user_id'],'hard_delete','users',$user_id,null,json_encode(['name'=>$target['name'],'role'=>$target['role']]));
+                                    $message='User permanently deleted. All their owned records were removed.'; $messageType='success';
+                                } catch (Exception $e) {
+                                    $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
+                                    if ($pdo->inTransaction()) { $pdo->rollBack(); }
+                                    throw $e;
+                                }
+                            } else {
+                                $pdo->prepare("UPDATE users SET fired=1,fired_at=NOW(),deleted_at=NOW(),updated_at=NOW() WHERE id=? AND tenant_id=?")->execute([$user_id,$tenant_id]);
+                                logActivity($pdo,$tenant_id,$_SESSION['user_id'],'delete','users',$user_id,null,json_encode(['name'=>$target['name'],'role'=>$target['role']]));
+                                $message='User deleted successfully. Their historical records are kept.'; $messageType='success';
+                            }
+                        }
+                    } catch (PDOException $e) { $message='Error deleting user: '.$e->getMessage(); $messageType='danger'; }
+                }
+                break;
         }
     }
 }
 
 try {
-    $stmt=$pdo->prepare("SELECT u.*,b.name as branch_name FROM users u LEFT JOIN branches b ON u.branch_id=b.id WHERE u.tenant_id=? ORDER BY u.created_at DESC");
+    $stmt=$pdo->prepare("SELECT u.*,b.name as branch_name FROM users u LEFT JOIN branches b ON u.branch_id=b.id WHERE u.tenant_id=? AND u.fired=0 ORDER BY u.created_at DESC");
     $stmt->execute([$tenant_id]); $users=$stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) { $users=[]; }
 
@@ -212,6 +279,8 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
 .act-btn{width:32px;height:32px;border-radius:8px;border:1.5px solid var(--border);background:var(--card-bg);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;font-size:13px;margin:0 2px}
 .act-btn.edit{color:var(--blue)}   .act-btn.edit:hover{background:rgba(64,153,255,.1);border-color:var(--blue)}
 .act-btn.key{color:var(--amber)}   .act-btn.key:hover{background:rgba(245,158,11,.1);border-color:var(--amber)}
+.act-btn.del{color:var(--red)}     .act-btn.del:hover{background:rgba(239,68,68,.1);border-color:var(--red)}
+.act-btn.del-hard{color:#fff;background:var(--red);border-color:var(--red)}   .act-btn.del-hard:hover{background:#dc2626;border-color:#dc2626}
 
 /* Empty */
 .empty-state{text-align:center;padding:60px 20px}
@@ -383,6 +452,21 @@ body,.pcoded-main-container{font-family:'Plus Jakarta Sans',sans-serif!important
                         <td>
                             <button class="act-btn edit" onclick="editUser(<?= $user['id'] ?>)" title="Edit User"><i class="feather icon-edit"></i></button>
                             <button class="act-btn key" onclick="resetPassword(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name'],ENT_QUOTES) ?>')" title="Reset Password"><i class="fas fa-key"></i></button>
+                            <?php if ($user['id'] !== intval($_SESSION['user_id'])): ?>
+                            <form method="POST" style="display:inline;" onsubmit="return confirm('Delete user &quot;<?= htmlspecialchars($user['name'],ENT_QUOTES) ?>&quot;? They will lose access immediately and be removed from this list. Their historical records (salary, tickets, activity) are kept. This cannot be undone.')">
+                                <input type="hidden" name="action" value="delete">
+                                <input type="hidden" name="user_id" value="<?= $user['id'] ?>">
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token,ENT_QUOTES,'UTF-8') ?>">
+                                <button type="submit" class="act-btn del" title="Delete User (keeps history)"><i class="feather icon-trash-2"></i></button>
+                            </form>
+                            <form method="POST" style="display:inline;" onsubmit="return confirm('PERMANENTLY DELETE user &quot;<?= htmlspecialchars($user['name'],ENT_QUOTES) ?>&quot;? This removes them AND all their owned records (attendance, salary, documents, reviews, activity log, chat group memberships, etc.). Subscription payment logs referencing them are unassigned. This CANNOT be undone!')">
+                                <input type="hidden" name="action" value="delete">
+                                <input type="hidden" name="permanent" value="1">
+                                <input type="hidden" name="user_id" value="<?= $user['id'] ?>">
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf_token,ENT_QUOTES,'UTF-8') ?>">
+                                <button type="submit" class="act-btn del-hard" title="Delete User Permanently (removes all their data)"><i class="feather icon-x-octagon"></i></button>
+                            </form>
+                            <?php endif; ?>
                         </td>
                     </tr>
                     <?php endforeach; ?>

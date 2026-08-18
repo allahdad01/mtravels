@@ -220,8 +220,8 @@ try {
             break;
 
         case 'create':
-            if ($role !== 'finance') {
-                throw new Exception('Only finance users can submit a settlement');
+            if (!in_array($role, ['finance', 'admin'], true)) {
+                throw new Exception('Only finance or admin users can submit a settlement');
             }
             $currency = strtoupper(trim($_POST['currency'] ?? ''));
             $amount   = (float) ($_POST['amount'] ?? 0);
@@ -255,6 +255,9 @@ try {
             ], JSON_UNESCAPED_UNICODE));
 
             $msg = "Finance submitted {$currency} {$amount} for settlement.";
+            if ($role === 'admin') {
+                $msg = "You submitted {$currency} {$amount} for settlement.";
+            }
             pushNotification($pdo, $tenant_id, $branch_id, 'admin', $msg, $id);
 
             echo json_encode(['success' => true, 'message' => 'Settlement submitted for admin approval', 'id' => $id]);
@@ -320,10 +323,10 @@ try {
             break;
 
         case 'delete':
-            // Finance can retract their OWN still-pending submission
-            // (e.g. wrong amount) before admin acts on it.
-            if ($role !== 'finance') {
-                throw new Exception('Only finance users can delete a settlement');
+            // Finance (or admin settling their own cash) can retract a still-pending
+            // submission (e.g. wrong amount) before it is acted on.
+            if (!in_array($role, ['finance', 'admin'], true)) {
+                throw new Exception('Only finance or admin users can delete a settlement');
             }
             $id = (int) ($_POST['id'] ?? 0);
             if (!$id) throw new Exception('Settlement ID required');

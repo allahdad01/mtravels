@@ -86,7 +86,7 @@ include '../includes/header.php';
     .cs-btn-sm { padding: 6px 10px; font-size: 12px; }
 
     .cs-table-wrap { background: var(--cs-surface); border: 1px solid var(--cs-border); border-radius: var(--cs-r-lg); box-shadow: var(--cs-sh); overflow: hidden; }
-    .cs-t-head, .cs-t-row { display: grid; grid-template-columns: 110px 120px 110px 1fr 110px 90px; gap: 12px; padding: 10px 16px; align-items: center; }
+    .cs-t-head, .cs-t-row { display: grid; grid-template-columns: 110px 120px 110px 1fr 110px 210px; gap: 12px; padding: 10px 16px; align-items: center; }
     .cs-t-head { background: var(--cs-muted); border-bottom: 1px solid var(--cs-border); }
     .cs-t-head span { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; color: var(--cs-text-sub); }
     .cs-t-row { border-bottom: 1px solid var(--cs-border); transition: background 0.1s; }
@@ -160,6 +160,9 @@ include '../includes/header.php';
         </div>
     <?php else: ?>
         <!-- ── Admin view ── -->
+        <div class="cs-section-label">My collected cash (auto) — available to settle</div>
+        <div class="cs-cards" id="adminSummaryCards"></div>
+
         <div class="cs-block">
             <div class="cs-block-title">Pending settlements</div>
             <div class="cs-table-wrap">
@@ -337,8 +340,8 @@ function statusPill(s) {
 const renderPill = statusPill;
 
 /* ── Finance view ── */
-function renderFinanceSummary(currencies) {
-    const wrap = qs('#summaryCards');
+function renderFinanceSummary(currencies, wrapId) {
+    const wrap = qs(wrapId || '#summaryCards');
     if (!wrap) return;
     const order = ['USD','AFS','EUR','DARHAM','SAR'];
     const items = order.filter(c => currencies[c]).map(c => {
@@ -351,7 +354,7 @@ function renderFinanceSummary(currencies) {
                 <div class="cs-card-sub">Handed over: ${money(d.confirmed)} · Pending: ${money(d.pending)}</div>
                 <div class="cs-card-actions">
                     <button class="cs-btn cs-btn-sm" onclick="openTransactions('${esc(c)}')">View transactions</button>
-                    <button class="cs-btn cs-btn-green cs-btn-sm" onclick="openSubmit('${esc(c)}', ${Number(d.available).toFixed(2)}, ${Number(d.remaining).toFixed(2)})">Submit to Admin</button>
+                    <button class="cs-btn cs-btn-green cs-btn-sm" onclick="openSubmit('${esc(c)}', ${Number(d.available).toFixed(2)}, ${Number(d.remaining).toFixed(2)})">${ROLE === 'admin' ? 'Settle my cash' : 'Submit to Admin'}</button>
                 </div>
             </div>`;
     }).join('');
@@ -394,6 +397,7 @@ function deleteSettlement(id) {
 
 /* ── Admin view ── */
 function loadAdmin() {
+    getSummary().then(res => renderFinanceSummary(res.currencies, '#adminSummaryCards')).catch(e => showAlert(e.message, 'danger'));
     fetch('../api/finance/cash_settlements.php?action=list&status=pending', { credentials: 'include' })
         .then(r => r.json())
         .then(res => {
@@ -442,9 +446,9 @@ function renderAdminList(list) {
             <span class="cs-t-note" title="${esc(s.request_note)}">${esc(s.request_note) || '—'}</span>
             <span>${renderPill(s.status)}
                 ${s.status === 'rejected' && s.reject_reason ? '<div class="cs-t-dim">' + esc(s.reject_reason) + '</div>' : ''}
-                <div class="cs-t-dim" style="margin-top:4px;">
-                    <a href="#" onclick="viewItems(${s.id}); return false;" style="color:var(--cs-blue-tx);">Items</a>
-                    ${s.status === 'confirmed' ? `<span style="color:var(--cs-text-hint);"> · <a href="#" onclick="printSettlement(${s.id}); return false;" style="color:var(--cs-blue-tx);">Print receipt</a></span>` : ''}
+                <div style="margin-top:4px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                    <button class="cs-btn cs-btn-sm" onclick="viewItems(${s.id})" title="View income items">Items</button>
+                    ${s.status === 'confirmed' ? `<button class="cs-btn cs-btn-sm" onclick="printSettlement(${s.id})">Print receipt</button>` : ''}
                 </div>
             </span>
         </div>`).join('');
@@ -516,10 +520,10 @@ let currentAvailable = 0;
 function openSubmit(currency, available, remaining) {
     currentAvailable = available;
     qs('#submitCurrency').value = currency;
-    qs('#submitAmount').value = '';
+    qs('#submitAmount').value = available > 0 ? available : '';
     qs('#submitNote').value = '';
     qs('#submitWarn').style.display = 'none';
-    qs('#submitModalTitle').textContent = 'Submit ' + currency + ' to Admin';
+    qs('#submitModalTitle').textContent = (ROLE === 'admin' ? 'Settle ' : 'Submit ') + currency + (ROLE === 'admin' ? ' (my collected cash)' : ' to Admin');
     fillCurrencies(currency);
     openModal('submitOverlay');
 }
@@ -550,7 +554,7 @@ qs('#submitForm').addEventListener('submit', e => {
     const note = qs('#submitNote').value.trim();
     if (!amount || amount <= 0) { showAlert('Enter a valid amount', 'danger'); return; }
     if (amount > currentAvailable) { showAlert('Amount exceeds available balance', 'danger'); return; }
-    post('create', { currency, amount, note }, () => { closeAll(); loadFinance(); });
+    post('create', { currency, amount, note }, () => { closeAll(); ROLE === 'admin' ? loadAdmin() : loadFinance(); });
 });
 
 /* ── Reject modal ── */
@@ -728,7 +732,9 @@ function renderItemsModal(res) {
         '<div style="display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap;">'
         + details
         + '<div style="flex:1 1 330px; min-width:0;">'
+        + '<div style="overflow-x:auto; max-width:100%;">'
         + '<table class="cs-tx-table">' + thead + '<tbody>' + res.items.map(rowHtml).join('') + '</tbody></table>'
+        + '</div>'
         + '<table class="cs-tx-table" style="margin-top:12px;"><tbody>'
         + '<tr style="background:var(--cs-muted);">'
         + '<td style="font-weight:700;">Total handed over</td>'

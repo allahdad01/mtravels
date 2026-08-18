@@ -30,20 +30,10 @@ if (($umrahFilterType === 'family' || $umrahFamilyType === 'specific') && $speci
     $umrahFilterSql = " AND u.family_id = ?";
     $umrahFilterParams[] = $specificFamily;
 } elseif ($umrahFilterType === 'flight_date' && $umrahFlightDate) {
-    $umrahFilterSql = " AND EXISTS (
-        SELECT 1 FROM umrah_flight_fulfillments ff2
-        JOIN umrah_fulfillments uf2 ON uf2.id = ff2.fulfillment_id
-        JOIN umrah_booking_services ubs2 ON ubs2.id = uf2.booking_service_id
-        WHERE ubs2.booking_id = u.booking_id AND uf2.fulfillment_type = 'flight' AND uf2.status <> 'cancelled'
-        AND DATE(ff2.departure_time) = ?)";
+    $umrahFilterSql = " AND DATE(u.flight_date) = ?";
     $umrahFilterParams[] = $umrahFlightDate;
 } elseif ($umrahFilterType === 'return_date' && $umrahReturnDate) {
-    $umrahFilterSql = " AND EXISTS (
-        SELECT 1 FROM umrah_flight_fulfillments ff2
-        JOIN umrah_fulfillments uf2 ON uf2.id = ff2.fulfillment_id
-        JOIN umrah_booking_services ubs2 ON ubs2.id = uf2.booking_service_id
-        WHERE ubs2.booking_id = u.booking_id AND uf2.fulfillment_type = 'flight' AND uf2.status <> 'cancelled'
-        AND DATE(ff2.return_departure_time) = ?)";
+    $umrahFilterSql = " AND DATE(u.return_date) = ?";
     $umrahFilterParams[] = $umrahReturnDate;
 }
 
@@ -90,6 +80,9 @@ try {
         $reportTitle = "$categoryTitle Reports";
         if ($reportType === 'general') {
             $reportTitle = "General Report: $categoryTitle";
+            if ($reportCategory === 'general_summary') {
+                $reportTitle = "General Report: Income & Expense by Source";
+            }
         }
     } else {
         $reportTitle = "$categoryTitle Reports for " . ucwords($reportType) . ": $entityName";
@@ -100,6 +93,8 @@ try {
     $query = "";
     $params = [];
     $headers = [];
+    $tables = [];
+    $sections = [];
     
     // Handle general report type that doesn't specify an entity
     if ($reportType === 'general') {
@@ -570,111 +565,122 @@ try {
                     $query = "
                         SELECT
                             u.booking_id,
+                            f.head_of_family,
                             u.name,
-                            u.passport_number,
+                            u.fname,
+                            u.gender,
                             u.dob,
-                            (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                            u.passport_number,
+                            u.passport_expiry,
+                            u.id_type,
+                            f.contact,
+                            f.address,
+                            g.group_name,
+                            u.entry_date,
+                            u.created_at,
+                            COALESCE(u.flight_date, (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
                                 JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
                                 JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
                                 WHERE ubs2.booking_id = u.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
-                                ORDER BY ff.id DESC LIMIT 1) AS flight_date,
-                            (SELECT DATE(ff.return_departure_time) FROM umrah_flight_fulfillments ff
+                                ORDER BY ff.id DESC LIMIT 1)) AS flight_date,
+                            COALESCE(u.return_date, (SELECT DATE(ff.return_departure_time) FROM umrah_flight_fulfillments ff
                                 JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
                                 JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
                                 WHERE ubs2.booking_id = u.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
-                                ORDER BY ff.id DESC LIMIT 1) AS return_date,
+                                ORDER BY ff.id DESC LIMIT 1)) AS return_date,
                             u.duration,
                             u.room_type,
                             u.price,
                             u.sold_price,
+                            u.discount,
                             u.profit,
                             u.received_bank_payment,
                             u.bank_receipt_number,
                             u.paid,
                             u.due,
                             u.currency,
-                            u.remarks,
-                            u.created_at,
-                
-                            f.head_of_family,
+                            u.exchange_rate,
+                            u.status,
                             f.tazmin,
-                            f.visa_status,
-                            f.contact,
-                
                             c.name AS client_name,
                             m.name AS account_name,
-                
                             ur.refund_type AS refund_status,
-                            GROUP_CONCAT(DISTINCT s.name SEPARATOR ', ') AS supplier_name
-                
+                            GROUP_CONCAT(DISTINCT ubs.service_type SEPARATOR ', ') AS services,
+                            GROUP_CONCAT(DISTINCT s.name SEPARATOR ', ') AS supplier_name,
+                            u.remarks
+
                         FROM umrah_bookings u
                         LEFT JOIN families f ON u.family_id = f.family_id
+                        LEFT JOIN umrah_groups g ON f.group_id = g.group_id
                         LEFT JOIN clients c ON u.sold_to = c.id
                         LEFT JOIN main_account m ON u.paid_to = m.id
                         LEFT JOIN umrah_refunds ur ON u.booking_id = ur.booking_id
                         LEFT JOIN umrah_booking_services ubs ON u.booking_id = ubs.booking_id
-                        LEFT JOIN suppliers s ON ubs.supplier_id = s.id
+                        LEFT JOIN umrah_fulfillments uf ON uf.booking_service_id = ubs.id AND uf.status <> 'cancelled'
+                        LEFT JOIN suppliers s ON s.id = COALESCE(uf.supplier_id, ubs.supplier_id)
                         WHERE " . $umrahDateCondition . "
                           AND u.tenant_id = ?
                           AND u.branch_id = ?
                     ";
-                
+
                     $query .= $umrahFilterSql;
-                
+
                     $query .= "
                         GROUP BY u.booking_id
                         ORDER BY u.entry_date DESC
                     ";
-                
+
                     $params = array_merge($umrahDateParams, [$tenant_id, $branch_id]);
                     $params = array_merge($params, $umrahFilterParams);
-                
+
                     // ===============================
-                    // 2. COLUMN DEFINITION (SINGLE SOURCE OF TRUTH)
+                    // 2. HEADERS (SINGLE SOURCE OF TRUTH)
                     // ===============================
-                    $columns = [
-                        'head_of_family' => 'Head of Family',
-                        'name'           => 'Name',
-                        'passport_number'=> 'Passport Number',
-                        'dob'            => 'Date of Birth',
-                        'contact'        => 'Phone',
-                        'created_at'     => 'Created At',
-                        'flight_date'    => 'Flight Date',
-                        'return_date'    => 'Return Date',
-                        'duration'       => 'Duration',
-                        'room_type'      => 'Room Type',
+                    $headers = [
+                        'Head of Family',
+                        'Name',
+                        'Father Name',
+                        'Gender',
+                        'Date of Birth',
+                        'Passport Number',
+                        'Passport Expiry',
+                        'ID Type',
+                        'Phone',
+                        'Address',
+                        'Group',
+                        'Entry Date',
+                        'Created At',
+                        'Flight Date',
+                        'Return Date',
+                        'Duration',
+                        'Room Type',
+                        'Sold Price',
+                        'Bank Payment',
+                        'Bank Receipt',
+                        'Paid',
+                        'Due',
+                        'Currency',
+                        'Exchange Rate',
+                        'Status',
+                        'Tazmin',
+                        'Client',
+                        'Account',
+                        'Refund Status',
+                        'Services',
+                        'Remarks',
                     ];
-                
+
+                    // Sensitive columns only for admin
                     if ($user_role === 'admin') {
-                        $columns['price'] = 'Price';
+                        $insertIndex = array_search('Sold Price', $headers);
+                        if ($insertIndex !== false) {
+                            array_splice($headers, $insertIndex, 0, ['Price']);
+                            $soldPriceIndex = array_search('Sold Price', $headers);
+                            array_splice($headers, $soldPriceIndex + 1, 0, ['Discount', 'Profit']);
+                        }
+                        $headers[] = 'Supplier';
                     }
-                
-                    $columns['sold_price'] = 'Sold Price';
-                
-                    if ($user_role === 'admin') {
-                        $columns['profit'] = 'Profit';
-                    }
-                
-                    $columns += [
-                        'received_bank_payment' => 'Bank Payment',
-                        'bank_receipt_number'   => 'Bank Receipt',
-                        'paid'                  => 'Paid',
-                        'due'                   => 'Due',
-                        'currency'              => 'Currency',
-                        'tazmin'                => 'Tazmin',
-                        'client_name'           => 'Client',
-                        'account_name'          => 'Account',
-                        'visa_status'           => 'Visa Status',
-                        'remarks'               => 'Remarks',
-                        'refund_status'         => 'Refund Status',
-                    ];
-                
-                    if ($user_role === 'admin') {
-                        $columns['supplier_name'] = 'Supplier';
-                    }
-                
-                    $headers = array_values($columns);
-                
+
                     break;
                 
 
@@ -791,32 +797,45 @@ try {
                 break;
 
             case 'umrah_refund':
-                $query = "SELECT 
-                    ub.passport_number,
-                    ub.name as pilgrim_name,
-                    ur.refund_type,
-                    ur.refund_amount,
-                    ur.currency,
-                    ur.exchange_rate,
-                    ur.created_at,
-                    ur.reason,
-                    s.name as supplier_name,
-                    c.name as client_name,
-                    m.name as account_name,
-                    u.name as processed_by_name
-                    FROM umrah_refunds ur
-                    LEFT JOIN umrah_bookings ub ON ur.booking_id = ub.booking_id
-                    LEFT JOIN suppliers s ON ub.supplier = s.id
-                    LEFT JOIN clients c ON ub.sold_to = c.id
-                    LEFT JOIN main_account m ON ub.paid_to = m.id
-                    LEFT JOIN users u ON ur.processed_by = u.id
-                    WHERE ur.created_at BETWEEN ? AND ? AND ur.tenant_id = ? AND ur.branch_id = ?";
+                $query = "SELECT
+                     ub.passport_number,
+                     ub.name as pilgrim_name,
+                     ub.fname,
+                     ur.refund_type,
+                     ur.refund_amount,
+                     ur.supplier_penalty,
+                     ur.service_penalty,
+                     ur.base,
+                     ur.sold,
+                     ur.currency,
+                     ub.exchange_rate,
+                     ur.created_at,
+                     ur.reason,
+                     GROUP_CONCAT(DISTINCT s.name SEPARATOR ', ') as supplier_name,
+                     c.name as client_name,
+                     m.name as account_name,
+                     u.name as processed_by_name
+                     FROM umrah_refunds ur
+                     LEFT JOIN umrah_bookings ub ON ur.booking_id = ub.booking_id
+                     LEFT JOIN umrah_booking_services ubs ON ub.booking_id = ubs.booking_id
+                     LEFT JOIN umrah_fulfillments uf ON uf.booking_service_id = ubs.id AND uf.status <> 'cancelled'
+                     LEFT JOIN suppliers s ON s.id = COALESCE(uf.supplier_id, ubs.supplier_id)
+                     LEFT JOIN clients c ON ub.sold_to = c.id
+                     LEFT JOIN main_account m ON ub.paid_to = m.id
+                     LEFT JOIN users u ON ur.processed_by = u.id
+                     WHERE ur.created_at BETWEEN ? AND ? AND ur.tenant_id = ? AND ur.branch_id = ?
+                     GROUP BY ur.id";
                 $params = [$startDate, $endDate, $tenant_id, $branch_id];
                 $headers = [
                     'Passport Number',
                     'Pilgrim Name',
+                    'Father Name',
                     'Refund Type',
                     'Refund Amount',
+                    'Supplier Penalty',
+                    'Service Penalty',
+                    'Base',
+                    'Sold',
                     'Currency',
                     'Exchange Rate',
                     'Refund Date',
@@ -826,6 +845,172 @@ try {
                     'Account',
                     'Processed By'
                 ];
+                break;
+
+            case 'general_summary':
+                $headers = ['Date', 'Reference', 'Party', 'Details', 'Profit', 'Cash In', 'Cash Out', 'Currency'];
+                $data = [];
+                $query = null;
+
+                $itemQueries = [
+                    'Ticket Sales' => "SELECT DATE(tb.issue_date) d, tb.pnr ref, c.name party, CONCAT(tb.airline, ' - ', tb.origin, '-', tb.destination) details, tb.profit profit, COALESCE((SELECT SUM(mt.amount) FROM main_account_transactions mt WHERE mt.reference_id = tb.id AND mt.transaction_of = 'ticket_sale' AND mt.type = 'credit'), 0) cash_in, 0 cash_out, tb.currency currency, COALESCE((SELECT mt.currency FROM main_account_transactions mt WHERE mt.reference_id = tb.id AND mt.transaction_of = 'ticket_sale' AND mt.type = 'credit' LIMIT 1), tb.currency) cash_currency FROM ticket_bookings tb LEFT JOIN clients c ON tb.sold_to = c.id WHERE tb.issue_date BETWEEN ? AND ? AND tb.tenant_id = ? AND tb.branch_id = ?",
+                    'Date Changes' => "SELECT DATE(dc.created_at) d, dc.pnr ref, c.name party, CONCAT(dc.airline, ' - ', dc.origin, '-', dc.destination) details, dc.service_penalty profit, COALESCE((SELECT SUM(mt.amount) FROM main_account_transactions mt WHERE mt.reference_id = dc.id AND mt.transaction_of = 'date_change' AND mt.type = 'credit'), 0) cash_in, 0 cash_out, dc.currency currency, COALESCE((SELECT mt.currency FROM main_account_transactions mt WHERE mt.reference_id = dc.id AND mt.transaction_of = 'date_change' AND mt.type = 'credit' LIMIT 1), dc.currency) cash_currency FROM date_change_tickets dc LEFT JOIN clients c ON dc.sold_to = c.id WHERE dc.created_at BETWEEN ? AND ? AND dc.tenant_id = ? AND dc.branch_id = ?",
+                    'Ticket Reservations' => "SELECT DATE(tr.issue_date) d, tr.pnr ref, c.name party, CONCAT(tr.airline, ' - ', tr.origin, '-', tr.destination) details, tr.profit profit, COALESCE((SELECT SUM(mt.amount) FROM main_account_transactions mt WHERE mt.reference_id = tr.id AND mt.transaction_of = 'ticket_reserve' AND mt.type = 'credit'), 0) cash_in, 0 cash_out, tr.currency currency, COALESCE((SELECT mt.currency FROM main_account_transactions mt WHERE mt.reference_id = tr.id AND mt.transaction_of = 'ticket_reserve' AND mt.type = 'credit' LIMIT 1), tr.currency) cash_currency FROM ticket_reservations tr LEFT JOIN clients c ON tr.sold_to = c.id WHERE tr.issue_date BETWEEN ? AND ? AND tr.tenant_id = ? AND tr.branch_id = ?",
+                    'Ticket Weight' => "SELECT DATE(tw.created_at) d, t.pnr ref, c.name party, CONCAT(tw.weight, ' kg') details, tw.profit profit, COALESCE((SELECT SUM(mt.amount) FROM main_account_transactions mt WHERE mt.reference_id = tw.id AND mt.transaction_of = 'weight' AND mt.type = 'credit'), 0) cash_in, 0 cash_out, COALESCE(t.currency, 'USD') currency, COALESCE((SELECT mt.currency FROM main_account_transactions mt WHERE mt.reference_id = tw.id AND mt.transaction_of = 'weight' AND mt.type = 'credit' LIMIT 1), COALESCE(t.currency, 'USD')) cash_currency FROM ticket_weights tw LEFT JOIN ticket_bookings t ON tw.ticket_id = t.id LEFT JOIN clients c ON t.sold_to = c.id WHERE tw.created_at BETWEEN ? AND ? AND tw.tenant_id = ? AND tw.branch_id = ?",
+                    'Hotel' => "SELECT DATE(h.issue_date) d, h.order_id ref, c.name party, CONCAT(h.title, ' ', h.first_name, ' ', h.last_name) details, h.profit profit, COALESCE((SELECT SUM(mt.amount) FROM main_account_transactions mt WHERE mt.reference_id = h.id AND mt.transaction_of = 'hotel' AND mt.type = 'credit'), 0) cash_in, 0 cash_out, h.currency currency, COALESCE((SELECT mt.currency FROM main_account_transactions mt WHERE mt.reference_id = h.id AND mt.transaction_of = 'hotel' AND mt.type = 'credit' LIMIT 1), h.currency) cash_currency FROM hotel_bookings h LEFT JOIN clients c ON h.sold_to = c.id WHERE h.issue_date BETWEEN ? AND ? AND h.tenant_id = ? AND h.branch_id = ?",
+                    'Visa' => "SELECT DATE(v.receive_date) d, v.passport_number ref, c.name party, CONCAT(v.country, ' - ', v.visa_type) details, v.profit profit, COALESCE((SELECT SUM(mt.amount) FROM main_account_transactions mt WHERE mt.reference_id = v.id AND mt.transaction_of = 'visa_sale' AND mt.type = 'credit'), 0) cash_in, 0 cash_out, v.currency currency, COALESCE((SELECT mt.currency FROM main_account_transactions mt WHERE mt.reference_id = v.id AND mt.transaction_of = 'visa_sale' AND mt.type = 'credit' LIMIT 1), v.currency) cash_currency FROM visa_applications v LEFT JOIN clients c ON v.sold_to = c.id WHERE v.receive_date BETWEEN ? AND ? AND v.tenant_id = ? AND v.branch_id = ?",
+                    'Umrah Bookings' => "SELECT DATE(u.entry_date) d, u.passport_number ref, c.name party, u.duration details, u.profit profit, COALESCE((SELECT SUM(mt.amount) FROM main_account_transactions mt LEFT JOIN umrah_transactions ut ON mt.reference_id = ut.id WHERE mt.transaction_of = 'umrah_transaction' AND mt.type = 'credit' AND ut.umrah_booking_id = u.booking_id), 0) cash_in, 0 cash_out, u.currency currency, COALESCE((SELECT mt.currency FROM main_account_transactions mt LEFT JOIN umrah_transactions ut ON mt.reference_id = ut.id WHERE mt.transaction_of = 'umrah_transaction' AND mt.type = 'credit' AND ut.umrah_booking_id = u.booking_id LIMIT 1), u.currency) cash_currency FROM umrah_bookings u LEFT JOIN clients c ON u.sold_to = c.id WHERE u.entry_date BETWEEN ? AND ? AND u.tenant_id = ? AND u.branch_id = ?",
+                    'Additional Payments' => "SELECT DATE(ap.created_at) d, ap.id ref, m.name party, ap.payment_type details, ap.profit profit, COALESCE((SELECT SUM(mt.amount) FROM main_account_transactions mt WHERE mt.reference_id = ap.id AND mt.transaction_of = 'additional_payment' AND mt.type = 'credit'), 0) cash_in, 0 cash_out, ap.currency currency, COALESCE((SELECT mt.currency FROM main_account_transactions mt WHERE mt.reference_id = ap.id AND mt.transaction_of = 'additional_payment' AND mt.type = 'credit' LIMIT 1), ap.currency) cash_currency FROM additional_payments ap LEFT JOIN main_account m ON ap.main_account_id = m.id WHERE ap.created_at BETWEEN ? AND ? AND ap.tenant_id = ? AND ap.branch_id = ?",
+                ];
+                $cashQueries = [
+                    'Operating Expenses' => "SELECT DATE(mt.created_at) d, mt.receipt ref, ec.name party, e.description details, 0 profit, 0 cash_in, mt.amount cash_out, mt.currency currency FROM main_account_transactions mt LEFT JOIN expenses e ON mt.reference_id = e.id AND mt.transaction_of = 'expense' LEFT JOIN expense_categories ec ON e.category_id = ec.id WHERE mt.transaction_of = 'expense' AND mt.type = 'debit' AND mt.created_at BETWEEN ? AND ? AND mt.tenant_id = ? AND mt.branch_id = ?",
+                    'Ticket Refunds Paid' => "SELECT DATE(mt.created_at) d, rt.pnr ref, rt.passenger_name party, CONCAT(rt.airline, ' - ', rt.origin, '-', rt.destination) details, 0 profit, 0 cash_in, mt.amount cash_out, mt.currency currency FROM main_account_transactions mt LEFT JOIN refunded_tickets rt ON mt.reference_id = rt.id AND mt.transaction_of = 'ticket_refund' WHERE mt.transaction_of = 'ticket_refund' AND mt.type = 'debit' AND mt.created_at BETWEEN ? AND ? AND mt.tenant_id = ? AND mt.branch_id = ?",
+                    'Hotel Refunds Paid' => "SELECT DATE(mt.created_at) d, hb.order_id ref, CONCAT(hb.title, ' ', hb.first_name, ' ', hb.last_name) party, hb.accommodation_details details, 0 profit, 0 cash_in, mt.amount cash_out, mt.currency currency FROM main_account_transactions mt LEFT JOIN hotel_refunds hr ON mt.reference_id = hr.id AND mt.transaction_of = 'hotel_refund' LEFT JOIN hotel_bookings hb ON hr.booking_id = hb.id WHERE mt.transaction_of = 'hotel_refund' AND mt.type = 'debit' AND mt.created_at BETWEEN ? AND ? AND mt.tenant_id = ? AND mt.branch_id = ?",
+                    'Visa Refunds Paid' => "SELECT DATE(mt.created_at) d, va.passport_number ref, va.applicant_name party, CONCAT(va.country, ' - ', va.visa_type) details, 0 profit, 0 cash_in, mt.amount cash_out, mt.currency currency FROM main_account_transactions mt LEFT JOIN visa_refunds vr ON mt.reference_id = vr.id AND mt.transaction_of = 'visa_refund' LEFT JOIN visa_applications va ON vr.visa_id = va.id WHERE mt.transaction_of = 'visa_refund' AND mt.type = 'debit' AND mt.created_at BETWEEN ? AND ? AND mt.tenant_id = ? AND mt.branch_id = ?",
+                    'Umrah Refunds Paid' => "SELECT DATE(mt.created_at) d, ub.passport_number ref, ub.name party, ub.duration details, 0 profit, 0 cash_in, mt.amount cash_out, mt.currency currency FROM main_account_transactions mt LEFT JOIN umrah_refunds ur ON mt.reference_id = ur.id AND mt.transaction_of = 'umrah_refund' LEFT JOIN umrah_bookings ub ON ur.booking_id = ub.booking_id WHERE mt.transaction_of = 'umrah_refund' AND mt.type = 'debit' AND mt.created_at BETWEEN ? AND ? AND mt.tenant_id = ? AND mt.branch_id = ?",
+                    'Salary Payments' => "SELECT DATE(mt.created_at) d, mt.receipt ref, su.name party, mt.description details, 0 profit, 0 cash_in, mt.amount cash_out, mt.currency currency FROM main_account_transactions mt LEFT JOIN salary_payments sp ON mt.reference_id = sp.id AND mt.transaction_of = 'salary_payment' LEFT JOIN users su ON sp.user_id = su.id WHERE mt.transaction_of = 'salary_payment' AND mt.type = 'debit' AND mt.created_at BETWEEN ? AND ? AND mt.tenant_id = ? AND mt.branch_id = ?",
+                ];
+                $entityHeaders = ['Entity', 'Balance', 'Paid', 'Remaining', 'Currency'];
+                $entityQueries = [
+                    'Payments from Debtors' => "SELECT d.name entity, (d.balance + COALESCE((SELECT SUM(dt.amount) FROM debtor_transactions dt WHERE dt.debtor_id = d.id AND dt.transaction_type = 'credit' AND dt.payment_date BETWEEN ? AND ? AND dt.branch_id = ?), 0) - COALESCE((SELECT SUM(dt.amount) FROM debtor_transactions dt WHERE dt.debtor_id = d.id AND dt.transaction_type = 'debit' AND dt.payment_date BETWEEN ? AND ? AND dt.branch_id = ?), 0)) balance, COALESCE((SELECT SUM(dt.amount) FROM debtor_transactions dt WHERE dt.debtor_id = d.id AND dt.transaction_type = 'credit' AND dt.payment_date BETWEEN ? AND ? AND dt.branch_id = ?), 0) paid, d.balance remaining, d.currency currency FROM debtors d WHERE d.tenant_id = ? AND d.branch_id = ? AND EXISTS (SELECT 1 FROM debtor_transactions dt WHERE dt.debtor_id = d.id AND dt.transaction_type = 'credit' AND dt.payment_date BETWEEN ? AND ?) ORDER BY d.name",
+                    'Loans to Debtors' => "SELECT d.name entity, (d.balance + COALESCE((SELECT SUM(dt.amount) FROM debtor_transactions dt WHERE dt.debtor_id = d.id AND dt.transaction_type = 'credit' AND dt.payment_date BETWEEN ? AND ? AND dt.branch_id = ?), 0) - COALESCE((SELECT SUM(dt.amount) FROM debtor_transactions dt WHERE dt.debtor_id = d.id AND dt.transaction_type = 'debit' AND dt.payment_date BETWEEN ? AND ? AND dt.branch_id = ?), 0)) balance, COALESCE((SELECT SUM(dt.amount) FROM debtor_transactions dt WHERE dt.debtor_id = d.id AND dt.transaction_type = 'debit' AND dt.payment_date BETWEEN ? AND ? AND dt.branch_id = ?), 0) paid, d.balance remaining, d.currency currency FROM debtors d WHERE d.tenant_id = ? AND d.branch_id = ? AND EXISTS (SELECT 1 FROM debtor_transactions dt WHERE dt.debtor_id = d.id AND dt.transaction_type = 'debit' AND dt.payment_date BETWEEN ? AND ?) ORDER BY d.name",
+                    'Payments to Creditors' => "SELECT c.name entity, (c.balance + COALESCE((SELECT SUM(ct.amount) FROM creditor_transactions ct WHERE ct.creditor_id = c.id AND ct.transaction_type = 'debit' AND ct.payment_date BETWEEN ? AND ? AND ct.branch_id = ?), 0) - COALESCE((SELECT SUM(ct.amount) FROM creditor_transactions ct WHERE ct.creditor_id = c.id AND ct.transaction_type = 'credit' AND ct.payment_date BETWEEN ? AND ? AND ct.branch_id = ?), 0)) balance, COALESCE((SELECT SUM(ct.amount) FROM creditor_transactions ct WHERE ct.creditor_id = c.id AND ct.transaction_type = 'debit' AND ct.payment_date BETWEEN ? AND ? AND ct.branch_id = ?), 0) paid, c.balance remaining, c.currency currency FROM creditors c WHERE c.tenant_id = ? AND c.branch_id = ? AND EXISTS (SELECT 1 FROM creditor_transactions ct WHERE ct.creditor_id = c.id AND ct.transaction_type = 'debit' AND ct.payment_date BETWEEN ? AND ?) ORDER BY c.name",
+                ];
+
+$totals = [];
+                $sections = [];
+                $incomeGroups = [
+                    'TICKET' => ['Ticket Sales', 'Date Changes', 'Ticket Reservations', 'Ticket Weight'],
+                    'HOTEL' => ['Hotel'],
+                    'VISA' => ['Visa'],
+                    'UMRAH' => ['Umrah Bookings'],
+                    'ADDITIONAL PAYMENTS' => ['Additional Payments'],
+                    'OTHER INCOME' => ['Payments from Debtors'],
+                ];
+                $expenseGroups = [
+                    'EXPENSES' => ['Operating Expenses', 'Ticket Refunds Paid', 'Hotel Refunds Paid', 'Visa Refunds Paid', 'Umrah Refunds Paid', 'Loans to Debtors', 'Payments to Creditors', 'Salary Payments'],
+                ];
+                foreach ($incomeGroups as $groupTitle => $labels) {
+                    $mini = [];
+                    foreach ($labels as $label) {
+                        if (isset($entityQueries[$label])) {
+                            $rows = [];
+                            $dpr = [$startDate, $endDate, $branch_id];
+                            $st = $pdo->prepare($entityQueries[$label]);
+                            $st->execute(array_merge($dpr, $dpr, $dpr, [$tenant_id, $branch_id], [$startDate, $endDate]));
+                            foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                                $rows[] = ['entity' => $r['entity'], 'balance' => floatval($r['balance']), 'paid' => floatval($r['paid']), 'remaining' => floatval($r['remaining']), 'currency' => $r['currency']];
+                                $cur = $r['currency'];
+                                $totals[$cur]['cash_in'] = (isset($totals[$cur]['cash_in']) ? $totals[$cur]['cash_in'] : 0) + floatval($r['paid']);
+                            }
+                            if (empty($rows)) {
+                                $rows[] = ['entity' => 'No records in selected period', 'balance' => 0, 'paid' => 0, 'remaining' => 0, 'currency' => 'N/A'];
+                            }
+                            $mini[] = ['title' => $label, 'headers' => $entityHeaders, 'rows' => $rows];
+                            continue;
+                        }
+                        $rows = [];
+                        if (isset($itemQueries[$label])) {
+                            $st = $pdo->prepare($itemQueries[$label]);
+                            $st->execute([$startDate, $endDate, $tenant_id, $branch_id]);
+                            foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                                $rows[] = ['date' => $r['d'], 'reference' => $r['ref'], 'party' => $r['party'], 'details' => $r['details'], 'profit' => floatval($r['profit']), 'cash_in' => floatval($r['cash_in']), 'cash_out' => floatval($r['cash_out']), 'currency' => $r['currency'], 'cash_currency' => $r['cash_currency']];
+                                $cur = $r['currency'];
+                                $cashCur = !empty($r['cash_currency']) ? $r['cash_currency'] : $cur;
+                                $totals[$cur]['profit'] = (isset($totals[$cur]['profit']) ? $totals[$cur]['profit'] : 0) + floatval($r['profit']);
+                                $totals[$cashCur]['cash_in'] = (isset($totals[$cashCur]['cash_in']) ? $totals[$cashCur]['cash_in'] : 0) + floatval($r['cash_in']);
+                            }
+                        } elseif (isset($cashQueries[$label])) {
+                            $st = $pdo->prepare($cashQueries[$label]);
+                            $st->execute([$startDate, $endDate, $tenant_id, $branch_id]);
+                            foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                                $rows[] = ['date' => $r['d'], 'reference' => $r['ref'], 'party' => $r['party'], 'details' => $r['details'], 'profit' => floatval($r['profit']), 'cash_in' => floatval($r['cash_in']), 'cash_out' => floatval($r['cash_out']), 'currency' => $r['currency']];
+                                $cur = $r['currency'];
+                                $totals[$cur]['cash_in'] = (isset($totals[$cur]['cash_in']) ? $totals[$cur]['cash_in'] : 0) + floatval($r['cash_in']);
+                            }
+                        }
+                        if (empty($rows)) {
+                            $rows[] = ['date' => '', 'reference' => '', 'party' => 'No records in selected period', 'details' => '', 'profit' => 0, 'cash_in' => 0, 'cash_out' => 0, 'currency' => 'N/A'];
+                        }
+                        $mini[] = ['title' => $label, 'rows' => $rows];
+                    }
+                    $sections[] = ['title' => $groupTitle, 'tables' => $mini];
+                }
+                foreach ($expenseGroups as $groupTitle => $labels) {
+                    $mini = [];
+                    foreach ($labels as $label) {
+                        if (isset($entityQueries[$label])) {
+                            $rows = [];
+                            $dpr = [$startDate, $endDate, $branch_id];
+                            $st = $pdo->prepare($entityQueries[$label]);
+                            $st->execute(array_merge($dpr, $dpr, $dpr, [$tenant_id, $branch_id], [$startDate, $endDate]));
+                            foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                                $rows[] = ['entity' => $r['entity'], 'balance' => floatval($r['balance']), 'paid' => floatval($r['paid']), 'remaining' => floatval($r['remaining']), 'currency' => $r['currency']];
+                                $cur = $r['currency'];
+                                $totals[$cur]['cash_out'] = (isset($totals[$cur]['cash_out']) ? $totals[$cur]['cash_out'] : 0) + floatval($r['paid']);
+                            }
+                            if (empty($rows)) {
+                                $rows[] = ['entity' => 'No records in selected period', 'balance' => 0, 'paid' => 0, 'remaining' => 0, 'currency' => 'N/A'];
+                            }
+                            $mini[] = ['title' => $label, 'headers' => $entityHeaders, 'rows' => $rows];
+                            continue;
+                        }
+                        $rows = [];
+                        $st = $pdo->prepare($cashQueries[$label]);
+                        $st->execute([$startDate, $endDate, $tenant_id, $branch_id]);
+                        foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                            $rows[] = ['date' => $r['d'], 'reference' => $r['ref'], 'party' => $r['party'], 'details' => $r['details'], 'profit' => 0, 'cash_in' => 0, 'cash_out' => floatval($r['cash_out']), 'currency' => $r['currency']];
+                            $cur = $r['currency'];
+                            $totals[$cur]['cash_out'] = (isset($totals[$cur]['cash_out']) ? $totals[$cur]['cash_out'] : 0) + floatval($r['cash_out']);
+                        }
+                        if (empty($rows)) {
+                            $rows[] = ['date' => '', 'reference' => '', 'party' => 'No records in selected period', 'details' => '', 'profit' => 0, 'cash_in' => 0, 'cash_out' => 0, 'currency' => 'N/A'];
+                        }
+                        $mini[] = ['title' => $label, 'rows' => $rows];
+                    }
+                    $sections[] = ['title' => $groupTitle, 'tables' => $mini];
+                }
+                $summaryTables = [];
+                foreach ($totals as $currency => $t) {
+                    $profit = isset($t['profit']) ? $t['profit'] : 0;
+                    $cashIn = isset($t['cash_in']) ? $t['cash_in'] : 0;
+                    $cashOut = isset($t['cash_out']) ? $t['cash_out'] : 0;
+                    $summaryTables[] = ['title' => 'Summary - ' . $currency, 'rows' => [
+                        ['party' => 'INCOME (PROFIT)', 'profit' => $profit],
+                        ['party' => 'CASH RECEIVED', 'cash_in' => $cashIn],
+                        ['party' => 'CASH PAID (EXPENSES)', 'cash_out' => $cashOut],
+                        ['party' => 'NET CASH FLOW', 'cash_in' => $cashIn - $cashOut, 'bold' => true],
+                        ['party' => 'NET PROFIT', 'profit' => $profit - $cashOut, 'bold' => true],
+                    ]];
+                }
+                $sections[] = ['title' => 'SUMMARY', 'tables' => $summaryTables];
+                foreach ($sections as $si => $sec) {
+                    $sections[$si]['tables'] = array_values(array_filter($sec['tables'], function ($t) {
+                        foreach ($t['rows'] as $row) {
+                            if ((isset($row['party']) && $row['party'] === 'No records in selected period')
+                                || (isset($row['entity']) && $row['entity'] === 'No records in selected period')) {
+                                return false;
+                            }
+                        }
+                        return true;
+                    }));
+                    if (count($sections[$si]['tables']) === 0) {
+                        unset($sections[$si]);
+                    }
+                }
+                $sections = array_values($sections);
+                $tables = [];
+                foreach ($sections as $sec) {
+                    foreach ($sec['tables'] as $tbl) {
+                        $tables[] = $tbl;
+                    }
+                }
+                $data = [];
+                foreach ($tables as $tbl) {
+                    foreach ($tbl['rows'] as $r) {
+                        $data[] = $r;
+                    }
+                }
                 break;
         }
     } else {
@@ -1314,90 +1499,108 @@ try {
                                    
                         break;
         
-                    case 'umrah':
+case 'umrah':
                         $query = "SELECT
                             u.booking_id,
+                            f.head_of_family,
                             u.name,
-                            u.passport_number,
+                            u.fname,
+                            u.gender,
                             u.dob,
-                            (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                            u.passport_number,
+                            u.passport_expiry,
+                            u.id_type,
+                            f.contact,
+                            f.address,
+                            g.group_name,
+                            u.entry_date,
+                            u.created_at,
+                            COALESCE(u.flight_date, (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
                                 JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
                                 JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
                                 WHERE ubs2.booking_id = u.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
-                                ORDER BY ff.id DESC LIMIT 1) AS flight_date,
-                            (SELECT DATE(ff.return_departure_time) FROM umrah_flight_fulfillments ff
+                                ORDER BY ff.id DESC LIMIT 1)) AS flight_date,
+                            COALESCE(u.return_date, (SELECT DATE(ff.return_departure_time) FROM umrah_flight_fulfillments ff
                                 JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
                                 JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
                                 WHERE ubs2.booking_id = u.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
-                                ORDER BY ff.id DESC LIMIT 1) AS return_date,
+                                ORDER BY ff.id DESC LIMIT 1)) AS return_date,
                             u.duration,
                             u.room_type,
                             u.price,
                             u.sold_price,
+                            u.discount,
                             u.profit,
                             u.received_bank_payment,
                             u.bank_receipt_number,
-                            u.paid, u.due,
+                            u.paid,
+                            u.due,
                             u.currency,
-                            f.head_of_family,
+                            u.exchange_rate,
+                            u.status,
                             f.tazmin,
-                            u.remarks,
-                            f.visa_status,
                             c.name as client_name,
                             m.name as account_name,
-                            u.created_at,
-                            f.contact,
                             ur.refund_type as refund_status,
-                            GROUP_CONCAT(DISTINCT s.name SEPARATOR ', ') as supplier_name
+                            GROUP_CONCAT(DISTINCT ubs.service_type SEPARATOR ', ') as services,
+                            GROUP_CONCAT(DISTINCT s.name SEPARATOR ', ') as supplier_name,
+                            u.remarks
                             FROM umrah_bookings u
                             LEFT JOIN families f ON u.family_id = f.family_id
+                            LEFT JOIN umrah_groups g ON f.group_id = g.group_id
                             LEFT JOIN clients c ON u.sold_to = c.id
                             LEFT JOIN main_account m ON u.paid_to = m.id
                             LEFT JOIN umrah_refunds ur ON u.booking_id = ur.booking_id
                             LEFT JOIN umrah_booking_services ubs ON u.booking_id = ubs.booking_id
-                            LEFT JOIN suppliers s ON ubs.supplier_id = s.id
-                            WHERE " . $umrahDateCondition . " AND u.tenant_id = ? AND u.branch_id = ? AND ubs.supplier_id = ?"
+                            LEFT JOIN umrah_fulfillments uf ON uf.booking_service_id = ubs.id AND uf.status <> 'cancelled'
+                            LEFT JOIN suppliers s ON s.id = COALESCE(uf.supplier_id, ubs.supplier_id)
+                            WHERE u.paid_to = ? AND " . $umrahDateCondition . " AND u.tenant_id = ? AND u.branch_id = ?"
                             . $umrahFilterSql .
                             " GROUP BY u.booking_id
                             ORDER BY u.entry_date DESC";
-                        $params = array_merge($umrahDateParams, [$tenant_id, $branch_id, $entity], $umrahFilterParams);
-                        // Base headers (shown to everyone)
+                        $params = array_merge([$entity], $umrahDateParams, [$tenant_id, $branch_id], $umrahFilterParams);
                         $headers = [
                             'Head of Family',
-                            'Name', 
-                            'Passport Number', 
+                            'Name',
+                            'Father Name',
+                            'Gender',
                             'Date of Birth',
+                            'Passport Number',
+                            'Passport Expiry',
+                            'ID Type',
                             'Phone',
+                            'Address',
+                            'Group',
+                            'Entry Date',
                             'Created At',
                             'Flight Date',
                             'Return Date',
                             'Duration',
                             'Room Type',
-                            'Sold Price',   // ✅ visible for everyone
+                            'Sold Price',
                             'Bank Payment',
                             'Bank Receipt',
                             'Paid',
                             'Due',
                             'Currency',
+                            'Exchange Rate',
+                            'Status',
                             'Tazmin',
                             'Client',
                             'Account',
-                            'Visa Status',
-                            'Remarks',
-                            'Refund Status'
+                            'Refund Status',
+                            'Services',
+                            'Remarks'
                         ];
 
                         // Add sensitive headers only if admin
                         if ($user_role === 'admin') {
-                            // Arrange headers as Price, Sold Price, Profit
                             $insertIndex = array_search('Sold Price', $headers);
                             if ($insertIndex !== false) {
-                                array_splice($headers, $insertIndex, 0, ['Price']);  // Insert Price before Sold Price
-                                $newIndex = array_search('Sold Price', $headers);
-                                array_splice($headers, $newIndex + 1, 0, ['Profit']);  // Insert Profit after Sold Price
+                                array_splice($headers, $insertIndex, 0, ['Price']);
+                                $soldPriceIndex = array_search('Sold Price', $headers);
+                                array_splice($headers, $soldPriceIndex + 1, 0, ['Discount', 'Profit']);
                             }
-        
-                            // Add Supplier at the end
                             $headers[] = 'Supplier';
                         }
                         break;
@@ -1518,29 +1721,42 @@ try {
                         $query = "SELECT
                              ub.passport_number,
                              ub.name as pilgrim_name,
+                             ub.fname,
                              ur.refund_type,
                              ur.refund_amount,
+                             ur.supplier_penalty,
+                             ur.service_penalty,
+                             ur.base,
+                             ur.sold,
                              ur.currency,
-                             ur.exchange_rate,
+                             ub.exchange_rate,
                              ur.created_at,
                              ur.reason,
-                             s.name as supplier_name,
+                             GROUP_CONCAT(DISTINCT s.name SEPARATOR ', ') as supplier_name,
                              c.name as client_name,
                              m.name as account_name,
                              u.name as processed_by_name
                              FROM umrah_refunds ur
                              LEFT JOIN umrah_bookings ub ON ur.booking_id = ub.booking_id
-                             LEFT JOIN suppliers s ON ub.supplier = s.id
+                             LEFT JOIN umrah_booking_services ubs ON ub.booking_id = ubs.booking_id
+                             LEFT JOIN umrah_fulfillments uf ON uf.booking_service_id = ubs.id AND uf.status <> 'cancelled'
+                             LEFT JOIN suppliers s ON s.id = COALESCE(uf.supplier_id, ubs.supplier_id)
                              LEFT JOIN clients c ON ub.sold_to = c.id
                              LEFT JOIN main_account m ON ub.paid_to = m.id
                              LEFT JOIN users u ON ur.processed_by = u.id
-                             WHERE ur.created_at BETWEEN ? AND ? AND ur.tenant_id = ? AND ur.branch_id = ?";
-                         $params = [$startDate, $endDate, $tenant_id, $branch_id];
+                             WHERE COALESCE(uf.supplier_id, ubs.supplier_id) = ? AND ur.created_at BETWEEN ? AND ? AND ur.tenant_id = ? AND ur.branch_id = ?
+                             GROUP BY ur.id";
+                         $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id];
                         $headers = [
                             'Passport Number',
                             'Pilgrim Name',
+                            'Father Name',
                             'Refund Type',
                             'Refund Amount',
+                            'Supplier Penalty',
+                            'Service Penalty',
+                            'Base',
+                            'Sold',
                             'Currency',
                             'Exchange Rate',
                             'Refund Date',
@@ -1763,88 +1979,108 @@ try {
                                    'Supplier', 'Sold To', 'Paid To','Receipt'];
                         break;
 
-                    case 'umrah':
+case 'umrah':
                         $query = "SELECT
                             u.booking_id,
+                            f.head_of_family,
                             u.name,
-                            u.passport_number,
+                            u.fname,
+                            u.gender,
                             u.dob,
-                            (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                            u.passport_number,
+                            u.passport_expiry,
+                            u.id_type,
+                            f.contact,
+                            f.address,
+                            g.group_name,
+                            u.entry_date,
+                            u.created_at,
+                            COALESCE(u.flight_date, (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
                                 JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
                                 JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
                                 WHERE ubs2.booking_id = u.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
-                                ORDER BY ff.id DESC LIMIT 1) AS flight_date,
-                            (SELECT DATE(ff.return_departure_time) FROM umrah_flight_fulfillments ff
+                                ORDER BY ff.id DESC LIMIT 1)) AS flight_date,
+                            COALESCE(u.return_date, (SELECT DATE(ff.return_departure_time) FROM umrah_flight_fulfillments ff
                                 JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
                                 JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
                                 WHERE ubs2.booking_id = u.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
-                                ORDER BY ff.id DESC LIMIT 1) AS return_date,
+                                ORDER BY ff.id DESC LIMIT 1)) AS return_date,
                             u.duration,
                             u.room_type,
                             u.price,
                             u.sold_price,
+                            u.discount,
                             u.profit,
                             u.received_bank_payment,
                             u.bank_receipt_number,
-                            u.paid, u.due,
+                            u.paid,
+                            u.due,
                             u.currency,
-                            f.head_of_family,
+                            u.exchange_rate,
+                            u.status,
                             f.tazmin,
-                            u.remarks,
-                            f.visa_status,
                             c.name as client_name,
                             m.name as account_name,
-                            u.created_at,
-                            f.contact,
                             ur.refund_type as refund_status,
-                            GROUP_CONCAT(DISTINCT s.name SEPARATOR ', ') as supplier_name
+                            GROUP_CONCAT(DISTINCT ubs.service_type SEPARATOR ', ') as services,
+                            GROUP_CONCAT(DISTINCT s.name SEPARATOR ', ') as supplier_name,
+                            u.remarks
                             FROM umrah_bookings u
                             LEFT JOIN families f ON u.family_id = f.family_id
+                            LEFT JOIN umrah_groups g ON f.group_id = g.group_id
                             LEFT JOIN clients c ON u.sold_to = c.id
                             LEFT JOIN main_account m ON u.paid_to = m.id
                             LEFT JOIN umrah_refunds ur ON u.booking_id = ur.booking_id
                             LEFT JOIN umrah_booking_services ubs ON u.booking_id = ubs.booking_id
-                            LEFT JOIN suppliers s ON ubs.supplier_id = s.id
+                            LEFT JOIN umrah_fulfillments uf ON uf.booking_service_id = ubs.id AND uf.status <> 'cancelled'
+                            LEFT JOIN suppliers s ON s.id = COALESCE(uf.supplier_id, ubs.supplier_id)
                             WHERE u.sold_to = ? AND " . $umrahDateCondition . " AND u.tenant_id = ? AND u.branch_id = ?"
                             . $umrahFilterSql .
                             " GROUP BY u.booking_id
                             ORDER BY u.entry_date DESC";
                         $params = array_merge([$entity], $umrahDateParams, [$tenant_id, $branch_id], $umrahFilterParams);
-                        // Base headers (shown to everyone)
                         $headers = [
                             'Head of Family',
-                            'Name', 
-                            'Passport Number', 
+                            'Name',
+                            'Father Name',
+                            'Gender',
                             'Date of Birth',
+                            'Passport Number',
+                            'Passport Expiry',
+                            'ID Type',
                             'Phone',
+                            'Address',
+                            'Group',
+                            'Entry Date',
                             'Created At',
                             'Flight Date',
                             'Return Date',
                             'Duration',
                             'Room Type',
-                            'Sold Price',   // ✅ visible for everyone
+                            'Sold Price',
                             'Bank Payment',
                             'Bank Receipt',
                             'Paid',
                             'Due',
                             'Currency',
+                            'Exchange Rate',
+                            'Status',
                             'Tazmin',
                             'Client',
                             'Account',
-                            'Visa Status',
-                            'Remarks',
-                            'Refund Status'
+                            'Refund Status',
+                            'Services',
+                            'Remarks'
                         ];
 
                         // Add sensitive headers only if admin
                         if ($user_role === 'admin') {
-                            // Insert Price + Profit right before Sold Price
                             $insertIndex = array_search('Sold Price', $headers);
                             if ($insertIndex !== false) {
-                                array_splice($headers, $insertIndex, 0, ['Price', 'Profit']);
+                                array_splice($headers, $insertIndex, 0, ['Price']);
+                                $soldPriceIndex = array_search('Sold Price', $headers);
+                                array_splice($headers, $soldPriceIndex + 1, 0, ['Discount', 'Profit']);
                             }
-
-                            // Add Supplier at the end
                             $headers[] = 'Supplier';
                         }
                         break;
@@ -1950,13 +2186,18 @@ try {
                             break;
 
                     case 'umrah_refund':
-                        $query = "SELECT 
+                        $query = "SELECT
                             ub.passport_number,
                             ub.name as pilgrim_name,
+                            ub.fname,
                             ur.refund_type,
                             ur.refund_amount,
+                            ur.supplier_penalty,
+                            ur.service_penalty,
+                            ur.base,
+                            ur.sold,
                             ur.currency,
-                            ur.exchange_rate,
+                            ub.exchange_rate,
                             ur.created_at,
                             ur.reason
                             FROM umrah_refunds ur
@@ -1966,8 +2207,13 @@ try {
                         $headers = [
                             'Passport Number',
                             'Pilgrim Name',
+                            'Father Name',
                             'Refund Type',
                             'Refund Amount',
+                            'Supplier Penalty',
+                            'Service Penalty',
+                            'Base',
+                            'Sold',
                             'Currency',
                             'Exchange Rate',
                             'Refund Date',
@@ -2220,95 +2466,108 @@ try {
                                    'Supplier', 'Sold To', 'Paid To','Receipt'];
                         break;
 
-                    case 'umrah':
+case 'umrah':
                         $query = "SELECT
                             u.booking_id,
+                            f.head_of_family,
                             u.name,
-                            u.passport_number,
+                            u.fname,
+                            u.gender,
                             u.dob,
-                            (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                            u.passport_number,
+                            u.passport_expiry,
+                            u.id_type,
+                            f.contact,
+                            f.address,
+                            g.group_name,
+                            u.entry_date,
+                            u.created_at,
+                            COALESCE(u.flight_date, (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
                                 JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
                                 JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
                                 WHERE ubs2.booking_id = u.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
-                                ORDER BY ff.id DESC LIMIT 1) AS flight_date,
-                            (SELECT DATE(ff.return_departure_time) FROM umrah_flight_fulfillments ff
+                                ORDER BY ff.id DESC LIMIT 1)) AS flight_date,
+                            COALESCE(u.return_date, (SELECT DATE(ff.return_departure_time) FROM umrah_flight_fulfillments ff
                                 JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
                                 JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
                                 WHERE ubs2.booking_id = u.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
-                                ORDER BY ff.id DESC LIMIT 1) AS return_date,
+                                ORDER BY ff.id DESC LIMIT 1)) AS return_date,
                             u.duration,
                             u.room_type,
                             u.price,
                             u.sold_price,
+                            u.discount,
                             u.profit,
                             u.received_bank_payment,
                             u.bank_receipt_number,
-                            u.paid, u.due,
+                            u.paid,
+                            u.due,
                             u.currency,
-                            f.head_of_family,
+                            u.exchange_rate,
+                            u.status,
                             f.tazmin,
-                            u.remarks,
-                            f.visa_status,
                             c.name as client_name,
                             m.name as account_name,
-                            u.created_at,
-                            f.contact,
                             ur.refund_type as refund_status,
-                            GROUP_CONCAT(DISTINCT s.name SEPARATOR ', ') as supplier_name
+                            GROUP_CONCAT(DISTINCT ubs.service_type SEPARATOR ', ') as services,
+                            GROUP_CONCAT(DISTINCT s.name SEPARATOR ', ') as supplier_name,
+                            u.remarks
                             FROM umrah_bookings u
                             LEFT JOIN families f ON u.family_id = f.family_id
+                            LEFT JOIN umrah_groups g ON f.group_id = g.group_id
                             LEFT JOIN clients c ON u.sold_to = c.id
                             LEFT JOIN main_account m ON u.paid_to = m.id
                             LEFT JOIN umrah_refunds ur ON u.booking_id = ur.booking_id
                             LEFT JOIN umrah_booking_services ubs ON u.booking_id = ubs.booking_id
-                            LEFT JOIN suppliers s ON ubs.supplier_id = s.id
-                            WHERE u.paid_to = ? AND " . $umrahDateCondition . " AND u.tenant_id = ? AND u.branch_id = ?"
+                            LEFT JOIN umrah_fulfillments uf ON uf.booking_service_id = ubs.id AND uf.status <> 'cancelled'
+                            LEFT JOIN suppliers s ON s.id = COALESCE(uf.supplier_id, ubs.supplier_id)
+                            WHERE " . $umrahDateCondition . " AND u.tenant_id = ? AND u.branch_id = ? AND COALESCE(uf.supplier_id, ubs.supplier_id) = ?"
                             . $umrahFilterSql .
                             " GROUP BY u.booking_id
                             ORDER BY u.entry_date DESC";
-                        $params = array_merge([$entity], $umrahDateParams, [$tenant_id, $branch_id], $umrahFilterParams);
-                        // Base headers (shown to everyone)
+                        $params = array_merge($umrahDateParams, [$tenant_id, $branch_id, $entity], $umrahFilterParams);
                         $headers = [
                             'Head of Family',
                             'Name',
-                            'Passport Number',
+                            'Father Name',
+                            'Gender',
                             'Date of Birth',
+                            'Passport Number',
+                            'Passport Expiry',
+                            'ID Type',
                             'Phone',
+                            'Address',
+                            'Group',
+                            'Entry Date',
                             'Created At',
                             'Flight Date',
                             'Return Date',
                             'Duration',
                             'Room Type',
-                            'Sold Price',   // ✅ visible for everyone
+                            'Sold Price',
                             'Bank Payment',
                             'Bank Receipt',
                             'Paid',
                             'Due',
                             'Currency',
+                            'Exchange Rate',
+                            'Status',
                             'Tazmin',
                             'Client',
                             'Account',
-                            'Visa Status',
-                            'Remarks',
-                            'Refund Status'
+                            'Refund Status',
+                            'Services',
+                            'Remarks'
                         ];
 
                         // Add sensitive headers only if admin
                         if ($user_role === 'admin') {
                             $insertIndex = array_search('Sold Price', $headers);
-                        if ($insertIndex !== false) {
-                            // Insert Price before Sold Price
-                            array_splice($headers, $insertIndex, 0, ['Price']);
-
-                            // Recalculate index of Sold Price (it shifted by +1 after insertion)
-                            $soldPriceIndex = array_search('Sold Price', $headers);
-
-                            // Insert Profit right after Sold Price
-                            array_splice($headers, $soldPriceIndex + 1, 0, ['Profit']);
-                        }
-
-
-                            // Add Supplier at the end
+                            if ($insertIndex !== false) {
+                                array_splice($headers, $insertIndex, 0, ['Price']);
+                                $newIndex = array_search('Sold Price', $headers);
+                                array_splice($headers, $newIndex + 1, 0, ['Discount', 'Profit']);
+                            }
                             $headers[] = 'Supplier';
                         }
                         break;
@@ -2464,29 +2723,42 @@ try {
                         $query = "SELECT
                             ub.passport_number,
                             ub.name as pilgrim_name,
+                            ub.fname,
                             ur.refund_type,
                             ur.refund_amount,
+                            ur.supplier_penalty,
+                            ur.service_penalty,
+                            ur.base,
+                            ur.sold,
                             ur.currency,
-                            ur.exchange_rate,
+                            ub.exchange_rate,
                             ur.created_at,
                             ur.reason,
-                            s.name as supplier_name,
+                            GROUP_CONCAT(DISTINCT s.name SEPARATOR ', ') as supplier_name,
                             c.name as client_name,
                             m.name as account_name,
                             u.name as processed_by_name
                             FROM umrah_refunds ur
                             LEFT JOIN umrah_bookings ub ON ur.booking_id = ub.booking_id
-                            LEFT JOIN suppliers s ON ub.supplier = s.id
+                            LEFT JOIN umrah_booking_services ubs ON ub.booking_id = ubs.booking_id
+                            LEFT JOIN umrah_fulfillments uf ON uf.booking_service_id = ubs.id AND uf.status <> 'cancelled'
+                            LEFT JOIN suppliers s ON s.id = COALESCE(uf.supplier_id, ubs.supplier_id)
                             LEFT JOIN clients c ON ub.sold_to = c.id
                             LEFT JOIN main_account m ON ub.paid_to = m.id
                             LEFT JOIN users u ON ur.processed_by = u.id
-                            WHERE ur.created_at BETWEEN ? AND ? AND ur.tenant_id = ? AND ur.branch_id = ?";
-                        $params = [$startDate, $endDate, $tenant_id, $branch_id];
+                            WHERE ub.paid_to = ? AND ur.created_at BETWEEN ? AND ? AND ur.tenant_id = ? AND ur.branch_id = ?
+                            GROUP BY ur.id";
+                        $params = [$entity, $startDate, $endDate, $tenant_id, $branch_id];
                         $headers = [
                             'Passport Number',
                             'Pilgrim Name',
+                            'Father Name',
                             'Refund Type',
                             'Refund Amount',
+                            'Supplier Penalty',
+                            'Service Penalty',
+                            'Base',
+                            'Sold',
                             'Currency',
                             'Exchange Rate',
                             'Refund Date',
@@ -2497,15 +2769,18 @@ try {
                             'Processed By'
                         ];
                         break;
+
                 }
                 break;
             
         }
     }
 
-    $stmt = $pdo->prepare($query);
-    $stmt->execute($params);
-    $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    if ($query) {
+        $stmt = $pdo->prepare($query);
+        $stmt->execute($params);
+        $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 
     // Calculate totals for expense reports
     $expenseTotals = [];
@@ -2565,6 +2840,8 @@ try {
                 'Status' => 'status',
                 'Paid Status' => 'paid_status',
                 'Date of Birth' => 'dob',
+                'Father Name' => 'fname',
+                'Group' => 'group_name',
                 'Guest Name' => 'guest_name',
                 'Reference Number' => 'reference_number',
                 'Refund Amount' => 'refund_amount',
@@ -2609,6 +2886,14 @@ try {
                     .status-pending{color:#744210;background-color:#feebc8;padding:2px 8px;border-radius:4px;font-size:8pt;font-weight:bold;}
                     .status-unpaid{color:#742a2a;background-color:#fed7d7;padding:2px 8px;border-radius:4px;font-size:8pt;font-weight:bold;}
                     .report-footer{margin-top:20px;padding-top:10px;border-top:2px solid #e2e8f0;font-size:8pt;color:#718096;text-align:center;}
+                    .mini-table{margin-bottom:14px;page-break-inside:avoid;}
+                    .rowwrap{width:100%;border-collapse:collapse;margin-bottom:14px;page-break-inside:avoid;}
+                    .rowcell{padding:0;vertical-align:top;}
+                    .rowwrap .mini-table{margin-bottom:0;}
+                    .total-row td{font-weight:bold;background-color:#f7fafc;}
+                    .mini-title{font-size:11pt;font-weight:bold;color:#4a5568;padding:6px 0 4px 0;border-bottom:2px solid #e2e8f0;margin-bottom:4px;}
+                    .mini-table table{margin-bottom:6px;}
+                    .section-title{font-size:13pt;font-weight:bold;color:#2d3748;background:linear-gradient(90deg,#edf2f7,#ffffff);padding:8px 10px;border-left:4px solid #4a5568;margin:18px 0 8px 0;border-radius:4px;page-break-inside:avoid;}
                 </style>
             </head>
             <body>
@@ -2616,64 +2901,126 @@ try {
                     <div class="report-title">' . htmlspecialchars($reportTitle) . '</div>
                     <div class="date-range">' . htmlspecialchars($dateRange) . '</div>
                 </div>
-                <div class="table-wrapper">
-                    <table>
-                        <thead><tr>';
-    
-            // Headers
-            foreach ($headers as $header) {
-                $html .= '<th>' . htmlspecialchars($header) . '</th>';
-            }
-            $html .= '</tr></thead><tbody>';
-    
-            // Data rows
-            foreach ($data as $rowData) {
-                $rowClass = '';
-                $isChild = false;
-                if (isset($rowData['record_type']) && $rowData['record_type'] !== 'normal') {
-                    $rowClass = $rowData['record_type'] === 'refund' ? 'refund' : 'date-change';
-                    $isChild = true;
-                }
-                if ($reportCategory === 'umrah' && isset($rowData['refund_status']) && !empty($rowData['refund_status'])) {
-                    $rowClass = 'umrah-refunded';
-                }
-    
-                $html .= '<tr class="' . $rowClass . '">';
-    
-                foreach ($headers as $headerIdx => $header) {
-                    $value = '';
-    
-                    if (isset($headerToFieldMap[$header])) {
-                        $field = $headerToFieldMap[$header];
-    
-                        if (is_callable($field)) {
-                            $value = $field($rowData);
-                        } elseif (is_array($field) && $header === 'Sector') {
-                            $value = isset($rowData['origin']) && isset($rowData['destination']) 
-                                     ? $rowData['origin'].' → '.$rowData['destination'] : '';
-                            if (isset($rowData['trip_type']) && in_array(strtolower($rowData['trip_type']), ['round_trip','round trip']) 
-                                && !empty($rowData['return_destination'])) {
-                                $value .= ' → '.$rowData['return_destination'];
-                            }
-                        } elseif (in_array($header, ['Date of Birth','Date','Refund Date'])) {
-                            $value = !empty($rowData[$field]) ? date('Y-m-d', strtotime($rowData[$field])) : '';
-                        } elseif (in_array($header, ['Paid Amount','Received Amount','Balance','Sold Amount','Refund Amount','Profit','Base Amount','Bank Payment','Weight (kg)'])) {
-                            $value = isset($rowData[$field]) ? number_format($rowData[$field],2) : '0.00';
-                            if ($header === 'Weight (kg)') $value .= ' kg';
-                        } else {
-                            $value = isset($rowData[$field]) ? htmlspecialchars($rowData[$field]) : '';
-                        }
-                    } else {
-                        $key = strtolower(str_replace(' ', '_', $header));
-                        $value = isset($rowData[$key]) ? htmlspecialchars($rowData[$key]) : '';
+<div class="table-wrapper">';
+
+            if ($reportCategory === 'general_summary') {
+                // Hierarchical: sections with small tables per source, several per row
+                $renderMiniTable = function ($tableData) use ($headers) {
+                    $tableHeaders = isset($tableData['headers']) ? $tableData['headers'] : $headers;
+                    $html = '<div class="mini-table"><div class="mini-title">' . htmlspecialchars($tableData['title']) . '</div>';
+                    $html .= '<table><thead><tr>';
+                    foreach ($tableHeaders as $header) {
+                        $html .= '<th>' . htmlspecialchars($header) . '</th>';
                     }
-    
-                    // Indent child rows
-                    if ($isChild && $headerIdx === 0) $value = '    '.$value;
-    
-                    $html .= '<td class="' . (in_array($header,['Paid Amount','Received Amount','Balance','Sold Amount','Refund Amount','Profit','Base Amount','Bank Payment','Weight (kg)']) ? 'numeric':'') . '">' . $value . '</td>';
+                    $html .= '</tr></thead><tbody>';
+                    foreach ($tableData['rows'] as $rowData) {
+                        $isSummaryRow = empty($rowData['date']);
+                        $html .= '<tr' . (!empty($rowData['bold']) ? ' class="total-row"' : '') . '>';
+                        foreach ($tableHeaders as $header) {
+                            $key = strtolower(str_replace(' ', '_', $header));
+                            if (in_array($header, ['Profit', 'Cash In', 'Cash Out', 'Balance', 'Paid', 'Remaining'])) {
+                                $value = isset($rowData[$key]) ? number_format($rowData[$key], 2) : '0.00';
+                                if (in_array($header, ['Cash In', 'Cash Out']) && !$isSummaryRow && isset($rowData[$key]) && $rowData[$key] > 0) {
+                                    $cashCur = !empty($rowData['cash_currency']) ? $rowData['cash_currency'] : (isset($rowData['currency']) ? $rowData['currency'] : '');
+                                    $value .= ' ' . $cashCur;
+                                }
+                            } else {
+                                $value = isset($rowData[$key]) ? htmlspecialchars($rowData[$key]) : '';
+                            }
+                            $html .= '<td' . (in_array($header, ['Profit', 'Cash In', 'Cash Out', 'Balance', 'Paid', 'Remaining']) ? ' class="numeric"' : '') . '>' . $value . '</td>';
+                        }
+                        $html .= '</tr>';
+                    }
+                    $html .= '</tbody></table></div>';
+                    return $html;
+                };
+                $renderRow = function ($rowTables) use ($renderMiniTable) {
+                    $html = '<table class="rowwrap"><tr>';
+                    $cellWidth = floor((277 - (count($rowTables) - 1) * 5) / count($rowTables));
+                    foreach ($rowTables as $idx => $tableData) {
+                        $padRight = ($idx === count($rowTables) - 1) ? '0' : '5mm';
+                        $html .= '<td class="rowcell" style="width:' . $cellWidth . 'mm;padding-right:' . $padRight . ';">';
+                        $html .= $renderMiniTable($tableData);
+                        $html .= '</td>';
+                    }
+                    $html .= '</tr></table>';
+                    return $html;
+                };
+                $pending = [];
+                foreach ($sections as $section) {
+                    if ($section['title'] === 'SUMMARY' && count($pending) > 0) {
+                        $html .= $renderRow($pending);
+                        $pending = [];
+                    }
+                    foreach ($section['tables'] as $tableData) {
+                        $pending[] = $tableData;
+                        if (count($pending) === 3) {
+                            $html .= $renderRow($pending);
+                            $pending = [];
+                        }
+                    }
                 }
-                $html .= '</tr>';
+                if (count($pending) > 0) {
+                    $html .= $renderRow($pending);
+                }
+            } else {
+                $html .= '<table><thead><tr>';
+
+                // Headers
+                foreach ($headers as $header) {
+                    $html .= '<th>' . htmlspecialchars($header) . '</th>';
+                }
+                $html .= '</tr></thead><tbody>';
+
+                // Data rows
+                foreach ($data as $rowData) {
+                    $rowClass = '';
+                    $isChild = false;
+                    if (isset($rowData['record_type']) && $rowData['record_type'] !== 'normal') {
+                        $rowClass = $rowData['record_type'] === 'refund' ? 'refund' : 'date-change';
+                        $isChild = true;
+                    }
+                    if ($reportCategory === 'umrah' && isset($rowData['refund_status']) && !empty($rowData['refund_status'])) {
+                        $rowClass = 'umrah-refunded';
+                    }
+
+                    $html .= '<tr class="' . $rowClass . '">';
+
+                    foreach ($headers as $headerIdx => $header) {
+                        $value = '';
+
+                        if (isset($headerToFieldMap[$header])) {
+                            $field = $headerToFieldMap[$header];
+
+                            if (is_callable($field)) {
+                                $value = $field($rowData);
+                            } elseif (is_array($field) && $header === 'Sector') {
+                                $value = isset($rowData['origin']) && isset($rowData['destination']) 
+                                         ? $rowData['origin'].' → '.$rowData['destination'] : '';
+                                if (isset($rowData['trip_type']) && in_array(strtolower($rowData['trip_type']), ['round_trip','round trip']) 
+                                    && !empty($rowData['return_destination'])) {
+                                    $value .= ' → '.$rowData['return_destination'];
+                                }
+                            } elseif (in_array($header, ['Date of Birth','Date','Refund Date'])) {
+                                $value = !empty($rowData[$field]) ? date('Y-m-d', strtotime($rowData[$field])) : '';
+                            } elseif (in_array($header, ['Paid Amount','Received Amount','Balance','Sold Amount','Refund Amount','Profit','Base Amount','Bank Payment','Weight (kg)'])) {
+                                $value = isset($rowData[$field]) ? number_format($rowData[$field],2) : '0.00';
+                                if ($header === 'Weight (kg)') $value .= ' kg';
+                            } else {
+                                $value = isset($rowData[$field]) ? htmlspecialchars($rowData[$field]) : '';
+                            }
+                        } else {
+                            $key = strtolower(str_replace(' ', '_', $header));
+                            $value = isset($rowData[$key]) ? htmlspecialchars($rowData[$key]) : '';
+                        }
+
+                        // Indent child rows
+                        if ($isChild && $headerIdx === 0) $value = '    '.$value;
+
+                        $html .= '<td class="' . (in_array($header,['Paid Amount','Received Amount','Balance','Sold Amount','Refund Amount','Profit','Base Amount','Bank Payment','Weight (kg)']) ? 'numeric':'') . '">' . $value . '</td>';
+                    }
+                    $html .= '</tr>';
+                }
             }
     
             // Totals for Umrah (Admin)
@@ -2743,6 +3090,46 @@ try {
             'bgColor' => 'f2f2f2'
         ];
 
+        // Add table(s) - general summary uses small tables per source
+        if ($reportCategory === 'general_summary') {
+            foreach ($sections as $sectionData) {
+                $section->addText($sectionData['title'], ['bold' => true, 'size' => 14]);
+                foreach (array_chunk($sectionData['tables'], 3) as $chunk) {
+                        $wrapper = $section->addTable();
+                        $wrapper->addRow();
+                        foreach ($chunk as $tableData) {
+                            $cell = $wrapper->addCell(3600);
+                            $tableHeaders = isset($tableData['headers']) ? $tableData['headers'] : $headers;
+                            $cell->addText($tableData['title'], ['bold' => true, 'size' => 12]);
+                            $miniTable = $cell->addTable($tableStyle);
+                            $miniTable->addRow();
+                            foreach ($tableHeaders as $header) {
+                                $innerCell = $miniTable->addCell(null, $firstRowStyle);
+                                $innerCell->addText(ucwords(str_replace('_', ' ', $header)), ['bold' => true]);
+                            }
+                            foreach ($tableData['rows'] as $rowData) {
+                                $isSummaryRow = empty($rowData['date']);
+                                $rowIsBold = !empty($rowData['bold']);
+                                $miniTable->addRow();
+                                foreach ($tableHeaders as $header) {
+                                    $key = strtolower(str_replace(' ', '_', $header));
+                                    if (in_array($header, ['Profit', 'Cash In', 'Cash Out', 'Balance', 'Paid', 'Remaining'])) {
+                                        $value = isset($rowData[$key]) ? number_format($rowData[$key], 2) : '0.00';
+                                        if (in_array($header, ['Cash In', 'Cash Out']) && !$isSummaryRow && isset($rowData[$key]) && $rowData[$key] > 0) {
+                                            $cashCur = !empty($rowData['cash_currency']) ? $rowData['cash_currency'] : (isset($rowData['currency']) ? $rowData['currency'] : '');
+                                            $value .= ' ' . $cashCur;
+                                        }
+                                    } else {
+                                        $value = isset($rowData[$key]) ? $rowData[$key] : '';
+                                    }
+                                    $innerCell = $miniTable->addCell();
+                                    $innerCell->addText($value, $rowIsBold ? ['bold' => true] : []);
+                                }
+                            }
+}
+                }
+            }
+        } else {
         // Add table
         $table = $section->addTable($tableStyle);
         $table->addRow();
@@ -2820,6 +3207,12 @@ try {
                         break;
                     case 'Address':
                         $value = isset($rowData['address']) ? $rowData['address'] : '';
+                        break;
+                    case 'Father Name':
+                        $value = isset($rowData['fname']) ? $rowData['fname'] : '';
+                        break;
+                    case 'Group':
+                        $value = isset($rowData['group_name']) ? $rowData['group_name'] : '';
                         break;
                     case 'Base':
                         $value = isset($rowData['base']) ? $rowData['base'] : '';
@@ -2914,7 +3307,7 @@ try {
                 }
                 
                 $cell = $table->addCell(null, $rowStyle);
-                $cell->addText($value);
+                $cell->addText($value, $rowIsBold ? ['bold' => true] : []);
             }
         }
         
@@ -2997,6 +3390,7 @@ try {
                 }
             }
         }
+        }
         
         // Save file
         header('Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document');
@@ -3027,6 +3421,70 @@ try {
         $sheet->getStyle("A1:{$lastColumn}1")->applyFromArray($titleStyle);
         $sheet->getStyle("A2:{$lastColumn}2")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
         
+        // General summary: sections with small tables per source
+        if ($reportCategory === 'general_summary') {
+            $miniHeaderStyle = [
+                'font' => ['bold' => true],
+                'fill' => [
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'startColor' => ['rgb' => 'F2F2F2']
+                ]
+            ];
+            $row = 4;
+            $slotStartCols = [1, 9, 17];
+            foreach ($sections as $sectionData) {
+                $sheet->setCellValue("A{$row}", $sectionData['title']);
+                $sheet->getStyle("A{$row}")->getFont()->setBold(true);
+                $sheet->getStyle("A{$row}")->getFont()->setSize(13);
+                $row++;
+                foreach (array_chunk($sectionData['tables'], 3) as $chunk) {
+                    $maxAdvance = 0;
+                    foreach ($chunk as $slotIdx => $tableData) {
+                        $startCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($slotStartCols[$slotIdx]);
+                        $endCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($slotStartCols[$slotIdx] + 7);
+                        $tableHeaders = isset($tableData['headers']) ? $tableData['headers'] : $headers;
+                        $sheet->setCellValue($startCol . $row, $tableData['title']);
+                        $sheet->getStyle($startCol . $row)->getFont()->setBold(true);
+                        $sheet->getStyle($startCol . $row)->getFont()->setSize(11);
+                        $r = $row + 1;
+                        $column = $startCol;
+                        foreach ($tableHeaders as $header) {
+                            $sheet->setCellValue($column . $r, $header);
+                            $sheet->getColumnDimension($column)->setAutoSize(true);
+                            $column++;
+                        }
+                        $sheet->getStyle("{$startCol}{$r}:{$endCol}{$r}")->applyFromArray($miniHeaderStyle);
+                        $r++;
+                        foreach ($tableData['rows'] as $rowData) {
+                            $isSummaryRow = empty($rowData['date']);
+                            $column = $startCol;
+                            foreach ($tableHeaders as $header) {
+                                $key = strtolower(str_replace(' ', '_', $header));
+                                if (in_array($header, ['Profit', 'Cash In', 'Cash Out', 'Balance', 'Paid', 'Remaining'])) {
+                                    $value = isset($rowData[$key]) ? number_format($rowData[$key], 2) : '0.00';
+                                    if (in_array($header, ['Cash In', 'Cash Out']) && !$isSummaryRow && isset($rowData[$key]) && $rowData[$key] > 0) {
+                                        $cashCur = !empty($rowData['cash_currency']) ? $rowData['cash_currency'] : (isset($rowData['currency']) ? $rowData['currency'] : '');
+                                        $value .= ' ' . $cashCur;
+                                    }
+                                } else {
+                                    $value = isset($rowData[$key]) ? $rowData[$key] : '';
+                                }
+                                $sheet->setCellValue($column . $r, $value);
+                                $column++;
+                            }
+                            if (!empty($rowData['bold'])) {
+                                $sheet->getStyle($startCol . $r . ':' . $endCol . $r)->getFont()->setBold(true);
+                            }
+                            $r++;
+                        }
+                        if ($r - $row > $maxAdvance) {
+                            $maxAdvance = $r - $row;
+                        }
+                    }
+                    $row += $maxAdvance + 1;
+                }
+            }
+        } else {
         // Add headers at row 4
         $column = 'A';
         $headerRow = 4;
@@ -3098,6 +3556,12 @@ try {
                         break;
                     case 'Address':
                         $value = isset($rowData['address']) ? $rowData['address'] : '';
+                        break;
+                    case 'Father Name':
+                        $value = isset($rowData['fname']) ? $rowData['fname'] : '';
+                        break;
+                    case 'Group':
+                        $value = isset($rowData['group_name']) ? $rowData['group_name'] : '';
                         break;
                     case 'Base':
                         $value = isset($rowData['base']) ? $rowData['base'] : '';
@@ -3276,6 +3740,7 @@ try {
             }
             $sheet->getStyle("A{$row}:{$lastColumn}{$row}")->applyFromArray($totalStyle);
             $row++;
+        }
         }
         
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

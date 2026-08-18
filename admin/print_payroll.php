@@ -1123,8 +1123,8 @@ body {
                 <tbody>
                     <?php foreach ($employee['payment_details'] as $payment):
                         // TODO: pre-load accounts above loop to avoid N+1 queries
-                        $acctStmt = $pdo->prepare("SELECT name FROM main_account WHERE id = ? LIMIT 1");
-                        $acctStmt->execute([$payment['main_account_id']]);
+                        $acctStmt = $pdo->prepare("SELECT name FROM main_account WHERE id = ? AND tenant_id = ? AND branch_id = ? LIMIT 1");
+                        $acctStmt->execute([$payment['main_account_id'], $tenant_id, $branch_id]);
                         $acct = $acctStmt->fetch(PDO::FETCH_ASSOC);
                     ?>
                     <tr>

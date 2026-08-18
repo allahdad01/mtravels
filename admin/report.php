@@ -203,6 +203,7 @@ if ($tenant_id) {
                                                                              <option value="umrah">🕌 <?= __('umrah') ?></option>
                                                                              <option value="hotel">🏨 <?= __('hotel') ?></option>
                                                                              <?php if (in_array($_SESSION['role'], ['admin', 'finance'])): ?>
+                                                                                 <option value="general_summary">📈 <?= __('general_summary') ?></option>
                                                                                  <option value="expense">💸 <?= __('expense') ?></option>
                                                                                  <option value="creditor">💼 <?= __('creditor') ?></option>
                                                                                  <option value="debtor">📝 <?= __('debtor') ?></option>

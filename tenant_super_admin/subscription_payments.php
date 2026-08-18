@@ -54,13 +54,15 @@ $userAddonManager = new UserAddonManager($pdo, $tenant_id);
 $communicationAddonManager = new CommunicationAddonManager($pdo, $tenant_id);
 
 $tenant_payment_status = 'current';
+$tenant_status = '';
 try {
-    $stmt = $pdo->prepare("SELECT payment_status, payment_due_date FROM tenants WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT payment_status, payment_due_date, status FROM tenants WHERE id = ?");
     $stmt->execute([$tenant_id]);
     $tenant_data = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($tenant_data) {
         $tenant_payment_status = $tenant_data['payment_status'];
         $payment_due_date      = $tenant_data['payment_due_date'];
+        $tenant_status         = $tenant_data['status'];
     }
 } catch (PDOException $e) {}
 
@@ -162,6 +164,19 @@ if (isset($_GET['payment'], $_GET['subscription_id'])) {
                 }
                 $payment_message = "Payment successful! Subscription activated.";
                 $payment_msg_type = 'success';
+
+                // Clean start: wipe trial test data if the tenant opted in
+                $clean_start = isset($_GET['clean_start']) && $_GET['clean_start'] === '1';
+                if ($clean_start) {
+                    try {
+                        require_once '../includes/TenantDataReset.php';
+                        $wipe_report = wipeTenantData($pdo, $tenant_id);
+                        $payment_message .= ' All test data created during your trial has been cleared (' . $wipe_report['total'] . ' record' . ($wipe_report['total'] === 1 ? '' : 's') . ' removed).';
+                    } catch (Exception $e) {
+                        error_log('Clean start wipe failed for tenant ' . $tenant_id . ': ' . $e->getMessage());
+                        $payment_message .= ' Note: trial data could not be cleared automatically. Please contact support.';
+                    }
+                }
             }
         } catch (PDOException $e) {
             $payment_message  = "Error processing payment.";
@@ -335,6 +350,20 @@ body, .pcoded-main-container {
     transition: all 0.2s;
 }
 .pay-btn:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(64,153,255,0.3); color: #fff; }
+
+/* Clean start option */
+.clean-start-box {
+    background: #fef3c7; border: 1.5px solid #fcd34d;
+    border-radius: 10px; padding: 12px 14px; margin-bottom: 12px;
+}
+.clean-start-label {
+    display: flex; align-items: flex-start; gap: 10px;
+    cursor: pointer; font-size: 13px; color: #78350f; line-height: 1.5;
+}
+.clean-start-label input[type="checkbox"] {
+    margin-top: 3px; width: 16px; height: 16px; accent-color: var(--amber); flex-shrink: 0;
+}
+.clean-start-label strong { color: #92400e; }
 
 /* Empty state */
 .empty-card {
@@ -611,6 +640,17 @@ body, .pcoded-main-container {
                     <?php endif; ?>
 
                     <!-- Pay button -->
+                    <?php if ($tenant_status === 'trial' && $status !== 'active'): ?>
+                    <div class="clean-start-box">
+                        <label class="clean-start-label">
+                            <input type="checkbox" name="clean_start" value="1">
+                            <span>
+                                <strong>Start fresh</strong> — delete all records I created during my trial
+                                (customers, bookings, transactions, etc.) once my payment succeeds.
+                            </span>
+                        </label>
+                    </div>
+                    <?php endif; ?>
                     <form method="post" action="process_subscription_payment.php">
                         <input type="hidden" name="csrf_token"      value="<?= htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8') ?>">
                         <input type="hidden" name="subscription_id" value="<?= $subscription['id'] ?>">
