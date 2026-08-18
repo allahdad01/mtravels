@@ -43,6 +43,7 @@ function loadServices() {
         renderServices();
         const cnt = document.getElementById('tabServicesCount');
         if (cnt) cnt.textContent = svData.services.length;
+        document.dispatchEvent(new CustomEvent('uhServicesChanged', { detail: svData.services }));
     }).catch(() => {
         document.getElementById('servicesList').innerHTML = '<tr><td colspan="2" class="text-danger text-center py-3">Network error.</td></tr>';
     });

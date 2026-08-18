@@ -861,6 +861,8 @@ try {
                     'Visa' => "SELECT DATE(v.receive_date) d, v.passport_number ref, c.name party, CONCAT(v.country, ' - ', v.visa_type) details, v.profit profit, COALESCE((SELECT SUM(mt.amount) FROM main_account_transactions mt WHERE mt.reference_id = v.id AND mt.transaction_of = 'visa_sale' AND mt.type = 'credit'), 0) cash_in, 0 cash_out, v.currency currency, COALESCE((SELECT mt.currency FROM main_account_transactions mt WHERE mt.reference_id = v.id AND mt.transaction_of = 'visa_sale' AND mt.type = 'credit' LIMIT 1), v.currency) cash_currency FROM visa_applications v LEFT JOIN clients c ON v.sold_to = c.id WHERE v.receive_date BETWEEN ? AND ? AND v.tenant_id = ? AND v.branch_id = ?",
                     'Umrah Bookings' => "SELECT DATE(u.entry_date) d, u.passport_number ref, c.name party, u.duration details, u.profit profit, COALESCE((SELECT SUM(mt.amount) FROM main_account_transactions mt LEFT JOIN umrah_transactions ut ON mt.reference_id = ut.id WHERE mt.transaction_of = 'umrah_transaction' AND mt.type = 'credit' AND ut.umrah_booking_id = u.booking_id), 0) cash_in, 0 cash_out, u.currency currency, COALESCE((SELECT mt.currency FROM main_account_transactions mt LEFT JOIN umrah_transactions ut ON mt.reference_id = ut.id WHERE mt.transaction_of = 'umrah_transaction' AND mt.type = 'credit' AND ut.umrah_booking_id = u.booking_id LIMIT 1), u.currency) cash_currency FROM umrah_bookings u LEFT JOIN clients c ON u.sold_to = c.id WHERE u.entry_date BETWEEN ? AND ? AND u.tenant_id = ? AND u.branch_id = ?",
                     'Additional Payments' => "SELECT DATE(ap.created_at) d, ap.id ref, m.name party, ap.payment_type details, ap.profit profit, COALESCE((SELECT SUM(mt.amount) FROM main_account_transactions mt WHERE mt.reference_id = ap.id AND mt.transaction_of = 'additional_payment' AND mt.type = 'credit'), 0) cash_in, 0 cash_out, ap.currency currency, COALESCE((SELECT mt.currency FROM main_account_transactions mt WHERE mt.reference_id = ap.id AND mt.transaction_of = 'additional_payment' AND mt.type = 'credit' LIMIT 1), ap.currency) cash_currency FROM additional_payments ap LEFT JOIN main_account m ON ap.main_account_id = m.id WHERE ap.created_at BETWEEN ? AND ? AND ap.tenant_id = ? AND ap.branch_id = ?",
+                    'Supplier Transactions' => "SELECT DATE(st.transaction_date) d, st.receipt ref, s.name party, CONCAT(COALESCE(st.remarks, ''), ' (', st.transaction_of, ')') details, 0 profit, IF(st.transaction_type = 'Debit' AND st.transaction_of = 'fund_withdrawal', st.amount, 0) cash_in, IF(st.transaction_type = 'Credit' AND st.transaction_of IN ('fund', 'supplier_bonus'), st.amount, 0) cash_out, COALESCE(s.currency, 'USD') currency, COALESCE(s.currency, 'USD') cash_currency FROM supplier_transactions st LEFT JOIN suppliers s ON st.supplier_id = s.id WHERE st.transaction_date BETWEEN ? AND ? AND st.tenant_id = ? AND st.branch_id = ?",
+                    'Client Transactions' => "SELECT DATE(ct.created_at) d, ct.receipt ref, c.name party, COALESCE(ct.description, ct.transaction_of) details, 0 profit, IF(ct.type = 'credit' AND ct.transaction_of = 'fund', ct.amount, 0) cash_in, IF(ct.type = 'debit' AND ct.transaction_of = 'client_withdrawal', ct.amount, 0) cash_out, ct.currency currency, ct.currency cash_currency FROM client_transactions ct LEFT JOIN clients c ON ct.client_id = c.id WHERE ct.created_at BETWEEN ? AND ? AND ct.tenant_id = ? AND ct.branch_id = ?",
                 ];
                 $cashQueries = [
                     'Operating Expenses' => "SELECT DATE(mt.created_at) d, mt.receipt ref, ec.name party, e.description details, 0 profit, 0 cash_in, mt.amount cash_out, mt.currency currency FROM main_account_transactions mt LEFT JOIN expenses e ON mt.reference_id = e.id AND mt.transaction_of = 'expense' LEFT JOIN expense_categories ec ON e.category_id = ec.id WHERE mt.transaction_of = 'expense' AND mt.type = 'debit' AND mt.created_at BETWEEN ? AND ? AND mt.tenant_id = ? AND mt.branch_id = ?",
@@ -886,6 +888,8 @@ $totals = [];
                     'UMRAH' => ['Umrah Bookings'],
                     'ADDITIONAL PAYMENTS' => ['Additional Payments'],
                     'OTHER INCOME' => ['Payments from Debtors'],
+                    'SUPPLIERS' => ['Supplier Transactions'],
+                    'CLIENTS' => ['Client Transactions'],
                 ];
                 $expenseGroups = [
                     'EXPENSES' => ['Operating Expenses', 'Ticket Refunds Paid', 'Hotel Refunds Paid', 'Visa Refunds Paid', 'Umrah Refunds Paid', 'Loans to Debtors', 'Payments to Creditors', 'Salary Payments'],
@@ -919,6 +923,7 @@ $totals = [];
                                 $cashCur = !empty($r['cash_currency']) ? $r['cash_currency'] : $cur;
                                 $totals[$cur]['profit'] = (isset($totals[$cur]['profit']) ? $totals[$cur]['profit'] : 0) + floatval($r['profit']);
                                 $totals[$cashCur]['cash_in'] = (isset($totals[$cashCur]['cash_in']) ? $totals[$cashCur]['cash_in'] : 0) + floatval($r['cash_in']);
+                                $totals[$cashCur]['cash_out'] = (isset($totals[$cashCur]['cash_out']) ? $totals[$cashCur]['cash_out'] : 0) + floatval($r['cash_out']);
                             }
                         } elseif (isset($cashQueries[$label])) {
                             $st = $pdo->prepare($cashQueries[$label]);
@@ -948,6 +953,7 @@ $totals = [];
                                 $rows[] = ['entity' => $r['entity'], 'balance' => floatval($r['balance']), 'paid' => floatval($r['paid']), 'remaining' => floatval($r['remaining']), 'currency' => $r['currency']];
                                 $cur = $r['currency'];
                                 $totals[$cur]['cash_out'] = (isset($totals[$cur]['cash_out']) ? $totals[$cur]['cash_out'] : 0) + floatval($r['paid']);
+                                $totals[$cur]['expense_out'] = (isset($totals[$cur]['expense_out']) ? $totals[$cur]['expense_out'] : 0) + floatval($r['paid']);
                             }
                             if (empty($rows)) {
                                 $rows[] = ['entity' => 'No records in selected period', 'balance' => 0, 'paid' => 0, 'remaining' => 0, 'currency' => 'N/A'];
@@ -962,6 +968,7 @@ $totals = [];
                             $rows[] = ['date' => $r['d'], 'reference' => $r['ref'], 'party' => $r['party'], 'details' => $r['details'], 'profit' => 0, 'cash_in' => 0, 'cash_out' => floatval($r['cash_out']), 'currency' => $r['currency']];
                             $cur = $r['currency'];
                             $totals[$cur]['cash_out'] = (isset($totals[$cur]['cash_out']) ? $totals[$cur]['cash_out'] : 0) + floatval($r['cash_out']);
+                            $totals[$cur]['expense_out'] = (isset($totals[$cur]['expense_out']) ? $totals[$cur]['expense_out'] : 0) + floatval($r['cash_out']);
                         }
                         if (empty($rows)) {
                             $rows[] = ['date' => '', 'reference' => '', 'party' => 'No records in selected period', 'details' => '', 'profit' => 0, 'cash_in' => 0, 'cash_out' => 0, 'currency' => 'N/A'];
@@ -970,17 +977,132 @@ $totals = [];
                     }
                     $sections[] = ['title' => $groupTitle, 'tables' => $mini];
                 }
+                $accountLedgerSql = "SELECT mt.main_account_id account_id, mt.type, mt.transaction_of, mt.amount, DATE(mt.created_at) d, mt.receipt ref,
+                    CASE
+                        WHEN mt.transaction_of = 'ticket_sale' THEN CONCAT(tb.passenger_name, ' (Ticket Sale)')
+                        WHEN mt.transaction_of = 'ticket_reserve' THEN CONCAT(tr.passenger_name, ' (Ticket Reserve)')
+                        WHEN mt.transaction_of = 'ticket_refund' THEN CONCAT(rft.passenger_name, ' (Ticket Refund)')
+                        WHEN mt.transaction_of = 'date_change' THEN CONCAT(dc.passenger_name, ' (Date Change)')
+                        WHEN mt.transaction_of = 'visa_sale' THEN CONCAT(va_sale.applicant_name, ' (Visa Sale)')
+                        WHEN mt.transaction_of = 'umrah' THEN CONCAT(ub.name, ' (Umrah)')
+                        WHEN mt.transaction_of = 'hotel' THEN CONCAT(hb_txn.title, hb_txn.first_name, ' ', hb_txn.last_name, ' (Hotel)')
+                        WHEN mt.transaction_of = 'fund' THEN CONCAT(usr.name, ' (Fund)')
+                        WHEN mt.transaction_of = 'withdraw_fund' THEN CONCAT(wf_usr.name, ' (Withdraw Fund)')
+                        WHEN mt.transaction_of = 'hotel_refund' THEN CONCAT(hb_refund.title, hb_refund.first_name, ' ', hb_refund.last_name, ' (Hotel Refund)')
+                        WHEN mt.transaction_of = 'deposit_sarafi' THEN CONCAT(sc.name, ' (Deposit Sarafi)')
+                        WHEN mt.transaction_of = 'withdrawal_sarafi' THEN CONCAT(sc.name, ' (Withdrawal Sarafi)')
+                        WHEN mt.transaction_of = 'hawala_sarafi' THEN CONCAT(sc.name, ' (Hawala Sarafi)')
+                        WHEN mt.transaction_of = 'salary_payment' THEN CONCAT(su.name, ' (Salary Payment)')
+                        WHEN mt.transaction_of = 'debtor' THEN CONCAT(d.name, ' (Debtor)')
+                        WHEN mt.transaction_of = 'creditor' THEN CONCAT(COALESCE(c.name, cd.name), ' (Creditor)')
+                        WHEN mt.transaction_of = 'supplier_fund' THEN CONCAT(sup.name, ' (Supplier Fund)')
+                        WHEN mt.transaction_of = 'supplier_fund_withdrawal' THEN CONCAT(sup2.name, ' (Supplier Fund Withdrawal)')
+                        WHEN mt.transaction_of = 'client_fund' THEN CONCAT(cl.name, ' (Client Fund)')
+                        WHEN mt.transaction_of = 'client_withdraw' THEN CONCAT(cl_wd.name, ' (Client Withdraw)')
+                        WHEN mt.transaction_of = 'global_budget_allocation' THEN 'Global Budget Allocation'
+                        WHEN mt.transaction_of = 'budget_allocation' THEN CONCAT(ec.name, ' (Budget Allocation)')
+                        WHEN mt.transaction_of = 'expense' THEN CONCAT(exp_cat.name, ' (Expense)')
+                        WHEN mt.transaction_of = 'transfer' THEN CONCAT(xfr_acct.name, ' (Transfer)')
+                        WHEN mt.transaction_of = 'umrah_transaction' THEN CONCAT(ub_txn.name, ' (Umrah Transaction)')
+                        WHEN mt.transaction_of = 'additional_payment' THEN CONCAT(ap.description, ' (Additional Payment)')
+                        WHEN mt.transaction_of = 'visa_refund' THEN CONCAT(va.applicant_name, ' (Visa Refund)')
+                        WHEN mt.transaction_of = 'weight' THEN CONCAT(tb_weight.passenger_name, ' (Weight)')
+                        WHEN mt.transaction_of = 'umrah_refund' THEN CONCAT(ub_refund.name, ' (Umrah Refund)')
+                        ELSE CONCAT(mt.reference_id, ' (', mt.transaction_of, ')')
+                    END party,
+                    COALESCE(mt.description, '') details,
+                    IF(mt.type = 'credit', mt.amount, 0) cash_in, IF(mt.type = 'debit', mt.amount, 0) cash_out,
+                    mt.currency currency
+                FROM main_account_transactions mt
+                LEFT JOIN ticket_bookings tb ON mt.reference_id = tb.id AND mt.transaction_of = 'ticket_sale'
+                LEFT JOIN ticket_reservations tr ON mt.reference_id = tr.id AND mt.transaction_of = 'ticket_reserve'
+                LEFT JOIN refunded_tickets rft ON mt.reference_id = rft.id AND mt.transaction_of = 'ticket_refund'
+                LEFT JOIN date_change_tickets dc ON mt.reference_id = dc.id AND mt.transaction_of = 'date_change'
+                LEFT JOIN umrah_bookings ub ON mt.reference_id = ub.booking_id AND mt.transaction_of = 'umrah'
+                LEFT JOIN users usr ON usr.id = mt.reference_id AND mt.transaction_of = 'fund'
+                LEFT JOIN users wf_usr ON wf_usr.id = mt.reference_id AND mt.transaction_of = 'withdraw_fund'
+                LEFT JOIN sarafi_transactions st ON mt.reference_id = st.id AND mt.transaction_of IN ('deposit_sarafi', 'withdrawal_sarafi', 'hawala_sarafi')
+                LEFT JOIN customers sc ON st.customer_id = sc.id AND mt.transaction_of IN ('deposit_sarafi', 'withdrawal_sarafi', 'hawala_sarafi')
+                LEFT JOIN salary_payments sp ON mt.reference_id = sp.id AND mt.transaction_of = 'salary_payment'
+                LEFT JOIN users su ON sp.user_id = su.id AND mt.transaction_of = 'salary_payment'
+                LEFT JOIN debtor_transactions dt ON mt.reference_id = dt.id AND mt.transaction_of = 'debtor'
+                LEFT JOIN debtors d ON dt.debtor_id = d.id AND mt.transaction_of = 'debtor'
+                LEFT JOIN creditor_transactions ct ON mt.reference_id = ct.id AND mt.transaction_of = 'creditor'
+                LEFT JOIN creditors c ON ct.creditor_id = c.id AND mt.transaction_of = 'creditor'
+                LEFT JOIN creditors cd ON mt.reference_id = cd.id AND mt.transaction_of = 'creditor'
+                LEFT JOIN supplier_transactions st2 ON mt.reference_id = st2.id AND mt.transaction_of = 'supplier_fund'
+                LEFT JOIN suppliers sup ON st2.supplier_id = sup.id AND mt.transaction_of = 'supplier_fund'
+                LEFT JOIN supplier_transactions st3 ON mt.reference_id = st3.id AND mt.transaction_of = 'supplier_fund_withdrawal'
+                LEFT JOIN suppliers sup2 ON st3.supplier_id = sup2.id AND mt.transaction_of = 'supplier_fund_withdrawal'
+                LEFT JOIN client_transactions clt ON mt.reference_id = clt.id AND mt.transaction_of = 'client_fund'
+                LEFT JOIN clients cl ON clt.client_id = cl.id AND mt.transaction_of = 'client_fund'
+                LEFT JOIN client_transactions clt_wd ON mt.reference_id = clt_wd.id AND mt.transaction_of = 'client_withdraw'
+                LEFT JOIN clients cl_wd ON clt_wd.client_id = cl_wd.id AND mt.transaction_of = 'client_withdraw'
+                LEFT JOIN budget_allocations ba ON mt.reference_id = ba.id AND mt.transaction_of = 'budget_allocation'
+                LEFT JOIN expense_categories ec ON ba.category_id = ec.id AND mt.transaction_of = 'budget_allocation'
+                LEFT JOIN global_budget_allocations ga ON mt.reference_id = ga.id AND mt.transaction_of = 'global_budget_allocation'
+                LEFT JOIN expenses exp ON mt.reference_id = exp.id AND mt.transaction_of = 'expense'
+                LEFT JOIN expense_categories exp_cat ON exp.category_id = exp_cat.id AND mt.transaction_of = 'expense'
+                LEFT JOIN main_account xfr_acct ON mt.reference_id = xfr_acct.id AND mt.transaction_of = 'transfer'
+                LEFT JOIN umrah_transactions ut ON mt.reference_id = ut.id AND mt.transaction_of = 'umrah_transaction'
+                LEFT JOIN umrah_bookings ub_txn ON ut.umrah_booking_id = ub_txn.booking_id AND mt.transaction_of = 'umrah_transaction'
+                LEFT JOIN additional_payments ap ON mt.reference_id = ap.id AND mt.transaction_of = 'additional_payment'
+                LEFT JOIN visa_refunds vr ON mt.reference_id = vr.id AND mt.transaction_of = 'visa_refund'
+                LEFT JOIN visa_applications va ON vr.visa_id = va.id AND mt.transaction_of = 'visa_refund'
+                LEFT JOIN ticket_weights tw ON mt.reference_id = tw.id AND mt.transaction_of = 'weight'
+                LEFT JOIN ticket_bookings tb_weight ON tw.ticket_id = tb_weight.id AND mt.transaction_of = 'weight'
+                LEFT JOIN hotel_bookings hb_txn ON mt.reference_id = hb_txn.id AND mt.transaction_of = 'hotel'
+                LEFT JOIN hotel_refunds hr ON mt.reference_id = hr.id AND mt.transaction_of = 'hotel_refund'
+                LEFT JOIN hotel_bookings hb_refund ON hr.booking_id = hb_refund.id AND mt.transaction_of = 'hotel_refund'
+                LEFT JOIN visa_applications va_sale ON mt.reference_id = va_sale.id AND mt.transaction_of = 'visa_sale'
+                LEFT JOIN umrah_refunds ur ON mt.reference_id = ur.id AND mt.transaction_of = 'umrah_refund'
+                LEFT JOIN umrah_bookings ub_refund ON ur.booking_id = ub_refund.booking_id AND mt.transaction_of = 'umrah_refund'
+                WHERE mt.tenant_id = ? AND mt.branch_id = ? AND DATE(mt.created_at) BETWEEN ? AND ?
+                ORDER BY mt.main_account_id, mt.created_at";
+                $accSt = $pdo->prepare($accountLedgerSql);
+                $accSt->execute([$tenant_id, $branch_id, $startDate, $endDate]);
+                $byAccount = [];
+                foreach ($accSt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                    $byAccount[$r['account_id']][] = $r;
+                    if (in_array($r['transaction_of'], ['transfer', 'fund', 'withdraw_fund'], true)) {
+                        $cur = $r['currency'];
+                        $amt = floatval($r['amount']);
+                        if ($r['type'] === 'credit') {
+                            $totals[$cur]['cash_in'] = (isset($totals[$cur]['cash_in']) ? $totals[$cur]['cash_in'] : 0) + $amt;
+                        } else {
+                            $totals[$cur]['cash_out'] = (isset($totals[$cur]['cash_out']) ? $totals[$cur]['cash_out'] : 0) + $amt;
+                        }
+                    }
+                }
+                if (!empty($byAccount)) {
+                    $accNames = [];
+                    $accSt2 = $pdo->prepare("SELECT id, name FROM main_account WHERE tenant_id = ? AND branch_id = ?");
+                    $accSt2->execute([$tenant_id, $branch_id]);
+                    foreach ($accSt2 as $a) {
+                        $accNames[$a['id']] = $a['name'];
+                    }
+                    $accTables = [];
+                    foreach ($byAccount as $accId => $rows) {
+                        $items = [];
+                        foreach ($rows as $r) {
+                            $items[] = ['date' => $r['d'], 'reference' => $r['ref'], 'party' => $r['party'], 'details' => $r['details'], 'profit' => 0, 'cash_in' => floatval($r['cash_in']), 'cash_out' => floatval($r['cash_out']), 'currency' => $r['currency'], 'cash_currency' => $r['currency']];
+                        }
+                        $accTables[] = ['title' => isset($accNames[$accId]) ? $accNames[$accId] : ('Account ' . $accId), 'rows' => $items];
+                    }
+                    $sections[] = ['title' => 'MAIN ACCOUNT', 'tables' => $accTables];
+                }
                 $summaryTables = [];
                 foreach ($totals as $currency => $t) {
                     $profit = isset($t['profit']) ? $t['profit'] : 0;
                     $cashIn = isset($t['cash_in']) ? $t['cash_in'] : 0;
                     $cashOut = isset($t['cash_out']) ? $t['cash_out'] : 0;
+                    $expenseOut = isset($t['expense_out']) ? $t['expense_out'] : 0;
                     $summaryTables[] = ['title' => 'Summary - ' . $currency, 'rows' => [
                         ['party' => 'INCOME (PROFIT)', 'profit' => $profit],
                         ['party' => 'CASH RECEIVED', 'cash_in' => $cashIn],
-                        ['party' => 'CASH PAID (EXPENSES)', 'cash_out' => $cashOut],
+                        ['party' => 'CASH PAID', 'cash_out' => $cashOut],
                         ['party' => 'NET CASH FLOW', 'cash_in' => $cashIn - $cashOut, 'bold' => true],
-                        ['party' => 'NET PROFIT', 'profit' => $profit - $cashOut, 'bold' => true],
+                        ['party' => 'NET PROFIT', 'profit' => $profit - $expenseOut, 'bold' => true],
                     ]];
                 }
                 $sections[] = ['title' => 'SUMMARY', 'tables' => $summaryTables];
@@ -2886,8 +3008,8 @@ case 'umrah':
                     .status-pending{color:#744210;background-color:#feebc8;padding:2px 8px;border-radius:4px;font-size:8pt;font-weight:bold;}
                     .status-unpaid{color:#742a2a;background-color:#fed7d7;padding:2px 8px;border-radius:4px;font-size:8pt;font-weight:bold;}
                     .report-footer{margin-top:20px;padding-top:10px;border-top:2px solid #e2e8f0;font-size:8pt;color:#718096;text-align:center;}
-                    .mini-table{margin-bottom:14px;page-break-inside:avoid;}
-                    .rowwrap{width:100%;border-collapse:collapse;margin-bottom:14px;page-break-inside:avoid;}
+                    .mini-table{margin-bottom:14px;}
+                    .rowwrap{width:100%;border-collapse:collapse;margin-bottom:14px;}
                     .rowcell{padding:0;vertical-align:top;}
                     .rowwrap .mini-table{margin-bottom:0;}
                     .total-row td{font-weight:bold;background-color:#f7fafc;}

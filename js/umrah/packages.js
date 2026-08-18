@@ -151,15 +151,17 @@ function addLineRow(pre = {}) {
     const rtOpts = buildRtOptions(pre.hotel_id || '', pre.room_type_id || '');
 
     const div = document.createElement('div');
-    div.className = 'pkg-line-row';
+    div.className = 'pkg-line-row uh-line-card';
     div.id = rowId;
     div.innerHTML =
-        '<div><select class="form-control form-control-sm pk-svc">' + svcHtml + '</select>' +
-        '<div class="row mt-1 pk-venue">' +
+        '<div class="uh-line-top">' +
+            '<select class="form-control form-control-sm pk-svc">' + svcHtml + '</select>' +
+            '<button type="button" class="btn btn-sm btn-outline-danger uh-line-del pk-del" title="' + pkT('delete') + '"><i class="feather icon-x"></i></button>' +
+        '</div>' +
+        '<div class="row mt-2 pk-venue">' +
             '<div class="col-6"><select class="form-control form-control-sm pk-hotel">' + hotelOpts + '</select></div>' +
             '<div class="col-6"><select class="form-control form-control-sm pk-rt">' + rtOpts + '</select></div>' +
-        '</div></div>' +
-        '<div class="text-right"><button type="button" class="btn btn-xs btn-outline-danger pk-del" title="' + pkT('delete') + '"><i class="feather icon-x"></i></button></div>';
+        '</div>';
     if (pre.id) {
         div.setAttribute('data-line-id', pre.id);
     }
@@ -310,6 +312,17 @@ function deletePackage(id) {
 }
 
 // ============================================================== INIT
+// Keep the package editor's service list in sync when services are
+// added/edited/toggled/deleted on the Services tab (services_manager.js).
+$(document).on('uhServicesChanged', function (e) {
+    pkAjax('../api/umrah/services/get_services.php', {}, 'GET').then(({ ok, d }) => {
+        if (ok && d.success) {
+            pkData.services = d.services;
+            refreshLineRows();
+        }
+    });
+});
+
 $(document).ready(function () {
     if (!document.getElementById('btnAddPackage')) return; // bundle runs on every umrah page
     $('#btnAddPackage').on('click', function () { openPackageForm(0); });

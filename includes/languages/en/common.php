@@ -6295,7 +6295,7 @@ return [
     'no_packages' => 'No packages yet',
     'code' => 'Code',
 
-    'select_service' => 'Select serviceâ€¦',
+    'select_service' => 'Select service…',
     'service_master' => 'Service Master',
     'service_master_hint' => 'Create and manage services, pricing rates and supplier costs.',
     'edit_category' => 'Edit Category',
