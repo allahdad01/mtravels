@@ -239,7 +239,7 @@ if (!function_exists('role_default_permissions')) {
                 'visa.view', 'visa.create', 'visa.edit', 'visa.refund', 'visa.delete',
                 'reports.view',
                 'hr.salary',
-                'communication.view', 'communication.email',
+                'communication.view',
                 'support.view',
             ],
             'umrah' => array_merge([

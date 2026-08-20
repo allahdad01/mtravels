@@ -646,8 +646,8 @@ $selected_date = InputValidator::getDate($_GET['departure_date'] ?? '', 'Y-m-d',
             </div>
             <?php endif; ?>
 
-            <!-- SALES CARDS (tickets.view) -->
-            <?php if (user_can('tickets.view')): ?>
+            <!-- SALES CARDS (admin only) -->
+            <?php if (in_array($_SESSION['role'], ['admin', 'super_admin', 'tenant_super_admin'], true)): ?>
             <div class="sec-label"><i class="fas fa-chart-line"></i> Performance Overview</div>
             
             <!-- Sales Filter Controls (Outside Cards) -->

@@ -5,6 +5,13 @@ session_start();
 require_once 'security.php';
 enforce_auth();
 require_permission('hr.salary');
+// Employee salary records are admin/manager & finance only; other roles
+// (sales, umrah, staff) must not see other employees' salaries.
+$salaryAdminRoles = ['admin', 'finance', 'tenant_super_admin', 'super_admin'];
+if (!in_array($_SESSION['role'] ?? '', $salaryAdminRoles, true)) {
+    header('Location: ../access_denied.php');
+    exit();
+}
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 

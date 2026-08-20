@@ -5,6 +5,13 @@ require_once '../includes/functions.php';
 // Include security module
 require_once 'security.php';
 require_permission('communication.email');
+// SMTP config testing is admin/manager & finance only.
+$emailAdminRoles = ['admin', 'finance', 'tenant_super_admin', 'super_admin'];
+if (!in_array($_SESSION['role'] ?? '', $emailAdminRoles, true)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Access denied']);
+    exit();
+}
 
 $tenant_id = $_SESSION['tenant_id'];
 

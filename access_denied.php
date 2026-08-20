@@ -94,23 +94,22 @@ if ($logged_in) {
                             // Determine correct dashboard based on role
                              $dashboard_url = '';
                              switch(strtolower($role)) {
+                                 case 'super_admin':
+                                     $dashboard_url = 'super_admin/dashboard.php';
+                                     break;
+                                 case 'tenant_super_admin':
+                                     $dashboard_url = 'tenant_super_admin/dashboard.php';
+                                     break;
+                                 case 'sales_agent':
+                                     $dashboard_url = 'sales_agent/dashboard.php';
+                                     break;
                                  case 'admin':
-                                     $dashboard_url = 'admin/dashboard.php';
-                                     break;
                                  case 'staff':
-                                     $dashboard_url = 'admin/dashboard.php';
-                                     break;
                                  case 'sales':
-                                     $dashboard_url = 'sales/dashboard.php';
-                                     break;
                                  case 'finance':
-                                     $dashboard_url = 'finance/dashboard.php';
-                                     break;
                                  case 'umrah':
-                                     $dashboard_url = 'umrah/dashboard.php';
-                                     break;
                                  case 'visa':
-                                     $dashboard_url = 'visa/dashboard.php';
+                                     $dashboard_url = 'admin/dashboard.php';
                                      break;
                                  case 'client':
                                      $dashboard_url = 'client/dashboard.php';

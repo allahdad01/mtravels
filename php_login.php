@@ -291,7 +291,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                       header("location: admin/dashboard.php");
                                       break;
                                   default:
-                                      header("location: user/dashboard.php");
+                                      header("location: admin/dashboard.php");
                               }
                             exit;
                         } else {
@@ -448,7 +448,7 @@ function completeLogin() {
                  header("location: admin/dashboard.php");
                  break;
              default:
-                 header("location: user/dashboard.php");
+                 header("location: admin/dashboard.php");
          }
      }
     exit;

@@ -18,6 +18,12 @@ $_SESSION['last_activity'] = time();
 require_once 'security.php';
 enforce_auth();
 require_permission('communication.email');
+// Email analytics show company-wide tracking data; admin/manager & finance only.
+$emailAdminRoles = ['admin', 'finance', 'tenant_super_admin', 'super_admin'];
+if (!in_array($_SESSION['role'] ?? '', $emailAdminRoles, true)) {
+    header('Location: ../access_denied.php');
+    exit();
+}
 if (!isset($_SESSION['csrf_token'])) { $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); }
 
 require_once '../includes/InputValidator.php';

@@ -29,6 +29,10 @@ if (!function_exists('user_can')) {
 // Current page for active-state detection
 $currentPage = basename($_SERVER['PHP_SELF']);
 
+// Roles that see sensitive company-wide data (all employee salaries, email
+// analytics, etc.). Sales, Umrah, Staff etc. only see their own records.
+$fullAccessRoles = ['admin', 'finance', 'tenant_super_admin', 'super_admin'];
+
 // Communication add-on state (used for SMTP-linked menu items).
 $has_smtp_addon = false;
 if (isset($pdo, $tenant_id)) {
@@ -419,7 +423,12 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 
 <!-- ── Salary ────────────────────────────────────────────────────────── -->
 <?php if (hasFeature('salary', $allowed_features)): ?>
-    <?php if (staffCanSeeMenu($user['role']) && user_can('hr.salary')): ?>
+    <?php
+    // Full salary submenu (all employees' salary records) is admin / manager
+    // and finance only. Sales, Umrah, Staff etc. only see their own payments.
+    $salaryFullMenu = in_array($user['role'], $fullAccessRoles, true);
+    ?>
+    <?php if ($salaryFullMenu && user_can('hr.salary')): ?>
     <!-- Admin / manager: full salary submenu -->
     <li class="nav-item pcoded-hasmenu <?= navTrigger('salary_management.php', 'salary_payment.php', 'salary_payments.php') ?>">
         <a href="javascript:" class="nav-link">
@@ -554,7 +563,7 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 <?php endif; ?>
 
 <!-- ── Email Analytics ───────────────────────────────────────────────── -->
-<?php if (staffCanSeeMenu($user['role']) && $has_smtp_addon && user_can('communication.email')): ?>
+<?php if (in_array($user['role'], $fullAccessRoles, true) && $has_smtp_addon && user_can('communication.email')): ?>
 <li class="nav-item <?= navActive('email_analytics.php') ?>">
     <a href="email_analytics.php" class="nav-link">
         <span class="pcoded-micon"><i class="feather icon-mail"></i></span>
