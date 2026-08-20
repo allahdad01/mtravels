@@ -10,10 +10,7 @@ if (session_status() === PHP_SESSION_NONE) {
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    header('Location: ../login.php');
-    exit();
-}
+require_permission('hr.attendance');
 
 $month = isset($_GET['month']) ? $_GET['month'] : date('Y-m');
 $user_filter = isset($_GET['user']) ? (int)$_GET['user'] : 0;

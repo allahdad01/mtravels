@@ -7,9 +7,10 @@
  */
 error_reporting(E_ALL & ~E_NOTICE & ~E_DEPRECATED);
 session_start();
-require_once __DIR__ . '/includes/umrah_permissions.php';
-umrah_require('service_manage', 'page');
-umrah_require('package_manage', 'page');
+require_once 'security.php';
+enforce_auth();
+require_permission('umrah.service_manage');
+require_permission('umrah.package_manage');
 
 $umrahCssVersion = 0;
 $umrahJsVersion = 0;

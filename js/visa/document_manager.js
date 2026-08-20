@@ -403,9 +403,11 @@ class VisaDocumentManager {
                                 <a href="../${doc.file_path}" class="btn btn-sm btn-outline-primary" target="_blank" title="Download">
                                     <i class="feather icon-download"></i>
                                 </a>
+                                ${typeof window.VISA_CAN_DELETE_DOC === 'undefined' || window.VISA_CAN_DELETE_DOC ? `
                                 <button type="button" class="btn btn-sm btn-outline-danger" title="Delete" onclick="visaDocManager.deleteDocument(${doc.id})">
                                     <i class="feather icon-trash-2"></i>
                                 </button>
+                                ` : ''}
                             </div>
                         </div>
                     </div>

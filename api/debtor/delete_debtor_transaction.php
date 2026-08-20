@@ -20,12 +20,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
-// Check if user is logged in
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    header('Content-Type: application/json');
-    echo json_encode(['success' => false, 'message' => 'Authentication required']);
-    exit();
-}
+require_permission('finance.delete');
 
 // Initialize response array
 $response = ['success' => false, 'message' => 'Invalid request'];

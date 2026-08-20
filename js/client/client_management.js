@@ -161,6 +161,8 @@ document.addEventListener('DOMContentLoaded', function () {
   
     function buildRow(c) {
       const typeLabel = (clientTypeTranslations && clientTypeTranslations[c.type]) || c.type;
+      const canEdit = typeof window.CLIENT_CAN_EDIT === 'undefined' || window.CLIENT_CAN_EDIT;
+      const canDelete = typeof window.CLIENT_CAN_DELETE === 'undefined' || window.CLIENT_CAN_DELETE;
       return `
         <tr data-id="${c.id}">
           <td>
@@ -184,12 +186,16 @@ document.addEventListener('DOMContentLoaded', function () {
           <td><span class="${c.status}">${c.status.charAt(0).toUpperCase() + c.status.slice(1)}</span></td>
           <td class="actions-cell">
             <div class="action-row">
+              ${canEdit ? `
               <button class="act-btn primary" onclick="editClient(${c.id})" title="Edit">
                 <i class="fas fa-pen-to-square"></i>
               </button>
+              ` : ''}
+              ${canDelete ? `
               <button class="act-btn ${c.can_delete == '1' ? 'danger' : ''}" onclick="deleteClient(${c.id})" title="${c.can_delete == '1' ? 'Delete' : 'Cannot delete — client has related transactions, payments, or bookings'}" ${c.can_delete == '1' ? '' : 'disabled style="opacity:0.35;cursor:not-allowed"'}>
                 <i class="fas ${c.can_delete == '1' ? 'fa-trash-can' : 'fa-lock'}"></i>
               </button>
+              ` : ''}
             </div>
           </td>
         </tr>`;

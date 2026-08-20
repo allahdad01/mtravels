@@ -16,12 +16,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 
-// Check if user is logged in with proper role
-$allowed_roles = ['admin', 'finance'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    header('Location: ../login.php');
-    exit();
-}
+require_permission('finance.sarafi');
 if (!isset($_SESSION['tenant_id'])) {
     $_SESSION['error_message'] = "Tenant ID not found. Please log in again.";
     header("Location: ../login.php");

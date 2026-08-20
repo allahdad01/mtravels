@@ -12,12 +12,7 @@ require_once 'security.php';
 // Enforce authentication
 enforce_auth();
 
-// Check if user is logged in with proper role
-$allowed_roles = ['admin', 'finance'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    header('Location: ../login.php');
-    exit();
-}
+require_permission('operations.search');
 
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];

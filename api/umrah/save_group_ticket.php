@@ -6,6 +6,7 @@ try {
     require_once '../../admin/security.php';
     
     enforce_auth();
+    require_permission('umrah.fulfill');
     
     $tenant_id = $_SESSION['tenant_id'];
     $branch_id = $_SESSION['branch_id'];
@@ -14,12 +15,6 @@ try {
     // Verify CSRF token
     if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
         throw new Exception('Invalid CSRF token');
-    }
-    
-    // Check permissions
-    $allowed_roles = ['admin', 'finance', 'umrah'];
-    if (!in_array($_SESSION['role'], $allowed_roles)) {
-        throw new Exception('Unauthorized access');
     }
     
     // Get input data

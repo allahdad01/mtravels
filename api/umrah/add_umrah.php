@@ -7,7 +7,7 @@ require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
-umrah_require('member_create');
+require_permission('umrah.member_create');
 
 // ✅ CSRF Token Validation
 if (!verify_csrf_token()) {

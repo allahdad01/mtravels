@@ -7,10 +7,7 @@ require_once '../includes/language_helpers.php';
 enforce_auth();
 
 // Check if user is logged in and is admin
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    header('Location: ../login.php');
-    exit();
-}
+require_permission('users.view');
 $tenant_id = $_SESSION['tenant_id'];
 // Database connection
 require_once('../includes/db.php');
@@ -37,6 +34,20 @@ try {
     $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
     $users = []; // Ensure $users is always an array
+}
+
+// Granular permissions library + this tenant's granted permission rows
+require_once '../includes/permissions.php';
+
+$userPerms = [];
+try {
+    $stmt = $pdo->prepare("SELECT user_id, permission_key FROM user_permissions WHERE tenant_id = ? AND granted = 1");
+    $stmt->execute([$tenant_id]);
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $userPerms[(int) $row['user_id']][] = $row['permission_key'];
+    }
+} catch (PDOException $e) {
+    $userPerms = [];
 }
 
 
@@ -353,6 +364,9 @@ try {
                                                                 <span class="badge badge-role badge-<?= strtolower($user['role']) ?>">
                                                                     <?= ucfirst(htmlspecialchars($user['role'])) ?>
                                                                 </span>
+                                                                <?php if (isset($userPerms[(int) $user['id']]) && !in_array($user['role'], ['super_admin','tenant_super_admin','admin'], true)): ?>
+                                                                <span class="badge badge-info ml-1" title="Custom permissions set by an admin"><i class="feather icon-shield"></i> Custom</span>
+                                                                <?php endif; ?>
                                                             </td>
                                                             <td><?= htmlspecialchars($user['phone'] ?? 'N/A') ?></td>
                                                             <td><?= date('M d, Y', strtotime($user['created_at'])) ?></td>
@@ -371,6 +385,12 @@ try {
                                                                         <a class="dropdown-item" href="#" onclick="editUser(<?= $user['id'] ?>)">
                                                                             <i class="feather icon-edit mr-2"></i><?= __("edit") ?>
                                                                         </a>
+                                                                        <?php if (!in_array($user['role'], ['super_admin','tenant_super_admin','admin'], true)): ?>
+                                                                        <!-- Permissions -->
+                                                                        <a class="dropdown-item" href="#" onclick="managePermissions(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name'], ENT_QUOTES) ?>')">
+                                                                            <i class="feather icon-shield mr-2"></i>Manage Permissions
+                                                                        </a>
+                                                                        <?php endif; ?>
                                                                         <!-- Delete -->
                                                                         <a class="dropdown-item text-danger" href="#" onclick="deleteUser(<?= $user['id'] ?>)">
                                                                             <i class="feather icon-trash-2 mr-2"></i><?= __("delete") ?>
@@ -461,6 +481,12 @@ try {
                                                                                         <a class="dropdown-item" href="#" onclick="editUser(<?= $user['id'] ?>)">
                                                                                             <i class="feather icon-edit mr-2"></i><?= __("edit") ?>
                                                                                         </a>
+                                                                                        <?php if (!in_array($user['role'], ['super_admin','tenant_super_admin','admin'], true)): ?>
+                                                                                        <!-- Permissions -->
+                                                                                        <a class="dropdown-item" href="#" onclick="managePermissions(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name'], ENT_QUOTES) ?>')">
+                                                                                            <i class="feather icon-shield mr-2"></i>Manage Permissions
+                                                                                        </a>
+                                                                                        <?php endif; ?>
                                                                                         <!-- Delete -->
                                                                                         <a class="dropdown-item text-danger" href="#" onclick="deleteUser(<?= $user['id'] ?>)">
                                                                                             <i class="feather icon-trash-2 mr-2"></i><?= __("delete") ?>
@@ -1699,6 +1725,150 @@ function generateIkhtar(event, language) {
         const finalUrl = `${terminationLetterUrl}?user_id=${selectedTerminationLetterUserId}&language=${language}&job_title=${encodeURIComponent(jobtitleValue)}&termination_date=${encodeURIComponent(terminationDateValue)}`;
         console.log('Opening:', finalUrl);
         window.open(finalUrl, '_blank');
+    }
+    </script>
+
+    <!-- Manage Permissions Modal -->
+    <style>
+        .perm-note{background:#fef3c7;border-left:4px solid #f59e0b;border-radius:6px;padding:12px 16px;font-size:13px;color:#92400e;margin-bottom:16px}
+        .perm-toolbar{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:14px}
+        .perm-toolbar .btn{font-size:12px;padding:4px 12px}
+        .perm-group{border:1px solid #e9ecef;border-radius:8px;margin-bottom:12px;overflow:hidden}
+        .perm-group-head{display:flex;align-items:center;justify-content:space-between;background:#f8f9fa;padding:10px 14px;font-weight:600;font-size:13px;border-bottom:1px solid #e9ecef}
+        .perm-group-head label{margin:0;font-weight:500;font-size:12px;color:#6c757d;cursor:pointer}
+        .perm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px;padding:12px 14px}
+        .perm-row{display:flex;gap:10px;padding:12px 14px;flex-wrap:wrap}
+        .perm-toggle{display:flex;align-items:center;gap:9px;border:1.5px solid #e9ecef;border-radius:10px;padding:10px 14px;cursor:pointer;transition:all .15s;flex:1 1 240px;background:#fff}
+        .perm-toggle:hover{border-color:#8b5cf6;background:#faf9ff}
+        .perm-toggle input{margin:0;accent-color:#8b5cf6;width:17px;height:17px;flex-shrink:0;cursor:pointer}
+        .perm-toggle .pt-name{font-weight:700;font-size:13px;color:#1a2340;white-space:nowrap}
+        .perm-toggle.checked{border-color:#8b5cf6;background:#f5f3ff}
+    </style>
+    <div class="modal fade" id="permissionsModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="feather icon-shield mr-2"></i>Manage Permissions &mdash; <span id="permUserName"></span></h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                </div>
+                <div class="modal-body" style="max-height:62vh;overflow-y:auto;">
+                    <div class="perm-note">
+                        <i class="feather icon-info mr-1"></i>
+                        This user currently keeps their <strong>role defaults</strong>. Saving here switches them to <strong>custom permissions</strong> &mdash; only the items you tick below will be allowed (defaults stop applying). Saving with nothing ticked removes all access.
+                    </div>
+                    <div class="perm-toolbar">
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="permSelectAll()"><i class="feather icon-check-square mr-1"></i>Select All</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="permClearAll()"><i class="feather icon-square mr-1"></i>Clear All</button>
+                    </div>
+                    <?php foreach (permission_catalog() as $group => $cfg): ?>
+                    <div class="perm-group">
+                        <div class="perm-group-head">
+                            <span><?= htmlspecialchars($group) ?></span>
+                            <label><input type="checkbox" class="perm-group-all" onchange="permToggleGroup(this)"> Select group</label>
+                        </div>
+                        <div class="perm-row">
+                            <?php foreach ($cfg as $suffix => $label): ?>
+                            <?php if ($suffix === 'module') continue; $pkey = $cfg['module'] . '.' . $suffix; ?>
+                            <label class="perm-toggle">
+                                <input type="checkbox" class="perm-check" value="<?= htmlspecialchars($pkey, ENT_QUOTES) ?>">
+                                <span class="pt-name"><?= htmlspecialchars($label) ?></span>
+                            </label>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="savePermBtn" onclick="savePermissions()">
+                        <i class="feather icon-save mr-1"></i>Save Permissions
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // Granular permissions state (user_id -> granted keys)
+    const userPermsMap = <?= json_encode($userPerms) ?>;
+    const permCsrfToken = '<?= $_SESSION['csrf_token'] ?>';
+    let permTargetUserId = null;
+
+    function managePermissions(userId, name) {
+        permTargetUserId = userId;
+        document.getElementById('permUserName').textContent = name;
+        // Reset all checkboxes
+        document.querySelectorAll('.perm-check').forEach(cb => cb.checked = false);
+        // Tick the user's granted keys
+        const keys = userPermsMap[userId] || [];
+        document.querySelectorAll('.perm-check').forEach(cb => {
+            cb.checked = keys.includes(cb.value);
+        });
+        // Sync group "select all" boxes
+        document.querySelectorAll('.perm-group').forEach(permSyncGroupAll);
+        $('#permissionsModal').modal('show');
+    }
+
+    function permSyncGroupAll(groupEl) {
+        const checks = groupEl.querySelectorAll('.perm-check');
+        const allBox = groupEl.querySelector('.perm-group-all');
+        const total = checks.length;
+        const checked = groupEl.querySelectorAll('.perm-check:checked').length;
+        allBox.checked = total > 0 && total === checked;
+    }
+
+    function permToggleGroup(allBox) {
+        allBox.closest('.perm-group').querySelectorAll('.perm-check').forEach(cb => cb.checked = allBox.checked);
+        permSyncGroupAll(allBox.closest('.perm-group'));
+    }
+
+    function permSelectAll() {
+        document.querySelectorAll('.perm-check').forEach(cb => cb.checked = true);
+        document.querySelectorAll('.perm-group').forEach(permSyncGroupAll);
+    }
+
+    function permClearAll() {
+        document.querySelectorAll('.perm-check').forEach(cb => cb.checked = false);
+        document.querySelectorAll('.perm-group').forEach(permSyncGroupAll);
+    }
+
+    document.addEventListener('change', function(e) {
+        if (e.target.classList && e.target.classList.contains('perm-check')) {
+            const groupEl = e.target.closest('.perm-group');
+            if (groupEl) permSyncGroupAll(groupEl);
+        }
+    });
+
+    function savePermissions() {
+        if (!permTargetUserId) return;
+        const keys = [];
+        document.querySelectorAll('.perm-check:checked').forEach(cb => keys.push(cb.value));
+        const btn = document.getElementById('savePermBtn');
+        btn.disabled = true;
+
+        const params = new URLSearchParams();
+        params.append('csrf_token', permCsrfToken);
+        params.append('user_id', permTargetUserId);
+        keys.forEach(k => params.append('permissions[]', k));
+
+        fetch('save_permissions.php', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: params
+        })
+        .then(response => response.json().catch(() => ({ success: false, message: 'Server error (' + response.status + ')' })))
+        .then(data => {
+            if (data.success) {
+                userPermsMap[permTargetUserId] = keys;
+                createToast(data.message, 'success');
+                $('#permissionsModal').modal('hide');
+                setTimeout(() => window.location.reload(), 1200);
+            } else {
+                createToast(data.message || 'Failed to save permissions', 'danger');
+            }
+        })
+        .catch(err => createToast('Failed to save permissions: ' + err, 'danger'))
+        .finally(() => { btn.disabled = false; });
     }
     </script>
 </body>

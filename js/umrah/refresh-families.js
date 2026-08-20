@@ -37,6 +37,9 @@ function createFamilyCard(family) {
     
     const statusBadge = family.status === 'active' ? 'success' : 'warning';
     const visaBadge = family.visa_status ? family.visa_status : 'pending';
+
+    const canEditFamily = typeof window.UMRAH_CAN_EDIT_FAMILY === 'undefined' || window.UMRAH_CAN_EDIT_FAMILY;
+    const canDeleteFamily = typeof window.UMRAH_CAN_DELETE_FAMILY === 'undefined' || window.UMRAH_CAN_DELETE_FAMILY;
     
     card.innerHTML = `
         <div class="card family-card" style="height: 100%;">
@@ -72,12 +75,12 @@ function createFamilyCard(family) {
                     <button type="button" class="btn btn-outline-primary view-members-btn" data-family-id="${family.family_id}">
                         <i class="fas fa-users mr-1"></i> Members
                     </button>
-                    <button type="button" class="btn btn-outline-secondary edit-family-btn" data-family-id="${family.family_id}">
+                    ${canEditFamily ? `<button type="button" class="btn btn-outline-secondary edit-family-btn" data-family-id="${family.family_id}">
                         <i class="fas fa-edit mr-1"></i> Edit
-                    </button>
-                    <button type="button" class="btn btn-outline-danger delete-family-btn" data-family-id="${family.family_id}">
+                    </button>` : ''}
+                    ${canDeleteFamily ? `<button type="button" class="btn btn-outline-danger delete-family-btn" data-family-id="${family.family_id}">
                         <i class="fas fa-trash mr-1"></i> Delete
-                    </button>
+                    </button>` : ''}
                 </div>
             </div>
         </div>

@@ -2,6 +2,8 @@
 // Include necessary files
 require_once '../../includes/db.php';
 require_once '../../includes/language_helpers.php';
+require_once '../../includes/permissions.php';
+require_permission('hr.employees');
 
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {

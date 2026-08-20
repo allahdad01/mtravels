@@ -2,13 +2,9 @@
 // Initialize the session
 session_start();
 
-// Check if user is logged in with proper role
-$allowed_roles = ['admin', 'finance'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    // Log unauthorized access attempt
-    header('Location: ../login.php');
-    exit();
-}
+require_once 'security.php';
+enforce_auth();
+require_permission('hr.salary');
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Include config file

@@ -11,6 +11,7 @@ require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
+require_permission('tickets.transactions');
 
 require_once('../../includes/db.php');
 $tenant_id = $_SESSION['tenant_id'];

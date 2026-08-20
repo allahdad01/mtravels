@@ -36,11 +36,7 @@ if ($method === 'GET') {
 
 if ($method === 'POST') {
     // Create new document type (admin only)
-    if ($_SESSION['role'] !== 'admin') {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'message' => 'Unauthorized']);
-        exit();
-    }
+    require_permission('visa.edit');
 
     $data = json_decode(file_get_contents('php://input'), true);
     
@@ -101,11 +97,7 @@ if ($method === 'POST') {
 
 if ($method === 'PUT') {
     // Update document type (admin only)
-    if ($_SESSION['role'] !== 'admin') {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'message' => 'Unauthorized']);
-        exit();
-    }
+    require_permission('visa.edit');
 
     $data = json_decode(file_get_contents('php://input'), true);
     

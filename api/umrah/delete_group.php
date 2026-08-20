@@ -3,7 +3,7 @@ require_once '../../admin/includes/db_security.php';
 require_once '../../admin/security.php';
 
 enforce_auth();
-umrah_require('member_create');
+require_permission('umrah.member_create');
 
 if (!verify_csrf_token()) {
     http_response_code(403);

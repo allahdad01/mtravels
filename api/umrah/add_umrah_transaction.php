@@ -7,7 +7,7 @@ require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
-umrah_require('payment_record');
+require_permission('umrah.payment_record');
 
 // ✅ CSRF Token Validation
 if (!verify_csrf_token()) {

@@ -14,9 +14,9 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 require_once '../includes/language_helpers.php';
 
-enforce_auth(['admin', 'finance', 'umrah', 'sales', 'staff', 'operations', 'hotel_manager', 'viewer']);
-umrah_require('view', 'page');
-$canManageHotels = umrah_can('hotel_manage');
+enforce_auth();
+require_permission('umrah.hotel_manage');
+$canManageHotels = user_can('umrah.hotel_manage');
 
 require_once '../includes/db.php';
 

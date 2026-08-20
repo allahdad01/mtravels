@@ -192,6 +192,7 @@ function loadTransactionHistory(umrahId) {
 
                 // Track currencies present in transactions
                 let hasCurrency = { USD: false, AFS: false, EUR: false, DARHAM: false, SAR: false };
+                const canEditTx = typeof window.UMRAH_CAN_EDIT_TX === 'undefined' || window.UMRAH_CAN_EDIT_TX;
 
                 // Render transactions table
                 transactions.forEach(tx => {
@@ -212,16 +213,16 @@ function loadTransactionHistory(umrahId) {
                             <td>${currency} ${amount.toFixed(2)}</td>
                             <td>${exchangeRate || 'N/A'}</td>
                             <td class="text-center">
-                                <button class="btn btn-primary btn-sm" onclick="editTransaction(${tx.id})">
+                                ${canEditTx ? `<button class="btn btn-primary btn-sm" onclick="editTransaction(${tx.id})">
                                     <i class="feather icon-edit"></i>
-                                </button>
+                                </button>` : ''}
                                 <button class="btn btn-info btn-sm mr-1" title="Print Receipt"
                                         onclick="printReceipt(${tx.id})">
                                     <i class="feather icon-printer"></i>
                                 </button>
-                                <button class="btn btn-danger btn-sm" onclick="deleteTransaction(${tx.id})">
+                                ${canEditTx ? `<button class="btn btn-danger btn-sm" onclick="deleteTransaction(${tx.id})">
                                     <i class="feather icon-trash-2"></i>
-                                </button>
+                                </button>` : ''}
                             </td>
                         </tr>
                     `);

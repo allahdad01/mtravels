@@ -11,14 +11,7 @@ header('Content-Type: application/json');
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
-// Check if user is logged in and is admin
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Unauthorized access'
-    ]);
-    exit();
-}
+require_permission('visa.refund');
 
 // Check if refund ID is provided
 if (!isset($_GET['refund_id'])) {

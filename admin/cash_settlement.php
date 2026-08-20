@@ -6,17 +6,13 @@ require_once 'security.php';
 enforce_auth();
 
 $role = $_SESSION['role'] ?? '';
-$allowed_roles = ['admin', 'finance'];
-if (!in_array($role, $allowed_roles, true)) {
-    header('Location: ../access_denied.php');
-    exit;
-}
+require_permission('finance.cash_settlement');
 
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 $current_user = (int) ($_SESSION['user_id'] ?? 0);
 $csrf_token = $_SESSION['csrf_token'] ?? '';
-$isAdmin = $role === 'admin';
+$canApprove = user_can('finance.cash_settlement_approve');
 include '../includes/header.php';
 ?>
 <style>
@@ -138,7 +134,7 @@ include '../includes/header.php';
 
     <div class="cs-topbar">
         <div>
-            <div class="cs-topbar-title"><?php echo $isAdmin ? 'Cash Settlements (Admin)' : 'Cash Settlement'; ?></div>
+            <div class="cs-topbar-title"><?php echo $canApprove ? 'Cash Settlements' : 'Cash Settlement'; ?></div>
             <div class="cs-topbar-sub">Finance hands over collected cash to admin; admin approval reduces the counter.</div>
         </div>
         <span class="cs-role-badge"><?php echo ucfirst(htmlspecialchars($role)); ?></span>
@@ -146,7 +142,7 @@ include '../includes/header.php';
 
     <div class="cs-alert-bar" id="alertBar"></div>
 
-    <?php if (!$isAdmin): ?>
+    <?php if (!$canApprove): ?>
         <!-- ── Finance view ── -->
         <div class="cs-section-label">Available balance by currency (auto)</div>
         <div class="cs-cards" id="summaryCards"></div>
@@ -294,7 +290,7 @@ include '../includes/header.php';
 <script src="../assets/js/pcoded.min.js"></script>
 <script>
 const CSRF = <?php echo json_encode($csrf_token); ?>;
-const ROLE = <?php echo json_encode($role); ?>;
+const CAN_APPROVE = <?php echo $canApprove ? 'true' : 'false'; ?>;
 const CURRENT_USER = <?php echo (int) $current_user; ?>;
 
 const qs  = (s, c) => (c || document).querySelector(s);
@@ -354,7 +350,7 @@ function renderFinanceSummary(currencies, wrapId) {
                 <div class="cs-card-sub">Handed over: ${money(d.confirmed)} · Pending: ${money(d.pending)}</div>
                 <div class="cs-card-actions">
                     <button class="cs-btn cs-btn-sm" onclick="openTransactions('${esc(c)}')">View transactions</button>
-                    <button class="cs-btn cs-btn-green cs-btn-sm" onclick="openSubmit('${esc(c)}', ${Number(d.available).toFixed(2)}, ${Number(d.remaining).toFixed(2)})">${ROLE === 'admin' ? 'Settle my cash' : 'Submit to Admin'}</button>
+                    <button class="cs-btn cs-btn-green cs-btn-sm" onclick="openSubmit('${esc(c)}', ${Number(d.available).toFixed(2)}, ${Number(d.remaining).toFixed(2)})">${CAN_APPROVE ? 'Settle my cash' : 'Submit to Admin'}</button>
                 </div>
             </div>`;
     }).join('');
@@ -523,7 +519,7 @@ function openSubmit(currency, available, remaining) {
     qs('#submitAmount').value = available > 0 ? available : '';
     qs('#submitNote').value = '';
     qs('#submitWarn').style.display = 'none';
-    qs('#submitModalTitle').textContent = (ROLE === 'admin' ? 'Settle ' : 'Submit ') + currency + (ROLE === 'admin' ? ' (my collected cash)' : ' to Admin');
+    qs('#submitModalTitle').textContent = (CAN_APPROVE ? 'Settle ' : 'Submit ') + currency + (CAN_APPROVE ? ' (my collected cash)' : ' to Admin');
     fillCurrencies(currency);
     openModal('submitOverlay');
 }
@@ -554,7 +550,7 @@ qs('#submitForm').addEventListener('submit', e => {
     const note = qs('#submitNote').value.trim();
     if (!amount || amount <= 0) { showAlert('Enter a valid amount', 'danger'); return; }
     if (amount > currentAvailable) { showAlert('Amount exceeds available balance', 'danger'); return; }
-    post('create', { currency, amount, note }, () => { closeAll(); ROLE === 'admin' ? loadAdmin() : loadFinance(); });
+    post('create', { currency, amount, note }, () => { closeAll(); CAN_APPROVE ? loadAdmin() : loadFinance(); });
 });
 
 /* ── Reject modal ── */
@@ -745,7 +741,7 @@ function renderItemsModal(res) {
 
 /* ── Init ── */
 (function() {
-    if (ROLE === 'admin') loadAdmin();
+    if (CAN_APPROVE) loadAdmin();
     else loadFinance();
 })();
 </script>

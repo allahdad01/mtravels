@@ -27,11 +27,8 @@ header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        // Debug: Check if user is logged in and has proper role
-        if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-            echo json_encode(['success' => false, 'message' => 'Unauthorized access']);
-            exit();
-        }
+        // Check permission
+        require_permission('finance.additional_payments');
         // Verify CSRF token is present and valid
         if (!isset($_POST['csrf_token'])) {
             http_response_code(403);

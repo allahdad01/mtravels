@@ -1,7 +1,9 @@
 <?php
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+    session_start();
+require_once __DIR__ . '/../../includes/permissions.php';
+require_permission('dashboard.view');
 }
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];

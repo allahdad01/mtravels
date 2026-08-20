@@ -6,6 +6,9 @@ if (!$currentUserId) {
     exit;
 }
 
+require_once __DIR__ . '/includes/permissions.php';
+require_permission('communication.view');
+
 // Allow embedding in iframes from same origin
 // (CSP is handled by .htaccess globally)
 header('X-Frame-Options: SAMEORIGIN');;

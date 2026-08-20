@@ -15,14 +15,13 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
 // Check if user is logged in with proper role
-$allowed_roles = ['admin', 'finance', 'sales'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    header('Location: ../login.php');
-    exit();
-}
+require_permission('tickets.view');
 include '../api/ticket/ticket_handler.php';
 
-$canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
+$canEdit   = user_can('tickets.edit');
+$canDelete = user_can('tickets.delete');
+$canBook   = user_can('tickets.book');
+$canTransactions = user_can('tickets.transactions');
 ?>
 
 <?php include '../includes/header.php'; ?>
@@ -721,10 +720,12 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                             <?= __('search') ?>
                         </button>
 
+                        <?php if ($canBook): ?>
                         <button class="btn-primary-corp" data-toggle="modal" data-target="#bookTicketModal">
                             <i class="feather icon-plus-circle" style="font-size:13px"></i>
                             <?= __('book_ticket') ?>
                         </button>
+                        <?php endif; ?>
                     </div>
 
                     <!-- Section Header -->
@@ -885,14 +886,14 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                                         <i class="feather icon-edit-2"></i>
                                     </button>
                                     <?php endif; ?>
-                                    <?php if ($isAgencyClient && $canEdit): ?>
+                                    <?php if ($isAgencyClient && $canTransactions): ?>
                                     <button class="ticket-card-action-btn"
                                             onclick="manageTransactions(<?= $ticket['ticket']['id'] ?>)"
                                             title="<?= __('manage_transactions') ?>">
                                         <i class="fas fa-dollar-sign"></i>
                                     </button>
                                     <?php endif; ?>
-                                    <?php if ($canEdit): ?>
+                                    <?php if ($canDelete): ?>
                                     <button class="ticket-card-action-btn"
                                             onclick="deleteTicket(<?= $ticket['ticket']['id'] ?>)"
                                             title="<?= __('delete') ?>">
@@ -972,10 +973,12 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
 
 <!-- FAB -->
 <div class="pg-fab" style="<?php echo is_rtl() ? 'left:20px' : 'right:20px' ?>; margin-bottom: 5px;">
+    <?php if ($canEdit): ?>
     <button type="button" id="launchMultiTicketInvoice"
             title="<?= __('generate_multi_ticket_invoice') ?>">
         <i class="feather icon-file-text"></i>
     </button>
+    <?php endif; ?>
 </div>
 
 <?php include '../includes/admin_footer.php'; ?>
@@ -1016,6 +1019,11 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
 <script src="../js/ticket/toast.js"></script>
 <script src="../js/ticket/pdf-ticket-extract.js"></script>
 <script src="../js/ticket/client-phone-autofill.js"></script>
+<script>
+    window.TICKET_CAN_EDIT = <?php echo $canEdit ? 'true' : 'false'; ?>;
+    window.TICKET_CAN_DELETE = <?php echo $canDelete ? 'true' : 'false'; ?>;
+    window.TICKET_CAN_TRANSACTIONS = <?php echo $canTransactions ? 'true' : 'false'; ?>;
+</script>
 <script src="../js/ticket/refresh-table.js"></script>
 
 </body>

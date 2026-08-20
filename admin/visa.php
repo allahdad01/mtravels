@@ -11,16 +11,12 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
 // Check if user is logged in with proper role
-$allowed_roles = ['admin', 'finance', 'sales'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    header('Location: ../login.php');
-    exit();
-}
+require_permission('visa.view');
 
 // Database connection
 require_once('../includes/db.php');
 
-$canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
+$canEdit = user_can('visa.edit');
 
 // Pagination and search setup
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
@@ -1089,6 +1085,7 @@ function getStatusBadgeClass($status) {
 <script src="../js/visa/search.js"></script>
 <script src="../js/visa/cancel_reapply.js"></script>
 <script src="../js/visa/toast.js"></script>
+<script>window.VISA_CAN_DELETE_DOC = <?php echo $canEdit ? 'true' : 'false'; ?>;</script>
 <script src="../js/visa/document_manager.js"></script>
 
 <script>

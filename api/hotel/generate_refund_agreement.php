@@ -1,6 +1,8 @@
 <?php
 // Initialize the session
-session_start();
+session_start();
+require_once __DIR__ . '/../../includes/permissions.php';
+require_permission('hotels.refund');
 $tenant_id = $_SESSION['tenant_id'] ?? 0;
 $branch_id = $_SESSION['branch_id'] ?? 0;
 

@@ -2377,6 +2377,9 @@ function saveFulfillment($card) {
             }
             const savedStatus = data.status || autoStatus;
             $card.find('.f-status-badge').text(savedStatus).attr('class', 'fulfillment-status f-status-badge');
+            // A fulfillment row now exists — unlock the ticket print button
+            // that was rendered disabled while service.fulfillment_id was empty.
+            $card.find('.btn-print-ticket').prop('disabled', false);
             const newCost = parseFloat($card.find('.f-cost-usd').val()) || 0;
             $card.data('cost', newCost);
             if (!isMulti && data.cost_amount !== null && data.cost_amount !== undefined) {

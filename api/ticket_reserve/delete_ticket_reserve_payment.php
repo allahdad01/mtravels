@@ -11,6 +11,7 @@ require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
+require_permission('tickets.transactions');
 
 // Start session if not already started
 require_once('../../includes/db.php');

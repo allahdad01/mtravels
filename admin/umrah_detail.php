@@ -5,11 +5,7 @@ enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
-$allowed_roles = ['admin', 'finance', 'sales', 'umrah'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    header('Location: ../login.php');
-    exit();
-}
+require_permission('umrah.view');
 
 include '../includes/db.php';
 
@@ -1161,7 +1157,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
           </div>
           <div style="display:flex;align-items:center;gap:10px;">
             <span class="card-badge"><?= count($umrahData['supplier_services']) ?> services</span>
-            <?php if (umrah_can('fulfill')): ?>
+            <?php if (user_can('umrah.fulfill')): ?>
             <button type="button" class="btn-action primary" onclick="applySupplierToAll()" style="padding:6px 12px;font-size:.78rem;"><i class="fa fa-users"></i> Apply to All</button>
             <?php endif; ?>
           </div>

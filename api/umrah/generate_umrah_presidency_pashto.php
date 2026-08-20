@@ -4,6 +4,8 @@ require_once '../../includes/db.php';
 require_once '../../includes/language_helpers.php';
 
 if (session_status() === PHP_SESSION_NONE) session_start();
+require_once __DIR__ . '/../../includes/permissions.php';
+require_permission('umrah.view');
 
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];

@@ -12,6 +12,7 @@ require_once '../../includes/db.php';
 require_once '../../admin/security.php';
 
 enforce_auth();
+require_permission('umrah.member_edit');
 
 header('Content-Type: application/json');
 

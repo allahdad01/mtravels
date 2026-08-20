@@ -11,7 +11,7 @@ require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
-umrah_require('payment_record');
+require_permission('umrah.payment_record');
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 $username = isset($_SESSION["name"]) ? $_SESSION["name"] : "Unknown User";

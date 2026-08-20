@@ -1,7 +1,9 @@
 <?php
 // Start session to check authentication
 session_start();
-
+
+require_once __DIR__ . '/../../includes/permissions.php';
+require_permission('dashboard.view');
 // Set secure headers
 header("X-XSS-Protection: 1; mode=block");
 header("X-Content-Type-Options: nosniff");

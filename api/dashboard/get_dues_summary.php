@@ -3,7 +3,9 @@
 ob_start();
 
 session_start();
-
+
+require_once __DIR__ . '/../../includes/permissions.php';
+require_permission('dashboard.view');
 // CSRF Token Validation for API endpoints
 header('Content-Type: application/json');
 

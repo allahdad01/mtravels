@@ -13,6 +13,9 @@ header('Content-Type: application/json');
 // Include database connection and security
 require_once '../../includes/db.php';
 require_once '../../admin/includes/db_security.php';
+require_once '../../admin/security.php';
+enforce_auth();
+require_permission('tickets.transactions');
 $tenant_id = $_SESSION['tenant_id'] ?? 0;
 $branch_id = $_SESSION['branch_id'] ?? 0;
 

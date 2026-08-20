@@ -13,10 +13,8 @@ session_start();
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/RateLimiter.php';
 
-// Check if user is admin
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    die('Unauthorized. Only admins can access this page.');
-}
+require_once __DIR__ . '/../includes/permissions.php';
+require_permission('security.settings');
 
 $tenantId = $_SESSION['tenant_id'] ?? 1;
 $adminId = $_SESSION['user_id'];

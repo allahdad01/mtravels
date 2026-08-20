@@ -213,10 +213,12 @@ function loadDateChangeHistory(bookingId) {
                         <td>${statusBadge}</td>
                         <td>${penaltyText}</td>
                         <td>
+                            ${typeof window.UMRAH_CAN_REVERT_DATE_CHANGE === 'undefined' || window.UMRAH_CAN_REVERT_DATE_CHANGE ? `
                             <button type="button" class="btn btn-sm btn-outline-danger" title="Revert this date change"
                                     onclick="revertDateChange(${item.id}, ${bookingId})">
                                 <i class="feather icon-rotate-ccw mr-1"></i>Revert
                             </button>
+                            ` : ''}
                         </td>
                     </tr>`;
                 });

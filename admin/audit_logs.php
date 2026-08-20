@@ -4,10 +4,10 @@ require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/ChatAudit.php';
 
 // Check if user is logged in
-if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
-    header('Location: ../login.php');
-    exit();
-}
+require_permission('security.view');
+
+require_once __DIR__ . '/../includes/permissions.php';
+require_permission('security.view');
 
 $currentUserId = (int)$_SESSION['user_id'];
 

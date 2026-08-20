@@ -1,6 +1,8 @@
 <?php
 // Include security module
 session_start();
+require_once '../../includes/permissions.php';
+require_permission('tickets.view');
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 

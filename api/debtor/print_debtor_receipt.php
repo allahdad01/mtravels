@@ -1,6 +1,8 @@
 <?php
 session_start();
-
+
+require_once __DIR__ . '/../../includes/permissions.php';
+require_permission('finance.debtors');
 // Include language helper
 require_once '../../includes/language_helpers.php';
 

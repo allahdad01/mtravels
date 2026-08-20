@@ -5,11 +5,8 @@ $branch_id = $_SESSION['branch_id'];
 require_once 'security.php';
 require_once '../includes/db.php';
 
-$allowed_roles = ['admin', 'finance'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-     header('Location: ../login.php');
-    exit();
-}
+enforce_auth();
+require_permission('operations.clients');
 
 require_once '../includes/InputValidator.php';
 

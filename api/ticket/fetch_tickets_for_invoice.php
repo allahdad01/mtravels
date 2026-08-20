@@ -12,11 +12,7 @@ enforce_auth();
 
 require_once '../../includes/db.php';
 
-// Check if the user is logged in
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    echo json_encode(['status' => 'error', 'message' => 'You must be logged in as admin to access this resource']);
-    exit;
-}
+require_permission('tickets.view');
 
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];

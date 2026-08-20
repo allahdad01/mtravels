@@ -7,6 +7,7 @@ require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
+require_permission('tickets.transactions');
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Check if user is logged in

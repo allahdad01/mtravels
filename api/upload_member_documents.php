@@ -18,6 +18,9 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
+require_once 'includes/permissions.php';
+require_permission('umrah.member_edit');
+
 // Database connection
 require_once '../includes/db.php';
 

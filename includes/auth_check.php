@@ -27,6 +27,7 @@ if (!isset($_SESSION['user_id'])) {
 
 require_once('../includes/session_check.php');
 require_once('../includes/language_helpers.php');
+require_once(__DIR__ . '/permissions.php');
 
 $lang = init_language();
 
@@ -58,6 +59,9 @@ try {
         header('Location: ../login.php');
         exit();
     }
+
+    // Granular page permission gate (map-based; no-op for unmapped pages)
+    require_page_permission();
 
     // Settings row
     $settingStmt = $pdo->prepare(

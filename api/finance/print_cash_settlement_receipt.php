@@ -2,11 +2,8 @@
 // Printable cash settlement (handover) voucher with the admin's signature.
 session_start();
 
-$allowed_roles = ['admin', 'finance'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'] ?? '', $allowed_roles)) {
-    header('Location: ../../login.php');
-    exit();
-}
+require_once __DIR__ . '/../../includes/permissions.php';
+require_permission('finance.cash_settlement');
 
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];

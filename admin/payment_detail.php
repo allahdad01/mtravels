@@ -11,13 +11,7 @@ $branch_id = $_SESSION['branch_id'];
 enforce_auth();
 
 
-// Check if user is logged in with proper role
-$allowed_roles = ['admin', 'finance'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    // Log unauthorized access attempt
-    header('Location: ../login.php');
-    exit();
-}
+require_permission('finance.payments');
 
 // Include database connection
 include '../includes/db.php';

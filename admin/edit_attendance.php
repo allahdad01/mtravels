@@ -12,10 +12,7 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
 // Check if user is logged in and is admin
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    header('Location: ../login.php');
-    exit();
-}
+require_permission('hr.attendance');
 
 // Get attendance ID from URL
 $attendance_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;

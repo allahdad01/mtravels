@@ -21,6 +21,11 @@ if (!function_exists('umrah_can')) {
     require_once __DIR__ . '/../admin/includes/umrah_permissions.php';
 }
 
+// Granular permission system (menu visibility is permission-driven)
+if (!function_exists('user_can')) {
+    require_once __DIR__ . '/permissions.php';
+}
+
 // Current page for active-state detection
 $currentPage = basename($_SERVER['PHP_SELF']);
 
@@ -82,34 +87,34 @@ $showTickets = hasFeature('ticket_bookings',     $allowed_features)
            || hasFeature('date_change_tickets',   $allowed_features)
            || hasFeature('ticket_weights',        $allowed_features);
 ?>
-<?php if ($showTickets && staffCanSeeMenu($user['role'])): ?>
+<?php if ($showTickets && staffCanSeeMenu($user['role']) && user_can('tickets.view')): ?>
 <li class="nav-item pcoded-hasmenu <?= navTrigger('ticket.php','refund_ticket.php','date_change.php','ticket_reserve.php','ticket_weights.php') ?>">
     <a href="javascript:" class="nav-link">
         <span class="pcoded-micon"><i class="feather icon-calendar"></i></span>
         <span class="pcoded-mtext"><?= __('ticket_management') ?></span>
     </a>
     <ul class="pcoded-submenu">
-        <?php if (hasFeature('ticket_bookings', $allowed_features)): ?>
+        <?php if (hasFeature('ticket_bookings', $allowed_features) && user_can('tickets.book')): ?>
         <li class="<?= navActive('ticket.php') ?>">
             <a href="ticket.php"><i class="fas fa-ticket-alt mr-2"></i><?= __('book_tickets') ?></a>
         </li>
         <?php endif; ?>
-        <?php if (hasFeature('refunded_tickets', $allowed_features)): ?>
+        <?php if (hasFeature('refunded_tickets', $allowed_features) && user_can('tickets.refund')): ?>
         <li class="<?= navActive('refund_ticket.php') ?>">
             <a href="refund_ticket.php"><i class="fas fa-undo mr-2"></i><?= __('refund_tickets') ?></a>
         </li>
         <?php endif; ?>
-        <?php if (hasFeature('date_change_tickets', $allowed_features)): ?>
+        <?php if (hasFeature('date_change_tickets', $allowed_features) && user_can('tickets.date_change')): ?>
         <li class="<?= navActive('date_change.php') ?>">
             <a href="date_change.php"><i class="fas fa-calendar-alt mr-2"></i><?= __('date_changed_tickets') ?></a>
         </li>
         <?php endif; ?>
-        <?php if (hasFeature('ticket_weights', $allowed_features)): ?>
+        <?php if (hasFeature('ticket_weights', $allowed_features) && user_can('tickets.weights')): ?>
         <li class="<?= navActive('ticket_weights.php') ?>">
             <a href="ticket_weights.php"><i class="fas fa-weight mr-2"></i><?= __('ticket_weights') ?></a>
         </li>
         <?php endif; ?>
-        <?php if (hasFeature('ticket_reservations', $allowed_features)): ?>
+        <?php if (hasFeature('ticket_reservations', $allowed_features) && user_can('tickets.reserve')): ?>
         <li class="<?= navActive('ticket_reserve.php') ?>">
             <a href="ticket_reserve.php"><i class="fas fa-bookmark mr-2"></i><?= __('ticket_reservations') ?></a>
         </li>
@@ -122,19 +127,19 @@ $showTickets = hasFeature('ticket_bookings',     $allowed_features)
 <?php
 $showHotel = hasFeature('hotel_bookings', $allowed_features) || hasFeature('hotel_refunds', $allowed_features);
 ?>
-<?php if ($showHotel && staffCanSeeMenu($user['role'])): ?>
+<?php if ($showHotel && staffCanSeeMenu($user['role']) && user_can('hotels.view')): ?>
 <li class="nav-item pcoded-hasmenu <?= navTrigger('hotel.php', 'hotel_refunds.php') ?>">
     <a href="javascript:" class="nav-link">
         <span class="pcoded-micon"><i class="feather icon-home"></i></span>
         <span class="pcoded-mtext"><?= __('hotel_management') ?></span>
     </a>
     <ul class="pcoded-submenu">
-        <?php if (hasFeature('hotel_bookings', $allowed_features)): ?>
+        <?php if (hasFeature('hotel_bookings', $allowed_features) && user_can('hotels.book')): ?>
         <li class="<?= navActive('hotel.php') ?>">
             <a href="hotel.php"><i class="fas fa-bed mr-2"></i><?= __('hotel_bookings') ?></a>
         </li>
         <?php endif; ?>
-        <?php if (hasFeature('hotel_refunds', $allowed_features)): ?>
+        <?php if (hasFeature('hotel_refunds', $allowed_features) && user_can('hotels.refund')): ?>
         <li class="<?= navActive('hotel_refunds.php') ?>">
             <a href="hotel_refunds.php"><i class="fas fa-undo mr-2"></i><?= __('hotel_refund') ?></a>
         </li>
@@ -144,7 +149,7 @@ $showHotel = hasFeature('hotel_bookings', $allowed_features) || hasFeature('hote
 <?php endif; ?>
 
 <!-- ── Umrah Management ───────────────────────────────────────────────── -->
-<?php if (hasFeature('umrah_bookings', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
+<?php if (hasFeature('umrah_bookings', $allowed_features) && staffCanSeeMenu($user['role']) && user_can('umrah.view')): ?>
 <li class="nav-item pcoded-hasmenu <?= navTrigger('umrah.php','umrah_refunds.php','umrah_catalog.php','umrah_hotels.php','umrah_transport.php','umrah_finance.php') ?>">
     <a href="javascript:" class="nav-link">
         <span class="pcoded-micon"><i class="feather icon-map"></i></span>
@@ -154,27 +159,27 @@ $showHotel = hasFeature('hotel_bookings', $allowed_features) || hasFeature('hote
         <li class="<?= navActive('umrah.php') ?>">
             <a href="umrah.php"><i class="fas fa-map mr-2"></i><?= __('umrah_bookings') ?></a>
         </li>
-        <?php if (hasFeature('umrah_refunds', $allowed_features)): ?>
+        <?php if (hasFeature('umrah_refunds', $allowed_features) && user_can('umrah.refund')): ?>
         <li class="<?= navActive('umrah_refunds.php') ?>">
             <a href="umrah_refunds.php"><i class="fas fa-undo mr-2"></i><?= __('umrah_refunds') ?></a>
         </li>
         <?php endif; ?>
-        <?php if (umrah_can('package_manage') && umrah_can('service_manage')): ?>
+        <?php if (user_can('umrah.package_manage') && user_can('umrah.service_manage')): ?>
         <li class="<?= navActive('umrah_catalog.php') ?>">
             <a href="umrah_catalog.php"><i class="fas fa-layer-group mr-2"></i><?= __('services_packages') ?></a>
         </li>
         <?php endif; ?>
-        <?php if (umrah_can('hotel_manage')): ?>
+        <?php if (user_can('umrah.hotel_manage')): ?>
         <li class="<?= navActive('umrah_hotels.php') ?>">
             <a href="umrah_hotels.php"><i class="fas fa-hotel mr-2"></i><?= __('hotel_management') ?></a>
         </li>
         <?php endif; ?>
-        <?php if (umrah_can('transport_manage')): ?>
+        <?php if (user_can('umrah.transport_manage')): ?>
         <li class="<?= navActive('umrah_transport.php') ?>">
             <a href="umrah_transport.php"><i class="fas fa-truck mr-2"></i><?= __('transport_management') ?></a>
         </li>
         <?php endif; ?>
-        <?php if (umrah_can('finance_view')): ?>
+        <?php if (user_can('umrah.finance_view')): ?>
         <li class="<?= navActive('umrah_finance.php') ?>">
             <a href="umrah_finance.php"><i class="fas fa-chart-line mr-2"></i><?= __('finance_management') ?></a>
         </li>
@@ -187,19 +192,19 @@ $showHotel = hasFeature('hotel_bookings', $allowed_features) || hasFeature('hote
 <?php
 $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('visa_refunds', $allowed_features);
 ?>
-<?php if ($showVisa && staffCanSeeMenu($user['role'])): ?>
+<?php if ($showVisa && staffCanSeeMenu($user['role']) && user_can('visa.view')): ?>
 <li class="nav-item pcoded-hasmenu <?= navTrigger('visa.php', 'visa_refunds.php') ?>">
     <a href="javascript:" class="nav-link">
         <span class="pcoded-micon"><i class="feather icon-globe"></i></span>
         <span class="pcoded-mtext"><?= __('visa_management') ?></span>
     </a>
     <ul class="pcoded-submenu">
-        <?php if (hasFeature('visa_applications', $allowed_features)): ?>
+        <?php if (hasFeature('visa_applications', $allowed_features) && user_can('visa.create')): ?>
         <li class="<?= navActive('visa.php') ?>">
             <a href="visa.php"><i class="fas fa-id-card mr-2"></i><?= __('visa_bookings') ?></a>
         </li>
         <?php endif; ?>
-        <?php if (hasFeature('visa_refunds', $allowed_features)): ?>
+        <?php if (hasFeature('visa_refunds', $allowed_features) && user_can('visa.refund')): ?>
         <li class="<?= navActive('visa_refunds.php') ?>">
             <a href="visa_refunds.php"><i class="fas fa-undo mr-2"></i><?= __('visa_refund') ?></a>
         </li>
@@ -216,7 +221,7 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 </li>
 
 <!-- ── Accounts ──────────────────────────────────────────────────────── -->
-<?php if (staffCanSeeMenu($user['role'])): ?>
+<?php if (staffCanSeeMenu($user['role']) && user_can('finance.accounts')): ?>
 <li class="nav-item <?= navActive('accounts.php') ?>">
     <a href="accounts.php" class="nav-link">
         <span class="pcoded-micon"><i class="fas fa-wallet"></i></span>
@@ -226,7 +231,7 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 <?php endif; ?>
 
 <!-- ── Payments Journal ──────────────────────────────────────────────── -->
-<?php if (staffCanSeeMenu($user['role'])): ?>
+<?php if (staffCanSeeMenu($user['role']) && user_can('finance.payments')): ?>
 <li class="nav-item <?= navActive('payment_journal.php') ?>">
     <a href="payment_journal.php" class="nav-link">
         <span class="pcoded-micon"><i class="feather icon-book"></i></span>
@@ -236,7 +241,7 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 <?php endif; ?>
 
 <!-- ── Debtors ───────────────────────────────────────────────────────── -->
-<?php if (hasFeature('debtors', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
+<?php if (hasFeature('debtors', $allowed_features) && staffCanSeeMenu($user['role']) && user_can('finance.debtors')): ?>
 <li class="nav-item <?= navActive('debtors.php') ?>">
     <a href="debtors.php" class="nav-link">
         <span class="pcoded-micon"><i class="feather icon-user-minus"></i></span>
@@ -246,7 +251,7 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 <?php endif; ?>
 
 <!-- ── Creditors ─────────────────────────────────────────────────────── -->
-<?php if (hasFeature('creditors', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
+<?php if (hasFeature('creditors', $allowed_features) && staffCanSeeMenu($user['role']) && user_can('finance.creditors')): ?>
 <li class="nav-item <?= navActive('creditors.php') ?>">
     <a href="creditors.php" class="nav-link">
         <span class="pcoded-micon"><i class="feather icon-user-plus"></i></span>
@@ -256,7 +261,7 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 <?php endif; ?>
 
 <!-- ── Sarafi ────────────────────────────────────────────────────────── -->
-<?php if (hasFeature('sarafi', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
+<?php if (hasFeature('sarafi', $allowed_features) && staffCanSeeMenu($user['role']) && user_can('finance.sarafi')): ?>
 <li class="nav-item <?= navActive('sarafi.php') ?>">
     <a href="sarafi.php" class="nav-link">
         <span class="pcoded-micon"><i class="feather icon-credit-card"></i></span>
@@ -266,7 +271,7 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 <?php endif; ?>
 
 <!-- ── Expense Management ────────────────────────────────────────────── -->
-<?php if (staffCanSeeMenu($user['role'])): ?>
+<?php if (staffCanSeeMenu($user['role']) && user_can('finance.expenses')): ?>
 <li class="nav-item pcoded-hasmenu <?= navTrigger('expense_management.php', 'budget_allocations.php', 'global_budget_allocation.php') ?>">
     <a href="javascript:" class="nav-link">
         <span class="pcoded-micon"><i class="fas fa-receipt"></i></span>
@@ -276,18 +281,20 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
         <li class="<?= navActive('expense_management.php') ?>">
             <a href="expense_management.php"><i class="feather icon-credit-card mr-2"></i><?= __('expense_management') ?></a>
         </li>
+        <?php if (user_can('finance.budget')): ?>
         <li class="<?= navActive('budget_allocations.php') ?>">
             <a href="budget_allocations.php"><i class="feather icon-trending-up mr-2"></i>Budget Allocation</a>
         </li>
         <li class="<?= navActive('global_budget_allocation.php') ?>">
             <a href="global_budget_allocation.php"><i class="feather icon-globe mr-2"></i>Global Budget Allocation</a>
         </li>
+        <?php endif; ?>
     </ul>
 </li>
 <?php endif; ?>
 
 <!-- ── Additional Payments ────────────────────────────────────────────── -->
-<?php if (hasFeature('additional_payments', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
+<?php if (hasFeature('additional_payments', $allowed_features) && staffCanSeeMenu($user['role']) && user_can('finance.additional_payments')): ?>
 <li class="nav-item <?= navActive('additional_payments.php') ?>">
     <a href="additional_payments.php" class="nav-link">
         <span class="pcoded-micon"><i class="feather icon-plus-circle"></i></span>
@@ -297,7 +304,7 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 <?php endif; ?>
 
 <!-- ── JV Payments ────────────────────────────────────────────────────── -->
-<?php if (hasFeature('jv_payments', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
+<?php if (hasFeature('jv_payments', $allowed_features) && staffCanSeeMenu($user['role']) && user_can('finance.jv')): ?>
 <li class="nav-item <?= navActive('jv_payments.php') ?>">
     <a href="jv_payments.php" class="nav-link">
         <span class="pcoded-micon"><i class="feather icon-layers"></i></span>
@@ -307,7 +314,7 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 <?php endif; ?>
 
 <!-- ── Finance Tracker (Finance Admin Only) ────────────────────────── -->
-<?php if ($user['role'] === 'finance'): ?>
+<?php if ($user['role'] === 'finance' && user_can('finance.wallet')): ?>
 <li class="nav-item <?= navActive('finance_tracker.php') ?>">
     <a href="finance_tracker.php" class="nav-link">
         <span class="pcoded-micon"><i class="fas fa-chart-line"></i></span>
@@ -317,7 +324,7 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 <?php endif; ?>
 
 <!-- ── Cash Settlement (Finance + Admin) ──────────────────────────── -->
-<?php if (in_array($user['role'], ['finance', 'admin'], true)): ?>
+<?php if (in_array($user['role'], ['finance', 'admin'], true) && user_can('finance.cash_settlement')): ?>
 <li class="nav-item <?= navActive('cash_settlement.php') ?>">
     <a href="cash_settlement.php" class="nav-link">
         <span class="pcoded-micon"><i class="fas fa-hand-holding-usd"></i></span>
@@ -327,7 +334,7 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 <?php endif; ?>
 
 <!-- ── Reports ────────────────────────────────────────────────────────── -->
-<?php if (staffCanSeeMenu($user['role'])): ?>
+<?php if (staffCanSeeMenu($user['role']) && user_can('reports.view')): ?>
 <li class="nav-item pcoded-hasmenu <?= navTrigger('report.php', 'quarterly_tax_report.php') ?>">
     <a href="javascript:" class="nav-link">
         <span class="pcoded-micon"><i class="feather icon-file"></i></span>
@@ -337,7 +344,7 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
         <li class="<?= navActive('report.php') ?>">
             <a href="report.php"><i class="fas fa-chart-bar mr-2"></i><?= __('reports') ?></a>
         </li>
-        <?php if ($user['role'] === 'admin'): ?>
+        <?php if ($user['role'] === 'admin' && user_can('reports.tax')): ?>
         <li class="<?= navActive('quarterly_tax_report.php') ?>">
             <a href="quarterly_tax_report.php"><i class="feather icon-calendar mr-2"></i>Quarterly Tax Report</a>
         </li>
@@ -359,37 +366,47 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
     $hrPages = ['hr.php', 'employee_management.php', 'employee_performance.php',
                 'attendance.php', 'manage_attendance.php', 'attendance_settings.php',
                 'hr_reports.php', 'add_employee.php', 'edit_employee.php', 'employee_details.php'];
+    $hrAny = user_can('hr.view') || user_can('hr.employees') || user_can('hr.performance')
+          || user_can('hr.attendance') || user_can('hr.attendance_settings');
     ?>
-    <?php if (staffCanSeeMenu($user['role'])): ?>
+    <?php if (staffCanSeeMenu($user['role']) && $hrAny): ?>
     <li class="nav-item pcoded-hasmenu <?= navTrigger(...$hrPages) ?>">
         <a href="javascript:" class="nav-link">
             <span class="pcoded-micon"><i class="feather icon-users"></i></span>
             <span class="pcoded-mtext"><?= __('hr_management') ?></span>
         </a>
         <ul class="pcoded-submenu">
+            <?php if (user_can('hr.view')): ?>
             <li class="<?= navActive('hr.php') ?>">
                 <a href="hr.php"><i class="fas fa-tachometer-alt mr-2"></i><?= __('hr_dashboard') ?></a>
             </li>
+            <?php endif; ?>
+            <?php if (user_can('hr.employees')): ?>
             <li class="<?= navActive('employee_management.php') ?>">
                 <a href="employee_management.php"><i class="fas fa-user-cog mr-2"></i><?= __('employee_management') ?></a>
             </li>
+            <?php endif; ?>
+            <?php if (user_can('hr.performance')): ?>
             <li class="<?= navActive('employee_performance.php') ?>">
                 <a href="employee_performance.php"><i class="fas fa-star mr-2"></i><?= __('performance_reviews') ?></a>
             </li>
-            <?php if (hasFeature('attendance', $allowed_features)): ?>
+            <?php endif; ?>
+            <?php if (hasFeature('attendance', $allowed_features) && user_can('hr.attendance')): ?>
             <li class="<?= navActive('attendance.php') ?>">
                 <a href="attendance.php"><i class="feather icon-clock mr-2"></i><?= __('my_attendance') ?></a>
             </li>
             <li class="<?= navActive('manage_attendance.php') ?>">
                 <a href="manage_attendance.php"><i class="feather icon-calendar mr-2"></i><?= __('manage_attendance') ?></a>
             </li>
+            <?php endif; ?>
+            <?php if (hasFeature('attendance', $allowed_features) && user_can('hr.attendance_settings')): ?>
             <li class="<?= navActive('attendance_settings.php') ?>">
                 <a href="attendance_settings.php"><i class="feather icon-settings mr-2"></i><?= __('attendance_settings') ?></a>
             </li>
             <?php endif; ?>
         </ul>
     </li>
-    <?php else: ?>
+    <?php elseif (user_can('hr.attendance')): ?>
     <!-- Staff: My Attendance only -->
     <li class="nav-item <?= navActive('attendance.php') ?>">
         <a href="attendance.php" class="nav-link">
@@ -402,7 +419,7 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 
 <!-- ── Salary ────────────────────────────────────────────────────────── -->
 <?php if (hasFeature('salary', $allowed_features)): ?>
-    <?php if (staffCanSeeMenu($user['role'])): ?>
+    <?php if (staffCanSeeMenu($user['role']) && user_can('hr.salary')): ?>
     <!-- Admin / manager: full salary submenu -->
     <li class="nav-item pcoded-hasmenu <?= navTrigger('salary_management.php', 'salary_payment.php', 'salary_payments.php') ?>">
         <a href="javascript:" class="nav-link">
@@ -413,15 +430,17 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
         <li class="<?= navActive('salary_management.php') ?>">
             <a href="salary_management.php"><i class="fas fa-user-tie mr-2"></i><?= __('employee_salaries') ?></a>
         </li>
+        <?php if (user_can('hr.salary_pay')): ?>
         <li class="<?= navActive('salary_payment.php') ?>">
             <a href="salary_payment.php"><i class="fas fa-money-check-alt mr-2"></i><?= __('process_payment') ?></a>
         </li>
+        <?php endif; ?>
         <li class="<?= navActive('salary_payments.php') ?>">
             <a href="salary_payments.php"><i class="fas fa-dollar-sign mr-2"></i><?= __('my_payments') ?></a>
         </li>
         </ul>
     </li>
-    <?php else: ?>
+    <?php elseif (user_can('hr.salary')): ?>
     <!-- Staff: My Payments only -->
     <li class="nav-item <?= navActive('salary_payments.php') ?>">
         <a href="salary_payments.php" class="nav-link">
@@ -433,7 +452,7 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 <?php endif; ?>
 
 <!-- ── Supplier ──────────────────────────────────────────────────────── -->
-<?php if (staffCanSeeMenu($user['role'])): ?>
+<?php if (staffCanSeeMenu($user['role']) && user_can('operations.suppliers')): ?>
 <li class="nav-item <?= navActive('supplier.php') ?>">
     <a href="supplier.php" class="nav-link">
         <span class="pcoded-micon"><i class="fas fa-truck"></i></span>
@@ -443,7 +462,7 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 <?php endif; ?>
 
 <!-- ── Client ────────────────────────────────────────────────────────── -->
-<?php if (staffCanSeeMenu($user['role'])): ?>
+<?php if (staffCanSeeMenu($user['role']) && user_can('operations.clients')): ?>
 <li class="nav-item <?= navActive('client.php') ?>">
     <a href="client.php" class="nav-link">
         <span class="pcoded-micon"><i class="feather icon-user"></i></span>
@@ -460,7 +479,7 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 </li>
 
 <!-- ── Manage Letters (Maktobs) ───────────────────────────────────────── -->
-<?php if (hasFeature('manage_maktobs', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
+<?php if (hasFeature('manage_maktobs', $allowed_features) && staffCanSeeMenu($user['role']) && user_can('operations.maktobs')): ?>
 <li class="nav-item <?= navActive('manage_maktobs.php') ?>">
     <a href="manage_maktobs.php" class="nav-link">
         <span class="pcoded-micon"><i class="fas fa-file-alt"></i></span>
@@ -470,7 +489,7 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 <?php endif; ?>
 
 <!-- ── Assets ────────────────────────────────────────────────────────── -->
-<?php if (hasFeature('assets', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
+<?php if (hasFeature('assets', $allowed_features) && staffCanSeeMenu($user['role']) && user_can('operations.assets')): ?>
 <li class="nav-item <?= navActive('assets.php') ?>">
     <a href="assets.php" class="nav-link">
         <span class="pcoded-micon"><i class="feather icon-box"></i></span>
@@ -480,7 +499,7 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 <?php endif; ?>
 
 <!-- ── Excel Import ───────────────────────────────────────────────────── -->
-<?php if (staffCanSeeMenu($user['role'])): ?>
+<?php if (staffCanSeeMenu($user['role']) && user_can('operations.excel_import')): ?>
 <li class="nav-item <?= navActive('excel_import.php') ?>">
     <a href="excel_import.php" class="nav-link">
         <span class="pcoded-micon"><i class="fas fa-file-excel"></i></span>
@@ -490,7 +509,7 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 <?php endif; ?>
 
 <!-- ── Search ────────────────────────────────────────────────────────── -->
-<?php if (staffCanSeeMenu($user['role'])): ?>
+<?php if (staffCanSeeMenu($user['role']) && user_can('operations.search')): ?>
 <li class="nav-item <?= navActive('search.php') ?>">
     <a href="search.php" class="nav-link">
         <span class="pcoded-micon"><i class="feather icon-search"></i></span>
@@ -507,7 +526,7 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 </li>
 
 <!-- ── Chat ──────────────────────────────────────────────────────────── -->
-<?php if (hasFeature('inter_tenant_chat', $allowed_features) && staffCanSeeMenu($user['role'])): ?>
+<?php if (hasFeature('inter_tenant_chat', $allowed_features) && staffCanSeeMenu($user['role']) && user_can('communication.view')): ?>
 <li class="nav-item pcoded-hasmenu <?= navTrigger('chat.php', 'send_messages.php', 'chat_settings.php', 'tenant_peering.php', 'branch_peering.php') ?>">
     <a href="javascript:" class="nav-link">
         <span class="pcoded-micon"><i class="feather icon-message-circle"></i></span>
@@ -517,21 +536,25 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
         <li class="<?= navActive('chat.php') ?>">
             <a href="../chat.php"><i class="feather icon-users"></i> <?= __('chat') ?></a>
         </li>
+        <?php if (user_can('communication.chat_settings')): ?>
         <li class="<?= navActive('chat_settings.php') ?>">
             <a href="chat_settings.php"><i class="feather icon-settings"></i> Chat Settings</a>
         </li>
+        <?php endif; ?>
+        <?php if (user_can('communication.peering')): ?>
         <li class="<?= navActive('tenant_peering.php') ?>">
             <a href="tenant_peering.php"><i class="feather icon-users"></i> Tenant Peering</a>
         </li>
         <li class="<?= navActive('branch_peering.php') ?>">
             <a href="branch_peering.php"><i class="feather icon-users"></i> Branch Peering</a>
         </li>
+        <?php endif; ?>
     </ul>
 </li>
 <?php endif; ?>
 
 <!-- ── Email Analytics ───────────────────────────────────────────────── -->
-<?php if (staffCanSeeMenu($user['role']) && $has_smtp_addon): ?>
+<?php if (staffCanSeeMenu($user['role']) && $has_smtp_addon && user_can('communication.email')): ?>
 <li class="nav-item <?= navActive('email_analytics.php') ?>">
     <a href="email_analytics.php" class="nav-link">
         <span class="pcoded-micon"><i class="feather icon-mail"></i></span>
@@ -556,7 +579,7 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 </li>
 
 <!-- ── Activity Log ──────────────────────────────────────────────────── -->
-<?php if (staffCanSeeMenu($user['role'])): ?>
+<?php if (staffCanSeeMenu($user['role']) && user_can('security.view')): ?>
 <li class="nav-item <?= navActive('activity_log.php') ?>">
     <a href="activity_log.php" class="nav-link">
         <span class="pcoded-micon"><i class="feather icon-activity"></i></span>
@@ -573,7 +596,7 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 </li>
 
 <!-- ── Support Tickets ────────────────────────────────────────────────── -->
-<?php if (staffCanSeeMenu($user['role'])): ?>
+<?php if (staffCanSeeMenu($user['role']) && user_can('support.view')): ?>
 <li class="nav-item pcoded-hasmenu <?= navTrigger('support_tickets.php','support_ticket_create.php','support_ticket_detail.php') ?>">
     <a href="javascript:" class="nav-link">
         <span class="pcoded-micon"><i class="feather icon-help-circle"></i></span>

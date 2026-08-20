@@ -8,6 +8,12 @@
 require_once '../../vendor/autoload.php';
 require_once '../../includes/ticket_patterns.php';
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+require_once '../../includes/permissions.php';
+require_permission('tickets.view');
+
 header('Content-Type: application/json');
 
 /**

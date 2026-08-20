@@ -4,6 +4,9 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+require_once dirname(__DIR__, 2) . '/includes/permissions.php';
+require_permission('reports.view');
+
 // generate_report.php - Handles report generation in PDF, Excel, or Word formats
 require_once '../../includes/db.php';
 include '../../vendor/autoload.php'; // Load PhpSpreadsheet and Dompdf

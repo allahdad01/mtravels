@@ -14,12 +14,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
-// Check if user is logged in with proper role
-$allowed_roles = ['admin', 'finance'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    header('Location: ../login.php');
-    exit();
-}
+require_permission('operations.clients');
 
 // Validate customer ID parameter
 $customerId = InputValidator::getInt($_GET['id'] ?? '', 0, 1);

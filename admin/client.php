@@ -5,11 +5,8 @@ require_once '../includes/db.php';
 $tenant_id = (int) ($_SESSION['tenant_id'] ?? 0);
 $branch_id = (int) ($_SESSION['branch_id'] ?? 0);
 
-$allowed_roles = ['admin', 'finance'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-     header('Location: ../login.php');
-    exit();
-}
+enforce_auth();
+require_permission('operations.clients');
 
 include '../includes/header.php';
 ?>
@@ -874,7 +871,7 @@ tbody tr:hover .action-row { opacity: 1; }
       <h1>Client Management <span class="live-badge">Live</span></h1>
       <p class="page-head-sub">Manage accounts, balances and relationships</p>
     </div>
-    <button class="btn-add" id="addClientBtn">
+    <button class="btn-add" id="addClientBtn" <?php if (!user_can('operations.edit')): ?>style="display:none;"<?php endif; ?>>
       <i class="fas fa-plus"></i>
       Add Client
     </button>
@@ -1060,6 +1057,11 @@ $clientCountStmt->execute($branch_id > 0 ? [$tenant_id, $branch_id] : [$tenant_i
 $hasExistingClients = (int)$clientCountStmt->fetchColumn() > 0;
 ?>
 var __hasExistingClients = <?= $hasExistingClients ? 'true' : 'false' ?>;
+</script>
+
+<script>
+    window.CLIENT_CAN_EDIT = <?php echo user_can('operations.edit') ? 'true' : 'false'; ?>;
+    window.CLIENT_CAN_DELETE = <?php echo user_can('operations.delete') ? 'true' : 'false'; ?>;
 </script>
 
 <!-- Client management logic -->

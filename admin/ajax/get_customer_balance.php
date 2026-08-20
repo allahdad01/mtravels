@@ -6,13 +6,9 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Check if user is logged in with proper role
-$allowed_roles = ['admin', 'finance'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    // Log unauthorized access attempt
-    header('Location: ../login.php');
-    exit();
-}
+require_once '../../admin/security.php';
+enforce_auth();
+require_permission('finance.view');
 
 // Validate customer_id
 if (!isset($_GET['customer_id']) || !is_numeric($_GET['customer_id'])) {

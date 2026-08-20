@@ -4,6 +4,7 @@ require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
+require_permission('reports.export');
 
 // Get tenant ID from session
 $tenant_id = $_SESSION['tenant_id'];

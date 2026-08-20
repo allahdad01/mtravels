@@ -11,11 +11,7 @@ require_once('../../admin/security.php');
 // Enforce authentication
 enforce_auth();
 
-// Check if user is logged in with proper role
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    http_response_code(403);
-    die('Unauthorized access');
-}
+require_permission('umrah.view');
 
 // Check if family ID is provided
 if (!isset($_GET['family_id'])) {

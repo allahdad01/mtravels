@@ -7,6 +7,7 @@ require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
+require_permission('tickets.transactions');
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {

@@ -9,12 +9,7 @@ require_once '../includes/language_helpers.php';
 enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
 
-// Check if user is logged in with proper role
-$allowed_roles = ['admin', 'finance'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    header('Location: ../login.php');
-    exit();
-}
+require_permission('operations.suppliers');
 
 require_once('../includes/db.php');
 

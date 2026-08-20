@@ -4,12 +4,7 @@ require_once '../includes/db.php';
 require_once '../includes/functions.php';
 // Include security module
 require_once 'security.php';
-// Check if user is a tenant admin
-if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'admin' || is_null($_SESSION['tenant_id'])) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'message' => 'Unauthorized access']);
-    exit();
-}
+require_permission('communication.email');
 
 $tenant_id = $_SESSION['tenant_id'];
 

@@ -6,6 +6,9 @@ $branch_id = $_SESSION['branch_id'];
 // Include config file
 require_once "../includes/db.php";
 
+require_once __DIR__ . '/../includes/permissions.php';
+require_permission('hr.salary');
+
 // Fetch allowed features
 $query = "
     SELECT p.features

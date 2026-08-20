@@ -7,12 +7,7 @@ enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
-// Check if user is logged in with proper role
-$allowed_roles = ['admin', 'finance', 'sales'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    header('Location: ../login.php');
-    exit();
-}
+require_permission('tickets.view');
 include '../includes/db.php';
 
 $ticketId = isset($_GET['id']) ? intval($_GET['id']) : 0;

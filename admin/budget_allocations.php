@@ -8,11 +8,7 @@ require_once 'security.php';
 enforce_auth();
 require_once '../includes/InputValidator.php';
 
-$allowed_roles = ['admin', 'finance'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    header('Location: ../login.php');
-    exit();
-}
+require_permission('finance.budget');
 
 require_once('../includes/db.php');
 
@@ -853,6 +849,7 @@ $availableAllocCurrencies = array_column($allocCurrencies, 'currency');
 <script src="../assets/js/vendor-all.min.js"></script>
 <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
 <script src="../assets/js/pcoded.min.js"></script>
+<script>window.BA_CAN_EDIT_EXPENSE = <?php echo user_can('finance.expenses') ? 'true' : 'false'; ?>;</script>
 <script src="../js/allocation/allocation_management.js"></script>
 <script src="../js/allocation/allocation_event_handlers.js"></script>
 <?php include '../includes/admin_footer.php'; ?>

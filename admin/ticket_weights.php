@@ -6,18 +6,14 @@ require_once 'security.php';
 require_once '../includes/language_helpers.php';
 enforce_auth();
 
-$allowed_roles = ['admin', 'finance', 'sales'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    header('Location: ../login.php');
-    exit();
-}
+require_permission('tickets.weights');
 
 require_once('../includes/db.php');
 
 $user_id   = $_SESSION['user_id'];
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
-$canEdit   = in_array($_SESSION['role'], ['admin', 'finance']);
+$canEdit   = user_can('tickets.weights');
 
 $items_per_page = 10;
 $current_page   = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
@@ -743,7 +739,7 @@ $weights  = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
                             </div>
                             <div class="weight-card-stub">
                                 <div class="weight-card-actions">
-                                    <?php if ($isAgencyClient && $canEdit): ?>
+                                    <?php if ($isAgencyClient && user_can('tickets.transactions')): ?>
                                     <button class="weight-card-action-btn"
                                             onclick="manageTransactions(<?= $weight['id'] ?>)"
                                             title="<?= __('manage_transactions') ?>">

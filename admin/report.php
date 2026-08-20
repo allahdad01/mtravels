@@ -4,13 +4,9 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Check if user is logged in with proper role
-$allowed_roles = ['admin', 'finance', 'sales', 'umrah'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    // Log unauthorized access attempt
-    header('Location: ../login.php');
-    exit();
-}
+require_once 'security.php';
+enforce_auth();
+require_permission('reports.view');
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Database connection
@@ -123,7 +119,7 @@ if ($tenant_id) {
                                                                     <select id="reportType" class="form-select form-select-lg" onchange="loadOptions()">
                                                                          <option value=""><?= __('select_report_type') ?></option>
                                                                          <option value="general">📊 <?= __('general') ?> (<?= __('all_types') ?>)</option>
-                                                                         <?php if (in_array($_SESSION['role'], ['admin', 'finance'])): ?>
+                                                                         <?php if (user_can('finance.view')): ?>
                                                                              <option value="supplier">🏢 <?= __('supplier') ?></option>
                                                                              <option value="main_account">💰 <?= __('main_account') ?></option>
                                                                              <option value="client">👥 <?= __('client') ?></option>
@@ -191,7 +187,7 @@ if ($tenant_id) {
                                                                         <?= __('report_category') ?>
                                                                     </label>
                                                                     <select id="reportCategory" class="form-select form-select-lg">
-                                                                         <?php if ($_SESSION['role'] === 'umrah'): ?>
+                                                                         <?php if (user_can('umrah.view') && !user_can('tickets.view') && !user_can('visa.view') && !user_can('hotels.view')): ?>
                                                                              <option value="umrah">🕌 <?= __('umrah') ?></option>
                                                                              <option value="umrah_refund">↩️ <?= __('umrah_refund') ?></option>
                                                                          <?php else: ?>
@@ -202,7 +198,7 @@ if ($tenant_id) {
                                                                              <option value="visa">🛂 <?= __('visa') ?></option>
                                                                              <option value="umrah">🕌 <?= __('umrah') ?></option>
                                                                              <option value="hotel">🏨 <?= __('hotel') ?></option>
-                                                                             <?php if (in_array($_SESSION['role'], ['admin', 'finance'])): ?>
+                                                                             <?php if (user_can('finance.view')): ?>
                                                                                  <option value="general_summary">📈 <?= __('general_summary') ?></option>
                                                                                  <option value="expense">💸 <?= __('expense') ?></option>
                                                                                  <option value="creditor">💼 <?= __('creditor') ?></option>
@@ -363,7 +359,7 @@ if ($tenant_id) {
                                 
 
                                 <!-- Admin and Finance Section -->
-                                <?php if (in_array($_SESSION['role'], ['admin', 'finance'])): ?>
+                                <?php if (user_can('finance.view')): ?>
                                 <div class="row mb-4">
                                     <div class="col-md-12">
                                         <div class="card">
@@ -1507,7 +1503,8 @@ if ($tenant_id) {
     <!-- Add meta tags for JavaScript variables -->
     <meta name="tenant-id" content="<?= $tenant_id ?>">
     <meta name="branch-id" content="<?= $branch_id ?>">
-    <meta name="user-role" content="<?= $_SESSION['role'] ?>">
+    <meta name="perm-finance" content="<?= user_can('finance.view') ? '1' : '0' ?>">
+    <meta name="perm-umrah-only" content="<?= (user_can('umrah.view') && !user_can('tickets.view') && !user_can('visa.view') && !user_can('hotels.view')) ? '1' : '0' ?>">
     <meta name="allowed-features" content='<?= json_encode($allowed_features) ?>'>
 
     <!-- Report JavaScript -->

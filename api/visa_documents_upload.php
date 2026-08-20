@@ -15,12 +15,7 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 $user_id = $_SESSION['user_id'];
 
-// Check for admin role
-if ($_SESSION['role'] !== 'admin') {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'message' => 'Unauthorized']);
-    exit();
-}
+require_permission('visa.edit');
 
 // Get request method
 $method = $_SERVER['REQUEST_METHOD'];

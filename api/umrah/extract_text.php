@@ -11,6 +11,12 @@
 require_once '../../includes/document_patterns.php';
 require_once '../../vendor/autoload.php';
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+require_once '../../includes/permissions.php';
+require_permission('umrah.view');
+
 use Smalot\PdfParser\Parser;
 
 header('Content-Type: application/json');

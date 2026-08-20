@@ -3059,6 +3059,23 @@ CREATE TABLE `users` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `user_permissions`
+--
+
+CREATE TABLE `user_permissions` (
+  `id` int(11) NOT NULL,
+  `tenant_id` int(11) NOT NULL,
+  `branch_id` int(11) DEFAULT NULL,
+  `user_id` int(11) NOT NULL,
+  `permission_key` varchar(80) NOT NULL,
+  `granted` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `user_addons`
 --
 
@@ -4732,6 +4749,14 @@ ALTER TABLE `users`
   ADD KEY `branch_id` (`branch_id`);
 
 --
+-- Indexes for table `user_permissions`
+--
+ALTER TABLE `user_permissions`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_user_permission` (`user_id`,`permission_key`),
+  ADD KEY `idx_tenant_user` (`tenant_id`,`user_id`);
+
+--
 -- Indexes for table `user_addons`
 --
 ALTER TABLE `user_addons`
@@ -5712,6 +5737,12 @@ ALTER TABLE `umrah_transactions`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `user_permissions`
+--
+ALTER TABLE `user_permissions`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --

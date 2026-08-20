@@ -9,6 +9,9 @@ if (!isset($_SESSION['user_id']) && !isset($_SESSION['user_id'])) {
     exit;
 }
 
+require_once dirname(__DIR__) . '/includes/permissions.php';
+require_permission('support.view');
+
 $ticketManager = new SupportTicketManager($pdo);
 $message = '';
 $alert_type = '';

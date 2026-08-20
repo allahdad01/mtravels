@@ -7,6 +7,7 @@ require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
+require_permission('tickets.transactions');
 
 // ✅ CSRF Token Validation
 if (!verify_csrf_token()) {

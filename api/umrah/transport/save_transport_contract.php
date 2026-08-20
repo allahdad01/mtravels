@@ -10,7 +10,7 @@
 require_once '../../../admin/includes/db_security.php';
 require_once '../../../admin/security.php';
 enforce_auth();
-umrah_require('transport_manage');
+require_permission('umrah.transport_manage');
 
 if (!verify_csrf_token()) {
     http_response_code(403);

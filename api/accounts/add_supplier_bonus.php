@@ -1,6 +1,7 @@
 <?php
 require_once '../../admin/security.php';
 enforce_auth();
+require_permission('finance.edit');
 
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {

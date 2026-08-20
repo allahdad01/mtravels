@@ -30,22 +30,25 @@ function txnBuildActionsCell(transaction, accountType, amount, dateField) {
     let showReceipt = false;
     let showPrintReceipt = false;
 
+    const canEditTx   = typeof window.FINANCE_CAN_EDIT_TX === 'undefined' || window.FINANCE_CAN_EDIT_TX;
+    const canDeleteTx = typeof window.FINANCE_CAN_DELETE_TX === 'undefined' || window.FINANCE_CAN_DELETE_TX;
+
     if (accountType === 'main') {
         const tof = (transaction.transaction_of || '').toLowerCase();
-        showDelete  = isUserAdmin && ['fund', 'transfer', 'supplier_bonus', 'withdraw_fund'].includes(tof);
-        showEdit    = tof === 'fund' || tof === 'withdraw_fund';
+        showDelete  = canDeleteTx && ['fund', 'transfer', 'supplier_bonus', 'withdraw_fund'].includes(tof);
+        showEdit    = canEditTx && (tof === 'fund' || tof === 'withdraw_fund');
         showReceipt = true;
         showPrintReceipt = false;
     } else if (accountType === 'supplier') {
         const tof = (transaction.transaction_of || '').toLowerCase();
-        showDelete = isUserAdmin && ['supplier_bonus', 'fund', 'fund_withdrawal'].includes(tof);
-        showEdit   = tof === 'fund' || tof === 'fund_withdrawal';
+        showDelete = canDeleteTx && ['supplier_bonus', 'fund', 'fund_withdrawal'].includes(tof);
+        showEdit   = canEditTx && (tof === 'fund' || tof === 'fund_withdrawal');
         showReceipt = true;
         showPrintReceipt = false;
     } else if (accountType === 'client') {
         const tof = (transaction.transaction_of || '').toLowerCase();
-        showDelete = isUserAdmin && (tof === 'fund' || tof === 'client_withdrawal');
-        showEdit   = tof === 'fund' || tof === 'client_withdrawal';
+        showDelete = canDeleteTx && (tof === 'fund' || tof === 'client_withdrawal');
+        showEdit   = canEditTx && (tof === 'fund' || tof === 'client_withdrawal');
         showReceipt = true;
         showPrintReceipt = true;
     }

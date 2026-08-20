@@ -18,7 +18,7 @@
 require_once '../../admin/includes/db_security.php';
 require_once '../../admin/security.php';
 enforce_auth();
-umrah_require('fulfill');
+require_permission('umrah.fulfill');
 
 if (!verify_csrf_token()) {
     http_response_code(403);

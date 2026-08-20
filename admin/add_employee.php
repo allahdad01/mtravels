@@ -12,6 +12,9 @@ if (session_status() === PHP_SESSION_NONE) {
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
+require_once __DIR__ . '/../includes/permissions.php';
+require_permission('users.create');
+
 // Initialize UserAddonManager
 $userAddonManager = new UserAddonManager($pdo, $tenant_id);
 

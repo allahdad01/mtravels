@@ -10,10 +10,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Check if user is logged in
-if (!isset($_SESSION['user_id'])  || $_SESSION['role'] !== 'admin') {
-    header('Location: ../login.php');
-    exit();
-}
+require_permission('operations.excel_import');
 
 require_once '../includes/db.php';
 require_once '../includes/functions.php';

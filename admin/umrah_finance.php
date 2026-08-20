@@ -16,8 +16,8 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 require_once '../includes/language_helpers.php';
 
-enforce_auth(['admin', 'finance', 'umrah', 'sales', 'staff', 'operations', 'hotel_manager', 'viewer']);
-umrah_require('finance_view', 'page');
+enforce_auth();
+require_permission('umrah.finance_view');
 
 require_once '../includes/db.php';
 

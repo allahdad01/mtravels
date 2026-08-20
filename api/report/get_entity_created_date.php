@@ -1,6 +1,8 @@
 <?php
 session_start();
 require_once '../../includes/db.php';
+require_once '../../includes/permissions.php';
+require_permission('reports.view');
 
 
 $tenant_id = $_SESSION['tenant_id'];

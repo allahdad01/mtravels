@@ -20,8 +20,8 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
 // Check if user is admin or finance
-$canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
-$isAdmin = $_SESSION['role'] === 'admin';
+$canEdit = user_can('umrah.member_edit');
+$isAdmin = user_can('umrah.delete');
 
 // Get family ID and filter
 $family_id = isset($_GET['family_id']) ? intval($_GET['family_id']) : 0;

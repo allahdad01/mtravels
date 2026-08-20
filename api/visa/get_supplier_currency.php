@@ -1,5 +1,7 @@
 <?php
 session_start();
+require_once '../../includes/permissions.php';
+require_permission('visa.view');
 
 // Initialize response array
 $response = [

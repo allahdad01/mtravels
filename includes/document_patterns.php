@@ -610,22 +610,39 @@ function findPythonExecutable() {
         return $pythonPath;
     }
     
-    // Try 2: Try common Python locations on Windows
+// Try 2: Try common Python locations on Windows
     if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+        $userName = getenv('USERNAME');
         $commonPaths = [
             'C:\\Python314\\python.exe',
             'C:\\Python313\\python.exe',
             'C:\\Python312\\python.exe',
             'C:\\Python311\\python.exe',
             'C:\\Python310\\python.exe',
-            'C:\\Users\\' . getenv('USERNAME') . '\\AppData\\Local\\Programs\\Python\\Python314\\python.exe',
-            'C:\\Users\\' . getenv('USERNAME') . '\\AppData\\Local\\Programs\\Python\\Python313\\python.exe',
-            'C:\\Users\\' . getenv('USERNAME') . '\\AppData\\Local\\Programs\\Python\\Python312\\python.exe',
-            'C:\\Users\\' . getenv('USERNAME') . '\\AppData\\Local\\Programs\\Python\\Python311\\python.exe',
+            'C:\\Python39\\python.exe',
+            'C:\\Python38\\python.exe',
+            'C:\\Users\\' . $userName . '\\AppData\\Local\\Programs\\Python\\Python317\\python.exe',
+            'C:\\Users\\' . $userName . '\\AppData\\Local\\Programs\\Python\\Python316\\python.exe',
+            'C:\\Users\\' . $userName . '\\AppData\\Local\\Programs\\Python\\Python315\\python.exe',
+            'C:\\Users\\' . $userName . '\\AppData\\Local\\Programs\\Python\\Python314\\python.exe',
+            'C:\\Users\\' . $userName . '\\AppData\\Local\\Programs\\Python\\Python313\\python.exe',
+            'C:\\Users\\' . $userName . '\\AppData\\Local\\Programs\\Python\\Python312\\python.exe',
+            'C:\\Users\\' . $userName . '\\AppData\\Local\\Programs\\Python\\Python311\\python.exe',
+            'C:\\Users\\' . $userName . '\\AppData\\Local\\Programs\\Python\\Python310\\python.exe',
+            'C:\\Users\\' . $userName . '\\AppData\\Local\\Programs\\Python\\Python39\\python.exe',
+            'C:\\Users\\' . $userName . '\\AppData\\Local\\Programs\\Python\\Python38\\python.exe',
+            // python-build-standalone / community installs (common on XAMPP setups)
+            'C:\\Users\\' . $userName . '\\AppData\\Local\\Python\\bin\\python.exe',
+            'C:\\Users\\' . $userName . '\\scoop\\apps\\python\\current\\python.exe',
+            'C:\\ProgramData\\python\\python313\\python.exe',
+            'C:\\ProgramData\\python\\python312\\python.exe',
+            'C:\\ProgramData\\python\\python311\\python.exe',
+            'C:\\ProgramData\\python\\python310\\python.exe',
             'C:\\Program Files\\Python314\\python.exe',
             'C:\\Program Files\\Python313\\python.exe',
             'C:\\Program Files\\Python312\\python.exe',
             'C:\\Program Files\\Python311\\python.exe',
+            'C:\\Program Files\\Python310\\python.exe',
         ];
         
         foreach ($commonPaths as $path) {

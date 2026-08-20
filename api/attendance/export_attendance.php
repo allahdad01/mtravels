@@ -12,6 +12,9 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+require_once '../../includes/permissions.php';
+require_permission('hr.attendance');
+
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 

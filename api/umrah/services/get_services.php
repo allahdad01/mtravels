@@ -7,7 +7,7 @@
 require_once '../../../admin/includes/db_security.php';
 require_once '../../../admin/security.php';
 enforce_auth();
-umrah_require('service_manage');
+require_permission('umrah.service_manage');
 
 $tenant_id = $_SESSION['tenant_id'];
 

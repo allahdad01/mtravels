@@ -5,6 +5,7 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
+require_permission('finance.expenses');
 
 // Load input validation helper
 require_once '../../includes/InputValidator.php';

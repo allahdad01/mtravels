@@ -11,18 +11,12 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
 // Check if user is logged in with proper role
-$allowed_roles = ['admin', 'finance', 'sales', 'umrah'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    // Log unauthorized access attempt
-     header('Location: ../login.php');
-    exit();
-}
+require_permission('umrah.view');
 // Database connection
 require_once('../includes/db.php');
 
 // Check if user is admin or finance
-$canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
-$isAdmin = $_SESSION['role'] === 'admin';
+$canEdit = user_can('umrah.member_edit');
 ?>
 
 <?php include '../includes/header.php'; ?>
@@ -1078,9 +1072,11 @@ $isAdmin = $_SESSION['role'] === 'admin';
                                                         <i class="fas fa-credit-card"></i><?= __('transaction') ?>
                                                     </a>
                                                     <?php endif; ?>
+                                                    <?php if (user_can('umrah.fulfill')): ?>
                                                     <a class="dropdown-item" href="#" onclick="openFulfillmentModal(<?= (int)$m['booking_id'] ?>, '<?= htmlspecialchars(addslashes($m['name']), ENT_QUOTES) ?>'); return false;">
                                                         <i class="fas fa-truck-loading"></i><?= __('fulfill_services') ?>
                                                     </a>
+                                                    <?php endif; ?>
                                                     <a class="dropdown-item" href="#" onclick="openProfitReport('member', <?= (int)$m['booking_id'] ?>, '<?= htmlspecialchars(addslashes($m['name']), ENT_QUOTES) ?>'); return false;">
                                                         <i class="fas fa-chart-line"></i><?= __('profit_report') ?>
                                                     </a>
@@ -1123,7 +1119,7 @@ $isAdmin = $_SESSION['role'] === 'admin';
                                                         <i class="fas fa-times-circle"></i><?= __('generate_cancellation_form') ?>
                                                     </a>
 
-                                                    <?php if ($canEdit && ($mStatus !== 'active' || $isAdmin)): ?>
+                                                    <?php if ($canEdit && ($mStatus !== 'active' || user_can('umrah.delete'))): ?>
                                                     <div class="dropdown-divider"></div>
                                                     <h6 class="dropdown-header text-danger"><?= __('danger_zone') ?></h6>
                                                     <a class="dropdown-item text-danger" href="#" onclick="deleteBooking(<?= (int)$m['booking_id'] ?>); return false;">
@@ -1552,6 +1548,12 @@ $isAdmin = $_SESSION['role'] === 'admin';
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
 
 <!-- Combined page scripts (single request, cache-busted by max filemtime) -->
+<script>
+    window.UMRAH_CAN_EDIT_FAMILY = <?php echo user_can('umrah.member_edit') ? 'true' : 'false'; ?>;
+    window.UMRAH_CAN_DELETE_FAMILY = <?php echo user_can('umrah.delete') ? 'true' : 'false'; ?>;
+    window.UMRAH_CAN_EDIT_TX = <?php echo user_can('umrah.payment_record') ? 'true' : 'false'; ?>;
+    window.UMRAH_CAN_REVERT_DATE_CHANGE = <?php echo user_can('umrah.member_edit') ? 'true' : 'false'; ?>;
+</script>
 <script src="../js/umrah/bundle.php?v=<?= $umrahJsVersion ?>"></script>
 
 <!-- Tesseract.js for OCR -->

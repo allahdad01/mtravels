@@ -20,12 +20,7 @@ session_status() === PHP_SESSION_NONE && session_start();
 require_once __DIR__ . '/../../admin/security.php';
 enforce_auth();
 
-$allowed_roles = ['admin', 'finance'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    http_response_code(403);
-    echo 'Forbidden';
-    exit;
-}
+require_permission('finance.payments');
 
 require_once __DIR__ . '/../../includes/db.php';
 require_once __DIR__ . '/../../includes/language_helpers.php';

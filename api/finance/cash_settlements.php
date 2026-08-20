@@ -2,7 +2,9 @@
 /**
  * Finance â†’ Admin Cash Settlement ("Handover") API
  *
- * Roles: admin, finance.
+ * Permissions:
+ *   finance.cash_settlement         → summary / create / delete / list (own data)
+ *   finance.cash_settlement_approve → confirm / reject + view all data
  *
  * The finance counter is AUTO-derived from `main_account_transactions`
  * per user (`created_by`), per currency:
@@ -27,14 +29,8 @@ if (session_status() === PHP_SESSION_NONE) { session_start(); }
 require_once '../../admin/security.php';
 require_once '../../includes/db.php';
 enforce_auth();
-
-$allowed_roles = ['admin', 'finance'];
-$role = $_SESSION['role'] ?? '';
-if (!in_array($role, $allowed_roles, true)) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'message' => 'Unauthorized access']);
-    exit;
-}
+require_permission('finance.cash_settlement');
+$canApprove = user_can('finance.cash_settlement_approve');
 
 $tenant_id = (int) $_SESSION['tenant_id'];
 $branch_id = (int) $_SESSION['branch_id'];
@@ -115,8 +111,8 @@ try {
 
         case 'summary':
             $targetUser = (int) ($_GET['user'] ?? $current_user);
-            if ($role === 'finance' && $targetUser !== $current_user) {
-                // scenario: finance only sees their own
+            if (!$canApprove && $targetUser !== $current_user) {
+                $targetUser = $current_user; // non-approvers only see their own
             }
             [$creditIn, $debitOut] = autoCounter($pdo, $tenant_id, $branch_id, $targetUser);
 
@@ -161,8 +157,8 @@ try {
             // Breakdown of the actual main_account_transactions rows that make
             // up a finance user's counter, for one currency (or all).
             $targetUser = (int) ($_GET['user'] ?? $current_user);
-            if ($role === 'finance' && $targetUser !== $current_user) {
-                $targetUser = $current_user; // finance only sees their own
+            if (!$canApprove && $targetUser !== $current_user) {
+                $targetUser = $current_user; // non-approvers only see their own
             }
             $currency = strtoupper(trim($_GET['currency'] ?? ''));
             if ($currency && !in_array($currency, $currencies, true)) {
@@ -220,9 +216,6 @@ try {
             break;
 
         case 'create':
-            if (!in_array($role, ['finance', 'admin'], true)) {
-                throw new Exception('Only finance or admin users can submit a settlement');
-            }
             $currency = strtoupper(trim($_POST['currency'] ?? ''));
             $amount   = (float) ($_POST['amount'] ?? 0);
             $note     = trim($_POST['note'] ?? '');
@@ -255,7 +248,7 @@ try {
             ], JSON_UNESCAPED_UNICODE));
 
             $msg = "Finance submitted {$currency} {$amount} for settlement.";
-            if ($role === 'admin') {
+            if ($canApprove) {
                 $msg = "You submitted {$currency} {$amount} for settlement.";
             }
             pushNotification($pdo, $tenant_id, $branch_id, 'admin', $msg, $id);
@@ -264,7 +257,7 @@ try {
             break;
 
         case 'confirm':
-            if ($role !== 'admin') throw new Exception('Only admin can confirm a settlement');
+            if (!$canApprove) throw new Exception('You are not allowed to confirm a settlement');
             $id = (int) ($_POST['id'] ?? 0);
             if (!$id) throw new Exception('Settlement ID required');
 
@@ -297,7 +290,7 @@ try {
             break;
 
         case 'reject':
-            if ($role !== 'admin') throw new Exception('Only admin can reject a settlement');
+            if (!$canApprove) throw new Exception('You are not allowed to reject a settlement');
             $id = (int) ($_POST['id'] ?? 0);
             $reason = trim($_POST['reason'] ?? '');
             if (!$id) throw new Exception('Settlement ID required');
@@ -325,8 +318,8 @@ try {
         case 'delete':
             // Finance (or admin settling their own cash) can retract a still-pending
             // submission (e.g. wrong amount) before it is acted on.
-            if (!in_array($role, ['finance', 'admin'], true)) {
-                throw new Exception('Only finance or admin users can delete a settlement');
+            if (!user_can('finance.cash_settlement')) {
+                throw new Exception('You are not allowed to delete a settlement');
             }
             $id = (int) ($_POST['id'] ?? 0);
             if (!$id) throw new Exception('Settlement ID required');
@@ -359,7 +352,7 @@ try {
             $stmt->execute([$id, $tenant_id, $branch_id]);
             $s = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$s) throw new Exception('Settlement not found');
-            if ($role === 'finance' && (int) $s['user_id'] !== $current_user) {
+            if (!$canApprove && (int) $s['user_id'] !== $current_user) {
                 throw new Exception('You can only view your own settlements');
             }
 
@@ -449,7 +442,7 @@ try {
         case 'list':
             $targetUser = (int) ($_GET['user'] ?? 0);
             $statusFilter = $_GET['status'] ?? '';
-            $searchUserId = ($role === 'finance') ? $current_user : ($targetUser ?: 0);
+            $searchUserId = (!$canApprove) ? $current_user : ($targetUser ?: 0);
 
             $sql = "SELECT cs.id, cs.user_id, cs.currency, cs.amount, cs.status, cs.request_note,
                            cs.requested_by, cs.created_at, cs.confirmed_by, cs.confirmed_at,

@@ -536,15 +536,21 @@ $selected_date = InputValidator::getDate($_GET['departure_date'] ?? '', 'Y-m-d',
                 <p><?= __('dashboard_subtitle') ?></p>
               </div>
               <div class="header-actions">
-                <?php if (in_array($user['role'], ['admin','finance'])): ?>
+                <?php if (user_can('tickets.book') || user_can('operations.clients') || user_can('operations.suppliers')): ?>
                 <div class="dropdown">
                   <button class="dbtn dbtn-ghost dropdown-toggle" data-toggle="dropdown">
                     <i class="fas fa-bolt"></i> <?= __('quick_actions') ?>
                   </button>
                   <div class="dropdown-menu dropdown-menu-right">
+                    <?php if (user_can('tickets.book')): ?>
                     <a class="dropdown-item" href="ticket.php"><i class="fas fa-plus-circle mr-2" style="color:var(--violet-light);"></i><?= __('add_ticket') ?></a>
+                    <?php endif; ?>
+                    <?php if (user_can('operations.clients')): ?>
                     <a class="dropdown-item" href="client.php"><i class="fas fa-user-plus mr-2" style="color:var(--emerald);"></i><?= __('add_client') ?></a>
+                    <?php endif; ?>
+                    <?php if (user_can('operations.suppliers')): ?>
                     <a class="dropdown-item" href="supplier.php"><i class="fas fa-truck mr-2" style="color:var(--amber);"></i><?= __('add_supplier') ?></a>
+                    <?php endif; ?>
                   </div>
                 </div>
                 <?php endif; ?>
@@ -552,7 +558,7 @@ $selected_date = InputValidator::getDate($_GET['departure_date'] ?? '', 'Y-m-d',
             </div>
 
             <!-- ALERTS -->
-            <?php if (in_array($user['role'], ['admin','finance'])): ?>
+            <?php if (user_can('operations.suppliers')): ?>
             <?php if (!empty($suppliersWithLowBalance)): ?>
             <div class="d-alert d-alert-warning">
               <div class="d-alert-icon"><i class="fas fa-exclamation-triangle"></i></div>
@@ -589,8 +595,8 @@ $selected_date = InputValidator::getDate($_GET['departure_date'] ?? '', 'Y-m-d',
             <?php endif; ?>
             <?php endif; ?>
 
-            <!-- FINANCIAL WEALTH CHART (admin only) -->
-            <?php if ($user['role']==='admin'): ?>
+            <!-- FINANCIAL WEALTH CHART (finance permission) -->
+            <?php if (user_can('finance.view')): ?>
             <div class="sec-label"><i class="fas fa-chart-area"></i> <?= __('financial_wealth_distribution') ?></div>
             <div class="fin-chart-card">
               <div class="d-card-header" style="margin-bottom:18px;">
@@ -640,8 +646,8 @@ $selected_date = InputValidator::getDate($_GET['departure_date'] ?? '', 'Y-m-d',
             </div>
             <?php endif; ?>
 
-            <!-- SALES CARDS (admin only) -->
-            <?php if ($user['role']==='admin'): ?>
+            <!-- SALES CARDS (tickets.view) -->
+            <?php if (user_can('tickets.view')): ?>
             <div class="sec-label"><i class="fas fa-chart-line"></i> Performance Overview</div>
             
             <!-- Sales Filter Controls (Outside Cards) -->
@@ -747,8 +753,8 @@ $selected_date = InputValidator::getDate($_GET['departure_date'] ?? '', 'Y-m-d',
             </div>
             <?php endif; ?>
 
-            <!-- OUTSTANDING DUES (admin + finance) -->
-            <?php if (in_array($user['role'],['admin','finance'])): ?>
+            <!-- OUTSTANDING DUES (finance permission) -->
+            <?php if (user_can('finance.view')): ?>
             <div class="sec-label"><i class="fas fa-receipt"></i> <?= __('outstanding_dues') ?></div>
             <div class="dues-grid">
               <?php if (hasFeature('ticket_bookings',$allowed_features)): ?>
@@ -813,7 +819,7 @@ echo '<div class="fc-dates"><div class="fc-date-row"><i class="fas fa-calendar-c
             ?>
 
         <!-- Ticket Bookings -->
-        <?php if ($showTickets && in_array($user['role'],['admin','finance','sales'])): ?>
+        <?php if ($showTickets && user_can('tickets.view')): ?>
         <div class="d-card">
           <div class="d-card-header">
             <div class="d-card-title"><div class="ci ci-violet"><i class="fas fa-plane"></i></div><?= __('ticket_bookings_overview') ?></div>
@@ -861,9 +867,9 @@ echo '<div class="fc-dates"><div class="fc-date-row"><i class="fas fa-calendar-c
 
 
             <!-- TOP PERFORMERS + CLIENT DEBTS -->
-            <?php if (in_array($user['role'],['admin','finance'])): ?>
+            <?php if (user_can('finance.view')): ?>
             <div class="two-col">
-              <?php if ($showTickets && $user['role']==='admin'): ?>
+              <?php if ($showTickets && user_can('tickets.view')): ?>
               <div class="d-card" style="margin-bottom:0;">
                 <div class="d-card-header">
                   <div class="d-card-title"><div class="ci ci-amber"><i class="fas fa-trophy"></i></div><?= __('top_performers') ?></div>

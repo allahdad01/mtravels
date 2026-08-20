@@ -5,6 +5,7 @@ require_once '../../includes/db.php';
 
 // Enforce authentication
 enforce_auth();
+require_permission('umrah.member_edit');
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 $user_id = $_SESSION['user_id'];

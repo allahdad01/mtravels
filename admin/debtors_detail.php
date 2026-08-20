@@ -19,13 +19,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Check if user is logged in with proper role
-$allowed_roles = ['admin', 'finance'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    // Log unauthorized access attempt
-    header('Location: ../login.php');
-    exit();
-}
+require_permission('finance.debtors');
 
 // Generate CSRF token if it doesn't exist
 if (!isset($_SESSION['csrf_token'])) {

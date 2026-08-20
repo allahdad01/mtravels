@@ -19,13 +19,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Check if user is logged in with proper role
-$allowed_roles = ['admin', 'finance'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    // Log unauthorized access attempt
-    header('Location: ../login.php');
-    exit();
-}
+require_permission('finance.debtors');
 
 // Generate CSRF token if it doesn't exist
 if (!isset($_SESSION['csrf_token'])) {
@@ -36,9 +30,6 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 require_once '../includes/db.php';
 include '../api/debtor/debtors_handler.php';
-
-// Check if user is admin
-$isAdmin = $_SESSION['role'] === 'admin';
 
 // Fetch debtors list
 $status_filter = isset($_GET['status']) && $_GET['status'] === 'inactive' ? 'inactive' : 'active';
@@ -353,9 +344,11 @@ try {
                                 </div>
                             </div>
                             <div class="debtor-header-actions">
+                                <?php if (user_can('finance.edit')): ?>
                                 <button class="btn-debtor-primary" data-toggle="modal" data-target="#addDebtorModal">
                                     <i class="fas fa-plus"></i> <?= __('add_new_debtor') ?>
                                 </button>
+                                <?php endif; ?>
                             </div>
                         </div>
 
@@ -466,9 +459,11 @@ try {
                                         </div>
                                     </div>
                                     <div class="debtor-card__actions">
+                                        <?php if (user_can('finance.edit')): ?>
                                         <button class="dc-btn dc-btn--success" data-toggle="modal" data-target="#paymentModal<?= h($debtor['id']) ?>" title="<?= __('process_payment') ?>">
                                             <i class="fas fa-credit-card"></i> <?= __('pay') ?>
                                         </button>
+                                        <?php endif; ?>
                                         <button class="dc-btn" data-toggle="modal" data-target="#transactionsModal<?= h($debtor['id']) ?>" title="<?= __('view_transactions') ?>">
                                             <i class="fas fa-list"></i> <?= __('transactions') ?>
                                         </button>
@@ -478,6 +473,7 @@ try {
 <a href="../api/debtor/print_agreement.php?id=<?= h($debtor['id']) ?>" class="dc-btn" target="_blank" title="<?= __('print_agreement') ?>">
     <i class="fas fa-file-alt"></i>
 </a>
+                                        <?php if (user_can('finance.edit')): ?>
                                         <button class="dc-btn" data-toggle="modal" data-target="#editDebtorModal<?= h($debtor['id']) ?>" title="<?= __('edit_debtor') ?>">
                                             <i class="fas fa-edit"></i>
                                         </button>
@@ -500,7 +496,8 @@ try {
                                             </button>
                                         </form>
                                         <?php endif; ?>
-                                        <?php if ($isAdmin): ?>
+                                        <?php endif; ?>
+                                        <?php if (user_can('finance.delete')): ?>
                                         <button class="dc-btn dc-btn--danger" onclick="if(confirm('<?= __('are_you_sure') ?>')){ document.querySelector('form.delete-form-<?= h($debtor['id']) ?>').submit(); }" title="<?= __('delete_debtor') ?>">
                                             <i class="fas fa-trash"></i>
                                         </button>
@@ -838,6 +835,7 @@ try {
                                                                         echo '<td>';
                                                                         echo '<div class="btn-group" role="group">';
                                                                         // Edit button
+                                                                        if (user_can('finance.edit')) {
                                                                         echo '<button type="button" class="btn btn-warning btn-sm mr-1 edit-transaction-btn" 
                                                                             data-transaction-id="' . $transaction['id'] . '"
                                                                             data-debtor-id="' . $debtor['id'] . '"
@@ -848,12 +846,13 @@ try {
                                                                             data-reference-number="' . htmlspecialchars($transaction['reference_number'], ENT_QUOTES) . '">
                                                                             <i class="feather icon-edit-2"></i> ' . __('edit') . '
                                                                         </button>';
+                                                                        }
                                                                         echo '<button class="btn btn-info btn-sm mr-1" title="Print Receipt"
                                                                         onclick="printDebtorReceipt('.$transaction['id'].')">
                                                                         <i class="feather icon-printer"></i>
                                                                         </button>';
                                                                          // Delete button (admin only) with toast notification
-                                                                         if ($isAdmin) {
+                                                                         if (user_can('finance.delete')) {
                                                                              echo '<button type="button" class="btn btn-danger btn-sm delete-transaction-btn" 
                                                                                  data-transaction-id="' . $transaction['id'] . '"
                                                                                  data-debtor-id="' . $debtor['id'] . '"

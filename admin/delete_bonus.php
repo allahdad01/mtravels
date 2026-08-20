@@ -4,6 +4,9 @@ session_start();
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
+require_once __DIR__ . '/../includes/permissions.php';
+require_permission('hr.salary');
+
 // Process delete operation after confirmation
 if (isset($_GET["id"]) && !empty($_GET["id"])) {
     // Include config file

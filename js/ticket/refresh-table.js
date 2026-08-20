@@ -120,7 +120,11 @@ function createTicketCard(ticket, ticketData, counter) {
     // Full route for multi-leg itineraries
     const routeDisplay = ticket.route || `${ticket.origin} → ${ticket.destination}`;
     
-    card.innerHTML = `
+    const canEdit = typeof window.TICKET_CAN_EDIT === 'undefined' || window.TICKET_CAN_EDIT;
+        const canDelete = typeof window.TICKET_CAN_DELETE === 'undefined' || window.TICKET_CAN_DELETE;
+        const canManageTransactions = typeof window.TICKET_CAN_TRANSACTIONS === 'undefined' || window.TICKET_CAN_TRANSACTIONS;
+
+        card.innerHTML = `
         <div class="ticket-card-main status-${paymentStatus}">
             <div class="ticket-card-left">
                 <div class="ticket-card-header">
@@ -185,14 +189,16 @@ function createTicketCard(ticket, ticketData, counter) {
                 <button class="ticket-card-action-btn" onclick="editTicket(${ticket.id})" title="Edit">
                     <i class="feather icon-edit-2"></i>
                 </button>
-                ${ticket.client_type === 'agency' ? `
+                ${ticket.client_type === 'agency' && canManageTransactions ? `
                     <button class="ticket-card-action-btn" onclick="manageTransactions(${ticket.id})" title="Manage Transactions">
                         <i class="fas fa-dollar-sign"></i>
                     </button>
                 ` : ''}
+                ${canDelete ? `
                 <button class="ticket-card-action-btn" onclick="deleteTicket(${ticket.id})" title="Delete">
                     <i class="feather icon-trash-2"></i>
                 </button>
+                ` : ''}
             </div>
         </div>
     `;

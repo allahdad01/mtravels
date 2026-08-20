@@ -14,21 +14,10 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
-// Check if user is logged in with proper role
-$allowed_roles = ['admin', 'finance'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    header('Location: ../login.php');
-    exit();
-}
+require_permission('finance.view');
 
 // Database connection
 require_once('../includes/db.php');
-
-// Check if user is admin - for accessing main accounts
-$isAdmin = $_SESSION['role'] === 'admin';
-
-// Make admin flag available to JavaScript
-echo '<script>const isUserAdmin = ' . ($isAdmin ? 'true' : 'false') . ';</script>';
 
 // Fetch main account balances (only for admin)
 $mainAccounts = [];
@@ -495,7 +484,7 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
     <div class="pcoded-wrapper">
         <!-- STICKY QUICK-STATS BAR -->
         <div class="ac-stats-bar">
-            <?php if ($isAdmin): ?>
+            <?php if (user_can('finance.view')): ?>
             <div class="ac-hstat">
                 <span class="ac-hstat-label">Main USD</span>
                 <span class="ac-hstat-value pos">$<?= number_format($totalMainUSD, 2) ?></span>
@@ -625,7 +614,7 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                         <!-- ==========================================
                              INTERNAL / MAIN ACCOUNTS  (admin only)
                              ========================================== -->
-                        <?php if ($isAdmin): ?>
+                        <?php if (user_can('finance.view')): ?>
                         <div class="ac-section" id="acMainSection">
                             <div class="ac-section-header">
                                 <div class="ac-section-title-group">
@@ -637,12 +626,14 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                     <button type="button" class="btn btn-outline-secondary btn-sm ac-print-summary" data-section="main">
                                         <i class="feather icon-printer"></i> <?= __('print_summary') ?>
                                     </button>
+                                    <?php if (user_can('finance.edit')): ?>
                                     <button type="button" class="btn btn-outline-secondary btn-sm" data-toggle="modal" data-target="#transferModal">
                                         <i class="feather icon-exchange"></i> <?= __('transfer_balance') ?>
                                     </button>
                                     <button id="addMainAccountBtn" class="btn btn-primary btn-sm">
                                         <i class="feather icon-plus"></i> <?= __('add_account') ?>
                                     </button>
+                                    <?php endif; ?>
                                     <button class="ac-collapse-btn" id="acMainCollapseBtn" onclick="acToggleSection('acMainBody','acMainCollapseBtn')">
                                         <i class="feather icon-chevron-down"></i>
                                     </button>
@@ -720,9 +711,11 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                                 <option value="SAR"><?= __('sar') ?></option>
                                             </select>
                                             <input type="number" id="amount-<?= $account['id'] ?>" placeholder="Enter amount" <?= $isInactive ? 'disabled' : '' ?>>
+                                            <?php if (user_can('finance.edit')): ?>
                                             <button class="btn btn-primary btn-sm fund-account-btn" data-account-id="<?= $account['id'] ?>" <?= $isInactive ? 'disabled style="opacity:.5"' : '' ?>>
                                                 <i class="feather icon-plus-circle"></i> <?= __('fund') ?>
                                             </button>
+                                            <?php endif; ?>
                                         </div>
 
                                         <div class="ac-mc-last-updated">
@@ -736,6 +729,7 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                                  <i class="feather icon-list mr-1"></i> <?= __('view_transactions') ?>
                                              </button>
                                              <div class="ac-mc-footer-row">
+                                              <?php if (user_can('finance.edit')): ?>
                                               <button class="btn btn-outline-danger btn-sm action-btn"
                                                           onclick="setupMainWithdrawModal(<?= $account['id'] ?>, '<?= htmlspecialchars($account['name']) ?>')"
                                                           title="<?= __('withdraw') ?>" <?= $isInactive ? 'disabled style="opacity:.5"' : '' ?>>
@@ -752,12 +746,15 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                                       <i class="feather icon-<?= $isInactive ? 'check-circle' : 'power' ?> mr-1"></i>
                                                        <?= $isInactive ? __('activate') : __('deactivate') ?>
                                                   </button>
+                                                  <?php endif; ?>
+                                                  <?php if (user_can('finance.delete')): ?>
                                                   <button class="btn btn-outline-danger btn-sm action-btn delete-main-account-btn"
                                                           data-account-id="<?= $account['id'] ?>"
                                                           data-account-name="<?= htmlspecialchars($account['name']) ?>"
                                                           title="<?= __('delete') ?>">
                                                       <i class="feather icon-trash-2 mr-1"></i> <?= __('delete') ?>
                                                   </button>
+                                                  <?php endif; ?>
                                              </div>
                                          </div>
 
@@ -779,7 +776,7 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                     <div class="ac-section-count"><?= count($supplier) ?> <?= __('accounts') ?></div>
                                 </div>
                                 <div class="ac-section-actions">
-                                    <?php if ($isAdmin): ?>
+                                    <?php if (user_can('operations.suppliers')): ?>
                                     <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#addSupplierModal">
                                         <i class="feather icon-plus"></i> <?= __('add_supplier') ?>
                                     </button>
@@ -903,6 +900,7 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                             <div class="ac-lc-actions ac-lc-actions-expanded">
                                                 <?php $isInternalSupplier = isset($row['supplier_type']) && $row['supplier_type'] === 'Internal'; ?>
                                                 <?php if (!$isInternalSupplier): ?>
+                                                <?php if (user_can('finance.edit')): ?>
                                                 <button class="btn btn-sm btn-primary" onclick="setupFundingModal(<?= $row['id'] ?>, '<?= htmlspecialchars($row['supplier_name']) ?>', '<?= htmlspecialchars($row['currency']) ?>')" title="<?= __('fund') ?>" data-toggle="tooltip" data-placement="top">
                                                     <i class="feather icon-credit-card"></i>
                                                 </button>
@@ -913,10 +911,11 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                                     <i class="feather icon-arrow-down"></i>
                                                 </button>
                                                 <?php endif; ?>
+                                                <?php endif; ?>
                                                 <button class="btn btn-sm btn-outline-secondary view-supplier-transactions-btn" data-supplier-id="<?= $row['id'] ?>" data-supplier-name="<?= htmlspecialchars($row['supplier_name']) ?>" title="<?= __('transactions') ?>" data-toggle="tooltip" data-placement="top">
                                                     <i class="feather icon-list"></i>
                                                 </button>
-                                                <?php if ($isAdmin): ?>
+                                                <?php if (user_can('operations.edit')): ?>
                                                 <button class="btn btn-sm btn-outline-<?= !$isInactive ? 'danger' : 'success' ?> toggle-supplier-status-btn" data-supplier-id="<?= $row['id'] ?>" data-current-status="<?= isset($row['status']) ? $row['status'] : 'active' ?>" title="<?= !$isInactive ? __('deactivate') : __('activate') ?>" data-toggle="tooltip" data-placement="top">
                                                     <i class="feather icon-<?= !$isInactive ? 'power' : 'check-circle' ?>"></i>
                                                 </button>
@@ -941,7 +940,7 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                     <div class="ac-section-count"><?= count($clientAccounts) ?> <?= __('accounts') ?></div>
                                 </div>
                                 <div class="ac-section-actions">
-                                    <?php if ($isAdmin): ?>
+                                    <?php if (user_can('operations.clients')): ?>
                                     <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#addClientModal">
                                         <i class="feather icon-plus"></i> <?= __('add_client') ?>
                                     </button>
@@ -1009,6 +1008,7 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                              <div class="ac-lc-actions ac-lc-actions-expanded">
                                                  <?php $isAgencyClient = isset($client['client_type']) && $client['client_type'] === 'agency'; ?>
                                                   <?php if (!$isAgencyClient): ?>
+                                                  <?php if (user_can('finance.edit')): ?>
                                                   <button class="btn btn-primary btn-sm make-payment-btn"
                                                           data-client-id="<?= $client['id'] ?>"
                                                           data-client-name="<?= htmlspecialchars($client['name']) ?>"
@@ -1026,13 +1026,14 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                                       <i class="feather icon-arrow-down"></i>
                                                   </button>
                                                   <?php endif; ?>
+                                                  <?php endif; ?>
                                                  <button class="btn btn-outline-secondary view-client-transactions-btn btn-sm"
                                                          data-client-id="<?= $client['id'] ?>"
                                                          data-client-name="<?= htmlspecialchars($client['name']) ?>"
                                                          title="<?= __('view_transactions') ?>" data-toggle="tooltip" data-placement="top">
                                                      <i class="feather icon-list"></i>
                                                  </button>
-                                                 <?php if ($isAdmin): ?>
+                                                 <?php if (user_can('operations.edit')): ?>
                                                  <button class="btn btn-outline-<?= !$isInactive ? 'danger' : 'success' ?> toggle-client-status-btn btn-sm"
                                                          data-client-id="<?= $client['id'] ?>"
                                                          data-current-status="<?= isset($client['status']) ? $client['status'] : 'active' ?>"
@@ -1112,6 +1113,10 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
 <script src="../js/accounts/account-funding.js"></script>
 <script src="../js/accounts/account-withdrawal.js"></script>
 <script src="../js/accounts/main-account-withdrawal.js"></script>
+<script>
+    window.FINANCE_CAN_EDIT_TX = <?php echo user_can('finance.edit') ? 'true' : 'false'; ?>;
+    window.FINANCE_CAN_DELETE_TX = <?php echo user_can('finance.delete') ? 'true' : 'false'; ?>;
+</script>
 <script src="../js/accounts/transaction-management.js"></script>
 <script src="../js/accounts/status-management.js?v=1.1"></script>
 

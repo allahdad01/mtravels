@@ -11,12 +11,7 @@ $branch_id = $_SESSION['branch_id'];
 // Enforce authentication
 enforce_auth();
 
-// Check if user is logged in with proper role
-$allowed_roles = ['admin', 'finance'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    header('Location: ../login.php');
-    exit();
-}
+require_permission('operations.maktobs');
 
 // Include language system
 require_once('../includes/language_helpers.php');
@@ -1011,10 +1006,12 @@ include '../includes/header.php';
                     View PDF
                   </a>
                   <div class="mk-divider"></div>
+<?php if (user_can('operations.delete')): ?>
                   <a href="#" class="mk-danger delete-maktob" data-id="<?php echo $row['id']; ?>">
-                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                    <i class="fas fa-trash"></i>
                     <?php echo __('delete'); ?>
                   </a>
+                  <?php endif; ?>
                 </div>
               </div>
             </td>

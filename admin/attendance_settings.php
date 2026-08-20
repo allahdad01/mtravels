@@ -10,10 +10,7 @@ if (session_status() === PHP_SESSION_NONE) {
 $tenant_id = $_SESSION['tenant_id'] ?? null;
 $branch_id = $_SESSION['branch_id'] ?? null;
 
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    header('Location: ../login.php');
-    exit();
-}
+require_permission('hr.attendance_settings');
 
 // Get current settings
 $attendance_settings = null;

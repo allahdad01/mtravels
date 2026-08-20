@@ -5,6 +5,8 @@ require_once '../../includes/db.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+require_once '../../includes/permissions.php';
+require_permission('umrah.view');
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 // Get booking ID from request

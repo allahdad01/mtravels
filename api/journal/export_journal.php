@@ -13,16 +13,10 @@ require_once __DIR__ . '/../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
+require_permission('finance.accounts');
 
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
-
-$allowed_roles = ['admin', 'finance'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    http_response_code(403);
-    echo 'Unauthorized';
-    exit;
-}
 
 require_once __DIR__ . '/../../includes/db.php';
 

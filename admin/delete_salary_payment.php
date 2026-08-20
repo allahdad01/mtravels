@@ -8,6 +8,9 @@ $branch_id = $_SESSION['branch_id'];
 
 require_once('../includes/db.php');
 
+require_once __DIR__ . '/../includes/permissions.php';
+require_permission('hr.delete');
+
 // Check if required parameters are present
 if (!isset($_POST['payment_id']) || !isset($_POST['amount']) || !isset($_POST['main_account_id'])) {
     echo json_encode(['success' => false, 'message' => 'Missing required parameters']);

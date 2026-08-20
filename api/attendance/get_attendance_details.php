@@ -4,7 +4,9 @@ require_once '../../includes/language_helpers.php';
 
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+    session_start();
+require_once __DIR__ . '/../../includes/permissions.php';
+require_permission('hr.attendance');
 }
 
 // Check if user is logged in

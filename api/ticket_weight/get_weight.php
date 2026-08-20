@@ -6,6 +6,12 @@ if (session_status() === PHP_SESSION_NONE) {
 
 // Include database connection
 require_once '../../includes/db.php';
+require_once '../../includes/permissions.php';
+if (!user_can('tickets.weights') && !user_can('tickets.transactions')) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Unauthorized access']);
+    exit;
+}
 
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];

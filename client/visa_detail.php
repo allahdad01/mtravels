@@ -17,7 +17,6 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)
 }
 
 require_once('../includes/db.php');
-$canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
 
 $visaId = isset($_GET['id']) ? intval($_GET['id']) : 0;
 $visaData = null;

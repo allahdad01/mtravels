@@ -1,5 +1,7 @@
 <?php
 require_once '../../includes/language_helpers.php';
+require_once '../../includes/permissions.php';
+require_permission('hr.reports');
 require_once '../../includes/db.php';
 require_once '../../admin/security.php';
 

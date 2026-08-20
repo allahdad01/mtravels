@@ -5,11 +5,7 @@ require_once '../config.php';
 require_once 'security.php';
 enforce_auth();
 
-$allowed_roles = ['finance'];
-if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    header('Location: ../access_denied.php');
-    exit;
-}
+require_permission('finance.wallet');
 
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];

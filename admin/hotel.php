@@ -14,17 +14,13 @@ require_once '../includes/language_helpers.php';
 enforce_auth();
 
 // Check if user is logged in with proper role
-$allowed_roles = ['admin', 'finance', 'sales'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    header('Location: ../login.php');
-    exit();
-}
+require_permission('hotels.view');
 
 // Database connection
 require_once('../includes/db.php');
 
 // Check if user is admin or finance
-$canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
+$canEdit = user_can('hotels.edit');
 
 // Load hotel bookings using handler
 include '../api/hotel/hotel_handler.php';
@@ -1010,7 +1006,7 @@ $paginationPattern = empty($search)
                                               </button>
                                               <?php endif; ?>
 
-                                              <?php if ($isAgencyClient && $canEdit): ?>
+                                              <?php if ($isAgencyClient && user_can('hotels.transactions')): ?>
                                               <button class="hb-btn-icon hb-trans"
                                                       data-id="<?= $booking['id'] ?>"
                                                       data-action="transactions"

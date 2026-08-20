@@ -1,10 +1,9 @@
 <?php
 session_start();
 
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    http_response_code(403);
-    die('Unauthorized');
-}
+require_once('../security.php');
+enforce_auth();
+require_permission('reports.tax');
 
 require_once('../../includes/db.php');
 require_once('../../vendor/autoload.php');

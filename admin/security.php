@@ -77,6 +77,16 @@ if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
+// Load granular permission system
+require_once __DIR__ . '/../includes/permissions.php';
+
+// Permission gate for the current page (map-based). Only runs for
+// authenticated users; unauthenticated requests fall through to
+// enforce_auth() on the page itself.
+if (isset($_SESSION['user_id'])) {
+    require_page_permission();
+}
+
 /**
  * Check if user is authenticated and has appropriate role
  * 

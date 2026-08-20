@@ -6,6 +6,7 @@ require_once '../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
+require_permission('finance.edit');
 
 // ✅ CSRF Token Validation (only for POST requests)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verify_csrf_token()) {

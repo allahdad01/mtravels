@@ -285,6 +285,7 @@ $(document).ready(function() {
                     tbody.empty();
                     
                     if (expenses.length > 0) {
+                        const canEditExpense = typeof window.BA_CAN_EDIT_EXPENSE === 'undefined' || window.BA_CAN_EDIT_EXPENSE;
                         expenses.forEach(expense => {
                             const subBadge = expense.sub_category_name
                                 ? ` <span class="ba-badge sub" style="font-size:.7rem;">${expense.sub_category_name}</span>`
@@ -295,12 +296,12 @@ $(document).ready(function() {
                                     <td style="max-width:300px;word-wrap:break-word;white-space:normal;">${expense.description}${subBadge}</td>
                                     <td>${expense.amount} ${expense.currency}</td>
                                     <td>
-                                        <button class="btn btn-sm btn-info edit-expense" data-id="${expense.id}" data-date="${expense.date}" data-description="${expense.description.replace(/"/g, '&quot;')}" data-amount="${expense.amount}">
+                                        ${canEditExpense ? `<button class="btn btn-sm btn-info edit-expense" data-id="${expense.id}" data-date="${expense.date}" data-description="${expense.description.replace(/"/g, '&quot;')}" data-amount="${expense.amount}">
                                             <i class="feather icon-edit"></i>
                                         </button>
                                         <button class="btn btn-sm btn-danger delete-expense" data-id="${expense.id}">
                                             <i class="feather icon-trash-2"></i>
-                                        </button>
+                                        </button>` : ''}
                                     </td>
                                 </tr>
                             `;

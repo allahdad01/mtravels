@@ -9,14 +9,10 @@ $branch_id = $_SESSION['branch_id'];
 require_once '../includes/language_helpers.php';
 enforce_auth();
 
-$allowed_roles = ['admin', 'finance', 'sales'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    header('Location: ../login.php');
-    exit();
-}
+require_permission('tickets.refund');
 include '../api/ticket_refund/refund_ticket_handler.php';
 
-$canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
+$canEdit = user_can('tickets.refund');
 $version = '?v=' . time();
 ?>
 
@@ -749,7 +745,7 @@ $version = '?v=' . time();
                             </div>
                             <div class="refund-card-stub">
                                 <div class="refund-card-actions">
-                                    <?php if ($isAgencyClient && $canEdit): ?>
+                                    <?php if ($isAgencyClient && user_can('tickets.transactions')): ?>
                                     <button class="refund-card-action-btn"
                                             onclick="manageTransactions(<?= $ticket['id'] ?>)"
                                             title="<?= __('manage_payments') ?>">

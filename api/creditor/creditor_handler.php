@@ -6,6 +6,7 @@ require_once '../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
+require_permission('finance.edit');
 
 // ✅ CSRF Token Validation (only for POST requests)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verify_csrf_token()) {
@@ -350,6 +351,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['pay'])) {
 
 // Handle transaction deletion and reversal
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_transaction'])) {
+    require_permission('finance.delete');
     $transaction_id = $_POST['transaction_id'];
     $creditor_id = $_POST['creditor_id'];
     $amount = $_POST['amount'];
@@ -632,6 +634,7 @@ $add_creditor = isset($_POST['add_creditor']) ? DbSecurity::validateInput($_POST
 
 // Add the delete creditor handler at the end of the file
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_creditor'])) {
+    require_permission('finance.delete');
     $creditor_id = $_POST['creditor_id'];
     
     try {

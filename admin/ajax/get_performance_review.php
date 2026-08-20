@@ -11,11 +11,8 @@ if (session_status() === PHP_SESSION_NONE) {
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
-// Check if user is logged in and is admin
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    http_response_code(403);
-    exit('Unauthorized');
-}
+enforce_auth();
+require_permission('hr.performance');
 
 if (!isset($_GET['review_id'])) {
     http_response_code(400);

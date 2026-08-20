@@ -15,10 +15,9 @@ if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 
 }
 $_SESSION['last_activity'] = time();
 
-$allowed_roles = ['admin', 'finance', 'sales', 'umrah', 'staff'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    header('Location: ../login.php'); exit();
-}
+require_once 'security.php';
+enforce_auth();
+require_permission('communication.email');
 if (!isset($_SESSION['csrf_token'])) { $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); }
 
 require_once '../includes/InputValidator.php';

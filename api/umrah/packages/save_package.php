@@ -11,7 +11,7 @@
 require_once '../../../admin/includes/db_security.php';
 require_once '../../../admin/security.php';
 enforce_auth();
-umrah_require('package_manage');
+require_permission('umrah.package_manage');
 
 if (!verify_csrf_token()) {
     http_response_code(403);

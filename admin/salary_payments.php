@@ -1,11 +1,9 @@
 <?php
 session_start();
 
-$allowed_roles = ['admin', 'finance', 'sales', 'umrah', 'staff'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    header('Location: ../login.php');
-    exit();
-}
+require_once 'security.php';
+enforce_auth();
+require_permission('hr.salary');
 
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];

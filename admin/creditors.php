@@ -14,13 +14,7 @@ require_once '../includes/language_helpers.php';
 // Enforce authentication
 enforce_auth();
 
-// Check if user is logged in with proper role
-$allowed_roles = ['admin', 'finance'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    // Log unauthorized access attempt
-    header('Location: ../login.php');
-    exit();
-}
+require_permission('finance.creditors');
 
 // Generate CSRF token if it doesn't exist
 if (!isset($_SESSION['csrf_token'])) {
@@ -32,8 +26,6 @@ $branch_id = $_SESSION['branch_id'];
 require_once '../includes/db.php';
 include '../api/creditor/creditor_handler.php';
 
-// Check if user is admin
-$isAdmin = $_SESSION['role'] === 'admin';
 ?>
  
 <?php
@@ -463,15 +455,18 @@ try {
                                         </div>
                                     </div>
                                     <div class="creditor-card__actions">
+                                        <?php if (user_can('finance.edit')): ?>
                                         <button class="cc-action-btn cc-action-btn--success" data-toggle="modal" data-target="#paymentModal_<?= h($creditor['id']) ?>" title="<?= __('process_payment') ?>">
                                             <i class="fas fa-credit-card"></i> <?= __('pay') ?>
                                         </button>
+                                        <?php endif; ?>
                                         <button class="cc-action-btn" data-toggle="modal" data-target="#transactionsModal_<?= h($creditor['id']) ?>" title="<?= __('view_transactions') ?>">
                                             <i class="fas fa-list"></i> <?= __('transactions') ?>
                                         </button>
                                         <a href="../api/creditor/print_creditor_statement.php?id=<?= h($creditor['id']) ?>" class="cc-action-btn" target="_blank" title="<?= __('print_statement') ?>">
                                             <i class="fas fa-print"></i>
                                         </a>
+                                        <?php if (user_can('finance.edit')): ?>
                                         <button class="cc-action-btn" data-toggle="modal" data-target="#editCreditorModal_<?= h($creditor['id']) ?>" title="<?= __('edit_creditor') ?>">
                                             <i class="fas fa-edit"></i>
                                         </button>
@@ -492,7 +487,8 @@ try {
                                             </button>
                                         </form>
                                         <?php endif; ?>
-                                        <?php if ($isAdmin): ?>
+                                        <?php endif; ?>
+                                        <?php if (user_can('finance.delete')): ?>
                                         <button class="cc-action-btn cc-action-btn--danger" data-toggle="modal" data-target="#deleteCreditorModal_<?= h($creditor['id']) ?>" title="<?= __('delete_creditor') ?>">
                                             <i class="fas fa-trash"></i>
                                         </button>
@@ -728,7 +724,7 @@ try {
                                         echo '<td class="text-center text-nowrap">';
                                         echo '<button type="button" class="btn btn-primary btn-sm mr-1" data-toggle="modal" data-target="#editTransactionModal_' . $transaction['id'] . '" title="' . __("edit") . '"><i class="fas fa-edit"></i></button>';
                                         echo '<button class="btn btn-info btn-sm mr-1" title="' . __("print_receipt") . '" onclick="printReceipt(\'' . $transaction['id'] . '\')"><i class="fas fa-print"></i></button>';
-                                        if ($isAdmin) {
+                                        if (user_can('finance.delete')) {
                                             echo '<form method="POST" class="d-inline" onsubmit="return confirm(\'' . __("are_you_sure_you_want_to_delete_this_transaction_this_will_reverse_the_payment") . '\');">';
                                             echo '<input type="hidden" name="csrf_token" value="' . h($_SESSION['csrf_token']) . '">';
                                             echo '<input type="hidden" name="transaction_id" value="' . $transaction['id'] . '">';

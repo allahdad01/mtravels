@@ -14,12 +14,7 @@ if (session_status() === PHP_SESSION_NONE) {
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
-// Check if user is logged in with proper role
-$allowed_roles = ['admin', 'finance'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    http_response_code(403);
-    die(json_encode(['success' => false, 'message' => 'Unauthorized']));
-}
+require_permission('finance.sarafi');
 
 // Get transaction ID
 $transaction_id = isset($_GET['id']) ? intval($_GET['id']) : 0;

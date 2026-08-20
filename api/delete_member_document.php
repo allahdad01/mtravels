@@ -15,6 +15,9 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
+require_once 'includes/permissions.php';
+require_permission('umrah.member_edit');
+
 require_once '../includes/db.php';
 
 $booking_id = isset($_POST['booking_id']) ? intval($_POST['booking_id']) : 0;

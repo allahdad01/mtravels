@@ -10,6 +10,8 @@ $branch_id = $_SESSION['branch_id'];
 
 // Database connection
 require_once('../../includes/db.php');
+require_once('../../includes/permissions.php');
+require_permission('reports.view');
 
 try {
     // Fetch families for the current tenant

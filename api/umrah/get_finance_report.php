@@ -16,7 +16,7 @@
 require_once '../../admin/includes/db_security.php';
 require_once '../../admin/security.php';
 enforce_auth();
-umrah_require('finance_view');
+require_permission('umrah.finance_view');
 
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];

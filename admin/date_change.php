@@ -6,17 +6,13 @@ require_once 'security.php';
 require_once '../includes/language_helpers.php';
 enforce_auth();
 
-$allowed_roles = ['admin', 'finance', 'sales'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    header('Location: ../login.php');
-    exit();
-}
+require_permission('tickets.date_change');
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 require_once '../includes/db.php';
 include '../api/ticket_date_change/date_change_handler.php';
 
-$canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
+$canEdit = user_can('tickets.date_change');
 ?>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert/1.1.3/sweetalert.css">
@@ -770,7 +766,7 @@ $canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
                             </div>
                             <div class="date-change-card-stub">
                                 <div class="date-change-card-actions">
-                                    <?php if ($isAgencyClient && $canEdit): ?>
+                                    <?php if ($isAgencyClient && user_can('tickets.transactions')): ?>
                                     <button class="date-change-card-action-btn"
                                             onclick="manageTransactions(<?= $ticket['id'] ?>)"
                                             title="<?= __('manage_transactions') ?>">

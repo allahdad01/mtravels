@@ -51,9 +51,11 @@ function loadOptions() {
         return allowedFeatures.includes(feature);
     }
 
-    // Get user role from session (via data attribute or meta tag)
-    var userRole = document.querySelector('meta[name="user-role"]') ? 
-        document.querySelector('meta[name="user-role"]').getAttribute('content') : '';
+    // Get permission flags from meta tags
+    var canFinance = document.querySelector('meta[name="perm-finance"]') ?
+        document.querySelector('meta[name="perm-finance"]').getAttribute('content') === '1' : false;
+    var umrahOnly = document.querySelector('meta[name="perm-umrah-only"]') ?
+        document.querySelector('meta[name="perm-umrah-only"]').getAttribute('content') === '1' : false;
 
     if (reportType === "general" || reportType === "main_account") {
         // Show report configuration section for general and main account
@@ -73,14 +75,14 @@ function loadOptions() {
         // Dynamically add report categories based on allowed features and user role
         var reportCategories = [];
         
-        if (userRole === 'umrah') {
-            // Umrah role only sees umrah and umrah_refund
+        if (umrahOnly) {
+            // Umrah-only users only see umrah and umrah_refund
             reportCategories = [
                 { value: 'umrah', label: '🕌 Umrah', feature: 'umrah_bookings' },
                 { value: 'umrah_refund', label: '🕌 Umrah Refund', feature: 'umrah_refunds' }
             ];
-        } else if (['admin', 'finance'].includes(userRole)) {
-            // Admin and Finance see all categories
+        } else if (canFinance) {
+            // Users with finance.view see all categories
             reportCategories = [
                 { value: 'ticket', label: '🎫 Ticket', feature: 'ticket_bookings' },
                 { value: 'ticket_reservation', label: '🎫 Ticket Reservation', feature: 'ticket_reservations' },

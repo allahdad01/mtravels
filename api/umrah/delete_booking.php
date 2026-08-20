@@ -7,7 +7,7 @@ require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
-umrah_require('member_edit');
+require_permission('umrah.member_edit');
 
 // ✅ CSRF Token Validation
 if (!verify_csrf_token()) {
@@ -58,8 +58,8 @@ if ($booking_id !== null) {
         $mainAccountId = $booking['paid_to'];
         $isActiveStatus = ($booking['status'] === 'active');
         
-        // Role-based authorization: Only ADMIN can delete active members
-        if ($isActiveStatus && $_SESSION['role'] !== 'admin') {
+        // Permission-based authorization: only users with umrah.delete can delete active members
+        if ($isActiveStatus && !user_can('umrah.delete')) {
             http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'Only administrators can delete approved members. Contact an admin.']);
             exit();

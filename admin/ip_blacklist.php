@@ -15,11 +15,8 @@ require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/RateLimiter.php';
 
-// Check admin access
-if (!isset($_SESSION['user_id']) || ($_SESSION['role'] !== 'super_admin' && $_SESSION['role'] !== 'tenant_super_admin' && $_SESSION['role'] !== 'admin')) {
-    http_response_code(403);
-    die('Access Denied');
-}
+require_once __DIR__ . '/../includes/permissions.php';
+require_permission('security.settings');
 
 $currentUserId = (int)$_SESSION['user_id'];
 $tenantId = isset($_SESSION['tenant_id']) ? (int)$_SESSION['tenant_id'] : 1;

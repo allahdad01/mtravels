@@ -1,6 +1,9 @@
 <?php
 session_start();
 
+require_once '../../includes/permissions.php';
+require_permission('tickets.edit');
+
 $username = isset($_SESSION["name"]) ? htmlspecialchars($_SESSION["name"]) : "Unknown User";
 $user_id = $_SESSION['user_id'] ?? 0;
 $tenant_id = $_SESSION['tenant_id'];

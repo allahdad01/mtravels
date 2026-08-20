@@ -21,11 +21,8 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'] ?? 0;
 $user_role = $_SESSION['role'];
 
-// Check role access
-if (!in_array($user_role, ['admin', 'finance', 'sales', 'umrah'])) {
-    header('Location: ../access_denied.php');
-    exit();
-}
+enforce_auth();
+require_permission('support.view');
 
 $ticketManager = new SupportTicketManager($pdo);
 $slaCalculator = new SLACalculator($pdo);

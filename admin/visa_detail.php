@@ -5,14 +5,10 @@ enforce_auth();
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 
-$allowed_roles = ['admin', 'finance', 'sales'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    header('Location: ../login.php');
-    exit();
-}
+require_permission('visa.view');
 
 require_once('../includes/db.php');
-$canEdit = in_array($_SESSION['role'], ['admin', 'finance']);
+$canEdit = user_can('visa.edit');
 
 $visaId = isset($_GET['id']) ? intval($_GET['id']) : 0;
 $visaData = null;

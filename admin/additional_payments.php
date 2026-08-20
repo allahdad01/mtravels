@@ -22,12 +22,7 @@ if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-// Check if user is logged in with proper role
-$allowed_roles = ['admin', 'finance'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    header('Location: ../login.php');
-    exit();
-}
+require_permission('finance.additional_payments');
 
 // Handle direct form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'edit') {
@@ -630,9 +625,11 @@ $payments = $stmt->fetchAll();
                                             <!-- Card header -->
                                             <div class="card-header">
                                                 <h5><?= __('payment_list') ?></h5>
+<?php if (user_can('finance.edit')): ?>
                                                 <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addPaymentModal">
-                                                    <i class="feather icon-plus mr-1"></i> <?= __('add_new_payment') ?>
+                                                    <i class="feather icon-plus-circle"></i> <?= __('add_payment') ?>
                                                 </button>
+                                                <?php endif; ?>
                                             </div>
 
                                             <!-- Search bar -->
@@ -872,6 +869,7 @@ $payments = $stmt->fetchAll();
                                                                     </button>
                                                                     <?php endif; ?>
 
+                                                                    <?php if (user_can('finance.edit')): ?>
                                                                     <button class="ap-action-btn ap-btn-edit edit-payment"
                                                                             data-id="<?= $payment['id'] ?>"
                                                                             data-payment-type="<?= htmlspecialchars($payment['payment_type']) ?>"
@@ -887,11 +885,13 @@ $payments = $stmt->fetchAll();
                                                                             data-toggle="modal" data-target="#editPaymentModal">
                                                                         <i class="feather icon-edit"></i> Edit
                                                                     </button>
-
+                                                                    <?php endif; ?>
+                                                                    <?php if (user_can('finance.delete')): ?>
                                                                     <button class="ap-action-btn ap-btn-delete delete-payment"
                                                                             data-id="<?= $payment['id'] ?>">
                                                                         <i class="feather icon-trash-2"></i> Delete
                                                                     </button>
+                                                                    <?php endif; ?>
                                                                 </div>
 
                                                             </div><!-- /.ap-pcard-top -->
