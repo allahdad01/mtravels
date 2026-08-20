@@ -9,7 +9,7 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 require_once('../includes/db.php');
 $user_id = $_SESSION['user_id'];
-$canEdit = user_can('tickets.reserve');
+$canEdit = user_can('tickets.reserve') && in_array($_SESSION['role'] ?? '', ['admin', 'finance', 'tenant_super_admin', 'super_admin'], true);
 
 $search          = isset($_GET['search']) ? trim($_GET['search']) : '';
 $page            = isset($_GET['page']) ? intval($_GET['page']) : 1;

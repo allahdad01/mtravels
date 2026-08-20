@@ -12,7 +12,7 @@ $branch_id = $_SESSION['branch_id'];
 require_once '../includes/db.php';
 include '../api/ticket_date_change/date_change_handler.php';
 
-$canEdit = user_can('tickets.date_change');
+$canEdit = user_can('tickets.date_change') && in_array($_SESSION['role'] ?? '', ['admin', 'finance', 'tenant_super_admin', 'super_admin'], true);
 ?>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert/1.1.3/sweetalert.css">

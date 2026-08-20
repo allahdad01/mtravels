@@ -17,7 +17,7 @@ require_permission('umrah.refund');
 require_once('../includes/db.php');
 
 // Check if user is admin or finance
-$canEdit = user_can('umrah.refund');
+$canEdit = user_can('umrah.refund') && in_array($_SESSION['role'] ?? '', ['admin', 'finance', 'tenant_super_admin', 'super_admin'], true);
 
 // Pagination setup
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;

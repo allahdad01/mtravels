@@ -19,7 +19,7 @@ require_once('../includes/db.php');
 require_once('../includes/utils.php');
 
 // Check if user is admin or finance
-$canEdit = user_can('hotels.refund');
+$canEdit = user_can('hotels.refund') && in_array($_SESSION['role'] ?? '', ['admin', 'finance', 'tenant_super_admin', 'super_admin'], true);
     // Pagination setup
     $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
     $recordsPerPage = 10;

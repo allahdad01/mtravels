@@ -13,7 +13,7 @@ require_once('../includes/db.php');
 $user_id   = $_SESSION['user_id'];
 $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
-$canEdit   = user_can('tickets.weights');
+$canEdit   = user_can('tickets.weights') && in_array($_SESSION['role'] ?? '', ['admin', 'finance', 'tenant_super_admin', 'super_admin'], true);
 
 $items_per_page = 10;
 $current_page   = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;

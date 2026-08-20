@@ -225,6 +225,8 @@ function loadFinanceDashboard() {
 }
 
 $(function () {
+    // Finance dashboard requires umrah.finance_view (set server-side).
+    if (!window.UMRAH_CAN_FINANCE) return;
     $('#btnRefreshFinance').on('click', loadFinanceDashboard);
     loadFinanceDashboard();
 });

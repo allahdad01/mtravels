@@ -4,6 +4,13 @@ require_once '../../admin/security.php';
 
 // Enforce authentication
 enforce_auth();
+// Deleting date-change records is admin/manager & finance only.
+$editRoles = ['admin', 'finance', 'tenant_super_admin', 'super_admin'];
+if (!in_array($_SESSION['role'] ?? '', $editRoles, true)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Access denied']);
+    exit;
+}
 
 // Database connection
 require_once('../../includes/db.php');

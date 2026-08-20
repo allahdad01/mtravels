@@ -1553,6 +1553,7 @@ $canEdit = user_can('umrah.member_edit');
     window.UMRAH_CAN_DELETE_FAMILY = <?php echo user_can('umrah.delete') ? 'true' : 'false'; ?>;
     window.UMRAH_CAN_EDIT_TX = <?php echo user_can('umrah.payment_record') ? 'true' : 'false'; ?>;
     window.UMRAH_CAN_REVERT_DATE_CHANGE = <?php echo user_can('umrah.member_edit') ? 'true' : 'false'; ?>;
+    window.UMRAH_CAN_FINANCE = <?php echo user_can('umrah.finance_view') ? 'true' : 'false'; ?>;
 </script>
 <script src="../js/umrah/bundle.php?v=<?= $umrahJsVersion ?>"></script>
 

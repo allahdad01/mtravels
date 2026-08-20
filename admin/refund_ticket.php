@@ -12,7 +12,7 @@ enforce_auth();
 require_permission('tickets.refund');
 include '../api/ticket_refund/refund_ticket_handler.php';
 
-$canEdit = user_can('tickets.refund');
+$canEdit = user_can('tickets.refund') && in_array($_SESSION['role'] ?? '', ['admin', 'finance', 'tenant_super_admin', 'super_admin'], true);
 $version = '?v=' . time();
 ?>
 

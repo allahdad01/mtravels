@@ -16,7 +16,7 @@ require_permission('visa.refund');
 // Database connection
 require_once('../includes/db.php');
 
-$canEdit = user_can('visa.refund');
+$canEdit = user_can('visa.refund') && in_array($_SESSION['role'] ?? '', ['admin', 'finance', 'tenant_super_admin', 'super_admin'], true);
 
 // Pagination and search setup
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
