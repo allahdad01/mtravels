@@ -1291,9 +1291,6 @@ $canEdit = user_can('umrah.member_edit');
                                                     <a class="dropdown-item" href="#" onclick="showBankLetterModal(<?= $familyId ?>)">
                                                         <i class="fas fa-file-invoice"></i><?= __("bank_receipt") ?>
                                                     </a>
-                                                    <a class="dropdown-item" href="#" onclick="showUmrahPresidencyModal(<?= $familyId ?>)">
-                                                        <i class="fas fa-landmark"></i><?= __("umrah_presidency") ?>
-                                                    </a>
                                                     <?php if ($canEdit): ?>
                                                     <div class="dropdown-divider"></div>
                                                     <a class="dropdown-item text-danger" href="javascript:void(0)" onclick="deleteFamily(<?= $familyId ?>)">
@@ -1518,7 +1515,6 @@ $canEdit = user_can('umrah.member_edit');
 <?php include '../modals/umrah/member_documents_modal.php'; ?>
 <?php include '../modals/umrah/date_change_modal.php'; ?>
 <?php include '../modals/umrah/bank_receipt_modal.php'; ?>
-<?php include '../modals/umrah/umrah_presidency_modal.php'; ?>
 <?php include '../modals/umrah/group_ticket_modal.php'; ?>
 <?php include '../modals/umrah/id_card_modal.php'; ?>
 <?php include '../modals/umrah/family_transaction_modal.php'; ?>
