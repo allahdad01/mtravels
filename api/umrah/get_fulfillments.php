@@ -48,6 +48,25 @@ function attachHotelStays(array $rows): array
     return array_values($map);
 }
 
+// Travel type of a member from their date of birth — the same thresholds
+// used by the passenger manifest (infant < 2, child 2-11, adult otherwise).
+// Unknown dates default to adult. Ticket costs are priced per type; infants
+// receive no hotel/transport fulfillment, and visa applies to everyone alike.
+function memberTravelType($dob)
+{
+    if (empty($dob) || $dob === '0000-00-00') {
+        return 'adult';
+    }
+    $ts = strtotime($dob);
+    if (!$ts) {
+        return 'adult';
+    }
+    $age = (int)date('Y') - (int)date('Y', $ts) - ((int)date('md') < (int)date('md', $ts) ? 1 : 0);
+    if ($age < 2) return 'infant';
+    if ($age <= 11) return 'child';
+    return 'adult';
+}
+
 $booking_id = isset($_GET['booking_id']) ? DbSecurity::validateInput($_GET['booking_id'], 'int') : 0;
 $family_id  = isset($_GET['family_id'])  ? DbSecurity::validateInput($_GET['family_id'], 'int') : 0;
 $group_id   = isset($_GET['group_id'])   ? DbSecurity::validateInput($_GET['group_id'], 'int') : 0;
@@ -177,7 +196,7 @@ if ($isAggregate) {
 
     $agStmt = $pdo->prepare("
         SELECT bs.id AS booking_service_id,
-               bs.booking_id, ub.family_id, ub.name, ub.gender, ub.room_type, ub.duration,
+               bs.booking_id, ub.family_id, ub.name, ub.gender, ub.room_type, ub.duration, ub.dob,
                bs.service_type, bs.service_id,
                bs.pricing_unit, bs.quantity, bs.is_optional,
                bs.base_price, bs.sold_price, bs.profit, bs.currency,
@@ -255,6 +274,13 @@ if ($isAggregate) {
         $skipBreak = [];
         foreach ($lines as $ln) {
             $lnSnap = json_decode((string)($ln['price_snapshot'] ?? ''), true) ?: [];
+            // Infant members receive no hotel/transport fulfillment — their
+            // package covers only ticket + visa costs, and the ticket card
+            // asks for their own fare separately.
+            if (($cat === 'hotel' || $cat === 'transport') && memberTravelType((string)($ln['dob'] ?? '')) === 'infant') {
+                $skipBreak['infant (no ' . $cat . ')'] = ($skipBreak['infant (no ' . $cat . ')'] ?? 0) + 1;
+                continue;
+            }
             $reason = fulfillment_variant_ok($srcCtx, [
                 'status' => $ln['fulfill_status'],
                 'hotel_id' => !empty($ln['hotel_id']) ? (int)$ln['hotel_id'] : (!empty($lnSnap['hotel_id']) ? (int)$lnSnap['hotel_id'] : null),
@@ -289,6 +315,7 @@ if ($isAggregate) {
                     'booking_service_id' => (int)$ln['booking_service_id'],
                     'fulfillment_id' => !empty($ln['fulfillment_id']) ? (int)$ln['fulfillment_id'] : null,
                     'name' => (string)($ln['name'] ?? ''),
+                    'type' => memberTravelType((string)($ln['dob'] ?? '')),
                     'duration' => ($ln['duration'] !== null && $ln['duration'] !== '') ? (int)$ln['duration'] : null,
                     'pnr' => (string)($ln['pnr'] ?? ''),
                     'flight_number' => (string)($ln['flight_number'] ?? ''),
@@ -315,6 +342,7 @@ if ($isAggregate) {
                     'booking_id' => $bid,
                     'family_id'  => (int)($ln['family_id'] ?? 0),
                     'name' => (string)($ln['name'] ?? ''),
+                    'type' => memberTravelType((string)($ln['dob'] ?? '')),
                     'gender' => (string)($ln['gender'] ?? ''),
                     'room_type' => (string)($ln['room_type'] ?? ''),
                     'duration' => ($ln['duration'] !== null && $ln['duration'] !== '') ? (int)$ln['duration'] : null,

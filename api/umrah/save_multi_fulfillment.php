@@ -109,11 +109,30 @@ if ($scope === 'group') {
 // ---- Target member bookings (skip refunded/cancelled) ----------------------
 $placeholders = implode(',', array_fill(0, count($targetFamilies), '?'));
 $mbStmt = $pdo->prepare("
-    SELECT booking_id, name FROM umrah_bookings
+    SELECT booking_id, name, dob FROM umrah_bookings
     WHERE family_id IN ($placeholders) AND tenant_id = ? AND status NOT IN ('refunded', 'cancelled')
     ORDER BY booking_id");
 $mbStmt->execute(array_merge($targetFamilies, [$tenant_id]));
 $members = $mbStmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Travel type of a member from their date of birth — same thresholds as the
+// passenger manifest (infant < 2, child 2-11, adult otherwise). Unknown
+// dates default to adult. Ticket costs are priced per type; infants receive
+// no hotel/transport fulfillment, and visa applies to everyone alike.
+function memberTravelType($dob)
+{
+    if (empty($dob) || $dob === '0000-00-00') {
+        return 'adult';
+    }
+    $ts = strtotime($dob);
+    if (!$ts) {
+        return 'adult';
+    }
+    $age = (int)date('Y') - (int)date('Y', $ts) - ((int)date('md') < (int)date('md', $ts) ? 1 : 0);
+    if ($age < 2) return 'infant';
+    if ($age <= 11) return 'child';
+    return 'adult';
+}
 
 // ---- Package-aware matching --------------------------------------------------
 // Different packages = different service lines. The source line's IDENTITY
@@ -191,6 +210,13 @@ $pickFields = function(array $post, string $typeCat) use ($commonKeys, $typedKey
     return $out;
 };
 $baseFields = $pickFields($_POST, $cat);
+// Per-type ticket fares (supplier currency), posted by the aggregate flight
+// card when the covered members include children or infants. Each member's
+// own fare is applied by travel type below; adults keep the card's
+// supplier_cost, and a missing per-type fare falls back to the adult cost.
+// Visa is charged the same for every type, so it is never overridden here.
+$childCost = (isset($_POST['child_cost']) && $_POST['child_cost'] !== '') ? (float)$_POST['child_cost'] : null;
+$infantCost = (isset($_POST['infant_cost']) && $_POST['infant_cost'] !== '') ? (float)$_POST['infant_cost'] : null;
 // Aggregate hotels with DIFFERENT member durations: each duration group
 // posts its own stay list. hotel_groups maps duration key -> stays[];
 // hotel_group_members maps duration key -> booking_ids.
@@ -263,6 +289,13 @@ $skipReasons = [];
 $noMatchMembers = 0;
 
 foreach ($members as $member) {
+    // Infant members receive no hotel/transport fulfillment — their package
+    // covers only ticket + visa costs, and the ticket card asks for their
+    // own fare separately.
+    if (($cat === 'hotel' || $cat === 'transport') && memberTravelType((string)($member['dob'] ?? '')) === 'infant') {
+        $skipReasons['infant (no ' . $cat . ')'] = ($skipReasons['infant (no ' . $cat . ')'] ?? 0) + 1;
+        continue;
+    }
     $candStmt->execute(array_merge([$member['booking_id'], $tenant_id], $srcParams));
     $cands = $candStmt->fetchAll(PDO::FETCH_ASSOC);
     if (!$cands) {
@@ -287,7 +320,7 @@ foreach ($members as $member) {
             $skipReasons[$reason] = ($skipReasons[$reason] ?? 0) + 1;
             continue;
         }
-        $targets[] = ['booking_id' => (int)$member['booking_id'], 'name' => (string)$member['name'], 'line_id' => (int)$cand['id']];
+        $targets[] = ['booking_id' => (int)$member['booking_id'], 'name' => (string)$member['name'], 'dob' => (string)($member['dob'] ?? ''), 'line_id' => (int)$cand['id']];
     }
 }
 
@@ -306,6 +339,18 @@ foreach ($targets as $target) {
         'user_id'            => $user_id,
         'booking_service_id' => $target['line_id'],
     ]);
+    // Per-member ticket fare: children and infants carry their own cost
+    // (posted as child_cost / infant_cost on the aggregate flight card);
+    // adults use the card's supplier_cost. Missing per-type fare or a
+    // non-flight line keeps the card cost untouched.
+    if ($cat === 'flight') {
+        $targetType = memberTravelType($target['dob'] ?? '');
+        if ($targetType === 'child' && $childCost !== null && $childCost >= 0) {
+            $mergedInput['supplier_cost'] = $childCost;
+        } elseif ($targetType === 'infant' && $infantCost !== null && $infantCost >= 0) {
+            $mergedInput['supplier_cost'] = $infantCost;
+        }
+    }
     // Per-duration-group overlay: the target member's own group wins over the
     // shared fields (e.g. their PNR and their return flight for their duration).
     if ($flightGroups !== null) {

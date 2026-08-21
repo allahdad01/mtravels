@@ -435,6 +435,54 @@ function groupDurationLabel(dur) {
     return __t('return_for_duration').replace('{duration}', dur);
 }
 
+// Travel-type counts of the members a flight card covers ('type' comes from
+// each member's dob, computed server-side: 'adult' | 'child' | 'infant').
+function flightMemberTypeCounts(service) {
+    const counts = { child: 0, infant: 0 };
+    (Array.isArray(service.member_breakdown) ? service.member_breakdown : []).forEach(m => {
+        const t = String(m.type || 'adult').toLowerCase();
+        if (t === 'child') counts.child++;
+        else if (t === 'infant') counts.infant++;
+    });
+    return counts;
+}
+
+// Extra ticket-cost inputs on aggregate flight cards: when the covered
+// members include children or infants, the operator enters their own per-
+// member ticket costs (the main Cost field stays the adult fare). Each is
+// applied to its matching members on save (save_multi_fulfillment.php).
+// Visa is charged the same for every type, so only the ticket asks here.
+function flightTypeCostFieldsHtml(service) {
+    const { child, infant } = flightMemberTypeCounts(service);
+    if (!child && !infant) return '';
+    const parts = [];
+    if (child) {
+        parts.push(`<div class="form-group col-md-3 mb-2">
+            <label class="small mb-1 text-muted">Child ticket cost <span class="text-muted">(${child})</span></label>
+            <input type="number" class="form-control form-control-sm f-child-cost" min="0" step="0.01" placeholder="per child">
+        </div>`);
+    }
+    if (infant) {
+        parts.push(`<div class="form-group col-md-3 mb-2">
+            <label class="small mb-1 text-muted">Infant ticket cost <span class="text-muted">(${infant})</span></label>
+            <input type="number" class="form-control form-control-sm f-infant-cost" min="0" step="0.01" placeholder="per infant">
+        </div>`);
+    }
+    const chips = [];
+    if (child) chips.push(child + ' ' + (child === 1 ? 'child' : 'children'));
+    if (infant) chips.push(infant + ' ' + (infant === 1 ? 'infant' : 'infants'));
+    return `
+    <div class="row f-type-costs mb-1 align-items-end">
+        <div class="col-md-4 mb-2">
+            <div class="small mb-1" style="font-weight:600;color:#334155;">
+                <i class="feather icon-users mr-1" style="color:#0e7490;"></i>Ticket cost by member type
+            </div>
+            <div class="text-muted" style="font-size:0.75rem;">${chips.join(' &middot; ')} — per-member cost, applied on save</div>
+        </div>
+        ${parts.join('')}
+    </div>`;
+}
+
 // Aggregate flight card when covered members have DIFFERENT package
 // durations (e.g. 15 vs 21 days). Shared by default (Same Departure / Same
 // PNR checked); unchecking reveals per-duration-group fields. The return
@@ -539,11 +587,12 @@ function groupedFlightExtraHtml(service, durGroups, fType) {
             </div>`;
     }).join('');
 
-    return `
-        <div class="mt-2 fulfillment-type-fields">
-            <div class="row">
-                <div class="form-group col-md-4">
-                    <label>${__t('ticket_number')}</label>
+return `
+    <div class="mt-2 fulfillment-type-fields">
+        ${flightTypeCostFieldsHtml(service)}
+        <div class="row">
+            <div class="form-group col-md-4">
+                <label>${__t('ticket_number')}</label>
                     <input type="text" class="form-control form-control-sm f-ticket" value="${escapeHtml(service.ticket_number || '')}">
                 </div>
                 <div class="form-group col-md-4">
@@ -1417,6 +1466,7 @@ function renderFulfillmentServices(data) {
             } else {
             extra = `
             <div class="mt-2 fulfillment-type-fields">
+                ${aggregateFlight ? flightTypeCostFieldsHtml(service) : ''}
                 <div class="row">
                     <div class="form-group col-md-4">
                         <label>${__t('ticket_number')}</label>
@@ -2196,6 +2246,13 @@ function saveFulfillment($card) {
     formData.append('notes', $card.find('.f-notes').val() || '');
     formData.append('planned_date', $card.data('planned') || '');
     formData.append('completed_date', $card.data('completed') || '');
+
+    if (isMulti && $card.data('group') === 'flight') {
+        const childCost = $card.find('.f-child-cost').val() || '';
+        const infantCost = $card.find('.f-infant-cost').val() || '';
+        if (childCost !== '') formData.append('child_cost', childCost);
+        if (infantCost !== '') formData.append('infant_cost', infantCost);
+    }
 
     if ($card.data('group') === 'hotel') {
         const collectStays = ($scope) => {
