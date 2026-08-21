@@ -1,3 +1,11 @@
+function generateAgreement(bookingId) {
+    if (!bookingId) {
+        showToast('error', 'Invalid booking');
+        return;
+    }
+    window.open('../api/umrah/generate_umrah_agreement.php?booking_id=' + bookingId, '_blank');
+}
+
 function generateTazminAgreement(bookingId) {
      if (!bookingId) {
          showToast('error', '<?= __("invalid_booking") ?>');

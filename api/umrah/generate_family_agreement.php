@@ -63,9 +63,10 @@ try {
 
     // Get family members
     $membersQuery = "
-        SELECT ub.*, c.name as client_name, GROUP_CONCAT(DISTINCT s.name) as supplier_name
+        SELECT ub.*, c.name as client_name, p.name as package_name, GROUP_CONCAT(DISTINCT s.name) as supplier_name
         FROM umrah_bookings ub
         LEFT JOIN clients c ON ub.sold_to = c.id
+        LEFT JOIN umrah_packages p ON ub.package_id = p.id AND p.tenant_id = ub.tenant_id
         LEFT JOIN umrah_booking_services ubs ON ub.booking_id = ubs.booking_id
         LEFT JOIN umrah_fulfillments uff ON uff.booking_service_id = ubs.id AND uff.fulfillment_type = 'flight' AND uff.status <> 'cancelled' AND uff.id = (SELECT MIN(uff2.id) FROM umrah_fulfillments uff2 WHERE uff2.booking_service_id = ubs.id)
         LEFT JOIN suppliers s ON s.id = COALESCE(uff.supplier_id, ubs.supplier_id)
@@ -75,6 +76,39 @@ try {
     $membersStmt = $pdo->prepare($membersQuery);
     $membersStmt->execute([$familyId, $tenant_id, $branch_id]);
     $members = $membersStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Compute total_members, package_type, and financials from actual member data
+    $family['total_members'] = count($members);
+    if (empty($family['package_type']) && !empty($members)) {
+        $pkgCounts = [];
+        foreach ($members as $m) {
+            if (!empty($m['package_name'])) {
+                $pkgCounts[$m['package_name']] = ($pkgCounts[$m['package_name']] ?? 0) + 1;
+            }
+        }
+        if ($pkgCounts) {
+            arsort($pkgCounts);
+            $family['package_type'] = key($pkgCounts);
+        }
+    }
+
+    // Compute financial summary from member bookings when family-level values are missing
+    if (empty($family['total_price']) && empty($family['total_paid']) && empty($family['total_due'])) {
+        $totalPrice = 0;
+        $totalPaid = 0;
+        $totalBank = 0;
+        $totalDue = 0;
+        foreach ($members as $m) {
+            $totalPrice += floatval($m['sold_price'] ?? 0);
+            $totalPaid += floatval($m['paid'] ?? 0);
+            $totalBank += floatval($m['received_bank_payment'] ?? 0);
+            $totalDue += floatval($m['due'] ?? 0);
+        }
+        $family['total_price'] = $totalPrice;
+        $family['total_paid'] = $totalPaid;
+        $family['total_paid_to_bank'] = $totalBank;
+        $family['total_due'] = $totalDue;
+    }
 
     // Auto-translate names into the document language (MyMemory - free)
     require_once __DIR__ . '/../../includes/translate_helper.php';
