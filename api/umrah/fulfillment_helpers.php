@@ -88,6 +88,23 @@ function fulfillment_variant_ok(array $src, array $line): ?string
 }
 
 /**
+ * Classify a hotel's city into 'makkah' or 'madinah' (case-insensitive).
+ * Used by the per-city cost logic to assign the correct procurement cost
+ * to each stay's fulfillment row.
+ */
+if (!function_exists('hotelCityGroup')) {
+function hotelCityGroup(PDO $pdo, int $tenantId, ?int $hotelId): string
+{
+    if (!$hotelId) return 'makkah';
+    $stmt = $pdo->prepare("SELECT city FROM umrah_hotels WHERE id = ? AND tenant_id = ?");
+    $stmt->execute([$hotelId, $tenantId]);
+    $city = strtolower(trim((string)$stmt->fetchColumn()));
+    if (strpos($city, 'madin') !== false || strpos($city, 'medina') !== false) return 'madinah';
+    return 'makkah';
+}
+}
+
+/**
  * Apply one fulfillment + write-back. Returns:
  *   ['success' => true, 'message' => ..., 'fulfillment_id' => int,
  *    'fulfillment_ids' => int[], 'status' => string,
@@ -157,6 +174,17 @@ function fulfillment_save(PDO $pdo, array $in): array
         }
     }
 
+    // Per-city cost input (Makkah / Madinah) — hotel cards carry two separate
+    // cost sections, one per city. The backend matches each stay to its city
+    // via the hotel's city column and applies the corresponding cost.
+    $makkah_currency = isset($in['makkah_currency']) ? trim((string)$in['makkah_currency']) : '';
+    $makkah_cost     = (isset($in['makkah_cost']) && $in['makkah_cost'] !== '') ? (float)$in['makkah_cost'] : null;
+    $makkah_rate     = (isset($in['makkah_rate']) && $in['makkah_rate'] !== '') ? (float)$in['makkah_rate'] : null;
+    $madinah_currency = isset($in['madinah_currency']) ? trim((string)$in['madinah_currency']) : '';
+    $madinah_cost     = (isset($in['madinah_cost']) && $in['madinah_cost'] !== '') ? (float)$in['madinah_cost'] : null;
+    $madinah_rate     = (isset($in['madinah_rate']) && $in['madinah_rate'] !== '') ? (float)$in['madinah_rate'] : null;
+    $hasCityCosts = ($makkah_cost !== null || $madinah_cost !== null);
+
     // Flight-specific
     $ticket_number = isset($in['ticket_number']) ? trim((string)$in['ticket_number']) : '';
     $pnr = isset($in['pnr']) ? trim((string)$in['pnr']) : '';
@@ -215,6 +243,7 @@ function fulfillment_save(PDO $pdo, array $in): array
         }
 
         $booking_id = (int)$svc['booking_id'];
+        $booking_currency = strtoupper(trim((string)$svc['currency'])) ?: 'USD';
 
         $fulfillment_type = resolveFulfillmentType($pdo, $tenant_id, (string)$svc['service_type'], $svc['service_id'], $svc['category_name']);
         $status_group = statusGroupFor($fulfillment_type);
@@ -446,7 +475,55 @@ function fulfillment_save(PDO $pdo, array $in): array
         // rewritten). nightly_rate × nights per stay, matching the UI's own
         // contract auto-pricing, so a nightly rate alone can't silently zero
         // the cost and inflate the booking profit.
-        if ($fulfillment_type === 'hotel' && $supplier_cost === null && !$locked && $stays) {
+        // Per-city costs (makkah_cost / madinah_cost) take precedence: each
+        // city's cost is converted to booking currency using its exchange rate.
+        // When hotel IDs are present, stays are matched to cities via the hotel
+        // lookup. When hotel IDs are empty (hotels not yet assigned), both
+        // city costs are converted directly.
+        $makkah_cost_amount = null;
+        $madinah_cost_amount = null;
+        if ($fulfillment_type === 'hotel' && $hasCityCosts && !$locked) {
+            $hasHotelIds = !empty($stays) && !empty(array_filter(array_map(fn($s) => $s['hotel_id'], $stays)));
+            if ($hasHotelIds) {
+                // Match stays to cities via hotel lookup
+                foreach ($stays as $st) {
+                    if ($st['hotel_id'] === null) continue;
+                    $cg = hotelCityGroup($pdo, $tenant_id, (int)$st['hotel_id']);
+                    if ($cg === 'makkah' && $makkah_cost_amount === null) {
+                        $cityCur = $makkah_currency ?: 'USD';
+                        $makkah_cost_amount = ($cityCur === $booking_currency)
+                            ? $makkah_cost
+                            : ($makkah_rate && $makkah_rate > 0 ? $makkah_cost / $makkah_rate : null);
+                    } elseif ($cg === 'madinah' && $madinah_cost_amount === null) {
+                        $cityCur = $madinah_currency ?: 'USD';
+                        $madinah_cost_amount = ($cityCur === $booking_currency)
+                            ? $madinah_cost
+                            : ($madinah_rate && $madinah_rate > 0 ? $madinah_cost / $madinah_rate : null);
+                    }
+                }
+            } else {
+                // Hotels not yet assigned — convert both city costs directly
+                if ($makkah_cost !== null) {
+                    $cityCur = $makkah_currency ?: 'USD';
+                    $makkah_cost_amount = ($cityCur === $booking_currency)
+                        ? $makkah_cost
+                        : ($makkah_rate && $makkah_rate > 0 ? $makkah_cost / $makkah_rate : null);
+                }
+                if ($madinah_cost !== null) {
+                    $cityCur = $madinah_currency ?: 'USD';
+                    $madinah_cost_amount = ($cityCur === $booking_currency)
+                        ? $madinah_cost
+                        : ($madinah_rate && $madinah_rate > 0 ? $madinah_cost / $madinah_rate : null);
+                }
+            }
+            // Total supplier cost = sum of both cities (in booking currency)
+            if ($makkah_cost_amount !== null || $madinah_cost_amount !== null) {
+                $supplier_cost = ($makkah_cost_amount ?? 0) + ($madinah_cost_amount ?? 0);
+                $supplier_currency = $booking_currency;
+                $cost_amount = $supplier_cost;
+                $exchange_rate = null;
+            }
+        } elseif ($fulfillment_type === 'hotel' && $supplier_cost === null && !$locked && $stays) {
             $staySum = 0.0;
             $anyRate = false;
             foreach ($stays as $st) {
@@ -460,7 +537,6 @@ function fulfillment_save(PDO $pdo, array $in): array
 
         // Cost amount in booking (sale) currency (frozen snapshot)
         $cost_amount = null;
-        $booking_currency = strtoupper(trim((string)$svc['currency'])) ?: 'USD';
         if ($supplier_cost !== null && $supplier_currency) {
             $cost_amount = ($supplier_currency === $booking_currency)
                 ? $supplier_cost
@@ -484,10 +560,36 @@ function fulfillment_save(PDO $pdo, array $in): array
         }
 
         if ($fulfillment_type === 'hotel') {
-            // ---- One fulfillment row per stay; the first stay carries the cost ----
+            // ---- One fulfillment row per stay; cost assigned per-city when
+            // makkah/madinah cost inputs are provided, otherwise first stay
+            // carries the legacy single cost.
             foreach ($stays as $i => $stay) {
                 $tgt = $stay['existing'];
-                $bearCost = ($i === 0);
+
+                // Determine which cost this stay bears:
+                //   - Per-city mode: each stay's city determines its cost
+                //   - Legacy mode: first stay only
+                $bearCost = false;
+                if ($hasCityCosts && $stay['hotel_id'] !== null) {
+                    $cg = hotelCityGroup($pdo, $tenant_id, (int)$stay['hotel_id']);
+                    if ($cg === 'madinah') {
+                        $stayCurrency = $madinah_currency ?: 'USD';
+                        $stayCost = $madinah_cost;
+                        $stayRate = $madinah_rate;
+                        $bearCostAmount = $madinah_cost_amount;
+                    } else {
+                        $stayCurrency = $makkah_currency ?: 'USD';
+                        $stayCost = $makkah_cost;
+                        $stayRate = $makkah_rate;
+                        $bearCostAmount = $makkah_cost_amount;
+                    }
+                } else {
+                    $bearCost = ($i === 0);
+                    $stayCurrency = $bearCost ? $supplier_currency : null;
+                    $stayCost = $bearCost ? $supplier_cost : null;
+                    $stayRate = $bearCost ? $exchange_rate : null;
+                    $bearCostAmount = $bearCost ? $cost_amount : null;
+                }
 
                 if ($tgt) {
                     // ---- Update existing fulfillment ------------------------------
@@ -498,10 +600,10 @@ function fulfillment_save(PDO $pdo, array $in): array
                             updated_at = NOW()
                         WHERE id = ?");
                     $upd->execute([$supplier_id, $status, $requested_date, $planned_date, $completed_date,
-                                   $bearCost ? $supplier_currency : $tgt['supplier_currency'],
-                                   $bearCost ? $supplier_cost : $tgt['supplier_cost'],
-                                   $bearCost ? $exchange_rate : $tgt['exchange_rate'],
-                                   $bearCost ? $cost_amount : $tgt['cost_amount'],
+                                   $hasCityCosts ? $stayCurrency : ($bearCost ? $supplier_currency : $tgt['supplier_currency']),
+                                   $hasCityCosts ? $stayCost : ($bearCost ? $supplier_cost : $tgt['supplier_cost']),
+                                   $hasCityCosts ? $stayRate : ($bearCost ? $exchange_rate : $tgt['exchange_rate']),
+                                   $hasCityCosts ? $bearCostAmount : ($bearCost ? $cost_amount : $tgt['cost_amount']),
                                    $notes, (int)$tgt['id']]);
                     $fulfillment_id = (int)$tgt['id'];
                 } else {
@@ -514,10 +616,10 @@ function fulfillment_save(PDO $pdo, array $in): array
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                     $ins->execute([$tenant_id, $branch_id, $booking_service_id, $fulfillment_type,
                                    $supplier_id, $status, $requested_date, $planned_date, $completed_date,
-                                   $bearCost ? $supplier_currency : null,
-                                   $bearCost ? $supplier_cost : null,
-                                   $bearCost ? $exchange_rate : null,
-                                   $bearCost ? $cost_amount : null,
+                                   $hasCityCosts ? $stayCurrency : ($bearCost ? $supplier_currency : null),
+                                   $hasCityCosts ? $stayCost : ($bearCost ? $supplier_cost : null),
+                                   $hasCityCosts ? $stayRate : ($bearCost ? $exchange_rate : null),
+                                   $hasCityCosts ? $bearCostAmount : ($bearCost ? $cost_amount : null),
                                    $notes, $user_id]);
                     $fulfillment_id = (int)$pdo->lastInsertId();
                 }
@@ -667,6 +769,28 @@ function fulfillment_save(PDO $pdo, array $in): array
                 foreach ($details as $k => $v) {
                     $insD->execute([$tenant_id, $branch_id, $fulfillment_id, $k, $v]);
                 }
+            }
+        }
+
+        // ---- Store per-city hotel cost details for pre-filling on load ----
+        if ($fulfillment_type === 'hotel' && $hasCityCosts && !empty($savedFulfillments)) {
+            $detailFid = (int)$savedFulfillments[0]['id'];
+            $pdo->prepare("DELETE FROM umrah_fulfillment_details WHERE fulfillment_id = ? AND detail_key LIKE 'city_%'")
+                ->execute([$detailFid]);
+            $cityPairs = [
+                'city_makkah_currency'    => $makkah_currency,
+                'city_makkah_cost'        => $makkah_cost !== null ? (string)$makkah_cost : '',
+                'city_makkah_rate'        => $makkah_rate !== null ? (string)$makkah_rate : '',
+                'city_makkah_cost_amount' => $makkah_cost_amount !== null ? (string)$makkah_cost_amount : '',
+                'city_madinah_currency'    => $madinah_currency,
+                'city_madinah_cost'        => $madinah_cost !== null ? (string)$madinah_cost : '',
+                'city_madinah_rate'        => $madinah_rate !== null ? (string)$madinah_rate : '',
+                'city_madinah_cost_amount' => $madinah_cost_amount !== null ? (string)$madinah_cost_amount : '',
+            ];
+            $insD = $pdo->prepare("INSERT INTO umrah_fulfillment_details (tenant_id, branch_id, fulfillment_id, detail_key, detail_value)
+                                   VALUES (?, ?, ?, ?, ?)");
+            foreach ($cityPairs as $k => $v) {
+                $insD->execute([$tenant_id, $branch_id, $detailFid, $k, $v]);
             }
         }
 
@@ -1007,6 +1131,8 @@ function fulfillment_save(PDO $pdo, array $in): array
             'fulfillment_ids' => array_column($savedFulfillments, 'id'),
             'status' => $status,
             'cost_amount' => $cost_amount,
+            'makkah_cost_amount' => $makkah_cost_amount,
+            'madinah_cost_amount' => $madinah_cost_amount,
             'booking_price' => $booking_price,
             'booking_profit' => $booking_profit,
             'booking_activated' => $activated,

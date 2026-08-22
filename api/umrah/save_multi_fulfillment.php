@@ -198,7 +198,7 @@ $candStmt = $pdo->prepare("
 // Only fields that make sense for the source line's type are forwarded:
 // common fulfillment fields always, typed keys only for hotel/flight lines.
 $typedKeys = [
-    'hotel'  => ['hotel_id', 'room_id', 'room_type_id', 'extra_bed', 'check_in', 'check_out', 'nights', 'nightly_rate', 'contract_id'],
+    'hotel'  => ['hotel_id', 'room_id', 'room_type_id', 'extra_bed', 'check_in', 'check_out', 'nights', 'nightly_rate', 'contract_id', 'makkah_currency', 'makkah_cost', 'makkah_rate', 'madinah_currency', 'madinah_cost', 'madinah_rate'],
     'flight' => ['ticket_number', 'pnr', 'airline', 'flight_type', 'flight_legs', 'flight_number', 'departure_city', 'arrival_city', 'departure_time', 'arrival_time', 'return_flight_number', 'return_departure_time', 'return_arrival_time'],
     'transport' => ['transport_vehicle', 'transport_trip_date'],
 ];

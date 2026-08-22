@@ -48,6 +48,55 @@ function attachHotelStays(array $rows): array
     return array_values($map);
 }
 
+// Enrich hotel services with per-city cost fields (makkah_* / madinah_*).
+// Per-city costs are stored in umrah_fulfillment_details on the first
+// fulfillment row of each hotel service. Keys: city_makkah_currency,
+// city_makkah_cost, city_makkah_rate, city_makkah_cost_amount (and madinah).
+function enrichHotelCityCosts(array &$services, $pdo, int $tenant_id): void
+{
+    // Collect first fulfillment_id for each hotel service
+    $hotelFids = [];
+    foreach ($services as $sv) {
+        $st = strtolower((string)($sv['service_type'] ?? ''));
+        $cat = strtolower((string)($sv['category_name'] ?? ''));
+        if ($st !== 'hotel' && $cat !== 'hotel') continue;
+        if (empty($sv['fulfillment_id'])) continue;
+        $hotelFids[(int)$sv['fulfillment_id']] = (int)$sv['booking_service_id'];
+    }
+    if (!$hotelFids) return;
+
+    // Batch-query per-city detail keys for all fulfillment IDs
+    $ph = implode(',', array_fill(0, count($hotelFids), '?'));
+    $stmt = $pdo->prepare("
+        SELECT fd.fulfillment_id, fd.detail_key, fd.detail_value
+        FROM umrah_fulfillment_details fd
+        WHERE fd.fulfillment_id IN ($ph) AND fd.tenant_id = ?
+          AND fd.detail_key LIKE 'city_%'");
+    $stmt->execute(array_merge(array_keys($hotelFids), [$tenant_id]));
+
+    // Map: fulfillment_id => detail_key => value
+    $detailMap = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $detailMap[(int)$row['fulfillment_id']][$row['detail_key']] = (string)$row['detail_value'];
+    }
+
+    // Enrich each hotel service with per-city fields
+    foreach ($services as &$sv) {
+        $fid = (int)($sv['fulfillment_id'] ?? 0);
+        if (!isset($detailMap[$fid])) continue;
+        $d = $detailMap[$fid];
+        $sv['makkah_currency']    = $d['city_makkah_currency'] ?? 'USD';
+        $sv['makkah_cost']        = $d['city_makkah_cost'] !== '' ? $d['city_makkah_cost'] : null;
+        $sv['makkah_rate']        = $d['city_makkah_rate'] !== '' ? $d['city_makkah_rate'] : null;
+        $sv['makkah_cost_amount'] = $d['city_makkah_cost_amount'] !== '' ? $d['city_makkah_cost_amount'] : null;
+        $sv['madinah_currency']    = $d['city_madinah_currency'] ?? 'USD';
+        $sv['madinah_cost']        = $d['city_madinah_cost'] !== '' ? $d['city_madinah_cost'] : null;
+        $sv['madinah_rate']        = $d['city_madinah_rate'] !== '' ? $d['city_madinah_rate'] : null;
+        $sv['madinah_cost_amount'] = $d['city_madinah_cost_amount'] !== '' ? $d['city_madinah_cost_amount'] : null;
+    }
+    unset($sv);
+}
+
 // Travel type of a member from their date of birth — the same thresholds
 // used by the passenger manifest (infant < 2, child 2-11, adult otherwise).
 // Unknown dates default to adult. Ticket costs are priced per type; infants
@@ -609,6 +658,9 @@ foreach ($contracts as &$c) {
     $c['member_count'] = $typeCounts['hotel'];
 }
 unset($c);
+
+// ---- Enrich hotel services with per-city cost fields ----------------------
+enrichHotelCityCosts($services, $pdo, $tenant_id);
 
 // ---- Transport contracts (amount-based: amount / members with the service) ----
 $transportContracts = [];
