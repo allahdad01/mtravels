@@ -483,6 +483,7 @@ if (!function_exists('page_permission_map')) {
             'budget_rollover.php'            => 'finance.budget',
             'global_budget_allocation.php'   => 'finance.budget',
             'global_allocation_actions.php'  => 'finance.budget',
+            'agency_settlements.php'         => 'finance.expenses',
             'additional_payments.php'        => 'finance.additional_payments',
             'additional_payments_detail.php' => 'finance.additional_payments',
             'jv_payments.php'                => 'finance.jv',

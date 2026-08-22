@@ -667,4 +667,66 @@ $(document).ready(function() {
     $('#exportComprehensiveReport').click(function() {
         exportComprehensiveReport();
     });
+
+    // ── Agency Settlement: Link expense to agency ──
+    $(document).on('click', '.link-agency', function(e) {
+        e.stopPropagation();
+        var expenseId = $(this).data('id');
+        var amount = $(this).data('amount');
+        var currency = $(this).data('currency');
+
+        $('#agsExpenseId').val(expenseId);
+        $('#agsEnabled').prop('checked', true);
+        $('#agsAmount').val(amount).attr('max', amount);
+        $('#agsCurrency').val(currency);
+        $('#agsAgency').val('');
+        $('#agencySettlementModal').modal('show');
+    });
+
+    $('#agencySettlementModal').on('shown.bs.modal', function() {
+        var checkbox = document.getElementById('agsEnabled');
+        if (checkbox && checkbox.checked) {
+            document.getElementById('agsFields').style.display = 'block';
+        }
+    });
+
+    $('#agencySettlementForm').on('agsValidSubmit', function(e) {
+        e.preventDefault();
+        var expenseId = $('#agsExpenseId').val();
+        var agencyVal = $('#agsAgency').val();
+        var amountOwed = $('#agsAmount').val();
+        var currency = $('#agsCurrency').val();
+
+        var postData = {
+            action: 'mark_expense',
+            expense_id: expenseId,
+            amount_owed: amountOwed,
+            currency: currency,
+            csrf_token: getCsrfToken()
+        };
+
+        if (agencyVal === '__custom__') {
+            postData.agency_name = $('#agsCustomName').val().trim();
+        } else {
+            postData.agency_branch_id = agencyVal;
+        }
+
+        $.ajax({
+            url: '../api/expense/agency_settlement_actions.php',
+            type: 'POST',
+            data: postData,
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    $('#agencySettlementModal').modal('hide');
+                    location.reload();
+                } else {
+                    alert('Error: ' + response.message);
+                }
+            },
+            error: function() {
+                alert('An error occurred while linking the expense');
+            }
+        });
+    });
 });

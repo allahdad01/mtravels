@@ -293,6 +293,9 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
             <a href="global_budget_allocation.php"><i class="feather icon-globe mr-2"></i>Global Budget Allocation</a>
         </li>
         <?php endif; ?>
+        <li class="<?= navActive('agency_settlements.php') ?>">
+            <a href="agency_settlements.php"><i class="feather icon-building mr-2"></i>Agency Settlements</a>
+        </li>
     </ul>
 </li>
 <?php endif; ?>

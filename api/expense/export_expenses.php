@@ -33,12 +33,17 @@ try {
             e.*,
             ec.name as category_name,
             esc.name as sub_category_name,
-            ma.name as main_account_name
+            ma.name as main_account_name,
+            aes.status as settlement_status,
+            aes.amount_owed as settlement_remaining,
+            t.name as agency_name
             
         FROM expenses e
         LEFT JOIN expense_categories ec ON e.category_id = ec.id
         LEFT JOIN expense_categories esc ON e.sub_category_id = esc.id
         LEFT JOIN main_account ma ON e.main_account_id = ma.id
+        LEFT JOIN agency_expense_settlements aes ON aes.expense_id = e.id AND aes.tenant_id = e.tenant_id AND aes.branch_id = e.branch_id
+        LEFT JOIN tenants t ON t.id = aes.agency_tenant_id
 
         WHERE e.date BETWEEN ? AND ?
         AND e.tenant_id = ?
@@ -70,18 +75,21 @@ try {
          'Amount',
          'Currency',
          'Main Account',
+         'Agency',
+         'Settlement Status',
+         'Remaining',
          'Created At'
      ];
  
      // Add report title
      $sheet->setCellValue('A1', 'EXPENSES REPORT');
-     $sheet->mergeCells('A1:H1');
+     $sheet->mergeCells('A1:K1');
      $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16);
      $sheet->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
  
      // Add date range
      $sheet->setCellValue('A2', 'Date Range: ' . $startDate . ' to ' . $endDate);
-     $sheet->mergeCells('A2:H2');
+     $sheet->mergeCells('A2:K2');
      $sheet->getStyle('A2')->getFont()->setBold(true);
      $sheet->getStyle('A2')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
  
@@ -108,7 +116,7 @@ try {
              ]
          ]
      ];
-     $sheet->getStyle('A4:H4')->applyFromArray($headerStyle);
+     $sheet->getStyle('A4:K4')->applyFromArray($headerStyle);
  
      // Add data
      $row = 5;
@@ -122,10 +130,13 @@ try {
          $sheet->setCellValue('E' . $row, $expense['amount']);
          $sheet->setCellValue('F' . $row, $expense['currency']);
          $sheet->setCellValue('G' . $row, $expense['main_account_name']);
-         $sheet->setCellValue('H' . $row, $expense['created_at']);
+         $sheet->setCellValue('H' . $row, $expense['agency_name'] ?? '');
+         $sheet->setCellValue('I' . $row, ucfirst($expense['settlement_status'] ?? ''));
+         $sheet->setCellValue('J' . $row, $expense['settlement_remaining'] !== null ? $expense['settlement_remaining'] : '');
+         $sheet->setCellValue('K' . $row, $expense['created_at']);
          
          // Style the data row
-         $sheet->getStyle('A' . $row . ':H' . $row)->applyFromArray([
+         $sheet->getStyle('A' . $row . ':K' . $row)->applyFromArray([
              'borders' => [
                  'allBorders' => [
                      'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN
@@ -161,12 +172,12 @@ try {
      $sheet->getStyle('E' . $totalRow)->getNumberFormat()->setFormatCode('#,##0.00');
  
      // Auto-size columns
-     foreach (range('A', 'H') as $col) {
+     foreach (range('A', 'K') as $col) {
          $sheet->getColumnDimension($col)->setAutoSize(true);
      }
  
      // Add a border around the entire data area
-     $sheet->getStyle('A4:H' . ($row-1))->applyFromArray([
+     $sheet->getStyle('A4:K' . ($row-1))->applyFromArray([
          'borders' => [
              'outline' => [
                  'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_MEDIUM

@@ -75,6 +75,9 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_ASSOC);
                                 <button type="button" class="btn btn-success" data-toggle="modal" data-target="#expenseModal">
                                     <i class="feather icon-plus"></i> <?= __('add_expense') ?>
                                 </button>
+                                <a href="agency_settlements.php" class="btn btn-warning" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;">
+                                    <i class="feather icon-building"></i> Agency Settlements
+                                </a>
                                 <a href="budget_allocations.php" class="btn btn-info">
                                     <i class="feather icon-credit-card"></i> <?= __('budget_allocations') ?>
                                 </a>
@@ -212,6 +215,54 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_ASSOC);
                                     }
                                 }
 
+                                // Fetch settlement data for expenses in this category
+                                $settlementQuery = "SELECT aes.expense_id, aes.amount_owed, aes.status AS settlement_status, aes.currency AS settlement_currency,
+                                    COALESCE(br.name, aes.agency_name) AS agency_name
+                                    FROM agency_expense_settlements aes
+                                    LEFT JOIN branches br ON br.id = aes.agency_branch_id
+                                    WHERE aes.tenant_id = ? AND aes.branch_id = ?";
+                                $settlementParams = [$tenantId, $branchId];
+
+                                // Build expense IDs for this category to filter settlements
+                                $expenseIds = array_column($expenses, 'id');
+                                if ($children) {
+                                    foreach ($children as $child) {
+                                        $childExpQuery = "SELECT id FROM expenses WHERE sub_category_id = ? AND date >= ? AND date $dateOp ? AND tenant_id = ? AND branch_id = ?";
+                                        $childExpStmt = $pdo->prepare($childExpQuery);
+                                        $childExpStmt->execute([$child['id'], $startDate, $endDate, $tenantId, $branchId]);
+                                        while ($ce = $childExpStmt->fetch(PDO::FETCH_ASSOC)) {
+                                            $expenseIds[] = $ce['id'];
+                                        }
+                                    }
+                                }
+
+                                $settlementMap = [];
+                                if (!empty($expenseIds)) {
+                                    $placeholders = implode(',', array_fill(0, count($expenseIds), '?'));
+                                    $settlementSql = "SELECT aes.expense_id, aes.amount_owed, aes.status AS settlement_status, aes.currency AS settlement_currency,
+                                        COALESCE(br.name, aes.agency_name) AS agency_name
+                                        FROM agency_expense_settlements aes
+                                        LEFT JOIN branches br ON br.id = aes.agency_branch_id
+                                        WHERE aes.tenant_id = ? AND aes.branch_id = ? AND aes.expense_id IN ($placeholders)";
+                                    $settlementParams2 = array_merge([$tenantId, $branchId], $expenseIds);
+                                    $settlementStmt = $pdo->prepare($settlementSql);
+                                    $settlementStmt->execute($settlementParams2);
+                                    while ($sr = $settlementStmt->fetch(PDO::FETCH_ASSOC)) {
+                                        $settlementMap[$sr['expense_id']] = $sr;
+                                    }
+                                }
+
+                                // Calculate settlement totals for this category
+                                $settledTotal = 0;
+                                $pendingTotal = 0;
+                                foreach ($settlementMap as $sid => $sm) {
+                                    if ($sm['settlement_status'] === 'settled') {
+                                        $settledTotal++;
+                                    } else {
+                                        $pendingTotal += (float)$sm['amount_owed'];
+                                    }
+                                }
+
                                 $cardClass = $isChild ? 'category-card category-card--child' : 'category-card';
                                 echo '<div class="' . $cardClass . '" data-category="' . $category['id'] . '">';
                                 echo '<div class="category-card-header">';
@@ -249,6 +300,21 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_ASSOC);
                                 } else {
                                     echo '<span class="' . $totalClass . ' category-total--zero">0.00</span>';
                                 }
+
+                                // Settlement summary badge
+                                if (!empty($settlementMap)) {
+                                    $settlementCount = count($settlementMap);
+                                    $settledCount = 0;
+                                    foreach ($settlementMap as $sm) {
+                                        if ($sm['settlement_status'] === 'settled') $settledCount++;
+                                    }
+                                    $settlePct = $settlementCount > 0 ? round(($settledCount / $settlementCount) * 100) : 0;
+                                    $settleColor = $settlePct === 100 ? '#16a34a' : ($settlePct > 0 ? '#d97706' : '#dc2626');
+                                    echo '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:' . $settleColor . '15;color:' . $settleColor . ';border:1px solid ' . $settleColor . '30;margin-left:6px;" title="' . $settledCount . ' settled, ' . $settlementCount . ' total agency expenses">';
+                                    echo '<i class="feather icon-building" style="font-size:10px;"></i>';
+                                    echo $settlePct . '% Settled';
+                                    echo '</span>';
+                                }
                                 echo '<div class="category-card-actions">';
                                 echo '<button class="btn-print print-category" data-id="' . $category['id'] . '" title="Print Category Report"><i class="feather icon-printer"></i></button>';
                                 echo '<button class="btn-edit edit-category" data-id="' . $category['id'] . '" data-name="' . htmlspecialchars($category['name']) . '" data-parent="' . ($category['parent_id'] ?? '') . '" data-has-children="' . ($children ? 1 : 0) . '"><i class="feather icon-edit-2"></i></button>';
@@ -259,6 +325,36 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_ASSOC);
                                 echo '</div>';
 
                                 echo '<div class="expense-list">';
+
+                                // Settlement summary bar
+                                if (!empty($settlementMap)) {
+                                    $sumPending = 0;
+                                    $sumSettled = 0;
+                                    $sumPartial = 0;
+                                    $sumRemaining = 0;
+                                    foreach ($settlementMap as $sm) {
+                                        if ($sm['settlement_status'] === 'settled') $sumSettled++;
+                                        elseif ($sm['settlement_status'] === 'partial') { $sumPartial++; $sumRemaining += (float)$sm['amount_owed']; }
+                                        else { $sumPending++; $sumRemaining += (float)$sm['amount_owed']; }
+                                    }
+                                    $sumTotal = count($settlementMap);
+                                    echo '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:linear-gradient(135deg,#f8fafc,#f1f5f9);border-bottom:1px solid #e2e8f0;flex-wrap:wrap;gap:8px;">';
+                                    echo '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">';
+                                    echo '<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#475569;"><i class="feather icon-building" style="font-size:13px;color:#d97706;"></i> Agency Expenses</span>';
+                                    echo '<span style="font-size:11px;padding:3px 8px;border-radius:20px;background:#f0fdf4;color:#15803d;font-weight:600;">' . $sumSettled . ' settled</span>';
+                                    if ($sumPartial > 0) echo '<span style="font-size:11px;padding:3px 8px;border-radius:20px;background:#fffbeb;color:#b45309;font-weight:600;">' . $sumPartial . ' partial</span>';
+                                    if ($sumPending > 0) echo '<span style="font-size:11px;padding:3px 8px;border-radius:20px;background:#fef2f2;color:#b91c1c;font-weight:600;">' . $sumPending . ' pending</span>';
+                                    echo '</div>';
+                                    echo '<div style="display:flex;align-items:center;gap:10px;">';
+                                    if ($sumRemaining > 0) {
+                                        echo '<span style="font-size:12px;font-weight:700;color:#dc2626;">Remaining: ' . number_format($sumRemaining, 2) . '</span>';
+                                    } else {
+                                        echo '<span style="font-size:12px;font-weight:700;color:#16a34a;"><i class="feather icon-check-circle" style="font-size:13px;"></i> Fully Settled</span>';
+                                    }
+                                    echo '<a href="agency_settlements.php" style="font-size:11px;font-weight:600;color:#2563eb;text-decoration:none;">View Details</a>';
+                                    echo '</div>';
+                                    echo '</div>';
+                                }
                                 if ($count > 0) {
                                     echo '<div class="table-wrap">';
                                     echo '<table class="table">';
@@ -278,6 +374,17 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_ASSOC);
                                         } elseif ($isBudgetAlloc) {
                                             echo ' <span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:50px;background:#e8f8ef;color:#1a7a4a;border:1px solid #b8e6cc;vertical-align:middle;"><i class="feather icon-pie-chart" style="font-size:9px;"></i>Budget</span>';
                                         }
+                                        // Settlement badge
+                                        $expId = $expense['id'];
+                                        if (isset($settlementMap[$expId])) {
+                                            $sm = $settlementMap[$expId];
+                                            $sColor = $sm['settlement_status'] === 'settled' ? '#16a34a' : ($sm['settlement_status'] === 'partial' ? '#d97706' : '#dc2626');
+                                            $sBg = $sm['settlement_status'] === 'settled' ? '#f0fdf4' : ($sm['settlement_status'] === 'partial' ? '#fffbeb' : '#fef2f2');
+                                            $sLabel = $sm['settlement_status'] === 'settled' ? 'Settled' : ($sm['settlement_status'] === 'partial' ? number_format((float)$sm['amount_owed'], 2) . ' left' : 'Pending');
+                                             echo ' <span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:50px;background:' . $sBg . ';color:' . $sColor . ';border:1px solid ' . $sColor . '30;vertical-align:middle;" title="Agency: ' . htmlspecialchars($sm['agency_name']) . '">';
+                                            echo '<i class="feather icon-link" style="font-size:9px;"></i>' . $sLabel;
+                                            echo '</span>';
+                                        }
                                         echo '</td>';
                                         echo '<td class="ccy-col">' . ($expense['currency'] ?? 'USD') . '</td>';
                                         echo '<td class="actions-col">';
@@ -286,8 +393,13 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_ASSOC);
                                         } elseif ($isBudgetAlloc) {
                                             echo '<span class="allocation-link">Managed from <a href="budget_allocations.php">Budget Allocation</a></span>';
                                         } else {
+                                            // Check if already linked to agency
+                                            $isLinked = isset($settlementMap[$expense['id']]);
                                             echo '<div class="btn-group-wrap">';
                                             $expenseCategoryId = $isChild ? ($category['parent_id'] ?? $category['id']) : $category['id'];
+                                            if (!$isLinked) {
+                                                echo '<button class="btn-action-edit link-agency" data-id="' . $expense['id'] . '" data-amount="' . $expense['amount'] . '" data-currency="' . ($expense['currency'] ?? 'USD') . '" title="Link to Agency" style="color:#d97706;"><i class="feather icon-link"></i></button>';
+                                            }
                                             echo '<button class="btn-action-edit edit-expense" data-id="' . $expense['id'] . '" data-category="' . $expenseCategoryId . '" data-sub-category="' . ($expense['sub_category_id'] ?? '') . '" data-date="' . $expense['date'] . '" data-description="' . htmlspecialchars($expense['description']) . '" data-amount="' . $expense['amount'] . '" data-currency="' . ($expense['currency'] ?? 'USD') . '" data-main-account="' . ($expense['main_account_id'] ?? '') . '" title="Edit"><i class="feather icon-edit-2"></i></button>';
                                             echo '<a href="expense_detail.php?id=' . $expense['id'] . '" class="btn-action-view" title="View"><i class="feather icon-eye"></i></a>';
                                             echo '<button class="btn-action-delete delete-expense" data-id="' . $expense['id'] . '" title="Delete"><i class="feather icon-trash-2"></i></button>';
@@ -338,6 +450,7 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_ASSOC);
 <?php include '../modals/expense/category_modal.php'; ?>
 <?php include '../modals/expense/expense_modal.php'; ?>
 <?php include '../modals/expense/edit_expense_modal.php'; ?>
+<?php include '../modals/expense/agency_settlement_modal.php'; ?>
 
     <!-- Required Js -->
     

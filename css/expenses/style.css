@@ -816,3 +816,94 @@ body {
     max-width: 100px;
   }
 }
+
+/* ── Agency Settlement Styles ── */
+.link-agency {
+  color: #d97706 !important;
+  transition: color 0.15s;
+}
+.link-agency:hover {
+  color: #b45309 !important;
+}
+
+.agency-settlement-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 50px;
+  vertical-align: middle;
+  border: 1px solid;
+}
+
+.agency-settlement-badge.settled {
+  background: #f0fdf4;
+  color: #15803d;
+  border-color: rgba(22, 163, 74, 0.2);
+}
+
+.agency-settlement-badge.pending {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: rgba(220, 38, 38, 0.2);
+}
+
+.agency-settlement-badge.partial {
+  background: #fffbeb;
+  color: #b45309;
+  border-color: rgba(217, 119, 6, 0.2);
+}
+
+.settlement-summary-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+  border-bottom: 1px solid #e2e8f0;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settlement-summary-bar .settlement-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.settlement-summary-bar .settlement-stats span {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-weight: 600;
+}
+
+.settlement-summary-bar .settlement-remaining {
+  font-size: 12px;
+  font-weight: 700;
+  color: #dc2626;
+}
+
+.settlement-summary-bar .settlement-complete {
+  font-size: 12px;
+  font-weight: 700;
+  color: #16a34a;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-warning {
+  background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+  color: #fff !important;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25);
+}
+
+.btn-warning:hover {
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35);
+  transform: translateY(-1px);
+}
