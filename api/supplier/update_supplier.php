@@ -53,20 +53,36 @@ $contact_person = isset($_POST['contact_person']) ? DbSecurity::validateInput($_
 // Validate route_payment_to_main_account (checkbox: absent => 0)
 $route_payment_to_main_account = isset($_POST['route_payment_to_main_account']) ? 1 : 0;
 
-$query = "UPDATE suppliers SET name = ?, contact_person = ?, phone = ?, email = ?, address = ?, currency = ?, supplier_type = ?, category = ?, route_payment_to_main_account = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?";
+// Validate balance
+$balance = isset($_POST['balance']) ? (float)$_POST['balance'] : null;
+
+// Check if transactions exist for this supplier
+$has_transactions = false;
+if ($id) {
+    $txn_check = $pdo->prepare("SELECT COUNT(*) FROM supplier_transactions WHERE supplier_id = ? AND tenant_id = ? AND branch_id = ?");
+    $txn_check->execute([$id, $tenant_id, $branch_id]);
+    $has_transactions = (int)$txn_check->fetchColumn() > 0;
+}
+
+// Build dynamic UPDATE query
+$set_clauses = ['name = ?', 'contact_person = ?', 'phone = ?', 'email = ?', 'address = ?', 'currency = ?', 'supplier_type = ?', 'category = ?', 'route_payment_to_main_account = ?'];
+$params = [$name, $contact_person, $phone, $email, $address, $currency, $supplier_type, $category, $route_payment_to_main_account];
+
+// Only update balance if no transactions exist
+if ($balance !== null && !$has_transactions) {
+    $set_clauses[] = 'balance = ?';
+    $params[] = $balance;
+}
+
+$params[] = $id;
+$params[] = $tenant_id;
+$params[] = $branch_id;
+
+$query = "UPDATE suppliers SET " . implode(', ', $set_clauses) . " WHERE id = ? AND tenant_id = ? AND branch_id = ?";
 $stmt = $pdo->prepare($query);
-$stmt->bindParam(1, $name, PDO::PARAM_STR);
-$stmt->bindParam(2, $contact_person, PDO::PARAM_STR);
-$stmt->bindParam(3, $phone, PDO::PARAM_STR);
-$stmt->bindParam(4, $email, PDO::PARAM_STR);
-$stmt->bindParam(5, $address, PDO::PARAM_STR);
-$stmt->bindParam(6, $currency, PDO::PARAM_STR);
-$stmt->bindParam(7, $supplier_type, PDO::PARAM_STR);
-$stmt->bindParam(8, $category, PDO::PARAM_STR);
-$stmt->bindParam(9, $route_payment_to_main_account, PDO::PARAM_INT);
-$stmt->bindParam(10, $id, PDO::PARAM_INT);
-$stmt->bindParam(11, $tenant_id, PDO::PARAM_INT);
-$stmt->bindParam(12, $branch_id, PDO::PARAM_INT);
+foreach ($params as $idx => $val) {
+    $stmt->bindValue($idx + 1, $val, is_int($val) ? PDO::PARAM_INT : PDO::PARAM_STR);
+}
 
 if ($stmt->execute()) {
     // Add activity logging

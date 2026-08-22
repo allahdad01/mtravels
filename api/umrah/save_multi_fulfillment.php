@@ -109,7 +109,7 @@ if ($scope === 'group') {
 // ---- Target member bookings (skip refunded/cancelled) ----------------------
 $placeholders = implode(',', array_fill(0, count($targetFamilies), '?'));
 $mbStmt = $pdo->prepare("
-    SELECT booking_id, name, dob FROM umrah_bookings
+    SELECT booking_id, name, dob, is_extra_bed FROM umrah_bookings
     WHERE family_id IN ($placeholders) AND tenant_id = ? AND status NOT IN ('refunded', 'cancelled')
     ORDER BY booking_id");
 $mbStmt->execute(array_merge($targetFamilies, [$tenant_id]));
@@ -289,6 +289,12 @@ $skipReasons = [];
 $noMatchMembers = 0;
 
 foreach ($members as $member) {
+    // Extra bed pseudo-members only receive hotel fulfillment — they have no
+    // flight, visa, transport or other service lines in their package.
+    if ($cat !== 'hotel' && !empty($member['is_extra_bed'])) {
+        $skipReasons['extra bed (hotel only)'] = ($skipReasons['extra bed (hotel only)'] ?? 0) + 1;
+        continue;
+    }
     // Infant members receive no hotel/transport fulfillment — their package
     // covers only ticket + visa costs, and the ticket card asks for their
     // own fare separately.
@@ -370,6 +376,18 @@ foreach ($targets as $target) {
     // not covered by any stay block are skipped (their current state stays
     // untouched) — this is how per-family / per-member room assignment works.
     if ($hotelStays !== null) { $mergedInput['hotel_stays'] = $hotelStays; }
+    // Extra bed cost overrides: only forward for the specific extra bed member
+    $extraBedCosts = null;
+    if (isset($_POST['extra_bed_costs']) && is_string($_POST['extra_bed_costs']) && $_POST['extra_bed_costs'] !== '') {
+        $decoded = json_decode($_POST['extra_bed_costs'], true);
+        if (is_array($decoded)) { $extraBedCosts = $decoded; }
+    }
+    if ($extraBedCosts !== null) {
+        $targetBid = (string)$target['booking_id'];
+        if (isset($extraBedCosts[$targetBid])) {
+            $mergedInput['extra_bed_costs'] = [$targetBid => $extraBedCosts[$targetBid]];
+        }
+    }
     if ($hotelGroups !== null) {
         $memberGroup = null;
         foreach ($hotelGroupMembers as $gKey => $ids) {

@@ -276,6 +276,8 @@ document.addEventListener('DOMContentLoaded', function () {
       const editAddressEl = document.getElementById('editAddress');
       const editTypeEl = document.getElementById('editType');
       const editStatusEl = document.getElementById('editStatus');
+      const editUsdBalanceEl = document.getElementById('editUsdBalance');
+      const editAfsBalanceEl = document.getElementById('editAfsBalance');
 
       if (!editClientIdEl || !editNameEl || !editEmailEl) return;
 
@@ -286,10 +288,14 @@ document.addEventListener('DOMContentLoaded', function () {
       if (editAddressEl) editAddressEl.value = client.address || '';
       if (editTypeEl) editTypeEl.value = client.type;
       if (editStatusEl) editStatusEl.value = client.status;
+      if (editUsdBalanceEl) editUsdBalanceEl.value = client.usd || 0;
+      if (editAfsBalanceEl) editAfsBalanceEl.value = client.afs || 0;
 
-      // Disable client_type if transactions exist
+      // Disable client_type and balance fields if transactions exist
       const hasTxn = client.has_transactions == '1';
       if (editTypeEl) editTypeEl.disabled = hasTxn;
+      if (editUsdBalanceEl) editUsdBalanceEl.disabled = hasTxn;
+      if (editAfsBalanceEl) editAfsBalanceEl.disabled = hasTxn;
 
       // Show/hide lock note
       var note = document.getElementById('editClientLockNote');
@@ -299,7 +305,7 @@ document.addEventListener('DOMContentLoaded', function () {
           note.id = 'editClientLockNote';
           note.className = 'alert alert-warning py-2 px-3 mb-0 mt-2';
           note.style.fontSize = '12px';
-          note.innerHTML = '<i class="fas fa-lock mr-1"></i> Client type locked — transactions exist';
+          note.innerHTML = '<i class="fas fa-lock mr-1"></i> Client type & balance locked — transactions exist';
           if (editTypeEl) {
             var formGroup = editTypeEl.closest('.mb-3');
             if (formGroup) formGroup.parentNode.insertBefore(note, formGroup.nextSibling);
@@ -328,6 +334,8 @@ document.addEventListener('DOMContentLoaded', function () {
           address    : document.getElementById('editAddress').value,
           client_type: document.getElementById('editType').value,
           status     : document.getElementById('editStatus').value,
+          usd_balance: document.getElementById('editUsdBalance').value || 0,
+          afs_balance: document.getElementById('editAfsBalance').value || 0,
           csrf_token : window.csrfToken,
         };
 

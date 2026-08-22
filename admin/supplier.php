@@ -1076,13 +1076,16 @@ window.csrfToken = '<?= $_SESSION['csrf_token'] ?>';
     setVal('editSupplierCategory', s.category || 'all');
     setVal('editCurrency',        s.currency);
     setVal('editAddress',         s.address);
+    setVal('editBalance',         s.balance);
 
-    // Disable supplier_type and currency if transactions exist
+    // Disable supplier_type, currency, and balance if transactions exist
     const hasTxn = s.has_transactions == '1';
     var typeEl = document.getElementById('editSupplierType');
     var currEl = document.getElementById('editCurrency');
+    var balEl  = document.getElementById('editBalance');
     if (typeEl) typeEl.disabled = hasTxn;
     if (currEl) currEl.disabled = hasTxn;
+    if (balEl)  balEl.disabled = hasTxn;
 
     // Show/hide lock note
     var note = document.getElementById('editSupplierLockNote');
@@ -1092,7 +1095,7 @@ window.csrfToken = '<?= $_SESSION['csrf_token'] ?>';
         note.id = 'editSupplierLockNote';
         note.className = 'alert alert-warning py-2 px-3 mb-0 mt-2';
         note.style.fontSize = '12px';
-        note.innerHTML = '<i class="fas fa-lock mr-1"></i> Supplier type & currency locked — transactions exist';
+        note.innerHTML = '<i class="fas fa-lock mr-1"></i> Supplier type, currency & balance locked — transactions exist';
         var currGroup = currEl ? currEl.closest('.form-group') : null;
         if (currGroup) currGroup.parentNode.insertBefore(note, currGroup.nextSibling);
       }

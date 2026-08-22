@@ -81,6 +81,7 @@ $result = fulfillment_save($pdo, [
     'return_arrival_time' => $_POST['return_arrival_time'] ?? '',
     'transport_vehicle' => $_POST['transport_vehicle'] ?? '',
     'transport_trip_date' => $_POST['transport_trip_date'] ?? '',
+    'extra_bed_costs' => isset($_POST['extra_bed_costs']) ? json_decode((string)$_POST['extra_bed_costs'], true) : null,
 ]);
 
 if (!$result['success']) {

@@ -43,6 +43,22 @@
                             <option value="inactive"><?= __('inactive') ?></option>
                         </select>
                     </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label"><?= __('usd_balance') ?? 'USD Balance' ?></label>
+                                <input type="number" step="0.01" class="form-control" id="editUsdBalance" name="usd_balance">
+                                <small class="form-text text-muted"><?= __('balance_locked_hint') ?? 'Locked when transactions exist' ?></small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label"><?= __('afs_balance') ?? 'AFS Balance' ?></label>
+                                <input type="number" step="0.01" class="form-control" id="editAfsBalance" name="afs_balance">
+                                <small class="form-text text-muted"><?= __('balance_locked_hint') ?? 'Locked when transactions exist' ?></small>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-light" data-dismiss="modal"><?= __('cancel') ?></button>

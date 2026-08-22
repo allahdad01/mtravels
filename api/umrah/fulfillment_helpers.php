@@ -219,6 +219,13 @@ function fulfillment_save(PDO $pdo, array $in): array
     $transport_vehicle = isset($in['transport_vehicle']) ? trim((string)$in['transport_vehicle']) : '';
     $transport_trip_date = !empty($in['transport_trip_date']) ? (string)$in['transport_trip_date'] : null;
 
+    // Extra bed cost overrides: JSON map of booking_id => {cost, sold} for
+    // extra bed pseudo-members whose cost/sold price is manually entered.
+    $extra_bed_costs = null;
+    if (isset($in['extra_bed_costs']) && is_array($in['extra_bed_costs'])) {
+        $extra_bed_costs = $in['extra_bed_costs'];
+    }
+
     if (!$booking_service_id) {
         return ['success' => false, 'code' => 400, 'message' => 'Booking service is required.'];
     }
@@ -244,6 +251,25 @@ function fulfillment_save(PDO $pdo, array $in): array
 
         $booking_id = (int)$svc['booking_id'];
         $booking_currency = strtoupper(trim((string)$svc['currency'])) ?: 'USD';
+
+        // Detect if this booking is an extra bed pseudo-member — extra beds
+        // carry their own cost (in extra_bed_costs) and must NOT inherit the
+        // card-level per-city hotel costs.
+        $isEbStmt = $pdo->prepare("SELECT is_extra_bed FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ?");
+        $isEbStmt->execute([$booking_id, $tenant_id]);
+        $isExtraBedBooking = (bool)$isEbStmt->fetchColumn();
+        // Look up the extra bed's own cost if provided
+        $ebOwnCost = null;
+        $ebOwnCurrency = '';
+        $ebOwnRate = null;
+        $ebOwnCostUsd = null;
+        if ($isExtraBedBooking && $extra_bed_costs && isset($extra_bed_costs[(string)$booking_id])) {
+            $ebOwn = $extra_bed_costs[(string)$booking_id];
+            $ebOwnCurrency = isset($ebOwn['currency']) ? trim((string)$ebOwn['currency']) : '';
+            $ebOwnCost = (isset($ebOwn['cost']) && $ebOwn['cost'] !== '') ? (float)$ebOwn['cost'] : null;
+            $ebOwnRate = (isset($ebOwn['rate']) && $ebOwn['rate'] !== '') ? (float)$ebOwn['rate'] : null;
+            $ebOwnCostUsd = (isset($ebOwn['cost_usd']) && $ebOwn['cost_usd'] !== '') ? (float)$ebOwn['cost_usd'] : null;
+        }
 
         $fulfillment_type = resolveFulfillmentType($pdo, $tenant_id, (string)$svc['service_type'], $svc['service_id'], $svc['category_name']);
         $status_group = statusGroupFor($fulfillment_type);
@@ -516,12 +542,42 @@ function fulfillment_save(PDO $pdo, array $in): array
                         : ($madinah_rate && $madinah_rate > 0 ? $madinah_cost / $madinah_rate : null);
                 }
             }
-            // Total supplier cost = sum of both cities (in booking currency)
+            // Total supplier cost = sum of both cities.
+            // cost_amount = USD equivalent (for internal profit).
+            // supplier_cost = original city currency when both cities share the
+            // same currency; booking currency otherwise.
             if ($makkah_cost_amount !== null || $madinah_cost_amount !== null) {
-                $supplier_cost = ($makkah_cost_amount ?? 0) + ($madinah_cost_amount ?? 0);
-                $supplier_currency = $booking_currency;
-                $cost_amount = $supplier_cost;
-                $exchange_rate = null;
+                $cost_amount = ($makkah_cost_amount ?? 0) + ($madinah_cost_amount ?? 0);
+
+                $mc = strtoupper($makkah_currency ?: 'USD');
+                $dc = strtoupper($madinah_currency ?: 'USD');
+                $mCost = $makkah_cost;
+                $dCost = $madinah_cost;
+
+                if ($mc === $dc && ($mCost !== null || $dCost !== null)) {
+                    // Same currency — supplier is debited in that currency
+                    $supplier_cost = ($mCost ?? 0) + ($dCost ?? 0);
+                    $supplier_currency = $mc;
+                    // Blended rate = total original / total USD
+                    if ($cost_amount > 0) {
+                        $exchange_rate = round($supplier_cost / $cost_amount, 4);
+                    } elseif ($makkah_rate) {
+                        $exchange_rate = $makkah_rate;
+                    } elseif ($madinah_rate) {
+                        $exchange_rate = $madinah_rate;
+                    } else {
+                        $exchange_rate = null;
+                    }
+                } elseif ($cost_amount > 0) {
+                    // Different currencies — store in booking currency
+                    $supplier_cost = $cost_amount;
+                    $supplier_currency = $booking_currency;
+                    $exchange_rate = null;
+                } else {
+                    $supplier_cost = null;
+                    $supplier_currency = '';
+                    $exchange_rate = null;
+                }
             }
         } elseif ($fulfillment_type === 'hotel' && $supplier_cost === null && !$locked && $stays) {
             $staySum = 0.0;
@@ -536,6 +592,14 @@ function fulfillment_save(PDO $pdo, array $in): array
         }
 
         // Cost amount in booking (sale) currency (frozen snapshot)
+        // Extra bed override: use the extra bed's own cost instead of the
+        // card-level per-city hotel cost.
+        if ($isExtraBedBooking && $ebOwnCost !== null && $ebOwnCurrency) {
+            $supplier_currency = $ebOwnCurrency;
+            $supplier_cost = $ebOwnCost;
+            $exchange_rate = $ebOwnRate;
+        }
+
         $cost_amount = null;
         if ($supplier_cost !== null && $supplier_currency) {
             $cost_amount = ($supplier_currency === $booking_currency)
@@ -1080,6 +1144,180 @@ function fulfillment_save(PDO $pdo, array $in): array
                 'completed_date'     => $completed_date,
             ];
             umrah_audit($pdo, $sf['old'] ? 'update' : 'add', 'umrah_fulfillments', (int)$sf['id'], $oldAudit, $newAudit);
+        }
+
+        // ---- Extra bed cost/sold overrides for pseudo-members ------------------
+        if ($extra_bed_costs && is_array($extra_bed_costs)) {
+            foreach ($extra_bed_costs as $ebBid => $ebData) {
+                $ebBookingId = (int)$ebBid;
+                if ($ebBookingId <= 0) continue;
+                $ebCurrency = isset($ebData['currency']) ? trim((string)$ebData['currency']) : '';
+                $ebCost = (isset($ebData['cost']) && $ebData['cost'] !== '') ? (float)$ebData['cost'] : null;
+                $ebRate = (isset($ebData['rate']) && $ebData['rate'] !== '') ? (float)$ebData['rate'] : null;
+                $ebCostUsd = (isset($ebData['cost_usd']) && $ebData['cost_usd'] !== '') ? (float)$ebData['cost_usd'] : null;
+                $ebSold = (isset($ebData['sold']) && $ebData['sold'] !== '') ? (float)$ebData['sold'] : null;
+
+                // Find the hotel service for this extra bed member
+                $ebSvcStmt = $pdo->prepare("SELECT id, sold_price FROM umrah_booking_services WHERE booking_id = ? AND tenant_id = ? AND LOWER(service_type) = 'hotel' LIMIT 1");
+                $ebSvcStmt->execute([$ebBookingId, $tenant_id]);
+                $ebSvc = $ebSvcStmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($ebSvc) {
+                    // base_price = cost converted to booking currency (USD)
+                    if ($ebCostUsd !== null) {
+                        $pdo->prepare("UPDATE umrah_booking_services SET base_price = ? WHERE id = ?")
+                            ->execute([$ebCostUsd, $ebSvc['id']]);
+                    }
+                    if ($ebSold !== null) {
+                        $ebProfit = round($ebSold - ($ebCostUsd ?? 0), 3);
+                        $pdo->prepare("UPDATE umrah_booking_services SET sold_price = ?, profit = ? WHERE id = ?")
+                            ->execute([$ebSold, $ebProfit, $ebSvc['id']]);
+                    }
+                }
+
+                // Update the extra bed member's booking totals
+                $ebBkStmt = $pdo->prepare("SELECT sold_price, discount FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ?");
+                $ebBkStmt->execute([$ebBookingId, $tenant_id]);
+                $ebBk = $ebBkStmt->fetch(PDO::FETCH_ASSOC);
+                if ($ebBk) {
+                    if ($ebSold !== null) {
+                        $ebDue = round($ebSold - (float)$ebBk['discount'], 3);
+                        $pdo->prepare("UPDATE umrah_bookings SET sold_price = ?, due = ? WHERE booking_id = ?")
+                            ->execute([$ebSold, $ebDue, $ebBookingId]);
+                    }
+                    if ($ebCostUsd !== null) {
+                        $ebPriceSum = 0.0;
+                        $ebPStmt = $pdo->prepare("SELECT COALESCE(SUM(COALESCE(base_price, 0)), 0) FROM umrah_booking_services WHERE booking_id = ?");
+                        $ebPStmt->execute([$ebBookingId]);
+                        $ebPriceSum = round((float)$ebPStmt->fetchColumn(), 3);
+                        $ebProfit = round(((float)$ebBk['sold_price']) - ((float)$ebBk['discount']) - $ebPriceSum, 3);
+                        $pdo->prepare("UPDATE umrah_bookings SET price = ?, profit = ? WHERE booking_id = ?")
+                            ->execute([$ebPriceSum, $ebProfit, $ebBookingId]);
+                    }
+                }
+
+                // Recalculate family totals so the extra bed's sold_price
+                // is reflected in the family's total_price / total_due.
+                $ebFamStmt = $pdo->prepare("SELECT family_id FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ?");
+                $ebFamStmt->execute([$ebBookingId, $tenant_id]);
+                $ebFamilyId = (int)$ebFamStmt->fetchColumn();
+                if ($ebFamilyId > 0) {
+                    $ebTotStmt = $pdo->prepare("
+                        SELECT COALESCE(SUM(COALESCE(sold_price, 0)), 0) AS total_price,
+                               COALESCE(SUM(COALESCE(due, 0)), 0) AS total_due,
+                               COUNT(*) AS member_count
+                        FROM umrah_bookings
+                        WHERE family_id = ? AND tenant_id = ?
+                          AND status NOT IN ('refunded', 'cancelled')");
+                    $ebTotStmt->execute([$ebFamilyId, $tenant_id]);
+                    $ebTots = $ebTotStmt->fetch(PDO::FETCH_ASSOC);
+                    $pdo->prepare("
+                        UPDATE families SET total_members = ?, total_price = ?, total_due = ?
+                        WHERE family_id = ? AND tenant_id = ?")
+                        ->execute([$ebTots['member_count'], $ebTots['total_price'], $ebTots['total_due'], $ebFamilyId, $tenant_id]);
+                }
+
+                // Store extra bed cost details in fulfillment_details for reload
+                // and correct the fulfillment's supplier_cost so the supplier
+                // is debited the extra bed's own cost, not the card-level cost.
+                if ($ebSvc) {
+                    $ebFidStmt = $pdo->prepare("SELECT f.id, f.supplier_id, f.supplier_cost, f.supplier_currency, f.cost_amount, f.exchange_rate, f.booking_service_id FROM umrah_fulfillments f WHERE f.booking_service_id = ? AND f.tenant_id = ? ORDER BY f.id LIMIT 1");
+                    $ebFidStmt->execute([$ebSvc['id'], $tenant_id]);
+                    $ebFidRow = $ebFidStmt->fetch(PDO::FETCH_ASSOC);
+                    if ($ebFidRow) {
+                        $ebFid = (int)$ebFidRow['id'];
+
+                        // Correct the fulfillment row: use extra bed cost in
+                        // supplier currency instead of the card-level city cost.
+                        if ($ebCost !== null && $ebCurrency) {
+                            $ebCostAmount = ($ebCurrency === $booking_currency)
+                                ? $ebCost
+                                : ($ebRate && $ebRate > 0 ? $ebCost / $ebRate : $ebCostUsd);
+                            $pdo->prepare("
+                                UPDATE umrah_fulfillments
+                                SET supplier_currency = ?, supplier_cost = ?, exchange_rate = ?, cost_amount = ?
+                                WHERE id = ? AND tenant_id = ?
+                            ")->execute([$ebCurrency, $ebCost, $ebRate, $ebCostAmount, $ebFid, $tenant_id]);
+
+                            // Fix the supplier transaction: remove the
+                            // card-level debit and re-debit with the extra
+                            // bed's own cost.
+                            if (!empty($ebFidRow['supplier_id']) && (float)$ebFidRow['supplier_cost'] > 0) {
+                                $ebSupId = (int)$ebFidRow['supplier_id'];
+                                $ebBkIdStmt = $pdo->prepare("SELECT booking_id FROM umrah_booking_services WHERE id = ? AND tenant_id = ?");
+                                $ebBkIdStmt->execute([$ebSvc['id'], $tenant_id]);
+                                $ebBkId = (int)$ebBkIdStmt->fetchColumn();
+                                $ebMemberStmt = $pdo->prepare("SELECT name FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ?");
+                                $ebMemberStmt->execute([$ebBkId, $tenant_id]);
+                                $ebMemberName = $ebMemberStmt->fetchColumn() ?: 'Extra Bed';
+                                $ebSvcTypeStmt = $pdo->prepare("SELECT service_type FROM umrah_booking_services WHERE id = ?");
+                                $ebSvcTypeStmt->execute([$ebSvc['id']]);
+                                $ebSvcType = $ebSvcTypeStmt->fetchColumn() ?: 'hotel';
+                                $ebRemark = "Fulfillment for {$ebSvcType}: {$ebMemberName}";
+                                $ebCorrRemark = "Fulfillment cost correction for {$ebSvcType}: {$ebMemberName}";
+
+                                // Remove old transaction(s) and restore balance
+                                $ebOldTxnStmt = $pdo->prepare("
+                                    SELECT transaction_type, amount FROM supplier_transactions
+                                    WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
+                                      AND (remarks = ? OR remarks = ?) AND tenant_id = ?");
+                                $ebOldTxnStmt->execute([$ebSupId, $ebBkId, $ebRemark, $ebCorrRemark, $tenant_id]);
+                                $ebOldTxns = $ebOldTxnStmt->fetchAll(PDO::FETCH_ASSOC);
+                                if ($ebOldTxns) {
+                                    $ebNet = 0.0;
+                                    foreach ($ebOldTxns as $ot) {
+                                        $ebNet += $ot['transaction_type'] === 'Debit' ? (float)$ot['amount'] : -((float)$ot['amount']);
+                                    }
+                                    if ($ebNet != 0.0) {
+                                        $ebTypeStmt = $pdo->prepare("SELECT supplier_type FROM suppliers WHERE id = ? AND tenant_id = ?");
+                                        $ebTypeStmt->execute([$ebSupId, $tenant_id]);
+                                        if ($ebTypeStmt->fetchColumn() === 'External') {
+                                            $pdo->prepare("UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ?")
+                                                ->execute([$ebNet, $ebSupId, $tenant_id]);
+                                        }
+                                    }
+                                    $pdo->prepare("DELETE FROM supplier_transactions
+                                                   WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
+                                                     AND (remarks = ? OR remarks = ?) AND tenant_id = ?")
+                                        ->execute([$ebSupId, $ebBkId, $ebRemark, $ebCorrRemark, $tenant_id]);
+                                }
+
+                                // Re-debit with the extra bed's own cost (in supplier currency)
+                                if ($ebCost > 0) {
+                                    $ebTypeStmt2 = $pdo->prepare("SELECT supplier_type FROM suppliers WHERE id = ? AND tenant_id = ?");
+                                    $ebTypeStmt2->execute([$ebSupId, $tenant_id]);
+                                    if ($ebTypeStmt2->fetchColumn() === 'External') {
+                                        $pdo->prepare("UPDATE suppliers SET balance = balance - ? WHERE id = ? AND tenant_id = ?")
+                                            ->execute([$ebCost, $ebSupId, $tenant_id]);
+                                    }
+                                    $ebBalStmt = $pdo->prepare("SELECT balance FROM suppliers WHERE id = ? AND tenant_id = ?");
+                                    $ebBalStmt->execute([$ebSupId, $tenant_id]);
+                                    $ebNewBal = (float)$ebBalStmt->fetchColumn();
+                                    $ebUserStmt = $pdo->prepare("SELECT name FROM suppliers WHERE id = ?");
+                                    $ebUserStmt->execute([$ebSupId]);
+                                    $pdo->prepare("INSERT INTO supplier_transactions
+                                        (tenant_id, branch_id, supplier_id, reference_id, transaction_type, amount, remarks, balance, transaction_of, receipt)
+                                        VALUES (?, ?, ?, ?, 'Debit', ?, ?, ?, 'umrah', '')")
+                                        ->execute([$tenant_id, $branch_id, $ebSupId, $ebBkId, $ebCost, $ebRemark, $ebNewBal]);
+                                }
+                            }
+                        }
+
+                        $pdo->prepare("DELETE FROM umrah_fulfillment_details WHERE fulfillment_id = ? AND detail_key LIKE 'eb_%'")
+                            ->execute([$ebFid]);
+                        $ebPairs = [
+                            'eb_currency' => $ebCurrency,
+                            'eb_cost'     => $ebCost !== null ? (string)$ebCost : '',
+                            'eb_rate'     => $ebRate !== null ? (string)$ebRate : '',
+                            'eb_cost_usd' => $ebCostUsd !== null ? (string)$ebCostUsd : '',
+                        ];
+                        $insEbD = $pdo->prepare("INSERT INTO umrah_fulfillment_details (tenant_id, branch_id, fulfillment_id, detail_key, detail_value) VALUES (?, ?, ?, ?, ?)");
+                        foreach ($ebPairs as $k => $v) {
+                            $insEbD->execute([$tenant_id, $branch_id, $ebFid, $k, $v]);
+                        }
+                    }
+                }
+            }
         }
 
         $pdo->commit();

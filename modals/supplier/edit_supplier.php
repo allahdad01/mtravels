@@ -72,7 +72,13 @@
                                 </select>
                             </div>
                         </div>
-
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label class="form-label"><?= __('balance') ?? 'Balance' ?></label>
+                                <input type="number" step="0.01" class="form-control" id="editBalance" name="balance">
+                                <small class="form-text text-muted"><?= __('balance_locked_hint') ?? 'Locked when transactions exist' ?></small>
+                            </div>
+                        </div>
                     </div>
                     <div class="form-group mb-3">
                         <label class="form-label"><?= __('address') ?></label>

@@ -16,6 +16,16 @@ function openFulfillmentModal(bookingId, memberName) {
     openFulfillmentFor({ booking_id: bookingId }, memberName || ('#' + bookingId), 'member');
 }
 
+function reloadFulfillmentModal() {
+    if (currentFulfillmentMode === 'family' && currentFulfillmentFamilyId) {
+        openFulfillmentFor({ family_id: currentFulfillmentFamilyId }, 'Family #' + currentFulfillmentFamilyId, 'family');
+    } else if (currentFulfillmentMode === 'group' && currentFulfillmentGroupId) {
+        openFulfillmentFor({ group_id: currentFulfillmentGroupId }, currentFulfillmentGroupName || 'Group #' + currentFulfillmentGroupId, 'group');
+    } else if (currentFulfillmentMode === 'member' && currentFulfillmentBookingId) {
+        openFulfillmentFor({ booking_id: currentFulfillmentBookingId }, '', 'member');
+    }
+}
+
 function openFamilyFulfillmentModal(familyId, familyName) {
     openFulfillmentFor({ family_id: familyId }, familyName || ('Family #' + familyId), 'family');
 }
@@ -331,17 +341,11 @@ function fulfillmentStayHtml(st, i, data) {
             </div>
         </div>
         <div class="row">
-            <div class="form-group col-md-4 mb-0">
+            <div class="form-group col-md-6 mb-0">
                 <label style="font-size:.8rem;">${__t('nightly_rate')}</label>
                 <input type="number" class="form-control form-control-sm f-nightly-rate" min="0" step="0.01" value="${rate}">
             </div>
-            <div class="col-md-4 mb-0 mt-4">
-                <label class="mb-0" style="font-size:.8rem;font-weight:500;color:#475569;">
-                    <input type="checkbox" class="form-check-input f-extra-bed mr-1" style="margin-left:0;" ${st && st.extra_bed ? 'checked' : ''}>
-                    ${__t('extra_bed')}
-                </label>
-            </div>
-            <div class="col-md-4 mb-0 text-right">
+            <div class="col-md-6 mb-0 text-right">
                 <button type="button" class="btn btn-sm btn-light btn-remove-stay mt-4 px-2" title="${__t('remove_stay')}"><i class="feather icon-x"></i></button>
             </div>
         </div>
@@ -809,16 +813,60 @@ function hotelSplitBodyHtml(service, data, mode) {
 function hotelMemberCardHtml(m, data) {
     const stays = (Array.isArray(m.stays) && m.stays.length) ? m.stays : [null];
     const stayBlocks = stays.map((st, i) => fulfillmentStayHtml(st, i, data)).join('');
+    const isExtraBed = !!m.is_extra_bed;
     const isF = String(m.gender || '').toLowerCase() === 'female';
-    const icon = isF ? 'icon-user-check' : 'icon-user';
-    const color = isF ? '#be185d' : '#0e7490';
+    const icon = isExtraBed ? 'icon-plus-square' : (isF ? 'icon-user-check' : 'icon-user');
+    const color = isExtraBed ? '#d97706' : (isF ? '#be185d' : '#0e7490');
+    const extraBedBadge = isExtraBed ? '<span class="fulfillment-chip ml-2" style="background:#fef3c7;color:#92400e;"><i class="feather icon-plus-square mr-1"></i>Extra Bed</span>' : '';
+    const removeBtn = isExtraBed
+        ? `<button type="button" class="btn btn-sm btn-outline-danger btn-remove-extra-bed ml-2" data-booking-id="${m.booking_id}" title="Remove extra bed"><i class="feather icon-trash-2"></i></button>`
+        : '';
+    const costSoldRow = isExtraBed ? (() => {
+        const supCurrency = (fulfillmentData && fulfillmentData.suppliers) ? (() => {
+            const supId = String(m.supplier_id || '');
+            const sup = fulfillmentData.suppliers.find(s => String(s.id) === supId);
+            return sup ? (sup.currency || 'USD') : (currentFulfillmentCurrency || 'USD');
+        })() : (currentFulfillmentCurrency || 'USD');
+        return `
+        <div class="row mt-2" style="border-top:1px dashed #e2e8f0;padding-top:8px;">
+            <div class="col-md-12 mb-1" style="font-size:0.8rem;font-weight:600;color:#d97706;">
+                <i class="feather icon-plus-square mr-1"></i>Extra Bed Cost
+            </div>
+            <div class="form-group col-md-2 mb-1">
+                <label style="font-size:0.8rem;">Currency</label>
+                <input type="text" class="form-control form-control-sm f-eb-currency" value="${escapeHtml(m.eb_currency || supCurrency)}">
+            </div>
+            <div class="form-group col-md-2 mb-1">
+                <label style="font-size:0.8rem;">Cost</label>
+                <input type="number" class="form-control form-control-sm f-eb-cost" min="0" step="0.01" value="${m.eb_cost != null ? m.eb_cost : ''}" data-booking-id="${m.booking_id}">
+            </div>
+            <div class="form-group col-md-2 mb-1">
+                <label style="font-size:0.8rem;">Rate</label>
+                <input type="number" class="form-control form-control-sm f-eb-rate" min="0" step="0.0001" value="${m.eb_rate != null ? m.eb_rate : ''}">
+            </div>
+            <div class="form-group col-md-2 mb-1">
+                <label style="font-size:0.8rem;">Cost (${currentFulfillmentCurrency})</label>
+                <input type="number" class="form-control form-control-sm f-eb-cost-usd" readonly value="${m.eb_cost_usd != null ? m.eb_cost_usd : ''}">
+            </div>
+            <div class="form-group col-md-2 mb-1">
+                <label style="font-size:0.8rem;">Sold (${currentFulfillmentCurrency})</label>
+                <input type="number" class="form-control form-control-sm f-eb-sold" min="0" step="0.01" value="${m.sold_price != null ? m.sold_price : ''}" data-booking-id="${m.booking_id}">
+            </div>
+            <div class="form-group col-md-2 mb-1">
+                <label style="font-size:0.8rem;">Profit (${currentFulfillmentCurrency})</label>
+                <input type="number" class="form-control form-control-sm f-eb-profit" readonly value="${m.profit != null ? m.profit : ''}">
+            </div>
+        </div>`;
+    })() : '';
     return `
-    <div class="card mb-2 f-hotel-group" data-gkey="m${m.booking_id}" data-member-id="${m.booking_id}" data-member-ids="${JSON.stringify([m.booking_id])}">
-        <div class="card-header bg-light py-1">
+    <div class="card mb-2 f-hotel-group ${isExtraBed ? 'f-extra-bed-card' : ''}" data-gkey="m${m.booking_id}" data-member-id="${m.booking_id}" data-member-ids="${JSON.stringify([m.booking_id])}" ${isExtraBed ? 'data-is-extra-bed="1"' : ''}>
+        <div class="card-header bg-light py-1 d-flex justify-content-between align-items-center">
             <h6 class="mb-0" style="font-size:0.85rem;color:#334155;">
                 <i class="feather ${icon} mr-2" style="color:${color};"></i>${escapeHtml(m.name || ('#' + m.booking_id))}
+                ${extraBedBadge}
                 ${hotelMemberChips(m, data)}
             </h6>
+            ${removeBtn}
         </div>
         <div class="card-body py-2">
             <div class="fulfillment-stays">
@@ -827,6 +875,7 @@ function hotelMemberCardHtml(m, data) {
             <button type="button" class="btn btn-sm btn-outline-primary btn-add-stay mt-1">
                 <i class="feather icon-plus mr-1"></i>${__t('add_stay')}
             </button>
+            ${costSoldRow}
         </div>
     </div>`;
 }
@@ -992,15 +1041,21 @@ function hotelSubgroupCardHtml(sub, mode, data) {
     const durChip = `<span class="flight-duration-chip ml-2">${sub.durKey === 'unspecified' ? '—' : sub.durKey + ' days'}</span>`;
     const names = sub.members.map(m => escapeHtml(m.name || ('#' + m.booking_id))).join(', ');
     const memberCards = hotelGroupedMemberCardsHtml(sub.members, data);
+    const addExtraBedBtn = (currentFulfillmentFamilyId && (currentFulfillmentMode === 'family' || currentFulfillmentMode === 'group'))
+        ? `<button type="button" class="btn btn-sm btn-outline-success btn-add-extra-bed ml-auto" style="font-size:0.78rem;padding:2px 8px;">
+            <i class="feather icon-plus-circle mr-1"></i>${__t('add_extra_bed')}
+          </button>`
+        : '';
     return `
     <div class="card mb-2 f-hotel-subgroup">
-        <div class="card-header bg-light py-1">
-            <h6 class="mb-0" style="font-size:0.85rem;color:#334155;">
+        <div class="card-header bg-light py-1 d-flex align-items-center">
+            <h6 class="mb-0 d-flex align-items-center flex-wrap" style="font-size:0.85rem;color:#334155;">
                 <i class="feather icon-users mr-2" style="color:#0e7490;"></i>
                 ${mode === 'family' ? famChip + durChip : durChip + famChip}
                 <span class="flight-duration-chip ml-2">${sub.members.length} member${sub.members.length === 1 ? '' : 's'}</span>
                 <span class="ml-1 text-muted" style="font-weight:400;">· ${names}</span>
             </h6>
+            ${addExtraBedBtn}
         </div>
         <div class="card-body py-2">
             ${memberCards}
@@ -1847,6 +1902,11 @@ function applySuggestion($card) {
             const hasCost = $card.find(prefix + 'cost').val() !== '';
             if (supCurrency && !hasCost) $card.find(prefix + 'currency').val(supCurrency);
         });
+        $card.find('.f-hotel-group[data-is-extra-bed="1"]').each(function() {
+            const $ebRow = $(this);
+            const ebHasCost = $ebRow.find('.f-eb-cost').val() !== '';
+            if (supCurrency && !ebHasCost) $ebRow.find('.f-eb-currency').val(supCurrency);
+        });
         updateFulfillmentCostUsd($card);
         syncFulfillmentRateField($card);
         return;
@@ -2262,6 +2322,77 @@ function bindFulfillmentEvents() {
         applyContractPricing($card);
     });
 
+    $(document).off('click.fulfillment', '.btn-add-extra-bed').on('click.fulfillment', '.btn-add-extra-bed', function() {
+        const $card = $(this).closest('.fulfillment-service-card');
+        const $btn = $(this);
+        const bookingServiceId = $card.data('booking-service-id');
+        const familyId = currentFulfillmentFamilyId || 0;
+        if (!familyId) return;
+
+        $btn.prop('disabled', true).html('<i class="feather icon-loader fa-spin mr-1"></i>Adding...');
+
+        $.post('../api/umrah/save_extra_bed.php', {
+            csrf_token: csrfToken,
+            action: 'add',
+            family_id: familyId,
+            booking_service_id: bookingServiceId
+        }, function(resp) {
+            if (resp.success) {
+                reloadFulfillmentModal();
+            } else {
+                alert(resp.message || 'Failed to add extra bed.');
+                $btn.prop('disabled', false).html('<i class="feather icon-plus-circle mr-1"></i>' + __t('add_extra_bed'));
+            }
+        }, 'json').fail(function() {
+            alert('Network error adding extra bed.');
+            $btn.prop('disabled', false).html('<i class="feather icon-plus-circle mr-1"></i>' + __t('add_extra_bed'));
+        });
+    });
+
+    $(document).off('click.fulfillment', '.btn-remove-extra-bed').on('click.fulfillment', '.btn-remove-extra-bed', function() {
+        if (!confirm('Remove this extra bed?')) return;
+        const $card = $(this).closest('.fulfillment-service-card');
+        const $btn = $(this);
+        const bookingId = $btn.data('booking-id');
+        const familyId = currentFulfillmentFamilyId || 0;
+        if (!bookingId || !familyId) return;
+
+        $btn.prop('disabled', true).html('<i class="feather icon-loader fa-spin"></i>');
+
+        $.post('../api/umrah/save_extra_bed.php', {
+            csrf_token: csrfToken,
+            action: 'remove',
+            family_id: familyId,
+            extra_bed_booking_id: bookingId
+        }, function(resp) {
+            if (resp.success) {
+                reloadFulfillmentModal();
+            } else {
+                alert(resp.message || 'Failed to remove extra bed.');
+                $btn.prop('disabled', false).html('<i class="feather icon-trash-2"></i>');
+            }
+        }, 'json').fail(function() {
+            alert('Network error removing extra bed.');
+            $btn.prop('disabled', false).html('<i class="feather icon-trash-2"></i>');
+        });
+    });
+
+    $(document).off('input.fulfillment', '.f-eb-cost, .f-eb-rate, .f-eb-sold, .f-eb-currency').on('input.fulfillment', '.f-eb-cost, .f-eb-rate, .f-eb-sold, .f-eb-currency', function() {
+        const $row = $(this).closest('.f-hotel-group');
+        const cur = ($row.find('.f-eb-currency').val() || '').trim().toUpperCase();
+        const cost = parseFloat($row.find('.f-eb-cost').val()) || 0;
+        const rate = parseFloat($row.find('.f-eb-rate').val()) || 0;
+        const sold = parseFloat($row.find('.f-eb-sold').val()) || 0;
+        let costUsd = 0;
+        if (cur === currentFulfillmentCurrency || !cur) {
+            costUsd = cost;
+        } else if (rate > 0) {
+            costUsd = cost / rate;
+        }
+        $row.find('.f-eb-cost-usd').val(costUsd ? costUsd.toFixed(2) : '');
+        $row.find('.f-eb-profit').val(sold ? (sold - costUsd).toFixed(2) : '');
+    });
+
     $(document).off('click.fulfillment', '.btn-save-fulfillment').on('click.fulfillment', '.btn-save-fulfillment', function() {
         saveFulfillment($(this).closest('.fulfillment-service-card'));
     });
@@ -2464,6 +2595,23 @@ function saveFulfillment($card) {
             formData.append('nights', $card.find('.f-nights').first().val() || '');
             formData.append('nightly_rate', $card.find('.f-nightly-rate').first().val() || '');
             formData.append('extra_bed', $card.find('.f-extra-bed').first().is(':checked') ? 1 : 0);
+        }
+        // Collect extra bed cost/sold data for pseudo-members
+        const extraBedData = {};
+        $card.find('.f-hotel-group[data-is-extra-bed="1"]').each(function() {
+            const bid = String($(this).data('member-id') || '');
+            if (!bid) return;
+            const currency = $(this).find('.f-eb-currency').val() || '';
+            const cost = $(this).find('.f-eb-cost').val() || '';
+            const rate = $(this).find('.f-eb-rate').val() || '';
+            const costUsd = $(this).find('.f-eb-cost-usd').val() || '';
+            const sold = $(this).find('.f-eb-sold').val() || '';
+            if (cost !== '' || sold !== '') {
+                extraBedData[bid] = { currency: currency, cost: cost, rate: rate, cost_usd: costUsd, sold: sold };
+            }
+        });
+        if (Object.keys(extraBedData).length) {
+            formData.append('extra_bed_costs', JSON.stringify(extraBedData));
         }
     } else if ($card.data('group') === 'flight') {
         if ($card.find('.f-flight-group').length && $card.find('.f-same-dep').length) {

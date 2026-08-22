@@ -97,6 +97,71 @@ function enrichHotelCityCosts(array &$services, $pdo, int $tenant_id): void
     unset($sv);
 }
 
+// Enrich extra bed pseudo-members with their stored cost/currency data from
+// umrah_fulfillment_details so the UI can pre-fill cost, rate, sold fields.
+function enrichExtraBedCosts(array &$services, $pdo, int $tenant_id): void
+{
+    // Collect booking_ids of extra bed members from member_breakdown
+    $ebBookingIds = [];
+    foreach ($services as $sv) {
+        if (empty($sv['member_breakdown'])) continue;
+        foreach ($sv['member_breakdown'] as &$m) {
+            if (!empty($m['is_extra_bed'])) {
+                $ebBookingIds[] = (int)$m['booking_id'];
+            }
+        }
+        unset($m);
+    }
+    if (!$ebBookingIds) return;
+
+    // Find the fulfillment_id for each extra bed member's hotel service
+    $ph = implode(',', array_fill(0, count($ebBookingIds), '?'));
+    $fStmt = $pdo->prepare("
+        SELECT bs.booking_id, f.id AS fulfillment_id
+        FROM umrah_fulfillments f
+        JOIN umrah_booking_services bs ON bs.id = f.booking_service_id
+        WHERE bs.booking_id IN ($ph) AND bs.tenant_id = ?
+          AND LOWER(bs.service_type) = 'hotel'
+        GROUP BY bs.booking_id, f.id");
+    $fStmt->execute(array_merge($ebBookingIds, [$tenant_id]));
+    $fidMap = [];
+    foreach ($fStmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $fidMap[(int)$r['booking_id']] = (int)$r['fulfillment_id'];
+    }
+    if (!$fidMap) return;
+
+    // Load fulfillment_details for all extra bed fulfillment IDs
+    $fids = array_values($fidMap);
+    $ph2 = implode(',', array_fill(0, count($fids), '?'));
+    $dStmt = $pdo->prepare("
+        SELECT fulfillment_id, detail_key, detail_value
+        FROM umrah_fulfillment_details
+        WHERE fulfillment_id IN ($ph2) AND tenant_id = ?
+          AND (detail_key LIKE 'eb_%')");
+    $dStmt->execute(array_merge($fids, [$tenant_id]));
+    $detailMap = [];
+    foreach ($dStmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $detailMap[(int)$r['fulfillment_id']][$r['detail_key']] = (string)$r['detail_value'];
+    }
+
+    // Enrich extra bed members in member_breakdown
+    foreach ($services as &$sv) {
+        if (empty($sv['member_breakdown'])) continue;
+        foreach ($sv['member_breakdown'] as &$m) {
+            if (empty($m['is_extra_bed'])) continue;
+            $bid = (int)$m['booking_id'];
+            if (!isset($fidMap[$bid]) || !isset($detailMap[$fidMap[$bid]])) continue;
+            $d = $detailMap[$fidMap[$bid]];
+            $m['eb_currency'] = $d['eb_currency'] ?? '';
+            $m['eb_cost'] = $d['eb_cost'] !== '' ? $d['eb_cost'] : null;
+            $m['eb_rate'] = $d['eb_rate'] !== '' ? $d['eb_rate'] : null;
+            $m['eb_cost_usd'] = $d['eb_cost_usd'] !== '' ? $d['eb_cost_usd'] : null;
+        }
+        unset($m);
+    }
+    unset($sv);
+}
+
 // Travel type of a member from their date of birth — the same thresholds
 // used by the passenger manifest (infant < 2, child 2-11, adult otherwise).
 // Unknown dates default to adult. Ticket costs are priced per type; infants
@@ -214,7 +279,7 @@ if ($isAggregate) {
 
     $placeholders = implode(',', array_fill(0, count($scopeFamilies), '?'));
     $mStmt = $pdo->prepare("
-        SELECT booking_id, name, family_id, sold_price, discount, paid, due, currency
+        SELECT booking_id, name, family_id, sold_price, discount, paid, due, currency, is_extra_bed
         FROM umrah_bookings
         WHERE family_id IN ($placeholders) AND tenant_id = ?
           AND status NOT IN ('refunded', 'cancelled')
@@ -246,6 +311,7 @@ if ($isAggregate) {
     $agStmt = $pdo->prepare("
         SELECT bs.id AS booking_service_id,
                bs.booking_id, ub.family_id, ub.name, ub.gender, ub.room_type, ub.duration, ub.dob,
+               ub.is_extra_bed,
                bs.service_type, bs.service_id,
                bs.pricing_unit, bs.quantity, bs.is_optional,
                bs.base_price, bs.sold_price, bs.profit, bs.currency,
@@ -351,6 +417,10 @@ if ($isAggregate) {
         $rep['members_applicable'] = count($usable);
         $rep['coverage_skipped'] = count($lines) - count($usable);
         $rep['skip_breakdown'] = $skipBreak;
+        // Card-level supplier from the representative's fulfillment — used as
+        // a fallback for extra bed pseudo-members that don't have their own
+        // supplier yet.
+        $repCardSupplierId = !empty($rep['supplier_id']) ? (int)$rep['supplier_id'] : null;
         // Per-member flight breakdown (only for flight lines) — lets the card
         // split shared PNR / departure / return by each member's duration.
         $rep['member_breakdown'] = [];
@@ -395,6 +465,12 @@ if ($isAggregate) {
                     'gender' => (string)($ln['gender'] ?? ''),
                     'room_type' => (string)($ln['room_type'] ?? ''),
                     'duration' => ($ln['duration'] !== null && $ln['duration'] !== '') ? (int)$ln['duration'] : null,
+                    'is_extra_bed' => !empty($ln['is_extra_bed']),
+                    'supplier_id' => !empty($ln['supplier_id']) ? (int)$ln['supplier_id'] : $repCardSupplierId,
+                    'cost' => $ln['base_price'] !== null ? (float)$ln['base_price'] : null,
+                    'sold_price' => $ln['sold_price'] !== null ? (float)$ln['sold_price'] : null,
+                    'profit' => $ln['profit'] !== null ? (float)$ln['profit'] : null,
+                    'paid' => $ln['paid'] !== null ? (float)$ln['paid'] : null,
                     'stays' => [],
                 ];
             }
@@ -451,6 +527,7 @@ if ($isAggregate) {
                bs.status AS sold_status,
                bs.price_snapshot,
                s.name AS service_name, c.name AS category_name,
+               ub.is_extra_bed,
                f.id AS fulfillment_id, f.status AS fulfill_status,
                f.supplier_id, f.supplier_currency, f.supplier_cost, f.exchange_rate,
                f.cost_amount, f.requested_date, f.planned_date, f.completed_date, f.notes,
@@ -460,6 +537,7 @@ if ($isAggregate) {
                ff.departure_city, ff.arrival_city, ff.departure_time, ff.arrival_time,
                ff.return_flight_number, ff.return_departure_time, ff.return_arrival_time, ff.class
         FROM umrah_booking_services bs
+        JOIN umrah_bookings ub ON ub.booking_id = bs.booking_id
         LEFT JOIN umrah_services s ON bs.service_id = s.id
         LEFT JOIN umrah_service_categories c ON s.category_id = c.id
         LEFT JOIN umrah_fulfillments f ON f.booking_service_id = bs.id
@@ -661,6 +739,9 @@ unset($c);
 
 // ---- Enrich hotel services with per-city cost fields ----------------------
 enrichHotelCityCosts($services, $pdo, $tenant_id);
+
+// ---- Enrich extra bed members with stored cost data -----------------------
+enrichExtraBedCosts($services, $pdo, $tenant_id);
 
 // ---- Transport contracts (amount-based: amount / members with the service) ----
 $transportContracts = [];
