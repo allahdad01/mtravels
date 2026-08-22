@@ -784,11 +784,11 @@ function fulfillment_save(PDO $pdo, array $in): array
                 // ---- Create fulfillment ------------------------------------------------
                 $ins = $pdo->prepare("
                     INSERT INTO umrah_fulfillments (
-                        tenant_id, branch_id, booking_service_id, fulfillment_type,
+                        tenant_id, branch_id, booking_service_id, family_id, fulfillment_type,
                         supplier_id, status, requested_date, planned_date, completed_date,
                         supplier_currency, supplier_cost, exchange_rate, cost_amount, notes, created_by
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $ins->execute([$tenant_id, $branch_id, $booking_service_id, $fulfillment_type,
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $ins->execute([$tenant_id, $branch_id, $booking_service_id, $fulfillmentFamilyId, $fulfillment_type,
                                $supplier_id, $status, $requested_date, $planned_date, $completed_date,
                                $supplier_currency, $supplier_cost, $exchange_rate, $cost_amount, $notes, $user_id]);
                 $fulfillment_id = (int)$pdo->lastInsertId();
@@ -1051,25 +1051,10 @@ function fulfillment_save(PDO $pdo, array $in): array
         $activated = false;
 
         if ($bkRow && (string)$bkRow['status'] === 'pending') {
-            $cntStmt = $pdo->prepare("
-                SELECT COUNT(*) FROM umrah_booking_services
-                WHERE booking_id = ? AND tenant_id = ? AND (is_optional = 0 OR is_optional IS NULL)
-                  AND (is_excluded = 0 OR is_excluded IS NULL)");
-            $cntStmt->execute([$booking_id, $tenant_id]);
-            $nonOptionalCnt = (int)$cntStmt->fetchColumn();
+            // Activate when visa is issued — the single trigger for booking activation.
+            $shouldActivate = ($fulfillment_type === 'visa' && (string)$status === 'issued');
 
-            $fulStmt = $pdo->prepare("
-                SELECT COUNT(*) FROM umrah_booking_services ubs
-                WHERE ubs.booking_id = ? AND ubs.tenant_id = ? AND (ubs.is_optional = 0 OR ubs.is_optional IS NULL)
-                  AND (ubs.is_excluded = 0 OR ubs.is_excluded IS NULL)
-                  AND EXISTS (
-                      SELECT 1 FROM umrah_fulfillments f
-                      WHERE f.booking_service_id = ubs.id AND f.tenant_id = ?
-                        AND f.supplier_cost IS NOT NULL AND f.status <> 'cancelled')");
-            $fulStmt->execute([$booking_id, $tenant_id, $tenant_id]);
-            $fulfilledCnt = (int)$fulStmt->fetchColumn();
-
-            if ($nonOptionalCnt === 0 || $fulfilledCnt >= $nonOptionalCnt) {
+            if ($shouldActivate) {
                 if (empty($bkRow['sold_to'])) {
                     $pdo->rollBack();
                     return ['success' => false, 'code' => 400, 'message' => 'Booking has no client (sold_to) — cannot activate.'];

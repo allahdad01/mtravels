@@ -311,7 +311,7 @@ if ($isAggregate) {
     $agStmt = $pdo->prepare("
         SELECT bs.id AS booking_service_id,
                bs.booking_id, ub.family_id, ub.name, ub.gender, ub.room_type, ub.duration, ub.dob,
-               ub.is_extra_bed,
+               ub.is_extra_bed, ub.paid,
                bs.service_type, bs.service_id,
                bs.pricing_unit, bs.quantity, bs.is_optional, bs.is_excluded,
                bs.base_price, bs.sold_price, bs.profit, bs.currency,

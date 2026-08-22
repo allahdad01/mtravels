@@ -1670,9 +1670,12 @@ function renderFulfillmentServices(data) {
                </label>`
             : '';
 
+        const isAggregateView = currentFulfillmentMode !== 'member';
+        const cardExcluded = isExcluded && !isAggregateView;
+
         const card = `
-        <div class="card mb-3 fulfillment-service-card ${isExcluded ? 'border-danger' : ''}" data-booking-service-id="${service.booking_service_id}" data-service-id="${service.service_id || ''}" data-qty="${qty}" data-group="${group}" data-frozen="${isFrozen ? 1 : 0}" data-excluded="${isExcluded ? 1 : 0}" data-cost="${service.cost_amount !== null && service.cost_amount !== undefined ? service.cost_amount : ''}" data-orig-rate="${service.exchange_rate !== null && service.exchange_rate !== undefined ? service.exchange_rate : ''}" data-planned="${service.planned_date || ''}" data-completed="${service.completed_date || ''}">
-            <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap ${isExcluded ? 'bg-light' : ''}" ${isExcluded ? 'style="opacity:0.6;"' : ''}>
+        <div class="card mb-3 fulfillment-service-card ${cardExcluded ? 'border-danger' : ''}" data-booking-service-id="${service.booking_service_id}" data-service-id="${service.service_id || ''}" data-qty="${qty}" data-group="${group}" data-frozen="${isFrozen ? 1 : 0}" data-excluded="${isExcluded ? 1 : 0}" data-cost="${service.cost_amount !== null && service.cost_amount !== undefined ? service.cost_amount : ''}" data-orig-rate="${service.exchange_rate !== null && service.exchange_rate !== undefined ? service.exchange_rate : ''}" data-planned="${service.planned_date || ''}" data-completed="${service.completed_date || ''}">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap" ${cardExcluded ? 'style="opacity:0.6;"' : ''}>
                 <div class="d-flex align-items-center flex-wrap">
                     <strong>${escapeHtml(name)}</strong>
                     <span class="fulfillment-chip ml-2">${qty} × ${escapeHtml(service.pricing_unit || '')} ${service.is_optional ? '<span class="fulfillment-chip fulfillment-chip-optional ml-1">optional</span>' : ''}</span>
@@ -1682,7 +1685,7 @@ function renderFulfillmentServices(data) {
                     </span>
                     ${excludeToggle}
                 </div>
-                <span class="fulfillment-status f-status-badge">${isExcluded ? 'excluded' : escapeHtml(soldStatus)}</span>
+                <span class="fulfillment-status f-status-badge">${cardExcluded ? 'excluded' : escapeHtml(soldStatus)}</span>
             </div>
             <div class="card-body pt-3">
                 <div class="row">
@@ -1763,7 +1766,7 @@ function renderFulfillmentServices(data) {
                         <input type="text" class="form-control form-control-sm f-notes" value="${escapeHtml(service.notes || '')}">
                     </div>
                 </div>
-                ${!memberView && service.member_breakdown && service.member_breakdown.length ? (() => {
+                ${data.scope !== 'member' && service.member_breakdown && service.member_breakdown.length ? (() => {
                     const currentFamId = currentFulfillmentFamilyId ? parseInt(currentFulfillmentFamilyId, 10) : 0;
                     let unfulfilled = 0, willUpdate = 0, transferred = 0;
                     service.member_breakdown.forEach(m => {
@@ -1830,7 +1833,7 @@ function renderFulfillmentServices(data) {
     $container.find('.fulfillment-service-card').each(function() {
         syncFulfillmentRoomOptions($(this));
         autoAssignRooms($(this));
-        if ($(this).data('excluded')) {
+        if ($(this).data('excluded') && currentFulfillmentMode === 'member') {
             $(this).find('.btn-save-fulfillment').prop('disabled', true);
         }
     });
