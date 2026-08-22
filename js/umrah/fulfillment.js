@@ -841,27 +841,27 @@ function hotelMemberCardHtml(m, data) {
             <div class="col-md-12 mb-1" style="font-size:0.8rem;font-weight:600;color:#d97706;">
                 <i class="feather icon-plus-square mr-1"></i>Extra Bed Cost
             </div>
-            <div class="form-group col-md-2 mb-1">
+            <div class="form-group col-md-4 mb-1">
                 <label style="font-size:0.8rem;">Currency</label>
                 <input type="text" class="form-control form-control-sm f-eb-currency" value="${escapeHtml(m.eb_currency || supCurrency)}">
             </div>
-            <div class="form-group col-md-2 mb-1">
+            <div class="form-group col-md-4 mb-1">
                 <label style="font-size:0.8rem;">Cost</label>
                 <input type="number" class="form-control form-control-sm f-eb-cost" min="0" step="0.01" value="${m.eb_cost != null ? m.eb_cost : ''}" data-booking-id="${m.booking_id}">
             </div>
-            <div class="form-group col-md-2 mb-1">
+            <div class="form-group col-md-4 mb-1">
                 <label style="font-size:0.8rem;">Rate</label>
                 <input type="number" class="form-control form-control-sm f-eb-rate" min="0" step="0.0001" value="${m.eb_rate != null ? m.eb_rate : ''}">
             </div>
-            <div class="form-group col-md-2 mb-1">
+            <div class="form-group col-md-4 mb-1">
                 <label style="font-size:0.8rem;">Cost (${currentFulfillmentCurrency})</label>
                 <input type="number" class="form-control form-control-sm f-eb-cost-usd" readonly value="${m.eb_cost_usd != null ? m.eb_cost_usd : ''}">
             </div>
-            <div class="form-group col-md-2 mb-1">
+            <div class="form-group col-md-4 mb-1">
                 <label style="font-size:0.8rem;">Sold (${currentFulfillmentCurrency})</label>
                 <input type="number" class="form-control form-control-sm f-eb-sold" min="0" step="0.01" value="${m.sold_price != null ? m.sold_price : ''}" data-booking-id="${m.booking_id}">
             </div>
-            <div class="form-group col-md-2 mb-1">
+            <div class="form-group col-md-4 mb-1">
                 <label style="font-size:0.8rem;">Profit (${currentFulfillmentCurrency})</label>
                 <input type="number" class="form-control form-control-sm f-eb-profit" readonly value="${m.profit != null ? m.profit : ''}">
             </div>
@@ -1056,9 +1056,11 @@ function hotelSubgroupCardHtml(sub, mode, data) {
             <i class="feather icon-plus-circle mr-1"></i>${__t('add_extra_bed')}
           </button>`
         : '';
+    const subgroupCollapseId = 'fam-collapse-' + (sub.fam || 0) + '-' + (sub.durKey || '').replace(/\s+/g, '-');
     return `
     <div class="card mb-2 f-hotel-subgroup">
-        <div class="card-header bg-light py-1 d-flex align-items-center">
+        <div class="card-header bg-light py-1 d-flex align-items-center" style="cursor:pointer;" data-toggle="collapse" data-target="#${subgroupCollapseId}" aria-expanded="false">
+            <i class="feather icon-chevron-right mr-2" style="font-size:0.75rem;color:#64748b;transition:transform 0.2s;"></i>
             <h6 class="mb-0 d-flex align-items-center flex-wrap" style="font-size:0.85rem;color:#334155;">
                 <i class="feather icon-users mr-2" style="color:#0e7490;"></i>
                 ${mode === 'family' ? famChip + durChip : durChip + famChip}
@@ -1067,8 +1069,10 @@ function hotelSubgroupCardHtml(sub, mode, data) {
             </h6>
             ${addExtraBedBtn}
         </div>
-        <div class="card-body py-2">
-            ${memberCards}
+        <div class="collapse" id="${subgroupCollapseId}">
+            <div class="card-body py-2">
+                ${memberCards}
+            </div>
         </div>
     </div>`;
 }
@@ -2254,6 +2258,14 @@ function bindFulfillmentEvents() {
         const indirect = $(this).val() === 'indirect';
         $card.find('.f-flight-direct').toggle(!indirect);
         $card.find('.f-flight-indirect').toggle(indirect);
+    });
+
+    // Rotate chevron when family subgroup collapse toggles
+    $(document).off('shown.bs.collapse.fulfillment', '.f-hotel-subgroup .collapse').on('shown.bs.collapse.fulfillment', '.f-hotel-subgroup .collapse', function() {
+        $(this).closest('.f-hotel-subgroup').find('.icon-chevron-right').css('transform', 'rotate(90deg)');
+    });
+    $(document).off('hidden.bs.collapse.fulfillment', '.f-hotel-subgroup .collapse').on('hidden.bs.collapse.fulfillment', '.f-hotel-subgroup .collapse', function() {
+        $(this).closest('.f-hotel-subgroup').find('.icon-chevron-right').css('transform', '');
     });
 
     // Live stopover duration between leg1 arrival and leg2 departure

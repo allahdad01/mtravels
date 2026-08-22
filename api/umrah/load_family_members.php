@@ -215,6 +215,11 @@ try {
                                  <i class="fas fa-credit-card"></i><?= __('transaction') ?>
                              </a>
                              <?php endif; ?>
+                             <?php if (user_can('umrah.fulfill')): ?>
+                             <a class="dropdown-item" href="#" onclick="openFulfillmentModal(<?= $member['booking_id'] ?>, '<?= htmlspecialchars(addslashes($member['name'] ?? ''), ENT_QUOTES) ?>'); return false;">
+                                 <i class="fas fa-truck-loading"></i><?= __('fulfill_services') ?>
+                             </a>
+                             <?php endif; ?>
                             
                             <?php if (!$isDisabled): ?>
                             <div class="dropdown-divider"></div>

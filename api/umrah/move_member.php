@@ -99,6 +99,10 @@ try {
     $dcStmt = $pdo->prepare("UPDATE date_change_umrah SET family_id = ? WHERE umrah_booking_id = ? AND tenant_id = ? AND branch_id = ?");
     $dcStmt->execute([$targetFamilyId, $bookingId, $tenant_id, $branch_id]);
 
+    // 5. Re-include all excluded services — the new family starts fresh
+    $pdo->prepare("UPDATE umrah_booking_services SET is_excluded = 0 WHERE booking_id = ? AND is_excluded = 1")
+        ->execute([$bookingId]);
+
     // 5. Recalculate totals for both source and destination families
     recalcFamilyTotals($pdo, $tenant_id, $sourceFamilyId);
     recalcFamilyTotals($pdo, $tenant_id, $targetFamilyId);
