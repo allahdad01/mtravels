@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // Include security module
 require_once 'security.php';
 
@@ -523,7 +523,7 @@ $canEdit = user_can('umrah.member_edit');
                     $resultFamilies = $familiesStmt->fetchAll(PDO::FETCH_ASSOC);
 
                     // Families with at least one regular client (single query for all
-                    // families on this page — replaces the per-card N+1 query)
+                    // families on this page â€” replaces the per-card N+1 query)
                     $regularClientFamilies = [];
                     $familyIds = array_column($resultFamilies, 'family_id');
                     if (!empty($familyIds)) {
@@ -679,7 +679,7 @@ $canEdit = user_can('umrah.member_edit');
                                     <div class="card-body-section">
                                         <div class="info-row">
                                             <i class="fas fa-calendar-alt"></i>
-                                            <span><?= __('created_by') ?>: <?= htmlspecialchars($group['created_by'] ?: '—') ?> · <?= date('Y-m-d', strtotime($group['created_at'])) ?></span>
+                                            <span><?= __('created_by') ?>: <?= htmlspecialchars($group['created_by'] ?: 'â€”') ?> Â· <?= date('Y-m-d', strtotime($group['created_at'])) ?></span>
                                         </div>
                                         <div class="financial-summary">
                                             <div class="financial-details">
@@ -1036,10 +1036,10 @@ $canEdit = user_can('umrah.member_edit');
                                         </td>
                                         <td><?= htmlspecialchars($m['passport_number']) ?></td>
                                         <td><?= htmlspecialchars($m['head_of_family']) ?></td>
-                                        <td><?= htmlspecialchars($m['client_name']) ?: '—' ?></td>
-                                        <td><?= htmlspecialchars($m['duration']) ?: '—' ?></td>
-                                        <td><?= htmlspecialchars($m['room_type']) ?: '—' ?></td>
-                                        <td><?= htmlspecialchars($m['visa_status']) ?: '—' ?></td>
+                                        <td><?= htmlspecialchars($m['client_name']) ?: 'â€”' ?></td>
+                                        <td><?= htmlspecialchars($m['duration']) ?: 'â€”' ?></td>
+                                        <td><?= htmlspecialchars($m['room_type']) ?: 'â€”' ?></td>
+                                        <td><?= htmlspecialchars($m['visa_status']) ?: 'â€”' ?></td>
                                         <td><span class="flight-member-badge <?= $mBadgeClass ?>"><i class="fas <?= $mBadgeIcon ?>"></i> <?= $mBadgeText ?></span></td>
                                         <td class="member-cell-finance">
                                             <b><?= number_format((float)($m['sold_price'] ?? 0), 2) ?> <?= $mCurrency ?></b><br>
@@ -1520,6 +1520,7 @@ $canEdit = user_can('umrah.member_edit');
 <?php include '../modals/umrah/family_transaction_modal.php'; ?>
 <?php include '../modals/umrah/flight_details_modal.php'; ?>
 <?php include '../modals/umrah/fulfillment_modal.php'; ?>
+<?php include '../modals/umrah/move_member_modal.php'; ?>
 
 <!-- Floating action buttons -->
 <div id="groupTicketFloatingButton" class="floating-action-btn" style="display: none; bottom: 220px; right: 23px;">
@@ -1734,10 +1735,10 @@ $canEdit = user_can('umrah.member_edit');
                     
                     if (flightDone === totalMembers && totalMembers > 0) {
                         statusBadge.classList.add('flight-complete');
-                        statusText.textContent = `✓ Flight Done (${flightDone}/${totalMembers})`;
+                        statusText.textContent = `âœ“ Flight Done (${flightDone}/${totalMembers})`;
                     } else if (flightDone > 0) {
                         statusBadge.classList.add('flight-partial');
-                        statusText.textContent = `⚠ Flight Done (${flightDone}/${totalMembers})`;
+                        statusText.textContent = `âš  Flight Done (${flightDone}/${totalMembers})`;
                     } else {
                         statusBadge.classList.add('flight-pending');
                         statusText.textContent = `Flight Pending (0/${totalMembers})`;
@@ -1989,7 +1990,7 @@ $canEdit = user_can('umrah.member_edit');
 
 <div class="manifest-lang-modal" id="manifestTypeModal">
     <div class="manifest-lang-dialog">
-        <button type="button" class="manifest-lang-close" aria-label="Close">×</button>
+        <button type="button" class="manifest-lang-close" aria-label="Close">Ã—</button>
         <div class="manifest-lang-title"><?= __('select_document_type') ?></div>
         <div class="manifest-lang-actions">
             <button type="button" class="manifest-lang-btn" data-doc-type="print">
@@ -2003,7 +2004,7 @@ $canEdit = user_can('umrah.member_edit');
 </div>
 <div class="manifest-lang-modal" id="manifestLangModal">
     <div class="manifest-lang-dialog">
-        <button type="button" class="manifest-lang-close" aria-label="Close">×</button>
+        <button type="button" class="manifest-lang-close" aria-label="Close">Ã—</button>
         <div class="manifest-lang-title"><?= __('language') ?></div>
         <div class="manifest-lang-actions">
             <button type="button" class="manifest-lang-btn" data-doc-lang="dari"><?= __('dari') ?></button>

@@ -818,6 +818,15 @@ function hotelMemberCardHtml(m, data) {
     const icon = isExtraBed ? 'icon-plus-square' : (isF ? 'icon-user-check' : 'icon-user');
     const color = isExtraBed ? '#d97706' : (isF ? '#be185d' : '#0e7490');
     const extraBedBadge = isExtraBed ? '<span class="fulfillment-chip ml-2" style="background:#fef3c7;color:#92400e;"><i class="feather icon-plus-square mr-1"></i>Extra Bed</span>' : '';
+    // Ownership badge: transferred member from a different family
+    const currentFamId = currentFulfillmentFamilyId ? parseInt(currentFulfillmentFamilyId, 10) : 0;
+    const ffId = m.fulfillment_family_id ? parseInt(m.fulfillment_family_id, 10) : 0;
+    let ownershipBadge = '';
+    if (m.fulfillment_id && ffId && currentFamId && ffId !== currentFamId) {
+        ownershipBadge = '<span class="fulfillment-chip ml-2" style="background:#fef2f2;color:#dc3545;"><i class="feather icon-skip-forward mr-1"></i>Transferred</span>';
+    } else if (m.fulfillment_id) {
+        ownershipBadge = '<span class="fulfillment-chip ml-2" style="background:#fef9c3;color:#92400e;font-size:0.75rem;">will update</span>';
+    }
     const removeBtn = isExtraBed
         ? `<button type="button" class="btn btn-sm btn-outline-danger btn-remove-extra-bed ml-2" data-booking-id="${m.booking_id}" title="Remove extra bed"><i class="feather icon-trash-2"></i></button>`
         : '';
@@ -864,6 +873,7 @@ function hotelMemberCardHtml(m, data) {
             <h6 class="mb-0" style="font-size:0.85rem;color:#334155;">
                 <i class="feather ${icon} mr-2" style="color:${color};"></i>${escapeHtml(m.name || ('#' + m.booking_id))}
                 ${extraBedBadge}
+                ${ownershipBadge}
                 ${hotelMemberChips(m, data)}
             </h6>
             ${removeBtn}
@@ -1641,6 +1651,7 @@ function renderFulfillmentServices(data) {
         }
 
         const isFrozen = isFulfillmentFrozen(service.fulfill_status || '');
+        const isExcluded = !!service.is_excluded;
 
         let coverageChip = '';
         if (currentFulfillmentMode !== 'member' && service.is_aggregate) {
@@ -1652,18 +1663,26 @@ function renderFulfillmentServices(data) {
             </span>`;
         }
 
+        const excludeToggle = (currentFulfillmentMode === 'member' && group !== 'brn')
+            ? `<label class="mb-0 ml-3" style="font-size:0.8rem;font-weight:500;color:${isExcluded ? '#dc3545' : '#475569'};cursor:pointer;">
+                <input type="checkbox" class="f-exclude-toggle mr-1" ${isExcluded ? 'checked' : ''} style="cursor:pointer;">
+                ${isExcluded ? 'Excluded' : 'Exclude'}
+               </label>`
+            : '';
+
         const card = `
-        <div class="card mb-3 fulfillment-service-card" data-booking-service-id="${service.booking_service_id}" data-service-id="${service.service_id || ''}" data-qty="${qty}" data-group="${group}" data-frozen="${isFrozen ? 1 : 0}" data-cost="${service.cost_amount !== null && service.cost_amount !== undefined ? service.cost_amount : ''}" data-orig-rate="${service.exchange_rate !== null && service.exchange_rate !== undefined ? service.exchange_rate : ''}" data-planned="${service.planned_date || ''}" data-completed="${service.completed_date || ''}">
-            <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap">
-                <div>
+        <div class="card mb-3 fulfillment-service-card ${isExcluded ? 'border-danger' : ''}" data-booking-service-id="${service.booking_service_id}" data-service-id="${service.service_id || ''}" data-qty="${qty}" data-group="${group}" data-frozen="${isFrozen ? 1 : 0}" data-excluded="${isExcluded ? 1 : 0}" data-cost="${service.cost_amount !== null && service.cost_amount !== undefined ? service.cost_amount : ''}" data-orig-rate="${service.exchange_rate !== null && service.exchange_rate !== undefined ? service.exchange_rate : ''}" data-planned="${service.planned_date || ''}" data-completed="${service.completed_date || ''}">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap ${isExcluded ? 'bg-light' : ''}" ${isExcluded ? 'style="opacity:0.6;"' : ''}>
+                <div class="d-flex align-items-center flex-wrap">
                     <strong>${escapeHtml(name)}</strong>
                     <span class="fulfillment-chip ml-2">${qty} × ${escapeHtml(service.pricing_unit || '')} ${service.is_optional ? '<span class="fulfillment-chip fulfillment-chip-optional ml-1">optional</span>' : ''}</span>
                     ${coverageChip}
                     <span class="ml-2 text-muted" style="font-size: 0.85rem;">
                         Cost: <b class="f-card-cost">${costUsd.toFixed(2)}</b> <span class="f-card-cost-cur">${escapeHtml(currentFulfillmentCurrency)}</span>
                     </span>
+                    ${excludeToggle}
                 </div>
-                <span class="fulfillment-status f-status-badge">${escapeHtml(soldStatus)}</span>
+                <span class="fulfillment-status f-status-badge">${isExcluded ? 'excluded' : escapeHtml(soldStatus)}</span>
             </div>
             <div class="card-body pt-3">
                 <div class="row">
@@ -1744,6 +1763,26 @@ function renderFulfillmentServices(data) {
                         <input type="text" class="form-control form-control-sm f-notes" value="${escapeHtml(service.notes || '')}">
                     </div>
                 </div>
+                ${!memberView && service.member_breakdown && service.member_breakdown.length ? (() => {
+                    const currentFamId = currentFulfillmentFamilyId ? parseInt(currentFulfillmentFamilyId, 10) : 0;
+                    let unfulfilled = 0, willUpdate = 0, transferred = 0;
+                    service.member_breakdown.forEach(m => {
+                        const ffId = m.fulfillment_family_id ? parseInt(m.fulfillment_family_id, 10) : 0;
+                        if (!m.fulfillment_id || m.fulfillment_id === '0' || m.fulfillment_id === null) {
+                            unfulfilled++;
+                        } else if (ffId && currentFamId && ffId !== currentFamId) {
+                            transferred++;
+                        } else {
+                            willUpdate++;
+                        }
+                    });
+                    const parts = [];
+                    if (unfulfilled) parts.push(`<span style="color:#0e7490;">${unfulfilled} unfulfilled</span>`);
+                    if (willUpdate) parts.push(`<span style="color:#d97706;">${willUpdate} will update</span>`);
+                    if (transferred) parts.push(`<span style="color:#dc3545;">${transferred} transferred (skip)</span>`);
+                    if (!parts.length) return '';
+                    return `<div class="f-ownership-summary mb-1" style="font-size:0.78rem;color:#6b7280;"><i class="feather icon-info mr-1" style="color:#0e7490;"></i>${parts.join(' · ')}</div>`;
+                })() : ''}
                 <div class="d-flex justify-content-between align-items-center flex-wrap mt-2">
                     ${currentFulfillmentMode === 'family' ? `
                     <label class="mb-0" style="font-size:0.85rem;">Apply to:
@@ -1791,6 +1830,9 @@ function renderFulfillmentServices(data) {
     $container.find('.fulfillment-service-card').each(function() {
         syncFulfillmentRoomOptions($(this));
         autoAssignRooms($(this));
+        if ($(this).data('excluded')) {
+            $(this).find('.btn-save-fulfillment').prop('disabled', true);
+        }
     });
 }
 
@@ -2399,6 +2441,47 @@ function bindFulfillmentEvents() {
 
     $(document).off('click.fulfillment', '.btn-save-brn').on('click.fulfillment', '.btn-save-brn', function() {
         saveBrn($(this).closest('.fulfillment-service-card'));
+    });
+
+    $(document).off('change.fulfillment', '.f-exclude-toggle').on('change.fulfillment', '.f-exclude-toggle', function() {
+        const $card = $(this).closest('.fulfillment-service-card');
+        const $toggle = $(this);
+        const bookingServiceId = $card.data('booking-service-id');
+        const isExcluded = $toggle.is(':checked') ? 1 : 0;
+
+        $toggle.prop('disabled', true);
+        $.post('../api/umrah/toggle_service_exclusion.php', {
+            csrf_token: csrfToken,
+            booking_service_id: bookingServiceId,
+            is_excluded: isExcluded
+        }, function(resp) {
+            $toggle.prop('disabled', false);
+            if (resp.success) {
+                $card.data('excluded', isExcluded);
+                if (isExcluded) {
+                    $card.addClass('border-danger');
+                    $card.find('.card-header').css('opacity', '0.6');
+                    $card.find('.f-status-badge').text('excluded');
+                    $card.find('.btn-save-fulfillment').prop('disabled', true);
+                    $toggle.closest('label').css('color', '#dc3545').html('<input type="checkbox" class="f-exclude-toggle mr-1" checked style="cursor:pointer;"> Excluded');
+                } else {
+                    $card.removeClass('border-danger');
+                    $card.find('.card-header').css('opacity', '1');
+                    $card.find('.f-status-badge').text('pending');
+                    $card.find('.btn-save-fulfillment').prop('disabled', false);
+                    $toggle.closest('label').css('color', '#475569').html('<input type="checkbox" class="f-exclude-toggle mr-1" style="cursor:pointer;"> Exclude');
+                }
+                updateFulfillmentSummary();
+                showToast('success', resp.message);
+            } else {
+                $toggle.prop('checked', !isExcluded);
+                showToast('error', resp.message || 'Failed to toggle exclusion');
+            }
+        }, 'json').fail(function() {
+            $toggle.prop('disabled', false);
+            $toggle.prop('checked', !isExcluded);
+            showToast('error', 'Network error');
+        });
     });
 }
 

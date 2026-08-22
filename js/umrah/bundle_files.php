@@ -1,6 +1,6 @@
-<?php
+﻿<?php
 // Shared list of Umrah page scripts served by js/umrah/bundle.php.
-// Paths are relative to the js/ root. Single source of truth — the page
+// Paths are relative to the js/ root. Single source of truth â€” the page
 // uses this list to compute a cache-busting version from filemtimes.
 return [
     'umrah/family_transaction_manager.js',
@@ -31,6 +31,7 @@ return [
     'umrah/fulfillment.js',
     'umrah/member_dashboard.js',
     'umrah/groups.js',
+    'umrah/move_member.js',
     'umrah/hotel_dashboard.js',
     'umrah/transport.js',
     'umrah/finance_dashboard.js',

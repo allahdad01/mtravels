@@ -184,8 +184,9 @@ $srcCtx = [
 // Candidate lines per member, with the target line's own latest fulfillment
 // state attached (status, type, hotel/room identity, airline).
 $candStmt = $pdo->prepare("
-    SELECT bs.id, bs.price_snapshot,
+    SELECT bs.id, bs.price_snapshot, bs.is_excluded,
            (SELECT f.status           FROM umrah_fulfillments f        WHERE f.booking_service_id = bs.id AND f.tenant_id = bs.tenant_id ORDER BY f.id DESC LIMIT 1) AS t_status,
+           (SELECT f.family_id        FROM umrah_fulfillments f        WHERE f.booking_service_id = bs.id AND f.tenant_id = bs.tenant_id ORDER BY f.id DESC LIMIT 1) AS t_family_id,
            (SELECT f.fulfillment_type FROM umrah_fulfillments f        WHERE f.booking_service_id = bs.id AND f.tenant_id = bs.tenant_id ORDER BY f.id DESC LIMIT 1) AS t_type,
            (SELECT hf.hotel_id        FROM umrah_hotel_fulfillments hf JOIN umrah_fulfillments f ON f.id = hf.fulfillment_id WHERE f.booking_service_id = bs.id AND f.tenant_id = bs.tenant_id ORDER BY f.id DESC LIMIT 1) AS t_hotel,
            (SELECT hf.room_type_id    FROM umrah_hotel_fulfillments hf JOIN umrah_fulfillments f ON f.id = hf.fulfillment_id WHERE f.booking_service_id = bs.id AND f.tenant_id = bs.tenant_id ORDER BY f.id DESC LIMIT 1) AS t_room,
@@ -309,6 +310,23 @@ foreach ($members as $member) {
         continue;
     }
     foreach ($cands as $cand) {
+        // Skip excluded service lines — the operator opted this member out.
+        if (!empty($cand['is_excluded'])) {
+            $skipReasons['excluded by user'] = ($skipReasons['excluded by user'] ?? 0) + 1;
+            continue;
+        }
+        // Ownership-aware fulfillment check: skip only if the existing
+        // fulfillment belongs to a DIFFERENT family (transferred member).
+        // Same-family fulfillments are allowed through for UPDATE.
+        if (!empty($cand['t_status']) && $cand['t_status'] !== 'cancelled') {
+            $fulfillmentFamilyId = !empty($cand['t_family_id']) ? (int)$cand['t_family_id'] : null;
+            if ($fulfillmentFamilyId !== null && $fulfillmentFamilyId !== (int)$family_id) {
+                // Transferred member — fulfillment was created under another family
+                $skipReasons['transferred member'] = ($skipReasons['transferred member'] ?? 0) + 1;
+                continue;
+            }
+            // Same family — existing fulfillment will be UPDATED by fulfillment_save()
+        }
         // Skip reasons: closed/frozen fulfillments, different hotel / room /
         // airline / flight (different package variant). Same rules as the
         // coverage counts shown in the fulfillment modal (get_fulfillments.php).

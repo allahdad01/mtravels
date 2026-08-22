@@ -252,6 +252,11 @@ function fulfillment_save(PDO $pdo, array $in): array
         $booking_id = (int)$svc['booking_id'];
         $booking_currency = strtoupper(trim((string)$svc['currency'])) ?: 'USD';
 
+        // Resolve the booking's family_id for fulfillment ownership tracking.
+        $famStmt = $pdo->prepare("SELECT family_id FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ?");
+        $famStmt->execute([$booking_id, $tenant_id]);
+        $fulfillmentFamilyId = $famStmt->fetchColumn() ?: null;
+
         // Detect if this booking is an extra bed pseudo-member — extra beds
         // carry their own cost (in extra_bed_costs) and must NOT inherit the
         // card-level per-city hotel costs.
@@ -674,11 +679,11 @@ function fulfillment_save(PDO $pdo, array $in): array
                     // ---- Create fulfillment ----------------------------------------
                     $ins = $pdo->prepare("
                         INSERT INTO umrah_fulfillments (
-                            tenant_id, branch_id, booking_service_id, fulfillment_type,
+                            tenant_id, branch_id, booking_service_id, family_id, fulfillment_type,
                             supplier_id, status, requested_date, planned_date, completed_date,
                             supplier_currency, supplier_cost, exchange_rate, cost_amount, notes, created_by
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                    $ins->execute([$tenant_id, $branch_id, $booking_service_id, $fulfillment_type,
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                    $ins->execute([$tenant_id, $branch_id, $booking_service_id, $fulfillmentFamilyId, $fulfillment_type,
                                    $supplier_id, $status, $requested_date, $planned_date, $completed_date,
                                    $hasCityCosts ? $stayCurrency : ($bearCost ? $supplier_currency : null),
                                    $hasCityCosts ? $stayCost : ($bearCost ? $supplier_cost : null),
@@ -1048,13 +1053,15 @@ function fulfillment_save(PDO $pdo, array $in): array
         if ($bkRow && (string)$bkRow['status'] === 'pending') {
             $cntStmt = $pdo->prepare("
                 SELECT COUNT(*) FROM umrah_booking_services
-                WHERE booking_id = ? AND tenant_id = ? AND (is_optional = 0 OR is_optional IS NULL)");
+                WHERE booking_id = ? AND tenant_id = ? AND (is_optional = 0 OR is_optional IS NULL)
+                  AND (is_excluded = 0 OR is_excluded IS NULL)");
             $cntStmt->execute([$booking_id, $tenant_id]);
             $nonOptionalCnt = (int)$cntStmt->fetchColumn();
 
             $fulStmt = $pdo->prepare("
                 SELECT COUNT(*) FROM umrah_booking_services ubs
                 WHERE ubs.booking_id = ? AND ubs.tenant_id = ? AND (ubs.is_optional = 0 OR ubs.is_optional IS NULL)
+                  AND (ubs.is_excluded = 0 OR ubs.is_excluded IS NULL)
                   AND EXISTS (
                       SELECT 1 FROM umrah_fulfillments f
                       WHERE f.booking_service_id = ubs.id AND f.tenant_id = ?

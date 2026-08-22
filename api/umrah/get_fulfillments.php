@@ -313,12 +313,12 @@ if ($isAggregate) {
                bs.booking_id, ub.family_id, ub.name, ub.gender, ub.room_type, ub.duration, ub.dob,
                ub.is_extra_bed,
                bs.service_type, bs.service_id,
-               bs.pricing_unit, bs.quantity, bs.is_optional,
+               bs.pricing_unit, bs.quantity, bs.is_optional, bs.is_excluded,
                bs.base_price, bs.sold_price, bs.profit, bs.currency,
                bs.status AS sold_status,
                bs.price_snapshot,
                s.name AS service_name, c.name AS category_name,
-               f.id AS fulfillment_id, f.status AS fulfill_status,
+               f.id AS fulfillment_id, f.status AS fulfill_status, f.family_id AS fulfillment_family_id,
                f.supplier_id, f.supplier_currency, f.supplier_cost, f.exchange_rate,
                f.cost_amount, f.requested_date, f.planned_date, f.completed_date, f.notes,
                hf.hotel_id, hf.contract_id, hf.room_id, hf.room_type_id, hf.extra_bed,
@@ -343,7 +343,9 @@ if ($isAggregate) {
     $openSet = ['pending', 'requested', 'assigned', 'not_assigned', 'reserved', 'not_applied', 'applied', 'processing', 'confirmed', 'ticketed', 'issued', 'not_ticketed'];
     $grouped = [];
     foreach ($scopeLines as $ln) {
-        $costTotal += (float)($ln['base_price'] ?? 0);
+        if (empty($ln['is_excluded'])) {
+            $costTotal += (float)($ln['base_price'] ?? 0);
+        }
         $key = $ln['service_id'] !== null
             ? 's' . (int)$ln['service_id']
             : 't' . (string)$ln['service_type'] . '|' . (int)$ln['is_optional'];
@@ -396,6 +398,10 @@ if ($isAggregate) {
                 $skipBreak['infant (no ' . $cat . ')'] = ($skipBreak['infant (no ' . $cat . ')'] ?? 0) + 1;
                 continue;
             }
+            if (!empty($ln['is_excluded'])) {
+                $skipBreak['excluded by user'] = ($skipBreak['excluded by user'] ?? 0) + 1;
+                continue;
+            }
             $reason = fulfillment_variant_ok($srcCtx, [
                 'status' => $ln['fulfill_status'],
                 'hotel_id' => !empty($ln['hotel_id']) ? (int)$ln['hotel_id'] : (!empty($lnSnap['hotel_id']) ? (int)$lnSnap['hotel_id'] : null),
@@ -433,9 +439,11 @@ if ($isAggregate) {
                     'booking_id' => $bid,
                     'booking_service_id' => (int)$ln['booking_service_id'],
                     'fulfillment_id' => !empty($ln['fulfillment_id']) ? (int)$ln['fulfillment_id'] : null,
+                    'fulfillment_family_id' => !empty($ln['fulfillment_family_id']) ? (int)$ln['fulfillment_family_id'] : null,
                     'name' => (string)($ln['name'] ?? ''),
                     'type' => memberTravelType((string)($ln['dob'] ?? '')),
                     'duration' => ($ln['duration'] !== null && $ln['duration'] !== '') ? (int)$ln['duration'] : null,
+                    'is_excluded' => !empty($ln['is_excluded']),
                     'pnr' => (string)($ln['pnr'] ?? ''),
                     'flight_number' => (string)($ln['flight_number'] ?? ''),
                     'departure_city' => (string)($ln['departure_city'] ?? ''),
@@ -460,12 +468,14 @@ if ($isAggregate) {
                 $bd[$bid] = [
                     'booking_id' => $bid,
                     'family_id'  => (int)($ln['family_id'] ?? 0),
+                    'fulfillment_family_id' => !empty($ln['fulfillment_family_id']) ? (int)$ln['fulfillment_family_id'] : null,
                     'name' => (string)($ln['name'] ?? ''),
                     'type' => memberTravelType((string)($ln['dob'] ?? '')),
                     'gender' => (string)($ln['gender'] ?? ''),
                     'room_type' => (string)($ln['room_type'] ?? ''),
                     'duration' => ($ln['duration'] !== null && $ln['duration'] !== '') ? (int)$ln['duration'] : null,
                     'is_extra_bed' => !empty($ln['is_extra_bed']),
+                    'is_excluded' => !empty($ln['is_excluded']),
                     'supplier_id' => !empty($ln['supplier_id']) ? (int)$ln['supplier_id'] : $repCardSupplierId,
                     'cost' => $ln['base_price'] !== null ? (float)$ln['base_price'] : null,
                     'sold_price' => $ln['sold_price'] !== null ? (float)$ln['sold_price'] : null,
@@ -522,13 +532,13 @@ if ($isAggregate) {
     $sStmt = $pdo->prepare("
         SELECT bs.id AS booking_service_id,
                bs.service_type, bs.service_id,
-               bs.pricing_unit, bs.quantity, bs.is_optional,
+               bs.pricing_unit, bs.quantity, bs.is_optional, bs.is_excluded,
                bs.base_price, bs.sold_price, bs.profit, bs.currency,
                bs.status AS sold_status,
                bs.price_snapshot,
                s.name AS service_name, c.name AS category_name,
                ub.is_extra_bed,
-               f.id AS fulfillment_id, f.status AS fulfill_status,
+               f.id AS fulfillment_id, f.status AS fulfill_status, f.family_id AS fulfillment_family_id,
                f.supplier_id, f.supplier_currency, f.supplier_cost, f.exchange_rate,
                f.cost_amount, f.requested_date, f.planned_date, f.completed_date, f.notes,
                hf.hotel_id, hf.contract_id, hf.room_id, hf.room_type_id, hf.extra_bed,

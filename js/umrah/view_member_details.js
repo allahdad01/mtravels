@@ -90,9 +90,77 @@ function viewMemberDetails(bookingId) {
                                           service.service_type === 'visa+transport' ? 'Visa + Transport' :
                                           service.service_type === 'hotel+transport' ? 'Hotel + Transport' : service.service_type;
                         const supplierName = service.supplier_name || 'Pending assignment';
-                        servicesHTML += '<div style="padding: 0.75rem; background: #f0f9ff; border-radius: 0.375rem; border-left: 3px solid #06b6d4; display: flex; align-items: flex-start; gap: 0.5rem;"><i class="fas fa-check" style="color: #06b6d4; margin-top: 0.1rem;"></i><div style="flex: 1;"><div style="color: #1f2937; font-weight: 600; font-size: 0.9rem;">' + serviceType + '</div><div style="color: #6b7280; font-size: 0.8rem; margin-top: 0.2rem;">Supplier: ' + supplierName + '</div></div></div>';
+                        const excluded = !!parseInt(service.is_excluded);
+                        const borderColor = excluded ? '#ef4444' : '#06b6d4';
+                        const bgColor = excluded ? '#fef2f2' : '#f0f9ff';
+                        const iconClass = excluded ? 'fa-ban' : 'fa-check';
+                        const iconColor = excluded ? '#ef4444' : '#06b6d4';
+                        const opacity = excluded ? '0.65' : '1';
+                        const excludedBadge = excluded ? '<span style="display:inline-block;background:#ef4444;color:#fff;font-size:0.7rem;padding:1px 6px;border-radius:8px;margin-left:6px;font-weight:600;">EXCLUDED</span>' : '';
+                        servicesHTML += '<div class="md-service-row" data-bs-id="' + service.id + '" style="padding:0.75rem;background:' + bgColor + ';border-radius:0.375rem;border-left:3px solid ' + borderColor + ';display:flex;align-items:flex-start;gap:0.5rem;opacity:' + opacity + ';transition:all .2s;">'
+                            + '<i class="fas ' + iconClass + '" style="color:' + iconColor + ';margin-top:0.1rem;"></i>'
+                            + '<div style="flex:1;"><div style="color:#1f2937;font-weight:600;font-size:0.9rem;">' + serviceType + excludedBadge + '</div>'
+                            + '<div style="color:#6b7280;font-size:0.8rem;margin-top:0.2rem;">Supplier: ' + supplierName + '</div></div>'
+                            + '<label style="font-size:0.75rem;color:' + (excluded ? '#dc3545' : '#6b7280') + ';cursor:pointer;margin:0;white-space:nowrap;">'
+                            + '<input type="checkbox" class="md-exclude-toggle" data-bs-id="' + service.id + '" ' + (excluded ? 'checked' : '') + ' style="cursor:pointer;margin-right:3px;">'
+                            + (excluded ? 'Included' : 'Exclude') + '</label></div>';
                     });
                     servicesContainer.innerHTML = servicesHTML;
+
+                    servicesContainer.querySelectorAll('.md-exclude-toggle').forEach(function(btn) {
+                        btn.addEventListener('change', function() {
+                            const bsId = this.getAttribute('data-bs-id');
+                            const isExcluded = this.checked ? 1 : 0;
+                            const row = this.closest('.md-service-row');
+                            this.disabled = true;
+                            fetch('../api/umrah/toggle_service_exclusion.php', {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                                body: 'csrf_token=' + encodeURIComponent(csrfToken || '') + '&booking_service_id=' + bsId + '&is_excluded=' + isExcluded
+                            })
+                            .then(r => r.json())
+                            .then(function(resp) {
+                                btn.disabled = false;
+                                if (resp.success) {
+                                    if (isExcluded) {
+                                        row.style.background = '#fef2f2';
+                                        row.style.borderLeftColor = '#ef4444';
+                                        row.style.opacity = '0.65';
+                                        row.querySelector('i').className = 'fas fa-ban';
+                                        row.querySelector('i').style.color = '#ef4444';
+                                        const label = btn.parentElement;
+                                        label.style.color = '#dc3545';
+                                        label.childNodes[1].textContent = 'Included ';
+                                        const badge = document.createElement('span');
+                                        badge.textContent = 'EXCLUDED';
+                                        badge.className = 'md-excluded-badge';
+                                        badge.style.cssText = 'display:inline-block;background:#ef4444;color:#fff;font-size:0.7rem;padding:1px 6px;border-radius:8px;margin-left:6px;font-weight:600;';
+                                        row.querySelector('div > div').appendChild(badge);
+                                    } else {
+                                        row.style.background = '#f0f9ff';
+                                        row.style.borderLeftColor = '#06b6d4';
+                                        row.style.opacity = '1';
+                                        row.querySelector('i').className = 'fas fa-check';
+                                        row.querySelector('i').style.color = '#06b6d4';
+                                        const label = btn.parentElement;
+                                        label.style.color = '#6b7280';
+                                        label.childNodes[1].textContent = 'Exclude ';
+                                        const badge = row.querySelector('.md-excluded-badge');
+                                        if (badge) badge.remove();
+                                    }
+                                    showToast('success', resp.message);
+                                } else {
+                                    btn.checked = !isExcluded;
+                                    showToast('error', resp.message || 'Failed to toggle exclusion');
+                                }
+                            })
+                            .catch(function() {
+                                btn.disabled = false;
+                                btn.checked = !isExcluded;
+                                showToast('error', 'Network error');
+                            });
+                        });
+                    });
                 } else {
                     servicesContainer.innerHTML = '<div style="padding: 0.75rem; background: #f0f9ff; border-radius: 0.375rem; border-left: 3px solid #06b6d4; color: #6b7280; font-size: 0.85rem;">No services assigned</div>';
                 }

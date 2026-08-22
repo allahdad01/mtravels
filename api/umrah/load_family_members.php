@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * AJAX endpoint to load family members
  * This file dynamically loads and displays family members in card format
@@ -34,7 +34,7 @@ if ($family_id <= 0) {
 
 try {
     // Fetch members
-    $sqlMembers = "SELECT um.*, c.name as client_name, ma.name as main_account_name, u.name as created_by,
+    $sqlMembers = "SELECT um.*, c.name as client_name, ma.name as main_account_name, u.name as created_by, f.head_of_family as family_head_name,
         GROUP_CONCAT(CONCAT(
             CASE ubs.service_type
                 WHEN 'all' THEN 'All Services'
@@ -59,6 +59,7 @@ try {
     LEFT JOIN umrah_fulfillments uff ON uff.booking_service_id = ubs.id AND uff.fulfillment_type = 'flight' AND uff.status <> 'cancelled' AND uff.id = (SELECT MIN(uff2.id) FROM umrah_fulfillments uff2 WHERE uff2.booking_service_id = ubs.id)
     LEFT JOIN suppliers s ON s.id = COALESCE(uff.supplier_id, ubs.supplier_id)
     LEFT JOIN users u ON um.created_by = u.id
+    LEFT JOIN families f ON um.family_id = f.family_id
     WHERE um.family_id = ? AND um.tenant_id = ? AND um.branch_id = ?";
     
     $membersParams = [$family_id, $tenant_id, $branch_id];
@@ -253,6 +254,14 @@ try {
                                  <i class="fas fa-calendar"></i><?= __('request_date_change') ?>
                              </a>
                              <?php endif; ?>
+                             <?php if (!$isDisabled && $canEdit): ?>
+                             <div class="dropdown-divider"></div>
+                             <h6 class="dropdown-header">Transfer</h6>
+                             <a class="dropdown-item" href="#" onclick="openMoveMemberModal(<?= $member['booking_id'] ?>, '<?= htmlspecialchars($member['name'] ?? '') ?>', <?= $family_id ?>, '<?= htmlspecialchars($member['family_head_name'] ?? '') ?>'); return false;">
+                                 <i class="fas fa-exchange-alt"></i>Move to Family
+                             </a>
+                             <?php endif; ?>
+
                              <a class="dropdown-item" href="#" onclick="generateCancellationForm(<?= $member['booking_id'] ?>); return false;">
                                  <i class="fas fa-times-circle"></i><?= __('generate_cancellation_form') ?>
                              </a>
