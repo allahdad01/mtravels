@@ -124,7 +124,7 @@ $canEdit = user_can('umrah.member_edit');
                                         g.*,
                                         u.name AS created_by,
                                         COUNT(DISTINCT f.family_id) AS family_count,
-                                        COUNT(ub.booking_id) AS member_count,
+                                        COUNT(CASE WHEN COALESCE(ub.is_extra_bed, 0) = 0 THEN ub.booking_id END) AS member_count,
                                         COALESCE(fam.total_price, 0) AS total_price,
                                         COALESCE(fam.total_paid, 0) AS total_paid,
                                         COALESCE(fam.total_due, 0) AS total_due
@@ -489,7 +489,7 @@ $canEdit = user_can('umrah.member_edit');
                                         f.*,
                                         u.name as created_by,
                                         g.group_number, g.group_name,
-                                        COUNT(ub.booking_id) AS total_members,
+                                        COUNT(CASE WHEN COALESCE(ub.is_extra_bed, 0) = 0 THEN ub.booking_id END) AS total_members,
                                         SUM(CASE WHEN ub.status = 'refunded' THEN 1 ELSE 0 END) AS refunded_members,
                                         SUM(CASE WHEN ub.status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled_members,
                                         (SELECT ub2.currency FROM umrah_bookings ub2
