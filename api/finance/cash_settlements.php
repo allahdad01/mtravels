@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Finance â†’ Admin Cash Settlement ("Handover") API
  *

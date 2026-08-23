@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * English language file (default)
  * 
@@ -1311,6 +1311,7 @@ return [
     '2_beds' => '2 Beds',
     '3_beds' => '3 Beds',
     'shared' => 'Shared',
+    'special_room' => 'Special Room',
     'no_room' => 'No room',
     'currency' => 'Currency',
     'price' => 'Price',
@@ -1326,6 +1327,8 @@ return [
     'travel_info' => 'Travel Info',
     'financial' => 'Financial',
     'members' => 'Members',
+    'excluded_visa_only' => 'Excl. (Visa Only)',
+    'excluded_from_all_services_except_visa' => 'Excluded from all services except visa',
     'bank' => 'Bank',
     'due' => 'Due',
     'sale_currency' => 'Sale Currency (Client Billing)',
@@ -6279,6 +6282,7 @@ return [
     'package_created' => 'Package created successfully',
     'package_updated' => 'Package updated successfully',
     'selected' => 'Selected',
+    'delete_selected' => 'Delete Selected',
     'service' => 'Service',
     'unit_sell' => 'Unit Sell',
     'unit_base' => 'Unit Base',

@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // Include security module
 require_once 'security.php';
 
@@ -155,6 +155,35 @@ $canEdit = user_can('umrah.member_edit');
                         $groupsStmt = $pdo->prepare($groupsSql);
                         $groupsStmt->execute($groupsParams);
                         $resultGroups = $groupsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+                        // Excluded visa-only count per group (members excluded from all non-visa services)
+                        $groupIds = array_column($resultGroups, 'group_id');
+                        $excludedVisaOnlyMap = [];
+                        if (!empty($groupIds)) {
+                            $gPlaceholders = implode(',', array_fill(0, count($groupIds), '?'));
+                            $exclStmt = $pdo->prepare("
+                                SELECT f.group_id, COUNT(DISTINCT ub.booking_id) AS excl_count
+                                FROM umrah_bookings ub
+                                JOIN families f ON ub.family_id = f.family_id
+                                JOIN umrah_booking_services bs ON bs.booking_id = ub.booking_id
+                                WHERE f.group_id IN ($gPlaceholders)
+                                  AND f.tenant_id = ? AND ub.tenant_id = ? AND bs.tenant_id = ?
+                                  AND bs.service_type != 'visa'
+                                GROUP BY f.group_id, ub.booking_id
+                                HAVING SUM(CASE WHEN bs.is_excluded = 0 THEN 1 ELSE 0 END) = 0
+                                   AND COUNT(*) > 0
+                            ");
+                            $exclParams = array_merge($groupIds, [$tenant_id, $tenant_id, $tenant_id]);
+                            $exclStmt->execute($exclParams);
+                            foreach ($exclStmt->fetchAll(PDO::FETCH_ASSOC) as $erow) {
+                                $gid = (int)$erow['group_id'];
+                                $excludedVisaOnlyMap[$gid] = ($excludedVisaOnlyMap[$gid] ?? 0) + 1;
+                            }
+                        }
+                        foreach ($resultGroups as &$grp) {
+                            $grp['excluded_visa_only_count'] = $excludedVisaOnlyMap[(int)$grp['group_id']] ?? 0;
+                        }
+                        unset($grp);
 
                         // Badges on the pills
                         $familiesCountStmt = $pdo->prepare("SELECT COUNT(*) FROM families WHERE tenant_id = ? AND branch_id = ?");
@@ -341,9 +370,12 @@ $canEdit = user_can('umrah.member_edit');
                                             WHERE ubs2.booking_id = b.booking_id AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
                                             ORDER BY ff.id DESC LIMIT 1) AS return_date,
                                         f.head_of_family, f.package_type, f.location, f.visa_status, f.contact,
+                                        f.group_id,
+                                        g.group_number, g.group_name,
                                         c.name AS client_name
                                     FROM umrah_bookings b
                                     LEFT JOIN families f ON b.family_id = f.family_id
+                                    LEFT JOIN umrah_groups g ON f.group_id = g.group_id AND f.tenant_id = g.tenant_id
                                     LEFT JOIN clients c ON b.sold_to = c.id
                                     WHERE b.tenant_id = ? AND b.branch_id = ?";
                     $membersParams = [$tenant_id, $branch_id];
@@ -456,6 +488,7 @@ $canEdit = user_can('umrah.member_edit');
                     $sqlFamilies = "SELECT
                                         f.*,
                                         u.name as created_by,
+                                        g.group_number, g.group_name,
                                         COUNT(ub.booking_id) AS total_members,
                                         SUM(CASE WHEN ub.status = 'refunded' THEN 1 ELSE 0 END) AS refunded_members,
                                         SUM(CASE WHEN ub.status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled_members,
@@ -465,6 +498,7 @@ $canEdit = user_can('umrah.member_edit');
                                         (SELECT COUNT(*) FROM group_tickets gt WHERE gt.tenant_id = f.tenant_id AND gt.branch_id = f.branch_id AND JSON_CONTAINS(gt.member_ids, JSON_ARRAY((SELECT booking_id FROM umrah_bookings ub2 WHERE ub2.family_id = f.family_id LIMIT 1))) AND gt.status = 'active') AS has_group_tickets
                                     FROM families f
                                     LEFT JOIN users u ON f.created_by = u.id
+                                    LEFT JOIN umrah_groups g ON f.group_id = g.group_id AND f.tenant_id = g.tenant_id
                                     LEFT JOIN umrah_bookings ub ON f.family_id = ub.family_id
                                     WHERE 1=1 AND f.tenant_id = ? AND f.branch_id = ?";
 
@@ -645,6 +679,13 @@ $canEdit = user_can('umrah.member_edit');
                                                     <i class="fas fa-user"></i>
                                                     <?= $memberCount ?> <?= __('members') ?>
                                                 </span>
+                                                <?php $excludedVisaOnly = (int)($group['excluded_visa_only_count'] ?? 0); ?>
+                                                <?php if ($excludedVisaOnly > 0): ?>
+                                                <span class="meta-item text-danger" title="<?= __('excluded_from_all_services_except_visa') ?>">
+                                                    <i class="fas fa-user-slash"></i>
+                                                    <?= $excludedVisaOnly ?> <?= __('excluded_visa_only') ?>
+                                                </span>
+                                                <?php endif; ?>
                                             </div>
                                         </div>
                                         <div class="card-actions">
@@ -993,14 +1034,25 @@ $canEdit = user_can('umrah.member_edit');
                         <?php endif; ?>
                     <?php elseif ($showMembers): ?>
                         <?php if (!empty($resultMembers)): ?>
+                        <div class="members-bulk-toolbar" id="membersBulkToolbar" style="display:none;">
+                            <span class="bulk-selected-count"><span id="bulkSelectedCount">0</span> <?= __('selected') ?></span>
+                            <button type="button" class="btn btn-danger btn-sm" id="bulkDeleteBtn" onclick="bulkDeleteMembers()">
+                                <i class="fas fa-trash mr-1"></i><?= __('delete_selected') ?>
+                            </button>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="clearMemberSelection()">
+                                <i class="fas fa-times mr-1"></i><?= __('clear') ?>
+                            </button>
+                        </div>
                         <div class="members-table-wrapper">
                             <table class="table table-hover members-table">
                                 <thead>
                                     <tr>
+                                        <th><input type="checkbox" id="selectAllMembers" class="member-select-all" onchange="toggleAllMemberCheckboxes(this)"></th>
                                         <th>#</th>
                                         <th><?= __('name') ?></th>
                                         <th><?= __('passport') ?></th>
                                         <th><?= __('family_head') ?></th>
+                                        <th><?= __('group') ?></th>
                                         <th><?= __('client') ?></th>
                                         <th><?= __('duration') ?></th>
                                         <th><?= __('room_type') ?></th>
@@ -1027,6 +1079,7 @@ $canEdit = user_can('umrah.member_edit');
                                     $mCurrency = strtoupper((string)($m['currency'] ?: 'USD'));
                                 ?>
                                     <tr class="member-row" data-booking-id="<?= (int)$m['booking_id'] ?>">
+                                        <td><input type="checkbox" class="member-checkbox" value="<?= (int)$m['booking_id'] ?>" onchange="updateMemberBulkToolbar()"></td>
                                         <td class="member-row-no"><?= $memberRowNo ?></td>
                                         <td>
                                             <div class="member-cell-name">
@@ -1036,6 +1089,7 @@ $canEdit = user_can('umrah.member_edit');
                                         </td>
                                         <td><?= htmlspecialchars($m['passport_number']) ?></td>
                                         <td><?= htmlspecialchars($m['head_of_family']) ?></td>
+                                        <td><?= !empty($m['group_number']) ? '#' . htmlspecialchars($m['group_number']) . ' ' . htmlspecialchars($m['group_name']) : '—' ?></td>
                                         <td><?= htmlspecialchars($m['client_name']) ?: 'â€”' ?></td>
                                         <td><?= htmlspecialchars($m['duration']) ?: 'â€”' ?></td>
                                         <td><?= htmlspecialchars($m['room_type']) ?: 'â€”' ?></td>
@@ -1228,6 +1282,12 @@ $canEdit = user_can('umrah.member_edit');
                                         <div class="family-main-info">
                                             <h3 class="family-name"><?= htmlspecialchars($row['head_of_family']) ?></h3>
                                             <div class="family-meta">
+                                                    <?php if (!empty($row['group_number'])): ?>
+                                                    <span class="meta-item group-number-chip">
+                                                        <i class="fas fa-hashtag"></i>
+                                                        <?= htmlspecialchars($row['group_number']) ?> <?= htmlspecialchars($row['group_name']) ?>
+                                                    </span>
+                                                    <?php endif; ?>
                                                     <span class="meta-item">
                                                         <i class="fas fa-users"></i>
                                                         <?= $row['total_members'] ?> <?= __('members') ?>

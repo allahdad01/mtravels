@@ -451,6 +451,33 @@ body {
     flex-wrap: wrap;
 }
 
+/* Members bulk toolbar */
+.members-bulk-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    margin-bottom: 12px;
+    background: #fff;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--gray-200);
+}
+
+.members-bulk-toolbar .bulk-selected-count {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--gray-700);
+}
+
+.member-select-all,
+.member-checkbox {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--primary, #4f46e5);
+}
+
 /* Members table (All tab) */
 .members-table-wrapper {
     background: #fff;

@@ -206,6 +206,7 @@
                                         <option value="5 Beds"><?= __('5_beds') ?></option>
                                         <option value="6 Beds"><?= __('6_beds') ?></option>
                                         <option value="Shared"><?= __('shared') ?></option>
+                                        <option value="Special Room"><?= __('special_room') ?></option>
                                         <option value="No Room"><?= __('no_room') ?></option>
                                     </select>
                                 </div>

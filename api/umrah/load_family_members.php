@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * AJAX endpoint to load family members
  * This file dynamically loads and displays family members in card format

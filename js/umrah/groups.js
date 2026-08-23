@@ -147,7 +147,7 @@ window.deleteGroup = function(groupId, groupName) {
     }
     Swal.fire({
         title: 'Delete group?',
-        html: '<strong>' + groupName + '</strong><br>Families inside it will not be deleted.',
+        html: '<strong>' + groupName + '</strong><br>This will permanently delete all pending families and members inside this group. Only groups with all pending members can be deleted.',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonText: 'Delete',
@@ -387,7 +387,7 @@ function renderMemberEditCard(mem) {
     html += '<div class="col-md-4"><div class="form-group"><label>Room Type</label>';
     html += '<select class="form-control form-control-sm member-field" data-booking-id="' + mem.booking_id + '" data-field="room_type">';
     html += '<option value="">Select</option>';
-    ['1 Bed','2 Beds','3 Beds','4 Beds','5 Beds','6 Beds','Shared','No Room'].forEach(function(opt) {
+    ['1 Bed','2 Beds','3 Beds','4 Beds','5 Beds','6 Beds','Shared','Special Room','No Room'].forEach(function(opt) {
         html += '<option value="' + opt + '"' + (mem.room_type === opt ? ' selected' : '') + '>' + opt + '</option>';
     });
     html += '</select></div></div>';

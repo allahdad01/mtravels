@@ -280,6 +280,115 @@ function deleteBooking(bookingId) {
     });
 }
 
+// ==================== Bulk Member Selection & Delete ====================
+
+function toggleAllMemberCheckboxes(selectAllCb) {
+    const checkboxes = document.querySelectorAll('.member-checkbox');
+    checkboxes.forEach(function(cb) {
+        cb.checked = selectAllCb.checked;
+    });
+    updateMemberBulkToolbar();
+}
+
+function updateMemberBulkToolbar() {
+    const checkboxes = document.querySelectorAll('.member-checkbox');
+    const checked = document.querySelectorAll('.member-checkbox:checked');
+    const toolbar = document.getElementById('membersBulkToolbar');
+    const countEl = document.getElementById('bulkSelectedCount');
+    const selectAll = document.getElementById('selectAllMembers');
+
+    if (toolbar) {
+        toolbar.style.display = checked.length > 0 ? 'flex' : 'none';
+    }
+    if (countEl) {
+        countEl.textContent = checked.length;
+    }
+    if (selectAll) {
+        selectAll.checked = checkboxes.length > 0 && checked.length === checkboxes.length;
+    }
+}
+
+function clearMemberSelection() {
+    document.querySelectorAll('.member-checkbox').forEach(function(cb) {
+        cb.checked = false;
+    });
+    var selectAll = document.getElementById('selectAllMembers');
+    if (selectAll) selectAll.checked = false;
+    updateMemberBulkToolbar();
+}
+
+function bulkDeleteMembers() {
+    var checked = document.querySelectorAll('.member-checkbox:checked');
+    if (checked.length === 0) return;
+
+    var ids = [];
+    checked.forEach(function(cb) {
+        ids.push(parseInt(cb.value));
+    });
+
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'Delete ' + ids.length + ' member(s)?',
+            text: 'This action cannot be undone. Members with transactions cannot be deleted.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Delete',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#dc3545'
+        }).then(function(result) {
+            if (result.isConfirmed) proceedBulkDelete(ids);
+        });
+    } else {
+        if (!confirm('Delete ' + ids.length + ' member(s)? This action cannot be undone.')) return;
+        proceedBulkDelete(ids);
+    }
+}
+
+function proceedBulkDelete(bookingIds) {
+    var bulkBtn = document.getElementById('bulkDeleteBtn');
+    if (bulkBtn) {
+        bulkBtn.disabled = true;
+        bulkBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Deleting...';
+    }
+
+    fetch('../api/umrah/bulk_delete_members.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': window.csrfToken || ''
+        },
+        body: JSON.stringify({ booking_ids: bookingIds })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ title: 'Deleted!', text: data.message, icon: 'success' });
+            } else {
+                alert(data.message);
+            }
+            setTimeout(function() { location.reload(); }, 800);
+        } else {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ title: 'Error', text: data.message, icon: 'error' });
+            } else {
+                alert('Error: ' + data.message);
+            }
+            if (bulkBtn) {
+                bulkBtn.disabled = false;
+                bulkBtn.innerHTML = '<i class="fas fa-trash mr-1"></i>Delete Selected';
+            }
+        }
+    })
+    .catch(function() {
+        alert('An error occurred');
+        if (bulkBtn) {
+            bulkBtn.disabled = false;
+            bulkBtn.innerHTML = '<i class="fas fa-trash mr-1"></i>Delete Selected';
+        }
+    });
+}
+
 function deleteTransaction(transactionId) {
     if (confirm('Are you sure you want to delete this transaction')) {
         const deleteBtn = event.target.closest('button');

@@ -1190,7 +1190,7 @@ function displayUploadedFiles() {
     Object.keys(uploadedDocuments).sort((a, b) => parseInt(a) - parseInt(b)).forEach(memberIndex => {
         const data = uploadedDocuments[memberIndex];
         const fileNumber = memberIndex; // memberIndex already matches member number (1-based)
-        const name = data.full_name || `File ${fileNumber}`;
+        const name = data.full_name || `Member ${fileNumber}`;
         html += `<li>Member ${fileNumber}: ${name} - Passport: ${data.passport_number || 'N/A'}, DOB: ${data.date_of_birth || 'N/A'}</li>`;
     });
     
@@ -1220,7 +1220,7 @@ function updateMembersSummary() {
         const name = $(this).find('.member-name').val() || `Member ${index + 1}`;
         const passportNumber = $(this).find('input[id*="_passport_number"]').val() || 'N/A';
         const dob = $(this).find('input[id*="_dob"]').val() || 'N/A';
-        summaryHtml += `<li>File ${index + 1} - Passport: ${passportNumber}, DOB: ${dob}</li>`;
+        summaryHtml += `<li>${name} - Passport: ${passportNumber}, DOB: ${dob}</li>`;
     });
     
     summaryHtml += '</ol>';

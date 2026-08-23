@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * AJAX endpoint to move a member (umrah_booking) from one family to another.
  *
