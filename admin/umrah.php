@@ -93,7 +93,7 @@ $canEdit = user_can('umrah.member_edit');
                     $fulfillCountStmt = $pdo->prepare("
                         SELECT COUNT(*) FROM (
                             SELECT CONCAT_WS('|',
-                                COALESCE(ff.airline,''), COALESCE(ff.flight_number,''), COALESCE(ff.pnr,''),
+                                LOWER(COALESCE(ff.airline,'')), COALESCE(ff.flight_number,''), COALESCE(ff.pnr,''),
                                 COALESCE(ff.ticket_number,''), COALESCE(ff.departure_city,''), COALESCE(ff.arrival_city,''),
                                 COALESCE(ff.return_flight_number,''), COALESCE(ff.return_departure_time,''))
                             FROM umrah_flight_fulfillments ff
@@ -128,11 +128,17 @@ $canEdit = user_can('umrah.member_edit');
                                         COUNT(CASE WHEN COALESCE(ub.is_extra_bed, 0) = 1 THEN ub.booking_id END) AS extra_bed_count,
                                         COALESCE(fam.total_price, 0) AS total_price,
                                         COALESCE(fam.total_paid, 0) AS total_paid,
-                                        COALESCE(fam.total_due, 0) AS total_due
+                                        COALESCE(fam.total_due, 0) AS total_due,
+                                        COUNT(DISTINCT CASE WHEN c.client_type = 'agency' AND COALESCE(ub.is_extra_bed, 0) = 0 THEN ub.booking_id END) AS agency_member_count,
+                                        SUM(CASE WHEN c.client_type = 'agency' AND COALESCE(ub.is_extra_bed, 0) = 0 THEN ub.sold_price ELSE 0 END) AS agency_total_price,
+                                        SUM(CASE WHEN c.client_type = 'agency' AND COALESCE(ub.is_extra_bed, 0) = 0 THEN ub.due ELSE 0 END) AS agency_due,
+                                        COUNT(DISTINCT CASE WHEN c.client_type = 'regular' AND COALESCE(ub.is_extra_bed, 0) = 0 THEN ub.booking_id END) AS regular_member_count,
+                                        SUM(CASE WHEN c.client_type = 'regular' AND COALESCE(ub.is_extra_bed, 0) = 0 THEN ub.sold_price ELSE 0 END) AS regular_total_price
                                     FROM umrah_groups g
                                     LEFT JOIN users u ON g.created_by = u.id
                                     LEFT JOIN families f ON f.group_id = g.group_id AND f.tenant_id = g.tenant_id
                                     LEFT JOIN umrah_bookings ub ON ub.family_id = f.family_id
+                                    LEFT JOIN clients c ON ub.sold_to = c.id AND c.tenant_id = g.tenant_id
                                     LEFT JOIN (
                                         SELECT group_id, tenant_id,
                                                SUM(total_price) AS total_price,
@@ -199,7 +205,7 @@ $canEdit = user_can('umrah.member_edit');
                         $fulfillCountStmt = $pdo->prepare("
                             SELECT COUNT(*) FROM (
                                 SELECT CONCAT_WS('|',
-                                    COALESCE(ff.airline,''), COALESCE(ff.flight_number,''), COALESCE(ff.pnr,''),
+                                    LOWER(COALESCE(ff.airline,'')), COALESCE(ff.flight_number,''), COALESCE(ff.pnr,''),
                                     COALESCE(ff.ticket_number,''), COALESCE(ff.departure_city,''), COALESCE(ff.arrival_city,''),
                                     COALESCE(ff.return_flight_number,''), COALESCE(ff.return_departure_time,''))
                                 FROM umrah_flight_fulfillments ff
@@ -244,7 +250,7 @@ $canEdit = user_can('umrah.member_edit');
                         $fulfillStmt->execute([$tenant_id, $branch_id]);
                         $flightTicketMap = [];
                         foreach ($fulfillStmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
-                            $key = implode('|', [(string)$r['airline'], (string)$r['flight_number'], (string)$r['pnr'], (string)$r['ticket_number'], (string)$r['departure_city'], (string)$r['arrival_city'], (string)$r['return_flight_number'], (string)$r['return_departure_time']]);
+                            $key = implode('|', [strtolower((string)$r['airline']), (string)$r['flight_number'], (string)$r['pnr'], (string)$r['ticket_number'], (string)$r['departure_city'], (string)$r['arrival_city'], (string)$r['return_flight_number'], (string)$r['return_departure_time']]);
                             if (!isset($flightTicketMap[$key])) {
                                 $flightTicketMap[$key] = [
                                     '_fulfillment' => true,
@@ -494,6 +500,12 @@ $canEdit = user_can('umrah.member_edit');
                                         COUNT(CASE WHEN COALESCE(ub.is_extra_bed, 0) = 1 THEN ub.booking_id END) AS extra_bed_count,
                                         SUM(CASE WHEN ub.status = 'refunded' THEN 1 ELSE 0 END) AS refunded_members,
                                         SUM(CASE WHEN ub.status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled_members,
+                                        COUNT(DISTINCT CASE WHEN c.client_type = 'agency' AND COALESCE(ub.is_extra_bed, 0) = 0 THEN ub.booking_id END) AS agency_member_count,
+                                        SUM(CASE WHEN c.client_type = 'agency' AND COALESCE(ub.is_extra_bed, 0) = 0 THEN ub.sold_price ELSE 0 END) AS agency_total_price,
+                                        SUM(CASE WHEN c.client_type = 'agency' AND COALESCE(ub.is_extra_bed, 0) = 0 THEN ub.due ELSE 0 END) AS agency_due,
+                                        COUNT(DISTINCT CASE WHEN c.client_type = 'regular' AND COALESCE(ub.is_extra_bed, 0) = 0 THEN ub.booking_id END) AS regular_member_count,
+                                        SUM(CASE WHEN c.client_type = 'regular' AND COALESCE(ub.is_extra_bed, 0) = 0 THEN ub.sold_price ELSE 0 END) AS regular_total_price,
+                                        GROUP_CONCAT(DISTINCT c.name ORDER BY c.name SEPARATOR ', ') AS client_names,
                                         (SELECT ub2.currency FROM umrah_bookings ub2
                                          WHERE ub2.family_id = f.family_id
                                          ORDER BY ub2.created_at DESC LIMIT 1) AS family_currency,
@@ -502,6 +514,7 @@ $canEdit = user_can('umrah.member_edit');
                                     LEFT JOIN users u ON f.created_by = u.id
                                     LEFT JOIN umrah_groups g ON f.group_id = g.group_id AND f.tenant_id = g.tenant_id
                                     LEFT JOIN umrah_bookings ub ON f.family_id = ub.family_id
+                                    LEFT JOIN clients c ON ub.sold_to = c.id AND c.tenant_id = f.tenant_id
                                     WHERE 1=1 AND f.tenant_id = ? AND f.branch_id = ?";
 
                     $familiesParams = [$tenant_id, $branch_id];
@@ -658,7 +671,7 @@ $canEdit = user_can('umrah.member_edit');
                                 $familyCount = (int)($group['family_count'] ?? 0);
                                 $groupTotal = floatval($group['total_price'] ?? 0);
                                 $groupPaid = floatval($group['total_paid'] ?? 0);
-                                $groupDue = floatval($group['total_due'] ?? 0);
+                                $groupDue = floatval($group['agency_due'] ?? 0);
                                 $groupPercentage = $groupTotal > 0 ? ($groupPaid / $groupTotal) * 100 : 0;
                             ?>
                                 <div class="family-card group-card" data-group-id="<?= (int)$group['group_id'] ?>">
@@ -735,7 +748,19 @@ $canEdit = user_can('umrah.member_edit');
                                             <div class="financial-details">
                                                 <div class="financial-item">
                                                     <span class="label"><?= __('total_price') ?></span>
+                                                    <?php
+                                                    $aPrice = floatval($group['agency_total_price'] ?? 0);
+                                                    $rPrice = floatval($group['regular_total_price'] ?? 0);
+                                                    $hasSplit = $aPrice > 0 && $rPrice > 0;
+                                                    ?>
+                                                    <?php if ($hasSplit): ?>
+                                                    <span class="value" style="font-size:0.75rem;">
+                                                        <span style="color:#0e7490;"><?= number_format($aPrice) ?></span> + <span style="color:#7c3aed;"><?= number_format($rPrice) ?></span> =
+                                                        <?= number_format($groupTotal) ?> <?= __('usd') ?>
+                                                    </span>
+                                                    <?php else: ?>
                                                     <span class="value"><?= number_format($groupTotal) ?> <?= __('usd') ?></span>
+                                                    <?php endif; ?>
                                                 </div>
                                                 <div class="financial-item success">
                                                     <span class="label"><?= __('paid') ?></span>
@@ -746,6 +771,20 @@ $canEdit = user_can('umrah.member_edit');
                                                     <span class="value"><?= number_format($groupDue) ?> <?= __('usd') ?></span>
                                                 </div>
                                             </div>
+                                            <?php
+                                            $agencyCount = (int)($group['agency_member_count'] ?? 0);
+                                            $regularCount = (int)($group['regular_member_count'] ?? 0);
+                                            ?>
+                                            <?php if ($agencyCount > 0 || $regularCount > 0): ?>
+                                            <div style="margin-top:8px; font-size:0.8rem; display:flex; gap:12px; flex-wrap:wrap; padding-top:6px; border-top:1px dashed #e2e8f0;">
+                                                <?php if ($agencyCount > 0): ?>
+                                                <span style="font-weight:600; color:#0e7490;"><i class="fas fa-building mr-1"></i><?= __('agency') ?> (<?= $agencyCount ?>)</span>
+                                                <?php endif; ?>
+                                                <?php if ($regularCount > 0): ?>
+                                                <span style="font-weight:600; color:#7c3aed;"><i class="fas fa-user mr-1"></i><?= __('regular') ?> (<?= $regularCount ?>)</span>
+                                                <?php endif; ?>
+                                            </div>
+                                            <?php endif; ?>
                                             <?php if ($groupTotal > 0): ?>
                                             <div class="payment-progress">
                                                 <span class="percentage"><?= number_format($groupPercentage, 1) ?>%</span>
@@ -1308,6 +1347,13 @@ $canEdit = user_can('umrah.member_edit');
                                                         <?= $extraBedCount ?> <?= __('extra_beds') ?>
                                                     </span>
                                                     <?php endif; ?>
+                                                    <?php $clientNames = trim($row['client_names'] ?? ''); ?>
+                                                    <?php if (!empty($clientNames)): ?>
+                                                    <span class="meta-item" title="<?= htmlspecialchars($clientNames) ?>">
+                                                        <i class="fas fa-user-tie"></i>
+                                                        <?= htmlspecialchars($clientNames) ?>
+                                                    </span>
+                                                    <?php endif; ?>
                                                     <?php if ($row['refunded_members'] > 0): ?>
                                                     <span class="meta-item text-warning" title="<?= __('refunded_members') ?>">
                                                         <i class="fas fa-undo"></i>
@@ -1437,7 +1483,19 @@ $canEdit = user_can('umrah.member_edit');
                                             <div class="financial-details">
                                                 <div class="financial-item">
                                                     <span class="label"><?= __('total_price') ?></span>
+                                                    <?php
+                                                    $aPrice = floatval($row['agency_total_price'] ?? 0);
+                                                    $rPrice = floatval($row['regular_total_price'] ?? 0);
+                                                    $hasSplit = $aPrice > 0 && $rPrice > 0;
+                                                    ?>
+                                                    <?php if ($hasSplit): ?>
+                                                    <span class="value" style="font-size:0.75rem;">
+                                                        <span style="color:#0e7490;"><?= number_format($aPrice) ?></span> + <span style="color:#7c3aed;"><?= number_format($rPrice) ?></span> =
+                                                        <?= number_format(floatval($row['total_price'] ?? 0)) ?> <?= $familyCurrency ?>
+                                                    </span>
+                                                    <?php else: ?>
                                                     <span class="value"><?= number_format(floatval($row['total_price'] ?? 0)) ?> <?= $familyCurrency ?></span>
+                                                    <?php endif; ?>
                                                 </div>
                                                 <?php if (!$hasRegularClient): ?>
                                                 <div class="financial-item success">
@@ -1449,17 +1507,23 @@ $canEdit = user_can('umrah.member_edit');
                                                     <span class="label"><?= __('bank') ?></span>
                                                     <span class="value"><?= number_format(floatval($row['total_paid_to_bank'] ?? 0)) ?> <?= $familyCurrency ?></span>
                                                 </div>
-                                                <?php if (!$hasRegularClient): ?>
                                                 <div class="financial-item danger">
                                                     <span class="label"><?= __('due') ?></span>
-                                                    <span class="value"><?= number_format(floatval($row['total_due'] ?? 0)) ?> <?= $familyCurrency ?></span>
+                                                    <span class="value"><?= number_format(floatval($row['agency_due'] ?? 0)) ?> <?= $familyCurrency ?></span>
                                                 </div>
-                                                <?php endif; ?>
                                             </div>
-                                            <?php if ($hasRegularClient): ?>
-                                            <div class="alert alert-info mt-3" style="margin: 10px 0 0 0; padding: 8px 12px; font-size: 12px;">
-                                                <i class="fas fa-info-circle"></i>
-                                                <strong><?= __('note') ?>:</strong> <?= __('add_only_bank_transaction_for_outsider_client') ?>
+                                            <?php
+                                            $agencyCount = (int)($row['agency_member_count'] ?? 0);
+                                            $regularCount = (int)($row['regular_member_count'] ?? 0);
+                                            ?>
+                                            <?php if ($agencyCount > 0 || $regularCount > 0): ?>
+                                            <div style="margin-top:8px; font-size:0.8rem; display:flex; gap:12px; flex-wrap:wrap; padding-top:6px; border-top:1px dashed #e2e8f0;">
+                                                <?php if ($agencyCount > 0): ?>
+                                                <span style="font-weight:600; color:#0e7490;"><i class="fas fa-building mr-1"></i><?= __('agency') ?> (<?= $agencyCount ?>)</span>
+                                                <?php endif; ?>
+                                                <?php if ($regularCount > 0): ?>
+                                                <span style="font-weight:600; color:#7c3aed;"><i class="fas fa-user mr-1"></i><?= __('regular') ?> (<?= $regularCount ?>)</span>
+                                                <?php endif; ?>
                                             </div>
                                             <?php endif; ?>
                                         </div>

@@ -5980,6 +5980,7 @@ return [
 'manage_demo_requests' => 'Manage Demo Requests',
 'tenant_created_successfully' => 'Tenant created successfully',
 'add_only_bank_transaction_for_outsider_client' => 'Add only bank transactions for this family (Regular client requires bank payment only)',
+'due_only_agency_hint' => 'Total and Paid include all members. Due shown here is for Agency members only — Regular clients pay directly through the accounts page.',
 'user_addon_request_submitted' => 'User Add-on Request Submitted',
 'current_client' => 'Current Client',
 'generate_combined_weight_invoice' => 'Generate Combined Weight Invoice',
