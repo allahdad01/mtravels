@@ -664,6 +664,7 @@ tbody tr:hover .action-row { opacity: 1; }
 
 .act-btn:hover { background: var(--surface-3); color: var(--ink); }
 .act-btn.danger:hover { background: var(--rose-soft); color: var(--rose); }
+.act-btn.adjust:hover { background: var(--amber-soft); color: var(--amber); }
 .act-btn:disabled { cursor: not-allowed; }
 .act-btn:disabled:hover { background: transparent; color: var(--ink-4); }
 .act-btn.primary:hover { background: var(--blue-soft); color: var(--blue); }
@@ -1027,6 +1028,7 @@ tbody tr:hover .action-row { opacity: 1; }
 
 <?php include '../modals/client/add_client.php'; ?>
 <?php include '../modals/client/edit_client.php'; ?>
+<?php include '../modals/accounts/adjust_balance_modal.php'; ?>
 
 <!-- Toast -->
 <div class="toast" id="toast"><i class="fas fa-check-circle"></i><span id="toastMsg"></span></div>

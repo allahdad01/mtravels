@@ -1656,6 +1656,8 @@ function renderFulfillmentServices(data) {
 
         const isFrozen = isFulfillmentFrozen(service.fulfill_status || '');
         const isExcluded = !!service.is_excluded;
+        const hasFulfillment = !!service.fulfill_status && service.fulfill_status !== '';
+        const canCancel = hasFulfillment && !isFrozen && service.fulfill_status !== 'cancelled' && service.fulfill_status !== 'checked_out';
 
         let coverageChip = '';
         if (currentFulfillmentMode !== 'member' && service.is_aggregate) {
@@ -1690,6 +1692,7 @@ function renderFulfillmentServices(data) {
                     ${excludeToggle}
                 </div>
                 <span class="fulfillment-status f-status-badge">${cardExcluded ? 'excluded' : escapeHtml(soldStatus)}</span>
+                ${canCancel ? `<button type="button" class="btn btn-sm btn-outline-danger btn-cancel-fulfillment ml-2" style="font-size:0.75rem;padding:2px 8px;" title="Cancel this fulfillment"><i class="feather icon-x-circle mr-1"></i>Cancel</button>` : ''}
             </div>
             <div class="card-body pt-3">
                 <div class="row">
@@ -2266,6 +2269,47 @@ function bindFulfillmentEvents() {
     });
     $(document).off('hidden.bs.collapse.fulfillment', '.f-hotel-subgroup .collapse').on('hidden.bs.collapse.fulfillment', '.f-hotel-subgroup .collapse', function() {
         $(this).closest('.f-hotel-subgroup').find('.icon-chevron-right').css('transform', '');
+    });
+
+    // Cancel fulfillment: set status to cancelled and save
+    $(document).off('click.fulfillment', '.btn-cancel-fulfillment').on('click.fulfillment', '.btn-cancel-fulfillment', function() {
+        const $btn = $(this);
+        const $card = $btn.closest('.fulfillment-service-card');
+        if (!confirm('Cancel this fulfillment? The supplier transaction will be reversed.')) return;
+        const bookingServiceId = $card.data('booking-service-id');
+        const isMulti = currentFulfillmentMode !== 'member';
+        const formData = new FormData();
+        formData.append('csrf_token', window.csrfToken || '');
+        formData.append('booking_service_id', bookingServiceId);
+        formData.append('status', 'cancelled');
+        formData.append('supplier_id', $card.find('.f-supplier').val() || '');
+        formData.append('supplier_currency', $card.find('.f-currency').val() || $card.find('.f-makkah-currency').val() || $card.find('.f-madinah-currency').val() || '');
+        formData.append('supplier_cost', $card.find('.f-cost').val() || $card.find('.f-makkah-cost').val() || $card.find('.f-madinah-cost').val() || '');
+        formData.append('exchange_rate', $card.find('.f-rate').val() || $card.find('.f-makkah-rate').val() || $card.find('.f-madinah-rate').val() || '');
+        formData.append('notes', 'Cancelled by user');
+        if (isMulti) {
+            formData.append('family_id', currentFulfillmentFamilyId);
+            if (currentFulfillmentMode === 'group') formData.append('scope', 'group');
+        }
+        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Cancelling...');
+        $.ajax({
+            url: isMulti ? '../api/umrah/save_multi_fulfillment.php' : '../api/umrah/save_fulfillment.php',
+            type: 'POST', data: formData, processData: false, contentType: false, dataType: 'json'
+        }).then(data => {
+            $btn.prop('disabled', false).html('<i class="feather icon-x-circle mr-1"></i>Cancel');
+            if (data.success) {
+                showToast('success', 'Fulfillment cancelled');
+                $card.find('.f-status-badge').text('cancelled');
+                $card.data('frozen', 1);
+                $btn.remove();
+                if (data.booking_price !== undefined) updateFulfillmentSummary();
+            } else {
+                showToast('error', data.message || 'Failed to cancel');
+            }
+        }).catch(() => {
+            $btn.prop('disabled', false).html('<i class="feather icon-x-circle mr-1"></i>Cancel');
+            showToast('error', 'Error cancelling fulfillment');
+        });
     });
 
     // Live stopover duration between leg1 arrival and leg2 departure

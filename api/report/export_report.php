@@ -1100,12 +1100,14 @@ $totals = [];
                     $cashIn = isset($t['cash_in']) ? $t['cash_in'] : 0;
                     $cashOut = isset($t['cash_out']) ? $t['cash_out'] : 0;
                     $expenseOut = isset($t['expense_out']) ? $t['expense_out'] : 0;
-                    $summaryTables[] = ['title' => 'Summary - ' . $currency, 'rows' => [
-                        ['party' => 'INCOME (PROFIT)', 'profit' => $profit],
-                        ['party' => 'CASH RECEIVED', 'cash_in' => $cashIn],
-                        ['party' => 'CASH PAID', 'cash_out' => $cashOut],
-                        ['party' => 'NET CASH FLOW', 'cash_in' => $cashIn - $cashOut, 'bold' => true],
+                    $summaryTables[] = ['title' => 'Summary - ' . $currency, 'headers' => ['Description', 'Amount'], 'rows' => [
+                        ['party' => 'TOTAL PROFIT (Income)', 'profit' => $profit],
+                        ['party' => 'TOTAL EXPENSES', 'cash_out' => $expenseOut],
                         ['party' => 'NET PROFIT', 'profit' => $profit - $expenseOut, 'bold' => true],
+                        ['party' => '', 'profit' => 0],
+                        ['party' => 'CASH RECEIVED', 'cash_in' => $cashIn],
+                        ['party' => 'CASH PAID (All Outflows)', 'cash_out' => $cashOut],
+                        ['party' => 'NET CASH FLOW', 'cash_in' => $cashIn - $cashOut, 'bold' => true],
                     ]];
                 }
                 $sections[] = ['title' => 'SUMMARY', 'tables' => $summaryTables];
@@ -3043,16 +3045,25 @@ case 'umrah':
                         $html .= '<tr' . (!empty($rowData['bold']) ? ' class="total-row"' : '') . '>';
                         foreach ($tableHeaders as $header) {
                             $key = strtolower(str_replace(' ', '_', $header));
-                            if (in_array($header, ['Profit', 'Cash In', 'Cash Out', 'Balance', 'Paid', 'Remaining'])) {
+                            if ($header === 'Description') $key = 'party';
+                            if ($header === 'Amount') {
+                                $amountVal = 0;
+                                if (isset($rowData['profit']) && $rowData['profit'] != 0) $amountVal = $rowData['profit'];
+                                elseif (isset($rowData['cash_in']) && $rowData['cash_in'] != 0) $amountVal = $rowData['cash_in'];
+                                elseif (isset($rowData['cash_out']) && $rowData['cash_out'] != 0) $amountVal = $rowData['cash_out'];
+                                $value = number_format($amountVal, 2);
+                                $html .= '<td class="numeric">' . $value . '</td>';
+                            } elseif (in_array($header, ['Profit', 'Cash In', 'Cash Out', 'Balance', 'Paid', 'Remaining'])) {
                                 $value = isset($rowData[$key]) ? number_format($rowData[$key], 2) : '0.00';
                                 if (in_array($header, ['Cash In', 'Cash Out']) && !$isSummaryRow && isset($rowData[$key]) && $rowData[$key] > 0) {
                                     $cashCur = !empty($rowData['cash_currency']) ? $rowData['cash_currency'] : (isset($rowData['currency']) ? $rowData['currency'] : '');
                                     $value .= ' ' . $cashCur;
                                 }
+                                $html .= '<td class="numeric">' . $value . '</td>';
                             } else {
                                 $value = isset($rowData[$key]) ? htmlspecialchars($rowData[$key]) : '';
+                                $html .= '<td>' . $value . '</td>';
                             }
-                            $html .= '<td' . (in_array($header, ['Profit', 'Cash In', 'Cash Out', 'Balance', 'Paid', 'Remaining']) ? ' class="numeric"' : '') . '>' . $value . '</td>';
                         }
                         $html .= '</tr>';
                     }
@@ -3079,7 +3090,7 @@ case 'umrah':
                     }
                     foreach ($section['tables'] as $tableData) {
                         $pending[] = $tableData;
-                        if (count($pending) === 3) {
+                    if (count($pending) === 3) {
                             $html .= $renderRow($pending);
                             $pending = [];
                         }
@@ -3179,9 +3190,422 @@ case 'umrah':
             exit;
         }
     }
-    
-    
-    
+
+    elseif ($format === 'print') {
+        // Build the same HTML body as PDF, but output as a printable HTML page
+        $headerToFieldMap = [
+            'Supplier' => 'supplier_name',
+            'Client' => 'client_name',
+            'Sold To' => 'sold_to_name',
+            'Account' => 'account_name',
+            'Paid To' => 'paid_to_name',
+            'Creditor' => 'creditor_name',
+            'Debtor' => 'debtor_name',
+            'Paid Amount' => 'paid_amount',
+            'Received Amount' => 'received_amount',
+            'Balance' => 'balance',
+            'Status' => 'status',
+            'Paid Status' => 'paid_status',
+            'Date of Birth' => 'dob',
+            'Father Name' => 'fname',
+            'Group' => 'group_name',
+            'Guest Name' => 'guest_name',
+            'Reference Number' => 'reference_number',
+            'Refund Amount' => 'refund_amount',
+            'Sold Amount' => 'sold_amount',
+            'Total Penalty' => 'total_penalty',
+            'Base Amount' => 'base_amount',
+            'Profit' => 'profit',
+            'Bank Payment' => 'received_bank_payment',
+            'Bank Receipt' => 'bank_receipt_number',
+            'Phone' => function($rowData){
+                return !empty($rowData['phone']) ? $rowData['phone'] : (!empty($rowData['contact']) ? $rowData['contact'] : '');
+            },
+            'Sector' => ['origin','destination','return_destination','trip_type'],
+            'Processed By' => 'processed_by_name',
+            'Date' => 'created_at',
+            'Refund Date' => 'created_at',
+            'Weight (kg)' => 'weight',
+        ];
+
+        // Build report body HTML (same logic as PDF)
+        $bodyHtml = '';
+
+        if ($reportCategory === 'general_summary') {
+            $renderMiniTable = function ($tableData) use ($headers) {
+                $tableHeaders = isset($tableData['headers']) ? $tableData['headers'] : $headers;
+                $h = '<div class="mini-table"><div class="mini-title">' . htmlspecialchars($tableData['title']) . '</div>';
+                $h .= '<table><thead><tr>';
+                foreach ($tableHeaders as $header) {
+                    $h .= '<th>' . htmlspecialchars($header) . '</th>';
+                }
+                $h .= '</tr></thead><tbody>';
+                foreach ($tableData['rows'] as $rowData) {
+                    $isSummaryRow = empty($rowData['date']);
+                    $h .= '<tr' . (!empty($rowData['bold']) ? ' class="total-row"' : '') . '>';
+                    foreach ($tableHeaders as $header) {
+                        $key = strtolower(str_replace(' ', '_', $header));
+                        if ($header === 'Description') $key = 'party';
+                        if ($header === 'Amount') {
+                            $amountVal = 0;
+                            if (isset($rowData['profit']) && $rowData['profit'] != 0) $amountVal = $rowData['profit'];
+                            elseif (isset($rowData['cash_in']) && $rowData['cash_in'] != 0) $amountVal = $rowData['cash_in'];
+                            elseif (isset($rowData['cash_out']) && $rowData['cash_out'] != 0) $amountVal = $rowData['cash_out'];
+                            $value = number_format($amountVal, 2);
+                            $h .= '<td class="numeric">' . $value . '</td>';
+                        } elseif (in_array($header, ['Profit', 'Cash In', 'Cash Out', 'Balance', 'Paid', 'Remaining'])) {
+                            $value = isset($rowData[$key]) ? number_format($rowData[$key], 2) : '0.00';
+                            if (in_array($header, ['Cash In', 'Cash Out']) && !$isSummaryRow && isset($rowData[$key]) && $rowData[$key] > 0) {
+                                $cashCur = !empty($rowData['cash_currency']) ? $rowData['cash_currency'] : (isset($rowData['currency']) ? $rowData['currency'] : '');
+                                $value .= ' ' . $cashCur;
+                            }
+                            $h .= '<td class="numeric">' . $value . '</td>';
+                        } else {
+                            $value = isset($rowData[$key]) ? htmlspecialchars($rowData[$key]) : '';
+                            $h .= '<td>' . $value . '</td>';
+                        }
+                    }
+                    $h .= '</tr>';
+                }
+                $h .= '</tbody></table></div>';
+                return $h;
+            };
+            $renderRow = function ($rowTables) use ($renderMiniTable) {
+                $count = count($rowTables);
+                $cellWidth = floor(100 / $count);
+                $h = '<table class="rowwrap"><tr>';
+                foreach ($rowTables as $idx => $tableData) {
+                    $padRight = ($idx < $count - 1) ? '10px' : '0';
+                    $h .= '<td class="rowcell" style="width:' . $cellWidth . '%;padding-right:' . $padRight . ';">';
+                    $h .= $renderMiniTable($tableData);
+                    $h .= '</td>';
+                }
+                $h .= '</tr></table>';
+                return $h;
+            };
+            $pending = [];
+            foreach ($sections as $section) {
+                if ($section['title'] === 'SUMMARY' && count($pending) > 0) {
+                    $bodyHtml .= $renderRow($pending);
+                    $pending = [];
+                }
+                foreach ($section['tables'] as $tableData) {
+                    $pending[] = $tableData;
+                    if (count($pending) === 2) {
+                        $bodyHtml .= $renderRow($pending);
+                        $pending = [];
+                    }
+                }
+            }
+            if (count($pending) > 0) {
+                $bodyHtml .= $renderRow($pending);
+            }
+        } else {
+            $bodyHtml .= '<table><thead><tr>';
+            foreach ($headers as $header) {
+                $bodyHtml .= '<th>' . htmlspecialchars($header) . '</th>';
+            }
+            $bodyHtml .= '</tr></thead><tbody>';
+
+            foreach ($data as $rowData) {
+                $rowClass = '';
+                $isChild = false;
+                if (isset($rowData['record_type']) && $rowData['record_type'] !== 'normal') {
+                    $rowClass = $rowData['record_type'] === 'refund' ? 'refund' : 'date-change';
+                    $isChild = true;
+                }
+                if ($reportCategory === 'umrah' && isset($rowData['refund_status']) && !empty($rowData['refund_status'])) {
+                    $rowClass = 'umrah-refunded';
+                }
+
+                $bodyHtml .= '<tr class="' . $rowClass . '">';
+
+                foreach ($headers as $headerIdx => $header) {
+                    $value = '';
+
+                    if (isset($headerToFieldMap[$header])) {
+                        $field = $headerToFieldMap[$header];
+
+                        if (is_callable($field)) {
+                            $value = $field($rowData);
+                        } elseif (is_array($field) && $header === 'Sector') {
+                            $value = isset($rowData['origin']) && isset($rowData['destination'])
+                                     ? $rowData['origin'].' → '.$rowData['destination'] : '';
+                            if (isset($rowData['trip_type']) && in_array(strtolower($rowData['trip_type']), ['round_trip','round trip'])
+                                && !empty($rowData['return_destination'])) {
+                                $value .= ' → '.$rowData['return_destination'];
+                            }
+                        } elseif (in_array($header, ['Date of Birth','Date','Refund Date'])) {
+                            $value = !empty($rowData[$field]) ? date('Y-m-d', strtotime($rowData[$field])) : '';
+                        } elseif (in_array($header, ['Paid Amount','Received Amount','Balance','Sold Amount','Refund Amount','Profit','Base Amount','Bank Payment','Weight (kg)'])) {
+                            $value = isset($rowData[$field]) ? number_format($rowData[$field],2) : '0.00';
+                            if ($header === 'Weight (kg)') $value .= ' kg';
+                        } else {
+                            $value = isset($rowData[$field]) ? htmlspecialchars($rowData[$field]) : '';
+                        }
+                    } else {
+                        $key = strtolower(str_replace(' ', '_', $header));
+                        $value = isset($rowData[$key]) ? htmlspecialchars($rowData[$key]) : '';
+                    }
+
+                    if ($isChild && $headerIdx === 0) $value = '&nbsp;&nbsp;&nbsp;&nbsp;'.$value;
+
+                    $bodyHtml .= '<td class="' . (in_array($header,['Paid Amount','Received Amount','Balance','Sold Amount','Refund Amount','Profit','Base Amount','Bank Payment','Weight (kg)']) ? 'numeric':'') . '">' . $value . '</td>';
+                }
+                $bodyHtml .= '</tr>';
+            }
+        }
+
+        // Totals for Umrah (Admin)
+        if ($reportCategory === 'umrah' && !empty($umrahTotals) && $user_role === 'admin') {
+            $numericColumns = ['Price'=>'price','Sold Price'=>'sold_price','Profit'=>'profit'];
+            foreach ($numericColumns as $colName => $keyName) {
+                $bodyHtml .= '<tr class="total-row">';
+                foreach ($headers as $idx => $header) {
+                    if ($idx === 0) $bodyHtml .= '<td><strong>TOTAL '.$colName.'</strong></td>';
+                    elseif ($header === $colName) $bodyHtml .= '<td class="numeric"><strong>'.number_format($umrahTotals[$keyName],2).'</strong></td>';
+                    else $bodyHtml .= '<td></td>';
+                }
+                $bodyHtml .= '</tr>';
+            }
+        }
+
+        // Totals for expense reports
+        if ($reportCategory === 'expense' && !empty($expenseTotals)) {
+            foreach ($expenseTotals as $currency => $total) {
+                $bodyHtml .= '<tr class="total-row">';
+                $amountColIdx = array_search('Amount', $headers);
+                foreach ($headers as $idx => $header) {
+                    if ($idx === 0) $bodyHtml .= '<td><strong>TOTAL</strong></td>';
+                    elseif ($idx === $amountColIdx) $bodyHtml .= '<td class="numeric"><strong>'.number_format($total,2).'</strong></td>';
+                    elseif ($idx === $amountColIdx + 1) $bodyHtml .= '<td><strong>'.$currency.'</strong></td>';
+                    else $bodyHtml .= '<td></td>';
+                }
+                $bodyHtml .= '</tr>';
+            }
+        }
+
+        $bodyHtml .= '</tbody></table>';
+
+        // Full printable HTML page
+        header('Content-Type: text/html; charset=utf-8');
+        ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo htmlspecialchars($reportTitle); ?></title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body { width: 100%; height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+        body { background-color: #f0f2f5; padding: 20px; }
+
+        .print-header {
+            background: white;
+            padding: 20px 30px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .print-header h1 {
+            color: #1a202c;
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        .print-header .date-info {
+            color: #718096;
+            font-size: 13px;
+            margin-top: 4px;
+        }
+
+        .print-button {
+            padding: 12px 28px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .print-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+        }
+
+        .report-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+
+        .rowwrap {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 14px;
+            table-layout: fixed;
+        }
+
+                .rowcell {
+            padding: 0;
+            vertical-align: top;
+            width: 50%;
+        }
+
+        .rowwrap .mini-table { margin-bottom: 0; }
+        .rowwrap .mini-table table { table-layout: fixed; width: 100%; }
+
+        .report-container > table { table-layout: auto; width: 100%; }
+
+        thead tr { background: linear-gradient(180deg, #4a5568 0%, #2d3748 100%); }
+
+        th {
+            color: #fff;
+            padding: 10px 8px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 11px;
+            border: 1px solid #2d3748;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        tbody tr:nth-child(even) { background-color: #f7fafc; }
+        tbody tr:hover { background-color: #edf2f7; }
+
+        td {
+            padding: 8px;
+            border: 1px solid #e2e8f0;
+            font-size: 12px;
+            color: #2d3748;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .numeric {
+            text-align: right;
+            font-family: "Courier New", monospace;
+            font-weight: 500;
+        }
+
+        .total-row {
+            background: linear-gradient(180deg, #edf2f7 0%, #e2e8f0 100%) !important;
+            font-weight: bold;
+            border-top: 3px solid #4a5568;
+            border-bottom: 3px solid #4a5568;
+        }
+
+        .total-row td {
+            font-size: 13px;
+            color: #1a202c;
+            border-color: #cbd5e0;
+            padding: 10px 8px;
+        }
+
+        .mini-table { margin-bottom: 14px; }
+
+        .mini-title {
+            font-size: 13px;
+            font-weight: bold;
+            color: #4a5568;
+            padding: 6px 0 4px 0;
+            border-bottom: 2px solid #e2e8f0;
+            margin-bottom: 4px;
+        }
+
+        .refund { background-color: #fff5f5 !important; }
+        .date-change { background-color: #fffff0 !important; }
+        .umrah-refunded { background-color: #fff5f5 !important; }
+
+        .report-footer {
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 2px solid #e2e8f0;
+            font-size: 11px;
+            color: #718096;
+            text-align: center;
+        }
+
+        .print-title-only { display: none; }
+
+        @media print {
+            body { background: white; padding: 0; margin: 0; }
+            .print-header { display: none !important; }
+            .print-title-only {
+                display: block !important;
+                text-align: center;
+                padding: 4px 0;
+                border-bottom: 1px solid #ccc;
+                margin-bottom: 6px;
+                page-break-inside: avoid;
+            }
+            .print-title-only h1 { font-size: 14px; color: #1a202c; margin: 0; }
+            .print-title-only p { font-size: 10px; color: #718096; margin: 2px 0 0 0; }
+            .report-container {
+                box-shadow: none;
+                padding: 0;
+                border-radius: 0;
+                width: 100%;
+                overflow: visible;
+            }
+            .section-title { font-size: 10pt; padding: 3px 6px; margin: 6px 0 4px 0; }
+            .mini-title { font-size: 9pt; padding: 2px 0; margin-bottom: 2px; }
+            .mini-table { margin-bottom: 4px; }
+            .rowwrap { margin-bottom: 4px; }
+            table { page-break-inside: auto; table-layout: auto; width: 100%; }
+            th { white-space: normal; font-size: 7pt; padding: 3px 3px; }
+            td { font-size: 6.5pt; padding: 3px 2px; word-wrap: break-word; overflow-wrap: break-word; max-width: none; }
+            tr { page-break-inside: avoid; }
+            thead { display: table-header-group; }
+            tbody tr:first-child { page-break-before: avoid; }
+            .section-title { page-break-after: avoid; }
+            @page { size: A4 landscape; margin: 6mm; }
+        }
+    </style>
+</head>
+<body>
+    <div class="print-header">
+        <div>
+            <h1><?php echo htmlspecialchars($reportTitle); ?></h1>
+            <div class="date-info"><?php echo htmlspecialchars($dateRange); ?></div>
+        </div>
+        <button class="print-button" onclick="window.print()">
+            🖨️ Print Report
+        </button>
+    </div>
+
+    <div class="print-title-only">
+        <h1><?php echo htmlspecialchars($reportTitle); ?></h1>
+        <p><?php echo htmlspecialchars($dateRange); ?></p>
+    </div>
+
+    <div class="report-container">
+        <?php echo $bodyHtml; ?>
+        <div class="report-footer">Generated on <?php echo date('F d, Y \a\t H:i:s'); ?></div>
+    </div>
+</body>
+</html>
+<?php
+        exit;
+    }
+
     elseif ($format === 'word') {
         $phpWord = new \PhpOffice\PhpWord\PhpWord();
         

@@ -754,16 +754,7 @@ function exportReport(format) {
         document.body.removeChild(form);
     } else {
         // For other report types, use the original export functionality
-        Swal.fire({
-            title: 'Generating Report',
-            text: 'Please wait...',
-            allowOutsideClick: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
-        });
-
-        window.location.href = "../api/report/export_report.php?format=" + format +
+        var reportUrl = "../api/report/export_report.php?format=" + format +
                               "&reportType=" + reportType +
                               "&entity=" + entity +
                               "&reportCategory=" + reportCategory +
@@ -777,15 +768,30 @@ function exportReport(format) {
                               (umrahFlightDate ? "&umrahFlightDate=" + umrahFlightDate : "") +
                               (umrahReturnDate ? "&umrahReturnDate=" + umrahReturnDate : "");
 
-        // Close loading after a short delay
-        setTimeout(() => {
-            Swal.close();
+        if (format === 'print') {
+            window.open(reportUrl, '_blank');
+        } else {
             Swal.fire({
-                icon: 'success',
-                title: 'Success',
-                text: 'Report has been generated successfully'
+                title: 'Generating Report',
+                text: 'Please wait...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
             });
-        }, 2000);
+
+            window.location.href = reportUrl;
+
+            // Close loading after a short delay
+            setTimeout(() => {
+                Swal.close();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success',
+                    text: 'Report has been generated successfully'
+                });
+            }, 2000);
+        }
     }
 }
 

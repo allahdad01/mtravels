@@ -118,19 +118,28 @@ try {
                 WHERE id = ? AND tenant_id = ? AND branch_id = ?
             ")->execute([-1 * abs($newSoldPrice), $newTxnBalance, $clientTransaction['id'], $tenant_id, $branch_id]);
 
-            // Update subsequent transactions for regular clients
+            // Recalculate ALL subsequent balances from scratch (avoids
+            // double-counting when multiple members are updated in sequence).
             if ($isRegularClient && $amountDifference != 0) {
-                $absDiff = abs($amountDifference);
-                if ($amountDifference > 0) {
-                    $pdo->prepare("
-                        UPDATE client_transactions SET balance = balance - ?
-                        WHERE client_id = ? AND id > ? AND currency = ? AND tenant_id = ? AND branch_id = ?
-                    ")->execute([$absDiff, $soldTo, $clientTransaction['id'], $clientCurrency, $tenant_id, $branch_id]);
-                } else {
-                    $pdo->prepare("
-                        UPDATE client_transactions SET balance = balance + ?
-                        WHERE client_id = ? AND id > ? AND currency = ? AND tenant_id = ? AND branch_id = ?
-                    ")->execute([$absDiff, $soldTo, $clientTransaction['id'], $clientCurrency, $tenant_id, $branch_id]);
+                $laterStmt = $pdo->prepare("
+                    SELECT id, amount, type FROM client_transactions
+                    WHERE client_id = ? AND currency = ? AND id > ?
+                      AND tenant_id = ? AND branch_id = ?
+                    ORDER BY id ASC
+                ");
+                $laterStmt->execute([$soldTo, $clientCurrency, $clientTransaction['id'], $tenant_id, $branch_id]);
+                $laterTxns = $laterStmt->fetchAll(PDO::FETCH_ASSOC);
+
+                $runningBalance = $newTxnBalance;
+                $updStmt = $pdo->prepare("UPDATE client_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                foreach ($laterTxns as $lt) {
+                    $amt = (float)$lt['amount'];
+                    if (strtolower((string)$lt['type']) === 'credit') {
+                        $runningBalance = round($runningBalance + $amt, 3);
+                    } else {
+                        $runningBalance = round($runningBalance - $amt, 3);
+                    }
+                    $updStmt->execute([$runningBalance, $lt['id'], $tenant_id, $branch_id]);
                 }
             }
         }

@@ -189,7 +189,7 @@ $canEdit = user_can('umrah.member_edit');
                         $familiesCountStmt = $pdo->prepare("SELECT COUNT(*) FROM families WHERE tenant_id = ? AND branch_id = ?");
                         $familiesCountStmt->execute([$tenant_id, $branch_id]);
                         $totalFamilies = (int)$familiesCountStmt->fetchColumn();
-                        $membersCountStmt = $pdo->prepare("SELECT COUNT(*) FROM umrah_bookings WHERE tenant_id = ? AND branch_id = ?");
+                        $membersCountStmt = $pdo->prepare("SELECT COUNT(*) FROM umrah_bookings WHERE tenant_id = ? AND branch_id = ? AND COALESCE(is_extra_bed, 0) = 0");
                         $membersCountStmt->execute([$tenant_id, $branch_id]);
                         $totalMembers = (int)$membersCountStmt->fetchColumn();
                         $flightsCountStmt = $pdo->prepare("SELECT COUNT(*) FROM group_tickets WHERE tenant_id = ? AND branch_id = ? AND status = 'active'");
@@ -320,7 +320,7 @@ $canEdit = user_can('umrah.member_edit');
                         $resultFamilies = [];
                         $regularClientFamilies = [];
                         $resultMembers = [];
-                        $membersCountStmt = $pdo->prepare("SELECT COUNT(*) FROM umrah_bookings WHERE tenant_id = ? AND branch_id = ?");
+                        $membersCountStmt = $pdo->prepare("SELECT COUNT(*) FROM umrah_bookings WHERE tenant_id = ? AND branch_id = ? AND COALESCE(is_extra_bed, 0) = 0");
                         $membersCountStmt->execute([$tenant_id, $branch_id]);
                         $totalMembers = (int)$membersCountStmt->fetchColumn();
                         $groupsCountStmt = $pdo->prepare("SELECT COUNT(*) FROM umrah_groups WHERE tenant_id = ? AND (branch_id = ? OR branch_id = 0)");
@@ -332,7 +332,7 @@ $canEdit = user_can('umrah.member_edit');
                                         FROM umrah_bookings b
                                         LEFT JOIN families f ON b.family_id = f.family_id
                                         LEFT JOIN clients c ON b.sold_to = c.id
-                                        WHERE b.tenant_id = ? AND b.branch_id = ?";
+                                        WHERE b.tenant_id = ? AND b.branch_id = ? AND COALESCE(b.is_extra_bed, 0) = 0";
                     $membersCountParams = [$tenant_id, $branch_id];
                     $membersCountTypes = "ii";
 
@@ -575,7 +575,7 @@ $canEdit = user_can('umrah.member_edit');
                     }
 
                     // Total member count (badge on the All pill)
-                    $membersCountStmt = $pdo->prepare("SELECT COUNT(*) FROM umrah_bookings WHERE tenant_id = ? AND branch_id = ?");
+                    $membersCountStmt = $pdo->prepare("SELECT COUNT(*) FROM umrah_bookings WHERE tenant_id = ? AND branch_id = ? AND COALESCE(is_extra_bed, 0) = 0");
                     $membersCountStmt->execute([$tenant_id, $branch_id]);
                     $totalMembers = (int)$membersCountStmt->fetchColumn();
                     $resultMembers = [];

@@ -187,6 +187,9 @@ document.addEventListener('DOMContentLoaded', function () {
           <td class="actions-cell">
             <div class="action-row">
               ${canEdit ? `
+              <button class="act-btn adjust" onclick="openAdjustBalanceModal(${c.id}, '${escHtml(c.name).replace(/'/g, "\\'")}', ${parseFloat(c.usd || 0)}, ${parseFloat(c.afs || 0)})" title="Adjust Balance">
+                <i class="fas fa-sliders"></i>
+              </button>
               <button class="act-btn primary" onclick="editClient(${c.id})" title="Edit">
                 <i class="fas fa-pen-to-square"></i>
               </button>

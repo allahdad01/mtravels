@@ -281,8 +281,11 @@ try {
     $currentTotalSoldPrice = array_sum(array_column($currentServices, 'sold_price'));
     
     // Calculate proper adjustments
+    // Use booking-level sold_price as the client baseline (the transaction was
+    // created from umrah_bookings.sold_price, NOT from service-level sums which
+    // can be 0 when grand_sold_price was used at activation time).
     $supplierPriceAdjustment = $totalBasePrice - $currentTotalBasePrice;
-    $clientPriceAdjustment = $totalSoldPrice - $currentTotalSoldPrice;
+    $clientPriceAdjustment = $totalSoldPrice - (float)$currentData['sold_price'];
     $paidAdjustment = $paid - $currentData['paid'];
     
     // Update umrah_bookings table with totals
@@ -816,37 +819,29 @@ try {
                         $branch_id
                     ]);
 
-                    // Update subsequent transactions only for regular clients
+                    // Recalculate ALL subsequent balances from scratch (avoids
+                    // double-counting when multiple members are updated in sequence).
                     if ($isRegularClient) {
-                        if ($amountDifference > 0) {
-                            $updateSubsequentClientStmt = $pdo->prepare("
-                                UPDATE client_transactions
-                                SET balance = balance - ?
-                                WHERE client_id = ?
-                                AND id > ?
-                                AND currency = ?
-                                AND tenant_id = ? AND branch_id = ?
-                            ");
-                        } else {
-                            $updateSubsequentClientStmt = $pdo->prepare("
-                                UPDATE client_transactions
-                                SET balance = balance + ?
-                                WHERE client_id = ?
-                                AND id > ?
-                                AND currency = ?
-                                AND tenant_id = ? AND branch_id = ?
-                            ");
-                        }
+                        $laterStmt = $pdo->prepare("
+                            SELECT id, amount, type FROM client_transactions
+                            WHERE client_id = ? AND currency = ? AND id > ?
+                              AND tenant_id = ? AND branch_id = ?
+                            ORDER BY id ASC
+                        ");
+                        $laterStmt->execute([$soldTo, $clientCurrency, $clientTransaction['id'], $tenant_id, $branch_id]);
+                        $laterTxns = $laterStmt->fetchAll(PDO::FETCH_ASSOC);
 
-                        $absAmountDifference = abs($amountDifference);
-                        $updateSubsequentClientStmt->execute([
-                            $absAmountDifference,
-                            $soldTo,
-                            $clientTransaction['id'],
-                            $clientCurrency,
-                            $tenant_id,
-                            $branch_id
-                        ]);
+                        $runningBalance = $newTransactionBalance;
+                        $updStmt = $pdo->prepare("UPDATE client_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                        foreach ($laterTxns as $lt) {
+                            $amt = (float)$lt['amount'];
+                            if (strtolower((string)$lt['type']) === 'credit') {
+                                $runningBalance = round($runningBalance + $amt, 3);
+                            } else {
+                                $runningBalance = round($runningBalance - $amt, 3);
+                            }
+                            $updStmt->execute([$runningBalance, $lt['id'], $tenant_id, $branch_id]);
+                        }
                     }
                 }
             }

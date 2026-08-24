@@ -210,6 +210,9 @@ function fulfillment_save(PDO $pdo, array $in): array
     } elseif (isset($in['flight_legs']) && is_array($in['flight_legs'])) {
         $flight_legs = $in['flight_legs'];
     }
+    // Default empty flight_type to 'direct' so non-flight services (hotel,
+    // visa …) pass validation without requiring the client to post a value.
+    if ($flight_type === '') { $flight_type = 'direct'; }
     if (!in_array($flight_type, ['direct', 'indirect'], true)) {
         return ['success' => false, 'code' => 400, 'message' => 'Invalid flight type. Allowed: direct, indirect.'];
     }
@@ -878,7 +881,8 @@ function fulfillment_save(PDO $pdo, array $in): array
         // ---- Write-back: actual cost onto the sold service + booking totals ------
         // With multiple hotel stays the cost is the sum of every stay's
         // fulfillment (single stay = the old single-row behaviour).
-        $bpStmt = $pdo->prepare("SELECT COALESCE(SUM(COALESCE(cost_amount, 0)), 0) FROM umrah_fulfillments WHERE booking_service_id = ? AND tenant_id = ?");
+        // Cancelled fulfillments are excluded — their cost is no longer owed.
+        $bpStmt = $pdo->prepare("SELECT COALESCE(SUM(COALESCE(cost_amount, 0)), 0) FROM umrah_fulfillments WHERE booking_service_id = ? AND tenant_id = ? AND status != 'cancelled'");
         $bpStmt->execute([$booking_service_id, $tenant_id]);
         $newBase = round((float)$bpStmt->fetchColumn(), 3);
         $pdo->prepare("UPDATE umrah_booking_services SET base_price = ? WHERE id = ?")
@@ -924,10 +928,11 @@ function fulfillment_save(PDO $pdo, array $in): array
             // debit must use the supplier-currency cost — not the booking-
             // currency (USD-normalized) cost_amount. Falls back to cost_amount
             // when no supplier currency was captured (same as booking currency).
+            // Cancelled fulfillments are excluded — their cost is no longer owed.
             $supAmtStmt = $pdo->prepare("
                 SELECT COALESCE(SUM(COALESCE(supplier_cost, cost_amount)), 0)
                 FROM umrah_fulfillments
-                WHERE booking_service_id = ? AND tenant_id = ? AND supplier_id = ?");
+                WHERE booking_service_id = ? AND tenant_id = ? AND supplier_id = ? AND status != 'cancelled'");
             $supAmtStmt->execute([$booking_service_id, $tenant_id, $supplier_id]);
             $supplierBase = round((float)$supAmtStmt->fetchColumn(), 3);
 
@@ -982,6 +987,38 @@ function fulfillment_save(PDO $pdo, array $in): array
                 }
             }
 
+            // ---- Cancellation: delete the original transaction + correction, restore balance ----
+            if ($status === 'cancelled') {
+                $corrRemark = "Fulfillment cost correction for {$svc['service_type']}: {$memberName}";
+                $existingTxnStmt = $pdo->prepare("
+                    SELECT id, transaction_type, amount FROM supplier_transactions
+                    WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
+                      AND (remarks = ? OR remarks = ?) AND tenant_id = ?");
+                $existingTxnStmt->execute([$supplier_id, $booking_id, $remark, $corrRemark, $tenant_id]);
+                $existingTxns = $existingTxnStmt->fetchAll(PDO::FETCH_ASSOC);
+
+                if ($existingTxns) {
+                    $net = 0.0;
+                    $minId = PHP_INT_MAX;
+                    foreach ($existingTxns as $et) {
+                        $net += strcasecmp((string)$et['transaction_type'], 'Credit') === 0
+                            ? -(float)$et['amount'] : (float)$et['amount'];
+                        $minId = min($minId, (int)$et['id']);
+                    }
+                    if ($net != 0.0 && $supplierType === 'External') {
+                        $pdo->prepare("UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ?")
+                            ->execute([$net, $supplier_id, $tenant_id]);
+                    }
+                    $pdo->prepare("DELETE FROM supplier_transactions
+                                   WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
+                                     AND (remarks = ? OR remarks = ?) AND tenant_id = ?")
+                        ->execute([$supplier_id, $booking_id, $remark, $corrRemark, $tenant_id]);
+                    if ($minId < PHP_INT_MAX) {
+                        umrahRebuildRunningBalances($pdo, $tenant_id, $branch_id, $supplier_id, $minId);
+                    }
+                }
+            } else {
+            // ---- Normal save: create or reconcile supplier transaction ----
             $dupStmt = $pdo->prepare("
                 SELECT id FROM supplier_transactions
                 WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
@@ -1022,6 +1059,7 @@ function fulfillment_save(PDO $pdo, array $in): array
                 // leave a stale correction (phantom) behind.
                 umrahReconcileSupplierExposure($pdo, $tenant_id, $branch_id, $booking_id, (int)$supplier_id, (string)$memberName, (string)($svc['service_type'] ?? $fulfillment_type));
             }
+            } // end if cancelled/else
         }
 
         // ---- Booking activation (replaces the old approval step) --------------

@@ -339,11 +339,11 @@ if ($tenant_id) {
                                                             </small>
                                                         </div>
                                                         <div class="export-buttons d-flex gap-2 flex-wrap">
-                                                            <button type="button" class="btn btn-outline-danger btn-lg px-3 export-btn" onclick="exportReport('pdf')">
-                                                                <i class="feather icon-file-text me-2"></i>
-                                                                <span class="d-none d-sm-inline"><?= __('pdf') ?></span>
+                                                             <button type="button" class="btn btn-outline-primary btn-lg px-3 export-btn" onclick="exportReport('print')">
+                                                                <i class="feather icon-printer me-2"></i>
+                                                                <span class="d-none d-sm-inline"><?= __('print') ?></span>
                                                             </button>
-                                                            <button type="button" class="btn btn-outline-success btn-lg px-3 export-btn" onclick="exportReport('excel')">
+                                                             <button type="button" class="btn btn-outline-success btn-lg px-3 export-btn" onclick="exportReport('excel')">
                                                                 <i class="feather icon-file me-2"></i>
                                                                 <span class="d-none d-sm-inline"><?= __('excel') ?></span>
                                                             </button>
