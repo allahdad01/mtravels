@@ -34,7 +34,22 @@ if ($family_id <= 0) {
 
 try {
     // Fetch members
+    // flight_date / return_date subqueries override the legacy umrah_bookings
+    // columns (which the fulfillment flow never writes to) with real data from
+    // umrah_flight_fulfillments — same pattern as the Members view in umrah.php.
     $sqlMembers = "SELECT um.*, c.name as client_name, ma.name as main_account_name, u.name as created_by, f.head_of_family as family_head_name,
+        (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+         JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+         JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+         WHERE ubs2.booking_id = um.booking_id AND uf.tenant_id = um.tenant_id
+           AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+         ORDER BY ff.id DESC LIMIT 1) AS flight_date,
+        (SELECT DATE(ff.return_departure_time) FROM umrah_flight_fulfillments ff
+         JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+         JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+         WHERE ubs2.booking_id = um.booking_id AND uf.tenant_id = um.tenant_id
+           AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+         ORDER BY ff.id DESC LIMIT 1) AS return_date,
         GROUP_CONCAT(CONCAT(
             CASE ubs.service_type
                 WHEN 'all' THEN 'All Services'

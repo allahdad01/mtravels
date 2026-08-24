@@ -30,20 +30,35 @@ try {
     $stmt->execute([$tenant_id, $branch_id, $family_id]);
     $tickets = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Get members from this family and check which have flights set
-    $membersSql = "SELECT booking_id, name, flight_date, return_date
-                   FROM umrah_bookings
-                   WHERE family_id = ? AND tenant_id = ? AND branch_id = ? AND status = 'active'
-                   ORDER BY name ASC";
-    
+    // Get members from this family with flight status from fulfillments.
+    // umrah_bookings.flight_date/return_date are legacy columns that the
+    // fulfillment flow never writes to — real flight data lives in
+    // umrah_flight_fulfillments via umrah_fulfillments + umrah_booking_services.
+    $membersSql = "SELECT ub.booking_id, ub.name,
+                   (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
+                    JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                    JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                    WHERE ubs2.booking_id = ub.booking_id AND ub.tenant_id = uf.tenant_id
+                      AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                    ORDER BY ff.id DESC LIMIT 1) AS flight_date,
+                   (SELECT DATE(ff.return_departure_time) FROM umrah_flight_fulfillments ff
+                    JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
+                    JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
+                    WHERE ubs2.booking_id = ub.booking_id AND ub.tenant_id = uf.tenant_id
+                      AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
+                    ORDER BY ff.id DESC LIMIT 1) AS return_date
+                   FROM umrah_bookings ub
+                   WHERE ub.family_id = ? AND ub.tenant_id = ? AND ub.branch_id = ? AND ub.status = 'active'
+                   ORDER BY ub.name ASC";
+
     $membersStmt = $pdo->prepare($membersSql);
     $membersStmt->execute([$family_id, $tenant_id, $branch_id]);
     $members = $membersStmt->fetchAll(PDO::FETCH_ASSOC);
-    
+
     // Count how many members have flight dates set
     $flightDoneCount = 0;
     foreach ($members as $member) {
-        if ($member['flight_date'] && $member['return_date']) {
+        if (!empty($member['flight_date']) && !empty($member['return_date'])) {
             $flightDoneCount++;
         }
     }

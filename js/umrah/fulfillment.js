@@ -11,6 +11,9 @@ let currentFulfillmentFamilyId = 0;
 let currentFulfillmentMode = 'member'; // 'member' | 'family' | 'group'
 let currentFulfillmentGroupId = 0;
 let currentFulfillmentGroupName = '';
+// Set after creating an extra bed so the refreshed aggregate modal returns
+// directly to that family's expanded hotel section.
+let pendingExtraBedFocus = null;
 
 function openFulfillmentModal(bookingId, memberName) {
     openFulfillmentFor({ booking_id: bookingId }, memberName || ('#' + bookingId), 'member');
@@ -23,6 +26,33 @@ function reloadFulfillmentModal() {
         openFulfillmentFor({ group_id: currentFulfillmentGroupId }, currentFulfillmentGroupName || 'Group #' + currentFulfillmentGroupId, 'group');
     } else if (currentFulfillmentMode === 'member' && currentFulfillmentBookingId) {
         openFulfillmentFor({ booking_id: currentFulfillmentBookingId }, '', 'member');
+    }
+}
+
+function focusPendingExtraBed() {
+    if (!pendingExtraBedFocus) return;
+    const pending = pendingExtraBedFocus;
+    const $extraBed = pending.bookingId
+        ? $('.fulfillment-service-card[data-group="hotel"] .f-hotel-group[data-member-id="' + pending.bookingId + '"]').first()
+        : $();
+    const $familyButton = $('.fulfillment-service-card[data-group="hotel"] .btn-add-extra-bed').filter(function() {
+        return String($(this).data('family-id')) === String(pending.familyId);
+    }).first();
+    const $target = $extraBed.length ? $extraBed : $familyButton.closest('.f-hotel-subgroup');
+
+    if (!$target.length) return;
+    pendingExtraBedFocus = null;
+
+    const $subgroup = $target.closest('.f-hotel-subgroup');
+    const scrollToTarget = function() {
+        const node = ($extraBed.length ? $extraBed : $subgroup)[0];
+        if (node && node.scrollIntoView) node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+    const $collapse = $subgroup.find('.collapse').first();
+    if ($collapse.length && !$collapse.hasClass('show')) {
+        $collapse.one('shown.bs.collapse', scrollToTarget).collapse('show');
+    } else {
+        setTimeout(scrollToTarget, 0);
     }
 }
 
@@ -76,6 +106,7 @@ function openFulfillmentFor(params, entityName, mode) {
         renderFulfillmentServices(data);
         updateFulfillmentSummary();
         $('#fulfillmentModal').modal('show');
+        focusPendingExtraBed();
     }).catch(err => {
         console.error('Error loading fulfillments:', err);
         showToast('error', 'Failed to load services');
@@ -1373,12 +1404,9 @@ function updateRoomNeedMessage($card) {
 }
 
 // Aggregate hotel card wrapper: "Hotel Stays" header + the room-split
-// selector. Only Per family / Per member are manual picks. Per duration
-// (members on different packages get their own fields) and Per gender
-// (Shared room types auto-assign same-gender members to the nearest rooms,
-// males and females always apart) are decided automatically and shown as
-// info tags — both can apply at once when a duration split AND shared
-// rooms coexist. The selector never offers them.
+// selector. Per family is the initial manual layout and Per member is the
+// alternative. Shared room types still use the gender-aware room assignment
+// guard, but never silently replace the selected family layout.
 function hotelSplitHtml(service, data, aggregate, splitMode) {
     const autoTag = autoSplitTagsHtml(service);
     const selector = aggregate ? `
@@ -1417,20 +1445,12 @@ function autoSplitTagsHtml(service) {
     return html;
 }
 
-// Room split default for aggregate hotel cards — the "top rank":
-//   1. Per-duration when the covered members travel on different packages
-//      (cards ordered by duration, then family, then gender).
-//   2. Per-gender when EVERY member is booked on a Shared room type (hotels
-//      pair males with males, females with females) — with automatic
-//      same-gender nearest-room assignment.
-//   3. Per-family otherwise (each member keeps their own check-in/check-out
-//      even inside the same family).
-// The operator can switch modes anytime.
+// Aggregate hotel cards start in the same mode the selector displays:
+// Per-family. Shared room safety/auto-assignment remains active separately.
 function autoHotelSplitMode(service) {
-    const bd = Array.isArray(service.member_breakdown) ? service.member_breakdown : [];
-    if (!bd.length) return 'same';
-    const shared = bd.every(m => isSharedRoomType(m.room_type));
-    return shared ? 'gender' : 'family';
+    return Array.isArray(service.member_breakdown) && service.member_breakdown.length
+        ? 'family'
+        : 'same';
 }
 
 function renderFulfillmentServices(data) {
@@ -1461,11 +1481,9 @@ function renderFulfillmentServices(data) {
         if (group === 'hotel') {
             const aggregateHotel = currentFulfillmentMode !== 'member' && !!service.is_aggregate;
             const durGroups = aggregateHotel ? groupMembersByDuration(service.member_breakdown || []) : null;
-            // Aggregate cards default to per-duration blocks when the covered
-            // members travel on different packages; shared-room bookings
-            // default to per-gender blocks with nearest-room auto-assignment;
-            // otherwise per-family (per-member check-in/check-out).
-            splitMode = aggregateHotel && durGroups !== null && durGroups.size > 1 ? 'duration' : (aggregateHotel ? autoHotelSplitMode(service) : 'same');
+            // The initial body must match the visible selector. Room safety
+            // and automatic same-gender placement still run independently.
+            splitMode = aggregateHotel ? autoHotelSplitMode(service) : 'same';
             extra = hotelSplitHtml(service, data, aggregateHotel, splitMode);
         } else if (group === 'flight') {
             // Rich flight details (mirrors the group ticket form): direct
@@ -2457,6 +2475,10 @@ function bindFulfillmentEvents() {
             booking_service_id: bookingServiceId
         }, function(resp) {
             if (resp.success) {
+                pendingExtraBedFocus = {
+                    familyId: familyId,
+                    bookingId: parseInt(resp.booking_id, 10) || 0
+                };
                 reloadFulfillmentModal();
             } else {
                 alert(resp.message || 'Failed to add extra bed.');
