@@ -125,6 +125,7 @@ $canEdit = user_can('umrah.member_edit');
                                         u.name AS created_by,
                                         COUNT(DISTINCT f.family_id) AS family_count,
                                         COUNT(CASE WHEN COALESCE(ub.is_extra_bed, 0) = 0 THEN ub.booking_id END) AS member_count,
+                                        COUNT(CASE WHEN COALESCE(ub.is_extra_bed, 0) = 1 THEN ub.booking_id END) AS extra_bed_count,
                                         COALESCE(fam.total_price, 0) AS total_price,
                                         COALESCE(fam.total_paid, 0) AS total_paid,
                                         COALESCE(fam.total_due, 0) AS total_due
@@ -490,6 +491,7 @@ $canEdit = user_can('umrah.member_edit');
                                         u.name as created_by,
                                         g.group_number, g.group_name,
                                         COUNT(CASE WHEN COALESCE(ub.is_extra_bed, 0) = 0 THEN ub.booking_id END) AS total_members,
+                                        COUNT(CASE WHEN COALESCE(ub.is_extra_bed, 0) = 1 THEN ub.booking_id END) AS extra_bed_count,
                                         SUM(CASE WHEN ub.status = 'refunded' THEN 1 ELSE 0 END) AS refunded_members,
                                         SUM(CASE WHEN ub.status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled_members,
                                         (SELECT ub2.currency FROM umrah_bookings ub2
@@ -557,7 +559,7 @@ $canEdit = user_can('umrah.member_edit');
                     $resultFamilies = $familiesStmt->fetchAll(PDO::FETCH_ASSOC);
 
                     // Families with at least one regular client (single query for all
-                    // families on this page â€” replaces the per-card N+1 query)
+                    // families on this page — replaces the per-card N+1 query)
                     $regularClientFamilies = [];
                     $familyIds = array_column($resultFamilies, 'family_id');
                     if (!empty($familyIds)) {
@@ -679,6 +681,13 @@ $canEdit = user_can('umrah.member_edit');
                                                     <i class="fas fa-user"></i>
                                                     <?= $memberCount ?> <?= __('members') ?>
                                                 </span>
+                                                <?php $extraBedCount = (int)($group['extra_bed_count'] ?? 0); ?>
+                                                <?php if ($extraBedCount > 0): ?>
+                                                <span class="meta-item text-warning" title="<?= __('extra_beds') ?>">
+                                                    <i class="fas fa-plus-square"></i>
+                                                    <?= $extraBedCount ?> <?= __('extra_beds') ?>
+                                                </span>
+                                                <?php endif; ?>
                                                 <?php $excludedVisaOnly = (int)($group['excluded_visa_only_count'] ?? 0); ?>
                                                 <?php if ($excludedVisaOnly > 0): ?>
                                                 <span class="meta-item text-danger" title="<?= __('excluded_from_all_services_except_visa') ?>">
@@ -720,7 +729,7 @@ $canEdit = user_can('umrah.member_edit');
                                     <div class="card-body-section">
                                         <div class="info-row">
                                             <i class="fas fa-calendar-alt"></i>
-                                            <span><?= __('created_by') ?>: <?= htmlspecialchars($group['created_by'] ?: 'â€”') ?> Â· <?= date('Y-m-d', strtotime($group['created_at'])) ?></span>
+                                            <span><?= __('created_by') ?>: <?= htmlspecialchars($group['created_by'] ?: '—') ?> &middot; <?= date('Y-m-d', strtotime($group['created_at'])) ?></span>
                                         </div>
                                         <div class="financial-summary">
                                             <div class="financial-details">
@@ -1090,10 +1099,10 @@ $canEdit = user_can('umrah.member_edit');
                                         <td><?= htmlspecialchars($m['passport_number']) ?></td>
                                         <td><?= htmlspecialchars($m['head_of_family']) ?></td>
                                         <td><?= !empty($m['group_number']) ? '#' . htmlspecialchars($m['group_number']) . ' ' . htmlspecialchars($m['group_name']) : '—' ?></td>
-                                        <td><?= htmlspecialchars($m['client_name']) ?: 'â€”' ?></td>
-                                        <td><?= htmlspecialchars($m['duration']) ?: 'â€”' ?></td>
-                                        <td><?= htmlspecialchars($m['room_type']) ?: 'â€”' ?></td>
-                                        <td><?= htmlspecialchars($m['visa_status']) ?: 'â€”' ?></td>
+                                        <td><?= htmlspecialchars($m['client_name']) ?: '—' ?></td>
+                                        <td><?= htmlspecialchars($m['duration']) ?: '—' ?></td>
+                                        <td><?= htmlspecialchars($m['room_type']) ?: '—' ?></td>
+                                        <td><?= htmlspecialchars($m['visa_status']) ?: '—' ?></td>
                                         <td><span class="flight-member-badge <?= $mBadgeClass ?>"><i class="fas <?= $mBadgeIcon ?>"></i> <?= $mBadgeText ?></span></td>
                                         <td class="member-cell-finance">
                                             <b><?= number_format((float)($m['sold_price'] ?? 0), 2) ?> <?= $mCurrency ?></b><br>
@@ -1292,6 +1301,13 @@ $canEdit = user_can('umrah.member_edit');
                                                         <i class="fas fa-users"></i>
                                                         <?= $row['total_members'] ?> <?= __('members') ?>
                                                     </span>
+                                                    <?php $extraBedCount = (int)($row['extra_bed_count'] ?? 0); ?>
+                                                    <?php if ($extraBedCount > 0): ?>
+                                                    <span class="meta-item text-warning" title="<?= __('extra_beds') ?>">
+                                                        <i class="fas fa-plus-square"></i>
+                                                        <?= $extraBedCount ?> <?= __('extra_beds') ?>
+                                                    </span>
+                                                    <?php endif; ?>
                                                     <?php if ($row['refunded_members'] > 0): ?>
                                                     <span class="meta-item text-warning" title="<?= __('refunded_members') ?>">
                                                         <i class="fas fa-undo"></i>
@@ -1795,13 +1811,13 @@ $canEdit = user_can('umrah.member_edit');
                     
                     if (flightDone === totalMembers && totalMembers > 0) {
                         statusBadge.classList.add('flight-complete');
-                        statusText.textContent = `âœ“ Flight Done (${flightDone}/${totalMembers})`;
+                        statusText.innerHTML = `<i class="fas fa-check-circle"></i> Flight Done (${flightDone}/${totalMembers})`;
                     } else if (flightDone > 0) {
                         statusBadge.classList.add('flight-partial');
-                        statusText.textContent = `âš  Flight Done (${flightDone}/${totalMembers})`;
+                        statusText.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Flight Done (${flightDone}/${totalMembers})`;
                     } else {
                         statusBadge.classList.add('flight-pending');
-                        statusText.textContent = `Flight Pending (0/${totalMembers})`;
+                        statusText.innerHTML = `<i class="fas fa-clock"></i> Flight Pending (0/${totalMembers})`;
                     }
                 } else {
                     statusBadge.classList.add('flight-pending');

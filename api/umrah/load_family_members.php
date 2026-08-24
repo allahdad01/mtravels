@@ -132,12 +132,11 @@ try {
     </div>
 
     <div class="members-list">
-        <?php $hasPendingMember = false;
+        <?php
         foreach ($members as $member):
             $isRefunded = isset($member['status']) && $member['status'] === 'refunded';
             $isCancelled = isset($member['status']) && $member['status'] === 'cancelled';
             $isPending = isset($member['status']) && $member['status'] === 'pending';
-            if ($isPending) { $hasPendingMember = true; }
             $isDisabled = $isRefunded || $isCancelled;
             
             // Get main account transactions
@@ -187,8 +186,9 @@ try {
                         </span>
                     <?php endif; ?>
                     
-                    <!-- Flight Status Badge -->
-                    <?php if ($member['flight_date'] && $member['return_date']): ?>
+                    <!-- Flight Status Badge (extra beds have no flights) -->
+                    <?php if (!empty($member['is_extra_bed'])): ?>
+                    <?php elseif ($member['flight_date'] && $member['return_date']): ?>
                         <span class="status-badge badge-flight-done">
                             <i class="fas fa-plane"></i> <?= __('flight_done') ?>
                         </span>
@@ -309,11 +309,7 @@ try {
                 <span><?= __('select_all') ?></span>
             </label>
             <div class="bulk-action-buttons">
-                <?php if ($hasPendingMember): ?>
-                <button type="button" class="btn btn-success btn-sm" onclick="bulkApproveSelected()" id="bulkApproveBtn" disabled>
-                    <i class="fas fa-check-circle"></i> <?= __('approve_selected') ?>
-                </button>
-                <?php endif; ?>
+
                 <button type="button" class="btn btn-warning btn-sm" onclick="bulkCancelSelected()">
                     <i class="fas fa-times-circle"></i> Cancel Selected
                 </button>
