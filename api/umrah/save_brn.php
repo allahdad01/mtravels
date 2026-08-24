@@ -94,8 +94,11 @@ if (!$booking_id) {
 
 // ---- Resolve the source booking -------------------------------------------
 $bkStmt = $pdo->prepare("
-    SELECT booking_id, name, family_id, currency, status
-    FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ?");
+    SELECT ub.booking_id, ub.name, ub.family_id, ub.currency, ub.status,
+           f.head_of_family
+    FROM umrah_bookings ub
+    LEFT JOIN families f ON f.family_id = ub.family_id AND f.tenant_id = ub.tenant_id
+    WHERE ub.booking_id = ? AND ub.tenant_id = ?");
 $bkStmt->execute([$booking_id, $tenant_id]);
 $srcBooking = $bkStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -141,9 +144,11 @@ if ($isMulti) {
     }
     $placeholders = implode(',', array_fill(0, count($targetFamilies), '?'));
     $mbStmt = $pdo->prepare("
-        SELECT booking_id, name, currency FROM umrah_bookings
-        WHERE family_id IN ($placeholders) AND tenant_id = ? AND status NOT IN ('refunded', 'cancelled')
-        ORDER BY booking_id");
+        SELECT ub.booking_id, ub.name, ub.currency, f.head_of_family
+        FROM umrah_bookings ub
+        LEFT JOIN families f ON f.family_id = ub.family_id AND f.tenant_id = ub.tenant_id
+        WHERE ub.family_id IN ($placeholders) AND ub.tenant_id = ? AND ub.status NOT IN ('refunded', 'cancelled')
+        ORDER BY ub.booking_id");
     $mbStmt->execute(array_merge($targetFamilies, [$tenant_id]));
     $targetBookings = $mbStmt->fetchAll(PDO::FETCH_ASSOC);
     if (!$targetBookings) {
@@ -225,6 +230,8 @@ try {
         $tbBookingId = (int)$tb['booking_id'];
         $tbCurrency = strtoupper(trim((string)($tb['currency'] ?? 'USD'))) ?: 'USD';
         $tbName = (string)($tb['name'] ?? 'Member');
+        $tbFamilyName = trim((string)($tb['head_of_family'] ?? ''));
+        $tbLabel = $tbFamilyName !== '' ? $tbName . ' (' . $tbFamilyName . ' family)' : $tbName;
 
         // Members without a visa in their package never get a BRN row.
         if (!$removing && !isset($visaBookings[$tbBookingId])) {
@@ -242,8 +249,18 @@ try {
         $oldSupStmt->execute([$tbBookingId, $tenant_id]);
         $oldSupplierId = (int)$oldSupStmt->fetchColumn() ?: null;
 
-        $remark = "BRN for {$tbName}";
-        $corrRemark = "BRN cost correction for {$tbName}";
+        $remark = "BRN for {$tbLabel}";
+        $corrRemark = "BRN cost correction for {$tbLabel}";
+        if ($tbLabel !== $tbName) {
+            $pdo->prepare("UPDATE supplier_transactions SET remarks = ?
+                           WHERE reference_id = ? AND transaction_of = 'umrah'
+                             AND remarks = ? AND tenant_id = ?")
+                ->execute([$remark, $tbBookingId, "BRN for {$tbName}", $tenant_id]);
+            $pdo->prepare("UPDATE supplier_transactions SET remarks = ?
+                           WHERE reference_id = ? AND transaction_of = 'umrah'
+                             AND remarks = ? AND tenant_id = ?")
+                ->execute([$corrRemark, $tbBookingId, "BRN cost correction for {$tbName}", $tenant_id]);
+        }
 
         // ---- Supplier exposure undo (removal or supplier switch) -----------------
         $undoSupplier = $removing || ($supplier_id !== null && $oldSupplierId !== null && $oldSupplierId !== $supplier_id)
@@ -376,7 +393,7 @@ try {
                 // Cost change while the record stays — net the correction row
                 // to the live BRN cost (rebuild, never skip) so sign flips
                 // and re-saves can't leave a stale BRN correction behind.
-                brnReconcileSupplierExposure($pdo, $tenant_id, $branch_id, (int)$tbBookingId, (int)$supplier_id, (string)$tbName);
+                brnReconcileSupplierExposure($pdo, $tenant_id, $branch_id, (int)$tbBookingId, (int)$supplier_id, (string)$tbLabel);
             }
         }
 

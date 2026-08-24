@@ -828,7 +828,7 @@ function hotelMemberCardHtml(m, data) {
         ownershipBadge = '<span class="fulfillment-chip ml-2" style="background:#fef9c3;color:#92400e;font-size:0.75rem;">will update</span>';
     }
     const removeBtn = isExtraBed
-        ? `<button type="button" class="btn btn-sm btn-outline-danger btn-remove-extra-bed ml-2" data-booking-id="${m.booking_id}" title="Remove extra bed"><i class="feather icon-trash-2"></i></button>`
+        ? `<button type="button" class="btn btn-sm btn-outline-danger btn-remove-extra-bed ml-2" data-booking-id="${m.booking_id}" data-family-id="${m.family_id || 0}" title="Remove extra bed"><i class="feather icon-trash-2"></i></button>`
         : '';
     const costSoldRow = isExtraBed ? (() => {
         const supCurrency = (fulfillmentData && fulfillmentData.suppliers) ? (() => {
@@ -945,7 +945,10 @@ function hotelGroupedMemberCardsHtml(members, data) {
     });
     const keep = {};
     sharedByKey.forEach((group, k) => {
-        if (group.length > 1 && hotelStaysCompatible(group)) {
+        // Extra beds must never be merged into a shared card — each has its
+        // own cost/sold fields that need to stay visible.
+        const hasExtraBed = group.some(m => m.is_extra_bed);
+        if (!hasExtraBed && group.length > 1 && hotelStaysCompatible(group)) {
             keep[k] = group;
         } else {
             group.forEach(m => memberToKey.delete(String(m.booking_id)));
@@ -1015,10 +1018,25 @@ function hotelSharedCardHtml(members, data) {
 // mirrors that — duration card, then family). The subgroups are only visual
 // containers — the .f-hotel-group member cards inside do the saving.
 function hotelSubgroups(members, mode) {
+    // Extra bed pseudo-members have no duration of their own — inherit the
+    // duration of the first non-extra-bed member in the same family so the
+    // extra bed groups inside the family's existing duration subgroup
+    // instead of creating a separate "unspecified" card.
+    const familyDurations = {};
+    (Array.isArray(members) ? members : []).forEach(m => {
+        if (m.is_extra_bed) return;
+        const fam = parseInt(m.family_id, 10) || 0;
+        if (fam && m.duration != null && !familyDurations[fam]) {
+            familyDurations[fam] = normalizedDurationKey(m.duration);
+        }
+    });
     const subs = new Map();
     (Array.isArray(members) ? members : []).forEach(m => {
         const fam = parseInt(m.family_id, 10) || 0;
-        const durKey = normalizedDurationKey(m.duration);
+        let durKey = normalizedDurationKey(m.duration);
+        if (m.is_extra_bed && fam && durKey === 'unspecified' && familyDurations[fam]) {
+            durKey = familyDurations[fam];
+        }
         const p = (mode === 'family' ? 'fam' + fam : durKey);
         const s = (mode === 'family' ? durKey : 'fam' + fam);
         const k = p + '|' + s;
@@ -1052,7 +1070,7 @@ function hotelSubgroupCardHtml(sub, mode, data) {
     const names = sub.members.map(m => escapeHtml(m.name || ('#' + m.booking_id))).join(', ');
     const memberCards = hotelGroupedMemberCardsHtml(sub.members, data);
     const addExtraBedBtn = (currentFulfillmentFamilyId && (currentFulfillmentMode === 'family' || currentFulfillmentMode === 'group'))
-        ? `<button type="button" class="btn btn-sm btn-outline-success btn-add-extra-bed ml-auto" style="font-size:0.78rem;padding:2px 8px;">
+        ? `<button type="button" class="btn btn-sm btn-outline-success btn-add-extra-bed ml-auto" data-family-id="${sub.fam || 0}" style="font-size:0.78rem;padding:2px 8px;">
             <i class="feather icon-plus-circle mr-1"></i>${__t('add_extra_bed')}
           </button>`
         : '';
@@ -2427,7 +2445,7 @@ function bindFulfillmentEvents() {
         const $card = $(this).closest('.fulfillment-service-card');
         const $btn = $(this);
         const bookingServiceId = $card.data('booking-service-id');
-        const familyId = currentFulfillmentFamilyId || 0;
+        const familyId = parseInt($btn.data('family-id'), 10) || currentFulfillmentFamilyId || 0;
         if (!familyId) return;
 
         $btn.prop('disabled', true).html('<i class="feather icon-loader fa-spin mr-1"></i>Adding...');
@@ -2455,7 +2473,7 @@ function bindFulfillmentEvents() {
         const $card = $(this).closest('.fulfillment-service-card');
         const $btn = $(this);
         const bookingId = $btn.data('booking-id');
-        const familyId = currentFulfillmentFamilyId || 0;
+        const familyId = parseInt($btn.data('family-id'), 10) || currentFulfillmentFamilyId || 0;
         if (!bookingId || !familyId) return;
 
         $btn.prop('disabled', true).html('<i class="feather icon-loader fa-spin"></i>');

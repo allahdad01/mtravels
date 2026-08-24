@@ -420,7 +420,15 @@ if ($isAggregate) {
         $rep['is_aggregate'] = true;
         $rep['families_applicable'] = count($usableFamilies);
         $rep['members_count'] = count($lines);
-        $rep['members_applicable'] = count($usable);
+        // Extra beds are included in $usable for rendering but excluded from
+        // the header count — they are not real members.
+        $usableNonEb = 0;
+        foreach ($lines as $ln) {
+            if (!isset($usable[(int)$ln['booking_id']])) continue;
+            if (!empty($ln['is_extra_bed'])) continue;
+            $usableNonEb++;
+        }
+        $rep['members_applicable'] = $usableNonEb;
         $rep['coverage_skipped'] = count($lines) - count($usable);
         $rep['skip_breakdown'] = $skipBreak;
         // Card-level supplier from the representative's fulfillment — used as

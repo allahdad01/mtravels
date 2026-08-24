@@ -601,11 +601,21 @@ function fulfillment_save(PDO $pdo, array $in): array
 
         // Cost amount in booking (sale) currency (frozen snapshot)
         // Extra bed override: use the extra bed's own cost instead of the
-        // card-level per-city hotel cost.
-        if ($isExtraBedBooking && $ebOwnCost !== null && $ebOwnCurrency) {
-            $supplier_currency = $ebOwnCurrency;
-            $supplier_cost = $ebOwnCost;
-            $exchange_rate = $ebOwnRate;
+        // card-level per-city hotel cost. When no extra bed cost is provided,
+        // zero out the cost so extra beds never inherit the card-level rate.
+        if ($isExtraBedBooking) {
+            if ($ebOwnCost !== null && $ebOwnCurrency) {
+                $supplier_currency = $ebOwnCurrency;
+                $supplier_cost = $ebOwnCost;
+                $exchange_rate = $ebOwnRate;
+            } else {
+                $supplier_currency = null;
+                $supplier_cost = null;
+                $exchange_rate = null;
+                $cost_amount = null;
+                $makkah_cost_amount = null;
+                $madinah_cost_amount = null;
+            }
         }
 
         $cost_amount = null;
@@ -915,9 +925,21 @@ function fulfillment_save(PDO $pdo, array $in): array
         // transaction (Debit/Credit for the delta) keeps the supplier balance
         // in sync with the fulfillment's actual cost.
         if ($supplier_id && $booking_id) {
-            $memberStmt = $pdo->prepare("SELECT name FROM umrah_bookings WHERE booking_id = ?");
-            $memberStmt->execute([$booking_id]);
-            $memberName = $memberStmt->fetchColumn() ?: 'Member';
+            $memberStmt = $pdo->prepare("
+                SELECT ub.name, ub.is_extra_bed, f.head_of_family
+                FROM umrah_bookings ub
+                LEFT JOIN families f ON f.family_id = ub.family_id AND f.tenant_id = ub.tenant_id
+                WHERE ub.booking_id = ? AND ub.tenant_id = ?");
+            $memberStmt->execute([$booking_id, $tenant_id]);
+            $member = $memberStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+            $memberName = (string)($member['name'] ?? '') ?: 'Member';
+            $familyName = trim((string)($member['head_of_family'] ?? ''));
+            // Include the family head in every supplier-ledger description.
+            // This keeps hotel, visa, transport and ticket entries identifiable
+            // when members in different families share the same name.
+            $memberLabel = $familyName !== ''
+                ? $memberName . ' (' . $familyName . ' family)'
+                : $memberName;
 
             $typeStmt = $pdo->prepare("SELECT supplier_type FROM suppliers WHERE id = ? AND tenant_id = ?");
             $typeStmt->execute([$supplier_id, $tenant_id]);
@@ -936,8 +958,25 @@ function fulfillment_save(PDO $pdo, array $in): array
             $supAmtStmt->execute([$booking_service_id, $tenant_id, $supplier_id]);
             $supplierBase = round((float)$supAmtStmt->fetchColumn(), 3);
 
-            $remark = "Fulfillment for {$svc['service_type']}: {$memberName}";
-            $corrRemark = "Fulfillment cost correction for {$svc['service_type']}: {$memberName}";
+            $remark = "Fulfillment for {$svc['service_type']}: {$memberLabel}";
+            $corrRemark = "Fulfillment cost correction for {$svc['service_type']}: {$memberLabel}";
+
+            // Rename legacy ledger rows before looking them up for
+            // de-duplication. This prevents a re-save from creating a second
+            // supplier transaction merely because the description became more
+            // descriptive.
+            if ($memberLabel !== $memberName) {
+                $legacyRemark = "Fulfillment for {$svc['service_type']}: {$memberName}";
+                $legacyCorrRemark = "Fulfillment cost correction for {$svc['service_type']}: {$memberName}";
+                $pdo->prepare("UPDATE supplier_transactions SET remarks = ?
+                               WHERE reference_id = ? AND transaction_of = 'umrah'
+                                 AND remarks = ? AND tenant_id = ?")
+                    ->execute([$remark, $booking_id, $legacyRemark, $tenant_id]);
+                $pdo->prepare("UPDATE supplier_transactions SET remarks = ?
+                               WHERE reference_id = ? AND transaction_of = 'umrah'
+                                 AND remarks = ? AND tenant_id = ?")
+                    ->execute([$corrRemark, $booking_id, $legacyCorrRemark, $tenant_id]);
+            }
 
             // ---- Supplier change: undo the previous supplier's exposure for
             // this booking + service type (its main transaction AND any
@@ -989,7 +1028,7 @@ function fulfillment_save(PDO $pdo, array $in): array
 
             // ---- Cancellation: delete the original transaction + correction, restore balance ----
             if ($status === 'cancelled') {
-                $corrRemark = "Fulfillment cost correction for {$svc['service_type']}: {$memberName}";
+                $corrRemark = "Fulfillment cost correction for {$svc['service_type']}: {$memberLabel}";
                 $existingTxnStmt = $pdo->prepare("
                     SELECT id, transaction_type, amount FROM supplier_transactions
                     WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
@@ -1057,7 +1096,7 @@ function fulfillment_save(PDO $pdo, array $in): array
                 // Open-phase cost change — net the correction row to the live
                 // cost (rebuild, never skip) so sign flips and deletes can't
                 // leave a stale correction (phantom) behind.
-                umrahReconcileSupplierExposure($pdo, $tenant_id, $branch_id, $booking_id, (int)$supplier_id, (string)$memberName, (string)($svc['service_type'] ?? $fulfillment_type));
+                umrahReconcileSupplierExposure($pdo, $tenant_id, $branch_id, $booking_id, (int)$supplier_id, (string)$memberLabel, (string)($svc['service_type'] ?? $fulfillment_type));
             }
             } // end if cancelled/else
         }
@@ -1069,21 +1108,24 @@ function fulfillment_save(PDO $pdo, array $in): array
         // refreshed and notifications fire — exactly once (guarded by the
         // pending status).
         $bkStmt = $pdo->prepare("
-            SELECT booking_id, family_id, sold_to, paid_to, name,
+            SELECT ub.booking_id, ub.family_id, ub.sold_to, ub.paid_to, ub.name,
+                   fam.head_of_family,
                    (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
                        JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
                        JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
-                       WHERE ubs2.booking_id = umrah_bookings.booking_id
+                       WHERE ubs2.booking_id = ub.booking_id
                          AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
                        ORDER BY ff.id DESC LIMIT 1) AS flight_date,
                    (SELECT DATE(ff.return_departure_time) FROM umrah_flight_fulfillments ff
                        JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
                        JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
-                       WHERE ubs2.booking_id = umrah_bookings.booking_id
+                       WHERE ubs2.booking_id = ub.booking_id
                          AND uf.fulfillment_type = 'flight' AND uf.status <> 'cancelled'
                        ORDER BY ff.id DESC LIMIT 1) AS return_date,
                    room_type, sold_price, discount, paid, received_bank_payment, due, status, currency
-            FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ?");
+            FROM umrah_bookings ub
+            LEFT JOIN families fam ON fam.family_id = ub.family_id AND fam.tenant_id = ub.tenant_id
+            WHERE ub.booking_id = ? AND ub.tenant_id = ?");
         $bkStmt->execute([$booking_id, $tenant_id]);
         $bkRow = $bkStmt->fetch(PDO::FETCH_ASSOC);
         $activated = false;
@@ -1113,13 +1155,15 @@ function fulfillment_save(PDO $pdo, array $in): array
                 $debitAmount    = round((float)$bkRow['sold_price'], 3);
                 $newClientBalance = round((float)$clientRow[$balanceField] - $debitAmount, 3);
                 $memberName     = $bkRow['name'] ?: 'Member';
+                $familyName     = trim((string)($bkRow['head_of_family'] ?? ''));
+                $memberLabel    = $familyName !== '' ? $memberName . ' (' . $familyName . ' family)' : $memberName;
 
                 $pdo->prepare("
                     INSERT INTO client_transactions (client_id, type, transaction_of, reference_id, amount, balance, currency, description, created_at, tenant_id, branch_id)
                     VALUES (?, 'Debit', 'umrah', ?, ?, ?, ?, ?, NOW(), ?, ?)")
                     ->execute([
                         $bkRow['sold_to'], $booking_id, $debitAmount, $newClientBalance, $currencyUpper,
-                        "Client was debited $debitAmount $currencyUpper for umrah booking for $memberName",
+                        "Client was debited $debitAmount $currencyUpper for umrah booking for $memberLabel",
                         $tenant_id, $branch_id,
                     ]);
 
@@ -1206,9 +1250,15 @@ function fulfillment_save(PDO $pdo, array $in): array
                 }
 
                 // Update the extra bed member's booking totals
-                $ebBkStmt = $pdo->prepare("SELECT sold_price, discount FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ?");
+                $ebBkStmt = $pdo->prepare("
+                    SELECT ub.name, ub.sold_price, ub.discount, ub.sold_to, ub.currency, ub.status,
+                           fam.head_of_family
+                    FROM umrah_bookings ub
+                    LEFT JOIN families fam ON fam.family_id = ub.family_id AND fam.tenant_id = ub.tenant_id
+                    WHERE ub.booking_id = ? AND ub.tenant_id = ?");
                 $ebBkStmt->execute([$ebBookingId, $tenant_id]);
                 $ebBk = $ebBkStmt->fetch(PDO::FETCH_ASSOC);
+                $ebOldSoldPrice = $ebBk ? (float)$ebBk['sold_price'] : 0;
                 if ($ebBk) {
                     if ($ebSold !== null) {
                         $ebDue = round($ebSold - (float)$ebBk['discount'], 3);
@@ -1247,6 +1297,107 @@ function fulfillment_save(PDO $pdo, array $in): array
                         ->execute([$ebTots['member_count'], $ebTots['total_price'], $ebTots['total_due'], $ebFamilyId, $tenant_id]);
                 }
 
+                // ---- Client transaction for extra bed sold_price ------------------
+                // When the extra bed's sold_price changes, mirror the same debit
+                // logic used during booking activation: insert a client_transactions
+                // Debit row and (for regular clients) reduce their balance. On
+                // re-save with a different amount the old row is removed first.
+                if ($ebSold !== null && $ebBk && !empty($ebBk['sold_to'])) {
+                    $ebClientId   = (int)$ebBk['sold_to'];
+                    $ebCurUpper   = strtoupper(trim((string)$ebBk['currency'] ?: 'USD'));
+                    $ebNewSold    = round($ebSold, 3);
+
+                    // Fetch client info
+                    $ebCliStmt = $pdo->prepare("SELECT name, client_type, usd_balance, afs_balance FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                    $ebCliStmt->execute([$ebClientId, $tenant_id, $branch_id]);
+                    $ebCliRow = $ebCliStmt->fetch(PDO::FETCH_ASSOC);
+
+                    // Look up existing client transaction for this extra bed
+                    $ebCtStmt = $pdo->prepare("
+                        SELECT id, amount, balance FROM client_transactions
+                        WHERE client_id = ? AND reference_id = ? AND transaction_of = 'umrah'
+                          AND type = 'Debit' AND tenant_id = ? AND branch_id = ?
+                        ORDER BY id DESC LIMIT 1");
+                    $ebCtStmt->execute([$ebClientId, $ebBookingId, $tenant_id, $branch_id]);
+                    $ebCtRow = $ebCtStmt->fetch(PDO::FETCH_ASSOC);
+
+                    if ($ebCliRow && $ebNewSold > 0) {
+                        $ebBalanceField = $ebCurUpper === 'USD' ? 'usd_balance' : 'afs_balance';
+                        $ebMemberName = $ebBk['name'] ?: 'Extra Bed';
+                        $ebFamilyName = trim((string)($ebBk['head_of_family'] ?? ''));
+                        $ebMemberLabel = $ebFamilyName !== ''
+                            ? $ebMemberName . ' (' . $ebFamilyName . ' family)'
+                            : $ebMemberName;
+                        $ebDescription = "Client was debited $ebNewSold $ebCurUpper for umrah booking for $ebMemberLabel";
+
+                        if ($ebCtRow) {
+                            // Refresh the label even when the amount has not changed.
+                            $pdo->prepare("UPDATE client_transactions SET description = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
+                                ->execute([$ebDescription, (int)$ebCtRow['id'], $tenant_id, $branch_id]);
+                            // Existing transaction — update amount and rebalance
+                            $ebOldAmt  = (float)$ebCtRow['amount'];
+                            $ebAdj     = round($ebNewSold - $ebOldAmt, 3);
+                            if (abs($ebAdj) >= 0.001) {
+                                $ebNewBal = round((float)$ebCliRow[$ebBalanceField] - $ebAdj, 3);
+                                $pdo->prepare("UPDATE client_transactions SET amount = ?, balance = ?, description = ? WHERE id = ?")
+                                    ->execute([$ebNewSold, $ebNewBal, $ebDescription, (int)$ebCtRow['id']]);
+                                if ($ebCliRow['client_type'] === 'regular') {
+                                    $pdo->prepare("UPDATE clients SET $ebBalanceField = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
+                                        ->execute([$ebNewBal, $ebClientId, $tenant_id, $branch_id]);
+                                }
+                                // Rebuild subsequent running balances for client_transactions
+                                // The current row already has the correct balance ($ebNewBal).
+                                // Recalculate every row after it so the chain stays consistent.
+                                $ebSubStmt = $pdo->prepare("SELECT id, type, amount FROM client_transactions WHERE client_id = ? AND tenant_id = ? AND branch_id = ? AND id > ? ORDER BY id");
+                                $ebSubStmt->execute([$ebClientId, $tenant_id, $branch_id, (int)$ebCtRow['id']]);
+                                $ebPrev = $ebNewBal;
+                                foreach ($ebSubStmt->fetchAll(PDO::FETCH_ASSOC) as $ebSub) {
+                                    $ebPrev += strcasecmp((string)$ebSub['type'], 'credit') === 0 ? (float)$ebSub['amount'] : -((float)$ebSub['amount']);
+                                    $pdo->prepare("UPDATE client_transactions SET balance = ? WHERE id = ?")->execute([round($ebPrev, 2), (int)$ebSub['id']]);
+                                }
+                            }
+                        } else {
+                            // No existing transaction — insert new Debit
+                            $ebNewBal = round((float)$ebCliRow[$ebBalanceField] - $ebNewSold, 3);
+                            $pdo->prepare("
+                                INSERT INTO client_transactions (client_id, type, transaction_of, reference_id, amount, balance, currency, description, created_at, tenant_id, branch_id)
+                                VALUES (?, 'Debit', 'umrah', ?, ?, ?, ?, ?, NOW(), ?, ?)")
+                                ->execute([$ebClientId, $ebBookingId, $ebNewSold, $ebNewBal, $ebCurUpper,
+                                    $ebDescription,
+                                    $tenant_id, $branch_id]);
+                            if ($ebCliRow['client_type'] === 'regular') {
+                                $pdo->prepare("UPDATE clients SET $ebBalanceField = $ebBalanceField - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
+                                    ->execute([$ebNewSold, $ebClientId, $tenant_id, $branch_id]);
+                            }
+                        }
+                    } elseif ($ebCliRow && $ebNewSold <= 0 && $ebCtRow) {
+                        // Sold price zeroed out — remove the client transaction and restore balance
+                        $ebRestoreAmt = (float)$ebCtRow['amount'];
+                        $ebBalanceField = $ebCurUpper === 'USD' ? 'usd_balance' : 'afs_balance';
+                        $ebCtId = (int)$ebCtRow['id'];
+                        $pdo->prepare("DELETE FROM client_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?")
+                            ->execute([$ebCtId, $tenant_id, $branch_id]);
+                        if ($ebCliRow['client_type'] === 'regular') {
+                            $ebRestoredBal = round((float)$ebCliRow[$ebBalanceField] + $ebRestoreAmt, 3);
+                            $pdo->prepare("UPDATE clients SET $ebBalanceField = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
+                                ->execute([$ebRestoredBal, $ebClientId, $tenant_id, $branch_id]);
+                        }
+                        // Rebuild subsequent running balances
+                        $ebRebStmt2 = $pdo->prepare("SELECT id, type, amount FROM client_transactions WHERE client_id = ? AND tenant_id = ? AND branch_id = ? AND id >= ? ORDER BY id");
+                        $ebRebStmt2->execute([$ebClientId, $tenant_id, $branch_id, $ebCtId]);
+                        $ebSubRows = $ebRebStmt2->fetchAll(PDO::FETCH_ASSOC);
+                        if ($ebSubRows) {
+                            $ebSeedStmt2 = $pdo->prepare("SELECT balance FROM client_transactions WHERE client_id = ? AND tenant_id = ? AND branch_id = ? AND id < ? ORDER BY id DESC LIMIT 1");
+                            $ebSeedStmt2->execute([$ebClientId, $tenant_id, $branch_id, $ebCtId]);
+                            $ebPrev2 = (float)($ebSeedStmt2->fetchColumn() ?: 0);
+                            foreach ($ebSubRows as $ebSub2) {
+                                $ebPrev2 += strcasecmp((string)$ebSub2['type'], 'credit') === 0 ? (float)$ebSub2['amount'] : -((float)$ebSub2['amount']);
+                                $pdo->prepare("UPDATE client_transactions SET balance = ? WHERE id = ?")->execute([round($ebPrev2, 2), (int)$ebSub2['id']]);
+                            }
+                        }
+                    }
+                }
+
                 // Store extra bed cost details in fulfillment_details for reload
                 // and correct the fulfillment's supplier_cost so the supplier
                 // is debited the extra bed's own cost, not the card-level cost.
@@ -1277,14 +1428,23 @@ function fulfillment_save(PDO $pdo, array $in): array
                                 $ebBkIdStmt = $pdo->prepare("SELECT booking_id FROM umrah_booking_services WHERE id = ? AND tenant_id = ?");
                                 $ebBkIdStmt->execute([$ebSvc['id'], $tenant_id]);
                                 $ebBkId = (int)$ebBkIdStmt->fetchColumn();
-                                $ebMemberStmt = $pdo->prepare("SELECT name FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ?");
+                                $ebMemberStmt = $pdo->prepare("
+                                    SELECT ub.name, f.head_of_family
+                                    FROM umrah_bookings ub
+                                    LEFT JOIN families f ON f.family_id = ub.family_id AND f.tenant_id = ub.tenant_id
+                                    WHERE ub.booking_id = ? AND ub.tenant_id = ?");
                                 $ebMemberStmt->execute([$ebBkId, $tenant_id]);
-                                $ebMemberName = $ebMemberStmt->fetchColumn() ?: 'Extra Bed';
+                                $ebMember = $ebMemberStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+                                $ebMemberName = (string)($ebMember['name'] ?? '') ?: 'Extra Bed';
+                                $ebFamilyName = trim((string)($ebMember['head_of_family'] ?? ''));
+                                $ebMemberLabel = $ebFamilyName !== ''
+                                    ? $ebMemberName . ' (' . $ebFamilyName . ' family)'
+                                    : $ebMemberName;
                                 $ebSvcTypeStmt = $pdo->prepare("SELECT service_type FROM umrah_booking_services WHERE id = ?");
                                 $ebSvcTypeStmt->execute([$ebSvc['id']]);
                                 $ebSvcType = $ebSvcTypeStmt->fetchColumn() ?: 'hotel';
-                                $ebRemark = "Fulfillment for {$ebSvcType}: {$ebMemberName}";
-                                $ebCorrRemark = "Fulfillment cost correction for {$ebSvcType}: {$ebMemberName}";
+                                $ebRemark = "Fulfillment for {$ebSvcType}: {$ebMemberLabel}";
+                                $ebCorrRemark = "Fulfillment cost correction for {$ebSvcType}: {$ebMemberLabel}";
 
                                 // Remove old transaction(s) and restore balance
                                 $ebOldTxnStmt = $pdo->prepare("

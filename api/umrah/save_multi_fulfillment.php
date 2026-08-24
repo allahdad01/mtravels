@@ -109,7 +109,7 @@ if ($scope === 'group') {
 // ---- Target member bookings (skip refunded/cancelled) ----------------------
 $placeholders = implode(',', array_fill(0, count($targetFamilies), '?'));
 $mbStmt = $pdo->prepare("
-    SELECT booking_id, name, dob, is_extra_bed FROM umrah_bookings
+    SELECT booking_id, family_id, name, dob, is_extra_bed FROM umrah_bookings
     WHERE family_id IN ($placeholders) AND tenant_id = ? AND status NOT IN ('refunded', 'cancelled')
     ORDER BY booking_id");
 $mbStmt->execute(array_merge($targetFamilies, [$tenant_id]));
@@ -305,6 +305,26 @@ foreach ($members as $member) {
     }
     $candStmt->execute(array_merge([$member['booking_id'], $tenant_id], $srcParams));
     $cands = $candStmt->fetchAll(PDO::FETCH_ASSOC);
+    // Extra beds may be created from a different family's hotel card, giving
+    // them a different service_id than the source line.  When the strict match
+    // fails, retry with a relaxed match by service_type so the extra bed still
+    // receives its cost/sold-price overrides from the payload.
+    if (!$cands && !empty($member['is_extra_bed']) && $cat === 'hotel') {
+        $relaxedCandStmt = $pdo->prepare("
+            SELECT bs.id, bs.price_snapshot, bs.is_excluded,
+                   (SELECT f.status           FROM umrah_fulfillments f        WHERE f.booking_service_id = bs.id AND f.tenant_id = bs.tenant_id ORDER BY f.id DESC LIMIT 1) AS t_status,
+                   (SELECT f.family_id        FROM umrah_fulfillments f        WHERE f.booking_service_id = bs.id AND f.tenant_id = bs.tenant_id ORDER BY f.id DESC LIMIT 1) AS t_family_id,
+                   (SELECT f.fulfillment_type FROM umrah_fulfillments f        WHERE f.booking_service_id = bs.id AND f.tenant_id = bs.tenant_id ORDER BY f.id DESC LIMIT 1) AS t_type,
+                   (SELECT hf.hotel_id        FROM umrah_hotel_fulfillments hf JOIN umrah_fulfillments f ON f.id = hf.fulfillment_id WHERE f.booking_service_id = bs.id AND f.tenant_id = bs.tenant_id ORDER BY f.id DESC LIMIT 1) AS t_hotel,
+                   (SELECT hf.room_type_id    FROM umrah_hotel_fulfillments hf JOIN umrah_fulfillments f ON f.id = hf.fulfillment_id WHERE f.booking_service_id = bs.id AND f.tenant_id = bs.tenant_id ORDER BY f.id DESC LIMIT 1) AS t_room,
+                   (SELECT ff.airline         FROM umrah_flight_fulfillments ff JOIN umrah_fulfillments f ON f.id = ff.fulfillment_id WHERE f.booking_service_id = bs.id AND f.tenant_id = bs.tenant_id ORDER BY f.id DESC LIMIT 1) AS t_airline,
+                   (SELECT ff.flight_number   FROM umrah_flight_fulfillments ff JOIN umrah_fulfillments f ON f.id = ff.fulfillment_id WHERE f.booking_service_id = bs.id AND f.tenant_id = bs.tenant_id ORDER BY f.id DESC LIMIT 1) AS t_flight
+            FROM umrah_booking_services bs
+            WHERE bs.booking_id = ? AND bs.tenant_id = ? AND bs.service_type = ? AND bs.is_optional = ?
+            ORDER BY bs.id");
+        $relaxedCandStmt->execute([$member['booking_id'], $tenant_id, $src['service_type'], $src['is_optional']]);
+        $cands = $relaxedCandStmt->fetchAll(PDO::FETCH_ASSOC);
+    }
     if (!$cands) {
         $noMatchMembers++;
         continue;
@@ -316,11 +336,13 @@ foreach ($members as $member) {
             continue;
         }
         // Ownership-aware fulfillment check: skip only if the existing
-        // fulfillment belongs to a DIFFERENT family (transferred member).
-        // Same-family fulfillments are allowed through for UPDATE.
+        // fulfillment belongs to a DIFFERENT family from this target member
+        // (transferred member). In group scope the source family can differ
+        // from the target's family, so comparing with $family_id would
+        // incorrectly skip valid existing fulfillments in other group families.
         if (!empty($cand['t_status']) && $cand['t_status'] !== 'cancelled') {
             $fulfillmentFamilyId = !empty($cand['t_family_id']) ? (int)$cand['t_family_id'] : null;
-            if ($fulfillmentFamilyId !== null && $fulfillmentFamilyId !== (int)$family_id) {
+            if ($fulfillmentFamilyId !== null && $fulfillmentFamilyId !== (int)$member['family_id']) {
                 // Transferred member — fulfillment was created under another family
                 $skipReasons['transferred member'] = ($skipReasons['transferred member'] ?? 0) + 1;
                 continue;
@@ -344,7 +366,7 @@ foreach ($members as $member) {
             $skipReasons[$reason] = ($skipReasons[$reason] ?? 0) + 1;
             continue;
         }
-        $targets[] = ['booking_id' => (int)$member['booking_id'], 'name' => (string)$member['name'], 'dob' => (string)($member['dob'] ?? ''), 'line_id' => (int)$cand['id']];
+        $targets[] = ['booking_id' => (int)$member['booking_id'], 'name' => (string)$member['name'], 'dob' => (string)($member['dob'] ?? ''), 'line_id' => (int)$cand['id'], 'is_extra_bed' => !empty($member['is_extra_bed'])];
     }
 }
 
@@ -430,7 +452,7 @@ foreach ($targets as $target) {
     }
     $result = fulfillment_save($pdo, $mergedInput);
     if ($result['success']) {
-        $applied++;
+        if (empty($target['is_extra_bed'])) { $applied++; }
     } else {
         $errors[] = ['member' => $target['name'], 'message' => $result['message']];
     }

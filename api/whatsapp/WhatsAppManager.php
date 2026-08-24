@@ -478,7 +478,7 @@ class WhatsAppManager {
                 if ($value !== '' && $value !== 'N/A' && $value !== null) {
                     // Replace variables inside the conditional block
                     foreach ($data as $k => $v) {
-                        $content = str_replace('{{' . $k . '}}', $v, $content);
+                        $content = str_replace('{{' . $k . '}}', (string)$v, $content);
                     }
                     return $content;
                 }
@@ -489,7 +489,7 @@ class WhatsAppManager {
         
         // Replace remaining variables in template
         foreach ($data as $key => $value) {
-            $message = str_replace('{{' . $key . '}}', $value, $message);
+            $message = str_replace('{{' . $key . '}}', (string)$value, $message);
         }
         
         // Clean up any leftover empty lines from removed conditionals

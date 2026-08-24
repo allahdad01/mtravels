@@ -144,12 +144,123 @@ try {
         }
 
         // Verify it belongs to this family and is an extra bed
-        $chk = $pdo->prepare("SELECT booking_id, family_id FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? AND family_id = ? AND is_extra_bed = 1");
+        $chk = $pdo->prepare("SELECT booking_id, family_id, sold_to, currency, status, sold_price FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ? AND family_id = ? AND is_extra_bed = 1");
         $chk->execute([$extraBedBookingId, $tenant_id, $family_id]);
-        if (!$chk->fetch()) {
+        $ebRow = $chk->fetch(PDO::FETCH_ASSOC);
+        if (!$ebRow) {
             $pdo->rollBack();
             echo json_encode(['success' => false, 'message' => 'Extra bed not found.']);
             exit;
+        }
+
+        // Reverse client transaction if the extra bed was active and had a sold_price
+        if ((string)$ebRow['status'] === 'active' && !empty($ebRow['sold_to']) && (float)$ebRow['sold_price'] > 0) {
+            $ebClientId = (int)$ebRow['sold_to'];
+            $ebCurrency = strtoupper(trim((string)$ebRow['currency'] ?: 'USD'));
+
+            // Fetch client info
+            $ebCliStmt = $pdo->prepare("SELECT client_type, usd_balance, afs_balance FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $ebCliStmt->execute([$ebClientId, $tenant_id, $branch_id]);
+            $ebCliRow = $ebCliStmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($ebCliRow) {
+                // Find the client transaction for this extra bed
+                $ebCtStmt = $pdo->prepare("
+                    SELECT id, amount, type FROM client_transactions
+                    WHERE client_id = ? AND reference_id = ? AND transaction_of = 'umrah'
+                      AND tenant_id = ? AND branch_id = ?
+                    ORDER BY id ASC");
+                $ebCtStmt->execute([$ebClientId, $extraBedBookingId, $tenant_id, $branch_id]);
+                $ebCtRows = $ebCtStmt->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($ebCtRows as $ebCt) {
+                    $ebAmt = abs((float)$ebCt['amount']);
+                    $ebCtId = (int)$ebCt['id'];
+                    $ebCtType = (string)$ebCt['type'];
+                    $ebBalField = ($ebCurrency === 'USD') ? 'usd_balance' : 'afs_balance';
+                    $ebIsDebit = strcasecmp($ebCtType, 'debit') === 0;
+
+                    // Update subsequent running balances
+                    if ($ebIsDebit) {
+                        $pdo->prepare("UPDATE client_transactions SET balance = balance + ? WHERE client_id = ? AND id > ? AND currency = ? AND tenant_id = ? AND branch_id = ?")
+                            ->execute([$ebAmt, $ebClientId, $ebCtId, $ebCurrency, $tenant_id, $branch_id]);
+                    } else {
+                        $pdo->prepare("UPDATE client_transactions SET balance = balance - ? WHERE client_id = ? AND id > ? AND currency = ? AND tenant_id = ? AND branch_id = ?")
+                            ->execute([$ebAmt, $ebClientId, $ebCtId, $ebCurrency, $tenant_id, $branch_id]);
+                    }
+
+                    // Restore client balance (regular clients only)
+                    if ($ebCliRow['client_type'] === 'regular') {
+                        if ($ebIsDebit) {
+                            $pdo->prepare("UPDATE clients SET $ebBalField = $ebBalField + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
+                                ->execute([$ebAmt, $ebClientId, $tenant_id, $branch_id]);
+                        } else {
+                            $pdo->prepare("UPDATE clients SET $ebBalField = $ebBalField - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
+                                ->execute([$ebAmt, $ebClientId, $tenant_id, $branch_id]);
+                        }
+                    }
+
+                    // Delete the client transaction
+                    $pdo->prepare("DELETE FROM client_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?")
+                        ->execute([$ebCtId, $tenant_id, $branch_id]);
+                }
+            }
+        }
+
+        // Reverse supplier transactions for this extra bed's fulfillments
+        if ((string)$ebRow['status'] === 'active') {
+            // Find suppliers used by this extra bed's fulfillments
+            $ebSupStmt = $pdo->prepare("
+                SELECT DISTINCT f.supplier_id, s.supplier_type
+                FROM umrah_fulfillments f
+                JOIN umrah_booking_services bs ON bs.id = f.booking_service_id
+                JOIN suppliers s ON s.id = f.supplier_id
+                WHERE bs.booking_id = ? AND bs.tenant_id = ? AND f.tenant_id = ?
+                  AND f.supplier_id IS NOT NULL AND f.status != 'cancelled'");
+            $ebSupStmt->execute([$extraBedBookingId, $tenant_id, $tenant_id]);
+            $ebSuppliers = $ebSupStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach ($ebSuppliers as $ebSup) {
+                $ebSupId = (int)$ebSup['supplier_id'];
+                $ebSupType = (string)$ebSup['supplier_type'];
+
+                // Fetch supplier transactions for this extra bed (Type 1: fulfillment-based)
+                $ebSupTxnStmt = $pdo->prepare("
+                    SELECT id, amount, transaction_type FROM supplier_transactions
+                    WHERE supplier_id = ? AND transaction_of = 'umrah'
+                      AND reference_id = ? AND tenant_id = ? AND branch_id = ?
+                    ORDER BY id ASC");
+                $ebSupTxnStmt->execute([$ebSupId, $extraBedBookingId, $tenant_id, $branch_id]);
+                $ebSupTxns = $ebSupTxnStmt->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($ebSupTxns as $ebSupTxn) {
+                    $ebSupAmt = abs((float)$ebSupTxn['amount']);
+                    $ebSupTxnId = (int)$ebSupTxn['id'];
+                    $ebSupTxnType = (string)$ebSupTxn['transaction_type'];
+
+                    if ($ebSupType === 'External') {
+                        // Update subsequent running balances
+                        if ($ebSupTxnType === 'Credit') {
+                            $pdo->prepare("UPDATE supplier_transactions SET balance = balance - ? WHERE supplier_id = ? AND id > ? AND tenant_id = ? AND branch_id = ?")
+                                ->execute([$ebSupAmt, $ebSupId, $ebSupTxnId, $tenant_id, $branch_id]);
+                        } else {
+                            $pdo->prepare("UPDATE supplier_transactions SET balance = balance + ? WHERE supplier_id = ? AND id > ? AND tenant_id = ? AND branch_id = ?")
+                                ->execute([$ebSupAmt, $ebSupId, $ebSupTxnId, $tenant_id, $branch_id]);
+                        }
+                        // Restore supplier balance
+                        if ($ebSupTxnType === 'Credit') {
+                            $pdo->prepare("UPDATE suppliers SET balance = balance - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
+                                ->execute([$ebSupAmt, $ebSupId, $tenant_id, $branch_id]);
+                        } else {
+                            $pdo->prepare("UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
+                                ->execute([$ebSupAmt, $ebSupId, $tenant_id, $branch_id]);
+                        }
+                    }
+                    // Delete the supplier transaction
+                    $pdo->prepare("DELETE FROM supplier_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?")
+                        ->execute([$ebSupTxnId, $tenant_id, $branch_id]);
+                }
+            }
         }
 
         // Delete fulfillments for this extra bed's services
