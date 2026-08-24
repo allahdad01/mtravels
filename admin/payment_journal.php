@@ -385,7 +385,7 @@ $module_list = [
 .pjl-table tbody tr { border-bottom: 1px solid var(--border-soft); transition: background var(--t); }
 .pjl-table tbody tr:last-child { border-bottom: none; }
 .pjl-table tbody tr:hover { background: var(--border-soft); }
-.pjl-table td { padding: 10px 12px; font-size: 13px; vertical-align: middle; }
+.pjl-table td { padding: 10px 12px; font-size: 13px; vertical-align: middle; word-wrap: break-word; overflow-wrap: break-word; }
 
 .pjl-date-main { font-size: 12.5px; font-weight: 500; }
 .pjl-date-sub { font-size: 11px; color: var(--text-dim); font-family: var(--font-mono); margin-top: 1px; }
@@ -697,6 +697,28 @@ $module_list = [
 }
 </style>
 
+<style id="pjlPrintStyle">
+@media print {
+  @page { size: A4 landscape; margin: 12mm; }
+  body * { visibility: hidden !important; }
+  .pjl-table-card, .pjl-table-card * { visibility: visible !important; }
+  .pjl-table-card {
+    position: fixed; inset: 0; width: 100%; height: auto;
+    margin: 0; padding: 0; border: none; box-shadow: none; border-radius: 0;
+    overflow: visible;
+  }
+  .pjl-table-wrap { overflow: visible; }
+  .pjl-table { font-size: 11px; }
+  .pjl-table th, .pjl-table td { padding: 5px 6px; white-space: nowrap; }
+  .pjl-table-footer { display: none !important; }
+  .pjl-badge { font-size: 9px; padding: 1px 6px; }
+  .pjl-amount { font-size: 11px; }
+  .pjl-currency-badge { font-size: 9px; padding: 1px 5px; }
+  .pjl-ledger-tag { font-size: 9px; }
+  .pjl-desc { max-width: 200px; font-size: 10px; white-space: normal; word-wrap: break-word; overflow-wrap: break-word; }
+}
+</style>
+
 <div class="pcoded-main-container">
   <div class="pcoded-wrapper">
     <div class="main-body">
@@ -722,6 +744,10 @@ $module_list = [
               <button class="pjl-btn pjl-btn-ghost" id="pjlExportBtn">
                 <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 10V3M5.5 5.5L8 3l2.5 2.5M3.5 10.5v2h9v-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 <?php echo __('export_csv'); ?>
+              </button>
+              <button class="pjl-btn pjl-btn-ghost" id="pjlPrintBtn">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M4 6V2h8v4M4 12H2.5A1.5 1.5 0 0 1 1 10.5v-3A1.5 1.5 0 0 1 2.5 6h11A1.5 1.5 0 0 1 15 7.5v3a1.5 1.5 0 0 1-1.5 1.5H12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><rect x="4" y="10" width="8" height="4" rx="1" stroke="currentColor" stroke-width="1.4"/></svg>
+                <?php echo __('print'); ?>
               </button>
               <button class="pjl-btn pjl-btn-primary" onclick="pjlOpenModal('pjlRecordModal')">
                 <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
@@ -1572,6 +1598,189 @@ document.getElementById('pjlExportBtn').addEventListener('click', () => {
 /* ── Record Payment hub ── */
 document.querySelectorAll('#pjlHubView .pjl-hub-btn').forEach(btn => {
   btn.addEventListener('click', () => pjlStartFlow(btn.dataset.module));
+});
+
+/* ── Print ── */
+function pjlPrintBuildRows(rows) {
+  return rows.map(r => {
+    const isCredit = r.type === 'credit';
+    const currClass = String(r.currency).toLowerCase();
+    const baseHtml = r.base_amount !== null
+      ? '<div style="font-family:monospace;font-size:8px;color:#b5b5b0;margin-top:1px;">≈ ' + fmtNum(r.base_amount) + ' USD</div>'
+      : '';
+    const ledgerTag = r.ledger === 'main_account'
+      ? '<span style="font-size:9px;font-weight:700;text-transform:uppercase;padding:1px 5px;border-radius:4px;background:#f4f4f2;color:#8c8c87;border:1px solid #e5e5e3;">Main</span>'
+      : '<span style="font-size:9px;font-weight:700;text-transform:uppercase;padding:1px 5px;border-radius:4px;">' + esc(r.ledger === 'jv' ? 'JV' : r.ledger) + '</span>';
+    const partyHtml = r.party_name
+      ? '<div style="font-size:10px;font-weight:500;">' + esc(r.party_name) + '</div>'
+      : '';
+    const acctHtml = r.account_name
+      ? '<div style="font-size:8px;color:#b5b5b0;">' + esc(r.account_name) + '</div>'
+      : '';
+    const subcatHtml = r.sub_category_name
+      ? ' <span style="font-size:8px;font-weight:600;padding:1px 5px;border-radius:20px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;">' + esc(r.sub_category_name) + '</span>'
+      : '';
+    const refHtml = r.drill_url
+      ? '<a href="' + esc(r.drill_url) + '" target="_blank" style="font-size:10px;color:#1d4ed8;text-decoration:none;">#' + esc(r.reference_id) + '</a>'
+      : (r.reference_id !== null ? '#' + esc(r.reference_id) : '—');
+    const receiptHtml = r.receipt ? '<span style="font-family:monospace;font-size:9px;color:#8c8c87;background:#f0f0ee;padding:1px 5px;border-radius:3px;border:1px solid #e5e5e3;">' + esc(r.receipt) + '</span>' : '—';
+    const badgeCls = isCredit ? 'cr' : 'dr';
+    const amtCls = isCredit ? 'cr' : 'dr';
+    const sign = isCredit ? '+' : '−';
+
+    return '<tr>'
+      + '<td><div style="font-weight:500;">' + fmtDate(r.entry_date) + '</div><div style="font-size:8px;color:#b5b5b0;font-family:monospace;">' + fmtTime(r.entry_date) + '</div></td>'
+      + '<td><span class="badge ' + badgeCls + '">' + (isCredit ? 'Cr' : 'Dr') + '</span></td>'
+      + '<td style="text-align:right;"><span class="amt ' + amtCls + '">' + sign + fmtNum(r.amount) + '</span>' + baseHtml + '</td>'
+      + '<td style="text-align:center;"><span class="cur ' + currClass + '">' + esc(r.currency) + '</span></td>'
+      + '<td>' + ledgerTag + acctHtml + '</td>'
+      + '<td>' + partyHtml + '</td>'
+      + '<td><span style="font-size:10px;font-weight:500;">' + esc(r.module_label) + '</span>' + subcatHtml + '</td>'
+      + '<td>' + receiptHtml + '</td>'
+      + '<td>' + refHtml + '</td>'
+      + '<td><div style="font-size:9px;color:#8c8c87;max-width:200px;white-space:normal;word-wrap:break-word;overflow-wrap:break-word;line-height:1.3;" title="' + esc(r.description) + '">' + (esc(r.description) || '—') + '</div></td>'
+      + '<td style="text-align:right;">' + (r.balance !== null ? '<span style="font-family:monospace;font-weight:500;font-size:10px;">' + fmtNum(r.balance) + '</span>' : '—') + '</td>'
+      + '</tr>';
+  }).join('');
+}
+
+document.getElementById('pjlPrintBtn').addEventListener('click', async () => {
+  const kpiStrip = document.getElementById('pjlKpiStrip');
+
+  /* Build KPI HTML from the visible strip */
+  let kpiHtml = '';
+  if (kpiStrip) {
+    kpiStrip.querySelectorAll('.pjl-kpi').forEach(card => {
+      const label = card.querySelector('.pjl-kpi-label');
+      const value = card.querySelector('.pjl-kpi-value');
+      const sub   = card.querySelector('.pjl-kpi-sub');
+      const curH  = card.querySelector('.pjl-kpi-cur-head');
+      const curR  = card.querySelectorAll('.pjl-kpi-cur-row');
+      const curN  = card.querySelector('.pjl-kpi-cur-net');
+
+      if (curH) {
+        const badge = curH.querySelector('.pjl-currency-badge');
+        const curName = badge ? badge.textContent.trim() : '';
+        const curCls  = badge ? badge.className.replace('pjl-currency-badge','').trim() : '';
+        let rows = '';
+        curR.forEach(r => {
+          const inV  = r.querySelector('.in')  ? r.querySelector('.in').textContent.trim()  : '';
+          const outV = r.querySelector('.out') ? r.querySelector('.out').textContent.trim() : '';
+          rows += '<div style="display:flex;justify-content:space-between;font-family:monospace;font-size:10px;gap:8px;"><span style="color:#16a34a;">' + esc(inV) + '</span><span style="color:#dc2626;">' + esc(outV) + '</span></div>';
+        });
+        const netTxt = curN ? curN.textContent.trim() : '';
+        const netClr = curN && curN.classList.contains('pos') ? '#16a34a' : (curN && curN.classList.contains('neg') ? '#dc2626' : '#1d4ed8');
+        kpiHtml += '<div style="flex:1;min-width:120px;border:1px solid #e5e5e3;border-radius:6px;padding:8px 10px;background:#fff;">'
+          + '<div style="display:flex;align-items:center;gap:5px;margin-bottom:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">'
+          + '<span class="cur ' + curCls + '">' + esc(curName) + '</span></div>'
+          + rows
+          + '<div style="font-family:monospace;font-size:10px;font-weight:600;margin-top:4px;padding-top:4px;border-top:1px dashed #e5e5e3;color:' + netClr + ';">' + esc(netTxt) + '</div>'
+          + '</div>';
+      } else if (label && value) {
+        kpiHtml += '<div style="flex:0 0 auto;min-width:100px;border:1px solid #e5e5e3;border-radius:6px;padding:8px 10px;background:#fff;">'
+          + '<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#b5b5b0;margin-bottom:3px;">' + esc(label.textContent.trim()) + '</div>'
+          + '<div style="font-family:monospace;font-size:14px;font-weight:500;">' + esc(value.textContent.trim()) + '</div>'
+          + (sub ? '<div style="font-size:9px;color:#b5b5b0;margin-top:2px;">' + esc(sub.textContent.trim()) + '</div>' : '')
+          + '</div>';
+      }
+    });
+  }
+
+  /* Fetch ALL records from the API */
+  const qs = new URLSearchParams(currentQuery());
+  qs.set('page', 1);
+  qs.set('per_page', 99999);
+
+  let allRows = [];
+  let mainAccounts = [];
+  try {
+    const [res, acctRes] = await Promise.all([
+      fetch(PJL.baseUrl + '?' + qs.toString(), { credentials: 'include' }),
+      fetch('../api/journal/main_account_balances.php?' + qs.toString(), { credentials: 'include' })
+    ]);
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || 'Failed to load');
+    allRows = data.rows || [];
+    const acctData = await acctRes.json();
+    if (acctData.success) mainAccounts = acctData.accounts || [];
+  } catch (err) {
+    alert('Failed to load records for printing: ' + err.message);
+    return;
+  }
+
+  const fromVal = document.getElementById('pjlFromDate').value;
+  const toVal   = document.getElementById('pjlToDate').value;
+  const dateRange = fromVal && toVal ? fromVal + ' — ' + toVal : (fromVal || toVal || 'All time');
+
+  /* Build main account balance cards HTML */
+  let acctHtml = '';
+  if (mainAccounts.length) {
+    acctHtml = '<div style="margin-bottom:10px;"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#b5b5b0;margin-bottom:6px;">Main Account Balances (as of ' + esc(dateRange) + ')</div>';
+    acctHtml += '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
+    const currSymbols = { usd: '$', afs: '؋', eur: '€', darham: 'AED ', sar: 'SAR ' };
+    const currColors = { usd: '#1d4ed8', afs: '#b45309', eur: '#7c3aed', darham: '#16a34a', sar: '#0d9488' };
+    const currBgs = { usd: '#eff6ff', afs: '#fffbeb', eur: '#f5f3ff', darham: '#f0fdf4', sar: '#f0fdfa' };
+    mainAccounts.forEach(acct => {
+      acctHtml += '<div style="flex:1;min-width:160px;border:1px solid #e5e5e3;border-radius:6px;padding:8px 10px;background:#fff;">';
+      acctHtml += '<div style="font-size:10px;font-weight:700;margin-bottom:6px;color:#1a1a18;">' + esc(acct.name) + '</div>';
+      ['usd','afs','eur','darham','sar'].forEach(c => {
+        if (acct.balances[c] !== undefined) {
+          const sym = currSymbols[c];
+          const clr = currColors[c];
+          const bg  = currBgs[c];
+          acctHtml += '<div style="display:flex;justify-content:space-between;align-items:center;font-family:monospace;font-size:10px;padding:2px 0;">';
+          acctHtml += '<span style="font-weight:700;text-transform:uppercase;font-size:8px;color:#8c8c87;">' + c.toUpperCase() + '</span>';
+          acctHtml += '<span style="color:' + clr + ';font-weight:500;">' + sym + fmtNum(acct.balances[c]) + '</span>';
+          acctHtml += '</div>';
+        }
+      });
+      acctHtml += '</div>';
+    });
+    acctHtml += '</div></div>';
+  }
+
+  const printWin = window.open('', '_blank');
+  printWin.document.write('<!DOCTYPE html><html><head><title>Payments Journal</title><style>');
+  printWin.document.write('@page{size:A4 landscape;margin:10mm;}');
+  printWin.document.write('body{font-family:DM Sans,sans-serif;font-size:11px;color:#1a1a18;margin:0;padding:0;}');
+  printWin.document.write('table{width:100%;border-collapse:collapse;}');
+  printWin.document.write('th,td{padding:4px 5px;border:1px solid #e5e5e3;text-align:left;font-size:10px;white-space:nowrap;}');
+  printWin.document.write('th{background:#f0f0ee;font-weight:700;text-transform:uppercase;font-size:9px;letter-spacing:.04em;color:#8c8c87;}');
+  printWin.document.write('th.desc-col{white-space:normal;max-width:200px;}');
+  printWin.document.write('.right{text-align:right;} .center{text-align:center;}');
+  printWin.document.write('.badge{display:inline-block;font-size:9px;font-weight:700;padding:1px 6px;border-radius:20px;}');
+  printWin.document.write('.badge.cr{background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;}');
+  printWin.document.write('.badge.dr{background:#fef2f2;color:#dc2626;border:1px solid #fca5a5;}');
+  printWin.document.write('.amt{font-family:monospace;font-weight:500;font-size:10px;}');
+  printWin.document.write('.amt.cr{color:#16a34a;} .amt.dr{color:#dc2626;}');
+  printWin.document.write('.cur{font-family:monospace;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;}');
+  printWin.document.write('.cur.usd{background:#eff6ff;color:#1d4ed8;} .cur.afs{background:#fffbeb;color:#b45309;}');
+  printWin.document.write('.cur.eur{background:#f5f3ff;color:#7c3aed;} .cur.darham{background:#f0fdf4;color:#16a34a;}');
+  printWin.document.write('.cur.sar{background:#f0fdfa;color:#0d9488;}');
+  printWin.document.write('</style></head><body>');
+  const printDate = new Date().toLocaleString();
+  printWin.document.write('<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">');
+  printWin.document.write('<h2 style="font-size:14px;margin:0;">Payments Journal</h2>');
+  printWin.document.write('<div style="font-size:10px;color:#8c8c87;text-align:right;">');
+  printWin.document.write('<div><strong>Period:</strong> ' + esc(dateRange) + '</div>');
+  printWin.document.write('<div><strong>Printed:</strong> ' + esc(printDate) + '</div>');
+  printWin.document.write('<div><strong>Records:</strong> ' + esc(String(allRows.length)) + '</div>');
+  printWin.document.write('</div></div>');
+  if (kpiHtml) {
+    printWin.document.write('<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">' + kpiHtml + '</div>');
+  }
+  if (acctHtml) {
+    printWin.document.write(acctHtml);
+  }
+  printWin.document.write('<table><thead><tr>');
+  printWin.document.write('<th>Date</th><th>Type</th><th style="text-align:right;">Amount</th><th style="text-align:center;">Currency</th><th>Ledger</th><th>Account/Party</th><th>Module</th><th>Receipt</th><th>Reference</th><th class="desc-col">Description</th><th style="text-align:right;">Balance</th>');
+  printWin.document.write('</tr></thead><tbody>');
+  printWin.document.write(pjlPrintBuildRows(allRows));
+  printWin.document.write('</tbody></table>');
+  printWin.document.write('</body></html>');
+  printWin.document.close();
+  printWin.focus();
+  setTimeout(() => { printWin.print(); }, 500);
 });
 
 /* ── Picker (step 2) ── */

@@ -38,7 +38,7 @@ $clientAccounts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch supplier accounts with their balances
 $supplierQuery = "
-    SELECT sa.id, sa.name AS supplier_name, sa.currency, sa.balance, sa.updated_at, sa.status, sa.supplier_type, sa.category
+    SELECT sa.id, sa.name AS supplier_name, sa.phone, sa.currency, sa.balance, sa.created_at, sa.updated_at, sa.status, sa.supplier_type, sa.category
     FROM suppliers sa where status = 'active' AND tenant_id = ? And branch_id = ?";
 $supplierStmt = $pdo->prepare($supplierQuery);
 $supplierStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
@@ -48,7 +48,7 @@ $supplier = $supplierStmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch client accounts with their balances
 $clientQuery = "
-SELECT cl.id, cl.name, cl.usd_balance, cl.afs_balance, cl.updated_at, cl.status, cl.client_type
+SELECT cl.id, cl.name, cl.phone, cl.usd_balance, cl.afs_balance, cl.created_at, cl.updated_at, cl.status, cl.client_type
 FROM clients cl where status = 'active' AND tenant_id = ? And branch_id = ?";
 $clientStmt = $pdo->prepare($clientQuery);
 $clientStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
@@ -855,7 +855,10 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                         $barClass   = $row['balance'] >= 0 ? 'pos' : 'neg';
                                     ?>
                                     <div class="ac-list-card <?= $isInactive ? 'inactive' : '' ?>"
+                                         data-supplier-id="<?= $row['id'] ?>"
                                          data-supplier-name="<?= htmlspecialchars($row['supplier_name']) ?>"
+                                         data-supplier-phone="<?= htmlspecialchars($row['phone'] ?? '') ?>"
+                                         data-created-at="<?= htmlspecialchars($row['created_at']) ?>"
                                          data-currency="<?= htmlspecialchars($row['currency']) ?>"
                                          data-balance="<?= $row['balance'] ?>"
                                          data-category="<?= htmlspecialchars($row['category'] ?? 'all') ?>"
@@ -914,6 +917,9 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                                 <?php endif; ?>
                                                 <button class="btn btn-sm btn-outline-secondary view-supplier-transactions-btn" data-supplier-id="<?= $row['id'] ?>" data-supplier-name="<?= htmlspecialchars($row['supplier_name']) ?>" title="<?= __('transactions') ?>" data-toggle="tooltip" data-placement="top">
                                                     <i class="feather icon-list"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-success send-whatsapp-btn" data-type="supplier" data-id="<?= $row['id'] ?>" data-name="<?= htmlspecialchars($row['supplier_name']) ?>" data-phone="<?= htmlspecialchars($row['phone'] ?? '') ?>" title="Send Statement via WhatsApp" data-toggle="tooltip" data-placement="top">
+                                                    <i class="fab fa-whatsapp"></i>
                                                 </button>
                                                 <?php if (user_can('operations.edit')): ?>
                                                 <button class="btn btn-sm btn-outline-<?= !$isInactive ? 'danger' : 'success' ?> toggle-supplier-status-btn" data-supplier-id="<?= $row['id'] ?>" data-current-status="<?= isset($row['status']) ? $row['status'] : 'active' ?>" title="<?= !$isInactive ? __('deactivate') : __('activate') ?>" data-toggle="tooltip" data-placement="top">
@@ -979,7 +985,10 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                         $usdBarClass = $client['usd_balance'] >= 0 ? 'pos' : 'neg';
                                     ?>
                                     <div class="ac-list-card <?= $isInactive ? 'inactive' : '' ?>"
+                                         data-client-id="<?= $client['id'] ?>"
                                          data-client-name="<?= htmlspecialchars($client['name']) ?>"
+                                         data-client-phone="<?= htmlspecialchars($client['phone'] ?? '') ?>"
+                                         data-created-at="<?= htmlspecialchars($client['created_at']) ?>"
                                          data-usd-balance="<?= $client['usd_balance'] ?>"
                                          data-afs-balance="<?= $client['afs_balance'] ?>"
                                          data-status="<?= isset($client['status']) ? $client['status'] : 'active' ?>">
@@ -1032,6 +1041,9 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                                          data-client-name="<?= htmlspecialchars($client['name']) ?>"
                                                          title="<?= __('view_transactions') ?>" data-toggle="tooltip" data-placement="top">
                                                      <i class="feather icon-list"></i>
+                                                 </button>
+                                                 <button class="btn btn-sm btn-outline-success send-whatsapp-btn" data-type="client" data-id="<?= $client['id'] ?>" data-name="<?= htmlspecialchars($client['name']) ?>" data-phone="<?= htmlspecialchars($client['phone'] ?? '') ?>" title="Send Statement via WhatsApp" data-toggle="tooltip" data-placement="top">
+                                                     <i class="fab fa-whatsapp"></i>
                                                  </button>
                                                  <?php if (user_can('operations.edit')): ?>
                                                  <button class="btn btn-outline-<?= !$isInactive ? 'danger' : 'success' ?> toggle-client-status-btn btn-sm"
@@ -1330,6 +1342,123 @@ var accountsTutorials = [
     {id:5,title:'View Transaction History',description:'Accessing account transaction history, reviewing all account transactions, understanding transaction types and amounts, tracking account changes over time, exporting transaction records.',duration:'5:30',level:'Intermediate',vimeo_id:''},
     {id:6,title:'Manage Account Status',description:'Changing account status (active/inactive), understanding status impact on operations, deactivating accounts, reactivating accounts, managing account lifecycle.',duration:'4:30',level:'Advanced',vimeo_id:''}
 ];
+
+/* ============================================================
+   WHATSAPP STATEMENT SENDING
+   ============================================================ */
+(function() {
+    var whatsappBtn = null;
+    var whatsappModal = null;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        whatsappModal = document.getElementById('whatsappStatementModal');
+        if (!whatsappModal) return;
+
+        document.querySelectorAll('.send-whatsapp-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                whatsappBtn = this;
+                var entityType = this.dataset.type;
+                var entityId = this.dataset.id;
+                var entityName = this.dataset.name;
+                var entityPhone = this.dataset.phone || '';
+
+                document.getElementById('waEntityType').value = entityType;
+                document.getElementById('waEntityId').value = entityId;
+                document.getElementById('waEntityName').textContent = entityName;
+
+                var phoneInput = document.getElementById('waPhoneInput');
+                phoneInput.value = entityPhone;
+
+                var card = this.closest('.ac-list-card');
+                var createdAt = card ? card.dataset.createdAt : '';
+                var defaultEnd = new Date();
+                var defaultStart = createdAt ? new Date(createdAt) : new Date();
+                if (!createdAt) defaultStart.setMonth(defaultStart.getMonth() - 1);
+                document.getElementById('waStartDate').value = formatDate(defaultStart);
+                document.getElementById('waEndDate').value = formatDate(defaultEnd);
+
+                var modal = $(whatsappModal);
+                modal.modal('show');
+            });
+        });
+
+        document.getElementById('waSendBtn').addEventListener('click', sendWhatsAppStatement);
+    });
+
+    function formatDate(d) {
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1).padStart(2, '0');
+        var day = String(d.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + day;
+    }
+
+    function sendWhatsAppStatement() {
+        var entityType = document.getElementById('waEntityType').value;
+        var entityId = document.getElementById('waEntityId').value;
+        var phone = document.getElementById('waPhoneInput').value.trim();
+        var startDate = document.getElementById('waStartDate').value;
+        var endDate = document.getElementById('waEndDate').value;
+        var message = document.getElementById('waMessage').value.trim();
+
+        if (!phone) {
+            alert('Please enter a phone number');
+            return;
+        }
+        if (!startDate || !endDate) {
+            alert('Please select date range');
+            return;
+        }
+
+        var cleanPhone = phone.replace(/[^0-9]/g, '');
+        if (cleanPhone.length < 7) {
+            alert('Please enter a valid phone number');
+            return;
+        }
+
+        var sendBtn = document.getElementById('waSendBtn');
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Generating & Sending...';
+
+        var currency = 'USD';
+        if (entityType === 'client') {
+            currency = 'USD';
+        } else if (whatsappBtn) {
+            var card = whatsappBtn.closest('.ac-list-card');
+            if (card) currency = card.dataset.currency || 'USD';
+        }
+
+        var formData = new FormData();
+        formData.append('phone', cleanPhone);
+        formData.append('entityType', entityType);
+        formData.append('entityId', entityId);
+        formData.append('startDate', startDate);
+        formData.append('endDate', endDate);
+        formData.append('currency', currency);
+        formData.append('message', message || 'Please find the attached statement of account.');
+
+        fetch('../api/report/send_statement_whatsapp.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = '<i class="fab fa-whatsapp mr-1"></i> Generate & Send';
+            if (data.success) {
+                $(whatsappModal).modal('hide');
+                showSuccessToast('Statement sent via WhatsApp successfully!');
+            } else {
+                alert('Failed to send: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(function(err) {
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = '<i class="fab fa-whatsapp mr-1"></i> Generate & Send';
+            alert('Error sending WhatsApp. Please try again.');
+        });
+    }
+})();
+
 $(document).ready(function() {
     function loadTutorialsInModal() {
         var html = '';
@@ -1365,6 +1494,88 @@ $(document).ready(function() {
 });
 </script>
 
+
+<!-- WhatsApp Statement Modal -->
+<div class="modal fade" id="whatsappStatementModal" tabindex="-1" role="dialog" aria-labelledby="whatsappStatementModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #25d366 0%, #128c7e 100%); color: white; padding: 14px 20px;">
+                <h5 class="modal-title" id="whatsappStatementModalLabel" style="font-size: 15px; font-weight: 600;">
+                    <i class="fab fa-whatsapp mr-2"></i>Send Statement via WhatsApp
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="opacity: 0.8;">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" style="padding: 20px;">
+                <input type="hidden" id="waEntityType">
+                <input type="hidden" id="waEntityId">
+
+                <div style="background: var(--ac-surface-2); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 36px; height: 36px; border-radius: 9px; background: #dcf8c6; color: #25d366; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;">
+                        <i class="feather icon-user"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight: 600; font-size: 13.5px; color: var(--ac-text-1);" id="waEntityName"></div>
+                        <div style="font-size: 11px; color: var(--ac-text-3);">Statement will be generated as PDF</div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; font-size: 12px; font-weight: 600; color: var(--ac-text-2); margin-bottom: 5px;">Phone Number</label>
+                    <div style="position: relative;">
+                        <span style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #25d366; font-size: 14px;"><i class="fab fa-whatsapp"></i></span>
+                        <input type="tel" id="waPhoneInput" placeholder="Enter WhatsApp number (e.g. 93700123456)" style="width: 100%; padding: 9px 12px 9px 34px; border: 1px solid var(--ac-border); border-radius: 7px; font-size: 13px; outline: none; transition: all .2s;" onfocus="this.style.borderColor='#25d366'; this.style.boxShadow='0 0 0 3px rgba(37,211,102,0.1)'" onblur="this.style.borderColor=''; this.style.boxShadow=''">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
+                    <div>
+                        <label style="display: block; font-size: 12px; font-weight: 600; color: var(--ac-text-2); margin-bottom: 5px;">Start Date</label>
+                        <input type="date" id="waStartDate" style="width: 100%; padding: 8px 10px; border: 1px solid var(--ac-border); border-radius: 7px; font-size: 13px; outline: none; transition: all .2s;" onfocus="this.style.borderColor='#25d366'" onblur="this.style.borderColor=''">
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 12px; font-weight: 600; color: var(--ac-text-2); margin-bottom: 5px;">End Date</label>
+                        <input type="date" id="waEndDate" style="width: 100%; padding: 8px 10px; border: 1px solid var(--ac-border); border-radius: 7px; font-size: 13px; outline: none; transition: all .2s;" onfocus="this.style.borderColor='#25d366'" onblur="this.style.borderColor=''">
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 6px;">
+                    <label style="display: block; font-size: 12px; font-weight: 600; color: var(--ac-text-2); margin-bottom: 5px;">Message (optional)</label>
+                    <textarea id="waMessage" rows="3" placeholder="Please find the attached statement of account." style="width: 100%; padding: 9px 12px; border: 1px solid var(--ac-border); border-radius: 7px; font-size: 13px; outline: none; resize: vertical; font-family: inherit; transition: all .2s;" onfocus="this.style.borderColor='#25d366'" onblur="this.style.borderColor=''">Please find the attached statement of account.</textarea>
+                </div>
+
+                <div style="background: #e8f5e9; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #2e7d32; display: flex; align-items: flex-start; gap: 8px;">
+                    <i class="fas fa-info-circle" style="margin-top: 2px; flex-shrink: 0;"></i>
+                    <span>The PDF statement will be generated and sent directly to this number via WhatsApp.</span>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 12px 20px; border-top: 1px solid var(--ac-border);">
+                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal" style="border-radius: 7px; font-size: 12px;">Cancel</button>
+                <button type="button" id="waSendBtn" class="btn btn-sm" style="background: #25d366; border-color: #25d366; color: white; border-radius: 7px; font-size: 12px; font-weight: 600; padding: 6px 16px;">
+                    <i class="fab fa-whatsapp mr-1"></i> Generate & Send
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.send-whatsapp-btn {
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+.send-whatsapp-btn:hover {
+    background: #25d366;
+    border-color: #25d366;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(37,211,102,.35);
+}
+.send-whatsapp-btn:active {
+    transform: translateY(0);
+}
+</style>
 
 </body>
 </html>

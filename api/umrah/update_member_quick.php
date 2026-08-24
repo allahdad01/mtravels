@@ -112,11 +112,14 @@ try {
             $amountDifference = $newSoldPrice - $currentTxnAmount;
             $newTxnBalance = $isRegularClient ? $clientTransaction['balance'] - $amountDifference : $clientTransaction['balance'];
 
+            $memberLabel = !empty($fname) ? $name . ' (' . $fname . ' family)' : $name;
+            $newDescription = "Client was debited $newSoldPrice $currentCurrency for umrah booking for $memberLabel";
+
             $pdo->prepare("
                 UPDATE client_transactions
-                SET amount = ?, balance = ?, description = CONCAT('Updated: ', description)
+                SET amount = ?, balance = ?, description = ?
                 WHERE id = ? AND tenant_id = ? AND branch_id = ?
-            ")->execute([-1 * abs($newSoldPrice), $newTxnBalance, $clientTransaction['id'], $tenant_id, $branch_id]);
+            ")->execute([-1 * abs($newSoldPrice), $newTxnBalance, $newDescription, $clientTransaction['id'], $tenant_id, $branch_id]);
 
             // Recalculate ALL subsequent balances from scratch (avoids
             // double-counting when multiple members are updated in sequence).

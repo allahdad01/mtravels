@@ -33,7 +33,7 @@ require_once __DIR__ . '/../../includes/db.php';
    Input validation
    ──────────────────────────────────────────────────────────── */
 $page     = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
-$per_page = isset($_GET['per_page']) ? min(100, max(10, intval($_GET['per_page']))) : 25;
+$per_page = isset($_GET['per_page']) ? min(500, max(10, intval($_GET['per_page']))) : 25;
 $offset   = ($page - 1) * $per_page;
 
 $from_date = (isset($_GET['from_date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['from_date'])) ? $_GET['from_date'] : null;

@@ -901,6 +901,74 @@ Thank you for choosing {{agency_name}}!
         $stmt->execute([$this->tenant_id, $type, $booking_id]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    /**
+     * Send a document (PDF) via WhatsApp
+     * @param string $phone_number - recipient phone
+     * @param string $filePath - absolute path to the PDF file
+     * @param string $message - optional text message to send with the document
+     * @param string $filename - filename shown to recipient
+     * @return array response
+     */
+    public function sendDocument($phone_number, $filePath, $message = '', $filename = 'document.pdf') {
+        try {
+            $provider = $this->getProvider();
+
+            if (!($provider instanceof MetaWhatsAppProvider)) {
+                throw new Exception("Document sending is only supported with Meta WhatsApp provider");
+            }
+
+            // Upload the file to Meta
+            $media_id = $provider->uploadMedia($filePath, 'application/pdf');
+
+            // Send document (with optional text)
+            if (!empty($message)) {
+                $result = $provider->sendTextAndDocument($phone_number, $message, $media_id, $filename);
+            } else {
+                $result = $provider->sendDocumentMessage($phone_number, $media_id, $filename);
+            }
+
+            // Log the message
+            $this->logDocumentMessage($phone_number, $filename, $result);
+
+            return $result;
+        } catch (Exception $e) {
+            error_log("WhatsApp Document Send Error: " . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Log document message to whatsapp_messages table
+     */
+    private function logDocumentMessage($phone_number, $filename, $result) {
+        try {
+            $formatted_phone = preg_replace('/[^0-9]/', '', $phone_number);
+            $status = ($result['success'] ?? false) ? 'sent' : 'failed';
+            $provider_msg_id = $result['document_result']['message_id'] ?? ($result['message_id'] ?? null);
+            $error_msg = $result['error'] ?? ($result['document_result']['error'] ?? null);
+
+            $stmt = $this->pdo->prepare("
+                INSERT INTO whatsapp_messages 
+                (tenant_id, phone_number, message, message_type, status, provider_message_id, error_message, sent_at, branch_id)
+                VALUES (?, ?, ?, 'document', ?, ?, ?, NOW(), ?)
+            ");
+            $stmt->execute([
+                $this->tenant_id,
+                $formatted_phone,
+                "Statement: $filename",
+                $status,
+                $provider_msg_id,
+                $error_msg,
+                $this->settings['branch_id'] ?? null
+            ]);
+        } catch (Exception $e) {
+            error_log("Failed to log document message: " . $e->getMessage());
+        }
+    }
 }
 
 /**
@@ -1225,6 +1293,106 @@ class MetaWhatsAppProvider {
      */
     private function logIncomingMessage($message) {
         error_log("Incoming WhatsApp Message: " . json_encode($message));
+    }
+
+    /**
+     * Upload media file to Meta and get media_id
+     */
+    public function uploadMedia($filePath, $mimeType = 'application/pdf') {
+        $url = $this->base_url . '/' . $this->phone_number_id . '/media';
+
+        $postData = [
+            'messaging_product' => 'whatsapp',
+            'file' => new CURLFile($filePath, $mimeType, basename($filePath)),
+            'type' => $mimeType
+        ];
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: Bearer ' . $this->api_token
+        ]);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curl_error = curl_error($ch);
+        curl_close($ch);
+
+        if ($curl_error) {
+            throw new Exception("cURL Upload Error: $curl_error");
+        }
+
+        if ($http_code >= 200 && $http_code < 300) {
+            $result = json_decode($response, true);
+            if (isset($result['id'])) {
+                return $result['id'];
+            }
+            throw new Exception("No media ID returned");
+        }
+
+        throw new Exception("Media upload failed: HTTP $http_code - $response");
+    }
+
+    /**
+     * Send a document message via Meta WhatsApp Business API
+     */
+    public function sendDocumentMessage($phone_number, $media_id, $filename = 'document.pdf') {
+        $formatted_phone = $this->formatPhoneNumber($phone_number);
+
+        $data = [
+            'messaging_product' => 'whatsapp',
+            'to' => $formatted_phone,
+            'type' => 'document',
+            'document' => [
+                'id' => $media_id,
+                'filename' => $filename
+            ]
+        ];
+
+        try {
+            $url = $this->base_url . '/' . $this->phone_number_id . '/messages';
+            $response = $this->makeHttpRequest('POST', $url, $data);
+
+            if ($response && isset($response['messages'][0]['id'])) {
+                return [
+                    'success' => true,
+                    'message_id' => $response['messages'][0]['id'],
+                    'status' => 'sent',
+                    'via' => 'document'
+                ];
+            }
+
+            throw new Exception("Document send failed");
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+                'via' => 'document'
+            ];
+        }
+    }
+
+    /**
+     * Send a text message, then a document message
+     */
+    public function sendTextAndDocument($phone_number, $message, $media_id, $filename = 'document.pdf') {
+        $formatted_phone = $this->formatPhoneNumber($phone_number);
+
+        // Send text message first
+        $textResult = $this->sendTextMessage($formatted_phone, $message);
+
+        // Then send document
+        $docResult = $this->sendDocumentMessage($formatted_phone, $media_id, $filename);
+
+        return [
+            'text_result' => $textResult,
+            'document_result' => $docResult,
+            'success' => ($textResult['success'] ?? false) || ($docResult['success'] ?? false)
+        ];
     }
 }
 

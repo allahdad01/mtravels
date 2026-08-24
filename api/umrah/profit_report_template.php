@@ -82,6 +82,9 @@ $langLabels = [
         'empty' => 'هیچ معتمری یافت نشد',
         'generated_on' => 'تاریخ ایجاد',
         'currency' => 'واحد پول',
+        'client' => 'کلاینت',
+        'family' => 'فامیل',
+        'extra_beds' => 'بسترهای اضافی',
     ],
     'ps' => [
         'doc_title' => 'د ګټې راپور',
@@ -108,6 +111,9 @@ $langLabels = [
         'empty' => 'هیڅ معتمر ونه موندل شو',
         'generated_on' => 'د رامنځته کېدو نیټه',
         'currency' => 'اسعارو',
+        'client' => 'کلاینت',
+        'family' => 'کورنۍ',
+        'extra_beds' => 'اضافي بستر',
     ],
     'en' => [
         'doc_title' => 'Profit Report',
@@ -134,6 +140,9 @@ $langLabels = [
         'empty' => 'No members found',
         'generated_on' => 'Generated on',
         'currency' => 'Currency',
+        'client' => 'Client',
+        'family' => 'Family',
+        'extra_beds' => 'Extra Beds',
     ],
 ];
 $L = $langLabels[$docLanguage];
@@ -221,6 +230,9 @@ $fmt = function ($v) {
         .profit-pos { color: #15803d; }
         .profit-neg { color: #b91c1c; }
         .empty-row td { padding: 18px; color: #555; text-align: center; }
+        .client-header td { background: #dbeafe !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .family-header td { background: #f3f4f6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .family-total td { background: #fef3c7 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .print-button {
             position: fixed;
             top: 20px;
@@ -282,10 +294,90 @@ $fmt = function ($v) {
                 <td colspan="9"><?php echo htmlspecialchars($L['empty']); ?></td>
             </tr>
             <?php else: ?>
+            <?php
+            if ($scope === 'group') {
+                $totalMembers = 0; $totalExtraBeds = 0;
+                foreach ($data['members'] as $m) {
+                    if (!empty($m['is_extra_bed'])) { $totalExtraBeds++; } else { $totalMembers++; }
+                }
+                $byClient = [];
+                foreach ($data['members'] as $m) {
+                    $clientKey = $m['client_name'] ?? '—';
+                    $familyKey = $m['head_of_family'] ?? '—';
+                    $byClient[$clientKey][$familyKey][] = $m;
+                }
+                $i = 0;
+                foreach ($byClient as $clientName => $families):
+            ?>
+            <tr class="client-header">
+                <td colspan="9" style="background:#dbeafe; font-weight:700; font-size:11px; border-top:2px solid #3b82f6;">
+                    <?php echo htmlspecialchars($L['client']); ?>: <?php echo htmlspecialchars($clientName); ?>
+                </td>
+            </tr>
+            <?php foreach ($families as $familyName => $fmembers):
+                    $famCost = 0; $famSold = 0; $famProfit = 0;
+                    $famMembers = 0; $famExtraBeds = 0;
+                    foreach ($fmembers as $fm) {
+                        $famCost += $fm['cost_total']; $famSold += $fm['sold_total']; $famProfit += $fm['profit'];
+                        if (!empty($fm['is_extra_bed'])) { $famExtraBeds++; } else { $famMembers++; }
+                    }
+            ?>
+            <tr class="family-header">
+                <td colspan="9" style="background:#f3f4f6; font-weight:600; font-size:10.5px; border-top:1px solid #9ca3af;">
+                    <?php echo htmlspecialchars($L['family']); ?>: <?php echo htmlspecialchars($familyName); ?> (<?php echo $famMembers; ?> <?php echo htmlspecialchars($L['members']); ?><?php if ($famExtraBeds > 0): ?> + <?php echo $famExtraBeds; ?> <?php echo htmlspecialchars($L['extra_beds']); ?><?php endif; ?>)
+                </td>
+            </tr>
+            <?php foreach ($fmembers as $m): $i++; $isNeg = $m['profit'] < 0; ?>
+            <tr>
+                <td class="col-s"><?php echo $i; ?></td>
+                <td class="col-name"><?php echo htmlspecialchars($m['name'] ?? ''); ?><?php if (!empty($m['is_extra_bed'])): ?> <span style="color:#d97706; font-size:9px; font-weight:600;">(<?php echo htmlspecialchars($L['extra_beds']); ?>)</span><?php endif; ?></td>
+                <td class="col-fname"><?php echo htmlspecialchars($m['fname'] ?? ''); ?></td>
+                <td class="col-passport"><?php echo htmlspecialchars($m['passport_number'] ?? ''); ?></td>
+                <td class="col-services">
+                    <?php foreach ($m['services'] as $s): ?>
+                    <span class="svc-line"><?php echo htmlspecialchars($s['label']); ?> — <span class="svc-cost num"><?php echo $fmt($s['cost']); ?></span></span>
+                    <?php endforeach; ?>
+                    <?php if ($m['brn_cost'] > 0): ?>
+                    <span class="svc-line"><?php echo htmlspecialchars($L['brn']); ?> — <span class="svc-cost num"><?php echo $fmt($m['brn_cost']); ?></span></span>
+                    <?php endif; ?>
+                    <?php if (empty($m['services']) && $m['brn_cost'] <= 0): ?>
+                    <span class="svc-line" style="color:#6b7280;">—</span>
+                    <?php endif; ?>
+                </td>
+                <td class="num"><?php echo $fmt($m['cost_total']); ?></td>
+                <td class="num"><?php echo $fmt($m['sold_total']); ?></td>
+                <td class="num"><?php echo $fmt((float)($m['discount'] ?? 0)); ?></td>
+                <td class="num <?php echo $isNeg ? 'profit-neg' : 'profit-pos'; ?>"><?php echo $fmt($m['profit']); ?></td>
+            </tr>
+            <?php endforeach; ?>
+            <tr class="family-total" style="background:#fef3c7;">
+                <td colspan="5" style="font-weight:600; font-size:10px; border-top:1px solid #d97706;">
+                    &nbsp;&nbsp;<?php echo htmlspecialchars($familyName); ?> — <?php echo htmlspecialchars($L['grand_total']); ?>
+                </td>
+                <td class="num" style="font-weight:600;"><?php echo $fmt($famCost); ?></td>
+                <td class="num" style="font-weight:600;"><?php echo $fmt($famSold); ?></td>
+                <td class="num" style="font-weight:600;"><?php echo $fmt(0); ?></td>
+                <td class="num" style="font-weight:600;" class="<?php echo $famProfit < 0 ? 'profit-neg' : 'profit-pos'; ?>"><?php echo $fmt($famProfit); ?></td>
+            </tr>
+            <?php endforeach; endforeach; ?>
+            <tr class="grand-total">
+                <td colspan="5"><?php echo htmlspecialchars($L['grand_total']); ?> (<?php echo $totalMembers; ?> <?php echo htmlspecialchars($L['members']); ?><?php if ($totalExtraBeds > 0): ?> + <?php echo $totalExtraBeds; ?> <?php echo htmlspecialchars($L['extra_beds']); ?><?php endif; ?>)</td>
+                <td class="num"><?php echo $fmt($data['cost_total']); ?></td>
+                <td class="num"><?php echo $fmt($data['sold_total']); ?></td>
+                <td class="num"><?php echo $fmt(0); ?></td>
+                <td class="num <?php echo $data['profit_total'] < 0 ? 'profit-neg' : 'profit-pos'; ?>"><?php echo $fmt($data['profit_total']); ?></td>
+            </tr>
+            <?php
+            } else {
+                $totalMembers = 0; $totalExtraBeds = 0;
+                foreach ($data['members'] as $m) {
+                    if (!empty($m['is_extra_bed'])) { $totalExtraBeds++; } else { $totalMembers++; }
+                }
+            ?>
             <?php $i = 0; foreach ($data['members'] as $m): $i++; $isNeg = $m['profit'] < 0; ?>
             <tr>
                 <td class="col-s"><?php echo $i; ?></td>
-                <td class="col-name"><?php echo htmlspecialchars($m['name'] ?? ''); ?></td>
+                <td class="col-name"><?php echo htmlspecialchars($m['name'] ?? ''); ?><?php if (!empty($m['is_extra_bed'])): ?> <span style="color:#d97706; font-size:9px; font-weight:600;">(<?php echo htmlspecialchars($L['extra_beds']); ?>)</span><?php endif; ?></td>
                 <td class="col-fname"><?php echo htmlspecialchars($m['fname'] ?? ''); ?></td>
                 <td class="col-passport"><?php echo htmlspecialchars($m['passport_number'] ?? ''); ?></td>
                 <td class="col-services">
@@ -306,18 +398,19 @@ $fmt = function ($v) {
             </tr>
             <?php endforeach; ?>
             <tr class="grand-total">
-                <td colspan="5"><?php echo htmlspecialchars($L['grand_total']); ?> (<?php echo count($data['members']); ?> <?php echo htmlspecialchars($L['members']); ?>)</td>
+                <td colspan="5"><?php echo htmlspecialchars($L['grand_total']); ?> (<?php echo $totalMembers; ?> <?php echo htmlspecialchars($L['members']); ?><?php if ($totalExtraBeds > 0): ?> + <?php echo $totalExtraBeds; ?> <?php echo htmlspecialchars($L['extra_beds']); ?><?php endif; ?>)</td>
                 <td class="num"><?php echo $fmt($data['cost_total']); ?></td>
                 <td class="num"><?php echo $fmt($data['sold_total']); ?></td>
                 <td class="num"><?php echo $fmt(0); ?></td>
                 <td class="num <?php echo $data['profit_total'] < 0 ? 'profit-neg' : 'profit-pos'; ?>"><?php echo $fmt($data['profit_total']); ?></td>
             </tr>
+            <?php } ?>
             <?php endif; ?>
         </tbody>
     </table>
 
     <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:9.5px; color:#444;">
-        <span><?php echo count($data['members']); ?> <?php echo htmlspecialchars($L['members']); ?></span>
+        <span><?php echo $totalMembers; ?> <?php echo htmlspecialchars($L['members']); ?><?php if ($totalExtraBeds > 0): ?> + <?php echo $totalExtraBeds; ?> <?php echo htmlspecialchars($L['extra_beds']); ?><?php endif; ?></span>
         <span><?php echo htmlspecialchars($today); ?></span>
     </div>
 

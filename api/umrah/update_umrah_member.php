@@ -804,16 +804,28 @@ try {
                     // For regular clients, update balance; for agency, keep balance the same
                     $newTransactionBalance = $isRegularClient ? $clientTransaction['balance'] - $amountDifference : $clientTransaction['balance'];
 
+                    // Get family name for description
+                    $familyId = $currentData['family_id'] ?? null;
+                    $familyName = '';
+                    if (!empty($familyId)) {
+                        $fhStmt = $pdo->prepare("SELECT head_of_family FROM families WHERE family_id = ? AND tenant_id = ?");
+                        $fhStmt->execute([$familyId, $tenant_id]);
+                        $familyName = trim((string)($fhStmt->fetchColumn() ?: ''));
+                    }
+                    $memberLabel = $familyName !== '' ? $name . ' (' . $familyName . ' family)' : $name;
+                    $newDescription = "Client was debited $totalSoldPrice $clientCurrency for umrah booking for $memberLabel";
+
                     // Update transaction
                     $updateClientTransactionStmt = $pdo->prepare("
                         UPDATE client_transactions
-                        SET amount = ?, balance = ?, description = CONCAT('Updated: ', description)
+                        SET amount = ?, balance = ?, description = ?
                         WHERE id = ? AND tenant_id = ? AND branch_id = ?
                     ");
                     $negativeAmount = -1 * abs($totalSoldPrice);
                     $updateClientTransactionStmt->execute([
                         $negativeAmount,
                         $newTransactionBalance,
+                        $newDescription,
                         $clientTransaction['id'],
                         $tenant_id,
                         $branch_id
