@@ -267,18 +267,19 @@ try {
             ? $oldSupplierId
             : null;
         if ($undoSupplier !== null) {
+            // Use LIKE to match even when the member label changed between saves.
             $oldIdStmt = $pdo->prepare("
                 SELECT MIN(id) FROM supplier_transactions
                 WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
-                  AND (remarks = ? OR remarks = ?) AND tenant_id = ?");
-            $oldIdStmt->execute([$undoSupplier, $tbBookingId, $remark, $corrRemark, $tenant_id]);
+                  AND (remarks LIKE 'BRN for %' OR remarks LIKE 'BRN cost correction for %') AND tenant_id = ?");
+            $oldIdStmt->execute([$undoSupplier, $tbBookingId, $tenant_id]);
             $oldDeletedMinId = (int)($oldIdStmt->fetchColumn() ?: 0);
 
             $otStmt = $pdo->prepare("
                 SELECT transaction_type, amount FROM supplier_transactions
                 WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
-                  AND (remarks = ? OR remarks = ?) AND tenant_id = ?");
-            $otStmt->execute([$undoSupplier, $tbBookingId, $remark, $corrRemark, $tenant_id]);
+                  AND (remarks LIKE 'BRN for %' OR remarks LIKE 'BRN cost correction for %') AND tenant_id = ?");
+            $otStmt->execute([$undoSupplier, $tbBookingId, $tenant_id]);
             $oldTxns = $otStmt->fetchAll(PDO::FETCH_ASSOC);
             if ($oldTxns) {
                 $net = 0.0;
@@ -296,8 +297,8 @@ try {
                 $pdo->prepare("
                     DELETE FROM supplier_transactions
                     WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
-                      AND (remarks = ? OR remarks = ?) AND tenant_id = ?")
-                    ->execute([$undoSupplier, $tbBookingId, $remark, $corrRemark, $tenant_id]);
+                      AND (remarks LIKE 'BRN for %' OR remarks LIKE 'BRN cost correction for %') AND tenant_id = ?")
+                    ->execute([$undoSupplier, $tbBookingId, $tenant_id]);
             }
             // The deleted exposure rows were part of every subsequent running
             // balance of the old supplier — bring them back in sync.
@@ -356,45 +357,7 @@ try {
 
         // ---- Supplier transaction (once per supplier + booking) --------------------
         if ($supplier_id !== null && $supplier_cost !== null && $supplier_cost > 0) {
-            $supTypeStmt = $pdo->prepare("SELECT supplier_type FROM suppliers WHERE id = ? AND tenant_id = ?");
-            $supTypeStmt->execute([$supplier_id, $tenant_id]);
-            $supplierType = $supTypeStmt->fetchColumn();
-
-            $supAmtStmt = $pdo->prepare("
-                SELECT COALESCE(SUM(COALESCE(supplier_cost, cost_amount)), 0)
-                FROM umrah_brn_costs WHERE booking_id = ? AND tenant_id = ? AND supplier_id = ?");
-            $supAmtStmt->execute([$tbBookingId, $tenant_id, $supplier_id]);
-            $supplierBase = round((float)$supAmtStmt->fetchColumn(), 3);
-
-            $dupStmt = $pdo->prepare("
-                SELECT id FROM supplier_transactions
-                WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
-                  AND remarks = ? AND tenant_id = ? LIMIT 1");
-            $dupStmt->execute([$supplier_id, $tbBookingId, $remark, $tenant_id]);
-
-            if (!$dupStmt->fetchColumn()) {
-                if ($supplierType === 'External') {
-                    $pdo->prepare("UPDATE suppliers SET balance = balance - ? WHERE id = ? AND tenant_id = ?")
-                        ->execute([$supplierBase, $supplier_id, $tenant_id]);
-                    $balStmt = $pdo->prepare("SELECT balance FROM suppliers WHERE id = ? AND tenant_id = ?");
-                    $balStmt->execute([$supplier_id, $tenant_id]);
-                    $newBalance = (float)$balStmt->fetchColumn();
-                    $pdo->prepare("
-                        INSERT INTO supplier_transactions (tenant_id, branch_id, supplier_id, reference_id, transaction_type, amount, remarks, balance, transaction_of, receipt)
-                        VALUES (?, ?, ?, ?, 'Debit', ?, ?, ?, 'umrah', '')")
-                        ->execute([$tenant_id, $branch_id, $supplier_id, $tbBookingId, $supplierBase, $remark, $newBalance]);
-                } else {
-                    $pdo->prepare("
-                        INSERT INTO supplier_transactions (tenant_id, branch_id, supplier_id, reference_id, transaction_type, amount, remarks, balance, transaction_of, receipt)
-                        VALUES (?, ?, ?, ?, 'Debit', ?, ?, 0, 'umrah', '')")
-                        ->execute([$tenant_id, $branch_id, $supplier_id, $tbBookingId, $supplierBase, $remark]);
-                }
-            } else {
-                // Cost change while the record stays — net the correction row
-                // to the live BRN cost (rebuild, never skip) so sign flips
-                // and re-saves can't leave a stale BRN correction behind.
-                brnReconcileSupplierExposure($pdo, $tenant_id, $branch_id, (int)$tbBookingId, (int)$supplier_id, (string)$tbLabel);
-            }
+            brnReconcileSupplierExposure($pdo, $tenant_id, $branch_id, (int)$tbBookingId, (int)$supplier_id, (string)$tbLabel);
         }
 
         brn_recalc_booking($pdo, $tbBookingId, $tenant_id);

@@ -6,6 +6,8 @@ $tenant_id = $_SESSION['tenant_id'];
 $branch_id = $_SESSION['branch_id'];
 $clientId = isset($_GET['client_id']) ? (int)$_GET['client_id'] : 0;
 $dryRun = isset($_GET['dry_run']) && $_GET['dry_run'] === '1';
+$startBalance = isset($_GET['start_balance']) ? (float)$_GET['start_balance'] : null;
+$firstBalance = isset($_GET['first_balance']) ? (float)$_GET['first_balance'] : null;
 
 require_once __DIR__ . '/../../includes/db.php';
 
@@ -49,17 +51,30 @@ foreach ($clients as $client) {
     $balStmt->execute([$cid, $tid, $bid]);
     $masterBalance = (float)$balStmt->fetchColumn();
 
-    $startBalance = $masterBalance;
-    for ($i = count($txns) - 1; $i >= 0; $i--) {
-        $absAmt = abs((float)$txns[$i]['amount']);
-        if (strtolower($txns[$i]['type']) === 'credit') {
-            $startBalance = round($startBalance - $absAmt, 3);
+    // Determine starting balance
+    if ($startBalance !== null && $clientId == $cid) {
+        $start = $startBalance;
+    } elseif ($firstBalance !== null && $clientId == $cid) {
+        $firstTxn = $txns[0];
+        $absAmt = abs((float)$firstTxn['amount']);
+        if (strtolower($firstTxn['type']) === 'credit') {
+            $start = $firstBalance - $absAmt;
         } else {
-            $startBalance = round($startBalance + $absAmt, 3);
+            $start = $firstBalance + $absAmt;
+        }
+    } else {
+        $start = $masterBalance;
+        for ($i = count($txns) - 1; $i >= 0; $i--) {
+            $absAmt = abs((float)$txns[$i]['amount']);
+            if (strtolower($txns[$i]['type']) === 'credit') {
+                $start = round($start - $absAmt, 3);
+            } else {
+                $start = round($start + $absAmt, 3);
+            }
         }
     }
 
-    $running = $startBalance;
+    $running = $start;
     $updates = [];
     $mismatches = 0;
 
@@ -81,18 +96,27 @@ foreach ($clients as $client) {
     if ($mismatches === 0 && !$masterWrong) continue;
 
     if (!$dryRun) {
-        foreach ($updates as $u) {
-            $pdo->prepare("UPDATE client_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
-                ->execute([$u['new'], $u['id'], $tid, $bid]);
+        $pdo->beginTransaction();
+        try {
+            foreach ($updates as $u) {
+                $pdo->prepare("UPDATE client_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
+                    ->execute([$u['new'], $u['id'], $tid, $bid]);
+            }
+            $pdo->prepare("UPDATE clients SET {$balanceField} = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
+                ->execute([$running, $cid, $tid, $bid]);
+            $pdo->commit();
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            $results[] = ['client_id' => $cid, 'error' => $e->getMessage()];
+            continue;
         }
-        $pdo->prepare("UPDATE clients SET {$balanceField} = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
-            ->execute([$running, $cid, $tid, $bid]);
     }
 
     $fixed++;
     $results[] = [
         'client_id' => $cid,
         'currency' => $cur,
+        'start_balance' => $start,
         'transactions_fixed' => $mismatches,
         'master_old' => $masterBalance,
         'master_new' => $running,

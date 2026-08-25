@@ -211,6 +211,22 @@ $pickFields = function(array $post, string $typeCat) use ($commonKeys, $typedKey
     return $out;
 };
 $baseFields = $pickFields($_POST, $cat);
+// When the form posts no explicit hotel cost (supplier_cost empty, no
+// per-city costs), suppress nightly_rate in forwarded stays so
+// fulfillment_save() doesn't auto-calculate per-member costs from it.
+// Only extra bed members (who carry their own cost via extra_bed_costs)
+// should receive supplier transactions in this case.
+$suppressNightlyCost = $cat === 'hotel'
+    && ($baseFields['supplier_cost'] ?? '') === ''
+    && ($baseFields['makkah_cost'] ?? '') === ''
+    && ($baseFields['madinah_cost'] ?? '') === '';
+$stripNightlyRate = function(array $stays) use ($suppressNightlyCost): array {
+    if (!$suppressNightlyCost) return $stays;
+    return array_map(function($st) {
+        if (is_array($st)) $st['nightly_rate'] = null;
+        return $st;
+    }, $stays);
+};
 // Per-type ticket fares (supplier currency), posted by the aggregate flight
 // card when the covered members include children or infants. Each member's
 // own fare is applied by travel type below; adults keep the card's
@@ -415,7 +431,7 @@ foreach ($targets as $target) {
     // first, then the member's own group's list replaces it entirely. Members
     // not covered by any stay block are skipped (their current state stays
     // untouched) — this is how per-family / per-member room assignment works.
-    if ($hotelStays !== null) { $mergedInput['hotel_stays'] = $hotelStays; }
+    if ($hotelStays !== null) { $mergedInput['hotel_stays'] = $stripNightlyRate($hotelStays); }
     // Extra bed cost overrides: only forward for the specific extra bed member
     $extraBedCosts = null;
     if (isset($_POST['extra_bed_costs']) && is_string($_POST['extra_bed_costs']) && $_POST['extra_bed_costs'] !== '') {
@@ -437,7 +453,7 @@ foreach ($targets as $target) {
             $skipReasons['no room block'] = ($skipReasons['no room block'] ?? 0) + 1;
             continue;
         }
-        $mergedInput['hotel_stays'] = $hotelGroups[$memberGroup];
+        $mergedInput['hotel_stays'] = $stripNightlyRate($hotelGroups[$memberGroup]);
     }
     $grantKey = $hotelGroups !== null ? ('g' . ($memberGroup ?? '')) : 'all';
     if (isset($mergedInput['hotel_stays']) && is_array($mergedInput['hotel_stays'])) {

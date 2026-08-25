@@ -510,6 +510,11 @@ if ($isAggregate) {
                 foreach ($hStmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
                     $bid = (int)$r['booking_id'];
                     if (!isset($bd[$bid])) { continue; }
+                    // Set top-level fulfillment_id from first stay so the JS
+                    // unfulfilled counter (m.fulfillment_id) works for hotels.
+                    if (empty($bd[$bid]['fulfillment_id'])) {
+                        $bd[$bid]['fulfillment_id'] = (int)$r['fulfillment_id'];
+                    }
                     $bd[$bid]['stays'][] = [
                         'fulfillment_id' => (int)$r['fulfillment_id'],
                         'hotel_id'       => !empty($r['hotel_id']) ? (int)$r['hotel_id'] : null,

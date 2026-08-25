@@ -6,23 +6,32 @@
  * then syncs the master client balance to match.
  *
  * Usage:
- *   php fix_client_balances.php --dry-run                    (preview all clients)
- *   php fix_client_balances.php --client <id>                (one client)
- *   php fix_client_balances.php --tenant <id>                (all clients in tenant)
- *   php fix_client_balances.php --tenant <id> --client <id>  (specific client in tenant)
+ *   php fix_client_balances.php --tenant 28 --client 70 --dry-run
+ *   php fix_client_balances.php --tenant 28 --client 70
+ *
+ *   # Override the starting balance (balance before first transaction):
+ *   php fix_client_balances.php --tenant 28 --client 70 --start-balance -1210 --dry-run
+ *   php fix_client_balances.php --tenant 28 --client 70 --start-balance -1210
+ *
+ *   # Or override via first transaction's correct balance:
+ *   php fix_client_balances.php --tenant 28 --client 70 --first-balance -2275 --dry-run
  */
 
 $dryRun = in_array('--dry-run', $argv);
 $targetClient = null;
 $targetTenant = null;
+$startBalanceOverride = null;
+$firstBalanceOverride = null;
+
 for ($i = 1; $i < $argc; $i++) {
     if ($argv[$i] === '--client' && isset($argv[$i + 1])) $targetClient = (int)$argv[$i + 1];
     if ($argv[$i] === '--tenant' && isset($argv[$i + 1])) $targetTenant = (int)$argv[$i + 1];
+    if ($argv[$i] === '--start-balance' && isset($argv[$i + 1])) $startBalanceOverride = (float)$argv[$i + 1];
+    if ($argv[$i] === '--first-balance' && isset($argv[$i + 1])) $firstBalanceOverride = (float)$argv[$i + 1];
 }
 
 require_once __DIR__ . '/../../includes/db.php';
 
-// Build query to find affected clients
 $where = [];
 $params = [];
 if ($targetClient) { $where[] = 'ct.client_id = ?'; $params[] = $targetClient; }
@@ -51,7 +60,6 @@ foreach ($clients as $client) {
     $tenantId = $client['tenant_id'];
     $branchId = $client['branch_id'];
 
-    // Fetch ALL transactions for this client+currency ordered by id (chronological)
     $txnStmt = $pdo->prepare("
         SELECT id, amount, type, balance, created_at, transaction_of, description
         FROM client_transactions
@@ -62,27 +70,38 @@ foreach ($clients as $client) {
 
     if (!$txns) continue;
 
-    // Get client master balance
     $balanceField = strtoupper($currency) === 'USD' ? 'usd_balance' : 'afs_balance';
     $balStmt = $pdo->prepare("SELECT {$balanceField} FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
     $balStmt->execute([$clientId, $tenantId, $branchId]);
     $masterBalance = (float)$balStmt->fetchColumn();
 
-    // Step 1: Compute what the starting balance BEFORE the first transaction should be.
-    // We know the final master balance is correct. Work backward from it.
-    $startBalance = $masterBalance;
-    for ($i = count($txns) - 1; $i >= 0; $i--) {
-        $absAmt = abs((float)$txns[$i]['amount']);
-        if (strtolower($txns[$i]['type']) === 'credit') {
-            // Credit added to balance, so reverse: subtract
-            $startBalance = round($startBalance - $absAmt, 3);
+    // Determine starting balance (balance before the first transaction)
+    if ($startBalanceOverride !== null && $targetClient == $clientId) {
+        $startBalance = $startBalanceOverride;
+    } elseif ($firstBalanceOverride !== null && $targetClient == $clientId) {
+        // User gives us the correct balance OF the first transaction.
+        // Reverse the first transaction to get the start balance.
+        $firstTxn = $txns[0];
+        $absAmt = abs((float)$firstTxn['amount']);
+        if (strtolower($firstTxn['type']) === 'credit') {
+            $startBalance = $firstBalanceOverride - $absAmt;
         } else {
-            // Debit subtracted from balance, so reverse: add
-            $startBalance = round($startBalance + $absAmt, 3);
+            $startBalance = $firstBalanceOverride + $absAmt;
+        }
+    } else {
+        // Auto-compute: reverse from master balance
+        $startBalance = $masterBalance;
+        for ($i = count($txns) - 1; $i >= 0; $i--) {
+            $absAmt = abs((float)$txns[$i]['amount']);
+            if (strtolower($txns[$i]['type']) === 'credit') {
+                $startBalance = round($startBalance - $absAmt, 3);
+            } else {
+                $startBalance = round($startBalance + $absAmt, 3);
+            }
         }
     }
 
-    // Step 2: Rebuild all running balances forward from the computed start
+    // Rebuild all running balances forward
     $running = $startBalance;
     $updates = [];
     $mismatches = 0;
@@ -110,7 +129,6 @@ foreach ($clients as $client) {
         }
     }
 
-    // Step 3: Check if master balance also needs syncing
     $masterWrong = abs($masterBalance - $running) > 0.001;
 
     if ($mismatches === 0 && !$masterWrong) continue;
@@ -119,7 +137,7 @@ foreach ($clients as $client) {
     echo "========================================\n";
     echo "Client #{$clientId} | {$currency} | Tenant #{$tenantId} | Branch #{$branchId}\n";
     echo "Transactions: " . count($txns) . " | Mismatches: {$mismatches}\n";
-    echo "Computed start balance: " . number_format($startBalance, 3) . "\n";
+    echo "Start balance: " . number_format($startBalance, 3) . "\n";
     echo "Master balance: " . number_format($masterBalance, 3);
     if ($masterWrong) {
         echo " → " . number_format($running, 3) . " (WILL SYNC)";
@@ -143,16 +161,21 @@ foreach ($clients as $client) {
     }
     echo "\n";
 
-    // Apply fixes
     if (!$dryRun) {
-        foreach ($updates as $u) {
-            $pdo->prepare("UPDATE client_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
-                ->execute([$u['new'], $u['id'], $tenantId, $branchId]);
+        $pdo->beginTransaction();
+        try {
+            foreach ($updates as $u) {
+                $pdo->prepare("UPDATE client_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
+                    ->execute([$u['new'], $u['id'], $tenantId, $branchId]);
+            }
+            $pdo->prepare("UPDATE clients SET {$balanceField} = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
+                ->execute([$running, $clientId, $tenantId, $branchId]);
+            $pdo->commit();
+            echo "  [APPLIED] {$mismatches} transaction(s) fixed, master balance synced to " . number_format($running, 3) . "\n\n";
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            echo "  [ERROR] " . $e->getMessage() . "\n\n";
         }
-        // Sync master balance to the last correct running balance
-        $pdo->prepare("UPDATE clients SET {$balanceField} = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
-            ->execute([$running, $clientId, $tenantId, $branchId]);
-        echo "  [APPLIED] {$mismatches} transaction(s) fixed, master balance synced to " . number_format($running, 3) . "\n\n";
     } else {
         echo "  [DRY RUN] No changes made\n\n";
     }
