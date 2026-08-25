@@ -129,11 +129,15 @@ $canEdit = user_can('umrah.member_edit');
                                         COALESCE(fam.total_price, 0) AS total_price,
                                         COALESCE(fam.total_paid, 0) AS total_paid,
                                         COALESCE(fam.total_due, 0) AS total_due,
+                                        COALESCE(fam_split.agency_total_price, 0) AS agency_total_price,
+                                        COALESCE(fam_split.agency_due, 0) AS agency_due,
+                                        COALESCE(fam_split.agency_total_paid, 0) AS agency_total_paid,
+                                        COALESCE(fam_split.regular_total_price, 0) AS regular_total_price,
+                                        COALESCE(fam_split.regular_total_paid, 0) AS regular_total_paid,
+                                        COALESCE(fam_split.extra_bed_price, 0) AS extra_bed_price,
+                                        COALESCE(fam_split.extra_bed_paid, 0) AS extra_bed_paid,
                                         COUNT(DISTINCT CASE WHEN c.client_type = 'agency' AND COALESCE(ub.is_extra_bed, 0) = 0 THEN ub.booking_id END) AS agency_member_count,
-                                        SUM(CASE WHEN c.client_type = 'agency' AND COALESCE(ub.is_extra_bed, 0) = 0 THEN ub.sold_price ELSE 0 END) AS agency_total_price,
-                                        SUM(CASE WHEN c.client_type = 'agency' AND COALESCE(ub.is_extra_bed, 0) = 0 THEN ub.due ELSE 0 END) AS agency_due,
-                                        COUNT(DISTINCT CASE WHEN c.client_type = 'regular' AND COALESCE(ub.is_extra_bed, 0) = 0 THEN ub.booking_id END) AS regular_member_count,
-                                        SUM(CASE WHEN c.client_type = 'regular' AND COALESCE(ub.is_extra_bed, 0) = 0 THEN ub.sold_price ELSE 0 END) AS regular_total_price
+                                        COUNT(DISTINCT CASE WHEN c.client_type = 'regular' AND COALESCE(ub.is_extra_bed, 0) = 0 THEN ub.booking_id END) AS regular_member_count
                                     FROM umrah_groups g
                                     LEFT JOIN users u ON g.created_by = u.id
                                     LEFT JOIN families f ON f.group_id = g.group_id AND f.tenant_id = g.tenant_id
@@ -147,6 +151,20 @@ $canEdit = user_can('umrah.member_edit');
                                         FROM families
                                         GROUP BY group_id, tenant_id
                                     ) fam ON fam.group_id = g.group_id AND fam.tenant_id = g.tenant_id
+                                    LEFT JOIN (
+                                        SELECT f4.group_id, f4.tenant_id,
+                                               SUM(CASE WHEN c4.client_type = 'agency' AND COALESCE(ub4.is_extra_bed, 0) = 0 THEN ub4.sold_price ELSE 0 END) AS agency_total_price,
+                                               SUM(CASE WHEN c4.client_type = 'agency' AND COALESCE(ub4.is_extra_bed, 0) = 0 THEN ub4.due ELSE 0 END) AS agency_due,
+                                               SUM(CASE WHEN c4.client_type = 'agency' AND COALESCE(ub4.is_extra_bed, 0) = 0 THEN COALESCE(ub4.paid, 0) ELSE 0 END) AS agency_total_paid,
+                                               SUM(CASE WHEN c4.client_type = 'regular' AND COALESCE(ub4.is_extra_bed, 0) = 0 THEN ub4.sold_price ELSE 0 END) AS regular_total_price,
+                                               SUM(CASE WHEN c4.client_type = 'regular' AND COALESCE(ub4.is_extra_bed, 0) = 0 THEN COALESCE(ub4.paid, 0) ELSE 0 END) AS regular_total_paid,
+                                               SUM(CASE WHEN COALESCE(ub4.is_extra_bed, 0) = 1 THEN ub4.sold_price ELSE 0 END) AS extra_bed_price,
+                                               SUM(CASE WHEN COALESCE(ub4.is_extra_bed, 0) = 1 THEN COALESCE(ub4.paid, 0) ELSE 0 END) AS extra_bed_paid
+                                        FROM families f4
+                                        LEFT JOIN umrah_bookings ub4 ON ub4.family_id = f4.family_id
+                                        LEFT JOIN clients c4 ON ub4.sold_to = c4.id AND c4.tenant_id = f4.tenant_id
+                                        GROUP BY f4.group_id, f4.tenant_id
+                                    ) fam_split ON fam_split.group_id = g.group_id AND fam_split.tenant_id = g.tenant_id
                                     WHERE g.tenant_id = ? AND (g.branch_id = ? OR g.branch_id = 0)";
                         $groupsParams = [$tenant_id, $branch_id];
                         if (!empty($search)) {
@@ -162,6 +180,65 @@ $canEdit = user_can('umrah.member_edit');
                         $groupsStmt = $pdo->prepare($groupsSql);
                         $groupsStmt->execute($groupsParams);
                         $resultGroups = $groupsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+                        // Per-client fund waterfall allocation
+                        // Step 1: Fetch total USD fund per client
+                        $clientFundStmt = $pdo->prepare("
+                            SELECT client_id, SUM(amount) AS total_fund
+                            FROM client_transactions
+                            WHERE type = 'credit' AND transaction_of = 'fund' AND currency = 'USD' AND tenant_id = ?
+                            GROUP BY client_id
+                        ");
+                        $clientFundStmt->execute([$tenant_id]);
+                        $clientFunds = [];
+                        while ($cfRow = $clientFundStmt->fetch(PDO::FETCH_ASSOC)) {
+                            $clientFunds[(int)$cfRow['client_id']] = floatval($cfRow['total_fund']);
+                        }
+
+                        // Step 2: Fetch per-client-per-group booking totals (grouped by client & group)
+                        $clientGroupStmt = $pdo->prepare("
+                            SELECT ub.sold_to AS client_id, f.group_id, g.created_at,
+                                   SUM(COALESCE(ub.sold_price, 0)) AS client_booking_total
+                            FROM umrah_bookings ub
+                            JOIN families f ON ub.family_id = f.family_id AND f.tenant_id = ub.tenant_id
+                            JOIN umrah_groups g ON f.group_id = g.group_id AND f.tenant_id = g.tenant_id
+                            WHERE ub.sold_to IS NOT NULL AND f.tenant_id = ? AND (g.branch_id = ? OR g.branch_id = 0)
+                            GROUP BY ub.sold_to, f.group_id, g.created_at
+                            ORDER BY ub.sold_to, g.created_at ASC, g.group_id ASC
+                        ");
+                        $clientGroupStmt->execute([$tenant_id, $branch_id]);
+                        $clientGroups = [];
+                        while ($cgRow = $clientGroupStmt->fetch(PDO::FETCH_ASSOC)) {
+                            $clientId = (int)$cgRow['client_id'];
+                            $clientGroups[$clientId][] = [
+                                'group_id' => (int)$cgRow['group_id'],
+                                'created_at' => $cgRow['created_at'],
+                                'booking_total' => floatval($cgRow['client_booking_total']),
+                            ];
+                        }
+
+                        // Step 3: Per-client waterfall — allocate each client's fund to their groups in creation order
+                        $groupFundAllocations = [];
+                        foreach ($clientFunds as $clientId => $totalFund) {
+                            if (!isset($clientGroups[$clientId])) continue;
+                            $remaining = $totalFund;
+                            foreach ($clientGroups[$clientId] as $cg) {
+                                if ($remaining <= 0) break;
+                                $alloc = min($remaining, $cg['booking_total']);
+                                $gid = $cg['group_id'];
+                                $groupFundAllocations[$gid] = ($groupFundAllocations[$gid] ?? 0) + $alloc;
+                                $remaining -= $alloc;
+                            }
+                        }
+
+                        // Step 4: Assign fund_allocation to each result group, capped at group total_price
+                        foreach ($resultGroups as &$grp) {
+                            $groupId = (int)$grp['group_id'];
+                            $totalPrice = floatval($grp['total_price'] ?? 0);
+                            $rawAlloc = $groupFundAllocations[$groupId] ?? 0;
+                            $grp['fund_allocation'] = min($rawAlloc, $totalPrice);
+                        }
+                        unset($grp);
 
                         // Excluded visa-only count per group (members excluded from all non-visa services)
                         $groupIds = array_column($resultGroups, 'group_id');
@@ -250,7 +327,7 @@ $canEdit = user_can('umrah.member_edit');
                         $fulfillStmt->execute([$tenant_id, $branch_id]);
                         $flightTicketMap = [];
                         foreach ($fulfillStmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
-                            $key = implode('|', [strtolower((string)$r['airline']), (string)$r['flight_number'], (string)$r['pnr'], (string)$r['ticket_number'], (string)$r['departure_city'], (string)$r['arrival_city'], (string)$r['return_flight_number'], (string)$r['return_departure_time']]);
+                            $key = implode('|', [strtolower((string)$r['airline']), (string)$r['pnr'], (string)$r['departure_city'], (string)$r['arrival_city'], (string)$r['departure_time'], (string)$r['return_departure_time']]);
                             if (!isset($flightTicketMap[$key])) {
                                 $flightTicketMap[$key] = [
                                     '_fulfillment' => true,
@@ -669,9 +746,18 @@ $canEdit = user_can('umrah.member_edit');
                             <?php foreach ($resultGroups as $group):
                                 $memberCount = (int)($group['member_count'] ?? 0);
                                 $familyCount = (int)($group['family_count'] ?? 0);
-                                $groupTotal = floatval($group['total_price'] ?? 0);
+                                $aPrice = floatval($group['agency_total_price'] ?? 0);
+                                $rPrice = floatval($group['regular_total_price'] ?? 0);
+                                $aPaid = floatval($group['agency_total_paid'] ?? 0);
+                                $rPaid = floatval($group['regular_total_paid'] ?? 0);
+                                $hasPriceSplit = $aPrice > 0 && $rPrice > 0;
+                                $hasPaidSplit = $aPaid > 0 && $rPaid > 0;
+                                $ebPrice = floatval($group['extra_bed_price'] ?? 0);
+                                $groupTotal = $aPrice + $rPrice + $ebPrice;
                                 $groupPaid = floatval($group['total_paid'] ?? 0);
-                                $groupDue = floatval($group['agency_due'] ?? 0);
+                                $groupFundPaid = floatval($group['fund_allocation'] ?? 0);
+                                $groupPaid = min($groupPaid + $groupFundPaid, $groupTotal);
+                                $groupDue = $groupTotal - $groupPaid;
                                 $groupPercentage = $groupTotal > 0 ? ($groupPaid / $groupTotal) * 100 : 0;
                             ?>
                                 <div class="family-card group-card" data-group-id="<?= (int)$group['group_id'] ?>">
@@ -748,14 +834,9 @@ $canEdit = user_can('umrah.member_edit');
                                             <div class="financial-details">
                                                 <div class="financial-item">
                                                     <span class="label"><?= __('total_price') ?></span>
-                                                    <?php
-                                                    $aPrice = floatval($group['agency_total_price'] ?? 0);
-                                                    $rPrice = floatval($group['regular_total_price'] ?? 0);
-                                                    $hasSplit = $aPrice > 0 && $rPrice > 0;
-                                                    ?>
-                                                    <?php if ($hasSplit): ?>
+                                                    <?php if ($hasPriceSplit): ?>
                                                     <span class="value" style="font-size:0.75rem;">
-                                                        <span style="color:#0e7490;"><?= number_format($aPrice) ?></span> + <span style="color:#7c3aed;"><?= number_format($rPrice) ?></span> =
+                                                        <span style="color:#0e7490;"><?= number_format($aPrice) ?></span> + <span style="color:#7c3aed;"><?= number_format($rPrice) ?></span><?php if ($ebPrice > 0): ?> + <span style="color:#ea580c;"><?= number_format($ebPrice) ?></span><?php endif; ?> =
                                                         <?= number_format($groupTotal) ?> <?= __('usd') ?>
                                                     </span>
                                                     <?php else: ?>
@@ -764,7 +845,14 @@ $canEdit = user_can('umrah.member_edit');
                                                 </div>
                                                 <div class="financial-item success">
                                                     <span class="label"><?= __('paid') ?></span>
+                                                    <?php if ($hasPaidSplit): ?>
+                                                    <span class="value" style="font-size:0.75rem;">
+                                                        <span style="color:#0e7490;"><?= number_format($aPaid) ?></span> + <span style="color:#7c3aed;"><?= number_format($rPaid) ?></span> =
+                                                        <?= number_format($aPaid + $rPaid) ?> <?= __('usd') ?>
+                                                    </span>
+                                                    <?php else: ?>
                                                     <span class="value"><?= number_format($groupPaid) ?> <?= __('usd') ?></span>
+                                                    <?php endif; ?>
                                                 </div>
                                                 <div class="financial-item warning">
                                                     <span class="label"><?= __('due') ?></span>
@@ -887,19 +975,8 @@ $canEdit = user_can('umrah.member_edit');
                                     }
                                 }
                                 $flightFamilies = [];
-                                $flightTotals = [];
                                 foreach ($flightMembers as $m) {
                                     $flightFamilies[$m['family_id']][] = $m;
-                                    if (isset($m['status']) && in_array($m['status'], ['refunded', 'cancelled'])) {
-                                        continue;
-                                    }
-                                    $cur = $m['currency'] ?: 'USD';
-                                    if (!isset($flightTotals[$cur])) {
-                                        $flightTotals[$cur] = ['price' => 0.0, 'paid' => 0.0, 'due' => 0.0];
-                                    }
-                                    $flightTotals[$cur]['price'] += (float)($m['sold_price'] ?? 0);
-                                    $flightTotals[$cur]['paid']  += (float)($m['paid'] ?? 0);
-                                    $flightTotals[$cur]['due']   += (float)($m['due'] ?? 0);
                                 }
                                 $flightType = $flight['flight_type'] === 'indirect' ? __('indirect') : __('direct');
                             ?>
@@ -975,27 +1052,6 @@ $canEdit = user_can('umrah.member_edit');
                                         </button>
                                         <?php endif; ?>
                                     </div>
-                                    <?php if (!empty($flightTotals)): ?>
-                                    <div class="flight-summary">
-                                        <?php foreach ($flightTotals as $totCurrency => $tot): ?>
-                                        <div class="flight-stat">
-                                            <span class="flight-stat-label"><i class="fas fa-tag"></i> <?= htmlspecialchars($totCurrency) ?></span>
-                                            <span class="flight-stat-value"><?= number_format($tot['price']) ?></span>
-                                            <span class="flight-stat-hint"><?= __('total_price') ?></span>
-                                        </div>
-                                        <div class="flight-stat">
-                                            <span class="flight-stat-label"><i class="fas fa-check-circle"></i> <?= htmlspecialchars($totCurrency) ?></span>
-                                            <span class="flight-stat-value success"><?= number_format($tot['paid']) ?></span>
-                                            <span class="flight-stat-hint"><?= __('paid') ?></span>
-                                        </div>
-                                        <div class="flight-stat">
-                                            <span class="flight-stat-label"><i class="fas fa-exclamation-circle"></i> <?= htmlspecialchars($totCurrency) ?></span>
-                                            <span class="flight-stat-value danger"><?= number_format($tot['due']) ?></span>
-                                            <span class="flight-stat-hint"><?= __('due') ?></span>
-                                        </div>
-                                        <?php endforeach; ?>
-                                    </div>
-                                    <?php endif; ?>
                                     <div class="flight-families">
                                         <?php if (empty($flightMembers)): ?>
                                         <div class="flight-no-members">
@@ -1003,31 +1059,11 @@ $canEdit = user_can('umrah.member_edit');
                                         </div>
                                         <?php else: ?>
                                         <?php foreach ($flightFamilies as $familyId => $familyMembers):
-                                            $famTotals = [];
-                                            foreach ($familyMembers as $fm) {
-                                                if (isset($fm['status']) && in_array($fm['status'], ['refunded', 'cancelled'])) {
-                                                    continue;
-                                                }
-                                                $fcur = $fm['currency'] ?: 'USD';
-                                                if (!isset($famTotals[$fcur])) {
-                                                    $famTotals[$fcur] = ['price' => 0.0, 'paid' => 0.0];
-                                                }
-                                                $famTotals[$fcur]['price'] += (float)($fm['sold_price'] ?? 0);
-                                                $famTotals[$fcur]['paid']  += (float)($fm['paid'] ?? 0);
-                                            }
                                         ?>
                                         <div class="flight-family-group">
                                             <div class="flight-family-header">
                                                 <i class="fas fa-users"></i>
                                                 <span class="flight-family-name"><?= htmlspecialchars($familyMembers[0]['head_of_family'] ?? '') ?></span>
-                                                <?php if (!empty($famTotals)): ?>
-                                                <span class="flight-family-finance">
-                                                    <i class="fas fa-credit-card"></i>
-                                                    <?php foreach ($famTotals as $fcur => $ft): ?>
-                                                        <?= __('paid') ?> <?= number_format($ft['paid']) ?> / <?= number_format($ft['price']) ?> <?= htmlspecialchars($fcur) ?>
-                                                    <?php endforeach; ?>
-                                                </span>
-                                                <?php endif; ?>
                                                 <span class="flight-family-count"><?= count($familyMembers) ?> <?= __('members') ?></span>
                                             </div>
                                             <div class="flight-members-grid">

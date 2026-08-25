@@ -181,7 +181,7 @@ try {
 
     // Record client transaction (in balance currency)
     $transactionStmt = $pdo->prepare("INSERT INTO client_transactions (client_id, type, currency, amount, balance, transaction_of, description, reference_id, receipt, exchange_rate, tenant_id, branch_id)
-                                    VALUES (?, 'Credit', ?, ?, ?, 'fund', ?, ?, ?, ?, ?, ?)");
+                                    VALUES (?, 'credit', ?, ?, ?, 'fund', ?, ?, ?, ?, ?, ?)");
     $transactionStmt->bindParam(1, $clientId, PDO::PARAM_INT);
     $transactionStmt->bindParam(2, $balanceCurrency, PDO::PARAM_STR);
     $transactionStmt->bindParam(3, $amountToCredit, PDO::PARAM_STR);

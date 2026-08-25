@@ -1,9 +1,14 @@
 <?php
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
 require_once '../../includes/db.php';
 require_once '../../admin/security.php';
 require_once '../../includes/language_helpers.php';
 require_once __DIR__ . '/../../includes/translate_helper.php';
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // Enforce authentication
 enforce_auth();
@@ -90,11 +95,13 @@ if (!empty($memberIds)) {
     $placeholders = implode(',', array_fill(0, count($memberIds), '?'));
     $memberStmt = $pdo->prepare("
         SELECT b.booking_id, b.family_id, b.name, b.fname, b.gender, b.duration, b.room_type,
-               b.passport_number, b.sold_price, b.received_bank_payment, b.currency, b.remarks, b.status,
-               f.head_of_family, f.location, c.name AS client_name
+               b.passport_number, b.sold_price, b.paid, b.currency, b.remarks, b.status, b.sold_to,
+               f.head_of_family, f.location, c.name AS client_name,
+               g.created_at AS group_created_at
         FROM umrah_bookings b
         LEFT JOIN families f ON f.family_id = b.family_id AND f.tenant_id = b.tenant_id
         LEFT JOIN clients c ON c.id = b.sold_to
+        LEFT JOIN umrah_groups g ON f.group_id = g.group_id AND f.tenant_id = g.tenant_id
         WHERE b.booking_id IN ({$placeholders}) AND b.tenant_id = ? AND b.branch_id = ?
     ");
     $memberStmt->execute(array_merge($memberIds, [$tenant_id, $branch_id]));
@@ -102,6 +109,107 @@ if (!empty($memberIds)) {
         $memberMap[(int)$m['booking_id']] = $m;
     }
 }
+
+// Also fetch extra bed members for the families already in the report
+$familyIds = array_unique(array_filter(array_map(fn($m) => (int)($m['family_id'] ?? 0), $memberMap)));
+if (!empty($familyIds)) {
+    $fPh = implode(',', array_fill(0, count($familyIds), '?'));
+    $extraBedStmt = $pdo->prepare("
+        SELECT b.booking_id, b.family_id, b.name, b.fname, b.gender, b.duration, b.room_type,
+               b.passport_number, b.sold_price, b.paid, b.currency, b.remarks, b.status, b.sold_to,
+               f.head_of_family, f.location, c.name AS client_name,
+               g.created_at AS group_created_at
+        FROM umrah_bookings b
+        LEFT JOIN families f ON f.family_id = b.family_id AND f.tenant_id = b.tenant_id
+        LEFT JOIN clients c ON c.id = b.sold_to
+        LEFT JOIN umrah_groups g ON f.group_id = g.group_id AND f.tenant_id = g.tenant_id
+        WHERE b.family_id IN ({$fPh}) AND b.tenant_id = ? AND b.branch_id = ?
+          AND COALESCE(b.is_extra_bed, 0) = 1 AND b.status NOT IN ('refunded', 'cancelled')
+    ");
+    $extraBedStmt->execute(array_merge($familyIds, [$tenant_id, $branch_id]));
+    foreach ($extraBedStmt->fetchAll(PDO::FETCH_ASSOC) as $m) {
+        if (!isset($memberMap[(int)$m['booking_id']])) {
+            $memberMap[(int)$m['booking_id']] = $m;
+            $memberIds[] = (int)$m['booking_id'];
+        }
+    }
+}
+
+// ── Per-client fund allocation ──
+// 1. Collect unique client IDs and their family prices
+$clientFamilyPrice = []; // client_id => [family_id => total_price]
+foreach ($memberMap as $m) {
+    $clientId = (int)($m['sold_to'] ?? 0);
+    if ($clientId <= 0) continue;
+    $famId = (int)($m['family_id'] ?? 0);
+    $clientFamilyPrice[$clientId][$famId] = ($clientFamilyPrice[$clientId][$famId] ?? 0) + (float)($m['sold_price'] ?? 0);
+}
+
+// 2. Fetch total USD fund per client (all credits, no date filter — matches group card logic)
+$clientFundMap = []; // client_id => fund_amount
+if (!empty($clientFamilyPrice)) {
+    $cIds = array_keys($clientFamilyPrice);
+    $cPh = implode(',', array_fill(0, count($cIds), '?'));
+    $fundStmt = $pdo->prepare("
+        SELECT ct.client_id, SUM(ct.amount) AS total_fund
+        FROM client_transactions ct
+        WHERE ct.client_id IN ({$cPh})
+          AND ct.tenant_id = ?
+          AND ct.type = 'credit' AND ct.transaction_of = 'fund' AND ct.currency = 'USD'
+        GROUP BY ct.client_id
+    ");
+    $fundStmt->execute(array_merge($cIds, [$tenant_id]));
+    while ($row = $fundStmt->fetch(PDO::FETCH_ASSOC)) {
+        $clientFundMap[(int)$row['client_id']] = floatval($row['total_fund']);
+    }
+}
+
+// 3. Per-client waterfall: allocate fund to families in order of group creation
+$clientFundAlloc = []; // client_id => [family_id => allocated_amount]
+foreach ($clientFundMap as $cId => $totalFund) {
+    if ($totalFund <= 0 || empty($clientFamilyPrice[$cId])) continue;
+    $famPrices = $clientFamilyPrice[$cId];
+    $famDates = [];
+    foreach ($memberMap as $m) {
+        if ((int)($m['sold_to'] ?? 0) === $cId) {
+            $fid = (int)($m['family_id'] ?? 0);
+            if ($fid > 0 && !isset($famDates[$fid])) {
+                $famDates[$fid] = $m['group_created_at'] ?? '9999-12-31';
+            }
+        }
+    }
+    asort($famDates);
+
+    $remaining = $totalFund;
+    $clientFundAlloc[$cId] = [];
+    foreach ($famDates as $fid => $fdate) {
+        if ($remaining <= 0) break;
+        $famPrice = $famPrices[$fid] ?? 0;
+        $alloc = min($remaining, $famPrice);
+        $clientFundAlloc[$cId][$fid] = $alloc;
+        $remaining -= $alloc;
+    }
+}
+
+// 4. Divide each family's allocated fund among its members proportionally by sold_price
+$memberFundAlloc = []; // booking_id => fund_amount
+foreach ($memberMap as $bid => $m) {
+    $cId = (int)($m['sold_to'] ?? 0);
+    $fId = (int)($m['family_id'] ?? 0);
+    $alloc = $clientFundAlloc[$cId][$fId] ?? 0;
+    if ($alloc <= 0) continue;
+    $famPrice = $clientFamilyPrice[$cId][$fId] ?? 0;
+    if ($famPrice <= 0) continue;
+    $memberPrice = (float)($m['sold_price'] ?? 0);
+    $memberFundAlloc[$bid] = ($memberPrice / $famPrice) * $alloc;
+}
+
+// 5. Add fund allocation to each member's paid
+foreach ($memberMap as $bid => &$m) {
+    $m['fund_paid'] = $memberFundAlloc[$bid] ?? 0;
+    $m['total_paid'] = (float)($m['paid'] ?? 0) + $m['fund_paid'];
+}
+unset($m);
 
 // Document language
 $docLanguage = isset($_GET['language']) && in_array($_GET['language'], ['ps', 'dari', 'en']) ? $_GET['language'] : 'dari';
@@ -130,11 +238,11 @@ $langLabels = [
         'col_room' => 'نوع اتاق',
         'col_client' => 'مشتری',
         'col_price' => 'قیمت مجموعی',
-        'col_bank' => 'پرداخت به بانک',
+        'col_bank' => 'پرداخت شده',
         'col_remarks' => 'ملاحظات',
         'client' => 'مشتری',
         'total' => 'مجموع',
-        'paid_to_bank' => 'پرداخت به بانک',
+        'paid_to_bank' => 'پرداخت شده',
         'grand_total' => 'مجموع کلی',
         'members' => 'معتمر',
         'clients' => 'مشتری',
@@ -158,11 +266,11 @@ $langLabels = [
         'col_room' => 'د اتاق ډول',
         'col_client' => 'پيرودونکی',
         'col_price' => 'ټول قیمت',
-        'col_bank' => 'بانک ته تاديه',
+        'col_bank' => 'تادیه شوی',
         'col_remarks' => 'ملاحظات',
         'client' => 'پيرودونکی',
         'total' => 'مجموع',
-        'paid_to_bank' => 'بانک ته تاديه',
+        'paid_to_bank' => 'تادیه شوی',
         'grand_total' => 'ټول مجموع',
         'members' => 'معتمر',
         'clients' => 'پيرودونکی',
@@ -186,11 +294,11 @@ $langLabels = [
         'col_room' => 'Room Type',
         'col_client' => 'Client',
         'col_price' => 'Total Price',
-        'col_bank' => 'Paid to Bank',
+        'col_bank' => 'Paid',
         'col_remarks' => 'Remarks',
         'client' => 'Client',
         'total' => 'Total',
-        'paid_to_bank' => 'Paid to Bank',
+        'paid_to_bank' => 'Paid',
         'grand_total' => 'Grand Total',
         'members' => 'members',
         'clients' => 'clients',
@@ -519,12 +627,12 @@ $familyColors = [
                                 $clientTotals[$cur] = ['price' => 0.0, 'bank' => 0.0];
                             }
                             $clientTotals[$cur]['price'] += (float)($fm['sold_price'] ?? 0);
-                            $clientTotals[$cur]['bank']  += (float)($fm['received_bank_payment'] ?? 0);
+                            $clientTotals[$cur]['bank']  += (float)($fm['total_paid'] ?? 0);
                             if (!isset($grandTotals[$cur])) {
                                 $grandTotals[$cur] = ['price' => 0.0, 'bank' => 0.0];
                             }
                             $grandTotals[$cur]['price'] += (float)($fm['sold_price'] ?? 0);
-                            $grandTotals[$cur]['bank']  += (float)($fm['received_bank_payment'] ?? 0);
+                            $grandTotals[$cur]['bank']  += (float)($fm['total_paid'] ?? 0);
                         }
                     }
                     $famKeys = array_keys($famGroups);
@@ -545,7 +653,7 @@ $familyColors = [
                 <td class="col-room"><?php echo htmlspecialchars(client_room_type_label($fm['room_type'] ?? '', $L)); ?></td>
                 <td class="col-client"><?php echo htmlspecialchars($fm['client_name'] ?? ''); ?></td>
                 <td class="col-price"><?php echo number_format((float)($fm['sold_price'] ?? 0), 2); ?> <?php echo htmlspecialchars(strtoupper((string)($fm['currency'] ?: 'USD'))); ?></td>
-                <td class="col-bank"><?php echo number_format((float)($fm['received_bank_payment'] ?? 0), 2); ?></td>
+                <td class="col-bank"><?php echo number_format((float)($fm['total_paid'] ?? 0), 2); ?></td>
                 <td class="col-remarks"><?php echo htmlspecialchars($fm['remarks'] ?? ''); ?></td>
             </tr>
             <?php endforeach; ?>
