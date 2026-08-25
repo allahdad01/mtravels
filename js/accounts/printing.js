@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Mark negative balance cells (red) on the table being printed
     function txnMarkNegativeBalances(table) {
         table.find('td.txn-balance').each(function () {
             const text = $(this).text().replace(/[^0-9.-]/g, '');
@@ -10,157 +9,261 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    function printWithAllTransactions(title, accountName, accountType, accountId, filters, columns) {
+        const printBtn = event.target.closest('button');
+        const originalHtml = printBtn.innerHTML;
+        printBtn.disabled = true;
+        printBtn.innerHTML = '<span class="spinner-border spinner-border-sm mr-1"></span>Loading all transactions...';
+
+        const baseUrl = accountType === 'main'
+            ? `../api/accounts/get_main_account_transactions.php?account_id=${accountId}`
+            : accountType === 'supplier'
+            ? `../api/accounts/get_supplier_transactions_main.php?supplier_id=${accountId}`
+            : `../api/accounts/get_client_transactions.php?client_id=${accountId}`;
+
+        let url = baseUrl + '&per_page=100000';
+        if (filters) {
+            if (filters.currency && filters.currency !== 'all') url += '&currency=' + encodeURIComponent(filters.currency);
+            if (filters.receipt) url += '&receipt=' + encodeURIComponent(filters.receipt);
+            if (filters.dateRange) {
+                const parts = filters.dateRange.split(' - ');
+                if (parts.length === 2) {
+                    url += '&startDate=' + encodeURIComponent(parts[0].trim()) + '&endDate=' + encodeURIComponent(parts[1].trim());
+                }
+            }
+        }
+
+        fetch(url)
+            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+            .then(data => {
+                printBtn.disabled = false;
+                printBtn.innerHTML = originalHtml;
+
+                const transactions = Array.isArray(data) ? data : (data?.data ?? []);
+                if (!transactions.length) {
+                    alert('No transactions to export.');
+                    return;
+                }
+
+                // Sort ascending (oldest first) by id for printed report
+                transactions.sort(function(a, b) {
+                    return (a.id || 0) - (b.id || 0);
+                });
+
+                let rows = '';
+                transactions.forEach(function(t, i) {
+                    const dateField = t.transaction_date || t.created_at;
+                    const formattedDate = dateField ? new Date(dateField).toLocaleString() : '—';
+                    const amount = parseFloat(t.amount || 0);
+                    const absFormatted = Math.abs(amount).toFixed(3);
+                    const sym = txnCurrencySymbol(t.currency);
+
+                    const isCredit = (v) => v && v.toLowerCase() === 'credit';
+                    const isDebit  = (v) => v && v.toLowerCase() === 'debit';
+                    const typeRaw = t.type || t.transaction_type || '';
+
+                    const debitVal = isDebit(typeRaw) ? sym + absFormatted : '—';
+                    const creditVal = isCredit(typeRaw) ? sym + absFormatted : '—';
+
+                    let desc = '', category = '', reference = '', balance = '';
+
+                    if (accountType === 'main') {
+                        desc = t.description || '—';
+                        category = t.receipt || '—';
+                        reference = t.reference_name || t.reference_id || '—';
+                        balance = t.balance != null ? sym + parseFloat(t.balance).toFixed(3) : '—';
+                    } else if (accountType === 'supplier') {
+                        desc = t.remarks || '—';
+                        category = txnFormatOf(t.transaction_of);
+                        reference = t.reference_name || t.reference_id || '—';
+                        balance = t.balance != null ? sym + parseFloat(t.balance).toFixed(3) : '—';
+                    } else {
+                        desc = t.description || '—';
+                        category = txnFormatOf(t.transaction_of);
+                        reference = t.reference_name || t.reference_id || '—';
+                        balance = t.balance || '—';
+                    }
+
+                    let row = '<tr>';
+                    columns.forEach(function(col) {
+                        switch(col) {
+                            case '#': row += '<td>' + (i + 1) + '</td>'; break;
+                            case 'Date': row += '<td>' + formattedDate + '</td>'; break;
+                            case 'Description': row += '<td>' + desc + '</td>'; break;
+                            case 'Receipt': row += '<td>' + (t.receipt || t.receipt_number || '—') + '</td>'; break;
+                            case 'Category': row += '<td>' + category + '</td>'; break;
+                            case 'Reference': row += '<td>' + reference + '</td>'; break;
+                            case 'Debit': row += '<td style="color:#c00;font-weight:700">' + debitVal + '</td>'; break;
+                            case 'Credit': row += '<td style="color:#16a34a;font-weight:700">' + creditVal + '</td>'; break;
+                            case 'Balance': row += '<td>' + balance + '</td>'; break;
+                            case 'Currency': row += '<td>' + (t.currency || '—') + '</td>'; break;
+                        }
+                    });
+                    row += '</tr>';
+                    rows += row;
+                });
+
+                // Calculate totals
+                let totalDebit = 0, totalCredit = 0, lastBalance = 0;
+                let primaryCurrency = transactions[0]?.currency || 'USD';
+                let lastCurrency = primaryCurrency;
+                transactions.forEach(function(t) {
+                    const amount = parseFloat(t.amount || 0);
+                    const typeRaw = (t.type || t.transaction_type || '').toLowerCase();
+                    const tCurrency = t.currency || primaryCurrency;
+                    if (typeRaw === 'debit') {
+                        totalDebit += Math.abs(amount);
+                    } else if (typeRaw === 'credit') {
+                        totalCredit += Math.abs(amount);
+                    }
+                    if (t.balance != null) {
+                        lastBalance = parseFloat(t.balance);
+                        lastCurrency = tCurrency;
+                    }
+                });
+
+                const s = 'padding:8px;border:1px solid #ddd;text-align:right;font-family:\'Courier New\',monospace;font-size:12px;font-weight:700;background:#f8f9fa;';
+
+                let summaryRow = '<tr class="summary-row">';
+                columns.forEach(function(col) {
+                    switch(col) {
+                        case 'Debit':
+                            summaryRow += '<td style="' + s + 'color:#c00">Debit: ' + txnCurrencySymbol(primaryCurrency) + totalDebit.toFixed(3) + '</td>';
+                            break;
+                        case 'Credit':
+                            summaryRow += '<td style="' + s + 'color:#16a34a">Credit: ' + txnCurrencySymbol(primaryCurrency) + totalCredit.toFixed(3) + '</td>';
+                            break;
+                        case 'Balance':
+                            summaryRow += '<td style="' + s + 'color:' + (lastBalance < 0 ? '#c00' : '#16a34a') + '"><strong>Balance: ' + txnCurrencySymbol(lastCurrency) + lastBalance.toFixed(3) + '</strong></td>';
+                            break;
+                        case '#':
+                            summaryRow += '<td colspan="1" style="' + s.replace('text-align:right', 'text-align:left') + 'font-family:Arial,Helvetica,sans-serif;" rowspan="1"><strong>Total</strong></td>';
+                            break;
+                        default:
+                            summaryRow += '<td style="' + s + '"></td>';
+                            break;
+                    }
+                });
+                summaryRow += '</tr>';
+
+                const headers = columns.map(function(c) {
+                    return '<th style="background:#f5f5f5;padding:8px;border:1px solid #ddd;text-align:right;font-size:12px;white-space:nowrap">' + c + '</th>';
+                }).join('');
+
+                const printWindow = window.open('', '_blank');
+                printWindow.document.write(`
+                    <html>
+                        <head>
+                            <title>${title} - ${accountName}</title>
+                            <style>
+                                body { padding: 20px; font-family: Arial, Helvetica, sans-serif; color: #222; }
+                                .print-header { text-align: center; margin-bottom: 20px; }
+                                .print-header h3 { margin: 0 0 4px 0; font-size: 18px; }
+                                .print-header h4 { margin: 0 0 4px 0; font-size: 15px; color: #555; }
+                                .print-header p { margin: 2px 0; color: #666; font-size: 12px; }
+                                table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+                                th { background-color: #f5f5f5; padding: 8px; border: 1px solid #ddd; text-align: right; font-size: 11px; }
+                                td { padding: 7px 8px; border: 1px solid #ddd; text-align: right; font-family: 'Courier New', monospace; font-size: 12px; word-wrap: break-word; }
+                                tr.summary-row td { background: #f8f9fa; font-weight: 700; border-top: 2px solid #333; }
+                                @media print { .no-print { display: none; } }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="print-header">
+                                <h3>${title}</h3>
+                                <h4>${accountName}</h4>
+                                <p>Generated on ${new Date().toLocaleString()} &mdash; ${transactions.length} transactions</p>
+                            </div>
+                            <table>
+                                <thead><tr>${headers}</tr></thead>
+                                <tbody>${rows}${summaryRow}</tbody>
+                            </table>
+                            <div class="no-print" style="margin-top: 20px; text-align: center;">
+                                <button onclick="window.print();return false;" style="padding: 10px 20px;">Print</button>
+                            </div>
+                        </body>
+                    </html>
+                `);
+                printWindow.document.close();
+            })
+            .catch(err => {
+                printBtn.disabled = false;
+                printBtn.innerHTML = originalHtml;
+                alert('Error loading transactions: ' + err.message);
+            });
+    }
+
     // Print main account transactions
     const printTransactionsBtn = document.getElementById('printTransactionsBtn');
     if (printTransactionsBtn) {
-        printTransactionsBtn.addEventListener('click', function() {
+        printTransactionsBtn.addEventListener('click', function(e) {
             const modal = $(this).closest('.modal');
             const accountName = modal.find('#accountNameDisplay').text();
-            const table = modal.find('table').clone();
-            
-            // Remove action column for printing
-            table.find('tr').each(function() {
-                $(this).find('th:last, td:last').remove();
-            });
-            txnMarkNegativeBalances(table);
+            const accountId = document.getElementById('mainAccountTransactionId')?.value;
+            if (!accountId) { alert('No account selected'); return; }
 
-            // Create a new window for printing
-            const printWindow = window.open('', '_blank');
-            printWindow.document.write(`
-                <html>
-                    <head>
-                        <title>Transaction History - ${accountName}</title>
-                        <link href="assets/css/style.css" rel="stylesheet">
-                        <style>
-                            body { padding: 20px; }
-                            .print-header { text-align: center; margin-bottom: 20px; }
-                            table { width: 100%; border-collapse: collapse; }
-                            th, td { padding: 8px; border: 1px solid #ddd; }
-                            th { background-color: #f5f5f5; }
-                            td.txn-neg { color: #c00; font-weight: 700; }
-                            @media print {
-                                .no-print { display: none; }
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="print-header">
-                            <h3>Transaction History</h3>
-                            <h4>${accountName}</h4>
-                            <p>Generated on ${new Date().toLocaleString()}</p>
-                        </div>
-                        ${table[0].outerHTML}
-                        <div class="no-print" style="margin-top: 20px; text-align: center;">
-                            <button onclick="window.print();return false;" style="padding: 10px 20px;">Print</button>
-                        </div>
-                    </body>
-                </html>
-            `);
-            printWindow.document.close();
+            const filters = {};
+            const curEl = document.getElementById('mainAccountCurrencyFilter');
+            const recEl = document.getElementById('receiptSearch');
+            const dateEl = document.getElementById('dateRangeFilter');
+            if (curEl) filters.currency = curEl.value;
+            if (recEl) filters.receipt = recEl.value;
+            if (dateEl) filters.dateRange = dateEl.value;
+
+            printWithAllTransactions(
+                'Transaction History', accountName, 'main', accountId, filters,
+                ['#', 'Date', 'Description', 'Receipt', 'Reference', 'Debit', 'Credit', 'Balance', 'Currency']
+            );
         });
     }
 
     // Print client transactions
     const printClientTransactionsBtn = document.getElementById('printClientTransactionsBtn');
     if (printClientTransactionsBtn) {
-        printClientTransactionsBtn.addEventListener('click', function() {
+        printClientTransactionsBtn.addEventListener('click', function(e) {
             const modal = $(this).closest('.modal');
             const clientName = modal.find('#clientNameDisplay').text();
-            const table = modal.find('table').clone();
-            
-            // Remove action column for printing
-            table.find('tr').each(function() {
-                $(this).find('th:last, td:last').remove();
-            });
-            txnMarkNegativeBalances(table);
+            const clientId = document.getElementById('clientTransactionId')?.value;
+            if (!clientId) { alert('No client selected'); return; }
 
-            // Create a new window for printing
-            const printWindow = window.open('', '_blank');
-            printWindow.document.write(`
-                <html>
-                    <head>
-                        <title>Client Transaction History - ${clientName}</title>
-                        <link href="assets/css/style.css" rel="stylesheet">
-                        <style>
-                            body { padding: 20px; }
-                            .print-header { text-align: center; margin-bottom: 20px; }
-                            table { width: 100%; border-collapse: collapse; }
-                            th, td { padding: 8px; border: 1px solid #ddd; }
-                            th { background-color: #f5f5f5; }
-                            td.txn-neg { color: #c00; font-weight: 700; }
-                            @media print {
-                                .no-print { display: none; }
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="print-header">
-                            <h3>Client Transaction History</h3>
-                            <h4>${clientName}</h4>
-                            <p>Generated on ${new Date().toLocaleString()}</p>
-                        </div>
-                        ${table[0].outerHTML}
-                        <div class="no-print" style="margin-top: 20px; text-align: center;">
-                            <button onclick="window.print();return false;" style="padding: 10px 20px;">Print</button>
-                        </div>
-                    </body>
-                </html>
-            `);
-            printWindow.document.close();
+            const filters = {};
+            const curEl = document.getElementById('clientCurrencyFilter');
+            const recEl = document.getElementById('clientReceiptSearch');
+            const dateEl = document.getElementById('clientDateRangeFilter');
+            if (curEl) filters.currency = curEl.value;
+            if (recEl) filters.receipt = recEl.value;
+            if (dateEl) filters.dateRange = dateEl.value;
+
+            printWithAllTransactions(
+                'Client Transaction History', clientName, 'client', clientId, filters,
+                ['#', 'Date', 'Description', 'Receipt', 'Category', 'Reference', 'Debit', 'Credit', 'Balance', 'Currency']
+            );
         });
     }
 
     // Print supplier transactions
     const printSupplierTransactionsBtn = document.getElementById('printSupplierTransactionsBtn');
     if (printSupplierTransactionsBtn) {
-        printSupplierTransactionsBtn.addEventListener('click', function() {
+        printSupplierTransactionsBtn.addEventListener('click', function(e) {
             const modal = $(this).closest('.modal');
             const supplierName = modal.find('#supplierTransNameDisplay').text();
-            const table = modal.find('table').clone();
-            
-            // Remove action column for printing
-            table.find('tr').each(function() {
-                $(this).find('th:last, td:last').remove();
-            });
-            txnMarkNegativeBalances(table);
+            const supplierId = document.getElementById('supplierTransactionId')?.value;
+            if (!supplierId) { alert('No supplier selected'); return; }
 
-            // Create a new window for printing
-            const printWindow = window.open('', '_blank');
-            printWindow.document.write(`
-                <html>
-                    <head>
-                        <title>Supplier Transaction History - ${supplierName}</title>
-                        <link href="assets/css/style.css" rel="stylesheet">
-                        <style>
-                            body { padding: 20px; }
-                            .print-header { text-align: center; margin-bottom: 20px; }
-                            table { width: 100%; border-collapse: collapse; }
-                            th, td { padding: 8px; border: 1px solid #ddd; }
-                            th { background-color: #f5f5f5; }
-                            td.txn-neg { color: #c00; font-weight: 700; }
-                            @media print {
-                                .no-print { display: none; }
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="print-header">
-                            <h3>Supplier Transaction History</h3>
-                            <h4>${supplierName}</h4>
-                            <p>Generated on ${new Date().toLocaleString()}</p>
-                        </div>
-                        ${table[0].outerHTML}
-                        <div class="no-print" style="margin-top: 20px; text-align: center;">
-                            <button onclick="window.print();return false;" style="padding: 10px 20px;">Print</button>
-                        </div>
-                    </body>
-                </html>
-            `);
-            printWindow.document.close();
+            const filters = {};
+            const recEl = document.getElementById('supplierReceiptSearch');
+            const dateEl = document.getElementById('supplierDateRangeFilter');
+            if (recEl) filters.receipt = recEl.value;
+            if (dateEl) filters.dateRange = dateEl.value;
+
+            printWithAllTransactions(
+                'Supplier Transaction History', supplierName, 'supplier', supplierId, filters,
+                ['#', 'Date', 'Description', 'Receipt', 'Category', 'Reference', 'Debit', 'Credit', 'Balance']
+            );
         });
     }
 
-    // Print section summaries (all accounts in a section with balances)
+    // Print section summaries
     function acFmtCurrency(v) {
         const n = parseFloat(v) || 0;
         return Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -199,9 +302,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         td { padding: 7px 8px; border: 1px solid #ddd; text-align: right; font-family: 'Courier New', monospace; }
                         td.name { text-align: left; font-family: Arial, Helvetica, sans-serif; font-weight: 600; }
                         td.neg { color: #c00; font-weight: 700; }
-                        @media print {
-                            .no-print { display: none; }
-                        }
+                        @media print { .no-print { display: none; } }
                     </style>
                 </head>
                 <body>
@@ -264,4 +365,4 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-}); 
+});

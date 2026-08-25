@@ -26,8 +26,9 @@ $accountId = intval($_GET['account_id']);
 
 // Get pagination parameters
 $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
-$perPage = 50;
+$perPage = isset($_GET['per_page']) ? max(1, min(100000, intval($_GET['per_page']))) : 50;
 $offset = ($page - 1) * $perPage;
+$fetchAll = isset($_GET['per_page']);
 
 // Database connection
 require_once('../../includes/db.php');
@@ -148,13 +149,15 @@ $query = "SELECT mt.*,
            LEFT JOIN umrah_refunds ur ON mt.reference_id = ur.id AND mt.transaction_of = 'umrah_refund'
            LEFT JOIN umrah_bookings ub_refund ON ur.booking_id = ub_refund.booking_id AND mt.transaction_of = 'umrah_refund'
            WHERE " . $whereClause . "
-           ORDER BY mt.id DESC
-           LIMIT ? OFFSET ?";
+           ORDER BY mt.id DESC" . ($fetchAll ? "" : " LIMIT ? OFFSET ?");
 
 $stmt = $pdo->prepare($query);
-// Add LIMIT and OFFSET parameters
-$allParams = array_merge($params, [$perPage, $offset]);
-$stmt->execute($allParams);
+if ($fetchAll) {
+    $stmt->execute($params);
+} else {
+    $allParams = array_merge($params, [$perPage, $offset]);
+    $stmt->execute($allParams);
+}
 
 // Fetch transactions for current page
 $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);

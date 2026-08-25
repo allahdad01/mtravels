@@ -26,8 +26,9 @@ $supplierId = intval($_GET['supplier_id']);
 
 // Get pagination parameters
 $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
-$perPage = 50;
+$perPage = isset($_GET['per_page']) ? max(1, min(100000, intval($_GET['per_page']))) : 50;
 $offset = ($page - 1) * $perPage;
+$fetchAll = isset($_GET['per_page']);
 
 // Database connection
 require_once('../../includes/db.php');
@@ -122,19 +123,18 @@ $query = "SELECT st.*,
           LEFT JOIN jv_payments jv ON jv.id = jvt.jv_payment_id AND st.transaction_of = 'jv_payment'
           LEFT JOIN additional_payments ap ON ap.id = st.reference_id AND st.transaction_of = 'additional_payment'
           WHERE " . $whereClause . "
-          ORDER BY st.id DESC
-          LIMIT ? OFFSET ?";
+          ORDER BY st.id DESC" . ($fetchAll ? "" : " LIMIT ? OFFSET ?");
 
 try {
     $stmt = $pdo->prepare($query);
     if (!$stmt) {
         throw new Exception("Failed to prepare statement: " . implode(", ", $pdo->errorInfo()));
     }
-    // Add LIMIT and OFFSET parameters
-    $allParams = array_merge($params, [$perPage, $offset]);
-    
-    if (!$stmt->execute($allParams)) {
-        throw new Exception("Failed to execute statement: " . implode(", ", $stmt->errorInfo()));
+    if ($fetchAll) {
+        $stmt->execute($params);
+    } else {
+        $allParams = array_merge($params, [$perPage, $offset]);
+        $stmt->execute($allParams);
     }
 } catch (Exception $e) {
     header('Content-Type: application/json');

@@ -27,8 +27,9 @@ $clientId = intval($_GET['client_id']);
 
 // Get pagination parameters
 $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
-$perPage = 50;
+$perPage = isset($_GET['per_page']) ? max(1, min(100000, intval($_GET['per_page']))) : 50;
 $offset = ($page - 1) * $perPage;
+$fetchAll = isset($_GET['per_page']);
 
 // Database connection
 require_once('../../includes/db.php');
@@ -126,8 +127,7 @@ $query = "SELECT ct.*,
           LEFT JOIN jv_payments jv ON jv.id = jvt.jv_payment_id AND ct.transaction_of = 'jv_payment' AND jv.tenant_id = ? AND jv.branch_id = ?
           LEFT JOIN additional_payments ap ON ap.id = ct.reference_id AND ct.transaction_of = 'additional_payment' AND ap.tenant_id = ? AND ap.branch_id = ?
           WHERE " . $whereClause . "
-          ORDER BY ct.id DESC
-          LIMIT ? OFFSET ?";
+          ORDER BY ct.id DESC" . ($fetchAll ? "" : " LIMIT ? OFFSET ?");
 
 try {
     $stmt = $pdo->prepare($query);
@@ -135,15 +135,17 @@ try {
         throw new Exception("Failed to prepare statement: " . implode(", ", $pdo->errorInfo()));
     }
 
-    // Prepare parameters array with tenant/branch from joins
-     $joinParams = [];
-     for ($i = 0; $i < 19; $i++) {
-         $joinParams[] = $tenant_id;
-         $joinParams[] = $branch_id;
-     }
+    $joinParams = [];
+    for ($i = 0; $i < 19; $i++) {
+        $joinParams[] = $tenant_id;
+        $joinParams[] = $branch_id;
+    }
 
-    // Merge join params with filter params and LIMIT/OFFSET
-    $allParams = array_merge($joinParams, $params, [$perPage, $offset]);
+    if ($fetchAll) {
+        $allParams = array_merge($joinParams, $params);
+    } else {
+        $allParams = array_merge($joinParams, $params, [$perPage, $offset]);
+    }
     
     if (!$stmt->execute($allParams)) {
         throw new Exception("Failed to execute statement: " . implode(", ", $stmt->errorInfo()));
