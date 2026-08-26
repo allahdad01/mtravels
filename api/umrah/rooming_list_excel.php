@@ -24,7 +24,8 @@ try {
     $settings = ['agency_name' => 'Travel Agency'];
 }
 
-// Ticket IDs required (comma-separated list for multi-ticket rooming)
+// Ticket IDs required (comma-separated list for multi-ticket rooming) OR group_id
+$groupId = isset($_GET['group_id']) ? (int)$_GET['group_id'] : 0;
 if (isset($_GET['ticket_ids']) && $_GET['ticket_ids'] !== '') {
     $rawIds = explode(',', (string)$_GET['ticket_ids']);
     $ticketIds = [];
@@ -49,8 +50,8 @@ if (isset($_GET['ticket_ids']) && $_GET['ticket_ids'] !== '') {
 } else {
     $ticketIds = [];
 }
-if (empty($ticketIds) && empty($directMemberIds)) {
-    die('Invalid request: ticket_id required');
+if (empty($ticketIds) && empty($directMemberIds) && empty($groupId)) {
+    die('Invalid request: ticket_id or group_id required');
 }
 $ticketId = $ticketIds[0] ?? 0;
 
@@ -69,16 +70,10 @@ $ticket = $tickets[0] ?? [];
 
 // Members in ticket order, joined with family data (family = room group)
 $memberIds = $directMemberIds;
-foreach ($tickets as $t) {
-    foreach (json_decode($t['member_ids'] ?? '[]', true) ?: [] as $mid) {
-        $memberIds[] = (int)$mid;
-    }
-}
-$memberIds = array_values(array_unique($memberIds));
 $memberMap = [];
-if (!empty($memberIds)) {
-    $placeholders = implode(',', array_fill(0, count($memberIds), '?'));
-    $memberStmt = $pdo->prepare("
+
+if (!empty($groupId)) {
+    $grpStmt = $pdo->prepare("
         SELECT b.booking_id, b.family_id, b.name, b.fname, b.gender, b.duration, b.room_type,
                b.passport_number, f.head_of_family,
                hr.room_number, hr.floor
@@ -94,11 +89,51 @@ if (!empty($memberIds)) {
             ORDER BY f3.id LIMIT 1
         )
         LEFT JOIN umrah_hotel_rooms hr ON hr.id = hf.room_id
-        WHERE b.booking_id IN ({$placeholders}) AND b.tenant_id = ? AND b.branch_id = ?
+        WHERE f.group_id = ? AND b.tenant_id = ? AND b.branch_id = ?
+          AND b.status NOT IN ('refunded', 'cancelled')
     ");
-    $memberStmt->execute(array_merge($memberIds, [$tenant_id, $branch_id]));
-    foreach ($memberStmt->fetchAll(PDO::FETCH_ASSOC) as $m) {
+    $grpStmt->execute([$groupId, $tenant_id, $branch_id]);
+    foreach ($grpStmt->fetchAll(PDO::FETCH_ASSOC) as $m) {
         $memberMap[(int)$m['booking_id']] = $m;
+        $memberIds[] = (int)$m['booking_id'];
+    }
+    $memberIds = array_values(array_unique($memberIds));
+} else {
+foreach ($tickets as $t) {
+    foreach (json_decode($t['member_ids'] ?? '[]', true) ?: [] as $mid) {
+        $memberIds[] = (int)$mid;
+    }
+} else {
+    foreach ($tickets as $t) {
+        foreach (json_decode($t['member_ids'] ?? '[]', true) ?: [] as $mid) {
+            $memberIds[] = (int)$mid;
+        }
+    }
+    $memberIds = array_values(array_unique($memberIds));
+    if (!empty($memberIds)) {
+        $placeholders = implode(',', array_fill(0, count($memberIds), '?'));
+        $memberStmt = $pdo->prepare("
+            SELECT b.booking_id, b.family_id, b.name, b.fname, b.gender, b.duration, b.room_type,
+                   b.passport_number, f.head_of_family,
+                   hr.room_number, hr.floor
+            FROM umrah_bookings b
+            LEFT JOIN families f ON f.family_id = b.family_id AND f.tenant_id = b.tenant_id
+            LEFT JOIN umrah_hotel_fulfillments hf ON hf.fulfillment_id = (
+                SELECT f3.id
+                FROM umrah_booking_services bs3
+                JOIN umrah_fulfillments f3 ON f3.booking_service_id = bs3.id
+                     AND f3.fulfillment_type = 'hotel' AND f3.tenant_id = bs3.tenant_id
+                WHERE bs3.booking_id = b.booking_id AND bs3.service_type = 'hotel'
+                      AND bs3.tenant_id = b.tenant_id
+                ORDER BY f3.id LIMIT 1
+            )
+            LEFT JOIN umrah_hotel_rooms hr ON hr.id = hf.room_id
+            WHERE b.booking_id IN ({$placeholders}) AND b.tenant_id = ? AND b.branch_id = ?
+        ");
+        $memberStmt->execute(array_merge($memberIds, [$tenant_id, $branch_id]));
+        foreach ($memberStmt->fetchAll(PDO::FETCH_ASSOC) as $m) {
+            $memberMap[(int)$m['booking_id']] = $m;
+        }
     }
 }
 

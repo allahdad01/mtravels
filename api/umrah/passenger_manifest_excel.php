@@ -24,61 +24,173 @@ try {
     $settings = ['agency_name' => 'Travel Agency'];
 }
 
-// Ticket ID is required
-if (!isset($_GET['ticket_id']) || empty($_GET['ticket_id'])) {
-    die('Invalid request: ticket_id required');
+// Ticket ID or group_id required
+$groupId = isset($_GET['group_id']) ? (int)$_GET['group_id'] : 0;
+if (!isset($_GET['ticket_id']) && !isset($_GET['group_id'])) {
+    die('Invalid request: ticket_id or group_id required');
 }
-$ticketId = (int)$_GET['ticket_id'];
+$ticketId = isset($_GET['ticket_id']) ? (int)$_GET['ticket_id'] : 0;
 
 // Fulfillment mode: ticket_id is a booking id whose flight fulfillment is used
 $isFulfillment = ($_GET['src'] ?? '') === 'fulfillment';
 
-if ($isFulfillment) {
-    require_once __DIR__ . '/fulfillment_flight_context.php';
-    $ffCtx = fulfillment_flight_context($pdo, (int)$tenant_id, (int)$branch_id, $ticketId);
-    if (!$ffCtx) {
-        die('Invalid request: flight fulfillment not found');
-    }
-    $ticket = $ffCtx['ticket'];
-    $memberIds = $ffCtx['member_ids'];
-} else {
-    // Fetch the group ticket
-    $ticketStmt = $pdo->prepare("SELECT * FROM group_tickets WHERE ticket_id = ? AND tenant_id = ? AND branch_id = ?");
-    $ticketStmt->execute([$ticketId, $tenant_id, $branch_id]);
-    $ticket = $ticketStmt->fetch(PDO::FETCH_ASSOC);
-    if (!$ticket) {
-        die('Invalid request: ticket not found');
-    }
-    $memberIds = json_decode($ticket['member_ids'] ?? '[]', true) ?: [];
-}
-$passengers = [];
-if (!empty($memberIds)) {
-    $placeholders = implode(',', array_fill(0, count($memberIds), '?'));
-    $memberStmt = $pdo->prepare("
-        SELECT booking_id, name, fname, dob, gender, passport_number
-        FROM umrah_bookings
-        WHERE booking_id IN ({$placeholders}) AND tenant_id = ? AND branch_id = ?
+// Fetch all flights
+$flights = [];
+$flightPassengers = [];
+if (!empty($groupId)) {
+    // 1) Fetch ALL members of the group
+    $grpMemberStmt = $pdo->prepare("
+        SELECT b.booking_id, b.name, b.fname, b.dob, b.gender, b.passport_number, b.family_id, b.duration
+        FROM umrah_bookings b
+        JOIN families f ON b.family_id = f.family_id AND f.tenant_id = b.tenant_id
+        WHERE f.group_id = ? AND b.tenant_id = ? AND b.branch_id = ?
+          AND b.status NOT IN ('refunded', 'cancelled')
+          AND COALESCE(b.is_extra_bed, 0) = 0
+        ORDER BY f.family_id, b.booking_id
     ");
-    $memberStmt->execute(array_merge($memberIds, [$tenant_id, $branch_id]));
-    $memberMap = [];
-    foreach ($memberStmt->fetchAll(PDO::FETCH_ASSOC) as $m) {
-        $memberMap[(int)$m['booking_id']] = $m;
+    $grpMemberStmt->execute([$groupId, $tenant_id, $branch_id]);
+    $allGroupMembers = $grpMemberStmt->fetchAll(PDO::FETCH_ASSOC);
+    $allBookingIds = array_map(fn($m) => (int)$m['booking_id'], $allGroupMembers);
+
+    // 2) Fetch fulfillment-based flights for this group's members
+    $memberFlightInfo = [];
+    if (!empty($allBookingIds)) {
+        $ph = implode(',', array_fill(0, count($allBookingIds), '?'));
+        $ffStmt = $pdo->prepare("
+            SELECT ff.airline, ff.flight_number, ff.pnr, ff.ticket_number,
+                   ff.departure_city, ff.arrival_city, ff.departure_time,
+                   ff.return_flight_number, ff.return_departure_time, ff.return_arrival_time,
+                   ub.booking_id
+            FROM umrah_flight_fulfillments ff
+            JOIN umrah_fulfillments f ON f.id = ff.fulfillment_id
+            JOIN umrah_booking_services bs ON bs.id = f.booking_service_id
+            JOIN umrah_bookings ub ON ub.booking_id = bs.booking_id
+            WHERE f.tenant_id = ? AND ub.branch_id = ?
+              AND ub.booking_id IN ({$ph}) AND ub.status NOT IN ('refunded', 'cancelled')
+            ORDER BY ff.created_at DESC
+        ");
+        $ffParams = array_merge([$tenant_id, $branch_id], $allBookingIds);
+        $ffStmt->execute($ffParams);
+        foreach ($ffStmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $bid = (int)$r['booking_id'];
+            if (!isset($memberFlightInfo[$bid])) {
+                $memberFlightInfo[$bid] = [
+                    'airline_name' => (string)$r['airline'],
+                    'flight_number' => (string)$r['flight_number'],
+                    'pnr' => (string)$r['pnr'],
+                    'ticket_number' => (string)$r['ticket_number'],
+                    'departure_city' => (string)$r['departure_city'],
+                    'arrival_city' => (string)$r['arrival_city'],
+                    'flight_date' => !empty($r['departure_time']) ? date('Y-m-d', strtotime($r['departure_time'])) : '',
+                    'departure_time' => !empty($r['departure_time']) ? $r['departure_time'] : '',
+                    'return_flight_number' => (string)$r['return_flight_number'],
+                    'return_date' => !empty($r['return_departure_time']) ? date('Y-m-d', strtotime($r['return_departure_time'])) : '',
+                    'return_departure_time' => !empty($r['return_departure_time']) ? $r['return_departure_time'] : '',
+                    'return_arrival_time' => !empty($r['return_arrival_time']) ? $r['return_arrival_time'] : '',
+                    'duration' => '',
+                    '_fulfillment' => true,
+                ];
+            }
+        }
     }
-    foreach ($memberIds as $id) {
-        if (isset($memberMap[(int)$id])) {
-            $passengers[] = $memberMap[(int)$id];
+
+    // 3) Fetch group_tickets flights and merge (fulfillment takes priority)
+    $gtStmt = $pdo->prepare("
+        SELECT DISTINCT gt.*
+        FROM group_tickets gt
+        JOIN families f ON JSON_SEARCH(gt.family_ids, 'one', CAST(f.family_id AS CHAR)) IS NOT NULL
+        WHERE f.group_id = ? AND gt.tenant_id = ? AND gt.branch_id = ?
+        ORDER BY gt.flight_date ASC, gt.departure_time ASC
+    ");
+    $gtStmt->execute([$groupId, $tenant_id, $branch_id]);
+    $gtFlights = $gtStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Merge group_tickets flight info for members not already covered by fulfillment
+    foreach ($gtFlights as $flt) {
+        $fids = json_decode($flt['member_ids'] ?? '[]', true) ?: [];
+        foreach ($fids as $mid) {
+            $mid = (int)$mid;
+            if (!isset($memberFlightInfo[$mid])) {
+                $memberFlightInfo[$mid] = [
+                    'airline_name' => (string)($flt['airline_name'] ?? ''),
+                    'flight_number' => (string)($flt['flight_number_1'] ?? ''),
+                    'pnr' => (string)($flt['pnr'] ?? ''),
+                    'ticket_number' => (string)($flt['ticket_number'] ?? ''),
+                    'departure_city' => (string)($flt['departure_city'] ?? ''),
+                    'arrival_city' => (string)($flt['arrival_city'] ?? ''),
+                    'flight_date' => (string)($flt['flight_date'] ?? ''),
+                    'departure_time' => (string)($flt['departure_time'] ?? ''),
+                    'return_flight_number' => (string)($flt['return_flight_number'] ?? ''),
+                    'return_date' => (string)($flt['return_date'] ?? ''),
+                    'return_departure_time' => (string)($flt['return_departure_time'] ?? ''),
+                    'duration' => (string)($flt['duration'] ?? ''),
+                ];
+            }
+        }
+    }
+
+    // 4) Attach flight info to each member, single merged list
+    $mergedMembers = [];
+    foreach ($allGroupMembers as $m) {
+        $fltInfo = $memberFlightInfo[(int)$m['booking_id']] ?? null;
+        if ($fltInfo) {
+            $fltInfo['duration'] = $m['duration'] ?? '';
+        }
+        $m['_flight'] = $fltInfo;
+        $mergedMembers[] = $m;
+    }
+    $flights = [['ticket_id' => 0, '_merged' => true]];
+    $flightPassengers[0] = $mergedMembers;
+} else {
+    if ($isFulfillment) {
+        require_once __DIR__ . '/fulfillment_flight_context.php';
+        $ffCtx = fulfillment_flight_context($pdo, (int)$tenant_id, (int)$branch_id, $ticketId);
+        if (!$ffCtx) { die('Invalid request: flight fulfillment not found'); }
+        $flights = [$ffCtx['ticket']];
+        $ffMembers = [$ffCtx['ticket']['ticket_id'] ?? $ticketId => $ffCtx['member_ids']];
+    } else {
+        $ticketStmt = $pdo->prepare("SELECT * FROM group_tickets WHERE ticket_id = ? AND tenant_id = ? AND branch_id = ?");
+        $ticketStmt->execute([$ticketId, $tenant_id, $branch_id]);
+        $ticket = $ticketStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$ticket) { die('Invalid request: ticket not found'); }
+        $flights = [$ticket];
+    }
+
+    // Fetch passengers per flight (single-ticket mode)
+    $flightPassengers = [];
+    foreach ($flights as $flt) {
+        $fid = $flt['ticket_id'] ?? 0;
+        if (!empty($isFulfillment) && isset($ffMembers[$fid])) {
+            $mids = $ffMembers[$fid];
+        } else {
+            $mids = json_decode($flt['member_ids'] ?? '[]', true) ?: [];
+        }
+        if (!empty($mids)) {
+            $placeholders = implode(',', array_fill(0, count($mids), '?'));
+            $memberStmt = $pdo->prepare("
+                SELECT booking_id, name, fname, dob, gender, passport_number
+                FROM umrah_bookings
+                WHERE booking_id IN ({$placeholders}) AND tenant_id = ? AND branch_id = ?
+            ");
+            $memberStmt->execute(array_merge($mids, [$tenant_id, $branch_id]));
+            $flightPassengers[$fid] = $memberStmt->fetchAll(PDO::FETCH_ASSOC);
+        } else {
+            $flightPassengers[$fid] = [];
         }
     }
 }
 
 // Auto-translate names into the document language (MyMemory - free)
 $docLanguage = isset($_GET['language']) && in_array($_GET['language'], ['ps', 'dari', 'en']) ? $_GET['language'] : 'dari';
-translate_name_fields($passengers, $docLanguage, ['name', 'fname']);
 $agencyName = translate_name($settings['agency_name'] ?? '', $docLanguage);
-$airlineName = translate_name($ticket['airline_name'] ?? '', $docLanguage);
-$departureCity = translate_place($ticket['departure_city'] ?? '', $docLanguage);
 
-// UI labels per document language (deterministic, no external API)
+// Translate all passengers across all flights
+foreach ($flightPassengers as &$fp) {
+    translate_name_fields($fp, $docLanguage, ['name', 'fname']);
+}
+unset($fp);
+
+// UI labels per document language
 $langLabels = [
     'dari' => [
         'doc_title' => 'جدول مسافرین پرواز عمره',
@@ -112,6 +224,7 @@ $langLabels = [
         'persons' => 'نفر',
         'day_names' => [1 => 'دوشنبه', 2 => 'سه‌شنبه', 3 => 'چهارشنبه', 4 => 'پنجشنبه', 5 => 'جمعه', 6 => 'شنبه', 7 => 'یکشنبه'],
         'hijri_suffix' => 'هـ',
+        'unassigned_title' => 'مسافرین بدون پرواز',
     ],
     'ps' => [
         'doc_title' => 'د عمرې د پرواز مسافرینو جدول',
@@ -145,6 +258,7 @@ $langLabels = [
         'persons' => 'تنه',
         'day_names' => [1 => 'دوشنبه', 2 => 'سه‌شنبه', 3 => 'چهارشنبه', 4 => 'پنجشنبه', 5 => 'جمعه', 6 => 'شنبه', 7 => 'یکشنبه'],
         'hijri_suffix' => 'هـ',
+        'unassigned_title' => 'د پرواز پرته مسافرین',
     ],
     'en' => [
         'doc_title' => 'Umrah Flight Passenger Manifest',
@@ -178,34 +292,28 @@ $langLabels = [
         'persons' => 'people',
         'day_names' => [1 => 'Monday', 2 => 'Tuesday', 3 => 'Wednesday', 4 => 'Thursday', 5 => 'Friday', 6 => 'Saturday', 7 => 'Sunday'],
         'hijri_suffix' => 'AH',
+        'unassigned_title' => 'Members Without Flight Assignment',
     ],
 ];
 $L = $langLabels[$docLanguage];
 
 // Helpers
 function manifest_age($dob) {
-    if (empty($dob) || $dob === '0000-00-00') {
-        return '—';
-    }
+    if (empty($dob) || $dob === '0000-00-00') { return '—'; }
     $ts = strtotime($dob);
-    if (!$ts) {
-        return '—';
-    }
+    if (!$ts) { return '—'; }
     return date('Y') - date('Y', $ts) - (date('md') < date('md', $ts) ? 1 : 0);
 }
-
 function manifest_gender($gender, $L) {
     if ($gender === 'Male') { return $L['male']; }
     if ($gender === 'Female') { return $L['female']; }
     return '—';
 }
-
 function manifest_day($date, $L) {
     $ts = strtotime($date);
     if ($ts === false) { return '—'; }
     return $L['day_names'][(int)date('N', $ts)] ?? '—';
 }
-
 function manifest_hijri($date, $L) {
     if (empty($date)) { return '—'; }
     $ts = strtotime($date);
@@ -220,33 +328,6 @@ function manifest_hijri($date, $L) {
     $hd = $l - (int)((709 * $hm) / 24);
     $hy = 30 * $n + $j - 30;
     return $hy . '/' . str_pad((string)$hm, 2, '0', STR_PAD_LEFT) . '/' . str_pad((string)$hd, 2, '0', STR_PAD_LEFT) . ' ' . $L['hijri_suffix'];
-}
-
-$departureTime = $ticket['departure_time'] ?? '';
-if (!empty($departureTime) && strpos($departureTime, ':') !== false) {
-    $departureTime = substr($departureTime, 0, 5);
-}
-
-$durationRaw = trim((string)($ticket['duration'] ?? ''));
-$durationLocalized = '—';
-if ($durationRaw !== '') {
-    $durationNum = preg_replace('/\s*days$/i', '', $durationRaw);
-    $durationLocalized = $durationNum . ' ' . $L['days'];
-}
-
-$totalPassengers = count($passengers);
-$maleCount = 0;
-$femaleCount = 0;
-$childCount = 0;
-$infantCount = 0;
-foreach ($passengers as $p) {
-    if (($p['gender'] ?? '') === 'Male') { $maleCount++; }
-    if (($p['gender'] ?? '') === 'Female') { $femaleCount++; }
-    $age = manifest_age($p['dob'] ?? '');
-    if ($age !== '—') {
-        if ($age < 2) { $infantCount++; }
-        elseif ($age <= 11) { $childCount++; }
-    }
 }
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -266,71 +347,118 @@ $headers = [
     $L['col_return'], $L['col_place'], $L['col_whatsapp'], $L['col_services'],
 ];
 
-$titleRow = $L['doc_title'];
-$subtitleRow = $agencyName . ' ' . $L['includes_flight'];
-$dateRow = $L['day'] . ': ' . manifest_day($ticket['flight_date'] ?? '', $L)
-    . ' | ' . $L['hijri'] . ': ' . manifest_hijri($ticket['flight_date'] ?? '', $L)
-    . ' | ' . $L['gregorian'] . ': ' . ($ticket['flight_date'] ?? '—');
-
 $lastCol = 'P';
+$row = 1;
 
-// Title rows
-$sheet->mergeCells('A1:' . $lastCol . '1');
-$sheet->setCellValue('A1', $titleRow);
-$sheet->mergeCells('A2:' . $lastCol . '2');
-$sheet->setCellValue('A2', $subtitleRow);
-$sheet->mergeCells('A3:' . $lastCol . '3');
-$sheet->setCellValue('A3', $dateRow);
+foreach ($flights as $flt) {
+    $isMerged = !empty($flt['_merged']);
 
-$sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
-$sheet->getStyle('A2')->getFont()->setBold(true)->setSize(12);
-$sheet->getStyle('A3')->getFont()->setSize(10);
-foreach (['A1', 'A2', 'A3'] as $c) {
-    $sheet->getStyle($c)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
-}
+    $passengers = $flightPassengers[$flt['ticket_id'] ?? 0] ?? [];
+    $titleRow = $L['doc_title'];
+    $subtitleRow = $agencyName;
 
-// Header row (row 5)
-$headerRow = 5;
-foreach ($headers as $i => $h) {
-    $col = chr(65 + $i);
-    $sheet->setCellValue($col . $headerRow, $h);
-}
-$headerRange = 'A' . $headerRow . ':' . $lastCol . $headerRow;
-$sheet->getStyle($headerRange)->getFont()->setBold(true)->setSize(10);
-$sheet->getStyle($headerRange)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('F5EDD6');
-$sheet->getStyle($headerRange)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER)->setWrapText(true);
-$sheet->getStyle($headerRange)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
-
-// Data rows
-$row = $headerRow + 1;
-foreach ($passengers as $i => $p) {
-    $airlineCell = $airlineName . ($departureTime !== '' ? ' — ' . $departureTime : '');
-    $values = [
-        '', $i + 1, $p['name'] ?? '', $p['fname'] ?? '', $p['passport_number'] ?? '',
-        manifest_age($p['dob'] ?? ''), manifest_gender($p['gender'] ?? '', $L),
-        $airlineCell, manifest_hijri($ticket['flight_date'] ?? '', $L), manifest_day($ticket['flight_date'] ?? '', $L),
-        $agencyName, $durationLocalized, manifest_hijri($ticket['return_date'] ?? '', $L), $departureCity, '', '',
-    ];
-    foreach ($values as $ci => $v) {
-        $col = chr(65 + $ci);
-        $sheet->setCellValue($col . $row, $v);
-    }
-    $sheet->getStyle('A' . $row . ':' . $lastCol . $row)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
-    $sheet->getStyle('A' . $row . ':' . $lastCol . $row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
-    $row++;
-}
-
-// Summary row
-if ($totalPassengers > 0) {
-    $row++;
-    $summary = $L['total_passengers'] . ': ' . $totalPassengers . ' ' . $L['persons'] . ' | ' . $L['male'] . ': ' . $maleCount
-        . ' | ' . $L['female'] . ': ' . $femaleCount
-        . ' | ' . $L['child'] . ' (2-11 ' . $L['years'] . '): ' . $childCount
-        . ' | ' . $L['infant'] . ' (0-2 ' . $L['years'] . '): ' . $infantCount;
     $sheet->mergeCells('A' . $row . ':' . $lastCol . $row);
-    $sheet->setCellValue('A' . $row, $summary);
-    $sheet->getStyle('A' . $row)->getFont()->setBold(true)->setSize(10);
+    $sheet->setCellValue('A' . $row, $titleRow);
+    $sheet->getStyle('A' . $row)->getFont()->setBold(true)->setSize(14);
     $sheet->getStyle('A' . $row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+    $row++;
+
+    if (!$isMerged) {
+        $sheet->mergeCells('A' . $row . ':' . $lastCol . $row);
+        $sheet->setCellValue('A' . $row, $subtitleRow);
+        $sheet->getStyle('A' . $row)->getFont()->setBold(true)->setSize(12);
+        $sheet->getStyle('A' . $row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $row++;
+
+        $dateRow = $L['day'] . ': ' . manifest_day($flt['flight_date'] ?? '', $L)
+            . ' | ' . $L['hijri'] . ': ' . manifest_hijri($flt['flight_date'] ?? '', $L)
+            . ' | ' . $L['gregorian'] . ': ' . ($flt['flight_date'] ?? '—');
+        $sheet->mergeCells('A' . $row . ':' . $lastCol . $row);
+        $sheet->setCellValue('A' . $row, $dateRow);
+        $sheet->getStyle('A' . $row)->getFont()->setSize(10);
+        $sheet->getStyle('A' . $row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $row++;
+    }
+    $row++;
+
+    // Header row
+    $headerRow = $row;
+    foreach ($headers as $i => $h) {
+        $col = chr(65 + $i);
+        $sheet->setCellValue($col . $headerRow, $h);
+    }
+    $headerRange = 'A' . $headerRow . ':' . $lastCol . $headerRow;
+    $sheet->getStyle($headerRange)->getFont()->setBold(true)->setSize(10);
+    $sheet->getStyle($headerRange)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('F5EDD6');
+    $sheet->getStyle($headerRange)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER)->setWrapText(true);
+    $sheet->getStyle($headerRange)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+    $row++;
+
+    // Data rows
+    foreach ($passengers as $i => $p) {
+        $pFlt = $p['_flight'] ?? null;
+        $pAirlineName = $pFlt ? translate_name($pFlt['airline_name'] ?? '', $docLanguage) : '';
+        $pDepartureCity = $pFlt ? translate_place($pFlt['departure_city'] ?? '', $docLanguage) : '';
+        $pDepartureTime = $pFlt['departure_time'] ?? '';
+        if ($pFlt && !empty($pDepartureTime)) {
+            if (strpos($pDepartureTime, ' ') !== false) {
+                $pDepartureTime = substr($pDepartureTime, strpos($pDepartureTime, ' ') + 1);
+            }
+            if (strpos($pDepartureTime, ':') !== false) {
+                $pDepartureTime = substr($pDepartureTime, 0, 5);
+            }
+        }
+        $pDurationRaw = trim((string)($pFlt['duration'] ?? ''));
+        $pDurationLocalized = '—';
+        if ($pFlt && $pDurationRaw !== '') {
+            $pDurationNum = preg_replace('/\s*days$/i', '', $pDurationRaw);
+            $pDurationLocalized = $pDurationNum . ' ' . $L['days'];
+        }
+        $airlineCell = $pAirlineName . ($pDepartureTime !== '' ? ' — ' . $pDepartureTime : '');
+        $values = [
+            '', $i + 1, $p['name'] ?? '', $p['fname'] ?? '', $p['passport_number'] ?? '',
+            manifest_age($p['dob'] ?? ''), manifest_gender($p['gender'] ?? '', $L),
+            $airlineCell, manifest_hijri($pFlt['flight_date'] ?? '', $L), manifest_day($pFlt['flight_date'] ?? '', $L),
+            $agencyName, $pDurationLocalized, manifest_hijri($pFlt['return_date'] ?? '', $L), $pDepartureCity, '', '',
+        ];
+        foreach ($values as $ci => $v) {
+            $col = chr(65 + $ci);
+            $sheet->setCellValue($col . $row, $v);
+        }
+        $sheet->getStyle('A' . $row . ':' . $lastCol . $row)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+        $sheet->getStyle('A' . $row . ':' . $lastCol . $row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
+        $row++;
+    }
+
+    // Summary row
+    $totalPassengers = count($passengers);
+    $maleCount = $femaleCount = $childCount = $infantCount = 0;
+    foreach ($passengers as $p) {
+        if (($p['gender'] ?? '') === 'Male') { $maleCount++; }
+        if (($p['gender'] ?? '') === 'Female') { $femaleCount++; }
+        $age = manifest_age($p['dob'] ?? '');
+        if ($age !== '—') {
+            if ($age < 2) { $infantCount++; }
+            elseif ($age <= 11) { $childCount++; }
+        }
+    }
+    if ($totalPassengers > 0) {
+        $row++;
+        $summary = $L['total_passengers'] . ': ' . $totalPassengers . ' ' . $L['persons'] . ' | ' . $L['male'] . ': ' . $maleCount
+            . ' | ' . $L['female'] . ': ' . $femaleCount
+            . ' | ' . $L['child'] . ' (2-11 ' . $L['years'] . '): ' . $childCount
+            . ' | ' . $L['infant'] . ' (0-2 ' . $L['years'] . '): ' . $infantCount;
+        $sheet->mergeCells('A' . $row . ':' . $lastCol . $row);
+        $sheet->setCellValue('A' . $row, $summary);
+        $sheet->getStyle('A' . $row)->getFont()->setBold(true)->setSize(10);
+        $sheet->getStyle('A' . $row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $row++;
+    }
+
+    // Gap between flights
+    if (count($flights) > 1) {
+        $row += 2;
+    }
 }
 
 // Column widths
@@ -338,13 +466,14 @@ $widths = [10, 10, 14, 14, 14, 6, 6, 18, 12, 8, 14, 8, 12, 10, 14, 12];
 foreach ($widths as $i => $w) {
     $sheet->getColumnDimension(chr(65 + $i))->setWidth($w);
 }
-$sheet->getRowDimension($headerRow)->setRowHeight(30);
-$sheet->getStyle('A' . ($headerRow + 1) . ':' . $lastCol . max($headerRow + 1, $row))->getAlignment()->setWrapText(true);
 
-// Freeze header
-$sheet->freezePane('A' . ($headerRow + 1));
-
-$filename = 'passenger_manifest_' . preg_replace('/[^A-Za-z0-9_-]/', '', (string)($ticket['pnr'] ?? $ticketId)) . '.xlsx';
+$filename = 'passenger_manifest_group.xlsx';
+if ($groupId) {
+    $filename = 'passenger_manifest_group_' . $groupId . '.xlsx';
+} else {
+    $firstPnr = $flights[0]['pnr'] ?? $ticketId;
+    $filename = 'passenger_manifest_' . preg_replace('/[^A-Za-z0-9_-]/', '', (string)$firstPnr) . '.xlsx';
+}
 
 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 header('Content-Disposition: attachment; filename="' . $filename . '"');

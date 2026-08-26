@@ -817,6 +817,15 @@ $canEdit = user_can('umrah.member_edit');
                                                     <a class="dropdown-item" href="javascript:void(0)" onclick="openProfitReport('group', <?= (int)$group['group_id'] ?>, '<?= htmlspecialchars(addslashes($group['group_name']), ENT_QUOTES) ?>')">
                                                         <i class="fas fa-chart-line"></i><?= __('profit_report') ?>
                                                     </a>
+                                                    <a class="dropdown-item" href="javascript:void(0)" onclick="openClientReportForGroup(<?= (int)$group['group_id'] ?>)">
+                                                        <i class="fas fa-file-invoice"></i><?= __('client_report') ?>
+                                                    </a>
+                                                    <a class="dropdown-item" href="javascript:void(0)" onclick="openRoomingListForGroup(<?= (int)$group['group_id'] ?>)">
+                                                        <i class="fas fa-bed"></i><?= __('rooming_list') ?>
+                                                    </a>
+                                                    <a class="dropdown-item" href="javascript:void(0)" onclick="openPassengerManifestForGroup(<?= (int)$group['group_id'] ?>)">
+                                                        <i class="fas fa-list-alt"></i><?= __('passenger_manifest') ?>
+                                                    </a>
                                                     <div class="dropdown-divider"></div>
                                                     <a class="dropdown-item text-danger" href="javascript:void(0)" onclick="deleteGroup(<?= (int)$group['group_id'] ?>, '<?= htmlspecialchars(addslashes($group['group_name']), ENT_QUOTES) ?>')">
                                                         <i class="fas fa-trash"></i><?= __('delete_group') ?>
@@ -955,12 +964,6 @@ $canEdit = user_can('umrah.member_edit');
                             </label>
                             <span class="rooming-selected-count" id="roomingSelectedCount">0 <?= __('tickets') ?></span>
                             <div class="rooming-actions-dropdown" id="roomingActions">
-                                <button type="button" class="btn-icon btn-icon-rooming rooming-actions-btn" title="<?= __('rooming_list') ?>" aria-label="<?= __('rooming_list') ?>">
-                                    <i class="fas fa-bed"></i>
-                                </button>
-                                <button type="button" class="btn-icon btn-icon-client client-report-btn" title="<?= __('client_report') ?>" aria-label="<?= __('client_report') ?>">
-                                    <i class="fas fa-users"></i>
-                                </button>
                             </div>
                         </div>
                         <div class="flights-list">
@@ -1037,16 +1040,10 @@ $canEdit = user_can('umrah.member_edit');
                                         </div>
                                         <span class="flight-type-badge"><?= !empty($flight['_fulfillment']) ? htmlspecialchars($flight['fulfillment_status']) : $flightType ?></span>
                                         <?php if (empty($flight['_fulfillment'])): ?>
-                                        <button type="button" class="btn-icon btn-icon-manifest manifest-actions-btn" data-ticket-id="<?= (int)$flight['ticket_id'] ?>" title="<?= __('passenger_manifest') ?>" aria-label="<?= __('passenger_manifest') ?>">
-                                            <i class="fas fa-list-alt"></i>
-                                        </button>
                                         <button type="button" class="btn-icon btn-icon-print" onclick="window.open('../api/umrah/generate_group_ticket.php?ticket_id=<?= (int)$flight['ticket_id'] ?>', '_blank')" title="<?= __('print_group_ticket') ?>" aria-label="<?= __('print_group_ticket') ?>">
                                             <i class="fas fa-print"></i>
                                         </button>
                                         <?php else: ?>
-                                        <button type="button" class="btn-icon btn-icon-manifest manifest-actions-btn" data-ticket-id="<?= (int)$flight['first_booking_id'] ?>" data-src="fulfillment" title="<?= __('passenger_manifest') ?>" aria-label="<?= __('passenger_manifest') ?>">
-                                            <i class="fas fa-list-alt"></i>
-                                        </button>
                                         <button type="button" class="btn-icon btn-icon-print btn-print-fulfillment" data-booking-id="<?= (int)$flight['first_booking_id'] ?>" data-has-return="<?= (!empty($flight['return_flight_number']) || !empty($flight['return_date'])) ? '1' : '0' ?>" title="<?= __('print_group_ticket') ?>" aria-label="<?= __('print_group_ticket') ?>">
                                             <i class="fas fa-print"></i>
                                         </button>
@@ -1967,81 +1964,40 @@ $canEdit = user_can('umrah.member_edit');
         openManifestTypeModal();
     }
 
+    let manifestGroupId = 0;
+    function openClientReportForGroup(groupId) {
+        manifestGroupId = groupId;
+        manifestTypeContext = 'client_group';
+        manifestRoomingIds = '';
+        manifestTicketId = '';
+        manifestSrc = '';
+        openManifestTypeModal();
+    }
+
+    function openRoomingListForGroup(groupId) {
+        manifestGroupId = groupId;
+        manifestTypeContext = 'rooming_group';
+        manifestRoomingIds = '';
+        manifestTicketId = '';
+        manifestSrc = '';
+        openManifestTypeModal();
+    }
+
+    function openPassengerManifestForGroup(groupId) {
+        manifestGroupId = groupId;
+        manifestTypeContext = 'manifest_group';
+        manifestRoomingIds = '';
+        manifestTicketId = '';
+        manifestSrc = '';
+        openManifestTypeModal();
+    }
+
     document.addEventListener('click', function (e) {
-        // Rooming list button (toolbar) -> type chooser
-        const roomingBtn = e.target.closest('.rooming-actions-btn');
-        if (roomingBtn) {
-            e.preventDefault();
-            const ticketIds = [];
-            document.querySelectorAll('.rooming-ticket-check:checked').forEach(cb => {
-                const v = cb.value;
-                if (v.charAt(0) === 'b') {
-                    // Fulfillment card: "b<id1>,<id2>,..." -> one b-entry per member
-                    v.slice(1).split(',').forEach(bid => {
-                        if (bid) ticketIds.push('b' + bid);
-                    });
-                } else if (v) {
-                    ticketIds.push(v);
-                }
-            });
-            if (ticketIds.length === 0) {
-                const count = document.getElementById('roomingSelectedCount');
-                if (count) {
-                    count.textContent = <?= json_encode(__('no_tickets_selected')) ?>;
-                    count.classList.add('rooming-count-error');
-                }
-                return;
-            }
-            manifestTypeContext = 'rooming';
-            manifestRoomingIds = ticketIds.join(',');
-            manifestSrc = '';
-            openManifestTypeModal();
-            return;
-        }
-        // Client report button (toolbar) -> type chooser
-        const clientBtn = e.target.closest('.client-report-btn');
-        if (clientBtn) {
-            e.preventDefault();
-            const ticketIds = [];
-            document.querySelectorAll('.rooming-ticket-check:checked').forEach(cb => {
-                const v = cb.value;
-                if (v.charAt(0) === 'b') {
-                    v.slice(1).split(',').forEach(bid => {
-                        if (bid) ticketIds.push('b' + bid);
-                    });
-                } else if (v) {
-                    ticketIds.push(v);
-                }
-            });
-            if (ticketIds.length === 0) {
-                const count = document.getElementById('roomingSelectedCount');
-                if (count) {
-                    count.textContent = <?= json_encode(__('no_tickets_selected')) ?>;
-                    count.classList.add('rooming-count-error');
-                }
-                return;
-            }
-            manifestTypeContext = 'client';
-            manifestRoomingIds = ticketIds.join(',');
-            manifestSrc = '';
-            openManifestTypeModal();
-            return;
-        }
         // Fulfillment flight card: print outbound + return in one ticket window
         const ffPrintBtn = e.target.closest('.btn-print-fulfillment');
         if (ffPrintBtn) {
             e.preventDefault();
             window.open('../api/umrah/generate_group_ticket.php?src=fulfillment&ticket_id=' + ffPrintBtn.getAttribute('data-booking-id'), '_blank');
-            return;
-        }
-        // Passenger manifest button (per flight) -> type chooser
-        const manifestBtn = e.target.closest('.manifest-actions-btn');
-        if (manifestBtn) {
-            e.preventDefault();
-            manifestTypeContext = 'manifest';
-            manifestTicketId = manifestBtn.getAttribute('data-ticket-id');
-            manifestSrc = manifestBtn.getAttribute('data-src') || '';
-            openManifestTypeModal();
             return;
         }
         // Type chooser selection -> build doc URL, then open language chooser
@@ -2051,11 +2007,20 @@ $canEdit = user_can('umrah.member_edit');
             if (manifestTypeContext === 'client') {
                 manifestDocUrl = '../api/umrah/' + (type === 'print' ? 'client_report_template' : 'client_report_excel') + '.php?ticket_ids=' + manifestRoomingIds;
                 manifestDocBlank = (type === 'print');
+            } else if (manifestTypeContext === 'client_group') {
+                manifestDocUrl = '../api/umrah/' + (type === 'print' ? 'client_report_template' : 'client_report_excel') + '.php?group_id=' + manifestGroupId;
+                manifestDocBlank = (type === 'print');
             } else if (manifestTypeContext === 'profit') {
                 manifestDocUrl = '../api/umrah/' + (type === 'print' ? 'profit_report_template' : 'profit_report_excel') + '.php?scope=' + profitReportScope + '&id=' + profitReportId;
                 manifestDocBlank = (type === 'print');
             } else if (manifestTypeContext === 'rooming') {
                 manifestDocUrl = '../api/umrah/' + (type === 'print' ? 'saudi_agent_template' : 'rooming_list_excel') + '.php?ticket_ids=' + manifestRoomingIds;
+                manifestDocBlank = (type === 'print');
+            } else if (manifestTypeContext === 'rooming_group') {
+                manifestDocUrl = '../api/umrah/' + (type === 'print' ? 'saudi_agent_template' : 'rooming_list_excel') + '.php?group_id=' + manifestGroupId;
+                manifestDocBlank = (type === 'print');
+            } else if (manifestTypeContext === 'manifest_group') {
+                manifestDocUrl = '../api/umrah/passenger_manifest_' + (type === 'print' ? 'template' : 'excel') + '.php?group_id=' + manifestGroupId;
                 manifestDocBlank = (type === 'print');
             } else {
                 manifestDocUrl = '../api/umrah/passenger_manifest_' + (type === 'print' ? 'template' : 'excel') + '.php?ticket_id=' + manifestTicketId + (manifestSrc ? '&src=' + manifestSrc : '');

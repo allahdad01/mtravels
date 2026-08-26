@@ -24,7 +24,8 @@ try {
     $settings = ['agency_name' => 'Travel Agency'];
 }
 
-// Ticket IDs required (comma-separated list for multi-ticket selection)
+// Ticket IDs required (comma-separated list for multi-ticket selection) OR group_id
+$groupId = isset($_GET['group_id']) ? (int)$_GET['group_id'] : 0;
 if (isset($_GET['ticket_ids']) && $_GET['ticket_ids'] !== '') {
     $rawIds = explode(',', (string)$_GET['ticket_ids']);
     $ticketIds = [];
@@ -49,8 +50,8 @@ if (isset($_GET['ticket_ids']) && $_GET['ticket_ids'] !== '') {
 } else {
     $ticketIds = [];
 }
-if (empty($ticketIds) && empty($directMemberIds)) {
-    die('Invalid request: ticket_id required');
+if (empty($ticketIds) && empty($directMemberIds) && empty($groupId)) {
+    die('Invalid request: ticket_id or group_id required');
 }
 $ticketId = $ticketIds[0] ?? 0;
 
@@ -69,27 +70,51 @@ $ticket = $tickets[0] ?? [];
 
 // Members in ticket order, joined with client (sold_to) data
 $memberIds = $directMemberIds;
-foreach ($tickets as $t) {
-    foreach (json_decode($t['member_ids'] ?? '[]', true) ?: [] as $mid) {
-        $memberIds[] = (int)$mid;
-    }
-}
-$memberIds = array_values(array_unique($memberIds));
 $memberMap = [];
-if (!empty($memberIds)) {
-    $placeholders = implode(',', array_fill(0, count($memberIds), '?'));
-    $memberStmt = $pdo->prepare("
+
+// If group_id provided, fetch all members for that group
+if (!empty($groupId)) {
+    $grpStmt = $pdo->prepare("
         SELECT b.booking_id, b.family_id, b.name, b.fname, b.gender, b.duration, b.room_type,
-               b.passport_number, b.sold_price, b.received_bank_payment, b.currency, b.remarks, b.status,
-               f.head_of_family, f.location, c.name AS client_name
+               b.passport_number, b.sold_price, b.paid, b.currency, b.remarks, b.status, b.sold_to,
+               b.is_extra_bed,
+               f.head_of_family, f.location, c.name AS client_name,
+               g.created_at AS group_created_at
         FROM umrah_bookings b
         LEFT JOIN families f ON f.family_id = b.family_id AND f.tenant_id = b.tenant_id
         LEFT JOIN clients c ON c.id = b.sold_to
-        WHERE b.booking_id IN ({$placeholders}) AND b.tenant_id = ? AND b.branch_id = ?
+        LEFT JOIN umrah_groups g ON f.group_id = g.group_id AND f.tenant_id = g.tenant_id
+        WHERE f.group_id = ? AND b.tenant_id = ? AND b.branch_id = ?
+          AND b.status NOT IN ('refunded', 'cancelled')
     ");
-    $memberStmt->execute(array_merge($memberIds, [$tenant_id, $branch_id]));
-    foreach ($memberStmt->fetchAll(PDO::FETCH_ASSOC) as $m) {
+    $grpStmt->execute([$groupId, $tenant_id, $branch_id]);
+    foreach ($grpStmt->fetchAll(PDO::FETCH_ASSOC) as $m) {
         $memberMap[(int)$m['booking_id']] = $m;
+        $memberIds[] = (int)$m['booking_id'];
+    }
+    $memberIds = array_values(array_unique($memberIds));
+} else {
+    foreach ($tickets as $t) {
+        foreach (json_decode($t['member_ids'] ?? '[]', true) ?: [] as $mid) {
+            $memberIds[] = (int)$mid;
+        }
+    }
+    $memberIds = array_values(array_unique($memberIds));
+    if (!empty($memberIds)) {
+        $placeholders = implode(',', array_fill(0, count($memberIds), '?'));
+        $memberStmt = $pdo->prepare("
+            SELECT b.booking_id, b.family_id, b.name, b.fname, b.gender, b.duration, b.room_type,
+                   b.passport_number, b.sold_price, b.paid, b.currency, b.remarks, b.status, b.sold_to,
+                   f.head_of_family, f.location, c.name AS client_name
+            FROM umrah_bookings b
+            LEFT JOIN families f ON f.family_id = b.family_id AND f.tenant_id = b.tenant_id
+            LEFT JOIN clients c ON c.id = b.sold_to
+            WHERE b.booking_id IN ({$placeholders}) AND b.tenant_id = ? AND b.branch_id = ?
+        ");
+        $memberStmt->execute(array_merge($memberIds, [$tenant_id, $branch_id]));
+        foreach ($memberStmt->fetchAll(PDO::FETCH_ASSOC) as $m) {
+            $memberMap[(int)$m['booking_id']] = $m;
+        }
     }
 }
 
