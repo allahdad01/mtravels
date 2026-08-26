@@ -579,9 +579,13 @@ $canEdit = user_can('umrah.member_edit');
                                         SUM(CASE WHEN ub.status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled_members,
                                         COUNT(DISTINCT CASE WHEN c.client_type = 'agency' AND COALESCE(ub.is_extra_bed, 0) = 0 THEN ub.booking_id END) AS agency_member_count,
                                         SUM(CASE WHEN c.client_type = 'agency' AND COALESCE(ub.is_extra_bed, 0) = 0 THEN ub.sold_price ELSE 0 END) AS agency_total_price,
+                                        SUM(CASE WHEN c.client_type = 'agency' AND COALESCE(ub.is_extra_bed, 0) = 0 THEN COALESCE(ub.paid, 0) ELSE 0 END) AS agency_total_paid,
                                         SUM(CASE WHEN c.client_type = 'agency' AND COALESCE(ub.is_extra_bed, 0) = 0 THEN ub.due ELSE 0 END) AS agency_due,
                                         COUNT(DISTINCT CASE WHEN c.client_type = 'regular' AND COALESCE(ub.is_extra_bed, 0) = 0 THEN ub.booking_id END) AS regular_member_count,
                                         SUM(CASE WHEN c.client_type = 'regular' AND COALESCE(ub.is_extra_bed, 0) = 0 THEN ub.sold_price ELSE 0 END) AS regular_total_price,
+                                        SUM(CASE WHEN c.client_type = 'regular' AND COALESCE(ub.is_extra_bed, 0) = 0 THEN COALESCE(ub.paid, 0) ELSE 0 END) AS regular_total_paid,
+                                        SUM(CASE WHEN COALESCE(ub.is_extra_bed, 0) = 1 THEN ub.sold_price ELSE 0 END) AS extra_bed_price,
+                                        SUM(CASE WHEN COALESCE(ub.is_extra_bed, 0) = 1 THEN COALESCE(ub.paid, 0) ELSE 0 END) AS extra_bed_paid,
                                         GROUP_CONCAT(DISTINCT c.name ORDER BY c.name SEPARATOR ', ') AS client_names,
                                         (SELECT ub2.currency FROM umrah_bookings ub2
                                          WHERE ub2.family_id = f.family_id
@@ -590,7 +594,7 @@ $canEdit = user_can('umrah.member_edit');
                                     FROM families f
                                     LEFT JOIN users u ON f.created_by = u.id
                                     LEFT JOIN umrah_groups g ON f.group_id = g.group_id AND f.tenant_id = g.tenant_id
-                                    LEFT JOIN umrah_bookings ub ON f.family_id = ub.family_id
+                                    LEFT JOIN umrah_bookings ub ON f.family_id = ub.family_id AND ub.tenant_id = f.tenant_id
                                     LEFT JOIN clients c ON ub.sold_to = c.id AND c.tenant_id = f.tenant_id
                                     WHERE 1=1 AND f.tenant_id = ? AND f.branch_id = ?";
 
@@ -664,6 +668,86 @@ $canEdit = user_can('umrah.member_edit');
                         ");
                         $clientTypeStmt->execute(array_merge([$tenant_id, $branch_id], $familyIds));
                         $regularClientFamilies = array_flip($clientTypeStmt->fetchAll(PDO::FETCH_COLUMN));
+                    }
+
+                    // ── Per-client fund waterfall allocation for family cards ──
+                    // Fetches ALL families for each client across ALL groups for correct waterfall
+                    $familyFundAllocations = []; // family_id => allocated_amount
+                    if (!empty($familyIds)) {
+                        // First, find which clients have families on this page
+                        $fPh = implode(',', array_fill(0, count($familyIds), '?'));
+                        $clientIdsStmt = $pdo->prepare("
+                            SELECT DISTINCT ub.sold_to AS client_id
+                            FROM umrah_bookings ub
+                            WHERE ub.sold_to IS NOT NULL AND ub.tenant_id = ? AND ub.branch_id = ?
+                              AND ub.family_id IN ($fPh)
+                        ");
+                        $clientIdsStmt->execute(array_merge([$tenant_id, $branch_id], $familyIds));
+                        $pageClientIds = $clientIdsStmt->fetchAll(PDO::FETCH_COLUMN);
+
+                        if (!empty($pageClientIds)) {
+                            $cPh = implode(',', array_fill(0, count($pageClientIds), '?'));
+                            // Fetch ALL families for these clients across ALL groups
+                            $allFamStmt = $pdo->prepare("
+                                SELECT ub.sold_to AS client_id, ub.family_id, f.group_id, g.created_at,
+                                       SUM(COALESCE(ub.sold_price, 0)) AS booking_total
+                                FROM umrah_bookings ub
+                                JOIN families f ON ub.family_id = f.family_id AND f.tenant_id = ub.tenant_id
+                                JOIN umrah_groups g ON f.group_id = g.group_id AND f.tenant_id = g.tenant_id
+                                WHERE ub.sold_to IN ({$cPh}) AND ub.tenant_id = ? AND (g.branch_id = ? OR g.branch_id = 0)
+                                  AND ub.status NOT IN ('refunded', 'cancelled')
+                                GROUP BY ub.sold_to, ub.family_id, f.group_id, g.created_at
+                                ORDER BY g.created_at ASC, g.group_id ASC, f.family_id ASC
+                            ");
+                            $allFamStmt->execute(array_merge($pageClientIds, [$tenant_id, $branch_id]));
+                            $clientAllFamilies = []; // client_id => [{family_id, group_id, created_at, booking_total}]
+                            while ($afRow = $allFamStmt->fetch(PDO::FETCH_ASSOC)) {
+                                $cid = (int)$afRow['client_id'];
+                                $clientAllFamilies[$cid][] = [
+                                    'family_id' => (int)$afRow['family_id'],
+                                    'group_id' => (int)$afRow['group_id'],
+                                    'created_at' => $afRow['created_at'],
+                                    'booking_total' => floatval($afRow['booking_total']),
+                                ];
+                            }
+
+                            // Fetch total fund per client
+                            $fundStmt = $pdo->prepare("
+                                SELECT client_id, SUM(amount) AS total_fund
+                                FROM client_transactions
+                                WHERE client_id IN ({$cPh})
+                                  AND tenant_id = ?
+                                  AND type = 'credit' AND transaction_of = 'fund' AND currency = 'USD'
+                                GROUP BY client_id
+                            ");
+                            $fundStmt->execute(array_merge($pageClientIds, [$tenant_id]));
+                            $clientFunds = [];
+                            while ($fRow = $fundStmt->fetch(PDO::FETCH_ASSOC)) {
+                                $clientFunds[(int)$fRow['client_id']] = floatval($fRow['total_fund']);
+                            }
+
+                            // Waterfall: allocate each client's fund to ALL their families in group creation order
+                            foreach ($clientFunds as $cId => $totalFund) {
+                                if (!isset($clientAllFamilies[$cId])) continue;
+                                $remaining = $totalFund;
+                                foreach ($clientAllFamilies[$cId] as $cf) {
+                                    if ($remaining <= 0) break;
+                                    $alloc = min($remaining, $cf['booking_total']);
+                                    $fid = $cf['family_id'];
+                                    $familyFundAllocations[$fid] = ($familyFundAllocations[$fid] ?? 0) + $alloc;
+                                    $remaining -= $alloc;
+                                }
+                            }
+                        }
+
+                        // Assign fund_allocation to each result family (use computed totals, not stale families.total_price)
+                        foreach ($resultFamilies as &$fam) {
+                            $fId = (int)$fam['family_id'];
+                            $famComputedTotal = floatval($fam['agency_total_price'] ?? 0) + floatval($fam['regular_total_price'] ?? 0) + floatval($fam['extra_bed_price'] ?? 0);
+                            $rawAlloc = $familyFundAllocations[$fId] ?? 0;
+                            $fam['fund_allocation'] = min($rawAlloc, $famComputedTotal);
+                        }
+                        unset($fam);
                     }
 
                     // Total member count (badge on the All pill)
@@ -1349,10 +1433,18 @@ $canEdit = user_can('umrah.member_edit');
                                 $familyId = $row['family_id'];
                                 $isFullyRefunded = ($row['total_members'] > 0 && $row['total_members'] == $row['refunded_members']);
                                 
-                                // Calculate payment percentage
-                                $totalPrice = floatval($row['total_price'] ?? 0);
-                                $totalPaid = floatval($row['total_paid'] ?? 0);
-                                $paymentPercentage = $totalPrice > 0 ? ($totalPaid / $totalPrice) * 100 : 0;
+                                // Calculate payment percentage — use computed values, not stale families.total_price
+                                $aPrice = floatval($row['agency_total_price'] ?? 0);
+                                $rPrice = floatval($row['regular_total_price'] ?? 0);
+                                $ebPrice = floatval($row['extra_bed_price'] ?? 0);
+                                $totalPrice = $aPrice + $rPrice + $ebPrice;
+                                $aPaid = floatval($row['agency_total_paid'] ?? 0);
+                                $rPaid = floatval($row['regular_total_paid'] ?? 0);
+                                $ebPaid = floatval($row['extra_bed_paid'] ?? 0);
+                                $totalPaid = $aPaid + $rPaid + $ebPaid;
+                                $fundAlloc = floatval($row['fund_allocation'] ?? 0);
+                                $effectivePaid = min($totalPaid + $fundAlloc, $totalPrice);
+                                $paymentPercentage = $totalPrice > 0 ? ($effectivePaid / $totalPrice) * 100 : 0;
                             ?>
                                 <div class="family-card <?= $isFullyRefunded ? 'refunded-family' : '' ?>" data-family-id="<?= $familyId ?>">
                                     <!-- Card Header -->
@@ -1490,21 +1582,14 @@ $canEdit = user_can('umrah.member_edit');
                                         <button type="button" class="payment-summary-toggle" data-toggle="collapse" data-target="#payment-summary-<?= $familyId ?>" aria-expanded="false" aria-controls="payment-summary-<?= $familyId ?>">
                                             <span class="toggle-label"><i class="fas fa-credit-card"></i><?= __('payment_status') ?></span>
                                             <?php $familyCurrency = htmlspecialchars($row['family_currency'] ?? 'USD'); ?>
-                                            <?php if (!$hasRegularClient): ?>
                                             <span class="toggle-quick">
                                                 <span class="toggle-pct"><?= number_format($paymentPercentage, 1) ?>%</span>
-                                                <?= __('paid') ?> <?= number_format(floatval($row['total_paid'] ?? 0)) ?> / <?= number_format(floatval($row['total_price'] ?? 0)) ?> <?= $familyCurrency ?>
+                                                <?= __('paid') ?> <?= number_format($effectivePaid) ?> / <?= number_format($totalPrice) ?> <?= $familyCurrency ?>
                                             </span>
-                                            <?php else: ?>
-                                            <span class="toggle-quick">
-                                                <?= __('bank') ?> <?= number_format(floatval($row['total_paid_to_bank'] ?? 0)) ?> <?= $familyCurrency ?>
-                                            </span>
-                                            <?php endif; ?>
                                             <i class="fas fa-chevron-down toggle-chevron"></i>
                                         </button>
                                         <div class="collapse" id="payment-summary-<?= $familyId ?>">
                                         <div class="financial-summary">
-                                            <?php if (!$hasRegularClient): ?>
                                             <div class="financial-header">
                                                 <span><?= __('payment_status') ?></span>
                                                 <span class="percentage"><?= number_format($paymentPercentage, 1) ?>%</span>
@@ -1512,28 +1597,27 @@ $canEdit = user_can('umrah.member_edit');
                                             <div class="progress-bar-container">
                                                 <div class="progress-bar-fill" style="width: <?= $paymentPercentage ?>%"></div>
                                             </div>
-                                            <?php endif; ?>
                                             <div class="financial-details">
                                                 <div class="financial-item">
                                                     <span class="label"><?= __('total_price') ?></span>
-                                                    <?php
-                                                    $aPrice = floatval($row['agency_total_price'] ?? 0);
-                                                    $rPrice = floatval($row['regular_total_price'] ?? 0);
-                                                    $hasSplit = $aPrice > 0 && $rPrice > 0;
-                                                    ?>
+                                                    <?php $hasSplit = $aPrice > 0 && $rPrice > 0; ?>
                                                     <?php if ($hasSplit): ?>
                                                     <span class="value" style="font-size:0.75rem;">
-                                                        <span style="color:#0e7490;"><?= number_format($aPrice) ?></span> + <span style="color:#7c3aed;"><?= number_format($rPrice) ?></span> =
-                                                        <?= number_format(floatval($row['total_price'] ?? 0)) ?> <?= $familyCurrency ?>
+                                                        <span style="color:#0e7490;"><?= number_format($aPrice) ?></span> + <span style="color:#7c3aed;"><?= number_format($rPrice) ?></span><?php if ($ebPrice > 0): ?> + <span style="color:#ea580c;"><?= number_format($ebPrice) ?></span><?php endif; ?> =
+                                                        <?= number_format($totalPrice) ?> <?= $familyCurrency ?>
                                                     </span>
                                                     <?php else: ?>
-                                                    <span class="value"><?= number_format(floatval($row['total_price'] ?? 0)) ?> <?= $familyCurrency ?></span>
+                                                    <span class="value"><?= number_format($totalPrice) ?> <?= $familyCurrency ?></span>
                                                     <?php endif; ?>
                                                 </div>
-                                                <?php if (!$hasRegularClient): ?>
                                                 <div class="financial-item success">
                                                     <span class="label"><?= __('paid') ?></span>
-                                                    <span class="value"><?= number_format(floatval($row['total_paid'] ?? 0)) ?> <?= $familyCurrency ?></span>
+                                                    <span class="value"><?= number_format($effectivePaid) ?> <?= $familyCurrency ?></span>
+                                                </div>
+                                                <?php if ($fundAlloc > 0): ?>
+                                                <div class="financial-item" style="color:#0e7490;">
+                                                    <span class="label"><?= __('fund') ?></span>
+                                                    <span class="value"><?= number_format($fundAlloc) ?> <?= $familyCurrency ?></span>
                                                 </div>
                                                 <?php endif; ?>
                                                 <div class="financial-item warning">
@@ -1542,7 +1626,7 @@ $canEdit = user_can('umrah.member_edit');
                                                 </div>
                                                 <div class="financial-item danger">
                                                     <span class="label"><?= __('due') ?></span>
-                                                    <span class="value"><?= number_format(floatval($row['agency_due'] ?? 0)) ?> <?= $familyCurrency ?></span>
+                                                    <span class="value"><?= number_format(max(0, $totalPrice - $effectivePaid)) ?> <?= $familyCurrency ?></span>
                                                 </div>
                                             </div>
                                             <?php

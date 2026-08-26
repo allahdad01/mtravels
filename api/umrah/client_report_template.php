@@ -162,20 +162,19 @@ if (!empty($familyIds)) {
 }
 
 // ── Per-client fund allocation ──
-// 1. Collect unique client IDs and their family prices
-$clientFamilyPrice = []; // client_id => [family_id => total_price]
+// 1. Collect unique client IDs from current report members
+$clientIds = [];
 foreach ($memberMap as $m) {
     $clientId = (int)($m['sold_to'] ?? 0);
-    if ($clientId <= 0) continue;
-    $famId = (int)($m['family_id'] ?? 0);
-    $clientFamilyPrice[$clientId][$famId] = ($clientFamilyPrice[$clientId][$famId] ?? 0) + (float)($m['sold_price'] ?? 0);
+    if ($clientId > 0 && !in_array($clientId, $clientIds)) {
+        $clientIds[] = $clientId;
+    }
 }
 
-// 2. Fetch total USD fund per client (all credits, no date filter — matches group card logic)
+// 2. Fetch total USD fund per client
 $clientFundMap = []; // client_id => fund_amount
-if (!empty($clientFamilyPrice)) {
-    $cIds = array_keys($clientFamilyPrice);
-    $cPh = implode(',', array_fill(0, count($cIds), '?'));
+if (!empty($clientIds)) {
+    $cPh = implode(',', array_fill(0, count($clientIds), '?'));
     $fundStmt = $pdo->prepare("
         SELECT ct.client_id, SUM(ct.amount) AS total_fund
         FROM client_transactions ct
@@ -184,53 +183,72 @@ if (!empty($clientFamilyPrice)) {
           AND ct.type = 'credit' AND ct.transaction_of = 'fund' AND ct.currency = 'USD'
         GROUP BY ct.client_id
     ");
-    $fundStmt->execute(array_merge($cIds, [$tenant_id]));
+    $fundStmt->execute(array_merge($clientIds, [$tenant_id]));
     while ($row = $fundStmt->fetch(PDO::FETCH_ASSOC)) {
         $clientFundMap[(int)$row['client_id']] = floatval($row['total_fund']);
     }
 }
 
-// 3. Per-client waterfall: allocate fund to families in order of group creation
+// 3. Fetch ALL families for these clients across ALL groups (not just current report)
+$clientAllFamilies = []; // client_id => [{family_id, group_id, created_at, booking_total}]
+if (!empty($clientIds)) {
+    $cPh = implode(',', array_fill(0, count($clientIds), '?'));
+    $allFamStmt = $pdo->prepare("
+        SELECT ub.sold_to AS client_id, ub.family_id, f.group_id, g.created_at,
+               SUM(COALESCE(ub.sold_price, 0)) AS booking_total
+        FROM umrah_bookings ub
+        JOIN families f ON ub.family_id = f.family_id AND f.tenant_id = ub.tenant_id
+        JOIN umrah_groups g ON f.group_id = g.group_id AND f.tenant_id = g.tenant_id
+        WHERE ub.sold_to IN ({$cPh}) AND ub.tenant_id = ?
+          AND ub.status NOT IN ('refunded', 'cancelled')
+        GROUP BY ub.sold_to, ub.family_id, f.group_id, g.created_at
+        ORDER BY g.created_at ASC, g.group_id ASC, f.family_id ASC
+    ");
+    $allFamStmt->execute(array_merge($clientIds, [$tenant_id]));
+    while ($afRow = $allFamStmt->fetch(PDO::FETCH_ASSOC)) {
+        $cid = (int)$afRow['client_id'];
+        $clientAllFamilies[$cid][] = [
+            'family_id' => (int)$afRow['family_id'],
+            'group_id' => (int)$afRow['group_id'],
+            'created_at' => $afRow['created_at'],
+            'booking_total' => floatval($afRow['booking_total']),
+        ];
+    }
+}
+
+// 4. Waterfall: allocate each client's fund to ALL their families in group creation order
 $clientFundAlloc = []; // client_id => [family_id => allocated_amount]
 foreach ($clientFundMap as $cId => $totalFund) {
-    if ($totalFund <= 0 || empty($clientFamilyPrice[$cId])) continue;
-    $famPrices = $clientFamilyPrice[$cId];
-    $famDates = [];
-    foreach ($memberMap as $m) {
-        if ((int)($m['sold_to'] ?? 0) === $cId) {
-            $fid = (int)($m['family_id'] ?? 0);
-            if ($fid > 0 && !isset($famDates[$fid])) {
-                $famDates[$fid] = $m['group_created_at'] ?? '9999-12-31';
-            }
-        }
-    }
-    asort($famDates);
-
+    if ($totalFund <= 0 || empty($clientAllFamilies[$cId])) continue;
     $remaining = $totalFund;
-    $clientFundAlloc[$cId] = [];
-    foreach ($famDates as $fid => $fdate) {
+    foreach ($clientAllFamilies[$cId] as $cf) {
         if ($remaining <= 0) break;
-        $famPrice = $famPrices[$fid] ?? 0;
-        $alloc = min($remaining, $famPrice);
-        $clientFundAlloc[$cId][$fid] = $alloc;
+        $alloc = min($remaining, $cf['booking_total']);
+        $clientFundAlloc[$cId][$cf['family_id']] = ($clientFundAlloc[$cId][$cf['family_id']] ?? 0) + $alloc;
         $remaining -= $alloc;
     }
 }
 
-// 4. Divide each family's allocated fund among its members proportionally by sold_price
+// 5. Divide each family's allocated fund among its members proportionally by sold_price
 $memberFundAlloc = []; // booking_id => fund_amount
 foreach ($memberMap as $bid => $m) {
     $cId = (int)($m['sold_to'] ?? 0);
     $fId = (int)($m['family_id'] ?? 0);
     $alloc = $clientFundAlloc[$cId][$fId] ?? 0;
     if ($alloc <= 0) continue;
-    $famPrice = $clientFamilyPrice[$cId][$fId] ?? 0;
+    // Total price of this family from this client (across all report members in this family)
+    $famPrice = 0;
+    foreach ($memberMap as $mm) {
+        if ((int)($mm['sold_to'] ?? 0) === $cId && (int)($mm['family_id'] ?? 0) === $fId) {
+            $famPrice += (float)($mm['sold_price'] ?? 0);
+        }
+    }
     if ($famPrice <= 0) continue;
     $memberPrice = (float)($m['sold_price'] ?? 0);
     $memberFundAlloc[$bid] = ($memberPrice / $famPrice) * $alloc;
 }
 
-// 5. Add fund allocation to each member's paid
+// 6. Add fund allocation to each member's paid
 foreach ($memberMap as $bid => &$m) {
     $m['fund_paid'] = $memberFundAlloc[$bid] ?? 0;
     $m['total_paid'] = (float)($m['paid'] ?? 0) + $m['fund_paid'];

@@ -100,6 +100,122 @@ try {
         exit;
     }
 
+    // ── Per-client fund allocation (waterfall across ALL client groups) ──
+    // Collect unique client IDs from this family's members
+    $clientIds = [];
+    foreach ($members as $m) {
+        $clientId = (int)($m['sold_to'] ?? 0);
+        if ($clientId > 0 && !in_array($clientId, $clientIds)) {
+            $clientIds[] = $clientId;
+        }
+    }
+
+    $clientFundMap = []; // client_id => fund_amount
+    if (!empty($clientIds)) {
+        $cPh = implode(',', array_fill(0, count($clientIds), '?'));
+        $fundStmt = $pdo->prepare("
+            SELECT ct.client_id, SUM(ct.amount) AS total_fund
+            FROM client_transactions ct
+            WHERE ct.client_id IN ({$cPh})
+              AND ct.tenant_id = ?
+              AND ct.type = 'credit' AND ct.transaction_of = 'fund' AND ct.currency = 'USD'
+            GROUP BY ct.client_id
+        ");
+        $fundStmt->execute(array_merge($clientIds, [$tenant_id]));
+        while ($row = $fundStmt->fetch(PDO::FETCH_ASSOC)) {
+            $clientFundMap[(int)$row['client_id']] = floatval($row['total_fund']);
+        }
+    }
+
+    // Fetch ALL families for these clients across ALL groups (not just this family)
+    $clientAllFamilies = []; // client_id => [{family_id, group_id, created_at, booking_total}]
+    if (!empty($clientIds)) {
+        $cPh = implode(',', array_fill(0, count($clientIds), '?'));
+        $allFamStmt = $pdo->prepare("
+            SELECT ub.sold_to AS client_id, ub.family_id, f.group_id, g.created_at,
+                   SUM(COALESCE(ub.sold_price, 0)) AS booking_total
+            FROM umrah_bookings ub
+            JOIN families f ON ub.family_id = f.family_id AND f.tenant_id = ub.tenant_id
+            JOIN umrah_groups g ON f.group_id = g.group_id AND f.tenant_id = g.tenant_id
+            WHERE ub.sold_to IN ({$cPh}) AND ub.tenant_id = ?
+              AND ub.status NOT IN ('refunded', 'cancelled')
+            GROUP BY ub.sold_to, ub.family_id, f.group_id, g.created_at
+            ORDER BY g.created_at ASC, g.group_id ASC, f.family_id ASC
+        ");
+        $allFamStmt->execute(array_merge($clientIds, [$tenant_id]));
+        while ($afRow = $allFamStmt->fetch(PDO::FETCH_ASSOC)) {
+            $cid = (int)$afRow['client_id'];
+            $clientAllFamilies[$cid][] = [
+                'family_id' => (int)$afRow['family_id'],
+                'group_id' => (int)$afRow['group_id'],
+                'created_at' => $afRow['created_at'],
+                'booking_total' => floatval($afRow['booking_total']),
+            ];
+        }
+    }
+
+    // Waterfall: allocate fund to ALL families in group creation order
+    $clientFundAlloc = []; // client_id => [family_id => allocated_amount]
+    foreach ($clientFundMap as $cId => $totalFund) {
+        if ($totalFund <= 0 || empty($clientAllFamilies[$cId])) continue;
+        $remaining = $totalFund;
+        foreach ($clientAllFamilies[$cId] as $cf) {
+            if ($remaining <= 0) break;
+            $alloc = min($remaining, $cf['booking_total']);
+            $clientFundAlloc[$cId][$cf['family_id']] = ($clientFundAlloc[$cId][$cf['family_id']] ?? 0) + $alloc;
+            $remaining -= $alloc;
+        }
+    }
+
+    // Determine family_id and client_id for this family
+    $familyIdVal = (int)($members[0]['family_id'] ?? 0);
+    $familyClientId = 0;
+    foreach ($members as $m) {
+        $cid = (int)($m['sold_to'] ?? 0);
+        if ($cid > 0) { $familyClientId = $cid; break; }
+    }
+
+    // Get group_id for this family
+    $familyGroupId = 0;
+    if ($familyIdVal > 0) {
+        $fgStmt = $pdo->prepare("SELECT group_id FROM families WHERE family_id = ? AND tenant_id = ?");
+        $fgStmt->execute([$familyIdVal, $tenant_id]);
+        $fgRow = $fgStmt->fetch(PDO::FETCH_ASSOC);
+        $familyGroupId = $fgRow ? (int)$fgRow['group_id'] : 0;
+    }
+
+    // Divide allocated fund among family members proportionally by sold_price
+    $memberFundAlloc = []; // booking_id => fund_amount
+    if ($familyClientId > 0 && $familyGroupId > 0) {
+        $allocAmount = $clientFundAlloc[$familyClientId][$familyGroupId] ?? 0;
+        if ($allocAmount > 0) {
+            $totalSoldPrice = 0;
+            foreach ($members as $m) {
+                if ((int)($m['sold_to'] ?? 0) === $familyClientId) {
+                    $totalSoldPrice += floatval($m['sold_price'] ?? 0);
+                }
+            }
+            if ($totalSoldPrice > 0) {
+                foreach ($members as $m) {
+                    $bid = (int)$m['booking_id'];
+                    if ((int)($m['sold_to'] ?? 0) === $familyClientId) {
+                        $share = (floatval($m['sold_price'] ?? 0) / $totalSoldPrice) * $allocAmount;
+                        $memberFundAlloc[$bid] = ($memberFundAlloc[$bid] ?? 0) + $share;
+                    }
+                }
+            }
+        }
+    }
+
+    // Add fund allocation to each member's paid
+    foreach ($members as &$m) {
+        $bid = (int)$m['booking_id'];
+        $m['fund_paid'] = $memberFundAlloc[$bid] ?? 0;
+        $m['total_paid'] = (float)($m['paid'] ?? 0) + $m['fund_paid'];
+        $m['due'] = max(0, (float)($m['sold_price'] ?? 0) - $m['total_paid']);
+    }
+    unset($m);
+
     // Build HTML for members
     ob_start();
     
@@ -198,11 +314,14 @@ try {
                         </span>
                     <?php endif; ?>
                     
-                    <!-- Financial Details - Below Name/Status -->
+                     <!-- Financial Details - Below Name/Status -->
                      <div class="member-financial-row" style="margin-top: 0.5rem; display: flex; gap: 1rem; flex-wrap: wrap;">
                          <span style="font-size: 0.75rem;"><strong><?= __('sold_price') ?>:</strong> <?= number_format($member['sold_price'] ?? 0, 2) ?> <?= htmlspecialchars($member['currency'] ?? 'USD') ?></span>
                          <?php if (!$hasRegularClient): ?>
-                         <span style="font-size: 0.75rem; color: #059669;"><strong><?= __('paid') ?>:</strong> <?= number_format($member['paid'] ?? 0, 2) ?> <?= htmlspecialchars($member['currency'] ?? 'USD') ?></span>
+                         <span style="font-size: 0.75rem; color: #059669;"><strong><?= __('paid') ?>:</strong> <?= number_format($member['total_paid'] ?? 0, 2) ?> <?= htmlspecialchars($member['currency'] ?? 'USD') ?></span>
+                         <?php if (floatval($member['fund_paid'] ?? 0) > 0): ?>
+                         <span style="font-size: 0.75rem; color: #0e7490;"><strong><?= __('fund') ?>:</strong> <?= number_format($member['fund_paid'] ?? 0, 2) ?> <?= htmlspecialchars($member['currency'] ?? 'USD') ?></span>
+                         <?php endif; ?>
                          <span style="font-size: 0.75rem; <?= (($member['due'] ?? 0) > 0) ? 'color: #ef4444;' : 'color: #059669;' ?>"><strong><?= __('due') ?>:</strong> <?= number_format($member['due'] ?? 0, 2) ?> <?= htmlspecialchars($member['currency'] ?? 'USD') ?></span>
                          <?php endif; ?>
                      </div>

@@ -118,6 +118,93 @@ if (!empty($groupId)) {
     }
 }
 
+// ── Per-client fund allocation (waterfall across ALL client groups) ──
+$clientIds = [];
+foreach ($memberMap as $m) {
+    $clientId = (int)($m['sold_to'] ?? 0);
+    if ($clientId > 0 && !in_array($clientId, $clientIds)) {
+        $clientIds[] = $clientId;
+    }
+}
+
+$clientFundMap = [];
+if (!empty($clientIds)) {
+    $cPh = implode(',', array_fill(0, count($clientIds), '?'));
+    $fundStmt = $pdo->prepare("
+        SELECT ct.client_id, SUM(ct.amount) AS total_fund
+        FROM client_transactions ct
+        WHERE ct.client_id IN ({$cPh})
+          AND ct.tenant_id = ?
+          AND ct.type = 'credit' AND ct.transaction_of = 'fund' AND ct.currency = 'USD'
+        GROUP BY ct.client_id
+    ");
+    $fundStmt->execute(array_merge($clientIds, [$tenant_id]));
+    while ($row = $fundStmt->fetch(PDO::FETCH_ASSOC)) {
+        $clientFundMap[(int)$row['client_id']] = floatval($row['total_fund']);
+    }
+}
+
+$clientAllFamilies = [];
+if (!empty($clientIds)) {
+    $cPh = implode(',', array_fill(0, count($clientIds), '?'));
+    $allFamStmt = $pdo->prepare("
+        SELECT ub.sold_to AS client_id, ub.family_id, f.group_id, g.created_at,
+               SUM(COALESCE(ub.sold_price, 0)) AS booking_total
+        FROM umrah_bookings ub
+        JOIN families f ON ub.family_id = f.family_id AND f.tenant_id = ub.tenant_id
+        JOIN umrah_groups g ON f.group_id = g.group_id AND f.tenant_id = g.tenant_id
+        WHERE ub.sold_to IN ({$cPh}) AND ub.tenant_id = ?
+          AND ub.status NOT IN ('refunded', 'cancelled')
+        GROUP BY ub.sold_to, ub.family_id, f.group_id, g.created_at
+        ORDER BY g.created_at ASC, g.group_id ASC, f.family_id ASC
+    ");
+    $allFamStmt->execute(array_merge($clientIds, [$tenant_id]));
+    while ($afRow = $allFamStmt->fetch(PDO::FETCH_ASSOC)) {
+        $cid = (int)$afRow['client_id'];
+        $clientAllFamilies[$cid][] = [
+            'family_id' => (int)$afRow['family_id'],
+            'group_id' => (int)$afRow['group_id'],
+            'created_at' => $afRow['created_at'],
+            'booking_total' => floatval($afRow['booking_total']),
+        ];
+    }
+}
+
+$clientFundAlloc = [];
+foreach ($clientFundMap as $cId => $totalFund) {
+    if ($totalFund <= 0 || empty($clientAllFamilies[$cId])) continue;
+    $remaining = $totalFund;
+    foreach ($clientAllFamilies[$cId] as $cf) {
+        if ($remaining <= 0) break;
+        $alloc = min($remaining, $cf['booking_total']);
+        $clientFundAlloc[$cId][$cf['family_id']] = ($clientFundAlloc[$cId][$cf['family_id']] ?? 0) + $alloc;
+        $remaining -= $alloc;
+    }
+}
+
+$memberFundAlloc = [];
+foreach ($memberMap as $bid => $m) {
+    $cId = (int)($m['sold_to'] ?? 0);
+    $fId = (int)($m['family_id'] ?? 0);
+    $alloc = $clientFundAlloc[$cId][$fId] ?? 0;
+    if ($alloc <= 0) continue;
+    $famPrice = 0;
+    foreach ($memberMap as $mm) {
+        if ((int)($mm['sold_to'] ?? 0) === $cId && (int)($mm['family_id'] ?? 0) === $fId) {
+            $famPrice += (float)($mm['sold_price'] ?? 0);
+        }
+    }
+    if ($famPrice <= 0) continue;
+    $memberPrice = (float)($m['sold_price'] ?? 0);
+    $memberFundAlloc[$bid] = ($memberPrice / $famPrice) * $alloc;
+}
+
+foreach ($memberMap as $bid => &$m) {
+    $m['fund_paid'] = $memberFundAlloc[$bid] ?? 0;
+    $m['total_paid'] = (float)($m['paid'] ?? 0) + $m['fund_paid'];
+}
+unset($m);
+
 // Document language
 $docLanguage = isset($_GET['language']) && in_array($_GET['language'], ['ps', 'dari', 'en']) ? $_GET['language'] : 'dari';
 $agencyName = translate_name($settings['agency_name'] ?? '', $docLanguage);
@@ -332,12 +419,12 @@ foreach ($clientGroups as $clientName => $famGroups) {
                 $clientTotals[$cur] = ['price' => 0.0, 'bank' => 0.0];
             }
             $clientTotals[$cur]['price'] += (float)($fm['sold_price'] ?? 0);
-            $clientTotals[$cur]['bank']  += (float)($fm['received_bank_payment'] ?? 0);
+            $clientTotals[$cur]['bank']  += (float)($fm['total_paid'] ?? 0);
             if (!isset($grandTotals[$cur])) {
                 $grandTotals[$cur] = ['price' => 0.0, 'bank' => 0.0];
             }
             $grandTotals[$cur]['price'] += (float)($fm['sold_price'] ?? 0);
-            $grandTotals[$cur]['bank']  += (float)($fm['received_bank_payment'] ?? 0);
+            $grandTotals[$cur]['bank']  += (float)($fm['total_paid'] ?? 0);
         }
     }
     $palette = $roomColors[$colorIdx % count($roomColors)];
@@ -360,7 +447,7 @@ foreach ($clientGroups as $clientName => $famGroups) {
             $sheet->setCellValue('G' . $row, client_room_type_label($fm['room_type'] ?? '', $L));
             $sheet->setCellValue('H' . $row, $fm['client_name'] ?? '');
             $sheet->setCellValue('I' . $row, number_format((float)($fm['sold_price'] ?? 0), 2) . ' ' . $cur);
-            $sheet->setCellValue('J' . $row, number_format((float)($fm['received_bank_payment'] ?? 0), 2));
+            $sheet->setCellValue('J' . $row, number_format((float)($fm['total_paid'] ?? 0), 2));
             $sheet->setCellValue('K' . $row, $fm['remarks'] ?? '');
 
             $sheet->getStyle('A' . $row . ':' . $lastCol . $row)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($tint);
