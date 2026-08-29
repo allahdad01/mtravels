@@ -162,6 +162,20 @@ try {
     $filepath = $uploadDir . $filename;
     $relativePath = '/uploads/' . $tenantId . '/' . $branchId . '/umrah/' . ($familyId ? $familyId . '/' : '') . $filename;
     
+    // Clean up old photo if re-extracting for the same family
+    if ($familyId && $tenantId && $branchId) {
+        $sql = "SELECT photo_path FROM umrah_bookings WHERE family_id = ? AND tenant_id = ? AND branch_id = ? AND photo_path IS NOT NULL AND photo_path != '' LIMIT 1";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$familyId, $tenantId, $branchId]);
+        $old = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($old && $old['photo_path']) {
+            $oldFile = $uploadBase . $old['photo_path'];
+            if (file_exists($oldFile)) {
+                @unlink($oldFile);
+            }
+        }
+    }
+    
     if (!imagejpeg($resizedImage, $filepath, 85)) {
         throw new Exception('Failed to save image');
     }

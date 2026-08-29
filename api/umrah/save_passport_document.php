@@ -72,6 +72,20 @@ try {
         }
     }
 
+    // Clean up old passport document if re-uploading for the same family
+    if ($familyId) {
+        $sql = "SELECT passport_path FROM umrah_bookings WHERE family_id = ? AND tenant_id = ? AND branch_id = ? AND passport_path IS NOT NULL AND passport_path != '' LIMIT 1";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$familyId, $tenantId, $branchId]);
+        $old = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($old && $old['passport_path']) {
+            $oldFile = $uploadBase . $old['passport_path'];
+            if (file_exists($oldFile)) {
+                @unlink($oldFile);
+            }
+        }
+    }
+
     // Generate secure filename
     $timestamp = time();
     $random = bin2hex(random_bytes(8));

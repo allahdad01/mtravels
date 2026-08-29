@@ -657,7 +657,7 @@ async function saveDocumentFileIdentical(file, documentType) {
             formData.append('family_id', familyId);
         }
         
-        const response = await fetch('/api/umrah/save_passport_document.php', {
+        const response = await fetch('../api/umrah/save_passport_document.php', {
             method: 'POST',
             body: formData,
             credentials: 'same-origin'
@@ -710,7 +710,7 @@ async function extractPhotoFromPassportIdentical(file, familyId) {
                 try {
                     const imageData = e.target.result;
                     
-                    const response = await fetch('/api/umrah/auto_extract_passport_photo.php', {
+                    const response = await fetch('../api/umrah/auto_extract_passport_photo.php', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -751,10 +751,49 @@ async function extractPhotoFromPassportIdentical(file, familyId) {
 
 /**
  * Perform client-side OCR (IDENTICAL to single-member)
+ * First tries server-side extraction (Gemini AI), then falls back to Tesseract.js.
  */
 async function performClientSideOCRIdentical(file, documentType, fileIndex, passportPath = null, photoPath = null) {
     let fileUrl = null;
     try {
+        // STEP 1: Try server-side Gemini extraction
+        try {
+            const formData = new FormData();
+            formData.append('document_file', file);
+            formData.append('document_type', 'passport');
+            
+            const serverResponse = await fetch('../api/umrah/extract_text.php', {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'
+            });
+            
+            const serverData = await serverResponse.json();
+            
+            if (serverResponse.ok && serverData.success && serverData.data) {
+                const data = serverData.data;
+                const method = serverData.extraction_method || 'unknown';
+                const memberIndex = fileIndex + 1;
+                console.log(`✅ Gemini/AI extraction succeeded for member ${memberIndex} via ${method}`);
+                
+                if (passportPath) data.passport_path = passportPath;
+                if (photoPath) data.photo_path = photoPath;
+                
+                uploadedDocuments[memberIndex] = data;
+                try {
+                    fillMemberFormIdentical(memberIndex, data);
+                    console.log(`✅ Member form ${memberIndex} filled successfully via ${method}`);
+                } catch (err) {
+                    console.error(`Error filling member form ${memberIndex}:`, err);
+                }
+                displayUploadedFiles();
+                return;
+            }
+        } catch (serverErr) {
+            console.warn('Server-side extraction failed, falling back to Tesseract.js:', serverErr.message);
+        }
+        
+        // STEP 2: Fallback to client-side Tesseract.js
         const worker = await initializeTesseractWorker();
         
         // Create file URL for Tesseract

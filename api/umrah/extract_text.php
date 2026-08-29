@@ -9,6 +9,7 @@
  */
 
 require_once '../../includes/document_patterns.php';
+require_once '../../includes/gemini_passport.php';
 require_once '../../vendor/autoload.php';
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -72,6 +73,55 @@ if (strpos($contentType, 'application/json') !== false) {
             }
             $ocrMethod = 'pdf-parser';
         } elseif (in_array($mimeType, ['image/jpeg', 'image/png', 'image/jpg'])) {
+            // Try Gemini AI first if API key is configured
+            $geminiKey = getGeminiApiKey();
+            if (!empty($geminiKey)) {
+                $geminiResult = extractPassportWithGemini($file['tmp_name'], $mimeType);
+                if ($geminiResult['success'] && $documentType === 'passport') {
+                    // Gemini succeeded — build response directly
+                    $gd = $geminiResult['data'];
+                    // Parse MRZ lines if Gemini found them, for cross-validation
+                    $mrzData = null;
+                    if (!empty($gd['mrz_line1']) && !empty($gd['mrz_line2'])) {
+                        $mrzData = parseMRZLines($gd['mrz_line1'] . "\n" . $gd['mrz_line2']);
+                    }
+                    $validation = $mrzData ? crossValidatePassport($gd, $mrzData) : null;
+                    $data = [
+                        'full_name'            => trim(($gd['given_names'] ?? '') . ' ' . ($gd['surname'] ?? '')),
+                        'surname'              => $gd['surname'] ?? null,
+                        'given_names'          => $gd['given_names'] ?? null,
+                        'passport_number'      => $gd['passport_number'] ?? null,
+                        'date_of_birth'        => $gd['date_of_birth'] ?? null,
+                        'expiry_date'          => $gd['date_of_expiry'] ?? null,
+                        'gender'               => $gd['gender'] ?? null,
+                        'nationality'          => $gd['nationality'] ?? null,
+                        'place_of_birth'       => $gd['place_of_birth'] ?? null,
+                        'father_name'          => $gd['father_name'] ?? null,
+                        'occupation'           => $gd['occupation'] ?? null,
+                        'date_of_issue'        => $gd['date_of_issue'] ?? null,
+                        'extraction_method'    => 'gemini-ai',
+                        'extraction_confidence'=> $validation ? ($validation['confidence'] === 'high' ? 95 : ($validation['confidence'] === 'medium' ? 80 : 60)) : 70,
+                        'mrz_valid'            => $mrzData ? ($mrzData['mrz_valid'] ?? false) : false,
+                        'gemini_raw'           => $gd,
+                        'mrz_cross_validation' => $validation,
+                    ];
+                    $response = [
+                        'success'           => true,
+                        'message'           => 'Passport extracted via Gemini AI',
+                        'data'              => $data,
+                        'document_type'     => $documentType,
+                        'extraction_method' => 'gemini-ai',
+                        'ocr_method'        => 'gemini-2.5-flash',
+                        'confidence'        => $data['extraction_confidence'],
+                        'mrz_valid'         => $data['mrz_valid'],
+                        'cross_validation'  => $validation,
+                    ];
+                    http_response_code(200);
+                    echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+                    exit;
+                }
+                // Gemini failed — fall through to PaddleOCR
+            }
             // For images, use server-side PaddleOCR (same as test_document_extractor.php)
             $ocrText = extractTextViaPaddleOCR($file['tmp_name']);
             if (empty($ocrText)) {

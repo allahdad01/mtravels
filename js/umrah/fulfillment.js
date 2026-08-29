@@ -902,7 +902,7 @@ function hotelMemberCardHtml(m, data) {
             </div>
             <div class="form-group col-md-3 mb-1">
                 <label style="font-size:0.8rem;">Cost (${currentFulfillmentCurrency})</label>
-                <input type="number" class="form-control form-control-sm f-eb-makkah-cost-usd" readonly value="${m.eb_makkah_cost_usd != null ? m.eb_makkah_cost_usd : ''}">
+                <input type="number" class="form-control form-control-sm f-eb-makkah-cost-usd" readonly value="${m.eb_makkah_cost_usd != null ? Number(m.eb_makkah_cost_usd).toFixed(2) : ''}">
             </div>
         </div>
         <div class="row f-city-cost-section mb-2" style="border-left:3px solid #be185d;padding-left:8px;">
@@ -930,7 +930,7 @@ function hotelMemberCardHtml(m, data) {
             </div>
             <div class="form-group col-md-3 mb-1">
                 <label style="font-size:0.8rem;">Cost (${currentFulfillmentCurrency})</label>
-                <input type="number" class="form-control form-control-sm f-eb-madinah-cost-usd" readonly value="${m.eb_madinah_cost_usd != null ? m.eb_madinah_cost_usd : ''}">
+                <input type="number" class="form-control form-control-sm f-eb-madinah-cost-usd" readonly value="${m.eb_madinah_cost_usd != null ? Number(m.eb_madinah_cost_usd).toFixed(2) : ''}">
             </div>
         </div>
         <div class="row mt-1">
@@ -1805,7 +1805,7 @@ function renderFulfillmentServices(data) {
                     '</div>',
                     '<div class="form-group col-md-3 mb-1">',
                         '<label style="font-size:0.8rem;">Cost (' + currentFulfillmentCurrency + ')</label>',
-                        '<input type="number" class="form-control form-control-sm f-makkah-cost-usd" readonly value="' + (service.makkah_cost_amount != null ? service.makkah_cost_amount : '') + '">',
+                        '<input type="number" class="form-control form-control-sm f-makkah-cost-usd" readonly value="' + (service.makkah_cost_amount != null ? Number(service.makkah_cost_amount).toFixed(2) : '') + '">',
                     '</div>',
                 '</div>',
                 '<div class="row f-city-cost-section mb-2" style="border-left:3px solid #be185d;padding-left:8px;">',
@@ -1835,7 +1835,7 @@ function renderFulfillmentServices(data) {
                     '</div>',
                     '<div class="form-group col-md-3 mb-1">',
                         '<label style="font-size:0.8rem;">Cost (' + currentFulfillmentCurrency + ')</label>',
-                        '<input type="number" class="form-control form-control-sm f-madinah-cost-usd" readonly value="' + (service.madinah_cost_amount != null ? service.madinah_cost_amount : '') + '">',
+                        '<input type="number" class="form-control form-control-sm f-madinah-cost-usd" readonly value="' + (service.madinah_cost_amount != null ? Number(service.madinah_cost_amount).toFixed(2) : '') + '">',
                     '</div>',
                 '</div>'
                 ].join('') : `

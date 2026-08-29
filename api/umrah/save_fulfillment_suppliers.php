@@ -189,10 +189,6 @@ try {
                 $pdo->prepare("DELETE FROM supplier_transactions WHERE id IN ($ph) AND tenant_id = ?")
                     ->execute(array_merge($delIds, [$tenant_id]));
             }
-
-            if ($minId < PHP_INT_MAX) {
-                umrahRebuildRunningBalances($pdo, $tenant_id, $branch_id, $oldSid, $minId);
-            }
         }
     }
 
@@ -236,21 +232,25 @@ try {
         $chkTxn->execute([$newSid, $bookingId, "Fulfillment for {$serviceType}:%", $tenant_id]);
         if ((int)$chkTxn->fetchColumn() > 0) continue;
 
+        // Insert with balance = 0; rebuild will fix it below
         if ($supType === 'External') {
             $pdo->prepare("UPDATE suppliers SET balance = balance - ? WHERE id = ? AND tenant_id = ?")
                 ->execute([$totalCost, $newSid, $tenant_id]);
-            $balStmt = $pdo->prepare("SELECT balance FROM suppliers WHERE id = ? AND tenant_id = ?");
-            $balStmt->execute([$newSid, $tenant_id]);
-            $newBalance = (float)$balStmt->fetchColumn();
-            $pdo->prepare("
-                INSERT INTO supplier_transactions (tenant_id, branch_id, supplier_id, reference_id, transaction_type, amount, remarks, balance, transaction_of, receipt)
-                VALUES (?, ?, ?, ?, 'Debit', ?, ?, ?, 'umrah', '')")
-                ->execute([$tenant_id, $branch_id, $newSid, $bookingId, $totalCost, $remark, $newBalance]);
-        } else {
-            $pdo->prepare("
-                INSERT INTO supplier_transactions (tenant_id, branch_id, supplier_id, reference_id, transaction_type, amount, remarks, balance, transaction_of, receipt)
-                VALUES (?, ?, ?, ?, 'Debit', ?, ?, 0, 'umrah', '')")
-                ->execute([$tenant_id, $branch_id, $newSid, $bookingId, $totalCost, $remark]);
+        }
+        $pdo->prepare("
+            INSERT INTO supplier_transactions (tenant_id, branch_id, supplier_id, reference_id, transaction_type, amount, remarks, balance, transaction_of, receipt)
+            VALUES (?, ?, ?, ?, 'Debit', ?, ?, 0, 'umrah', '')")
+            ->execute([$tenant_id, $branch_id, $newSid, $bookingId, $totalCost, $remark]);
+    }
+
+    // --- Step 5: Rebuild running balances for ALL affected suppliers ---
+    $allAffectedSupIds = array_unique(array_merge(array_keys($oldSupIds), array_keys($supplierCosts)));
+    foreach ($allAffectedSupIds as $supId) {
+        $minTxnStmt = $pdo->prepare("SELECT MIN(id) FROM supplier_transactions WHERE supplier_id = ? AND tenant_id = ? AND branch_id = ?");
+        $minTxnStmt->execute([$supId, $tenant_id, $branch_id]);
+        $minId = (int)($minTxnStmt->fetchColumn() ?: 0);
+        if ($minId > 0) {
+            umrahRebuildRunningBalances($pdo, $tenant_id, $branch_id, $supId, $minId);
         }
     }
 

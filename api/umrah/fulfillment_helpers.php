@@ -967,12 +967,12 @@ function fulfillment_save(PDO $pdo, array $in): array
                 'city_makkah_currency'    => $makkah_currency,
                 'city_makkah_cost'        => $makkah_cost !== null ? (string)$makkah_cost : '',
                 'city_makkah_rate'        => $makkah_rate !== null ? (string)$makkah_rate : '',
-                'city_makkah_cost_amount' => $makkah_cost_amount !== null ? (string)$makkah_cost_amount : '',
+                'city_makkah_cost_amount' => $makkah_cost_amount !== null ? (string)round((float)$makkah_cost_amount, 2) : '',
                 'city_makkah_supplier_id' => $makkah_supplier_id !== null ? (string)$makkah_supplier_id : '',
                 'city_madinah_currency'    => $madinah_currency,
                 'city_madinah_cost'        => $madinah_cost !== null ? (string)$madinah_cost : '',
                 'city_madinah_rate'        => $madinah_rate !== null ? (string)$madinah_rate : '',
-                'city_madinah_cost_amount' => $madinah_cost_amount !== null ? (string)$madinah_cost_amount : '',
+                'city_madinah_cost_amount' => $madinah_cost_amount !== null ? (string)round((float)$madinah_cost_amount, 2) : '',
                 'city_madinah_supplier_id' => $madinah_supplier_id !== null ? (string)$madinah_supplier_id : '',
             ];
             $insD = $pdo->prepare("INSERT INTO umrah_fulfillment_details (tenant_id, branch_id, fulfillment_id, detail_key, detail_value)
@@ -1357,6 +1357,7 @@ function fulfillment_save(PDO $pdo, array $in): array
         }
 
         // ---- Extra bed cost/sold overrides for pseudo-members ------------------
+        $ebAffectedSupIds = [];
         if ($extra_bed_costs && is_array($extra_bed_costs)) {
             foreach ($extra_bed_costs as $ebBid => $ebData) {
                 $ebBookingId = (int)$ebBid;
@@ -1629,6 +1630,7 @@ function fulfillment_save(PDO $pdo, array $in): array
                                 if ($ebOldTxns) {
                                     foreach ($ebOldTxns as $ot) {
                                         $otSupId = (int)$ot['supplier_id'];
+                                        $ebAffectedSupIds[$otSupId] = true;
                                         $ebNet = $ot['transaction_type'] === 'Debit' ? (float)$ot['amount'] : -((float)$ot['amount']);
                                         if ($ebNet != 0.0) {
                                             $ebTypeStmt = $pdo->prepare("SELECT supplier_type FROM suppliers WHERE id = ? AND tenant_id = ?");
@@ -1666,6 +1668,7 @@ function fulfillment_save(PDO $pdo, array $in): array
                                         (tenant_id, branch_id, supplier_id, reference_id, transaction_type, amount, remarks, balance, transaction_of, receipt)
                                         VALUES (?, ?, ?, ?, 'Debit', ?, ?, ?, 'umrah', '')")
                                         ->execute([$tenant_id, $branch_id, $ebCitySupId, $ebBkId, $ebCityCost, $ebRemark, $ebNewBal]);
+                                    $ebAffectedSupIds[$ebCitySupId] = true;
                                 }
                             }
                         } elseif ($ebCost !== null && $ebCurrency) {
@@ -1712,6 +1715,7 @@ function fulfillment_save(PDO $pdo, array $in): array
                                       AND (remarks = ? OR remarks = ?) AND tenant_id = ?");
                                 $ebOldTxnStmt->execute([$ebSupId, $ebBkId, $ebRemark, $ebCorrRemark, $tenant_id]);
                                 $ebOldTxns = $ebOldTxnStmt->fetchAll(PDO::FETCH_ASSOC);
+                                $ebAffectedSupIds[$ebSupId] = true;
                                 if ($ebOldTxns) {
                                     $ebNet = 0.0;
                                     foreach ($ebOldTxns as $ot) {
@@ -1775,6 +1779,18 @@ function fulfillment_save(PDO $pdo, array $in): array
                             $insEbD->execute([$tenant_id, $branch_id, $ebFid, $k, $v]);
                         }
                     }
+                }
+            }
+        }
+
+        // Rebuild running balances for suppliers affected by extra bed changes
+        if ($ebAffectedSupIds) {
+            foreach (array_keys($ebAffectedSupIds) as $ebSupId) {
+                $ebMinStmt = $pdo->prepare("SELECT MIN(id) FROM supplier_transactions WHERE supplier_id = ? AND tenant_id = ? AND branch_id = ?");
+                $ebMinStmt->execute([$ebSupId, $tenant_id, $branch_id]);
+                $ebMinId = (int)($ebMinStmt->fetchColumn() ?: 0);
+                if ($ebMinId > 0) {
+                    umrahRebuildRunningBalances($pdo, $tenant_id, $branch_id, $ebSupId, $ebMinId);
                 }
             }
         }

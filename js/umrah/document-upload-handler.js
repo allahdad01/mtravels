@@ -123,7 +123,7 @@ async function saveDocumentFile(file, documentType) {
             formData.append('family_id', familyId);
         }
         
-        const response = await fetch('/api/umrah/save_passport_document.php', {
+        const response = await fetch('../api/umrah/save_passport_document.php', {
             method: 'POST',
             body: formData,
             credentials: 'same-origin'
@@ -165,7 +165,7 @@ async function extractPhotoFromPassport(file, familyId) {
             try {
                 const imageData = e.target.result;
                 
-                const response = await fetch('/api/umrah/auto_extract_passport_photo.php', {
+                const response = await fetch('../api/umrah/auto_extract_passport_photo.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -247,13 +247,51 @@ async function initializeTesseractWorker() {
 
 /**
  * Perform client-side OCR using Tesseract.js
+ * First tries server-side extraction (Gemini AI → PaddleOCR → MRZ),
+ * then falls back to browser-based Tesseract.js if needed.
  */
 async function performClientSideOCR(file, documentType) {
     let fileUrl = null;
     const startTime = performance.now();
     
     try {
-        showDocumentStatus(documentType, `⏳ Starting browser-based OCR (Tesseract.js)...`, 'info');
+        // STEP 1: Try server-side extraction (Gemini AI first, then PaddleOCR)
+        showDocumentStatus(documentType, `⏳ Uploading image for AI extraction...`, 'info');
+        
+        try {
+            const formData = new FormData();
+            formData.append('document_file', file);
+            formData.append('document_type', documentType);
+            
+            const serverResponse = await fetch('../api/umrah/extract_text.php', {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'
+            });
+            
+            const serverData = await serverResponse.json();
+            
+            if (serverResponse.ok && serverData.success) {
+                fillUmrahForm(serverData.data, documentType);
+                
+                const method = serverData.extraction_method || 'unknown';
+                const confidence = serverData.confidence ? Math.round(serverData.confidence) : 0;
+                const totalTime = (performance.now() - startTime) / 1000;
+                const label = method === 'gemini-ai' ? 'Gemini AI' : 
+                              method === 'paddleocr-server' ? 'PaddleOCR' : method;
+                const mrzTag = serverData.mrz_valid ? '+ MRZ' : '';
+                showDocumentStatus(documentType, 
+                    `✅ Extracted via ${label} ${mrzTag} (${confidence}%, ${totalTime.toFixed(1)}s)`, 
+                    'success'
+                );
+                return;
+            }
+        } catch (serverErr) {
+            console.warn('Server-side extraction failed, falling back to Tesseract.js:', serverErr.message);
+        }
+        
+        // STEP 2: Fallback to client-side Tesseract.js
+        showDocumentStatus(documentType, `⏳ Server extraction unavailable — using browser OCR (Tesseract.js)...`, 'info');
 
         
         // Create image URL for Tesseract
@@ -292,7 +330,7 @@ async function performClientSideOCR(file, documentType) {
         // Send OCR text to server for MRZ parsing
         showDocumentStatus(documentType, `⏳ Extracting data with server-side MRZ parsing...`, 'info');
         
-        const response = await fetch('/api/umrah/extract_text.php', {
+        const response = await fetch('../api/umrah/extract_text.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

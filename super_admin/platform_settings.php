@@ -651,6 +651,28 @@ input:checked + .slider:before {
                                 </div>
                             </div>
 
+                            <!-- AI / Gemini Configuration Card -->
+                            <div class="sa-card">
+                                <div class="sa-card-hdr">
+                                    <h3><i class="feather icon.cpu" style="margin-right:8px"></i>AI Passport Extraction (Gemini)</h3>
+                                </div>
+                                <div class="sa-card-body">
+                                    <div class="form-grid">
+                                        <div class="form-group" style="grid-column: 1 / -1">
+                                            <label class="form-label" for="gemini_api_key">Gemini API Key</label>
+                                            <input type="password" class="form-control" id="gemini_api_key" name="gemini_api_key"
+                                                   value="<?= htmlspecialchars($settings_map['gemini_api_key'] ?? '') ?>"
+                                                   placeholder="AIza...">
+                                            <small style="color:var(--muted);font-size:0.78rem;margin-top:4px;display:block">
+                                                Used for AI-powered passport image extraction. Get a key at
+                                                <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>.
+                                                Leave empty to disable Gemini and fall back to Tesseract.js / MRZ only.
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Action Buttons -->
                             <div class="action-buttons">
                                 <button type="button" class="sa-btn sa-btn-ghost" onclick="resetForm()">

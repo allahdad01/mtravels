@@ -47,6 +47,7 @@ $contact_instagram = $_POST['contact_instagram'] ?? '';
 $default_currency = $_POST['default_currency'] ?? '';
 $max_users_per_tenant = $_POST['max_users_per_tenant'] ?? '';
 $api_enabled = $_POST['api_enabled'] ?? '';
+$gemini_api_key = $_POST['gemini_api_key'] ?? '';
 
 // SMTP configuration
 $smtp_host = $_POST['smtp_host'] ?? '';
@@ -224,6 +225,7 @@ if (empty($errors)) {
         ['key' => 'smtp_from_email', 'value' => $smtp_from_email, 'type' => 'string', 'description' => 'Email address to send from'],
         ['key' => 'smtp_from_name', 'value' => $smtp_from_name, 'type' => 'string', 'description' => 'Name to display in sent emails'],
         ['key' => 'smtp_enabled', 'value' => $smtp_enabled, 'type' => 'integer', 'description' => 'Enable/Disable SMTP email sending'],
+        ['key' => 'gemini_api_key', 'value' => $gemini_api_key, 'type' => 'string', 'description' => 'Google Gemini API key for AI passport extraction'],
     ];
 
     // Handle file uploads - only add to settings if new files were uploaded
@@ -268,7 +270,8 @@ if (empty($errors)) {
         'smtp_username' => $smtp_username,
         'smtp_from_email' => $smtp_from_email,
         'smtp_from_name' => $smtp_from_name,
-        'smtp_enabled' => $smtp_enabled
+        'smtp_enabled' => $smtp_enabled,
+        'gemini_api_key_set' => !empty($gemini_api_key),
     ]);
     $ip_address = $_SERVER['REMOTE_ADDR'];
     $stmt->execute([$user_id, $details, $ip_address]);

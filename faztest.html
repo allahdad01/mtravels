@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/js/bootstrap.min.js"></script>
+</head>
+<body>
+<div id="pdfUploadZone" style="min-height: 120px;"></div>
+<form id="bookTicketForm">
+<input type="text" id="pnr">
+<input type="text" id="issueDate">
+<input type="number" id="adultCount" value="1">
+<div id="passengersContainer">
+  <div class="passenger-row" data-passenger="1"><input type="text" class="passenger-name" id="passengerName_1"></div>
+</div>
+<div id="flightLegsContainer">
+  <div class="flight-leg-row border rounded p-3 mb-3" data-leg="1">
+    <div class="form-row">
+      <div class="form-group col-md-3 mb-2"><label class="leg-label">From *</label><input type="text" class="form-control leg-origin" id="origin" required></div>
+      <div class="form-group col-md-3 mb-2"><label class="leg-label">To *</label><input type="text" class="form-control leg-destination" id="destination" required></div>
+      <div class="form-group col-md-3 mb-2"><label class="leg-label">Airline</label><input type="text" class="form-control leg-airline" id="airline"></div>
+      <div class="form-group col-md-3 mb-2"><label class="leg-label">Flight Number</label><input type="text" class="form-control leg-flight-number" id="flightNumber"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group col-md-3 mb-2"><label class="leg-label">Departure Date</label><input type="date" class="form-control leg-date" id="departureDate" required></div>
+      <div class="form-group col-md-3 mb-2"><label class="leg-label">Departure Time</label><input type="time" class="form-control leg-time" id="departureTime" required></div>
+      <div class="form-group col-md-3 mb-2"><label class="leg-label">Arrival Date</label><input type="date" class="form-control leg-arrival-date" id="arrivalDate"></div>
+      <div class="form-group col-md-3 mb-2"><label class="leg-label">Arrival Time</label><input type="time" class="form-control leg-arrival-time" id="arrivalTime"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group col-md-4 mb-2"><label class="leg-label">Duration</label><input type="text" class="form-control leg-duration" id="duration" placeholder="e.g., 2h 30m" readonly></div>
+      <div class="form-group col-md-4 mb-2 leg-stopover-wrap" style="display: none;"><label class="leg-label">Stopover</label><input type="text" class="form-control leg-stopover" id="stopover"></div>
+    </div>
+    <small class="form-text text-muted">Origin/Destination auto-filled from segments</small>
+  </div>
+</div>
+<div id="flightRoutePreview" class="form-text text-info mb-2" style="font-size:12px;"></div>
+<div id="flightStops" class="form-text text-muted" style="font-size:12px; display:none;"></div>
+<input type="hidden" id="ticketPdfFile">
+</form>
+<button type="button" id="addFlightLegBtn">Add Leg</button>
+
+<script>
+window.__errors = [];
+window.onerror = function (msg, src, line, col) { window.__errors.push(msg + ' @ ' + line); };
+</script>
+<script src="js/ticket/flight-legs.js?v=14"></script>
+<script src="js/ticket/pdf-upload-handler.js?v=14"></script>
+<div id="result">pending</div>
+<script>
+window.onload = function () {
+  setTimeout(function () {
+    try {
+      fillTicketForm({
+        is_group_booking: false,
+        booking_reference: '34638',
+        total_passengers: 1,
+        passengers: [{
+          passenger_name: 'FAZALAMIN NIAZGARAWAL',
+          pnr: '1D9021',
+          super_pnr: '34638',
+          ticket_number: '3849492688999',
+          origin: 'OSL',
+          destination: 'KBL',
+          trip_type: 'Multi Segment',
+          departure_date: '2026-08-13',
+          departure_time: '14:50',
+          arrival_time: '10:00',
+          arrival_date: '2026-08-14',
+          airline: 'Pegasus, Kam Air',
+          airline_code: 'PC, RQ',
+          flight_number: 'PC1274, RQ9920',
+          segments: [
+            { airline: 'Pegasus', airline_code: 'PC', flight_number: 'PC1274', origin: 'OSL', destination: 'SAW', date: '2026-08-13', departure_date: '2026-08-13', arrival_date: '2026-08-13', departure_time: '14:50', dep_time: '14:50', arrival_time: '19:35', arr_time: '19:35' },
+            { airline: 'Kam Air', airline_code: 'RQ', flight_number: 'RQ9920', origin: 'SAW', destination: 'KBL', date: '2026-08-14', departure_date: '2026-08-14', arrival_date: '2026-08-14', departure_time: '04:00', dep_time: '04:00', arrival_time: '10:00', arr_time: '10:00' }
+          ]
+        }]
+      });
+
+      var get = function (id) { return document.getElementById(id).value; };
+      var legsJson = window.collectFlightLegs();
+      var rowCount = document.querySelectorAll('#flightLegsContainer > .flight-leg-row').length;
+
+      document.getElementById('result').textContent =
+        'rowCount=' + rowCount +
+        '; pnr="' + get('pnr') + '"' +
+        '; issueDate="' + get('issueDate') + '"' +
+        '; legs=' + legsJson +
+        '; errors=' + JSON.stringify(window.__errors);
+    } catch (e) {
+      document.getElementById('result').textContent = 'THREW: ' + e.message + ' ' + e.stack;
+    }
+  }, 200);
+};
+</script>
+</body>
+</html>

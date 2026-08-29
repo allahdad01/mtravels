@@ -283,11 +283,13 @@ function cleanMRZLine($line) {
 
 /**
  * Convert 2-digit year to 4-digit year (ICAO standard)
- * Uses rolling window: 00-30 = 2000-2030, 31-99 = 1931-1999
+ * Uses rolling window relative to current year + 40yr lookahead.
+ * 00-59 → 2000-2059, 60-99 → 1960-1999
+ * This covers modern passport DOBs (1960s-2000s) and expiry dates (2020s-2050s).
  */
 function convertMRZYear($year2digit) {
     $year = intval($year2digit);
-    if ($year <= 30) {
+    if ($year <= 59) {
         return 2000 + $year;
     } else {
         return 1900 + $year;
@@ -486,10 +488,15 @@ function validateFieldChecksum($field, $checkDigit) {
  * @param string[] $givenTokens   Letter words of the given names
  */
 function correctNameByCompositeCheck($line1, $line2, $surnameTokens, $givenTokens) {
-    // line1 may be a non-44 char length (OCR inserted a spurious space) - the
-    // candidate reconstructions below are always exactly 44, so validation
-    // only requires an intact line2 and a usable header prefix.
-    if (strlen($line2) !== 44 || !ctype_digit(substr($line2, 43, 1)) || strlen($line1) < 5) {
+    // Guard: line2 must be intact 44 chars with a digit at position 43.
+    // line1 must be 44 chars (or shorter if OCR dropped a char - we can
+    // pad). If line1 is LONGER than 44, the composite digit was computed
+    // against a different-length line and our 44-char candidates won't
+    // match it — skip correction entirely.
+    if (strlen($line2) !== 44 || !ctype_digit(substr($line2, 43, 1))) {
+        return null;
+    }
+    if (strlen($line1) > 44 || strlen($line1) < 5) {
         return null;
     }
     

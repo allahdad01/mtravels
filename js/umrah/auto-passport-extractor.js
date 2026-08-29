@@ -40,7 +40,7 @@ class AutoPassportExtractor {
             const imageData = await this.readFile(file);
 
             // Call auto-extraction API with absolute path
-            const response = await fetch('/api/umrah/auto_extract_passport_photo.php', {
+            const response = await fetch('../api/umrah/auto_extract_passport_photo.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
