@@ -340,6 +340,16 @@ $showVisa = hasFeature('visa_applications', $allowed_features) || hasFeature('vi
 </li>
 <?php endif; ?>
 
+<!-- ── Owner Payments (Finance + Admin) ────────────────────────────── -->
+<?php if (in_array($user['role'], ['finance', 'admin'], true) && user_can('finance.owner_funds')): ?>
+<li class="nav-item <?= navActive('owner_funds.php') ?>">
+    <a href="owner_funds.php" class="nav-link">
+        <span class="pcoded-micon"><i class="fas fa-user-tie"></i></span>
+        <span class="pcoded-mtext">Owner Payments</span>
+    </a>
+</li>
+<?php endif; ?>
+
 <!-- ── Reports ────────────────────────────────────────────────────────── -->
 <?php if (staffCanSeeMenu($user['role']) && user_can('reports.view')): ?>
 <li class="nav-item pcoded-hasmenu <?= navTrigger('report.php', 'quarterly_tax_report.php') ?>">

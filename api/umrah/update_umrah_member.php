@@ -313,7 +313,7 @@ try {
                 $pdo->prepare("
                     UPDATE client_transactions SET amount = ?, balance = ?, description = ?
                     WHERE id = ? AND tenant_id = ? AND branch_id = ?
-                ")->execute([-1 * abs($totalSoldPrice), $newTxnBalance, $newDescription, $clientTransaction['id'], $tenant_id, $branch_id]);
+                ")->execute([abs($totalSoldPrice), $newTxnBalance, $newDescription, $clientTransaction['id'], $tenant_id, $branch_id]);
 
                 // Recalculate ALL subsequent balances (avoids double-counting)
                 if ($isRegularClient && $amountDifference != 0) {
@@ -331,9 +331,9 @@ try {
                     foreach ($laterTxns as $lt) {
                         $amt = (float)$lt['amount'];
                         if (strtolower((string)$lt['type']) === 'credit') {
-                            $runningBalance = round($runningBalance + $amt, 3);
+                            $runningBalance = round($runningBalance + abs($amt), 3);
                         } else {
-                            $runningBalance = round($runningBalance - $amt, 3);
+                            $runningBalance = round($runningBalance - abs($amt), 3);
                         }
                         $updStmt->execute([$runningBalance, $lt['id'], $tenant_id, $branch_id]);
                     }

@@ -1,191 +1,173 @@
 <?php
 /**
- * Fix client transaction running balances.
+ * One-time fix: Recalculate all client_transactions.running balance
+ * and clients.usd_balance / afs_balance from scratch.
  *
- * Recalculates ALL running balances from scratch based on the transaction history,
- * then syncs the master client balance to match.
+ * This corrects corruption caused by:
+ *   1. Race condition when "Save All" fired parallel member updates
+ *   2. Negative debit amounts in recalculation (subtracted a negative = added)
  *
  * Usage:
- *   php fix_client_balances.php --tenant 28 --client 70 --dry-run
- *   php fix_client_balances.php --tenant 28 --client 70
- *
- *   # Override the starting balance (balance before first transaction):
- *   php fix_client_balances.php --tenant 28 --client 70 --start-balance -1210 --dry-run
- *   php fix_client_balances.php --tenant 28 --client 70 --start-balance -1210
- *
- *   # Or override via first transaction's correct balance:
- *   php fix_client_balances.php --tenant 28 --client 70 --first-balance -2275 --dry-run
+ *   php fix_client_balances.php --tenant 28                  (dry-run, shows what would change)
+ *   php fix_client_balances.php --tenant 28 --apply          (apply fixes)
+ *   php fix_client_balances.php --tenant 28 --client 70      (single client, dry-run)
+ *   php fix_client_balances.php --tenant 28 --client 70 --apply
  */
 
-$dryRun = in_array('--dry-run', $argv);
-$targetClient = null;
+$apply = in_array('--apply', $argv);
 $targetTenant = null;
-$startBalanceOverride = null;
-$firstBalanceOverride = null;
+$targetClient = null;
 
 for ($i = 1; $i < $argc; $i++) {
-    if ($argv[$i] === '--client' && isset($argv[$i + 1])) $targetClient = (int)$argv[$i + 1];
     if ($argv[$i] === '--tenant' && isset($argv[$i + 1])) $targetTenant = (int)$argv[$i + 1];
-    if ($argv[$i] === '--start-balance' && isset($argv[$i + 1])) $startBalanceOverride = (float)$argv[$i + 1];
-    if ($argv[$i] === '--first-balance' && isset($argv[$i + 1])) $firstBalanceOverride = (float)$argv[$i + 1];
+    if ($argv[$i] === '--client' && isset($argv[$i + 1])) $targetClient = (int)$argv[$i + 1];
+}
+
+if (!$targetTenant) {
+    fwrite(STDERR, "Usage: php fix_client_balances.php --tenant <id> [--client <id>] [--apply]\n");
+    exit(1);
 }
 
 require_once __DIR__ . '/../../includes/db.php';
 
-$where = [];
-$params = [];
+echo "=== Client Balance Fix Script ===\n";
+echo "Tenant: {$targetTenant}" . ($targetClient ? ", Client: {$targetClient}" : "") . "\n";
+echo "Mode: " . ($apply ? "APPLY" : "DRY RUN") . "\n\n";
+
+// Get all regular clients that have transactions
+$where = ['ct.tenant_id = ?', "c.client_type = 'regular'"];
+$params = [$targetTenant];
 if ($targetClient) { $where[] = 'ct.client_id = ?'; $params[] = $targetClient; }
-if ($targetTenant) { $where[] = 'ct.tenant_id = ?'; $params[] = $targetTenant; }
-$whereClause = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+$whereClause = implode(' AND ', $where);
 
 $clientStmt = $pdo->prepare("
-    SELECT DISTINCT ct.client_id, ct.currency, ct.tenant_id, ct.branch_id
+    SELECT DISTINCT ct.client_id, ct.currency, ct.branch_id
     FROM client_transactions ct
-    {$whereClause}
-    ORDER BY ct.client_id");
+    JOIN clients c ON c.id = ct.client_id AND c.tenant_id = ct.tenant_id AND c.branch_id = ct.branch_id
+    WHERE {$whereClause}
+    ORDER BY ct.client_id, ct.currency
+");
 $clientStmt->execute($params);
 $clients = $clientStmt->fetchAll(PDO::FETCH_ASSOC);
 
 if (!$clients) {
-    echo "No clients found matching criteria.\n";
+    echo "No regular clients with transactions found.\n";
     exit(0);
 }
 
-$fixed = 0;
-$totalMismatches = 0;
+$totalFixed = 0;
+$totalSkipped = 0;
+$totalErrors = 0;
 
 foreach ($clients as $client) {
     $clientId = $client['client_id'];
     $currency = $client['currency'];
-    $tenantId = $client['tenant_id'];
     $branchId = $client['branch_id'];
 
+    // Get all transactions for this client+currency ordered by id ASC
     $txnStmt = $pdo->prepare("
-        SELECT id, amount, type, balance, created_at, transaction_of, description
+        SELECT id, amount, type, balance, created_at, description
         FROM client_transactions
         WHERE client_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ?
-        ORDER BY id ASC");
-    $txnStmt->execute([$clientId, $currency, $tenantId, $branchId]);
+        ORDER BY id ASC
+    ");
+    $txnStmt->execute([$clientId, $currency, $targetTenant, $branchId]);
     $txns = $txnStmt->fetchAll(PDO::FETCH_ASSOC);
 
-    if (!$txns) continue;
+    if (empty($txns)) continue;
 
+    // Get current master balance
     $balanceField = strtoupper($currency) === 'USD' ? 'usd_balance' : 'afs_balance';
     $balStmt = $pdo->prepare("SELECT {$balanceField} FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
-    $balStmt->execute([$clientId, $tenantId, $branchId]);
+    $balStmt->execute([$clientId, $targetTenant, $branchId]);
     $masterBalance = (float)$balStmt->fetchColumn();
 
-    // Determine starting balance (balance before the first transaction)
-    if ($startBalanceOverride !== null && $targetClient == $clientId) {
-        $startBalance = $startBalanceOverride;
-    } elseif ($firstBalanceOverride !== null && $targetClient == $clientId) {
-        // User gives us the correct balance OF the first transaction.
-        // Reverse the first transaction to get the start balance.
-        $firstTxn = $txns[0];
-        $absAmt = abs((float)$firstTxn['amount']);
-        if (strtolower($firstTxn['type']) === 'credit') {
-            $startBalance = $firstBalanceOverride - $absAmt;
-        } else {
-            $startBalance = $firstBalanceOverride + $absAmt;
-        }
-    } else {
-        // Auto-compute: reverse from master balance
-        $startBalance = $masterBalance;
-        for ($i = count($txns) - 1; $i >= 0; $i--) {
-            $absAmt = abs((float)$txns[$i]['amount']);
-            if (strtolower($txns[$i]['type']) === 'credit') {
-                $startBalance = round($startBalance - $absAmt, 3);
-            } else {
-                $startBalance = round($startBalance + $absAmt, 3);
-            }
-        }
-    }
-
-    // Rebuild all running balances forward
-    $running = $startBalance;
-    $updates = [];
-    $mismatches = 0;
+    // Recalculate running balance from scratch starting at 0
+    $runningBalance = 0;
+    $changes = [];
+    $needsUpdate = false;
 
     foreach ($txns as $txn) {
-        $absAmt = abs((float)$txn['amount']);
+        $amt = abs((float)$txn['amount']);
         if (strtolower($txn['type']) === 'credit') {
-            $running = round($running + $absAmt, 3);
+            $runningBalance = round($runningBalance + $amt, 3);
         } else {
-            $running = round($running - $absAmt, 3);
+            $runningBalance = round($runningBalance - $amt, 3);
         }
 
-        $oldBal = (float)$txn['balance'];
-        if (abs($oldBal - $running) > 0.001) {
-            $mismatches++;
-            $updates[] = [
-                'id'     => $txn['id'],
-                'old'    => $oldBal,
-                'new'    => $running,
-                'date'   => $txn['created_at'],
-                'type'   => $txn['type'],
+        $storedBalance = round((float)$txn['balance'], 3);
+        if (abs($runningBalance - $storedBalance) > 0.001) {
+            $needsUpdate = true;
+            $changes[] = [
+                'id' => $txn['id'],
+                'old_balance' => $storedBalance,
+                'new_balance' => $runningBalance,
+                'type' => $txn['type'],
                 'amount' => $txn['amount'],
-                'desc'   => $txn['description'],
             ];
         }
     }
 
-    $masterWrong = abs($masterBalance - $running) > 0.001;
+    // The final running balance should match the master balance
+    $masterNeedsUpdate = (abs($runningBalance - $masterBalance) > 0.001);
 
-    if ($mismatches === 0 && !$masterWrong) continue;
-
-    $totalMismatches += $mismatches;
-    echo "========================================\n";
-    echo "Client #{$clientId} | {$currency} | Tenant #{$tenantId} | Branch #{$branchId}\n";
-    echo "Transactions: " . count($txns) . " | Mismatches: {$mismatches}\n";
-    echo "Start balance: " . number_format($startBalance, 3) . "\n";
-    echo "Master balance: " . number_format($masterBalance, 3);
-    if ($masterWrong) {
-        echo " → " . number_format($running, 3) . " (WILL SYNC)";
-    } else {
-        echo " (OK)";
+    if (!$needsUpdate && !$masterNeedsUpdate) {
+        $totalSkipped++;
+        continue;
     }
-    echo "\n";
 
-    if ($mismatches > 0) {
-        echo "\n";
-        echo str_pad('ID', 8) . str_pad('Type', 8) . str_pad('Amount', 12) . str_pad('Old Balance', 14) . str_pad('New Balance', 14) . "Description\n";
-        echo str_repeat('-', 90) . "\n";
-        foreach ($updates as $u) {
-            echo str_pad($u['id'], 8)
-                . str_pad($u['type'], 8)
-                . str_pad(number_format($u['amount'], 3), 12)
-                . str_pad(number_format($u['old'], 3), 14)
-                . str_pad(number_format($u['new'], 3), 14)
-                . substr($u['desc'], 0, 40) . "\n";
+    // Get client name
+    $nameStmt = $pdo->prepare("SELECT name FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+    $nameStmt->execute([$clientId, $targetTenant, $branchId]);
+    $clientName = $nameStmt->fetchColumn() ?: "Client #{$clientId}";
+
+    echo "Client #{$clientId} ({$clientName}) [{$currency}]:\n";
+    echo "  Master balance: " . number_format($masterBalance, 3) . " → should be: " . number_format($runningBalance, 3) . "\n";
+
+    if (!empty($changes)) {
+        echo "  Transaction balance fixes:\n";
+        foreach ($changes as $ch) {
+            echo "    ID={$ch['id']} ({$ch['type']}, amt={$ch['amount']}): "
+               . number_format($ch['old_balance'], 3) . " → " . number_format($ch['new_balance'], 3) . "\n";
         }
     }
-    echo "\n";
 
-    if (!$dryRun) {
+    $totalFixed++;
+
+    if ($apply) {
         $pdo->beginTransaction();
         try {
-            foreach ($updates as $u) {
-                $pdo->prepare("UPDATE client_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
-                    ->execute([$u['new'], $u['id'], $tenantId, $branchId]);
+            // Update each transaction's balance
+            if (!empty($changes)) {
+                $updStmt = $pdo->prepare("UPDATE client_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                foreach ($changes as $ch) {
+                    $updStmt->execute([$ch['new_balance'], $ch['id'], $targetTenant, $branchId]);
+                }
             }
-            $pdo->prepare("UPDATE clients SET {$balanceField} = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
-                ->execute([$running, $clientId, $tenantId, $branchId]);
+
+            // Update master balance
+            if ($masterNeedsUpdate) {
+                $pdo->prepare("UPDATE clients SET {$balanceField} = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
+                    ->execute([$runningBalance, $clientId, $targetTenant, $branchId]);
+            }
+
             $pdo->commit();
-            echo "  [APPLIED] {$mismatches} transaction(s) fixed, master balance synced to " . number_format($running, 3) . "\n\n";
+            echo "  ✓ Applied\n";
         } catch (Exception $e) {
             $pdo->rollBack();
-            echo "  [ERROR] " . $e->getMessage() . "\n\n";
+            echo "  ✗ Error: " . $e->getMessage() . "\n";
+            $totalErrors++;
         }
     } else {
-        echo "  [DRY RUN] No changes made\n\n";
+        echo "  (dry run — not applied)\n";
     }
-    $fixed++;
 }
 
-echo str_repeat('=', 70) . "\n";
-echo "Total: {$fixed} client(s) with mismatched balances, {$totalMismatches} transaction(s) to fix.\n";
-if ($dryRun) {
-    echo "Run without --dry-run to apply fixes.\n";
-} else {
-    echo "All fixes applied.\n";
+echo "\n=== Summary ===\n";
+echo "Clients checked: " . count($clients) . "\n";
+echo "Clients fixed: {$totalFixed}\n";
+echo "Clients unchanged: {$totalSkipped}\n";
+echo "Errors: {$totalErrors}\n";
+if (!$apply && $totalFixed > 0) {
+    echo "\nRun with --apply to apply these fixes.\n";
 }

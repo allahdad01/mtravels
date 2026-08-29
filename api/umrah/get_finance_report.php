@@ -37,7 +37,7 @@ if ($report === 'members') {
                b.flight_date, b.status, b.currency, b.exchange_rate,
                b.sold_price, b.paid, b.due,
                COALESCE((
-                   SELECT SUM(f.cost_amount)
+                   SELECT MIN(f.cost_amount)
                    FROM umrah_fulfillments f
                    JOIN umrah_booking_services bs2 ON f.booking_service_id = bs2.id
                    WHERE bs2.booking_id = b.booking_id AND f.status <> 'cancelled'

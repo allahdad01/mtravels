@@ -975,6 +975,12 @@ if (!function_exists('h')) {
                         <span class="pcoded-mtext">DB Migration</span>
                     </a>
                 </li>
+                <li data-username="fix_client_balances" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'fix_client_balances.php' ? 'active' : ''; ?>">
+                    <a href="fix_client_balances.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="fas fa-balance-scale"></i></span>
+                        <span class="pcoded-mtext">Fix Account Balances</span>
+                    </a>
+                </li>
                 <li data-username="file_browser" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'file_browser.php' ? 'active' : ''; ?>">
                     <a href="file_browser.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-folder"></i></span>

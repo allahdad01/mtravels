@@ -862,32 +862,78 @@ function hotelMemberCardHtml(m, data) {
         ? `<button type="button" class="btn btn-sm btn-outline-danger btn-remove-extra-bed ml-2" data-booking-id="${m.booking_id}" data-family-id="${m.family_id || 0}" title="Remove extra bed"><i class="feather icon-trash-2"></i></button>`
         : '';
     const costSoldRow = isExtraBed ? (() => {
-        const supCurrency = (fulfillmentData && fulfillmentData.suppliers) ? (() => {
-            const supId = String(m.supplier_id || '');
-            const sup = fulfillmentData.suppliers.find(s => String(s.id) === supId);
-            return sup ? (sup.currency || 'USD') : (currentFulfillmentCurrency || 'USD');
-        })() : (currentFulfillmentCurrency || 'USD');
+        const ebSuppliers = (fulfillmentData && fulfillmentData.suppliers) ? fulfillmentData.suppliers : [];
+        const ebSupOpts = ebSuppliers.map(s =>
+            '<option value="' + s.id + '" data-currency="' + escapeHtml(s.currency || 'USD') + '" ' + (String(m.eb_makkah_supplier_id || '') === String(s.id) ? 'selected' : '') + '>' + escapeHtml(s.name) + '</option>'
+        ).join('');
+        const ebSupOptsMadinah = ebSuppliers.map(s =>
+            '<option value="' + s.id + '" data-currency="' + escapeHtml(s.currency || 'USD') + '" ' + (String(m.eb_madinah_supplier_id || '') === String(s.id) ? 'selected' : '') + '>' + escapeHtml(s.name) + '</option>'
+        ).join('');
+        const ebMakCur = m.eb_makkah_currency || 'USD';
+        const ebMadCur = m.eb_madinah_currency || 'USD';
         return `
         <div class="row mt-2" style="border-top:1px dashed #e2e8f0;padding-top:8px;">
             <div class="col-md-12 mb-1" style="font-size:0.8rem;font-weight:600;color:#d97706;">
                 <i class="feather icon-plus-square mr-1"></i>Extra Bed Cost
             </div>
-            <div class="form-group col-md-4 mb-1">
+        </div>
+        <div class="row f-city-cost-section mb-2" style="border-left:3px solid #0e7490;padding-left:8px;">
+            <div class="col-md-12 mb-1" style="font-size:0.8rem;font-weight:600;color:#0e7490;">
+                <i class="feather icon-map-pin mr-1"></i>Makkah Cost
+            </div>
+            <div class="form-group col-md-3 mb-1">
+                <label style="font-size:0.8rem;">Supplier</label>
+                <select class="form-control form-control-sm f-eb-makkah-supplier">
+                    <option value="">— ${__t('select_supplier')} —</option>
+                    ${ebSupOpts}
+                </select>
+            </div>
+            <div class="form-group col-md-2 mb-1">
                 <label style="font-size:0.8rem;">Currency</label>
-                <input type="text" class="form-control form-control-sm f-eb-currency" value="${escapeHtml(m.eb_currency || supCurrency)}">
+                <input type="text" class="form-control form-control-sm f-eb-makkah-currency" value="${escapeHtml(ebMakCur)}">
             </div>
-            <div class="form-group col-md-4 mb-1">
+            <div class="form-group col-md-2 mb-1">
                 <label style="font-size:0.8rem;">Cost</label>
-                <input type="number" class="form-control form-control-sm f-eb-cost" min="0" step="0.01" value="${m.eb_cost != null ? m.eb_cost : ''}" data-booking-id="${m.booking_id}">
+                <input type="number" class="form-control form-control-sm f-eb-makkah-cost" min="0" step="0.01" value="${m.eb_makkah_cost != null ? m.eb_makkah_cost : ''}">
             </div>
-            <div class="form-group col-md-4 mb-1">
+            <div class="form-group col-md-2 mb-1 f-eb-makkah-rate-field" style="display: none;">
                 <label style="font-size:0.8rem;">Rate</label>
-                <input type="number" class="form-control form-control-sm f-eb-rate" min="0" step="0.0001" value="${m.eb_rate != null ? m.eb_rate : ''}">
+                <input type="number" class="form-control form-control-sm f-eb-makkah-rate" min="0" step="0.0001" value="${m.eb_makkah_rate != null ? m.eb_makkah_rate : ''}">
             </div>
-            <div class="form-group col-md-4 mb-1">
+            <div class="form-group col-md-3 mb-1">
                 <label style="font-size:0.8rem;">Cost (${currentFulfillmentCurrency})</label>
-                <input type="number" class="form-control form-control-sm f-eb-cost-usd" readonly value="${m.eb_cost_usd != null ? m.eb_cost_usd : ''}">
+                <input type="number" class="form-control form-control-sm f-eb-makkah-cost-usd" readonly value="${m.eb_makkah_cost_usd != null ? m.eb_makkah_cost_usd : ''}">
             </div>
+        </div>
+        <div class="row f-city-cost-section mb-2" style="border-left:3px solid #be185d;padding-left:8px;">
+            <div class="col-md-12 mb-1" style="font-size:0.8rem;font-weight:600;color:#be185d;">
+                <i class="feather icon-map-pin mr-1"></i>Madinah Cost
+            </div>
+            <div class="form-group col-md-3 mb-1">
+                <label style="font-size:0.8rem;">Supplier</label>
+                <select class="form-control form-control-sm f-eb-madinah-supplier">
+                    <option value="">— ${__t('select_supplier')} —</option>
+                    ${ebSupOptsMadinah}
+                </select>
+            </div>
+            <div class="form-group col-md-2 mb-1">
+                <label style="font-size:0.8rem;">Currency</label>
+                <input type="text" class="form-control form-control-sm f-eb-madinah-currency" value="${escapeHtml(ebMadCur)}">
+            </div>
+            <div class="form-group col-md-2 mb-1">
+                <label style="font-size:0.8rem;">Cost</label>
+                <input type="number" class="form-control form-control-sm f-eb-madinah-cost" min="0" step="0.01" value="${m.eb_madinah_cost != null ? m.eb_madinah_cost : ''}">
+            </div>
+            <div class="form-group col-md-2 mb-1 f-eb-madinah-rate-field" style="display: none;">
+                <label style="font-size:0.8rem;">Rate</label>
+                <input type="number" class="form-control form-control-sm f-eb-madinah-rate" min="0" step="0.0001" value="${m.eb_madinah_rate != null ? m.eb_madinah_rate : ''}">
+            </div>
+            <div class="form-group col-md-3 mb-1">
+                <label style="font-size:0.8rem;">Cost (${currentFulfillmentCurrency})</label>
+                <input type="number" class="form-control form-control-sm f-eb-madinah-cost-usd" readonly value="${m.eb_madinah_cost_usd != null ? m.eb_madinah_cost_usd : ''}">
+            </div>
+        </div>
+        <div class="row mt-1">
             <div class="form-group col-md-4 mb-1">
                 <label style="font-size:0.8rem;">Sold (${currentFulfillmentCurrency})</label>
                 <input type="number" class="form-control form-control-sm f-eb-sold" min="0" step="0.01" value="${m.sold_price != null ? m.sold_price : ''}" data-booking-id="${m.booking_id}">
@@ -1731,29 +1777,29 @@ function renderFulfillmentServices(data) {
                 ${canCancel ? `<button type="button" class="btn btn-sm btn-outline-danger btn-cancel-fulfillment ml-2" style="font-size:0.75rem;padding:2px 8px;" title="Cancel this fulfillment"><i class="feather icon-x-circle mr-1"></i>Cancel</button>` : ''}
             </div>
             <div class="card-body pt-3">
-                <div class="row">
-                    <div class="form-group col-md-12">
-                        <label>${__t('supplier')}</label>
-                        <select class="form-control form-control-sm f-supplier">
-                            <option value="">— ${__t('select_supplier')} —</option>
-                            ${suppliersOptions}
-                        </select>
-                    </div>
-                </div>
                 ${group === 'hotel' ? [
                 '<div class="row f-city-cost-section mb-2" style="border-left:3px solid #0e7490;padding-left:8px;">',
                     '<div class="col-md-12 mb-1" style="font-size:0.85rem;font-weight:600;color:#0e7490;">',
                         '<i class="feather icon-map-pin mr-1"></i>Makkah Cost',
                     '</div>',
                     '<div class="form-group col-md-3 mb-1">',
+                        '<label style="font-size:0.8rem;">Supplier</label>',
+                        '<select class="form-control form-control-sm f-makkah-supplier">',
+                            '<option value="">— ' + __t('select_supplier') + ' —</option>',
+                            data.suppliers.map(s =>
+                                '<option value="' + s.id + '" data-currency="' + escapeHtml(s.currency || 'USD') + '" ' + (String(service.makkah_supplier_id || '') === String(s.id) ? 'selected' : '') + '>' + escapeHtml(s.name) + '</option>'
+                            ).join(''),
+                        '</select>',
+                    '</div>',
+                    '<div class="form-group col-md-2 mb-1">',
                         '<label style="font-size:0.8rem;">Currency</label>',
                         '<input type="text" class="form-control form-control-sm f-makkah-currency" data-orig="' + escapeHtml(service.makkah_currency || '') + '" value="' + escapeHtml(service.makkah_currency || 'USD') + '" ' + (isFrozen ? 'readonly' : '') + '>',
                     '</div>',
-                    '<div class="form-group col-md-3 mb-1">',
+                    '<div class="form-group col-md-2 mb-1">',
                         '<label style="font-size:0.8rem;">Cost</label>',
                         '<input type="number" class="form-control form-control-sm f-makkah-cost" min="0" step="0.01" value="' + (service.makkah_cost != null ? service.makkah_cost : '') + '" ' + (isFrozen ? 'readonly' : '') + '>',
                     '</div>',
-                    '<div class="form-group col-md-3 mb-1 f-makkah-rate-field" style="display: none;">',
+                    '<div class="form-group col-md-2 mb-1 f-makkah-rate-field" style="display: none;">',
                         '<label style="font-size:0.8rem;">Rate</label>',
                         '<input type="number" class="form-control form-control-sm f-makkah-rate" min="0" step="0.0001" value="' + (service.makkah_rate != null ? service.makkah_rate : '') + '" ' + (isFrozen ? 'readonly' : '') + '>',
                     '</div>',
@@ -1767,14 +1813,23 @@ function renderFulfillmentServices(data) {
                         '<i class="feather icon-map-pin mr-1"></i>Madinah Cost',
                     '</div>',
                     '<div class="form-group col-md-3 mb-1">',
+                        '<label style="font-size:0.8rem;">Supplier</label>',
+                        '<select class="form-control form-control-sm f-madinah-supplier">',
+                            '<option value="">— ' + __t('select_supplier') + ' —</option>',
+                            data.suppliers.map(s =>
+                                '<option value="' + s.id + '" data-currency="' + escapeHtml(s.currency || 'USD') + '" ' + (String(service.madinah_supplier_id || '') === String(s.id) ? 'selected' : '') + '>' + escapeHtml(s.name) + '</option>'
+                            ).join(''),
+                        '</select>',
+                    '</div>',
+                    '<div class="form-group col-md-2 mb-1">',
                         '<label style="font-size:0.8rem;">Currency</label>',
                         '<input type="text" class="form-control form-control-sm f-madinah-currency" data-orig="' + escapeHtml(service.madinah_currency || '') + '" value="' + escapeHtml(service.madinah_currency || 'USD') + '" ' + (isFrozen ? 'readonly' : '') + '>',
                     '</div>',
-                    '<div class="form-group col-md-3 mb-1">',
+                    '<div class="form-group col-md-2 mb-1">',
                         '<label style="font-size:0.8rem;">Cost</label>',
                         '<input type="number" class="form-control form-control-sm f-madinah-cost" min="0" step="0.01" value="' + (service.madinah_cost != null ? service.madinah_cost : '') + '" ' + (isFrozen ? 'readonly' : '') + '>',
                     '</div>',
-                    '<div class="form-group col-md-3 mb-1 f-madinah-rate-field" style="display: none;">',
+                    '<div class="form-group col-md-2 mb-1 f-madinah-rate-field" style="display: none;">',
                         '<label style="font-size:0.8rem;">Rate</label>',
                         '<input type="number" class="form-control form-control-sm f-madinah-rate" min="0" step="0.0001" value="' + (service.madinah_rate != null ? service.madinah_rate : '') + '" ' + (isFrozen ? 'readonly' : '') + '>',
                     '</div>',
@@ -1784,6 +1839,15 @@ function renderFulfillmentServices(data) {
                     '</div>',
                 '</div>'
                 ].join('') : `
+                <div class="row">
+                    <div class="form-group col-md-12">
+                        <label>${__t('supplier')}</label>
+                        <select class="form-control form-control-sm f-supplier">
+                            <option value="">— ${__t('select_supplier')} —</option>
+                            ${suppliersOptions}
+                        </select>
+                    </div>
+                </div>
                 <div class="row">
                     <div class="form-group col-md-3">
                         <label>Currency</label>
@@ -1861,10 +1925,11 @@ function renderFulfillmentServices(data) {
         syncFulfillmentHotelOptions($card);
         applyContractPricing($card);
         applyTransportContractPricing($card);
-        if ($card.find('.f-supplier').val()) {
+        if ($card.find('.f-supplier').val() || $card.find('.f-makkah-supplier').val() || $card.find('.f-madinah-supplier').val()) {
             applySuggestion($card);
         }
         syncFulfillmentRateField($card);
+        updateFulfillmentCostUsd($card);
         calcFulfillmentStopover($card);
     });
 
@@ -1984,16 +2049,27 @@ function applySuggestion($card) {
     const serviceId = $card.data('service-id');
     const supplierId = $card.find('.f-supplier').val();
     if ($card.data('group') === 'hotel') {
-        const supCurrency = ($card.find('.f-supplier option:selected').data('currency') || '').toString().toUpperCase();
+        // Per-city supplier: set currency from the city supplier
         ['makkah', 'madinah'].forEach(function(city) {
             const prefix = '.f-' + city + '-';
+            const citySupplierId = $card.find(prefix + 'supplier').val() || '';
             const hasCost = $card.find(prefix + 'cost').val() !== '';
-            if (supCurrency && !hasCost) $card.find(prefix + 'currency').val(supCurrency);
+            if (citySupplierId) {
+                const supCurrency = ($card.find(prefix + 'supplier option:selected').data('currency') || '').toString().toUpperCase();
+                if (supCurrency && !hasCost) $card.find(prefix + 'currency').val(supCurrency);
+            }
         });
         $card.find('.f-hotel-group[data-is-extra-bed="1"]').each(function() {
             const $ebRow = $(this);
-            const ebHasCost = $ebRow.find('.f-eb-cost').val() !== '';
-            if (supCurrency && !ebHasCost) $ebRow.find('.f-eb-currency').val(supCurrency);
+            ['makkah', 'madinah'].forEach(function(city) {
+                const prefix = '.f-eb-' + city + '-';
+                const ebSupId = $ebRow.find(prefix + 'supplier').val() || '';
+                const ebHasCost = $ebRow.find(prefix + 'cost').val() !== '';
+                if (ebSupId) {
+                    const supCurrency = ($ebRow.find(prefix + 'supplier option:selected').data('currency') || '').toString().toUpperCase();
+                    if (supCurrency && !ebHasCost) $ebRow.find(prefix + 'currency').val(supCurrency);
+                }
+            });
         });
         updateFulfillmentCostUsd($card);
         syncFulfillmentRateField($card);
@@ -2024,12 +2100,16 @@ function syncFulfillmentRateField($card) {
         ['makkah', 'madinah'].forEach(function(city) {
             const prefix = '.f-' + city + '-';
             const $field = $card.find(prefix + 'rate-field');
-            const hasSupplier = !!$card.find('.f-supplier').val() || !!$card.find(prefix + 'currency').attr('data-orig');
+            const hasSupplier = !!$card.find(prefix + 'supplier').val() || !!$card.find(prefix + 'currency').attr('data-orig');
             const cur = ($card.find(prefix + 'currency').val() || '').trim().toUpperCase();
             const differs = hasSupplier && !!cur && cur !== currentFulfillmentCurrency;
             const keepRate = differs || $card.data('frozen') == 1;
             if (!keepRate) $card.find(prefix + 'rate').val('');
             $field.toggle(keepRate);
+        });
+        $card.find('.f-hotel-group[data-is-extra-bed="1"]').each(function() {
+            const $eb = $(this);
+            ['makkah', 'madinah'].forEach(function(city) { syncEbRateField($eb, city); });
         });
         return;
     }
@@ -2081,21 +2161,98 @@ function updateFulfillmentCostUsd($card) {
     $card.find('.f-cost-usd').val(rate > 0 ? (cost / rate).toFixed(2) : '');
 }
 
+function syncEbRateField($card, city) {
+    const prefix = '.f-eb-' + city + '-';
+    const $field = $card.find(prefix + 'rate-field');
+    const hasSupplier = !!$card.find(prefix + 'supplier').val();
+    const cur = ($card.find(prefix + 'currency').val() || '').trim().toUpperCase();
+    const differs = hasSupplier && !!cur && cur !== currentFulfillmentCurrency;
+    const keepRate = differs;
+    if (!keepRate) $card.find(prefix + 'rate').val('');
+    $field.toggle(keepRate);
+}
+
+function updateEbCostUsd($card, city) {
+    const prefix = '.f-eb-' + city + '-';
+    const cur = ($card.find(prefix + 'currency').val() || currentFulfillmentCurrency).trim().toUpperCase();
+    const cost = parseFloat($card.find(prefix + 'cost').val()) || 0;
+    if (!cur || cur === currentFulfillmentCurrency) {
+        $card.find(prefix + 'cost-usd').val(cost > 0 ? cost.toFixed(2) : '');
+        return;
+    }
+    const rate = parseFloat($card.find(prefix + 'rate').val()) || 0;
+    $card.find(prefix + 'cost-usd').val(rate > 0 ? (cost / rate).toFixed(2) : '');
+}
+
 // Hotel dropdowns (one per hotel stay) show only hotels belonging to the
 // selected supplier (hotels are managed with a supplier in hotel management).
+// For hotel cards with per-city suppliers, each stay filters by the supplier
+// of the city it belongs to (determined by the selected hotel's city).
 function syncFulfillmentHotelOptions($card) {
-    const supplierId = $card.find('.f-supplier').val();
-    $card.find('.f-hotel').each(function() {
-        const $hotel = $(this);
-        const current = $hotel.val();
-        let clear = false;
-        $hotel.find('option').each(function() {
-            const matches = !supplierId || !$(this).val() || String($(this).data('supplier')) === String(supplierId);
-            $(this).toggle(matches);
-            if ($(this).val() === current && !matches) clear = true;
+    const isHotel = $card.data('group') === 'hotel';
+    if (isHotel) {
+        // Per-city supplier filtering: collect city supplier IDs
+        const makkahSupplierId = $card.find('.f-makkah-supplier').val() || '';
+        const madinahSupplierId = $card.find('.f-madinah-supplier').val() || '';
+        const hasCitySuppliers = !!(makkahSupplierId || madinahSupplierId);
+
+        // City detection helper: which city does a hotel belong to?
+        function hotelCity(hotelId) {
+            const h = (fulfillmentData.hotels || []).find(x => String(x.id) === String(hotelId));
+            const c = (h && h.city || '').toLowerCase();
+            if (c.indexOf('makkah') !== -1 || c.indexOf('makk') !== -1 || c.indexOf('mecca') !== -1) return 'makkah';
+            if (c.indexOf('madinah') !== -1 || c.indexOf('medina') !== -1 || c.indexOf('madin') !== -1) return 'madinah';
+            return '';
+        }
+
+        $card.find('.f-hotel').each(function() {
+            const $hotel = $(this);
+            const current = $hotel.val();
+            let clear = false;
+            // Determine which supplier to use for this stay
+            let staySupplier = '';
+            if (hasCitySuppliers) {
+                if (current) {
+                    const city = hotelCity(current);
+                    staySupplier = city === 'madinah' ? madinahSupplierId : makkahSupplierId;
+                }
+            }
+            $hotel.find('option').each(function() {
+                const $opt = $(this);
+                if (!$opt.val()) { $opt.show(); return; }
+                if (hasCitySuppliers && staySupplier) {
+                    const city = hotelCity($opt.val());
+                    // Match: option's city supplier OR the stay's supplier
+                    const citySupplier = city === 'madinah' ? madinahSupplierId : makkahSupplierId;
+                    const matches = String($opt.data('supplier')) === String(citySupplier);
+                    $opt.toggle(matches);
+                    if ($opt.val() === current && !matches) clear = true;
+                } else if (hasCitySuppliers) {
+                    // No hotel selected yet: show hotels matching ANY city supplier
+                    const optSupplier = String($opt.data('supplier'));
+                    const matches = optSupplier === String(makkahSupplierId) || optSupplier === String(madinahSupplierId);
+                    $opt.toggle(matches);
+                    if ($opt.val() === current && !matches) clear = true;
+                } else {
+                    $opt.show();
+                }
+            });
+            if (clear) $hotel.val('');
         });
-        if (clear) $hotel.val('');
-    });
+    } else {
+        const supplierId = $card.find('.f-supplier').val();
+        $card.find('.f-hotel').each(function() {
+            const $hotel = $(this);
+            const current = $hotel.val();
+            let clear = false;
+            $hotel.find('option').each(function() {
+                const matches = !supplierId || !$(this).val() || String($(this).data('supplier')) === String(supplierId);
+                $(this).toggle(matches);
+                if ($(this).val() === current && !matches) clear = true;
+            });
+            if (clear) $hotel.val('');
+        });
+    }
     syncFulfillmentRoomOptions($card);
 }
 
@@ -2318,7 +2475,9 @@ function bindFulfillmentEvents() {
         formData.append('csrf_token', window.csrfToken || '');
         formData.append('booking_service_id', bookingServiceId);
         formData.append('status', 'cancelled');
-        formData.append('supplier_id', $card.find('.f-supplier').val() || '');
+        formData.append('supplier_id', $card.find('.f-makkah-supplier').val() || $card.find('.f-madinah-supplier').val() || $card.find('.f-supplier').val() || '');
+        formData.append('makkah_supplier_id', $card.find('.f-makkah-supplier').val() || '');
+        formData.append('madinah_supplier_id', $card.find('.f-madinah-supplier').val() || '');
         formData.append('supplier_currency', $card.find('.f-currency').val() || $card.find('.f-makkah-currency').val() || $card.find('.f-madinah-currency').val() || '');
         formData.append('supplier_cost', $card.find('.f-cost').val() || $card.find('.f-makkah-cost').val() || $card.find('.f-madinah-cost').val() || '');
         formData.append('exchange_rate', $card.find('.f-rate').val() || $card.find('.f-makkah-rate').val() || $card.find('.f-madinah-rate').val() || '');
@@ -2386,6 +2545,27 @@ function bindFulfillmentEvents() {
         applySuggestion($card);
     });
 
+    $(document).off('change.fulfillment', '.f-makkah-supplier, .f-madinah-supplier').on('change.fulfillment', '.f-makkah-supplier, .f-madinah-supplier', function() {
+        const $card = $(this).closest('.fulfillment-service-card');
+        syncFulfillmentHotelOptions($card);
+        applyContractPricing($card);
+        applySuggestion($card);
+    });
+
+    $(document).off('change.fulfillment', '.f-eb-makkah-supplier, .f-eb-madinah-supplier').on('change.fulfillment', '.f-eb-makkah-supplier, .f-eb-madinah-supplier', function() {
+        const $card = $(this).closest('.f-hotel-group');
+        if (!$card.length) return;
+        const isMak = $(this).hasClass('f-eb-makkah-supplier');
+        const city = isMak ? 'makkah' : 'madinah';
+        const prefix = '.f-eb-' + city + '-';
+        const supId = $(this).val();
+        const $sup = $(this).find('option:selected');
+        const cur = ($sup.data('currency') || 'USD').toString().toUpperCase();
+        $card.find(prefix + 'currency').val(cur);
+        syncEbRateField($card, city);
+        updateEbCostUsd($card, city);
+    });
+
     $(document).off('input.fulfillment', '.f-cost, .f-rate, .f-currency').on('input.fulfillment', '.f-cost, .f-rate, .f-currency', function() {
         const $card = $(this).closest('.fulfillment-service-card');
         $card.data('auto-cost', 0);
@@ -2398,6 +2578,15 @@ function bindFulfillmentEvents() {
         $card.data('auto-cost', 0);
         updateFulfillmentCostUsd($card);
         syncFulfillmentRateField($card);
+    });
+
+    $(document).off('input.fulfillment', '.f-eb-makkah-cost, .f-eb-makkah-rate, .f-eb-makkah-currency, .f-eb-madinah-cost, .f-eb-madinah-rate, .f-eb-madinah-currency').on('input.fulfillment', '.f-eb-makkah-cost, .f-eb-makkah-rate, .f-eb-makkah-currency, .f-eb-madinah-cost, .f-eb-madinah-rate, .f-eb-madinah-currency', function() {
+        const $card = $(this).closest('.f-hotel-group');
+        if (!$card.length) return;
+        const isMak = $(this).hasClass('f-eb-makkah-cost') || $(this).hasClass('f-eb-makkah-rate') || $(this).hasClass('f-eb-makkah-currency');
+        const city = isMak ? 'makkah' : 'madinah';
+        syncEbRateField($card, city);
+        updateEbCostUsd($card, city);
     });
 
     $(document).off('input.fulfillment', '.f-nightly-rate').on('input.fulfillment', '.f-nightly-rate', function() {
@@ -2518,20 +2707,22 @@ function bindFulfillmentEvents() {
         });
     });
 
-    $(document).off('input.fulfillment', '.f-eb-cost, .f-eb-rate, .f-eb-sold, .f-eb-currency').on('input.fulfillment', '.f-eb-cost, .f-eb-rate, .f-eb-sold, .f-eb-currency', function() {
+    $(document).off('input.fulfillment', '.f-eb-cost, .f-eb-rate, .f-eb-sold, .f-eb-currency, .f-eb-makkah-cost, .f-eb-makkah-rate, .f-eb-makkah-currency, .f-eb-madinah-cost, .f-eb-madinah-rate, .f-eb-madinah-currency').on('input.fulfillment', '.f-eb-cost, .f-eb-rate, .f-eb-sold, .f-eb-currency, .f-eb-makkah-cost, .f-eb-makkah-rate, .f-eb-makkah-currency, .f-eb-madinah-cost, .f-eb-madinah-rate, .f-eb-madinah-currency', function() {
         const $row = $(this).closest('.f-hotel-group');
-        const cur = ($row.find('.f-eb-currency').val() || '').trim().toUpperCase();
-        const cost = parseFloat($row.find('.f-eb-cost').val()) || 0;
-        const rate = parseFloat($row.find('.f-eb-rate').val()) || 0;
+        let totalCostUsd = 0;
+        ['makkah', 'madinah'].forEach(function(city) {
+            const prefix = '.f-eb-' + city + '-';
+            const c = ($row.find(prefix + 'currency').val() || '').trim().toUpperCase();
+            const cost = parseFloat($row.find(prefix + 'cost').val()) || 0;
+            const rate = parseFloat($row.find(prefix + 'rate').val()) || 0;
+            if (c === currentFulfillmentCurrency || !c) {
+                totalCostUsd += cost;
+            } else if (rate > 0) {
+                totalCostUsd += cost / rate;
+            }
+        });
         const sold = parseFloat($row.find('.f-eb-sold').val()) || 0;
-        let costUsd = 0;
-        if (cur === currentFulfillmentCurrency || !cur) {
-            costUsd = cost;
-        } else if (rate > 0) {
-            costUsd = cost / rate;
-        }
-        $row.find('.f-eb-cost-usd').val(costUsd ? costUsd.toFixed(2) : '');
-        $row.find('.f-eb-profit').val(sold ? (sold - costUsd).toFixed(2) : '');
+        $row.find('.f-eb-profit').val(sold ? (sold - totalCostUsd).toFixed(2) : '');
     });
 
     $(document).off('click.fulfillment', '.btn-save-fulfillment').on('click.fulfillment', '.btn-save-fulfillment', function() {
@@ -2602,7 +2793,7 @@ function saveBrn($card) {
     const formData = new FormData();
     formData.append('csrf_token', window.csrfToken || '');
     formData.append('booking_id', currentFulfillmentBookingId || '');
-    formData.append('supplier_id', $card.find('.f-supplier').val() || '');
+    formData.append('supplier_id', $card.find('.f-makkah-supplier').val() || $card.find('.f-madinah-supplier').val() || $card.find('.f-supplier').val() || '');
     formData.append('supplier_currency', $card.find('.f-currency').val() || '');
     formData.append('supplier_cost', $card.find('.f-cost').val() || '');
     formData.append('exchange_rate', $card.find('.f-rate').val() || '');
@@ -2665,7 +2856,12 @@ function saveFulfillment($card) {
     //   supplier + cost filled      -> active status per type
     //   otherwise                   -> pre-work status per type
     const cat = $card.data('group') || 'ziyarat';
-    const hasSupplier = !!$card.find('.f-supplier').val();
+    let hasSupplier;
+    if (cat === 'hotel') {
+        hasSupplier = !!$card.find('.f-makkah-supplier').val() || !!$card.find('.f-madinah-supplier').val();
+    } else {
+        hasSupplier = !!$card.find('.f-supplier').val();
+    }
     let hasCost;
     if (cat === 'hotel') {
         hasCost = $card.find('.f-makkah-cost').val() !== '' || $card.find('.f-madinah-cost').val() !== '';
@@ -2688,9 +2884,15 @@ function saveFulfillment($card) {
             formData.append('scope', 'group');
         }
     }
-    formData.append('supplier_id', $card.find('.f-supplier').val() || '');
+    if (cat === 'hotel') {
+        formData.append('supplier_id', $card.find('.f-makkah-supplier').val() || $card.find('.f-madinah-supplier').val() || '');
+    } else {
+        formData.append('supplier_id', $card.find('.f-supplier').val() || '');
+    }
     formData.append('status', autoStatus);
     if (cat === 'hotel') {
+        formData.append('makkah_supplier_id', $card.find('.f-makkah-supplier').val() || '');
+        formData.append('madinah_supplier_id', $card.find('.f-madinah-supplier').val() || '');
         formData.append('supplier_currency', $card.find('.f-makkah-currency').val() || $card.find('.f-madinah-currency').val() || '');
         const mCost = parseFloat($card.find('.f-makkah-cost').val()) || 0;
         const dCost = parseFloat($card.find('.f-madinah-cost').val()) || 0;
@@ -2783,13 +2985,31 @@ function saveFulfillment($card) {
         $card.find('.f-hotel-group[data-is-extra-bed="1"]').each(function() {
             const bid = String($(this).data('member-id') || '');
             if (!bid) return;
-            const currency = $(this).find('.f-eb-currency').val() || '';
-            const cost = $(this).find('.f-eb-cost').val() || '';
-            const rate = $(this).find('.f-eb-rate').val() || '';
-            const costUsd = $(this).find('.f-eb-cost-usd').val() || '';
+            const makSupplier = $(this).find('.f-eb-makkah-supplier').val() || '';
+            const makCurrency = $(this).find('.f-eb-makkah-currency').val() || '';
+            const makCost = $(this).find('.f-eb-makkah-cost').val() || '';
+            const makRate = $(this).find('.f-eb-makkah-rate').val() || '';
+            const makCostUsd = $(this).find('.f-eb-makkah-cost-usd').val() || '';
+            const madSupplier = $(this).find('.f-eb-madinah-supplier').val() || '';
+            const madCurrency = $(this).find('.f-eb-madinah-currency').val() || '';
+            const madCost = $(this).find('.f-eb-madinah-cost').val() || '';
+            const madRate = $(this).find('.f-eb-madinah-rate').val() || '';
+            const madCostUsd = $(this).find('.f-eb-madinah-cost-usd').val() || '';
             const sold = $(this).find('.f-eb-sold').val() || '';
-            if (cost !== '' || sold !== '') {
-                extraBedData[bid] = { currency: currency, cost: cost, rate: rate, cost_usd: costUsd, sold: sold };
+            if (makCost !== '' || madCost !== '' || sold !== '') {
+                extraBedData[bid] = {
+                    makkah_supplier_id: makSupplier,
+                    makkah_currency: makCurrency,
+                    makkah_cost: makCost,
+                    makkah_rate: makRate,
+                    makkah_cost_usd: makCostUsd,
+                    madinah_supplier_id: madSupplier,
+                    madinah_currency: madCurrency,
+                    madinah_cost: madCost,
+                    madinah_rate: madRate,
+                    madinah_cost_usd: madCostUsd,
+                    sold: sold
+                };
             }
         });
         if (Object.keys(extraBedData).length) {

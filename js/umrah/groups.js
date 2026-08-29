@@ -471,17 +471,29 @@ window.saveAllEdits = function() {
 
 function saveAllMembers() {
     const memberCards = document.querySelectorAll('.member-edit-card');
-    let pending = memberCards.length;
     let success = 0;
     let failed = 0;
+    const total = memberCards.length;
 
-    if (pending === 0) {
+    if (total === 0) {
         showToast('success', 'All changes saved');
         setTimeout(function() { window.location.reload(); }, 800);
         return;
     }
 
-    memberCards.forEach(function(card) {
+    const cardsArray = Array.from(memberCards);
+    let index = 0;
+
+    function processNext() {
+        if (index >= cardsArray.length) {
+            const msg = success + ' saved' + (failed ? ', ' + failed + ' failed' : '');
+            showToast(failed ? 'warning' : 'success', msg);
+            setTimeout(function() { window.location.reload(); }, 1000);
+            return;
+        }
+
+        const card = cardsArray[index];
+        index++;
         const bookingId = card.dataset.bookingId;
         const formData = new FormData();
         formData.append('booking_id', bookingId);
@@ -493,24 +505,17 @@ function saveAllMembers() {
         fetch('../api/umrah/update_member_quick.php', { method: 'POST', body: formData })
             .then(function(r) { return r.json(); })
             .then(function(data) {
-                pending--;
                 if (data.success) success++;
                 else failed++;
-                if (pending === 0) {
-                    const msg = success + ' saved' + (failed ? ', ' + failed + ' failed' : '');
-                    showToast(failed ? 'warning' : 'success', msg);
-                    setTimeout(function() { window.location.reload(); }, 1000);
-                }
+                processNext();
             })
             .catch(function() {
-                pending--;
                 failed++;
-                if (pending === 0) {
-                    showToast('warning', success + ' saved, ' + failed + ' failed');
-                    setTimeout(function() { window.location.reload(); }, 1000);
-                }
+                processNext();
             });
-    });
+    }
+
+    processNext();
 }
 
 // Reset panel when modal opens/closes

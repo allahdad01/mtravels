@@ -119,7 +119,7 @@ try {
                 UPDATE client_transactions
                 SET amount = ?, balance = ?, description = ?
                 WHERE id = ? AND tenant_id = ? AND branch_id = ?
-            ")->execute([-1 * abs($newSoldPrice), $newTxnBalance, $newDescription, $clientTransaction['id'], $tenant_id, $branch_id]);
+            ")->execute([abs($newSoldPrice), $newTxnBalance, $newDescription, $clientTransaction['id'], $tenant_id, $branch_id]);
 
             // Recalculate ALL subsequent balances from scratch (avoids
             // double-counting when multiple members are updated in sequence).
@@ -138,9 +138,9 @@ try {
                 foreach ($laterTxns as $lt) {
                     $amt = (float)$lt['amount'];
                     if (strtolower((string)$lt['type']) === 'credit') {
-                        $runningBalance = round($runningBalance + $amt, 3);
+                        $runningBalance = round($runningBalance + abs($amt), 3);
                     } else {
-                        $runningBalance = round($runningBalance - $amt, 3);
+                        $runningBalance = round($runningBalance - abs($amt), 3);
                     }
                     $updStmt->execute([$runningBalance, $lt['id'], $tenant_id, $branch_id]);
                 }

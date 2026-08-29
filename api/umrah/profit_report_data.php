@@ -112,8 +112,8 @@ if (!function_exists('profit_report_load')) {
             SELECT bs.booking_id, bs.id AS line_id, bs.service_type, bs.service_id,
                    s.name AS service_name, c.name AS category_name,
                    COALESCE(
-                       (SELECT SUM(COALESCE(f2.cost_amount, 0)) FROM umrah_fulfillments f2
-                        WHERE f2.booking_service_id = bs.id),
+                    (SELECT SUM(COALESCE(f2.cost_amount, 0)) FROM umrah_fulfillments f2
+                         WHERE f2.booking_service_id = bs.id AND f2.status != 'cancelled'),
                        bs.base_price
                    ) AS line_cost
             FROM umrah_booking_services bs

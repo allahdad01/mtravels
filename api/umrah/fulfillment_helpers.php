@@ -180,9 +180,11 @@ function fulfillment_save(PDO $pdo, array $in): array
     $makkah_currency = isset($in['makkah_currency']) ? trim((string)$in['makkah_currency']) : '';
     $makkah_cost     = (isset($in['makkah_cost']) && $in['makkah_cost'] !== '') ? (float)$in['makkah_cost'] : null;
     $makkah_rate     = (isset($in['makkah_rate']) && $in['makkah_rate'] !== '') ? (float)$in['makkah_rate'] : null;
+    $makkah_supplier_id = (isset($in['makkah_supplier_id']) && $in['makkah_supplier_id'] !== '') ? (int)$in['makkah_supplier_id'] : null;
     $madinah_currency = isset($in['madinah_currency']) ? trim((string)$in['madinah_currency']) : '';
     $madinah_cost     = (isset($in['madinah_cost']) && $in['madinah_cost'] !== '') ? (float)$in['madinah_cost'] : null;
     $madinah_rate     = (isset($in['madinah_rate']) && $in['madinah_rate'] !== '') ? (float)$in['madinah_rate'] : null;
+    $madinah_supplier_id = (isset($in['madinah_supplier_id']) && $in['madinah_supplier_id'] !== '') ? (int)$in['madinah_supplier_id'] : null;
     $hasCityCosts = ($makkah_cost !== null || $madinah_cost !== null);
 
     // Flight-specific
@@ -266,13 +268,35 @@ function fulfillment_save(PDO $pdo, array $in): array
         $isEbStmt = $pdo->prepare("SELECT is_extra_bed FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ?");
         $isEbStmt->execute([$booking_id, $tenant_id]);
         $isExtraBedBooking = (bool)$isEbStmt->fetchColumn();
-        // Look up the extra bed's own cost if provided
+        // Look up the extra bed's own cost if provided (per-city suppliers)
         $ebOwnCost = null;
         $ebOwnCurrency = '';
         $ebOwnRate = null;
         $ebOwnCostUsd = null;
+        $ebMakkahSupplierId = null;
+        $ebMakkahCurrency = '';
+        $ebMakkahCost = null;
+        $ebMakkahRate = null;
+        $ebMakkahCostUsd = null;
+        $ebMadinahSupplierId = null;
+        $ebMadinahCurrency = '';
+        $ebMadinahCost = null;
+        $ebMadinahRate = null;
+        $ebMadinahCostUsd = null;
         if ($isExtraBedBooking && $extra_bed_costs && isset($extra_bed_costs[(string)$booking_id])) {
             $ebOwn = $extra_bed_costs[(string)$booking_id];
+            // Per-city supplier data
+            $ebMakkahSupplierId = isset($ebOwn['makkah_supplier_id']) && $ebOwn['makkah_supplier_id'] !== '' ? (int)$ebOwn['makkah_supplier_id'] : null;
+            $ebMakkahCurrency = isset($ebOwn['makkah_currency']) ? trim((string)$ebOwn['makkah_currency']) : '';
+            $ebMakkahCost = (isset($ebOwn['makkah_cost']) && $ebOwn['makkah_cost'] !== '') ? (float)$ebOwn['makkah_cost'] : null;
+            $ebMakkahRate = (isset($ebOwn['makkah_rate']) && $ebOwn['makkah_rate'] !== '') ? (float)$ebOwn['makkah_rate'] : null;
+            $ebMakkahCostUsd = (isset($ebOwn['makkah_cost_usd']) && $ebOwn['makkah_cost_usd'] !== '') ? (float)$ebOwn['makkah_cost_usd'] : null;
+            $ebMadinahSupplierId = isset($ebOwn['madinah_supplier_id']) && $ebOwn['madinah_supplier_id'] !== '' ? (int)$ebOwn['madinah_supplier_id'] : null;
+            $ebMadinahCurrency = isset($ebOwn['madinah_currency']) ? trim((string)$ebOwn['madinah_currency']) : '';
+            $ebMadinahCost = (isset($ebOwn['madinah_cost']) && $ebOwn['madinah_cost'] !== '') ? (float)$ebOwn['madinah_cost'] : null;
+            $ebMadinahRate = (isset($ebOwn['madinah_rate']) && $ebOwn['madinah_rate'] !== '') ? (float)$ebOwn['madinah_rate'] : null;
+            $ebMadinahCostUsd = (isset($ebOwn['madinah_cost_usd']) && $ebOwn['madinah_cost_usd'] !== '') ? (float)$ebOwn['madinah_cost_usd'] : null;
+            // Legacy single-supplier fallback
             $ebOwnCurrency = isset($ebOwn['currency']) ? trim((string)$ebOwn['currency']) : '';
             $ebOwnCost = (isset($ebOwn['cost']) && $ebOwn['cost'] !== '') ? (float)$ebOwn['cost'] : null;
             $ebOwnRate = (isset($ebOwn['rate']) && $ebOwn['rate'] !== '') ? (float)$ebOwn['rate'] : null;
@@ -334,6 +358,40 @@ function fulfillment_save(PDO $pdo, array $in): array
                     'contract_id'    => $contract_id ?: null,
                 ];
             }
+        }
+
+        // Per-city hotel: ensure both Makkah and Madinah get a fulfillment.
+        // When the frontend sends 1 stay, duplicate it for the second city.
+        // When it already sends 2+ stays, tag by position (1st = Makkah,
+        // 2nd = Madinah). Existing fulfillments are matched by supplier_id
+        // so re-saves update the correct rows.
+        if ($fulfillment_type === 'hotel' && $hasCityCosts && $stays) {
+            // Find existing rows per city
+            $existingMakkah = null;
+            $existingMadinah = null;
+            foreach ($existingRows as $er) {
+                if ((int)($er['supplier_id'] ?? 0) === (int)$makkah_supplier_id) {
+                    $existingMakkah = (int)$er['id'];
+                } elseif ((int)($er['supplier_id'] ?? 0) === (int)$madinah_supplier_id) {
+                    $existingMadinah = (int)$er['id'];
+                }
+            }
+            if (count($stays) === 1) {
+                // Single stay → duplicate for second city
+                $stays[] = $stays[0];
+            }
+            // Tag by position and assign existing fulfillment IDs
+            foreach ($stays as $i => &$st) {
+                if ($i % 2 === 0) {
+                    $st['_city'] = 'makkah';
+                    $st['fulfillment_id'] = $existingMakkah ?? $st['fulfillment_id'] ?? null;
+                } else {
+                    $st['_city'] = 'madinah';
+                    $st['fulfillment_id'] = $existingMadinah;
+                }
+            }
+            unset($st);
+            $stays = array_slice($stays, 0, 2);
         }
 
         // ---- Phase 31: currency + price sanity ---------------------------------
@@ -600,11 +658,54 @@ function fulfillment_save(PDO $pdo, array $in): array
         }
 
         // Cost amount in booking (sale) currency (frozen snapshot)
-        // Extra bed override: use the extra bed's own cost instead of the
-        // card-level per-city hotel cost. When no extra bed cost is provided,
-        // zero out the cost so extra beds never inherit the card-level rate.
+        // Extra bed override: use the extra bed's own per-city costs instead
+        // of the card-level per-city hotel cost. When no extra bed cost is
+        // provided, zero out the cost so extra beds never inherit the card-level rate.
         if ($isExtraBedBooking) {
-            if ($ebOwnCost !== null && $ebOwnCurrency) {
+            $hasEbCityCosts = ($ebMakkahCost !== null || $ebMadinahCost !== null);
+            if ($hasEbCityCosts) {
+                // Compute makkah/madinah cost_amount for the extra bed
+                $makkah_cost_amount = null;
+                $madinah_cost_amount = null;
+                if ($ebMakkahCost !== null) {
+                    $mCityCur = $ebMakkahCurrency ?: 'USD';
+                    $makkah_cost_amount = ($mCityCur === $booking_currency)
+                        ? $ebMakkahCost
+                        : ($ebMakkahRate && $ebMakkahRate > 0 ? $ebMakkahCost / $ebMakkahRate : null);
+                }
+                if ($ebMadinahCost !== null) {
+                    $dCityCur = $ebMadinahCurrency ?: 'USD';
+                    $madinah_cost_amount = ($dCityCur === $booking_currency)
+                        ? $ebMadinahCost
+                        : ($ebMadinahRate && $ebMadinahRate > 0 ? $ebMadinahCost / $ebMadinahRate : null);
+                }
+                $cost_amount = ($makkah_cost_amount ?? 0) + ($madinah_cost_amount ?? 0);
+                // Determine supplier_currency / supplier_cost / exchange_rate
+                $mc = strtoupper($ebMakkahCurrency ?: 'USD');
+                $dc = strtoupper($ebMadinahCurrency ?: 'USD');
+                if ($mc === $dc && ($ebMakkahCost !== null || $ebMadinahCost !== null)) {
+                    $supplier_cost = ($ebMakkahCost ?? 0) + ($ebMadinahCost ?? 0);
+                    $supplier_currency = $mc;
+                    if ($cost_amount > 0) {
+                        $exchange_rate = round($supplier_cost / $cost_amount, 4);
+                    } elseif ($ebMakkahRate) {
+                        $exchange_rate = $ebMakkahRate;
+                    } elseif ($ebMadinahRate) {
+                        $exchange_rate = $ebMadinahRate;
+                    } else {
+                        $exchange_rate = null;
+                    }
+                } elseif ($cost_amount > 0) {
+                    $supplier_cost = $cost_amount;
+                    $supplier_currency = $booking_currency;
+                    $exchange_rate = null;
+                } else {
+                    $supplier_cost = null;
+                    $supplier_currency = '';
+                    $exchange_rate = null;
+                }
+            } elseif ($ebOwnCost !== null && $ebOwnCurrency) {
+                // Legacy single-supplier fallback
                 $supplier_currency = $ebOwnCurrency;
                 $supplier_cost = $ebOwnCost;
                 $exchange_rate = $ebOwnRate;
@@ -648,22 +749,25 @@ function fulfillment_save(PDO $pdo, array $in): array
             foreach ($stays as $i => $stay) {
                 $tgt = $stay['existing'];
 
-                // Determine which cost this stay bears:
-                //   - Per-city mode: each stay's city determines its cost
+                // Determine which cost and supplier this stay bears:
+                //   - Per-city mode: each stay's city determines its cost and supplier
                 //   - Legacy mode: first stay only
                 $bearCost = false;
-                if ($hasCityCosts && $stay['hotel_id'] !== null) {
-                    $cg = hotelCityGroup($pdo, $tenant_id, (int)$stay['hotel_id']);
+                $staySupplierId = $supplier_id;
+                if ($hasCityCosts && isset($stay['_city'])) {
+                    $cg = $stay['_city'];
                     if ($cg === 'madinah') {
                         $stayCurrency = $madinah_currency ?: 'USD';
                         $stayCost = $madinah_cost;
                         $stayRate = $madinah_rate;
                         $bearCostAmount = $madinah_cost_amount;
+                        if ($madinah_supplier_id) $staySupplierId = $madinah_supplier_id;
                     } else {
                         $stayCurrency = $makkah_currency ?: 'USD';
                         $stayCost = $makkah_cost;
                         $stayRate = $makkah_rate;
                         $bearCostAmount = $makkah_cost_amount;
+                        if ($makkah_supplier_id) $staySupplierId = $makkah_supplier_id;
                     }
                 } else {
                     $bearCost = ($i === 0);
@@ -681,7 +785,7 @@ function fulfillment_save(PDO $pdo, array $in): array
                             supplier_currency = ?, supplier_cost = ?, exchange_rate = ?, cost_amount = ?, notes = ?,
                             updated_at = NOW()
                         WHERE id = ?");
-                    $upd->execute([$supplier_id, $status, $requested_date, $planned_date, $completed_date,
+                    $upd->execute([$staySupplierId, $status, $requested_date, $planned_date, $completed_date,
                                    $hasCityCosts ? $stayCurrency : ($bearCost ? $supplier_currency : $tgt['supplier_currency']),
                                    $hasCityCosts ? $stayCost : ($bearCost ? $supplier_cost : $tgt['supplier_cost']),
                                    $hasCityCosts ? $stayRate : ($bearCost ? $exchange_rate : $tgt['exchange_rate']),
@@ -697,7 +801,7 @@ function fulfillment_save(PDO $pdo, array $in): array
                             supplier_currency, supplier_cost, exchange_rate, cost_amount, notes, created_by
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                     $ins->execute([$tenant_id, $branch_id, $booking_service_id, $fulfillmentFamilyId, $fulfillment_type,
-                                   $supplier_id, $status, $requested_date, $planned_date, $completed_date,
+                                   $staySupplierId, $status, $requested_date, $planned_date, $completed_date,
                                    $hasCityCosts ? $stayCurrency : ($bearCost ? $supplier_currency : null),
                                    $hasCityCosts ? $stayCost : ($bearCost ? $supplier_cost : null),
                                    $hasCityCosts ? $stayRate : ($bearCost ? $exchange_rate : null),
@@ -864,10 +968,12 @@ function fulfillment_save(PDO $pdo, array $in): array
                 'city_makkah_cost'        => $makkah_cost !== null ? (string)$makkah_cost : '',
                 'city_makkah_rate'        => $makkah_rate !== null ? (string)$makkah_rate : '',
                 'city_makkah_cost_amount' => $makkah_cost_amount !== null ? (string)$makkah_cost_amount : '',
+                'city_makkah_supplier_id' => $makkah_supplier_id !== null ? (string)$makkah_supplier_id : '',
                 'city_madinah_currency'    => $madinah_currency,
                 'city_madinah_cost'        => $madinah_cost !== null ? (string)$madinah_cost : '',
                 'city_madinah_rate'        => $madinah_rate !== null ? (string)$madinah_rate : '',
                 'city_madinah_cost_amount' => $madinah_cost_amount !== null ? (string)$madinah_cost_amount : '',
+                'city_madinah_supplier_id' => $madinah_supplier_id !== null ? (string)$madinah_supplier_id : '',
             ];
             $insD = $pdo->prepare("INSERT INTO umrah_fulfillment_details (tenant_id, branch_id, fulfillment_id, detail_key, detail_value)
                                    VALUES (?, ?, ?, ?, ?)");
@@ -919,12 +1025,25 @@ function fulfillment_save(PDO $pdo, array $in): array
         }
 
         // ---- Supplier transaction (once per supplier + booking + service type) ----
-        // Exact-remark matching keeps the dedupe honest (a LIKE on the service
-        // type could false-positive on member names). When a transaction already
-        // exists and the cost changed during the open phase, a correction
-        // transaction (Debit/Credit for the delta) keeps the supplier balance
-        // in sync with the fulfillment's actual cost.
-        if ($supplier_id && $booking_id) {
+        // For hotel cards with per-city suppliers, each city's supplier gets its
+        // own transaction. The SUM query WHERE supplier_id = ? naturally picks up
+        // only the stays that belong to that supplier.
+        $txSuppliers = [];
+        if ($fulfillment_type === 'hotel' && $hasCityCosts) {
+            if ($makkah_supplier_id) $txSuppliers[] = $makkah_supplier_id;
+            if ($madinah_supplier_id && !in_array($madinah_supplier_id, $txSuppliers, true)) {
+                $txSuppliers[] = $madinah_supplier_id;
+            }
+        } elseif ($supplier_id) {
+            $txSuppliers[] = $supplier_id;
+        }
+
+        foreach ($txSuppliers as $txSid) {
+        if ($txSid && $booking_id) {
+            $supplier_id = $txSid;
+            if ($fulfillment_type === 'hotel' && $hasCityCosts) {
+                $supplier_cost = ((int)$txSid === (int)$makkah_supplier_id) ? $makkah_cost_amount : $madinah_cost_amount;
+            }
             $memberStmt = $pdo->prepare("
                 SELECT ub.name, ub.is_extra_bed, f.head_of_family
                 FROM umrah_bookings ub
@@ -984,9 +1103,16 @@ function fulfillment_save(PDO $pdo, array $in): array
             // mid-open can never leave a phantom payable on the old supplier or
             // a double debit on the new one. The new supplier's transaction is
             // created below.
-            $oldSupplierId = $existingRows
-                ? ((int)($existingRows[0]['supplier_id'] ?? 0) ?: null)
-                : null;
+            // Per-city hotel costs use two separate suppliers simultaneously
+            // (makkah_supplier + madinah_supplier) — both legitimately coexist
+            // and must NOT trigger the supplier-change cleanup. The old supplier
+            // ID is only meaningful for single-supplier services.
+            $oldSupplierId = null;
+            if (!$hasCityCosts) {
+                $oldSupplierId = $existingRows
+                    ? ((int)($existingRows[0]['supplier_id'] ?? 0) ?: null)
+                    : null;
+            }
             if ($oldSupplierId !== null && (int)$oldSupplierId !== (int)$supplier_id) {
                 // Use LIKE to match even when the member label changed between saves.
                 $oldIdStmt = $pdo->prepare("
@@ -1109,6 +1235,7 @@ function fulfillment_save(PDO $pdo, array $in): array
             }
             } // end if cancelled/else
         }
+        } // end foreach txSuppliers
 
         // ---- Booking activation (replaces the old approval step) --------------
         // The fulfillment flow is now the single point where a booking's money
@@ -1234,11 +1361,29 @@ function fulfillment_save(PDO $pdo, array $in): array
             foreach ($extra_bed_costs as $ebBid => $ebData) {
                 $ebBookingId = (int)$ebBid;
                 if ($ebBookingId <= 0) continue;
+                // Per-city supplier data
+                $ebMakSupplierId = isset($ebData['makkah_supplier_id']) && $ebData['makkah_supplier_id'] !== '' ? (int)$ebData['makkah_supplier_id'] : null;
+                $ebMakCurrency = isset($ebData['makkah_currency']) ? trim((string)$ebData['makkah_currency']) : '';
+                $ebMakCost = (isset($ebData['makkah_cost']) && $ebData['makkah_cost'] !== '') ? (float)$ebData['makkah_cost'] : null;
+                $ebMakRate = (isset($ebData['makkah_rate']) && $ebData['makkah_rate'] !== '') ? (float)$ebData['makkah_rate'] : null;
+                $ebMakCostUsd = (isset($ebData['makkah_cost_usd']) && $ebData['makkah_cost_usd'] !== '') ? (float)$ebData['makkah_cost_usd'] : null;
+                $ebMadSupplierId = isset($ebData['madinah_supplier_id']) && $ebData['madinah_supplier_id'] !== '' ? (int)$ebData['madinah_supplier_id'] : null;
+                $ebMadCurrency = isset($ebData['madinah_currency']) ? trim((string)$ebData['madinah_currency']) : '';
+                $ebMadCost = (isset($ebData['madinah_cost']) && $ebData['madinah_cost'] !== '') ? (float)$ebData['madinah_cost'] : null;
+                $ebMadRate = (isset($ebData['madinah_rate']) && $ebData['madinah_rate'] !== '') ? (float)$ebData['madinah_rate'] : null;
+                $ebMadCostUsd = (isset($ebData['madinah_cost_usd']) && $ebData['madinah_cost_usd'] !== '') ? (float)$ebData['madinah_cost_usd'] : null;
+                // Legacy single-supplier fallback
                 $ebCurrency = isset($ebData['currency']) ? trim((string)$ebData['currency']) : '';
                 $ebCost = (isset($ebData['cost']) && $ebData['cost'] !== '') ? (float)$ebData['cost'] : null;
                 $ebRate = (isset($ebData['rate']) && $ebData['rate'] !== '') ? (float)$ebData['rate'] : null;
                 $ebCostUsd = (isset($ebData['cost_usd']) && $ebData['cost_usd'] !== '') ? (float)$ebData['cost_usd'] : null;
                 $ebSold = (isset($ebData['sold']) && $ebData['sold'] !== '') ? (float)$ebData['sold'] : null;
+
+                // Compute total cost_usd from per-city if available
+                $hasEbCityCosts = ($ebMakCost !== null || $ebMadCost !== null);
+                if ($hasEbCityCosts) {
+                    $ebCostUsd = ($ebMakCostUsd ?? 0) + ($ebMadCostUsd ?? 0);
+                }
 
                 // Find the hotel service for this extra bed member
                 $ebSvcStmt = $pdo->prepare("SELECT id, sold_price FROM umrah_booking_services WHERE booking_id = ? AND tenant_id = ? AND LOWER(service_type) = 'hotel' LIMIT 1");
@@ -1419,7 +1564,112 @@ function fulfillment_save(PDO $pdo, array $in): array
 
                         // Correct the fulfillment row: use extra bed cost in
                         // supplier currency instead of the card-level city cost.
-                        if ($ebCost !== null && $ebCurrency) {
+                        $hasEbCityCostsTxn = ($ebMakCost !== null || $ebMadCost !== null);
+                        if ($hasEbCityCostsTxn) {
+                            // Per-city supplier: compute total cost_amount
+                            $ebMakCostAmount = null;
+                            $ebMadCostAmount = null;
+                            if ($ebMakCost !== null) {
+                                $mcTxn = $ebMakCurrency ?: 'USD';
+                                $ebMakCostAmount = ($mcTxn === $booking_currency)
+                                    ? $ebMakCost
+                                    : ($ebMakRate && $ebMakRate > 0 ? $ebMakCost / $ebMakRate : $ebMakCostUsd);
+                            }
+                            if ($ebMadCost !== null) {
+                                $dcTxn = $ebMadCurrency ?: 'USD';
+                                $ebMadCostAmount = ($dcTxn === $booking_currency)
+                                    ? $ebMadCost
+                                    : ($ebMadRate && $ebMadRate > 0 ? $ebMadCost / $ebMadRate : $ebMadCostUsd);
+                            }
+                            $ebTotalCostAmount = ($ebMakCostAmount ?? 0) + ($ebMadCostAmount ?? 0);
+                            $ebTotalCost = ($ebMakCost ?? 0) + ($ebMadCost ?? 0);
+                            $ebTotalCurrency = strtoupper($ebMakCurrency ?: 'USD');
+                            $ebTotalRate = null;
+                            if ($ebTotalCostAmount > 0) {
+                                $ebTotalRate = round($ebTotalCost / $ebTotalCostAmount, 4);
+                            }
+                            $pdo->prepare("
+                                UPDATE umrah_fulfillments
+                                SET supplier_currency = ?, supplier_cost = ?, exchange_rate = ?, cost_amount = ?
+                                WHERE id = ? AND tenant_id = ?
+                            ")->execute([$ebTotalCurrency, $ebTotalCost, $ebTotalRate, $ebTotalCostAmount, $ebFid, $tenant_id]);
+
+                            // Fix supplier transactions: remove old, then
+                            // create per-city transactions
+                            if (!empty($ebFidRow['supplier_id']) && (float)$ebFidRow['supplier_cost'] > 0) {
+                                $ebOldSupId = (int)$ebFidRow['supplier_id'];
+                                $ebBkIdStmt = $pdo->prepare("SELECT booking_id FROM umrah_booking_services WHERE id = ? AND tenant_id = ?");
+                                $ebBkIdStmt->execute([$ebSvc['id'], $tenant_id]);
+                                $ebBkId = (int)$ebBkIdStmt->fetchColumn();
+                                $ebMemberStmt = $pdo->prepare("
+                                    SELECT ub.name, f.head_of_family
+                                    FROM umrah_bookings ub
+                                    LEFT JOIN families f ON f.family_id = ub.family_id AND f.tenant_id = ub.tenant_id
+                                    WHERE ub.booking_id = ? AND ub.tenant_id = ?");
+                                $ebMemberStmt->execute([$ebBkId, $tenant_id]);
+                                $ebMember = $ebMemberStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+                                $ebMemberName = (string)($ebMember['name'] ?? '') ?: 'Extra Bed';
+                                $ebFamilyName = trim((string)($ebMember['head_of_family'] ?? ''));
+                                $ebMemberLabel = $ebFamilyName !== ''
+                                    ? $ebMemberName . ' (' . $ebFamilyName . ' family)'
+                                    : $ebMemberName;
+                                $ebSvcTypeStmt = $pdo->prepare("SELECT service_type FROM umrah_booking_services WHERE id = ?");
+                                $ebSvcTypeStmt->execute([$ebSvc['id']]);
+                                $ebSvcType = $ebSvcTypeStmt->fetchColumn() ?: 'hotel';
+                                $ebRemark = "Fulfillment for {$ebSvcType}: {$ebMemberLabel}";
+                                $ebCorrRemark = "Fulfillment cost correction for {$ebSvcType}: {$ebMemberLabel}";
+
+                                // Remove old transaction(s) and restore balance
+                                $ebOldTxnStmt = $pdo->prepare("
+                                    SELECT transaction_type, amount, supplier_id FROM supplier_transactions
+                                    WHERE reference_id = ? AND transaction_of = 'umrah'
+                                      AND (remarks = ? OR remarks = ?) AND tenant_id = ?");
+                                $ebOldTxnStmt->execute([$ebBkId, $ebRemark, $ebCorrRemark, $tenant_id]);
+                                $ebOldTxns = $ebOldTxnStmt->fetchAll(PDO::FETCH_ASSOC);
+                                if ($ebOldTxns) {
+                                    foreach ($ebOldTxns as $ot) {
+                                        $otSupId = (int)$ot['supplier_id'];
+                                        $ebNet = $ot['transaction_type'] === 'Debit' ? (float)$ot['amount'] : -((float)$ot['amount']);
+                                        if ($ebNet != 0.0) {
+                                            $ebTypeStmt = $pdo->prepare("SELECT supplier_type FROM suppliers WHERE id = ? AND tenant_id = ?");
+                                            $ebTypeStmt->execute([$otSupId, $tenant_id]);
+                                            if ($ebTypeStmt->fetchColumn() === 'External') {
+                                                $pdo->prepare("UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ?")
+                                                    ->execute([$ebNet, $otSupId, $tenant_id]);
+                                            }
+                                        }
+                                    }
+                                    $pdo->prepare("DELETE FROM supplier_transactions
+                                                   WHERE reference_id = ? AND transaction_of = 'umrah'
+                                                     AND (remarks = ? OR remarks = ?) AND tenant_id = ?")
+                                        ->execute([$ebBkId, $ebRemark, $ebCorrRemark, $tenant_id]);
+                                }
+
+                                // Create per-city supplier transactions
+                                foreach ([
+                                    ['supId' => $ebMakSupplierId, 'cost' => $ebMakCost, 'cur' => $ebMakCurrency, 'rate' => $ebMakRate, 'costUsd' => $ebMakCostUsd],
+                                    ['supId' => $ebMadSupplierId, 'cost' => $ebMadCost, 'cur' => $ebMadCurrency, 'rate' => $ebMadRate, 'costUsd' => $ebMadCostUsd],
+                                ] as $cityTxn) {
+                                    if (!$cityTxn['supId'] || $cityTxn['cost'] === null || $cityTxn['cost'] <= 0) continue;
+                                    $ebCitySupId = (int)$cityTxn['supId'];
+                                    $ebCityCost = (float)$cityTxn['cost'];
+                                    $ebTypeStmt2 = $pdo->prepare("SELECT supplier_type FROM suppliers WHERE id = ? AND tenant_id = ?");
+                                    $ebTypeStmt2->execute([$ebCitySupId, $tenant_id]);
+                                    if ($ebTypeStmt2->fetchColumn() === 'External') {
+                                        $pdo->prepare("UPDATE suppliers SET balance = balance - ? WHERE id = ? AND tenant_id = ?")
+                                            ->execute([$ebCityCost, $ebCitySupId, $tenant_id]);
+                                    }
+                                    $ebBalStmt = $pdo->prepare("SELECT balance FROM suppliers WHERE id = ? AND tenant_id = ?");
+                                    $ebBalStmt->execute([$ebCitySupId, $tenant_id]);
+                                    $ebNewBal = (float)$ebBalStmt->fetchColumn();
+                                    $pdo->prepare("INSERT INTO supplier_transactions
+                                        (tenant_id, branch_id, supplier_id, reference_id, transaction_type, amount, remarks, balance, transaction_of, receipt)
+                                        VALUES (?, ?, ?, ?, 'Debit', ?, ?, ?, 'umrah', '')")
+                                        ->execute([$tenant_id, $branch_id, $ebCitySupId, $ebBkId, $ebCityCost, $ebRemark, $ebNewBal]);
+                                }
+                            }
+                        } elseif ($ebCost !== null && $ebCurrency) {
+                            // Legacy single-supplier fallback
                             $ebCostAmount = ($ebCurrency === $booking_currency)
                                 ? $ebCost
                                 : ($ebRate && $ebRate > 0 ? $ebCost / $ebRate : $ebCostUsd);
@@ -1505,10 +1755,20 @@ function fulfillment_save(PDO $pdo, array $in): array
                         $pdo->prepare("DELETE FROM umrah_fulfillment_details WHERE fulfillment_id = ? AND detail_key LIKE 'eb_%'")
                             ->execute([$ebFid]);
                         $ebPairs = [
-                            'eb_currency' => $ebCurrency,
-                            'eb_cost'     => $ebCost !== null ? (string)$ebCost : '',
-                            'eb_rate'     => $ebRate !== null ? (string)$ebRate : '',
-                            'eb_cost_usd' => $ebCostUsd !== null ? (string)$ebCostUsd : '',
+                            'eb_makkah_supplier_id' => $ebMakSupplierId !== null ? (string)$ebMakSupplierId : '',
+                            'eb_makkah_currency'    => $ebMakCurrency,
+                            'eb_makkah_cost'        => $ebMakCost !== null ? (string)$ebMakCost : '',
+                            'eb_makkah_rate'        => $ebMakRate !== null ? (string)$ebMakRate : '',
+                            'eb_makkah_cost_usd'    => $ebMakCostUsd !== null ? (string)$ebMakCostUsd : '',
+                            'eb_madinah_supplier_id'=> $ebMadSupplierId !== null ? (string)$ebMadSupplierId : '',
+                            'eb_madinah_currency'   => $ebMadCurrency,
+                            'eb_madinah_cost'       => $ebMadCost !== null ? (string)$ebMadCost : '',
+                            'eb_madinah_rate'       => $ebMadRate !== null ? (string)$ebMadRate : '',
+                            'eb_madinah_cost_usd'   => $ebMadCostUsd !== null ? (string)$ebMadCostUsd : '',
+                            'eb_currency'           => $ebCurrency,
+                            'eb_cost'               => $ebCost !== null ? (string)$ebCost : '',
+                            'eb_rate'               => $ebRate !== null ? (string)$ebRate : '',
+                            'eb_cost_usd'           => $ebCostUsd !== null ? (string)$ebCostUsd : '',
                         ];
                         $insEbD = $pdo->prepare("INSERT INTO umrah_fulfillment_details (tenant_id, branch_id, fulfillment_id, detail_key, detail_value) VALUES (?, ?, ?, ?, ?)");
                         foreach ($ebPairs as $k => $v) {

@@ -89,10 +89,12 @@ function enrichHotelCityCosts(array &$services, $pdo, int $tenant_id): void
         $sv['makkah_cost']        = $d['city_makkah_cost'] !== '' ? $d['city_makkah_cost'] : null;
         $sv['makkah_rate']        = $d['city_makkah_rate'] !== '' ? $d['city_makkah_rate'] : null;
         $sv['makkah_cost_amount'] = $d['city_makkah_cost_amount'] !== '' ? $d['city_makkah_cost_amount'] : null;
+        $sv['makkah_supplier_id'] = $d['city_makkah_supplier_id'] !== '' ? $d['city_makkah_supplier_id'] : null;
         $sv['madinah_currency']    = $d['city_madinah_currency'] ?? 'USD';
         $sv['madinah_cost']        = $d['city_madinah_cost'] !== '' ? $d['city_madinah_cost'] : null;
         $sv['madinah_rate']        = $d['city_madinah_rate'] !== '' ? $d['city_madinah_rate'] : null;
         $sv['madinah_cost_amount'] = $d['city_madinah_cost_amount'] !== '' ? $d['city_madinah_cost_amount'] : null;
+        $sv['madinah_supplier_id'] = $d['city_madinah_supplier_id'] !== '' ? $d['city_madinah_supplier_id'] : null;
     }
     unset($sv);
 }
@@ -115,14 +117,16 @@ function enrichExtraBedCosts(array &$services, $pdo, int $tenant_id): void
     if (!$ebBookingIds) return;
 
     // Find the fulfillment_id for each extra bed member's hotel service
+    // that actually has eb_* detail rows (per-city cost data).
     $ph = implode(',', array_fill(0, count($ebBookingIds), '?'));
     $fStmt = $pdo->prepare("
-        SELECT bs.booking_id, f.id AS fulfillment_id
-        FROM umrah_fulfillments f
-        JOIN umrah_booking_services bs ON bs.id = f.booking_service_id
+        SELECT DISTINCT fd.fulfillment_id, bs.booking_id
+        FROM umrah_fulfillment_details fd
+        JOIN umrah_fulfillments f ON f.id = fd.fulfillment_id AND f.tenant_id = fd.tenant_id
+        JOIN umrah_booking_services bs ON bs.id = f.booking_service_id AND bs.tenant_id = f.tenant_id
         WHERE bs.booking_id IN ($ph) AND bs.tenant_id = ?
           AND LOWER(bs.service_type) = 'hotel'
-        GROUP BY bs.booking_id, f.id");
+          AND fd.detail_key LIKE 'eb_%'");
     $fStmt->execute(array_merge($ebBookingIds, [$tenant_id]));
     $fidMap = [];
     foreach ($fStmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
@@ -152,6 +156,16 @@ function enrichExtraBedCosts(array &$services, $pdo, int $tenant_id): void
             $bid = (int)$m['booking_id'];
             if (!isset($fidMap[$bid]) || !isset($detailMap[$fidMap[$bid]])) continue;
             $d = $detailMap[$fidMap[$bid]];
+            $m['eb_makkah_supplier_id'] = isset($d['eb_makkah_supplier_id']) && $d['eb_makkah_supplier_id'] !== '' ? (int)$d['eb_makkah_supplier_id'] : null;
+            $m['eb_makkah_currency'] = $d['eb_makkah_currency'] ?? '';
+            $m['eb_makkah_cost'] = ($d['eb_makkah_cost'] ?? '') !== '' ? $d['eb_makkah_cost'] : null;
+            $m['eb_makkah_rate'] = ($d['eb_makkah_rate'] ?? '') !== '' ? $d['eb_makkah_rate'] : null;
+            $m['eb_makkah_cost_usd'] = ($d['eb_makkah_cost_usd'] ?? '') !== '' ? $d['eb_makkah_cost_usd'] : null;
+            $m['eb_madinah_supplier_id'] = isset($d['eb_madinah_supplier_id']) && $d['eb_madinah_supplier_id'] !== '' ? (int)$d['eb_madinah_supplier_id'] : null;
+            $m['eb_madinah_currency'] = $d['eb_madinah_currency'] ?? '';
+            $m['eb_madinah_cost'] = ($d['eb_madinah_cost'] ?? '') !== '' ? $d['eb_madinah_cost'] : null;
+            $m['eb_madinah_rate'] = ($d['eb_madinah_rate'] ?? '') !== '' ? $d['eb_madinah_rate'] : null;
+            $m['eb_madinah_cost_usd'] = ($d['eb_madinah_cost_usd'] ?? '') !== '' ? $d['eb_madinah_cost_usd'] : null;
             $m['eb_currency'] = $d['eb_currency'] ?? '';
             $m['eb_cost'] = $d['eb_cost'] !== '' ? $d['eb_cost'] : null;
             $m['eb_rate'] = $d['eb_rate'] !== '' ? $d['eb_rate'] : null;
