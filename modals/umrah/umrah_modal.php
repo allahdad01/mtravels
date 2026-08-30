@@ -176,7 +176,7 @@
                     <!-- SECTION 3: SHARED SERVICES -->
                     <div class="card mb-4">
                         <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap">
-                            <h6 class="mb-0"><i class="feather icon-package mr-2"></i><?= __('services') ?> (Shared for all members)</h6>
+                            <h6 class="mb-0"><i class="feather icon-package mr-2"></i><?= __('services') ?></h6>
                             <div class="d-flex align-items-center" style="gap: 6px;">
                                 <select class="form-control form-control-sm" id="packageSelect" name="package_id" style="min-width: 220px;">
                                     <option value="">-- <?= __('select_package') ?> --</option>
@@ -201,7 +201,7 @@
                         <div class="card-body">
                             <div class="alert alert-info py-2 mb-3" style="font-size: 0.85rem;">
                                 <i class="feather icon-info mr-1"></i>
-                                <?= __('select_package_hint') ?> — services and prices load from the package. Optional lines can be removed.
+                                <?= __('select_package_hint') ?> — services load from the package. Pricing is set per member below.
                             </div>
                             <div id="packageEmptyState" class="text-center py-4">
                                 <i class="feather icon-package" style="font-size: 2rem; color: #adb5bd;"></i>
@@ -211,46 +211,12 @@
                             <div class="services-grid-wrapper">
                                 <div class="services-grid-header" style="display:flex; flex-wrap:wrap; align-items:flex-end; gap:16px; border-bottom:1px solid #dee2e6;">
                                     <div class="header-item" style="align-self:center; padding-bottom:10px;"><?= __('service_info') ?></div>
-                                    <div style="margin-left:auto; min-width:260px; max-width:320px; padding-bottom:10px;">
-                                        <label class="d-block text-muted" style="margin:0 0 4px; font-size:0.75rem; font-weight:400;"><?= __('sale_currency') ?> (<?= __('sale_currency_hint') ?>)</label>
-                                        <select class="form-control form-control-sm" id="saleCurrency" name="sale_currency">
-                                            <option value="USD" selected>USD</option>
-                                            <option value="AFS">AFS</option>
-                                        </select>
-                                    </div>
                                 </div>
                                 <div id="servicesTableBody" class="services-grid-body">
                                     <!-- Service rows will be added here -->
                                 </div>
-                                <div class="services-grid-footer">
-                                    <div class="footer-item footer-column-1">
-                                        <strong><?= __('total') ?>:</strong>
-                                    </div>
-                                    <div class="footer-item footer-column-2">
-                                        <div class="total-inputs">
-                                            <div class="total-input-group">
-                                                <label><?= __('base_price') ?>:</label>
-                                                <input type="number" class="form-control form-control-sm" id="totalBasePrice" readonly value="0">
-                                            </div>
-                                            <div class="total-input-group">
-                                                <label><?= __('sold_price') ?>:</label>
-                                                <input type="number" class="form-control form-control-sm" id="totalSoldPrice" name="grand_sold_price" value="0" min="0" step="0.01">
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="footer-item footer-column-3">
-                                        <div class="total-input-group">
-                                            <label><?= __('discount') ?>:</label>
-                                            <input type="number" class="form-control form-control-sm" id="discount" name="discount" value="0" min="0" step="0.01">
-                                        </div>
-                                        <div class="total-input-group">
-                                            <label><?= __('profit') ?>:</label>
-                                            <input type="number" class="form-control form-control-sm" id="totalProfit" readonly value="0">
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
-                            </div>
+                        </div>
                         </div>
                     </div>
 
@@ -285,18 +251,6 @@
                                     <input type="date" class="form-control" id="entry_date" name="entry_date" required>
                                 </div>
                                 <div class="form-group col-md-4">
-                                    <label for="flight_date"><?= __('flight_date') ?></label>
-                                    <input type="date" class="form-control" id="flight_date" name="flight_date">
-                                </div>
-                                <div class="form-group col-md-4">
-                                    <label for="return_date"><?= __('return_date') ?></label>
-                                    <input type="date" class="form-control" id="return_date" name="return_date">
-                                </div>
-                            </div>
-
-                            <!-- Common Room & Duration -->
-                            <div class="row">
-                                <div class="form-group col-md-6">
                                     <label for="room_type"><?= __('room_type') ?></label>
                                     <select class="form-control" id="room_type" name="room_type" required>
                                         <option value=""><?= __('select_room_type') ?></option>
@@ -311,7 +265,7 @@
                                         <option value="No Room"><?= __('no_room') ?></option>
                                     </select>
                                 </div>
-                                <div class="form-group col-md-6">
+                                <div class="form-group col-md-4">
                                     <label for="duration"><?= __('duration') ?></label>
                                     <select class="form-control" id="duration" name="duration" required>
                                         <option value=""><?= __('select_duration') ?></option>

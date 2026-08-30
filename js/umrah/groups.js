@@ -237,12 +237,13 @@ function renderFamilyList(families) {
     let html = '';
     families.forEach(function(f) {
         const price = parseFloat(f.total_price) || 0;
-        const paid = parseFloat(f.total_paid) || 0;
-        const due = parseFloat(f.total_due) || 0;
         html += '<div class="family-select-card" data-family-id="' + f.family_id + '" onclick="toggleFamilySelection(this, ' + f.family_id + ')">';
         html += '<input type="checkbox" class="family-checkbox" data-family-id="' + f.family_id + '" onclick="event.stopPropagation(); toggleFamilySelection(this.closest(\'.family-select-card\'), ' + f.family_id + ')">';
         html += '<div class="family-info">';
-        html += '<div class="family-name">' + escapeHtml(f.head_of_family || 'Unknown') + '</div>';
+        html += '<div class="d-flex align-items-center" style="gap:8px;">';
+        html += '<span class="family-name">' + escapeHtml(f.head_of_family || 'Unknown') + '</span>';
+        if (f.client_name) html += '<span class="ug-badge ug-badge-info" style="font-size:0.65rem;"><i class="fas fa-user-tie mr-1"></i>' + escapeHtml(f.client_name) + '</span>';
+        html += '</div>';
         html += '<div class="family-meta">';
         html += '<span><i class="fas fa-users mr-1"></i>' + (f.actual_member_count || 0) + ' members</span>';
         html += ' &middot; <span><i class="fas fa-dollar-sign mr-1"></i>' + price.toFixed(2) + '</span>';
@@ -337,7 +338,9 @@ function renderFamilyAndMemberEditors(families) {
     families.forEach(function(fam) {
         // Family edit section
         html += '<div class="family-edit-section">';
-        html += '<div class="section-title"><i class="fas fa-home mr-1"></i> ' + escapeHtml(fam.head_of_family || 'Family') + '</div>';
+        html += '<div class="section-title"><i class="fas fa-home mr-1"></i> ' + escapeHtml(fam.head_of_family || 'Family');
+        if (fam.client_name) html += ' <span class="ug-badge ug-badge-info" style="font-size:0.65rem;"><i class="fas fa-user-tie mr-1"></i>' + escapeHtml(fam.client_name) + '</span>';
+        html += '</div>';
         html += '<div class="row">';
         html += '<div class="col-md-3"><div class="form-group"><label>Head of Family</label>';
         html += '<input type="text" class="form-control form-control-sm family-field" data-family-id="' + fam.family_id + '" data-field="head_of_family" value="' + escapeAttr(fam.head_of_family || '') + '"></div></div>';

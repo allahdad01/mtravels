@@ -31,9 +31,11 @@ try {
             COUNT(ub.booking_id) as actual_member_count,
             COALESCE(SUM(CASE WHEN ub.status = 'active' THEN ub.sold_price ELSE 0 END), 0) as total_price,
             COALESCE(SUM(CASE WHEN ub.status = 'active' THEN ub.paid ELSE 0 END), 0) as total_paid,
-            COALESCE(SUM(CASE WHEN ub.status = 'active' THEN ub.due ELSE 0 END), 0) as total_due
+            COALESCE(SUM(CASE WHEN ub.status = 'active' THEN ub.due ELSE 0 END), 0) as total_due,
+            c.name as client_name
         FROM families f
         LEFT JOIN umrah_bookings ub ON f.family_id = ub.family_id AND ub.tenant_id = f.tenant_id AND ub.branch_id = f.branch_id
+        LEFT JOIN clients c ON c.id = ub.sold_to
         WHERE f.group_id = ? AND f.tenant_id = ? AND f.branch_id = ?
         GROUP BY f.family_id
         ORDER BY f.head_of_family

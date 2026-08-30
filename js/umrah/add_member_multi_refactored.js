@@ -186,31 +186,7 @@ function getSaleCurrency() { return ($('#saleCurrency').val() || 'USD').toUpperC
 function getExchangeRate() { return 1; }
 
 function updateTotals() {
-    let totalBase = 0, totalSold = 0, totalProfit = 0;
-    const discount = parseFloat($('#discount').val()) || 0;
-    const sale = getSaleCurrency();
-    const rate = getExchangeRate();
-    
-    $('.services-grid-body .service-row-grid').each(function() {
-        updateCurrencyHint($(this));
-        const base = parseFloat($(this).find('.service-base-price').val()) || 0;
-        const sold = parseFloat($(this).find('.service-sold-price').val()) || 0;
-        const cur = ($(this).find('.service-currency').val() || '').trim().toUpperCase();
-        const baseInSale = (!cur || cur === sale) ? base : base / rate;
-        const profit = sold - baseInSale;
-        $(this).find('.service-profit').val(profit.toFixed(2));
-        totalBase += baseInSale;
-        totalSold += sold;
-        totalProfit += profit;
-    });
-    
-    if (!grandSoldEdited) {
-        $('#totalSoldPrice').val(totalSold.toFixed(2));
-    }
-    totalSold = parseFloat($('#totalSoldPrice').val()) || 0;
-    const discountedSold = totalSold - discount;
-    $('#totalBasePrice').val(totalBase.toFixed(2));
-    $('#totalProfit').val((discountedSold - totalBase).toFixed(2));
+    // Pricing is now per-member — no shared totals to compute
 }
 
 // Service event bindings
@@ -230,14 +206,7 @@ $(document).on('change', '.service-supplier', function() {
     $row.find('.service-currency').val(newCur);
     updateTotals();
 });
-$(document).on('input', '.service-base-price, .service-sold-price, #discount', updateTotals);
-$(document).on('input', '#totalSoldPrice', function() { grandSoldEdited = true; updateTotals(); });
 $(document).on('change', '#saleCurrency', updateTotals);
-
-// Sale currency change re-renders package rows with the new conversion
-$(document).on('change', '#saleCurrency', function() {
-    if (lastPackageData) buildPackageRows(lastPackageData);
-});
 
 // ============================================
 // PACKAGE SELECTION (fills the services grid from the price engine)
@@ -245,7 +214,6 @@ $(document).on('change', '#saleCurrency', function() {
 
 let lastPackageData = null;
 let removedPackageLines = new Set();
-let grandSoldEdited = false;
 let packageTierPrices = {}; // { service_id: { adult: X, child: Y, infant: Z } }
 
 function loadPackage(packageId) {
@@ -261,7 +229,6 @@ function loadPackage(packageId) {
         }
         lastPackageData = data;
         removedPackageLines = new Set();
-        grandSoldEdited = false;
 
         // Store tier prices per service for passenger type pricing
         packageTierPrices = {};
@@ -434,25 +401,30 @@ function addMemberRow(name = '', dob = '', gender = 'Male', passport_number = ''
                     Member <span class="member-number">${memberRowCounter}</span> 
                     <span class="member-name-badge" style="color: #666; font-size: 12px;"></span>
                 </h6>
-                <button type="button" class="btn btn-sm btn-danger" onclick="removeMemberRow('${rowId}')">
-                    <i class="feather icon-trash-2"></i> Remove
-                </button>
+                <div class="d-flex align-items-center" style="gap: 6px;">
+                    <button type="button" class="btn btn-sm btn-outline-info" onclick="autoFillMemberDocument('${rowId}', ${memberRowCounter})">
+                        <i class="feather icon-upload-cloud mr-1"></i>Upload Passport
+                    </button>
+                    <button type="button" class="btn btn-sm btn-danger" onclick="removeMemberRow('${rowId}')">
+                        <i class="feather icon-trash-2"></i> Remove
+                    </button>
+                </div>
             </div>
             <div class="card-body" style="padding: 15px;">
                 <!-- Member Personal Information -->
                 <div class="row">
-                    <div class="form-group col-md-3">
+                    <div class="form-group col-md-4">
                         <label for="members_${memberRowCounter}_name">Name *</label>
                         <input type="text" class="form-control member-name" id="members_${memberRowCounter}_name" 
                                name="members[${memberRowCounter}][name]" value="${name}" required 
                                placeholder="Full Name">
                     </div>
-                    <div class="form-group col-md-3">
+                    <div class="form-group col-md-4">
                         <label for="members_${memberRowCounter}_dob">Date of Birth</label>
                         <input type="date" class="form-control member-dob" id="members_${memberRowCounter}_dob" 
                                name="members[${memberRowCounter}][dob]" value="${dob}">
                     </div>
-                    <div class="form-group col-md-2">
+                    <div class="form-group col-md-4">
                         <label for="members_${memberRowCounter}_gender">Gender *</label>
                         <select class="form-control" id="members_${memberRowCounter}_gender" 
                                 name="members[${memberRowCounter}][gender]" required>
@@ -460,8 +432,10 @@ function addMemberRow(name = '', dob = '', gender = 'Male', passport_number = ''
                             <option value="Female" ${gender === 'Female' ? 'selected' : ''}>Female</option>
                         </select>
                     </div>
-                    <div class="form-group col-md-2">
-                        <label for="members_${memberRowCounter}_passenger_type">Type</label>
+                </div>
+                <div class="row">
+                    <div class="form-group col-md-4">
+                        <label for="members_${memberRowCounter}_passenger_type">Passenger Type</label>
                         <select class="form-control member-passenger-type" id="members_${memberRowCounter}_passenger_type"
                                 name="members[${memberRowCounter}][passenger_type]">
                             <option value="adult">Adult</option>
@@ -469,28 +443,18 @@ function addMemberRow(name = '', dob = '', gender = 'Male', passport_number = ''
                             <option value="infant">Infant</option>
                         </select>
                     </div>
-                    <div class="form-group col-md-2">
+                    <div class="form-group col-md-4">
                         <label for="members_${memberRowCounter}_sold_price">Sold Price</label>
                         <input type="number" class="form-control member-sold-price" id="members_${memberRowCounter}_sold_price"
                                name="members[${memberRowCounter}][sold_price]" value="" min="0" step="0.01"
                                placeholder="0.00">
                         <small class="text-muted member-price-hint" style="font-size:0.7rem;"></small>
                     </div>
-                </div>
-
-                <!-- Father Name -->
-                <div class="row">
-                    <div class="form-group col-md-6">
+                    <div class="form-group col-md-4">
                         <label for="members_${memberRowCounter}_father_name">Father Name</label>
                         <input type="text" class="form-control" id="members_${memberRowCounter}_father_name" 
                                name="members[${memberRowCounter}][father_name]" value="${father_name}" 
                                placeholder="Father's Full Name">
-                    </div>
-                    <div class="form-group col-md-6">
-                        <label>&nbsp;</label>
-                        <button type="button" class="btn btn-sm btn-info btn-block" onclick="autoFillMemberDocument('${rowId}', ${memberRowCounter})">
-                            <i class="feather icon-upload-cloud mr-1"></i>Upload Passport
-                        </button>
                     </div>
                 </div>
 
@@ -1471,12 +1435,8 @@ function validateForm() {
         if (sp > 0) hasAnySoldPrice = true;
     });
     if (!hasAnySoldPrice) {
-        // Check if grand total is set
-        const grandTotal = parseFloat($('#totalSoldPrice').val()) || 0;
-        if (grandTotal <= 0) {
-            showToast('error', 'Please set a sold price (either per member or via the grand total)');
-            return false;
-        }
+        showToast('error', 'Please set a sold price for each member');
+        return false;
     }
     
     return true;

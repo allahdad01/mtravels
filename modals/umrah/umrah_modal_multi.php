@@ -104,50 +104,16 @@
                     <!-- SECTION 3: SHARED SERVICES -->
                     <div class="card mb-4">
                         <div class="card-header bg-light">
-                            <h6 class="mb-0"><i class="feather icon-package mr-2"></i><?= __('services') ?> (Shared for all members)</h6>
-                            <small class="text-muted d-block">Select a package below; supplier &amp; pricing are assigned at fulfillment.</small>
+                            <h6 class="mb-0"><i class="feather icon-package mr-2"></i><?= __('services') ?></h6>
+                            <small class="text-muted d-block">Package services included for each member. Pricing is set per member below.</small>
                         </div>
                         <div class="card-body">
                             <div class="services-grid-wrapper">
                                 <div class="services-grid-header" style="display:flex; flex-wrap:wrap; align-items:flex-end; gap:16px; border-bottom:1px solid #dee2e6;">
                                     <div class="header-item" style="align-self:center; padding-bottom:10px;"><?= __('service_info') ?></div>
-                                    <div style="margin-left:auto; min-width:260px; max-width:320px; padding-bottom:10px;">
-                                        <label class="d-block text-muted" style="margin:0 0 4px; font-size:0.75rem; font-weight:400;"><?= __('sale_currency') ?> (<?= __('sale_currency_hint') ?>)</label>
-                                        <select class="form-control form-control-sm" id="saleCurrency" name="sale_currency">
-                                            <option value="USD" selected>USD</option>
-                                            <option value="AFS">AFS</option>
-                                        </select>
-                                    </div>
                                 </div>
                                 <div id="servicesTableBody" class="services-grid-body">
                                     <!-- Service rows will be added here -->
-                                </div>
-                                <div class="services-grid-footer">
-                                    <div class="footer-item footer-column-1">
-                                        <strong><?= __('total') ?>:</strong>
-                                    </div>
-                                    <div class="footer-item footer-column-2">
-                                        <div class="total-inputs">
-                                            <div class="total-input-group">
-                                                <label><?= __('base_price') ?>:</label>
-                                                <input type="number" class="form-control form-control-sm" id="totalBasePrice" readonly value="0">
-                                            </div>
-                                            <div class="total-input-group">
-                                                <label><?= __('sold_price') ?>:</label>
-                                                <input type="number" class="form-control form-control-sm" id="totalSoldPrice" name="grand_sold_price" value="0" min="0" step="0.01">
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="footer-item footer-column-3">
-                                        <div class="total-input-group">
-                                            <label><?= __('discount') ?>:</label>
-                                            <input type="number" class="form-control form-control-sm" id="discount" name="discount" value="0" min="0" step="0.01">
-                                        </div>
-                                        <div class="total-input-group">
-                                            <label><?= __('profit') ?>:</label>
-                                            <input type="number" class="form-control form-control-sm" id="totalProfit" readonly value="0">
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         </div>

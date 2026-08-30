@@ -21,9 +21,13 @@ $placeholders = implode(',', array_fill(0, count($familyIds), '?'));
 try {
     // Get families
     $famStmt = $pdo->prepare("
-        SELECT family_id, head_of_family, contact, address, tazmin, package_type, visa_status
-        FROM families
-        WHERE family_id IN ($placeholders) AND tenant_id = ? AND branch_id = ?
+        SELECT f.family_id, f.head_of_family, f.contact, f.address, f.tazmin, f.package_type, f.visa_status,
+               c.name AS client_name
+        FROM families f
+        LEFT JOIN umrah_bookings ub ON ub.family_id = f.family_id AND ub.tenant_id = f.tenant_id AND ub.branch_id = f.branch_id AND ub.status != 'cancelled'
+        LEFT JOIN clients c ON c.id = ub.sold_to
+        WHERE f.family_id IN ($placeholders) AND f.tenant_id = ? AND f.branch_id = ?
+        GROUP BY f.family_id
     ");
     $famParams = array_merge($familyIds, [$tenant_id, $branch_id]);
     $famStmt->execute($famParams);
