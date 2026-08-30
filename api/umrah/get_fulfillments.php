@@ -180,8 +180,12 @@ function enrichExtraBedCosts(array &$services, $pdo, int $tenant_id): void
 // used by the passenger manifest (infant < 2, child 2-11, adult otherwise).
 // Unknown dates default to adult. Ticket costs are priced per type; infants
 // receive no hotel/transport fulfillment, and visa applies to everyone alike.
-function memberTravelType($dob)
+// If $passengerType is provided (from DB column), it takes priority over DOB computation.
+function memberTravelType($dob, $passengerType = null)
 {
+    if (!empty($passengerType) && in_array($passengerType, ['adult', 'child', 'infant'], true)) {
+        return $passengerType;
+    }
     if (empty($dob) || $dob === '0000-00-00') {
         return 'adult';
     }
@@ -408,7 +412,7 @@ if ($isAggregate) {
             // Infant members receive no hotel/transport fulfillment — their
             // package covers only ticket + visa costs, and the ticket card
             // asks for their own fare separately.
-            if (($cat === 'hotel' || $cat === 'transport') && memberTravelType((string)($ln['dob'] ?? '')) === 'infant') {
+            if (($cat === 'hotel' || $cat === 'transport') && memberTravelType((string)($ln['dob'] ?? ''), (string)($ln['passenger_type'] ?? '')) === 'infant') {
                 $skipBreak['infant (no ' . $cat . ')'] = ($skipBreak['infant (no ' . $cat . ')'] ?? 0) + 1;
                 continue;
             }
@@ -463,7 +467,7 @@ if ($isAggregate) {
                     'fulfillment_id' => !empty($ln['fulfillment_id']) ? (int)$ln['fulfillment_id'] : null,
                     'fulfillment_family_id' => !empty($ln['fulfillment_family_id']) ? (int)$ln['fulfillment_family_id'] : null,
                     'name' => (string)($ln['name'] ?? ''),
-                    'type' => memberTravelType((string)($ln['dob'] ?? '')),
+                    'type' => memberTravelType((string)($ln['dob'] ?? ''), (string)($ln['passenger_type'] ?? '')),
                     'duration' => ($ln['duration'] !== null && $ln['duration'] !== '') ? (int)$ln['duration'] : null,
                     'is_excluded' => !empty($ln['is_excluded']),
                     'pnr' => (string)($ln['pnr'] ?? ''),
@@ -492,7 +496,7 @@ if ($isAggregate) {
                     'family_id'  => (int)($ln['family_id'] ?? 0),
                     'fulfillment_family_id' => !empty($ln['fulfillment_family_id']) ? (int)$ln['fulfillment_family_id'] : null,
                     'name' => (string)($ln['name'] ?? ''),
-                    'type' => memberTravelType((string)($ln['dob'] ?? '')),
+                    'type' => memberTravelType((string)($ln['dob'] ?? ''), (string)($ln['passenger_type'] ?? '')),
                     'gender' => (string)($ln['gender'] ?? ''),
                     'room_type' => (string)($ln['room_type'] ?? ''),
                     'duration' => ($ln['duration'] !== null && $ln['duration'] !== '') ? (int)$ln['duration'] : null,

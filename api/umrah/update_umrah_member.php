@@ -65,6 +65,11 @@ $father_name = isset($_POST['father_name']) ? DbSecurity::validateInput($_POST['
 $discount = isset($_POST['discount']) ? DbSecurity::validateInput($_POST['discount'], 'float', ['min' => 0]) : null;
 $received_bank_payment = isset($_POST['received_bank_payment']) ? DbSecurity::validateInput($_POST['received_bank_payment'], 'float', ['min' => 0]) : null;
 $bank_receipt_number = isset($_POST['bank_receipt_number']) ? DbSecurity::validateInput($_POST['bank_receipt_number'], 'string', ['maxlength' => 255]) : null;
+$passenger_type = isset($_POST['passenger_type']) ? DbSecurity::validateInput($_POST['passenger_type'], 'string') : null;
+if (!in_array($passenger_type, ['adult', 'child', 'infant'], true)) {
+    $passenger_type = null;
+}
+$sold_price_member = isset($_POST['sold_price']) ? DbSecurity::validateInput($_POST['sold_price'], 'float', ['min' => 0]) : null;
 
 $sale_currency = isset($_POST['sale_currency']) ? DbSecurity::validateInput($_POST['sale_currency'], 'string') : 'USD';
 if (!in_array(strtoupper($sale_currency), ['USD', 'AFS'])) { $sale_currency = 'USD'; }
@@ -129,8 +134,11 @@ try {
         $oldClientIsRegular = ($oldClientData && $oldClientData['client_type'] === 'regular');
     }
 
-    // Determine sold_price: grand_sold_price overrides total_sold_price
+    // Determine sold_price: grand_sold_price overrides total_sold_price, member-level override takes priority
     $totalSoldPrice = ($grand_sold_price > 0) ? $grand_sold_price : $total_sold_price;
+    if ($sold_price_member !== null && $sold_price_member > 0) {
+        $totalSoldPrice = $sold_price_member;
+    }
     $clientPriceAdjustment = $totalSoldPrice - $oldSoldPrice;
     $currentCurrency = strtoupper(trim((string)($currentData['currency'] ?? 'USD')));
 
@@ -161,6 +169,7 @@ try {
             discount = ?,
             received_bank_payment = ?,
             bank_receipt_number = ?,
+            passenger_type = ?,
             updated_at = NOW()
         WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?
     ");
@@ -190,6 +199,7 @@ try {
         $discount,
         $received_bank_payment,
         $bank_receipt_number,
+        $passenger_type,
         $booking_id,
         $tenant_id,
         $branch_id

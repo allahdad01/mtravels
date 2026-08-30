@@ -281,7 +281,15 @@ try {
                            <?= in_array($member['status'], ['active', 'refunded']) ? 'disabled title="' . ucfirst($member['status']) . ' bookings cannot be selected"' : '' ?>>
                 </div>
                 <div class="member-info">
-                    <h5 class="member-name"><?= htmlspecialchars($member['name'] ?? '') ?></h5>
+                    <h5 class="member-name"><?= htmlspecialchars($member['name'] ?? '') ?>
+                        <?php
+                        $pt = $member['passenger_type'] ?? null;
+                        if ($pt === 'child'): ?>
+                            <span style="font-size:0.65rem; background:#dbeafe; color:#1e40af; padding:1px 6px; border-radius:999px; font-weight:500; vertical-align:middle;">Child</span>
+                        <?php elseif ($pt === 'infant'): ?>
+                            <span style="font-size:0.65rem; background:#fce7f3; color:#be185d; padding:1px 6px; border-radius:999px; font-weight:500; vertical-align:middle;">Infant</span>
+                        <?php endif; ?>
+                    </h5>
                     <?php 
                     $status = $member['status'] ?? '';
                     if ($status === 'refunded'): ?>

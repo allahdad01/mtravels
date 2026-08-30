@@ -246,6 +246,7 @@ $(document).on('change', '#saleCurrency', function() {
 let lastPackageData = null;
 let removedPackageLines = new Set();
 let grandSoldEdited = false;
+let packageTierPrices = {}; // { service_id: { adult: X, child: Y, infant: Z } }
 
 function loadPackage(packageId) {
     if (!packageId) return;
@@ -261,7 +262,22 @@ function loadPackage(packageId) {
         lastPackageData = data;
         removedPackageLines = new Set();
         grandSoldEdited = false;
+
+        // Store tier prices per service for passenger type pricing
+        packageTierPrices = {};
+        (data.lines || []).forEach(line => {
+            if (line.service_id && (line.adult_price !== null || line.child_price !== null || line.infant_price !== null)) {
+                packageTierPrices[line.service_id] = {
+                    adult: line.adult_price,
+                    child: line.child_price,
+                    infant: line.infant_price
+                };
+            }
+        });
+
         buildPackageRows(data);
+        // Auto-fill passenger type prices for existing members
+        applyTierPricesToAllMembers();
         if (data.package) {
             showToast('success', 'Package "' + data.package.name + '" loaded');
         }
@@ -425,24 +441,40 @@ function addMemberRow(name = '', dob = '', gender = 'Male', passport_number = ''
             <div class="card-body" style="padding: 15px;">
                 <!-- Member Personal Information -->
                 <div class="row">
-                    <div class="form-group col-md-4">
+                    <div class="form-group col-md-3">
                         <label for="members_${memberRowCounter}_name">Name *</label>
                         <input type="text" class="form-control member-name" id="members_${memberRowCounter}_name" 
                                name="members[${memberRowCounter}][name]" value="${name}" required 
                                placeholder="Full Name">
                     </div>
-                    <div class="form-group col-md-4">
+                    <div class="form-group col-md-3">
                         <label for="members_${memberRowCounter}_dob">Date of Birth</label>
-                        <input type="date" class="form-control" id="members_${memberRowCounter}_dob" 
+                        <input type="date" class="form-control member-dob" id="members_${memberRowCounter}_dob" 
                                name="members[${memberRowCounter}][dob]" value="${dob}">
                     </div>
-                    <div class="form-group col-md-4">
+                    <div class="form-group col-md-2">
                         <label for="members_${memberRowCounter}_gender">Gender *</label>
                         <select class="form-control" id="members_${memberRowCounter}_gender" 
                                 name="members[${memberRowCounter}][gender]" required>
                             <option value="Male" ${gender === 'Male' ? 'selected' : ''}>Male</option>
                             <option value="Female" ${gender === 'Female' ? 'selected' : ''}>Female</option>
                         </select>
+                    </div>
+                    <div class="form-group col-md-2">
+                        <label for="members_${memberRowCounter}_passenger_type">Type</label>
+                        <select class="form-control member-passenger-type" id="members_${memberRowCounter}_passenger_type"
+                                name="members[${memberRowCounter}][passenger_type]">
+                            <option value="adult">Adult</option>
+                            <option value="child">Child</option>
+                            <option value="infant">Infant</option>
+                        </select>
+                    </div>
+                    <div class="form-group col-md-2">
+                        <label for="members_${memberRowCounter}_sold_price">Sold Price</label>
+                        <input type="number" class="form-control member-sold-price" id="members_${memberRowCounter}_sold_price"
+                               name="members[${memberRowCounter}][sold_price]" value="" min="0" step="0.01"
+                               placeholder="0.00">
+                        <small class="text-muted member-price-hint" style="font-size:0.7rem;"></small>
                     </div>
                 </div>
 
@@ -518,7 +550,7 @@ $(document).on('input', '.member-name', function() {
 });
 
 // Update summary when passport number or DOB changes
-$(document).on('input', 'input[id*="_passport_number"], input[id*="_dob"]', function() {
+$(document).on('input', 'input[id*="_passport_number"]', function() {
     updateMembersSummary();
 });
 
@@ -1144,6 +1176,8 @@ function fillMemberFormIdentical(memberIndex, data) {
     if (data.date_of_birth && dobField.length) {
         dobField.val(formatDate(data.date_of_birth)).change();
         console.log('✓ Set date_of_birth:', data.date_of_birth);
+        // Auto-detect passenger type from the extracted DOB
+        autoDetectPassengerType($(`#memberRow_${memberIndex}`));
     }
     if (data.expiry_date && passportExpiryField.length) {
         passportExpiryField.val(formatDate(data.expiry_date)).change();
@@ -1259,13 +1293,127 @@ function updateMembersSummary() {
         const name = $(this).find('.member-name').val() || `Member ${index + 1}`;
         const passportNumber = $(this).find('input[id*="_passport_number"]').val() || 'N/A';
         const dob = $(this).find('input[id*="_dob"]').val() || 'N/A';
-        summaryHtml += `<li>${name} - Passport: ${passportNumber}, DOB: ${dob}</li>`;
+        const passengerType = $(this).find('.member-passenger-type').val() || 'adult';
+        const soldPrice = $(this).find('.member-sold-price').val() || '0';
+        const typeLabel = passengerType.charAt(0).toUpperCase() + passengerType.slice(1);
+        summaryHtml += `<li>${name} (${typeLabel}) - Passport: ${passportNumber}, DOB: ${dob}, Price: ${soldPrice}</li>`;
     });
     
     summaryHtml += '</ol>';
     $('#membersSummaryList').html(summaryHtml);
     summaryCard.show();
 }
+
+// ============================================
+// SECTION 5a: PASSENGER TYPE & TIER PRICING
+// ============================================
+
+/**
+ * Calculate age in years from a date of birth string (YYYY-MM-DD)
+ */
+function calculateAgeFromDob(dobStr) {
+    if (!dobStr) return null;
+    try {
+        const dob = new Date(dobStr);
+        const today = new Date();
+        let age = today.getFullYear() - dob.getFullYear();
+        const monthDiff = today.getMonth() - dob.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+            age--;
+        }
+        return age;
+    } catch (e) {
+        return null;
+    }
+}
+
+/**
+ * Auto-detect passenger type from DOB and update the dropdown
+ */
+function autoDetectPassengerType($card) {
+    const dob = $card.find('input[id*="_dob"]').val();
+    const age = calculateAgeFromDob(dob);
+    if (age === null) return;
+    const $typeSelect = $card.find('.member-passenger-type');
+    let newType = 'adult';
+    if (age < 2) newType = 'infant';
+    else if (age <= 11) newType = 'child';
+    $typeSelect.val(newType);
+}
+
+/**
+ * Get the package tier price for a given passenger type by summing all service tier prices
+ */
+function getTierPriceForType(passengerType) {
+    if (!lastPackageData || !lastPackageData.lines) return 0;
+    let total = 0;
+    (lastPackageData.lines || []).forEach(line => {
+        if (!line.service_id) return;
+        const tier = packageTierPrices[line.service_id];
+        if (!tier) return;
+        let unitPrice = tier[passengerType];
+        if (unitPrice === null || unitPrice === undefined || isNaN(unitPrice)) {
+            // Fall back to adult price if the type's price is not set
+            unitPrice = tier.adult;
+        }
+        if (unitPrice !== null && unitPrice !== undefined && !isNaN(unitPrice)) {
+            const qty = parseFloat(line.quantity) || 1;
+            total += unitPrice * qty;
+        }
+    });
+    return total;
+}
+
+/**
+ * Apply tier prices to all existing member cards based on their passenger type
+ */
+function applyTierPricesToAllMembers() {
+    if (Object.keys(packageTierPrices).length === 0) return;
+    $('#membersContainer .card').each(function() {
+        const $card = $(this);
+        const type = $card.find('.member-passenger-type').val() || 'adult';
+        const price = getTierPriceForType(type);
+        const $priceInput = $card.find('.member-sold-price');
+        const $hint = $card.find('.member-price-hint');
+        if (price > 0) {
+            $priceInput.val(price.toFixed(2));
+            $hint.text('Package ' + type + ' price');
+        } else {
+            $priceInput.val('');
+            $hint.text('');
+        }
+    });
+}
+
+// DOB change -> auto-detect passenger type -> apply tier price
+$(document).on('change', '.member-dob', function() {
+    const $card = $(this).closest('.card');
+    autoDetectPassengerType($card);
+    // Trigger passenger type change to apply tier price
+    $card.find('.member-passenger-type').trigger('change');
+});
+
+// Passenger type change -> apply tier price from package
+$(document).on('change', '.member-passenger-type', function() {
+    const $card = $(this).closest('.card');
+    const type = $(this).val();
+    const price = getTierPriceForType(type);
+    const $priceInput = $card.find('.member-sold-price');
+    const $hint = $card.find('.member-price-hint');
+    if (price > 0) {
+        $priceInput.val(price.toFixed(2));
+        $hint.text('Package ' + type + ' price');
+    } else if (Object.keys(packageTierPrices).length > 0) {
+        $priceInput.val('');
+        $hint.text('No tier price set');
+    }
+    updateMembersSummary();
+});
+
+// Sold price input -> update summary
+$(document).on('input', '.member-sold-price', function() {
+    updateMembersSummary();
+});
 
 function validateForm() {
     if (!$('#packageSelect').val()) {
@@ -1314,7 +1462,24 @@ function validateForm() {
         }
     });
     
-    return !expiryError;
+    if (expiryError) return false;
+
+    // Validate that at least one member has a sold price
+    let hasAnySoldPrice = false;
+    $('#membersContainer .card').each(function() {
+        const sp = parseFloat($(this).find('.member-sold-price').val()) || 0;
+        if (sp > 0) hasAnySoldPrice = true;
+    });
+    if (!hasAnySoldPrice) {
+        // Check if grand total is set
+        const grandTotal = parseFloat($('#totalSoldPrice').val()) || 0;
+        if (grandTotal <= 0) {
+            showToast('error', 'Please set a sold price (either per member or via the grand total)');
+            return false;
+        }
+    }
+    
+    return true;
 }
 
 // ============================================

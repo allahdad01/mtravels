@@ -99,6 +99,9 @@ foreach ($lines as $line) {
         'base_currency'      => null,
         'base_per_unit'      => null,
         'exchange_rate'      => null,
+        'adult_price'        => isset($line['adult_price']) && $line['adult_price'] !== null ? (float)$line['adult_price'] : null,
+        'child_price'        => isset($line['child_price']) && $line['child_price'] !== null ? (float)$line['child_price'] : null,
+        'infant_price'       => isset($line['infant_price']) && $line['infant_price'] !== null ? (float)$line['infant_price'] : null,
     ];
 }
 

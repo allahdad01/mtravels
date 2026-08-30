@@ -196,6 +196,8 @@ function openEditMemberModal(bookingId) {
                 document.getElementById('editRemarks').value = member.remarks || '';
                 document.getElementById('editSaleCurrency').value = member.currency || 'USD';
                 document.getElementById('editExchangeRate').value = (member.exchange_rate && member.exchange_rate > 0) ? member.exchange_rate : 1;
+                document.getElementById('editPassengerType').value = member.passenger_type || 'adult';
+                document.getElementById('editSoldPrice').value = (parseFloat(member.sold_price) || 0).toFixed(2);
 
                 $('.edit-services-grid-body').empty();
                 editServiceRowCounter = 0;

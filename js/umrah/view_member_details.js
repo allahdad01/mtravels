@@ -13,6 +13,7 @@ function viewMemberDetails(bookingId) {
                 document.getElementById('memberName').textContent = member.name || '-';
                 document.getElementById('memberGender').textContent = member.gender || '-';
                 document.getElementById('memberDob').textContent = member.dob || '-';
+                document.getElementById('memberPassengerType').textContent = (member.passenger_type || 'adult').charAt(0).toUpperCase() + (member.passenger_type || 'adult').slice(1);
                 document.getElementById('memberPassport').textContent = member.passport_number || '-';
                 document.getElementById('memberPassportExpiry').textContent = member.passport_expiry || '-';
                 document.getElementById('memberId').textContent = member.id_type || '-';

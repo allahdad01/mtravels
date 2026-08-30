@@ -157,19 +157,35 @@
                         </div>
                     </div>
 
-                    <!-- Additional Row: Gender and Nationality -->
+                    <!-- Additional Row: Gender, Passenger Type, Room Type, Sold Price -->
                     <div class="row">
-                        <div class="form-group col-md-4">
+                        <div class="form-group col-md-3">
                             <label for="editGender"><?= __('gender') ?></label>
                             <select class="form-control" id="editGender" name="gender" required>
                                 <option value="Male"><?= __('male') ?></option>
                                 <option value="Female"><?= __('female') ?></option>
                             </select>
                         </div>
-                        <div class="form-group col-md-4">
+                        <div class="form-group col-md-3">
+                            <label for="editPassengerType">Passenger Type</label>
+                            <select class="form-control" id="editPassengerType" name="passenger_type">
+                                <option value="adult">Adult</option>
+                                <option value="child">Child</option>
+                                <option value="infant">Infant</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-3">
                             <label for="editFather_name"><?= __('father_name') ?></label>
                             <input type="text" class="form-control" id="editFather_name" name="father_name">
                         </div>
+                        <div class="form-group col-md-3">
+                            <label for="editSoldPrice"><?= __('sold_price') ?></label>
+                            <input type="number" class="form-control" id="editSoldPrice" name="sold_price" min="0" step="0.01">
+                        </div>
+                    </div>
+
+                    <!-- Room Type Row -->
+                    <div class="row">
                         <div class="form-group col-md-4">
                             <label for="editRoom_type"><?= __('room_type') ?></label>
                             <select class="form-control" id="editRoom_type" name="room_type" required>
@@ -187,7 +203,7 @@
                         </div>
                     </div>
 
-                    <!-- Third Row: Passport Number, ID Type, Flight Date -->
+                    <!-- Third Row: Passport Number, ID Type, Father Name -->
                     <div class="row">
                         <div class="form-group col-md-4">
                             <label for="editPassport_number"><?= __('passport_number') ?></label>

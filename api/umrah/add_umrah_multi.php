@@ -229,6 +229,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $photo_path = isset($member['photo_path']) ? DbSecurity::validateInput($member['photo_path'], 'string') : null;
             $passport_path = isset($member['passport_path']) ? DbSecurity::validateInput($member['passport_path'], 'string') : null;
 
+            // Passenger type & per-member sold price (new)
+            $passenger_type = isset($member['passenger_type']) ? DbSecurity::validateInput($member['passenger_type'], 'string') : null;
+            if (!in_array($passenger_type, ['adult', 'child', 'infant'], true)) {
+                $passenger_type = null; // will be auto-detected from DOB below
+            }
+            $member_sold_price = isset($member['sold_price']) ? floatval($member['sold_price']) : 0;
+
+            // Auto-detect passenger_type from DOB if not explicitly provided
+            if ($passenger_type === null && !empty($dob)) {
+                try {
+                    $dobDate = new DateTime($dob);
+                    $age = $dobDate->diff(new DateTime())->y;
+                    if ($age < 2) {
+                        $passenger_type = 'infant';
+                    } elseif ($age <= 11) {
+                        $passenger_type = 'child';
+                    } else {
+                        $passenger_type = 'adult';
+                    }
+                } catch (Exception $e) {
+                    $passenger_type = 'adult'; // fallback
+                }
+            } elseif ($passenger_type === null) {
+                $passenger_type = 'adult'; // default when no DOB
+            }
+
+            // Per-member sold price: use the member-level override if provided (> 0),
+            // otherwise fall back to the shared grand total.
+            if ($member_sold_price > 0) {
+                $per_member_sold_price = $member_sold_price;
+            } else {
+                $per_member_sold_price = $total_sold_price;
+            }
+            $per_member_profit = $per_member_sold_price - $total_base_price;
+            $per_member_due = $per_member_sold_price - (float)$paid - (float)$received_bank_payment;
+
             // Empty date fields must be NULL, not '' (MySQL DATE columns reject '')
             $dob = trim((string)$dob) === '' ? null : $dob;
             $passport_expiry = trim((string)$passport_expiry) === '' ? null : $passport_expiry;
@@ -265,11 +301,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     price, sold_price, profit, received_bank_payment,
                     bank_receipt_number, paid, due,
                     created_by, remarks, relation, gfname, fname, discount,
-                    photo_path, passport_path, tenant_id, branch_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                         ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                         ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                         ?, ?, ?, ?)
+                    photo_path, passport_path, tenant_id, branch_id,
+                    passenger_type
+                ) VALUES (?, ?, ?, ?, ?, ?, ?,
+                         ?, ?, ?, ?, ?, ?, ?,
+                         ?, ?, ?, ?, ?, ?, ?,
+                         ?, ?, ?, ?, ?, ?, ?,
+                         ?, ?, ?, ?, ?)
             ");
 
             $stmt->bindValue(1, $family_id, PDO::PARAM_INT);
@@ -288,12 +326,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bindValue(14, $duration, PDO::PARAM_STR);
             $stmt->bindValue(15, $room_type, PDO::PARAM_STR);
             $stmt->bindValue(16, $total_base_price, PDO::PARAM_STR);
-            $stmt->bindValue(17, $total_sold_price, PDO::PARAM_STR);
-            $stmt->bindValue(18, $total_profit, PDO::PARAM_STR);
+            $stmt->bindValue(17, $per_member_sold_price, PDO::PARAM_STR);
+            $stmt->bindValue(18, $per_member_profit, PDO::PARAM_STR);
             $stmt->bindValue(19, $received_bank_payment, PDO::PARAM_STR);
             $stmt->bindValue(20, $bank_receipt_number, PDO::PARAM_STR);
             $stmt->bindValue(21, $paid, PDO::PARAM_STR);
-            $stmt->bindValue(22, $due, PDO::PARAM_STR);
+            $stmt->bindValue(22, $per_member_due, PDO::PARAM_STR);
             $stmt->bindValue(23, $user_id, PDO::PARAM_INT);
             $stmt->bindValue(24, $remarks, PDO::PARAM_STR);
             $stmt->bindValue(25, $relation, PDO::PARAM_STR);
@@ -304,6 +342,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bindValue(30, $passport_path, PDO::PARAM_STR);
             $stmt->bindValue(31, $tenant_id, PDO::PARAM_INT);
             $stmt->bindValue(32, $branch_id, PDO::PARAM_INT);
+            $stmt->bindValue(33, $passenger_type, PDO::PARAM_STR);
 
             if (!$stmt->execute()) {
                 $failed_members[] = "Member " . ($member_index + 1) . " (" . $name . "): Database insert failed";
@@ -385,7 +424,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'dob' => $dob,
                 'relation' => $relation,
                 'family_id' => $family_id,
-                'services_count' => count($processed_services)
+                'services_count' => count($processed_services),
+                'passenger_type' => $passenger_type,
+                'sold_price' => $per_member_sold_price
             ]);
 
             $stmt_log = $pdo->prepare("

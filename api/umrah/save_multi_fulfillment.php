@@ -109,7 +109,7 @@ if ($scope === 'group') {
 // ---- Target member bookings (skip refunded/cancelled) ----------------------
 $placeholders = implode(',', array_fill(0, count($targetFamilies), '?'));
 $mbStmt = $pdo->prepare("
-    SELECT booking_id, family_id, name, dob, is_extra_bed FROM umrah_bookings
+    SELECT booking_id, family_id, name, dob, is_extra_bed, passenger_type FROM umrah_bookings
     WHERE family_id IN ($placeholders) AND tenant_id = ? AND status NOT IN ('refunded', 'cancelled')
     ORDER BY booking_id");
 $mbStmt->execute(array_merge($targetFamilies, [$tenant_id]));
@@ -119,8 +119,12 @@ $members = $mbStmt->fetchAll(PDO::FETCH_ASSOC);
 // passenger manifest (infant < 2, child 2-11, adult otherwise). Unknown
 // dates default to adult. Ticket costs are priced per type; infants receive
 // no hotel/transport fulfillment, and visa applies to everyone alike.
-function memberTravelType($dob)
+// If $passengerType is provided (from DB column), it takes priority over DOB computation.
+function memberTravelType($dob, $passengerType = null)
 {
+    if (!empty($passengerType) && in_array($passengerType, ['adult', 'child', 'infant'], true)) {
+        return $passengerType;
+    }
     if (empty($dob) || $dob === '0000-00-00') {
         return 'adult';
     }
@@ -315,7 +319,7 @@ foreach ($members as $member) {
     // Infant members receive no hotel/transport fulfillment — their package
     // covers only ticket + visa costs, and the ticket card asks for their
     // own fare separately.
-    if (($cat === 'hotel' || $cat === 'transport') && memberTravelType((string)($member['dob'] ?? '')) === 'infant') {
+    if (($cat === 'hotel' || $cat === 'transport') && memberTravelType((string)($member['dob'] ?? ''), (string)($member['passenger_type'] ?? '')) === 'infant') {
         $skipReasons['infant (no ' . $cat . ')'] = ($skipReasons['infant (no ' . $cat . ')'] ?? 0) + 1;
         continue;
     }
@@ -406,7 +410,7 @@ foreach ($targets as $target) {
     // adults use the card's supplier_cost. Missing per-type fare or a
     // non-flight line keeps the card cost untouched.
     if ($cat === 'flight') {
-        $targetType = memberTravelType($target['dob'] ?? '');
+        $targetType = memberTravelType($target['dob'] ?? '', $target['passenger_type'] ?? '');
         if ($targetType === 'child' && $childCost !== null && $childCost >= 0) {
             $mergedInput['supplier_cost'] = $childCost;
         } elseif ($targetType === 'infant' && $infantCost !== null && $infantCost >= 0) {
