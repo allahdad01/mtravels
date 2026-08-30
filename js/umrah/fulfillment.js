@@ -43,6 +43,55 @@ function focusPendingExtraBed() {
     if (!$target.length) return;
     pendingExtraBedFocus = null;
 
+    // Auto-fill extra bed suppliers and costs from the hotel per-city fields
+    if ($extraBed.length) {
+        const $card = $extraBed.closest('.fulfillment-service-card');
+        if ($card.length) {
+            const makSupId = $card.find('.f-makkah-supplier').val() || '';
+            if (makSupId && !$extraBed.find('.f-eb-makkah-supplier').val()) {
+                $extraBed.find('.f-eb-makkah-supplier').val(makSupId);
+                const makCur = ($card.find('.f-makkah-supplier option:selected').data('currency') || 'USD').toString().toUpperCase();
+                $extraBed.find('.f-eb-makkah-currency').val(makCur);
+                const makRate = $card.find('.f-makkah-rate').val();
+                if (makRate) $extraBed.find('.f-eb-makkah-rate').val(makRate);
+                syncEbRateField($extraBed, 'makkah');
+            }
+            const makCost = $card.find('.f-makkah-cost').val();
+            if (makCost && !$extraBed.find('.f-eb-makkah-cost').val()) {
+                $extraBed.find('.f-eb-makkah-cost').val(makCost);
+                updateEbCostUsd($extraBed, 'makkah');
+            }
+            const madSupId = $card.find('.f-madinah-supplier').val() || '';
+            if (madSupId && !$extraBed.find('.f-eb-madinah-supplier').val()) {
+                $extraBed.find('.f-eb-madinah-supplier').val(madSupId);
+                const madCur = ($card.find('.f-madinah-supplier option:selected').data('currency') || 'USD').toString().toUpperCase();
+                $extraBed.find('.f-eb-madinah-currency').val(madCur);
+                const madRate = $card.find('.f-madinah-rate').val();
+                if (madRate) $extraBed.find('.f-eb-madinah-rate').val(madRate);
+                syncEbRateField($extraBed, 'madinah');
+            }
+            const madCost = $card.find('.f-madinah-cost').val();
+            if (madCost && !$extraBed.find('.f-eb-madinah-cost').val()) {
+                $extraBed.find('.f-eb-madinah-cost').val(madCost);
+                updateEbCostUsd($extraBed, 'madinah');
+            }
+            let totalCostUsd = 0;
+            ['makkah', 'madinah'].forEach(function(city) {
+                const prefix = '.f-eb-' + city + '-';
+                const c = ($extraBed.find(prefix + 'currency').val() || '').trim().toUpperCase();
+                const cost = parseFloat($extraBed.find(prefix + 'cost').val()) || 0;
+                const rate = parseFloat($extraBed.find(prefix + 'rate').val()) || 0;
+                if (c === currentFulfillmentCurrency || !c) {
+                    totalCostUsd += cost;
+                } else if (rate > 0) {
+                    totalCostUsd += cost / rate;
+                }
+            });
+            const sold = parseFloat($extraBed.find('.f-eb-sold').val()) || 0;
+            $extraBed.find('.f-eb-profit').val(sold ? (sold - totalCostUsd).toFixed(2) : '');
+        }
+    }
+
     const $subgroup = $target.closest('.f-hotel-subgroup');
     const scrollToTarget = function() {
         const node = ($extraBed.length ? $extraBed : $subgroup)[0];
@@ -2448,6 +2497,63 @@ function calcFulfillmentStopover($card) {
     });
 }
 
+function propagateHotelSupplierToExtraBeds($changed, $card) {
+    const isMak = $changed.hasClass('f-makkah-supplier');
+    const city = isMak ? 'makkah' : 'madinah';
+    const supId = $changed.val() || '';
+    const cur = ($changed.find('option:selected').data('currency') || 'USD').toString().toUpperCase();
+    const rate = $card.find('.f-' + city + '-rate').val();
+    $card.find('.f-hotel-group[data-is-extra-bed="1"]').each(function() {
+        const $eb = $(this);
+        const prefix = '.f-eb-' + city + '-';
+        if (supId) {
+            $eb.find(prefix + 'supplier').val(supId);
+            $eb.find(prefix + 'currency').val(cur);
+            if (rate) $eb.find(prefix + 'rate').val(rate);
+        } else {
+            $eb.find(prefix + 'supplier').val('');
+        }
+        syncEbRateField($eb, city);
+        updateEbCostUsd($eb, city);
+    });
+}
+
+function propagateHotelCostToExtraBeds($changed, $card) {
+    const cls = $changed.attr('class') || '';
+    const isMak = cls.indexOf('f-makkah-') !== -1;
+    const city = isMak ? 'makkah' : 'madinah';
+    const srcPrefix = '.f-' + city + '-';
+    const cost = $card.find(srcPrefix + 'cost').val();
+    const rate = $card.find(srcPrefix + 'rate').val();
+    const currency = $card.find(srcPrefix + 'currency').val();
+    $card.find('.f-hotel-group[data-is-extra-bed="1"]').each(function() {
+        const $eb = $(this);
+        const ebPrefix = '.f-eb-' + city + '-';
+        $eb.find(ebPrefix + 'cost').val(cost);
+        $eb.find(ebPrefix + 'rate').val(rate);
+        $eb.find(ebPrefix + 'currency').val(currency);
+        syncEbRateField($eb, city);
+        updateEbCostUsd($eb, city);
+    });
+    let totalCostUsd = 0;
+    $card.find('.f-hotel-group[data-is-extra-bed="1"]').first().each(function() {
+        const $eb = $(this);
+        ['makkah', 'madinah'].forEach(function(c) {
+            const p = '.f-eb-' + c + '-';
+            const cur = ($eb.find(p + 'currency').val() || '').trim().toUpperCase();
+            const cst = parseFloat($eb.find(p + 'cost').val()) || 0;
+            const rte = parseFloat($eb.find(p + 'rate').val()) || 0;
+            if (cur === currentFulfillmentCurrency || !cur) {
+                totalCostUsd += cst;
+            } else if (rte > 0) {
+                totalCostUsd += cst / rte;
+            }
+        });
+        const sold = parseFloat($eb.find('.f-eb-sold').val()) || 0;
+        $eb.find('.f-eb-profit').val(sold ? (sold - totalCostUsd).toFixed(2) : '');
+    });
+}
+
 function bindFulfillmentEvents() {
     $(document).off('change.fulfillment', '.f-flight-type').on('change.fulfillment', '.f-flight-type', function() {
         const $card = $(this).closest('.fulfillment-service-card');
@@ -2550,6 +2656,7 @@ function bindFulfillmentEvents() {
         syncFulfillmentHotelOptions($card);
         applyContractPricing($card);
         applySuggestion($card);
+        propagateHotelSupplierToExtraBeds($(this), $card);
     });
 
     $(document).off('change.fulfillment', '.f-eb-makkah-supplier, .f-eb-madinah-supplier').on('change.fulfillment', '.f-eb-makkah-supplier, .f-eb-madinah-supplier', function() {
@@ -2578,6 +2685,7 @@ function bindFulfillmentEvents() {
         $card.data('auto-cost', 0);
         updateFulfillmentCostUsd($card);
         syncFulfillmentRateField($card);
+        propagateHotelCostToExtraBeds($(this), $card);
     });
 
     $(document).off('input.fulfillment', '.f-eb-makkah-cost, .f-eb-makkah-rate, .f-eb-makkah-currency, .f-eb-madinah-cost, .f-eb-madinah-rate, .f-eb-madinah-currency').on('input.fulfillment', '.f-eb-makkah-cost, .f-eb-makkah-rate, .f-eb-makkah-currency, .f-eb-madinah-cost, .f-eb-madinah-rate, .f-eb-madinah-currency', function() {
