@@ -34,8 +34,8 @@ try {
     // umrah_bookings.flight_date/return_date are legacy columns that the
     // fulfillment flow never writes to — real flight data lives in
     // umrah_flight_fulfillments via umrah_fulfillments + umrah_booking_services.
-    // Extra beds don't have flights — exclude them from the count entirely.
-    $membersSql = "SELECT ub.booking_id, ub.name, COALESCE(ub.is_extra_bed, 0) AS is_extra_bed,
+    // Extra beds and extra transport don't have flights — exclude them from the count entirely.
+    $membersSql = "SELECT ub.booking_id, ub.name, COALESCE(ub.is_extra_bed, 0) AS is_extra_bed, COALESCE(ub.is_extra_transport, 0) AS is_extra_transport,
                    (SELECT DATE(ff.departure_time) FROM umrah_flight_fulfillments ff
                     JOIN umrah_fulfillments uf ON uf.id = ff.fulfillment_id
                     JOIN umrah_booking_services ubs2 ON ubs2.id = uf.booking_service_id
@@ -56,11 +56,12 @@ try {
     $membersStmt->execute([$family_id, $tenant_id, $branch_id]);
     $members = $membersStmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Count non-extra-bed members and how many have flights
+    // Count non-extra-bed/non-extra-transport members and how many have flights
     $flightDoneCount = 0;
     $nonExtraBedCount = 0;
     foreach ($members as $member) {
         if (!empty($member['is_extra_bed'])) continue;
+        if (!empty($member['is_extra_transport'])) continue;
         $nonExtraBedCount++;
         if (!empty($member['flight_date']) && !empty($member['return_date'])) {
             $flightDoneCount++;

@@ -43,7 +43,7 @@ try {
     $serviceType = $svc['service_type'] ?? 'hotel';
 
     $memberStmt = $pdo->prepare("
-        SELECT ub.name, ub.is_extra_bed, f.head_of_family
+        SELECT ub.name, ub.is_extra_bed, ub.is_extra_transport, f.head_of_family
         FROM umrah_bookings ub
         LEFT JOIN families f ON f.family_id = ub.family_id AND f.tenant_id = ub.tenant_id
         WHERE ub.booking_id = ? AND ub.tenant_id = ?");

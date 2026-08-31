@@ -109,7 +109,7 @@ if ($scope === 'group') {
 // ---- Target member bookings (skip refunded/cancelled) ----------------------
 $placeholders = implode(',', array_fill(0, count($targetFamilies), '?'));
 $mbStmt = $pdo->prepare("
-    SELECT booking_id, family_id, name, dob, is_extra_bed, passenger_type FROM umrah_bookings
+    SELECT booking_id, family_id, name, dob, is_extra_bed, is_extra_transport, passenger_type FROM umrah_bookings
     WHERE family_id IN ($placeholders) AND tenant_id = ? AND status NOT IN ('refunded', 'cancelled')
     ORDER BY booking_id");
 $mbStmt->execute(array_merge($targetFamilies, [$tenant_id]));
@@ -316,6 +316,11 @@ foreach ($members as $member) {
         $skipReasons['extra bed (hotel only)'] = ($skipReasons['extra bed (hotel only)'] ?? 0) + 1;
         continue;
     }
+    // Extra transport pseudo-members only receive transport fulfillment.
+    if ($cat !== 'transport' && !empty($member['is_extra_transport'])) {
+        $skipReasons['extra transport (transport only)'] = ($skipReasons['extra transport (transport only)'] ?? 0) + 1;
+        continue;
+    }
     // Infant members receive no hotel/transport fulfillment — their package
     // covers only ticket + visa costs, and the ticket card asks for their
     // own fare separately.
@@ -344,6 +349,19 @@ foreach ($members as $member) {
             ORDER BY bs.id");
         $relaxedCandStmt->execute([$member['booking_id'], $tenant_id, $src['service_type'], $src['is_optional']]);
         $cands = $relaxedCandStmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    // Extra transport pseudo-members may also need relaxed matching by service_type.
+    if (!$cands && !empty($member['is_extra_transport']) && $cat === 'transport') {
+        $relaxedCandStmt2 = $pdo->prepare("
+            SELECT bs.id, bs.price_snapshot, bs.is_excluded,
+                   (SELECT f.status           FROM umrah_fulfillments f WHERE f.booking_service_id = bs.id AND f.tenant_id = bs.tenant_id ORDER BY f.id DESC LIMIT 1) AS t_status,
+                   (SELECT f.family_id        FROM umrah_fulfillments f WHERE f.booking_service_id = bs.id AND f.tenant_id = bs.tenant_id ORDER BY f.id DESC LIMIT 1) AS t_family_id,
+                   (SELECT f.fulfillment_type FROM umrah_fulfillments f WHERE f.booking_service_id = bs.id AND f.tenant_id = bs.tenant_id ORDER BY f.id DESC LIMIT 1) AS t_type
+            FROM umrah_booking_services bs
+            WHERE bs.booking_id = ? AND bs.tenant_id = ? AND bs.service_type = ? AND bs.is_optional = ?
+            ORDER BY bs.id");
+        $relaxedCandStmt2->execute([$member['booking_id'], $tenant_id, $src['service_type'], $src['is_optional']]);
+        $cands = $relaxedCandStmt2->fetchAll(PDO::FETCH_ASSOC);
     }
     if (!$cands) {
         $noMatchMembers++;
@@ -386,7 +404,7 @@ foreach ($members as $member) {
             $skipReasons[$reason] = ($skipReasons[$reason] ?? 0) + 1;
             continue;
         }
-        $targets[] = ['booking_id' => (int)$member['booking_id'], 'name' => (string)$member['name'], 'dob' => (string)($member['dob'] ?? ''), 'line_id' => (int)$cand['id'], 'is_extra_bed' => !empty($member['is_extra_bed'])];
+        $targets[] = ['booking_id' => (int)$member['booking_id'], 'name' => (string)$member['name'], 'dob' => (string)($member['dob'] ?? ''), 'line_id' => (int)$cand['id'], 'is_extra_bed' => !empty($member['is_extra_bed']), 'is_extra_transport' => !empty($member['is_extra_transport'])];
     }
 }
 
@@ -448,6 +466,18 @@ foreach ($targets as $target) {
             $mergedInput['extra_bed_costs'] = [$targetBid => $extraBedCosts[$targetBid]];
         }
     }
+    // Extra transport cost overrides: only forward for the specific extra transport member
+    $extraTransportCosts = null;
+    if (isset($_POST['extra_transport_costs']) && is_string($_POST['extra_transport_costs']) && $_POST['extra_transport_costs'] !== '') {
+        $decoded = json_decode($_POST['extra_transport_costs'], true);
+        if (is_array($decoded)) { $extraTransportCosts = $decoded; }
+    }
+    if ($extraTransportCosts !== null) {
+        $targetBid = (string)$target['booking_id'];
+        if (isset($extraTransportCosts[$targetBid])) {
+            $mergedInput['extra_transport_costs'] = [$targetBid => $extraTransportCosts[$targetBid]];
+        }
+    }
     if ($hotelGroups !== null) {
         $memberGroup = null;
         foreach ($hotelGroupMembers as $gKey => $ids) {
@@ -472,7 +502,7 @@ foreach ($targets as $target) {
     }
     $result = fulfillment_save($pdo, $mergedInput);
     if ($result['success']) {
-        if (empty($target['is_extra_bed'])) { $applied++; }
+        if (empty($target['is_extra_bed']) && empty($target['is_extra_transport'])) { $applied++; }
     } else {
         $errors[] = ['member' => $target['name'], 'message' => $result['message']];
     }

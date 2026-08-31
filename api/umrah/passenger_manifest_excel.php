@@ -46,6 +46,7 @@ if (!empty($groupId)) {
         WHERE f.group_id = ? AND b.tenant_id = ? AND b.branch_id = ?
           AND b.status NOT IN ('refunded', 'cancelled')
           AND COALESCE(b.is_extra_bed, 0) = 0
+          AND COALESCE(b.is_extra_transport, 0) = 0
         ORDER BY f.family_id, b.booking_id
     ");
     $grpMemberStmt->execute([$groupId, $tenant_id, $branch_id]);

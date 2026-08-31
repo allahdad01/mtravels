@@ -298,7 +298,7 @@ $fmt = function ($v) {
             if ($scope === 'group') {
                 $totalMembers = 0; $totalExtraBeds = 0;
                 foreach ($data['members'] as $m) {
-                    if (!empty($m['is_extra_bed'])) { $totalExtraBeds++; } else { $totalMembers++; }
+                    if (!empty($m['is_extra_bed']) || !empty($m['is_extra_transport'])) { $totalExtraBeds++; } else { $totalMembers++; }
                 }
                 $byClient = [];
                 foreach ($data['members'] as $m) {
@@ -319,7 +319,7 @@ $fmt = function ($v) {
                     $famMembers = 0; $famExtraBeds = 0;
                     foreach ($fmembers as $fm) {
                         $famCost += $fm['cost_total']; $famSold += $fm['sold_total']; $famProfit += $fm['profit'];
-                        if (!empty($fm['is_extra_bed'])) { $famExtraBeds++; } else { $famMembers++; }
+                        if (!empty($fm['is_extra_bed']) || !empty($fm['is_extra_transport'])) { $famExtraBeds++; } else { $famMembers++; }
                     }
             ?>
             <tr class="family-header">
@@ -330,7 +330,7 @@ $fmt = function ($v) {
             <?php foreach ($fmembers as $m): $i++; $isNeg = $m['profit'] < 0; ?>
             <tr>
                 <td class="col-s"><?php echo $i; ?></td>
-                <td class="col-name"><?php echo htmlspecialchars($m['name'] ?? ''); ?><?php if (!empty($m['is_extra_bed'])): ?> <span style="color:#d97706; font-size:9px; font-weight:600;">(<?php echo htmlspecialchars($L['extra_beds']); ?>)</span><?php endif; ?></td>
+                <td class="col-name"><?php echo htmlspecialchars($m['name'] ?? ''); ?><?php if (!empty($m['is_extra_bed']) || !empty($m['is_extra_transport'])): ?> <span style="color:#d97706; font-size:9px; font-weight:600;">(<?php echo htmlspecialchars($L['extra_beds']); ?>)</span><?php endif; ?></td>
                 <td class="col-fname"><?php echo htmlspecialchars($m['fname'] ?? ''); ?></td>
                 <td class="col-passport"><?php echo htmlspecialchars($m['passport_number'] ?? ''); ?></td>
                 <td class="col-services">
@@ -371,13 +371,13 @@ $fmt = function ($v) {
             } else {
                 $totalMembers = 0; $totalExtraBeds = 0;
                 foreach ($data['members'] as $m) {
-                    if (!empty($m['is_extra_bed'])) { $totalExtraBeds++; } else { $totalMembers++; }
+                    if (!empty($m['is_extra_bed']) || !empty($m['is_extra_transport'])) { $totalExtraBeds++; } else { $totalMembers++; }
                 }
             ?>
             <?php $i = 0; foreach ($data['members'] as $m): $i++; $isNeg = $m['profit'] < 0; ?>
             <tr>
                 <td class="col-s"><?php echo $i; ?></td>
-                <td class="col-name"><?php echo htmlspecialchars($m['name'] ?? ''); ?><?php if (!empty($m['is_extra_bed'])): ?> <span style="color:#d97706; font-size:9px; font-weight:600;">(<?php echo htmlspecialchars($L['extra_beds']); ?>)</span><?php endif; ?></td>
+                <td class="col-name"><?php echo htmlspecialchars($m['name'] ?? ''); ?><?php if (!empty($m['is_extra_bed']) || !empty($m['is_extra_transport'])): ?> <span style="color:#d97706; font-size:9px; font-weight:600;">(<?php echo htmlspecialchars($L['extra_beds']); ?>)</span><?php endif; ?></td>
                 <td class="col-fname"><?php echo htmlspecialchars($m['fname'] ?? ''); ?></td>
                 <td class="col-passport"><?php echo htmlspecialchars($m['passport_number'] ?? ''); ?></td>
                 <td class="col-services">

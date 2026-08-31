@@ -461,7 +461,16 @@ function updateFulfillmentSummary() {
     if (aggregate) {
         const fams = parseInt(fulfillmentData.booking.families_count) || 1;
         const mems = parseInt(fulfillmentData.booking.members_count) || 1;
-        prefix = '<b>' + fams + '</b> famil' + (fams === 1 ? 'y' : 'ies') + ' &nbsp;·&nbsp; <b>' + mems + '</b> member' + (mems === 1 ? '' : 's') + ' &nbsp;·&nbsp; ';
+        const ebCount = parseInt(fulfillmentData.booking.extra_bed_count) || 0;
+        const etCount = parseInt(fulfillmentData.booking.extra_transport_count) || 0;
+        let memLabel = '<b>' + mems + '</b> member' + (mems === 1 ? '' : 's');
+        if (ebCount > 0 || etCount > 0) {
+            const extras = [];
+            if (ebCount > 0) extras.push(ebCount + ' ' + __t('extra_beds'));
+            if (etCount > 0) extras.push(etCount + ' ' + __t('extra_transport'));
+            memLabel += ' <span style="opacity:.65;font-weight:400;">(includes ' + extras.join(', ') + ')</span>';
+        }
+        prefix = '<b>' + fams + '</b> famil' + (fams === 1 ? 'y' : 'ies') + ' &nbsp;·&nbsp; ' + memLabel + ' &nbsp;·&nbsp; ';
     }
     $('#fulfillmentSummary').html(
         prefix +
@@ -897,18 +906,18 @@ function hotelMemberCardHtml(m, data) {
     const isF = String(m.gender || '').toLowerCase() === 'female';
     const icon = isExtraBed ? 'icon-plus-square' : (isF ? 'icon-user-check' : 'icon-user');
     const color = isExtraBed ? '#d97706' : (isF ? '#be185d' : '#0e7490');
-    const extraBedBadge = isExtraBed ? '<span class="fulfillment-chip ml-2" style="background:#fef3c7;color:#92400e;"><i class="feather icon-plus-square mr-1"></i>Extra Bed</span>' : '';
+    const extraBedBadge = isExtraBed ? '<span class="fulfillment-chip ml-2" style="background:#fef3c7;color:#92400e;"><i class="feather icon-plus-square mr-1"></i>' + __t('extra_bed') + '</span>' : '';
     // Ownership badge: transferred member from a different family
     const currentFamId = currentFulfillmentFamilyId ? parseInt(currentFulfillmentFamilyId, 10) : 0;
     const ffId = m.fulfillment_family_id ? parseInt(m.fulfillment_family_id, 10) : 0;
     let ownershipBadge = '';
     if (m.fulfillment_id && ffId && currentFamId && ffId !== currentFamId) {
-        ownershipBadge = '<span class="fulfillment-chip ml-2" style="background:#fef2f2;color:#dc3545;"><i class="feather icon-skip-forward mr-1"></i>Transferred</span>';
+        ownershipBadge = '<span class="fulfillment-chip ml-2" style="background:#fef2f2;color:#dc3545;"><i class="feather icon-skip-forward mr-1"></i>' + __t('transferred') + '</span>';
     } else if (m.fulfillment_id) {
-        ownershipBadge = '<span class="fulfillment-chip ml-2" style="background:#fef9c3;color:#92400e;font-size:0.75rem;">will update</span>';
+        ownershipBadge = '<span class="fulfillment-chip ml-2" style="background:#fef9c3;color:#92400e;font-size:0.75rem;">' + __t('will_update') + '</span>';
     }
     const removeBtn = isExtraBed
-        ? `<button type="button" class="btn btn-sm btn-outline-danger btn-remove-extra-bed ml-2" data-booking-id="${m.booking_id}" data-family-id="${m.family_id || 0}" title="Remove extra bed"><i class="feather icon-trash-2"></i></button>`
+        ? `<button type="button" class="btn btn-sm btn-outline-danger btn-remove-extra-bed ml-2" data-booking-id="${m.booking_id}" data-family-id="${m.family_id || 0}" title="${__t('remove_extra_bed')}"><i class="feather icon-trash-2"></i></button>`
         : '';
     const costSoldRow = isExtraBed ? (() => {
         const ebSuppliers = (fulfillmentData && fulfillmentData.suppliers) ? fulfillmentData.suppliers : [];
@@ -923,7 +932,7 @@ function hotelMemberCardHtml(m, data) {
         return `
         <div class="row mt-2" style="border-top:1px dashed #e2e8f0;padding-top:8px;">
             <div class="col-md-12 mb-1" style="font-size:0.8rem;font-weight:600;color:#d97706;">
-                <i class="feather icon-plus-square mr-1"></i>Extra Bed Cost
+                <i class="feather icon-plus-square mr-1"></i>${__t('extra_bed_cost')}
             </div>
         </div>
         <div class="row f-city-cost-section mb-2" style="border-left:3px solid #0e7490;padding-left:8px;">
@@ -1193,6 +1202,10 @@ function hotelSubgroupCardHtml(sub, mode, data) {
         ? `<span class="fulfillment-chip ml-2"><i class="feather icon-home mr-1"></i>${escapeHtml(famName)} family</span>`
         : `<span class="fulfillment-chip ml-2">Family #${sub.fam || 0}</span>`;
     const durChip = `<span class="flight-duration-chip ml-2">${sub.durKey === 'unspecified' ? '—' : sub.durKey + ' days'}</span>`;
+    const ebCount = sub.members.filter(m => m.is_extra_bed).length;
+    const realCount = sub.members.length - ebCount;
+    const memberLabel = realCount + ' member' + (realCount === 1 ? '' : 's');
+    const ebLabel = ebCount > 0 ? ' <span style="opacity:.65;">+ ' + ebCount + ' ' + __t('extra_beds') + '</span>' : '';
     const names = sub.members.map(m => escapeHtml(m.name || ('#' + m.booking_id))).join(', ');
     const memberCards = hotelGroupedMemberCardsHtml(sub.members, data);
     const addExtraBedBtn = (currentFulfillmentFamilyId && (currentFulfillmentMode === 'family' || currentFulfillmentMode === 'group'))
@@ -1208,7 +1221,7 @@ function hotelSubgroupCardHtml(sub, mode, data) {
             <h6 class="mb-0 d-flex align-items-center flex-wrap" style="font-size:0.85rem;color:#334155;">
                 <i class="feather icon-users mr-2" style="color:#0e7490;"></i>
                 ${mode === 'family' ? famChip + durChip : durChip + famChip}
-                <span class="flight-duration-chip ml-2">${sub.members.length} member${sub.members.length === 1 ? '' : 's'}</span>
+                <span class="flight-duration-chip ml-2">${memberLabel}${ebLabel}</span>
                 <span class="ml-1 text-muted" style="font-weight:400;">· ${names}</span>
             </h6>
             ${addExtraBedBtn}
@@ -1771,6 +1784,65 @@ function renderFulfillmentServices(data) {
             </div>`;
             }
         } else if (group === 'transport') {
+            const regularMembers = (service.member_breakdown || []).filter(m => !m.is_extra_transport);
+            const extraTransportMembers = (service.member_breakdown || []).filter(m => m.is_extra_transport);
+
+            const extraTransportHtml = extraTransportMembers.map(m => {
+                const ebSuppliers = (fulfillmentData && fulfillmentData.suppliers) ? fulfillmentData.suppliers : [];
+                const ebSupOpts = ebSuppliers.map(s =>
+                    '<option value="' + s.id + '" data-currency="' + escapeHtml(s.currency || 'USD') + '" ' + (String(m.et_supplier_id || '') === String(s.id) ? 'selected' : '') + '>' + escapeHtml(s.name) + '</option>'
+                ).join('');
+                const etCur = m.et_currency || 'USD';
+                return `
+                <div class="card mb-2 f-extra-transport-card" data-member-id="${m.booking_id}" data-booking-id="${m.booking_id}" style="border-left:3px solid #d97706;">
+                    <div class="card-header bg-light py-1 d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0" style="font-size:0.85rem;color:#334155;">
+                            <i class="feather icon-truck mr-2" style="color:#d97706;"></i>${escapeHtml(m.name || ('#' + m.booking_id))}
+                            <span class="fulfillment-chip ml-2" style="background:#fef3c7;color:#92400e;"><i class="feather icon-plus-square mr-1"></i>${__t('extra_transport_badge')}</span>
+                            ${m.family_id ? '<span class="fulfillment-chip ml-2"><i class="feather icon-home mr-1"></i>' + escapeHtml((data.families && data.families[String(m.family_id)]) ? data.families[String(m.family_id)] : ('Family #' + m.family_id)) + '</span>' : ''}
+                            ${m.fulfillment_id ? '<span class="fulfillment-chip ml-2" style="background:#fef9c3;color:#92400e;font-size:0.75rem;">' + __t('will_update') + '</span>' : ''}
+                        </h6>
+                        <button type="button" class="btn btn-sm btn-outline-danger btn-remove-extra-transport ml-2" data-booking-id="${m.booking_id}" data-family-id="${m.family_id || 0}" title="${__t('remove_extra_transport')}"><i class="feather icon-trash-2"></i></button>
+                    </div>
+                    <div class="card-body py-2">
+                        <div class="row">
+                            <div class="form-group col-md-4 mb-1">
+                                <label style="font-size:0.8rem;">Supplier</label>
+                                <select class="form-control form-control-sm f-et-supplier">
+                                    <option value="">— ${__t('select_supplier')} —</option>
+                                    ${ebSupOpts}
+                                </select>
+                            </div>
+                            <div class="form-group col-md-2 mb-1">
+                                <label style="font-size:0.8rem;">Currency</label>
+                                <input type="text" class="form-control form-control-sm f-et-currency" value="${escapeHtml(etCur)}">
+                            </div>
+                            <div class="form-group col-md-2 mb-1">
+                                <label style="font-size:0.8rem;">Cost</label>
+                                <input type="number" class="form-control form-control-sm f-et-cost" min="0" step="0.01" value="${m.et_cost != null ? m.et_cost : ''}">
+                            </div>
+                            <div class="form-group col-md-2 mb-1 f-et-rate-field" style="display: none;">
+                                <label style="font-size:0.8rem;">Rate</label>
+                                <input type="number" class="form-control form-control-sm f-et-rate" min="0" step="0.0001" value="${m.et_rate != null ? m.et_rate : ''}">
+                            </div>
+                            <div class="form-group col-md-2 mb-1">
+                                <label style="font-size:0.8rem;">Cost (${currentFulfillmentCurrency})</label>
+                                <input type="number" class="form-control form-control-sm f-et-cost-usd" readonly value="${m.et_cost_usd != null ? Number(m.et_cost_usd).toFixed(2) : ''}">
+                            </div>
+                        </div>
+                        <div class="row mt-1">
+                            <div class="form-group col-md-4 mb-1">
+                                <label style="font-size:0.8rem;">Sold (${currentFulfillmentCurrency})</label>
+                                <input type="number" class="form-control form-control-sm f-et-sold" min="0" step="0.01" value="${m.sold_price != null ? m.sold_price : ''}" data-booking-id="${m.booking_id}">
+                            </div>
+                            <div class="form-group col-md-4 mb-1">
+                                <label style="font-size:0.8rem;">Profit (${currentFulfillmentCurrency})</label>
+                                <input type="number" class="form-control form-control-sm f-et-profit" readonly value="${m.et_profit != null ? m.et_profit : ''}">
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
             extra = `
             <div class="row mt-2 fulfillment-type-fields">
                 <div class="form-group col-md-4">
@@ -1782,7 +1854,27 @@ function renderFulfillmentServices(data) {
                     <input type="date" class="form-control form-control-sm f-trip-date" value="${escapeHtml(service.transport_trip_date || '')}">
                 </div>
             </div>
-            <div class="f-contract-hint"></div>`;
+            <div class="f-contract-hint"></div>
+            ${extraTransportHtml}
+            ${(() => {
+                if (currentFulfillmentMode === 'member') return '';
+                if (currentFulfillmentMode === 'group') {
+                    const familyIds = [...new Set(regularMembers.map(m => m.family_id).filter(Boolean))];
+                    if (!familyIds.length && currentFulfillmentFamilyId) familyIds.push(currentFulfillmentFamilyId);
+                    return familyIds.map(fid => {
+                        const famName = (data.families && data.families[String(fid)]) ? data.families[String(fid)] : ('Family #' + fid);
+                        return `<button type="button" class="btn btn-sm btn-outline-success btn-add-extra-transport mt-2" data-family-id="${fid}" data-booking-service-id="${service.booking_service_id}" style="font-size:0.78rem;padding:2px 8px;">
+                            <i class="feather icon-plus-circle mr-1"></i>${__t('add_extra_transport') || 'Add Extra Transport'} (${escapeHtml(famName)})
+                        </button>`;
+                    }).join(' ');
+                }
+                if (currentFulfillmentFamilyId) {
+                    return `<button type="button" class="btn btn-sm btn-outline-success btn-add-extra-transport mt-2" data-family-id="${currentFulfillmentFamilyId}" data-booking-service-id="${service.booking_service_id}" style="font-size:0.78rem;padding:2px 8px;">
+                        <i class="feather icon-plus-circle mr-1"></i>${__t('add_extra_transport') || 'Add Extra Transport'}
+                    </button>`;
+                }
+                return '';
+            })()}`;
         }
 
         const isFrozen = isFulfillmentFrozen(service.fulfill_status || '');
@@ -1794,8 +1886,16 @@ function renderFulfillmentServices(data) {
         if (currentFulfillmentMode !== 'member' && service.is_aggregate) {
             const famLabel = service.families_applicable === 1 ? 'family' : 'families';
             const memLabel = service.members_applicable === 1 ? 'member' : 'members';
+            let extraParts = [];
+            if (service.extra_bed_count > 0) {
+                extraParts.push('<span style="color:#92400e;">' + service.extra_bed_count + ' ' + __t('extra_beds') + '</span>');
+            }
+            if (service.extra_transport_count > 0) {
+                extraParts.push('<span style="color:#92400e;">' + service.extra_transport_count + ' ' + __t('extra_transport') + '</span>');
+            }
             coverageChip = `<span class="fulfillment-chip fulfillment-chip-optional ml-1" title="${service.coverage_skipped ? 'Skipped: ' + escapeHtml(JSON.stringify(service.skip_breakdown || {})) : 'Applies to every member with this service'}" style="cursor:default;">
                 covers ${service.families_applicable} ${famLabel} · ${service.members_applicable} ${memLabel}
+                ${extraParts.length ? ' <span style="opacity:.75;">+ ' + extraParts.join(' + ') + '</span>' : ''}
                 ${service.coverage_skipped ? ' <span style="opacity:.75;">· ' + service.coverage_skipped + ' skipped</span>' : ''}
             </span>`;
         }
@@ -1936,9 +2036,9 @@ function renderFulfillmentServices(data) {
                         }
                     });
                     const parts = [];
-                    if (unfulfilled) parts.push(`<span style="color:#0e7490;">${unfulfilled} unfulfilled</span>`);
-                    if (willUpdate) parts.push(`<span style="color:#d97706;">${willUpdate} will update</span>`);
-                    if (transferred) parts.push(`<span style="color:#dc3545;">${transferred} transferred (skip)</span>`);
+                    if (unfulfilled) parts.push(`<span style="color:#0e7490;">${unfulfilled} ${__t('unfulfilled')}</span>`);
+                    if (willUpdate) parts.push(`<span style="color:#d97706;">${willUpdate} ${__t('will_update')}</span>`);
+                    if (transferred) parts.push(`<span style="color:#dc3545;">${transferred} ${__t('transferred')} (${__t('skip')})</span>`);
                     if (!parts.length) return '';
                     return `<div class="f-ownership-summary mb-1" style="font-size:0.78rem;color:#6b7280;"><i class="feather icon-info mr-1" style="color:#0e7490;"></i>${parts.join(' · ')}</div>`;
                 })() : ''}
@@ -2231,6 +2331,30 @@ function updateEbCostUsd($card, city) {
     }
     const rate = parseFloat($card.find(prefix + 'rate').val()) || 0;
     $card.find(prefix + 'cost-usd').val(rate > 0 ? (cost / rate).toFixed(2) : '');
+}
+
+function syncEtRateField($row) {
+    const $field = $row.find('.f-et-rate-field');
+    const hasSupplier = !!$row.find('.f-et-supplier').val();
+    const cur = ($row.find('.f-et-currency').val() || '').trim().toUpperCase();
+    const differs = hasSupplier && !!cur && cur !== currentFulfillmentCurrency;
+    const keepRate = differs;
+    if (!keepRate) $row.find('.f-et-rate').val('');
+    $field.toggle(keepRate);
+}
+
+function updateEtCostUsd($row) {
+    const cur = ($row.find('.f-et-currency').val() || currentFulfillmentCurrency).trim().toUpperCase();
+    const cost = parseFloat($row.find('.f-et-cost').val()) || 0;
+    if (!cur || cur === currentFulfillmentCurrency) {
+        $row.find('.f-et-cost-usd').val(cost > 0 ? cost.toFixed(2) : '');
+    } else {
+        const rate = parseFloat($row.find('.f-et-rate').val()) || 0;
+        $row.find('.f-et-cost-usd').val(rate > 0 ? (cost / rate).toFixed(2) : '');
+    }
+    const costUsd = parseFloat($row.find('.f-et-cost-usd').val()) || 0;
+    const sold = parseFloat($row.find('.f-et-sold').val()) || 0;
+    $row.find('.f-et-profit').val(sold ? (sold - costUsd).toFixed(2) : '');
 }
 
 // Hotel dropdowns (one per hotel stay) show only hotels belonging to the
@@ -2554,6 +2678,34 @@ function propagateHotelCostToExtraBeds($changed, $card) {
     });
 }
 
+function propagateTransportSupplierToExtraTransport($card) {
+    const supId = $card.find('.f-supplier').val() || '';
+    const $sup = $card.find('.f-supplier option:selected');
+    const cur = ($sup.data('currency') || 'USD').toString().toUpperCase();
+    if (!supId) return;
+    $card.find('.f-extra-transport-card').each(function() {
+        const $et = $(this);
+        $et.find('.f-et-supplier').val(supId);
+        $et.find('.f-et-currency').val(cur);
+        syncEtRateField($et);
+        updateEtCostUsd($et);
+    });
+}
+
+function propagateTransportCostToExtraTransport($card) {
+    const cost = $card.find('.f-cost').val();
+    const rate = $card.find('.f-rate').val();
+    const currency = ($card.find('.f-currency').val() || '').trim().toUpperCase();
+    $card.find('.f-extra-transport-card').each(function() {
+        const $et = $(this);
+        if (cost) $et.find('.f-et-cost').val(cost);
+        if (rate) $et.find('.f-et-rate').val(rate);
+        if (currency) $et.find('.f-et-currency').val(currency);
+        syncEtRateField($et);
+        updateEtCostUsd($et);
+    });
+}
+
 function bindFulfillmentEvents() {
     $(document).off('change.fulfillment', '.f-flight-type').on('change.fulfillment', '.f-flight-type', function() {
         const $card = $(this).closest('.fulfillment-service-card');
@@ -2649,6 +2801,9 @@ function bindFulfillmentEvents() {
         applyContractPricing($card);
         applyTransportContractPricing($card);
         applySuggestion($card);
+        if ($card.data('group') === 'transport') {
+            propagateTransportSupplierToExtraTransport($card);
+        }
     });
 
     $(document).off('change.fulfillment', '.f-makkah-supplier, .f-madinah-supplier').on('change.fulfillment', '.f-makkah-supplier, .f-madinah-supplier', function() {
@@ -2678,6 +2833,9 @@ function bindFulfillmentEvents() {
         $card.data('auto-cost', 0);
         updateFulfillmentCostUsd($card);
         syncFulfillmentRateField($card);
+        if ($card.data('group') === 'transport') {
+            propagateTransportCostToExtraTransport($card);
+        }
     });
 
     $(document).off('input.fulfillment', '.f-makkah-cost, .f-makkah-rate, .f-makkah-currency, .f-madinah-cost, .f-madinah-rate, .f-madinah-currency').on('input.fulfillment', '.f-makkah-cost, .f-makkah-rate, .f-makkah-currency, .f-madinah-cost, .f-madinah-rate, .f-madinah-currency', function() {
@@ -2831,6 +2989,84 @@ function bindFulfillmentEvents() {
         });
         const sold = parseFloat($row.find('.f-eb-sold').val()) || 0;
         $row.find('.f-eb-profit').val(sold ? (sold - totalCostUsd).toFixed(2) : '');
+    });
+
+    // ---- Extra Transport events -----------------------------------------------
+    $(document).off('click.fulfillment', '.btn-add-extra-transport').on('click.fulfillment', '.btn-add-extra-transport', function() {
+        const $card = $(this).closest('.fulfillment-service-card');
+        const $btn = $(this);
+        const bookingServiceId = parseInt($btn.data('booking-service-id'), 10) || $card.data('booking-service-id');
+        const familyId = parseInt($btn.data('family-id'), 10) || currentFulfillmentFamilyId || 0;
+        if (!familyId) return;
+
+        $btn.prop('disabled', true).html('<i class="feather icon-loader fa-spin mr-1"></i>Adding...');
+
+        $.post('../api/umrah/save_extra_transport.php', {
+            csrf_token: csrfToken,
+            action: 'add',
+            family_id: familyId,
+            booking_service_id: bookingServiceId
+        }, function(resp) {
+            if (resp.success) {
+                reloadFulfillmentModal();
+            } else {
+                alert(resp.message || 'Failed to add extra transport.');
+                $btn.prop('disabled', false).html('<i class="feather icon-plus-circle mr-1"></i>' + (__t('add_extra_transport') || 'Add Extra Transport'));
+            }
+        }, 'json').fail(function() {
+            alert('Network error adding extra transport.');
+            $btn.prop('disabled', false).html('<i class="feather icon-plus-circle mr-1"></i>' + (__t('add_extra_transport') || 'Add Extra Transport'));
+        });
+    });
+
+    $(document).off('click.fulfillment', '.btn-remove-extra-transport').on('click.fulfillment', '.btn-remove-extra-transport', function() {
+        if (!confirm('Remove this extra transport?')) return;
+        const $btn = $(this);
+        const bookingId = $btn.data('booking-id');
+        const familyId = parseInt($btn.data('family-id'), 10) || currentFulfillmentFamilyId || 0;
+        if (!bookingId || !familyId) return;
+
+        $btn.prop('disabled', true).html('<i class="feather icon-loader fa-spin"></i>');
+
+        $.post('../api/umrah/save_extra_transport.php', {
+            csrf_token: csrfToken,
+            action: 'remove',
+            family_id: familyId,
+            extra_transport_booking_id: bookingId
+        }, function(resp) {
+            if (resp.success) {
+                reloadFulfillmentModal();
+            } else {
+                alert(resp.message || 'Failed to remove extra transport.');
+                $btn.prop('disabled', false).html('<i class="feather icon-trash-2"></i>');
+            }
+        }, 'json').fail(function() {
+            alert('Network error removing extra transport.');
+            $btn.prop('disabled', false).html('<i class="feather icon-trash-2"></i>');
+        });
+    });
+
+    $(document).off('change.fulfillment', '.f-et-supplier').on('change.fulfillment', '.f-et-supplier', function() {
+        const $row = $(this).closest('.f-extra-transport-card');
+        const supId = $(this).val();
+        const $sup = $(this).find('option:selected');
+        const cur = ($sup.data('currency') || 'USD').toString().toUpperCase();
+        $row.find('.f-et-currency').val(cur);
+        syncEtRateField($row);
+        updateEtCostUsd($row);
+    });
+
+    $(document).off('input.fulfillment', '.f-et-cost, .f-et-rate, .f-et-currency').on('input.fulfillment', '.f-et-cost, .f-et-rate, .f-et-currency', function() {
+        const $row = $(this).closest('.f-extra-transport-card');
+        syncEtRateField($row);
+        updateEtCostUsd($row);
+    });
+
+    $(document).off('input.fulfillment', '.f-et-sold').on('input.fulfillment', '.f-et-sold', function() {
+        const $row = $(this).closest('.f-extra-transport-card');
+        const costUsd = parseFloat($row.find('.f-et-cost-usd').val()) || 0;
+        const sold = parseFloat($row.find('.f-et-sold').val()) || 0;
+        $row.find('.f-et-profit').val(sold ? (sold - costUsd).toFixed(2) : '');
     });
 
     $(document).off('click.fulfillment', '.btn-save-fulfillment').on('click.fulfillment', '.btn-save-fulfillment', function() {
@@ -3207,6 +3443,31 @@ function saveFulfillment($card) {
     } else if ($card.data('group') === 'transport') {
         formData.append('transport_vehicle', $card.find('.f-vehicle').val() || '');
         formData.append('transport_trip_date', $card.find('.f-trip-date').val() || '');
+        // Collect extra transport cost/sold data for pseudo-members
+        const extraTransportData = {};
+        $card.find('.f-extra-transport-card').each(function() {
+            const bid = String($(this).data('member-id') || '');
+            if (!bid) return;
+            const supplier = $(this).find('.f-et-supplier').val() || '';
+            const currency = $(this).find('.f-et-currency').val() || '';
+            const cost = $(this).find('.f-et-cost').val() || '';
+            const rate = $(this).find('.f-et-rate').val() || '';
+            const costUsd = $(this).find('.f-et-cost-usd').val() || '';
+            const sold = $(this).find('.f-et-sold').val() || '';
+            if (cost !== '' || sold !== '') {
+                extraTransportData[bid] = {
+                    supplier_id: supplier,
+                    currency: currency,
+                    cost: cost,
+                    rate: rate,
+                    cost_usd: costUsd,
+                    sold: sold
+                };
+            }
+        });
+        if (Object.keys(extraTransportData).length) {
+            formData.append('extra_transport_costs', JSON.stringify(extraTransportData));
+        }
     }
 
     btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Saving...');

@@ -124,8 +124,9 @@ $canEdit = user_can('umrah.member_edit');
                                         g.*,
                                         u.name AS created_by,
                                         COUNT(DISTINCT f.family_id) AS family_count,
-                                        COUNT(CASE WHEN COALESCE(ub.is_extra_bed, 0) = 0 THEN ub.booking_id END) AS member_count,
+                                        COUNT(CASE WHEN COALESCE(ub.is_extra_bed, 0) = 0 AND COALESCE(ub.is_extra_transport, 0) = 0 THEN ub.booking_id END) AS member_count,
                                         COUNT(CASE WHEN COALESCE(ub.is_extra_bed, 0) = 1 THEN ub.booking_id END) AS extra_bed_count,
+                                        COUNT(CASE WHEN COALESCE(ub.is_extra_transport, 0) = 1 THEN ub.booking_id END) AS extra_transport_count,
                                         COALESCE(fam.total_price, 0) AS total_price,
                                         COALESCE(fam.total_paid, 0) AS total_paid,
                                         COALESCE(fam.total_due, 0) AS total_due,
@@ -136,8 +137,8 @@ $canEdit = user_can('umrah.member_edit');
                                         COALESCE(fam_split.regular_total_paid, 0) AS regular_total_paid,
                                         COALESCE(fam_split.extra_bed_price, 0) AS extra_bed_price,
                                         COALESCE(fam_split.extra_bed_paid, 0) AS extra_bed_paid,
-                                        COUNT(DISTINCT CASE WHEN c.client_type = 'agency' AND COALESCE(ub.is_extra_bed, 0) = 0 THEN ub.booking_id END) AS agency_member_count,
-                                        COUNT(DISTINCT CASE WHEN c.client_type = 'regular' AND COALESCE(ub.is_extra_bed, 0) = 0 THEN ub.booking_id END) AS regular_member_count
+                                        COUNT(DISTINCT CASE WHEN c.client_type = 'agency' AND COALESCE(ub.is_extra_bed, 0) = 0 AND COALESCE(ub.is_extra_transport, 0) = 0 THEN ub.booking_id END) AS agency_member_count,
+                                        COUNT(DISTINCT CASE WHEN c.client_type = 'regular' AND COALESCE(ub.is_extra_bed, 0) = 0 AND COALESCE(ub.is_extra_transport, 0) = 0 THEN ub.booking_id END) AS regular_member_count
                                     FROM umrah_groups g
                                     LEFT JOIN users u ON g.created_by = u.id
                                     LEFT JOIN families f ON f.group_id = g.group_id AND f.tenant_id = g.tenant_id
@@ -153,13 +154,15 @@ $canEdit = user_can('umrah.member_edit');
                                     ) fam ON fam.group_id = g.group_id AND fam.tenant_id = g.tenant_id
                                     LEFT JOIN (
                                         SELECT f4.group_id, f4.tenant_id,
-                                               SUM(CASE WHEN c4.client_type = 'agency' AND COALESCE(ub4.is_extra_bed, 0) = 0 THEN ub4.sold_price ELSE 0 END) AS agency_total_price,
-                                               SUM(CASE WHEN c4.client_type = 'agency' AND COALESCE(ub4.is_extra_bed, 0) = 0 THEN ub4.due ELSE 0 END) AS agency_due,
-                                               SUM(CASE WHEN c4.client_type = 'agency' AND COALESCE(ub4.is_extra_bed, 0) = 0 THEN COALESCE(ub4.paid, 0) ELSE 0 END) AS agency_total_paid,
-                                               SUM(CASE WHEN c4.client_type = 'regular' AND COALESCE(ub4.is_extra_bed, 0) = 0 THEN ub4.sold_price ELSE 0 END) AS regular_total_price,
-                                               SUM(CASE WHEN c4.client_type = 'regular' AND COALESCE(ub4.is_extra_bed, 0) = 0 THEN COALESCE(ub4.paid, 0) ELSE 0 END) AS regular_total_paid,
+                                               SUM(CASE WHEN c4.client_type = 'agency' AND COALESCE(ub4.is_extra_bed, 0) = 0 AND COALESCE(ub4.is_extra_transport, 0) = 0 THEN ub4.sold_price ELSE 0 END) AS agency_total_price,
+                                               SUM(CASE WHEN c4.client_type = 'agency' AND COALESCE(ub4.is_extra_bed, 0) = 0 AND COALESCE(ub4.is_extra_transport, 0) = 0 THEN ub4.due ELSE 0 END) AS agency_due,
+                                               SUM(CASE WHEN c4.client_type = 'agency' AND COALESCE(ub4.is_extra_bed, 0) = 0 AND COALESCE(ub4.is_extra_transport, 0) = 0 THEN COALESCE(ub4.paid, 0) ELSE 0 END) AS agency_total_paid,
+                                               SUM(CASE WHEN c4.client_type = 'regular' AND COALESCE(ub4.is_extra_bed, 0) = 0 AND COALESCE(ub4.is_extra_transport, 0) = 0 THEN ub4.sold_price ELSE 0 END) AS regular_total_price,
+                                               SUM(CASE WHEN c4.client_type = 'regular' AND COALESCE(ub4.is_extra_bed, 0) = 0 AND COALESCE(ub4.is_extra_transport, 0) = 0 THEN COALESCE(ub4.paid, 0) ELSE 0 END) AS regular_total_paid,
                                                SUM(CASE WHEN COALESCE(ub4.is_extra_bed, 0) = 1 THEN ub4.sold_price ELSE 0 END) AS extra_bed_price,
-                                               SUM(CASE WHEN COALESCE(ub4.is_extra_bed, 0) = 1 THEN COALESCE(ub4.paid, 0) ELSE 0 END) AS extra_bed_paid
+                                               SUM(CASE WHEN COALESCE(ub4.is_extra_bed, 0) = 1 THEN COALESCE(ub4.paid, 0) ELSE 0 END) AS extra_bed_paid,
+                                               SUM(CASE WHEN COALESCE(ub4.is_extra_transport, 0) = 1 THEN ub4.sold_price ELSE 0 END) AS extra_transport_price,
+                                               SUM(CASE WHEN COALESCE(ub4.is_extra_transport, 0) = 1 THEN COALESCE(ub4.paid, 0) ELSE 0 END) AS extra_transport_paid
                                         FROM families f4
                                         LEFT JOIN umrah_bookings ub4 ON ub4.family_id = f4.family_id
                                         LEFT JOIN clients c4 ON ub4.sold_to = c4.id AND c4.tenant_id = f4.tenant_id
@@ -273,7 +276,7 @@ $canEdit = user_can('umrah.member_edit');
                         $familiesCountStmt = $pdo->prepare("SELECT COUNT(*) FROM families WHERE tenant_id = ? AND branch_id = ?");
                         $familiesCountStmt->execute([$tenant_id, $branch_id]);
                         $totalFamilies = (int)$familiesCountStmt->fetchColumn();
-                        $membersCountStmt = $pdo->prepare("SELECT COUNT(*) FROM umrah_bookings WHERE tenant_id = ? AND branch_id = ? AND COALESCE(is_extra_bed, 0) = 0");
+                        $membersCountStmt = $pdo->prepare("SELECT COUNT(*) FROM umrah_bookings WHERE tenant_id = ? AND branch_id = ? AND COALESCE(is_extra_bed, 0) = 0 AND COALESCE(is_extra_transport, 0) = 0");
                         $membersCountStmt->execute([$tenant_id, $branch_id]);
                         $totalMembers = (int)$membersCountStmt->fetchColumn();
                         $flightsCountStmt = $pdo->prepare("SELECT COUNT(*) FROM group_tickets WHERE tenant_id = ? AND branch_id = ? AND status = 'active'");
@@ -404,7 +407,7 @@ $canEdit = user_can('umrah.member_edit');
                         $resultFamilies = [];
                         $regularClientFamilies = [];
                         $resultMembers = [];
-                        $membersCountStmt = $pdo->prepare("SELECT COUNT(*) FROM umrah_bookings WHERE tenant_id = ? AND branch_id = ? AND COALESCE(is_extra_bed, 0) = 0");
+                        $membersCountStmt = $pdo->prepare("SELECT COUNT(*) FROM umrah_bookings WHERE tenant_id = ? AND branch_id = ? AND COALESCE(is_extra_bed, 0) = 0 AND COALESCE(is_extra_transport, 0) = 0");
                         $membersCountStmt->execute([$tenant_id, $branch_id]);
                         $totalMembers = (int)$membersCountStmt->fetchColumn();
                         $groupsCountStmt = $pdo->prepare("SELECT COUNT(*) FROM umrah_groups WHERE tenant_id = ? AND (branch_id = ? OR branch_id = 0)");
@@ -573,8 +576,9 @@ $canEdit = user_can('umrah.member_edit');
                                         f.*,
                                         u.name as created_by,
                                         g.group_number, g.group_name,
-                                        COUNT(CASE WHEN COALESCE(ub.is_extra_bed, 0) = 0 THEN ub.booking_id END) AS total_members,
+                                        COUNT(CASE WHEN COALESCE(ub.is_extra_bed, 0) = 0 AND COALESCE(ub.is_extra_transport, 0) = 0 THEN ub.booking_id END) AS total_members,
                                         COUNT(CASE WHEN COALESCE(ub.is_extra_bed, 0) = 1 THEN ub.booking_id END) AS extra_bed_count,
+                                        COUNT(CASE WHEN COALESCE(ub.is_extra_transport, 0) = 1 THEN ub.booking_id END) AS extra_transport_count,
                                         SUM(CASE WHEN ub.status = 'refunded' THEN 1 ELSE 0 END) AS refunded_members,
                                         SUM(CASE WHEN ub.status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled_members,
                                         COUNT(DISTINCT CASE WHEN c.client_type = 'agency' AND COALESCE(ub.is_extra_bed, 0) = 0 THEN ub.booking_id END) AS agency_member_count,
@@ -586,6 +590,8 @@ $canEdit = user_can('umrah.member_edit');
                                         SUM(CASE WHEN c.client_type = 'regular' AND COALESCE(ub.is_extra_bed, 0) = 0 THEN COALESCE(ub.paid, 0) ELSE 0 END) AS regular_total_paid,
                                         SUM(CASE WHEN COALESCE(ub.is_extra_bed, 0) = 1 THEN ub.sold_price ELSE 0 END) AS extra_bed_price,
                                         SUM(CASE WHEN COALESCE(ub.is_extra_bed, 0) = 1 THEN COALESCE(ub.paid, 0) ELSE 0 END) AS extra_bed_paid,
+                                        SUM(CASE WHEN COALESCE(ub.is_extra_transport, 0) = 1 THEN ub.sold_price ELSE 0 END) AS extra_transport_price,
+                                        SUM(CASE WHEN COALESCE(ub.is_extra_transport, 0) = 1 THEN COALESCE(ub.paid, 0) ELSE 0 END) AS extra_transport_paid,
                                         GROUP_CONCAT(DISTINCT c.name ORDER BY c.name SEPARATOR ', ') AS client_names,
                                         (SELECT ub2.currency FROM umrah_bookings ub2
                                          WHERE ub2.family_id = f.family_id
@@ -837,7 +843,8 @@ $canEdit = user_can('umrah.member_edit');
                                 $hasPriceSplit = $aPrice > 0 && $rPrice > 0;
                                 $hasPaidSplit = $aPaid > 0 && $rPaid > 0;
                                 $ebPrice = floatval($group['extra_bed_price'] ?? 0);
-                                $groupTotal = $aPrice + $rPrice + $ebPrice;
+                                $etPrice = floatval($group['extra_transport_price'] ?? 0);
+                                $groupTotal = $aPrice + $rPrice + $ebPrice + $etPrice;
                                 $groupPaid = floatval($group['total_paid'] ?? 0);
                                 $groupFundPaid = floatval($group['fund_allocation'] ?? 0);
                                 $groupPaid = min($groupPaid + $groupFundPaid, $groupTotal);
@@ -869,6 +876,13 @@ $canEdit = user_can('umrah.member_edit');
                                                 <span class="meta-item text-warning" title="<?= __('extra_beds') ?>">
                                                     <i class="fas fa-plus-square"></i>
                                                     <?= $extraBedCount ?> <?= __('extra_beds') ?>
+                                                </span>
+                                                <?php endif; ?>
+                                                <?php $extraTransportCount = (int)($group['extra_transport_count'] ?? 0); ?>
+                                                <?php if ($extraTransportCount > 0): ?>
+                                                <span class="meta-item text-warning" title="<?= __('extra_transport') ?>">
+                                                    <i class="fas fa-truck"></i>
+                                                    <?= $extraTransportCount ?> <?= __('extra_transport') ?>
                                                 </span>
                                                 <?php endif; ?>
                                                 <?php $excludedVisaOnly = (int)($group['excluded_visa_only_count'] ?? 0); ?>
@@ -1437,11 +1451,13 @@ $canEdit = user_can('umrah.member_edit');
                                 $aPrice = floatval($row['agency_total_price'] ?? 0);
                                 $rPrice = floatval($row['regular_total_price'] ?? 0);
                                 $ebPrice = floatval($row['extra_bed_price'] ?? 0);
-                                $totalPrice = $aPrice + $rPrice + $ebPrice;
+                                $etPrice = floatval($row['extra_transport_price'] ?? 0);
+                                $totalPrice = $aPrice + $rPrice + $ebPrice + $etPrice;
                                 $aPaid = floatval($row['agency_total_paid'] ?? 0);
                                 $rPaid = floatval($row['regular_total_paid'] ?? 0);
                                 $ebPaid = floatval($row['extra_bed_paid'] ?? 0);
-                                $totalPaid = $aPaid + $rPaid + $ebPaid;
+                                $etPaid = floatval($row['extra_transport_paid'] ?? 0);
+                                $totalPaid = $aPaid + $rPaid + $ebPaid + $etPaid;
                                 $fundAlloc = floatval($row['fund_allocation'] ?? 0);
                                 $effectivePaid = min($totalPaid + $fundAlloc, $totalPrice);
                                 $paymentPercentage = $totalPrice > 0 ? ($effectivePaid / $totalPrice) * 100 : 0;
@@ -1470,6 +1486,13 @@ $canEdit = user_can('umrah.member_edit');
                                                     <span class="meta-item text-warning" title="<?= __('extra_beds') ?>">
                                                         <i class="fas fa-plus-square"></i>
                                                         <?= $extraBedCount ?> <?= __('extra_beds') ?>
+                                                    </span>
+                                                    <?php endif; ?>
+                                                    <?php $extraTransportCount = (int)($row['extra_transport_count'] ?? 0); ?>
+                                                    <?php if ($extraTransportCount > 0): ?>
+                                                    <span class="meta-item text-warning" title="<?= __('extra_transport') ?>">
+                                                        <i class="fas fa-truck"></i>
+                                                        <?= $extraTransportCount ?> <?= __('extra_transport') ?>
                                                     </span>
                                                     <?php endif; ?>
                                                     <?php $clientNames = trim($row['client_names'] ?? ''); ?>

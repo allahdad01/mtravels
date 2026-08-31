@@ -35,7 +35,7 @@ window.fulfillmentLabels = {
     room_split_gender: 'Per gender',
     gender_split_hint: 'Shared rooms are auto-assigned: same-gender members share a room (males together, females together) and the male/female rooms are placed nearest to each other — regardless of family.',
     add_more_rooms: 'please add more rooms',
-    extra_bed: 'Extra bed',
+    extra_bed: <?= json_encode(__('extra_beds')) ?>,
     nights: <?= json_encode(__('nights')) ?>,
     check_in: <?= json_encode(__('check_in')) ?>,
     check_out: <?= json_encode(__('check_out')) ?>,
@@ -102,7 +102,19 @@ window.fulfillmentLabels = {
     all_family_members: <?= json_encode(__('all_family_members')) ?>,
     entire_group: <?= json_encode(__('entire_group')) ?>,
     applying_to: <?= json_encode(__('applying_to')) ?>,
-    show_hide_brn_fields: <?= json_encode(__('show_hide_brn_fields')) ?>
+    show_hide_brn_fields: <?= json_encode(__('show_hide_brn_fields')) ?>,
+    add_extra_bed: <?= json_encode(__('add_extra_bed')) ?>,
+    add_extra_transport: <?= json_encode(__('add_extra_transport')) ?>,
+    extra_beds: <?= json_encode(__('extra_beds')) ?>,
+    extra_transport: <?= json_encode(__('extra_transport')) ?>,
+    extra_bed_cost: <?= json_encode(__('extra_bed_cost')) ?>,
+    extra_transport_badge: <?= json_encode(__('extra_transport_badge')) ?>,
+    transferred: <?= json_encode(__('transferred')) ?>,
+    will_update: <?= json_encode(__('will_update')) ?>,
+    remove_extra_bed: <?= json_encode(__('remove_extra_bed')) ?>,
+    remove_extra_transport: <?= json_encode(__('remove_extra_transport')) ?>,
+    unfulfilled: <?= json_encode(__('unfulfilled')) ?>,
+    skip: <?= json_encode(__('skip')) ?>
 };
 </script>
 </div>

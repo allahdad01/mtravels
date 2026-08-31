@@ -49,7 +49,7 @@ if ($groupId > 0) {
         $ffStmt = $pdo->prepare("
             SELECT f.*, bs.booking_id, bs.service_id, bs.service_type,
                    s.name AS service_name, b.name AS member_name,
-                   b.is_extra_bed, b.family_id, b.sold_price AS bk_sold, b.profit AS bk_profit, b.status AS bk_status
+                   b.is_extra_bed, b.is_extra_transport, b.family_id, b.sold_price AS bk_sold, b.profit AS bk_profit, b.status AS bk_status
             FROM umrah_fulfillments f
             JOIN umrah_booking_services bs ON bs.id = f.booking_service_id AND bs.tenant_id = f.tenant_id
             JOIN umrah_bookings b ON b.booking_id = bs.booking_id AND b.tenant_id = bs.tenant_id
@@ -66,14 +66,17 @@ if ($groupId > 0) {
         $allFfIds = array_unique(array_map(fn($r) => (int)$r['id'], $allFfs));
         $cityMap = [];
         $ebMap = [];
+        $etMap = [];
         if ($allFfIds) {
             $ph = implode(',', array_fill(0, count($allFfIds), '?'));
-            $detStmt = $pdo->prepare("SELECT fulfillment_id, detail_key, detail_value FROM umrah_fulfillment_details WHERE fulfillment_id IN ($ph) AND (detail_key LIKE 'city_%' OR detail_key LIKE 'eb_%')");
+            $detStmt = $pdo->prepare("SELECT fulfillment_id, detail_key, detail_value FROM umrah_fulfillment_details WHERE fulfillment_id IN ($ph) AND (detail_key LIKE 'city_%' OR detail_key LIKE 'eb_%' OR detail_key LIKE 'et_%')");
             $detStmt->execute($allFfIds);
             foreach ($detStmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
                 $fid = (int)$r['fulfillment_id'];
                 if (strpos($r['detail_key'], 'city_') === 0) {
                     $cityMap[$fid][$r['detail_key']] = $r['detail_value'];
+                } elseif (strpos($r['detail_key'], 'et_') === 0) {
+                    $etMap[$fid][$r['detail_key']] = $r['detail_value'];
                 } else {
                     $ebMap[$fid][$r['detail_key']] = $r['detail_value'];
                 }
@@ -140,9 +143,9 @@ if ($groupId > 0) {
             $famId = (int)$fam['family_id'];
             // All members in this family (including extra beds)
             $memStmt = $pdo->prepare("
-                SELECT booking_id, name, is_extra_bed, status, sold_price, due, profit, currency
+                SELECT booking_id, name, is_extra_bed, is_extra_transport, status, sold_price, due, profit, currency
                 FROM umrah_bookings WHERE family_id = ? AND tenant_id = ? AND status NOT IN ('refunded','cancelled')
-                ORDER BY is_extra_bed ASC, booking_id
+                ORDER BY is_extra_bed ASC, is_extra_transport ASC, booking_id
             ");
             $memStmt->execute([$famId, $tenant_id]);
             $members = $memStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -152,11 +155,13 @@ if ($groupId > 0) {
             foreach ($members as $mem) {
                 $bid = (int)$mem['booking_id'];
                 $isEb = !empty($mem['is_extra_bed']);
+                $isEt = !empty($mem['is_extra_transport']);
                 $memFfs = $ffByBooking[$bid] ?? [];
 
                 $memData = [
                     'booking' => $mem,
                     'is_extra_bed' => $isEb,
+                    'is_extra_transport' => $isEt,
                     'fulfillments' => [],
                 ];
 
@@ -195,7 +200,7 @@ if ($groupId > 0) {
             $gTotals['sold'] += $famAudit['totals']['sold'];
             $gTotals['profit'] += $famAudit['totals']['profit'];
             foreach ($famAudit['members'] as $m) {
-                if ($m['is_extra_bed']) $gTotals['extra_beds']++;
+                if ($m['is_extra_bed'] || $m['is_extra_transport']) $gTotals['extra_beds']++;
                 else $gTotals['members']++;
             }
 
@@ -364,13 +369,15 @@ include '../includes/header.php';
                                 <?php foreach ($fa['members'] as $ma):
                                     $bk = $ma['booking'];
                                     $isEb = $ma['is_extra_bed'];
+                                    $isEt = $ma['is_extra_transport'];
                                     $memCost = $ma['computed_cost'];
                                 ?>
-                                <div class="mr <?= $isEb ? 'eb' : '' ?>">
+                                <div class="mr <?= $isEb || $isEt ? 'eb' : '' ?>">
                                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
                                         <div>
                                             <span class="mn"><?= htmlspecialchars($bk['name']) ?></span>
                                             <?php if ($isEb): ?><span class="mt xb">EXTRA BED</span><?php endif; ?>
+                                            <?php if ($isEt): ?><span class="mt xb">EXTRA TRANSPORT</span><?php endif; ?>
                                             <span style="color:var(--am);font-size:.72rem;margin-left:5px;">Booking #<?= $bk['booking_id'] ?></span>
                                             <span class="b <?= ($bk['bk_status'] ?? $bk['status']) === 'active' ? 'bok' : 'bwr' ?>" style="margin-left:5px;"><?= $bk['bk_status'] ?? $bk['status'] ?></span>
                                         </div>

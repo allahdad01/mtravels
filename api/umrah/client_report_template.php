@@ -92,7 +92,7 @@ if (!empty($groupId)) {
     $grpStmt = $pdo->prepare("
         SELECT b.booking_id, b.family_id, b.name, b.fname, b.gender, b.duration, b.room_type,
                b.passport_number, b.sold_price, b.paid, b.currency, b.remarks, b.status, b.sold_to,
-               b.is_extra_bed,
+               b.is_extra_bed, b.is_extra_transport,
                f.head_of_family, f.location, c.name AS client_name,
                g.created_at AS group_created_at
         FROM umrah_bookings b
@@ -120,7 +120,7 @@ if (!empty($groupId)) {
         $memberStmt = $pdo->prepare("
             SELECT b.booking_id, b.family_id, b.name, b.fname, b.gender, b.duration, b.room_type,
                    b.passport_number, b.sold_price, b.paid, b.currency, b.remarks, b.status, b.sold_to,
-                   b.is_extra_bed,
+                   b.is_extra_bed, b.is_extra_transport,
                    f.head_of_family, f.location, c.name AS client_name,
                    g.created_at AS group_created_at
             FROM umrah_bookings b
@@ -154,6 +154,27 @@ if (!empty($familyIds)) {
     ");
     $extraBedStmt->execute(array_merge($familyIds, [$tenant_id, $branch_id]));
     foreach ($extraBedStmt->fetchAll(PDO::FETCH_ASSOC) as $m) {
+        if (!isset($memberMap[(int)$m['booking_id']])) {
+            $memberMap[(int)$m['booking_id']] = $m;
+            $memberIds[] = (int)$m['booking_id'];
+        }
+    }
+
+    // Also include extra transport pseudo-members
+    $etStmt = $pdo->prepare("
+        SELECT b.booking_id, b.family_id, b.name, b.fname, b.gender, b.duration, b.room_type,
+               b.passport_number, b.sold_price, b.paid, b.currency, b.remarks, b.status, b.sold_to,
+               f.head_of_family, f.location, c.name AS client_name,
+               g.created_at AS group_created_at
+        FROM umrah_bookings b
+        LEFT JOIN families f ON f.family_id = b.family_id AND f.tenant_id = b.tenant_id
+        LEFT JOIN clients c ON c.id = b.sold_to
+        LEFT JOIN umrah_groups g ON f.group_id = g.group_id AND f.tenant_id = g.tenant_id
+        WHERE b.family_id IN ({$fPh}) AND b.tenant_id = ? AND b.branch_id = ?
+          AND COALESCE(b.is_extra_transport, 0) = 1 AND b.status NOT IN ('refunded', 'cancelled')
+    ");
+    $etStmt->execute(array_merge($familyIds, [$tenant_id, $branch_id]));
+    foreach ($etStmt->fetchAll(PDO::FETCH_ASSOC) as $m) {
         if (!isset($memberMap[(int)$m['booking_id']])) {
             $memberMap[(int)$m['booking_id']] = $m;
             $memberIds[] = (int)$m['booking_id'];

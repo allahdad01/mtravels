@@ -77,7 +77,7 @@ if (!empty($groupId)) {
     $grpStmt = $pdo->prepare("
         SELECT b.booking_id, b.family_id, b.name, b.fname, b.gender, b.duration, b.room_type,
                b.passport_number, b.sold_price, b.paid, b.currency, b.remarks, b.status, b.sold_to,
-               b.is_extra_bed,
+               b.is_extra_bed, b.is_extra_transport,
                f.head_of_family, f.location, c.name AS client_name,
                g.created_at AS group_created_at
         FROM umrah_bookings b

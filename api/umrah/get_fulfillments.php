@@ -176,6 +176,77 @@ function enrichExtraBedCosts(array &$services, $pdo, int $tenant_id): void
     unset($sv);
 }
 
+// Enrich extra transport pseudo-members with their stored cost/currency data
+// from umrah_fulfillment_details so the UI can pre-fill cost, rate, sold fields.
+function enrichExtraTransportCosts(array &$services, $pdo, int $tenant_id): void
+{
+    // Collect booking_ids of extra transport members from member_breakdown
+    $etBookingIds = [];
+    foreach ($services as $sv) {
+        if (empty($sv['member_breakdown'])) continue;
+        foreach ($sv['member_breakdown'] as &$m) {
+            if (!empty($m['is_extra_transport'])) {
+                $etBookingIds[] = (int)$m['booking_id'];
+            }
+        }
+        unset($m);
+    }
+    if (!$etBookingIds) return;
+
+    // Find the fulfillment_id for each extra transport member's transport service
+    // that actually has et_* detail rows (cost data).
+    $ph = implode(',', array_fill(0, count($etBookingIds), '?'));
+    $fStmt = $pdo->prepare("
+        SELECT DISTINCT fd.fulfillment_id, bs.booking_id
+        FROM umrah_fulfillment_details fd
+        JOIN umrah_fulfillments f ON f.id = fd.fulfillment_id AND f.tenant_id = fd.tenant_id
+        JOIN umrah_booking_services bs ON bs.id = f.booking_service_id AND bs.tenant_id = f.tenant_id
+        WHERE bs.booking_id IN ($ph) AND bs.tenant_id = ?
+          AND LOWER(bs.service_type) = 'transport'
+          AND fd.detail_key LIKE 'et_%'");
+    $fStmt->execute(array_merge($etBookingIds, [$tenant_id]));
+    $fidMap = [];
+    foreach ($fStmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $fidMap[(int)$r['booking_id']] = (int)$r['fulfillment_id'];
+    }
+    if (!$fidMap) return;
+
+    // Load fulfillment_details for all extra transport fulfillment IDs
+    $fids = array_values($fidMap);
+    $ph2 = implode(',', array_fill(0, count($fids), '?'));
+    $dStmt = $pdo->prepare("
+        SELECT fulfillment_id, detail_key, detail_value
+        FROM umrah_fulfillment_details
+        WHERE fulfillment_id IN ($ph2) AND tenant_id = ?
+          AND (detail_key LIKE 'et_%')");
+    $dStmt->execute(array_merge($fids, [$tenant_id]));
+    $detailMap = [];
+    foreach ($dStmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $detailMap[(int)$r['fulfillment_id']][$r['detail_key']] = (string)$r['detail_value'];
+    }
+
+    // Enrich extra transport members in member_breakdown
+    foreach ($services as &$sv) {
+        if (empty($sv['member_breakdown'])) continue;
+        foreach ($sv['member_breakdown'] as &$m) {
+            if (empty($m['is_extra_transport'])) continue;
+            $bid = (int)$m['booking_id'];
+            if (!isset($fidMap[$bid]) || !isset($detailMap[$fidMap[$bid]])) continue;
+            $d = $detailMap[$fidMap[$bid]];
+            $m['et_supplier_id'] = isset($d['et_supplier_id']) && $d['et_supplier_id'] !== '' ? (int)$d['et_supplier_id'] : null;
+            $m['et_currency'] = $d['et_currency'] ?? '';
+            $m['et_cost'] = ($d['et_cost'] ?? '') !== '' ? $d['et_cost'] : null;
+            $m['et_rate'] = ($d['et_rate'] ?? '') !== '' ? $d['et_rate'] : null;
+            $m['et_cost_usd'] = ($d['et_cost_usd'] ?? '') !== '' ? $d['et_cost_usd'] : null;
+            $m['et_sold'] = ($d['et_sold'] ?? '') !== '' ? $d['et_sold'] : null;
+            $m['et_profit'] = ($d['et_profit'] ?? '') !== '' ? $d['et_profit'] : null;
+            $m['sold_price'] = ($d['et_sold'] ?? '') !== '' ? $d['et_sold'] : null;
+        }
+        unset($m);
+    }
+    unset($sv);
+}
+
 // Travel type of a member from their date of birth — the same thresholds
 // used by the passenger manifest (infant < 2, child 2-11, adult otherwise).
 // Unknown dates default to adult. Ticket costs are priced per type; infants
@@ -297,7 +368,7 @@ if ($isAggregate) {
 
     $placeholders = implode(',', array_fill(0, count($scopeFamilies), '?'));
     $mStmt = $pdo->prepare("
-        SELECT booking_id, name, family_id, sold_price, discount, paid, due, currency, is_extra_bed
+        SELECT booking_id, name, family_id, sold_price, discount, paid, due, currency, is_extra_bed, is_extra_transport
         FROM umrah_bookings
         WHERE family_id IN ($placeholders) AND tenant_id = ?
           AND status NOT IN ('refunded', 'cancelled')
@@ -329,7 +400,7 @@ if ($isAggregate) {
     $agStmt = $pdo->prepare("
         SELECT bs.id AS booking_service_id,
                bs.booking_id, ub.family_id, ub.name, ub.gender, ub.room_type, ub.duration, ub.dob,
-               ub.is_extra_bed, ub.paid,
+               ub.is_extra_bed, ub.is_extra_transport, ub.paid,
                bs.service_type, bs.service_id,
                bs.pricing_unit, bs.quantity, bs.is_optional, bs.is_excluded,
                bs.base_price, bs.sold_price, bs.profit, bs.currency,
@@ -438,15 +509,20 @@ if ($isAggregate) {
         $rep['is_aggregate'] = true;
         $rep['families_applicable'] = count($usableFamilies);
         $rep['members_count'] = count($lines);
-        // Extra beds are included in $usable for rendering but excluded from
-        // the header count — they are not real members.
+        // Extra beds and extra transport are included in $usable for rendering
+        // but excluded from the header count — they are not real members.
         $usableNonEb = 0;
+        $extraBedCount = 0;
+        $extraTransportCount = 0;
         foreach ($lines as $ln) {
             if (!isset($usable[(int)$ln['booking_id']])) continue;
-            if (!empty($ln['is_extra_bed'])) continue;
+            if (!empty($ln['is_extra_bed'])) { $extraBedCount++; continue; }
+            if (!empty($ln['is_extra_transport'])) { $extraTransportCount++; continue; }
             $usableNonEb++;
         }
         $rep['members_applicable'] = $usableNonEb;
+        $rep['extra_bed_count'] = $extraBedCount;
+        $rep['extra_transport_count'] = $extraTransportCount;
         $rep['coverage_skipped'] = count($lines) - count($usable);
         $rep['skip_breakdown'] = $skipBreak;
         // Card-level supplier from the representative's fulfillment — used as
@@ -501,6 +577,7 @@ if ($isAggregate) {
                     'room_type' => (string)($ln['room_type'] ?? ''),
                     'duration' => ($ln['duration'] !== null && $ln['duration'] !== '') ? (int)$ln['duration'] : null,
                     'is_extra_bed' => !empty($ln['is_extra_bed']),
+                    'is_extra_transport' => !empty($ln['is_extra_transport']),
                     'is_excluded' => !empty($ln['is_excluded']),
                     'supplier_id' => !empty($ln['supplier_id']) ? (int)$ln['supplier_id'] : $repCardSupplierId,
                     'cost' => $ln['base_price'] !== null ? (float)$ln['base_price'] : null,
@@ -548,6 +625,24 @@ if ($isAggregate) {
                 }
             }
             $rep['member_breakdown'] = array_values($bd);
+        } elseif ($cat === 'transport' && $rep['service_id'] !== null) {
+            // Per-member transport breakdown: seed one entry per usable member,
+            // including extra transport pseudo-members.
+            $bd = [];
+            foreach ($lines as $ln) {
+                $bid = (int)$ln['booking_id'];
+                if (!isset($usable[$bid])) { continue; }
+                $bd[$bid] = [
+                    'booking_id' => $bid,
+                    'family_id'  => (int)($ln['family_id'] ?? 0),
+                    'fulfillment_family_id' => !empty($ln['fulfillment_family_id']) ? (int)$ln['fulfillment_family_id'] : null,
+                    'name' => (string)($ln['name'] ?? ''),
+                    'is_extra_transport' => !empty($ln['is_extra_transport']),
+                    'is_excluded' => !empty($ln['is_excluded']),
+                    'fulfillment_id' => !empty($ln['fulfillment_id']) ? (int)$ln['fulfillment_id'] : null,
+                ];
+            }
+            $rep['member_breakdown'] = array_values($bd);
         }
         $services[] = $rep;
     }
@@ -558,6 +653,8 @@ if ($isAggregate) {
     $booking['cost_total'] = round($costTotal, 2);
     $booking['families_count'] = $familiesCountAll;
     $booking['members_count'] = $membersCountAll;
+    $booking['extra_bed_count'] = count(array_filter($members, function($m) { return !empty($m['is_extra_bed']); }));
+    $booking['extra_transport_count'] = count(array_filter($members, function($m) { return !empty($m['is_extra_transport']); }));
 } else {
     // ---- Sold services + fulfillment state (single member) ------------------
     $sStmt = $pdo->prepare("
@@ -568,7 +665,7 @@ if ($isAggregate) {
                bs.status AS sold_status,
                bs.price_snapshot,
                s.name AS service_name, c.name AS category_name,
-               ub.is_extra_bed,
+               ub.is_extra_bed, ub.is_extra_transport,
                f.id AS fulfillment_id, f.status AS fulfill_status, f.family_id AS fulfillment_family_id,
                f.supplier_id, f.supplier_currency, f.supplier_cost, f.exchange_rate,
                f.cost_amount, f.requested_date, f.planned_date, f.completed_date, f.notes,
@@ -783,6 +880,9 @@ enrichHotelCityCosts($services, $pdo, $tenant_id);
 
 // ---- Enrich extra bed members with stored cost data -----------------------
 enrichExtraBedCosts($services, $pdo, $tenant_id);
+
+// ---- Enrich extra transport members with stored cost data ----------------
+enrichExtraTransportCosts($services, $pdo, $tenant_id);
 
 // ---- Transport contracts (amount-based: amount / members with the service) ----
 $transportContracts = [];

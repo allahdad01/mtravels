@@ -93,6 +93,7 @@ if (!function_exists('profit_report_load')) {
             SELECT b.booking_id, b.family_id, b.name, b.fname, b.gender, b.passport_number,
                    b.room_type, b.duration, b.sold_price, b.discount, b.currency, b.status,
                    COALESCE(b.is_extra_bed, 0) AS is_extra_bed,
+                   COALESCE(b.is_extra_transport, 0) AS is_extra_transport,
                    f.head_of_family, c.name AS client_name
             FROM umrah_bookings b
             LEFT JOIN families f ON f.family_id = b.family_id AND f.tenant_id = b.tenant_id

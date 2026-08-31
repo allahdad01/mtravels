@@ -231,6 +231,13 @@ function fulfillment_save(PDO $pdo, array $in): array
         $extra_bed_costs = $in['extra_bed_costs'];
     }
 
+    // Extra transport cost overrides: JSON map of booking_id => {cost, sold}
+    // for extra transport pseudo-members whose cost/sold price is manually entered.
+    $extra_transport_costs = null;
+    if (isset($in['extra_transport_costs']) && is_array($in['extra_transport_costs'])) {
+        $extra_transport_costs = $in['extra_transport_costs'];
+    }
+
     if (!$booking_service_id) {
         return ['success' => false, 'code' => 400, 'message' => 'Booking service is required.'];
     }
@@ -268,6 +275,10 @@ function fulfillment_save(PDO $pdo, array $in): array
         $isEbStmt = $pdo->prepare("SELECT is_extra_bed FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ?");
         $isEbStmt->execute([$booking_id, $tenant_id]);
         $isExtraBedBooking = (bool)$isEbStmt->fetchColumn();
+        // Detect if this booking is an extra transport pseudo-member
+        $isEtStmt = $pdo->prepare("SELECT is_extra_transport FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ?");
+        $isEtStmt->execute([$booking_id, $tenant_id]);
+        $isExtraTransportBooking = (bool)$isEtStmt->fetchColumn();
         // Look up the extra bed's own cost if provided (per-city suppliers)
         $ebOwnCost = null;
         $ebOwnCurrency = '';
@@ -1035,7 +1046,17 @@ function fulfillment_save(PDO $pdo, array $in): array
                 $txSuppliers[] = $madinah_supplier_id;
             }
         } elseif ($supplier_id) {
-            $txSuppliers[] = $supplier_id;
+            // For extra transport pseudo-members that carry their own supplier
+            // in extra_transport_costs, skip the main-body transaction path.
+            // The extra_transport_costs block (further down) creates the
+            // supplier transaction independently — including it here would
+            // result in a duplicate debit for the same booking.
+            $isEtWithOwnCost = $isExtraTransportBooking
+                && $extra_transport_costs
+                && isset($extra_transport_costs[(string)$booking_id]);
+            if (!$isEtWithOwnCost) {
+                $txSuppliers[] = $supplier_id;
+            }
         }
 
         foreach ($txSuppliers as $txSid) {
@@ -1045,7 +1066,7 @@ function fulfillment_save(PDO $pdo, array $in): array
                 $supplier_cost = ((int)$txSid === (int)$makkah_supplier_id) ? $makkah_cost_amount : $madinah_cost_amount;
             }
             $memberStmt = $pdo->prepare("
-                SELECT ub.name, ub.is_extra_bed, f.head_of_family
+                SELECT ub.name, ub.is_extra_bed, ub.is_extra_transport, f.head_of_family
                 FROM umrah_bookings ub
                 LEFT JOIN families f ON f.family_id = ub.family_id AND f.tenant_id = ub.tenant_id
                 WHERE ub.booking_id = ? AND ub.tenant_id = ?");
@@ -1115,18 +1136,24 @@ function fulfillment_save(PDO $pdo, array $in): array
             }
             if ($oldSupplierId !== null && (int)$oldSupplierId !== (int)$supplier_id) {
                 // Use LIKE to match even when the member label changed between saves.
+                // Scope to the current service type so changing a transport supplier
+                // doesn't accidentally nuke hotel/visa/ticket transactions for the
+                // same member on the same supplier.
+                $svcTypeForCleanup = $svc['service_type'] ?? $fulfillment_type;
                 $oldIdStmt = $pdo->prepare("
                     SELECT MIN(id) FROM supplier_transactions
                     WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
-                      AND (remarks LIKE 'Fulfillment for %' OR remarks LIKE 'Fulfillment cost correction for %') AND tenant_id = ?");
-                $oldIdStmt->execute([$oldSupplierId, $booking_id, $tenant_id]);
+                      AND (remarks LIKE CONCAT('Fulfillment for ', ?, ':%')
+                           OR remarks LIKE CONCAT('Fulfillment cost correction for ', ?, ':%')) AND tenant_id = ?");
+                $oldIdStmt->execute([$oldSupplierId, $booking_id, $svcTypeForCleanup, $svcTypeForCleanup, $tenant_id]);
                 $oldDeletedMinId = (int)($oldIdStmt->fetchColumn() ?: 0);
 
                 $oldTxnStmt = $pdo->prepare("
                     SELECT transaction_type, amount FROM supplier_transactions
                     WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
-                      AND (remarks LIKE 'Fulfillment for %' OR remarks LIKE 'Fulfillment cost correction for %') AND tenant_id = ?");
-                $oldTxnStmt->execute([$oldSupplierId, $booking_id, $tenant_id]);
+                      AND (remarks LIKE CONCAT('Fulfillment for ', ?, ':%')
+                           OR remarks LIKE CONCAT('Fulfillment cost correction for ', ?, ':%')) AND tenant_id = ?");
+                $oldTxnStmt->execute([$oldSupplierId, $booking_id, $svcTypeForCleanup, $svcTypeForCleanup, $tenant_id]);
                 $oldTxns = $oldTxnStmt->fetchAll(PDO::FETCH_ASSOC);
                 if ($oldTxns) {
                     $net = 0.0;
@@ -1143,24 +1170,76 @@ function fulfillment_save(PDO $pdo, array $in): array
                     }
                     $pdo->prepare("DELETE FROM supplier_transactions
                                    WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
-                                     AND (remarks LIKE 'Fulfillment for %' OR remarks LIKE 'Fulfillment cost correction for %') AND tenant_id = ?")
-                        ->execute([$oldSupplierId, $booking_id, $tenant_id]);
+                                     AND (remarks LIKE CONCAT('Fulfillment for ', ?, ':%')
+                                          OR remarks LIKE CONCAT('Fulfillment cost correction for ', ?, ':%')) AND tenant_id = ?")
+                        ->execute([$oldSupplierId, $booking_id, $svcTypeForCleanup, $svcTypeForCleanup, $tenant_id]);
                 }
                 // The deleted exposure rows were part of every subsequent
                 // running balance of the old supplier — bring them back in sync.
                 if ($oldDeletedMinId > 0) {
                     umrahRebuildRunningBalances($pdo, $tenant_id, $branch_id, $oldSupplierId, $oldDeletedMinId);
                 }
+            } elseif ($oldSupplierId === null && $supplier_id === null) {
+                // Fallback: fulfillment row has no supplier but orphaned transactions
+                // may exist (e.g. created by a previous save when the row had a
+                // supplier, or by the extra-transport cost block with a different
+                // supplier).  Scan by reference_id + remarks to find and remove them.
+                $fbSvcType = $svc['service_type'] ?? $fulfillment_type;
+                $orphanIdStmt = $pdo->prepare("
+                    SELECT MIN(id) FROM supplier_transactions
+                    WHERE reference_id = ? AND transaction_of = 'umrah'
+                      AND (remarks LIKE CONCAT('Fulfillment for ', ?, ':%')
+                           OR remarks LIKE CONCAT('Fulfillment cost correction for ', ?, ':%')) AND tenant_id = ?");
+                $orphanIdStmt->execute([$booking_id, $fbSvcType, $fbSvcType, $tenant_id]);
+                $orphanMinId = (int)($orphanIdStmt->fetchColumn() ?: 0);
+
+                $orphanStmt = $pdo->prepare("
+                    SELECT transaction_type, amount, supplier_id FROM supplier_transactions
+                    WHERE reference_id = ? AND transaction_of = 'umrah'
+                      AND (remarks LIKE CONCAT('Fulfillment for ', ?, ':%')
+                           OR remarks LIKE CONCAT('Fulfillment cost correction for ', ?, ':%')) AND tenant_id = ?");
+                $orphanStmt->execute([$booking_id, $fbSvcType, $fbSvcType, $tenant_id]);
+                $orphanTxns = $orphanStmt->fetchAll(PDO::FETCH_ASSOC);
+                if ($orphanTxns) {
+                    $orphanNet = 0.0;
+                    foreach ($orphanTxns as $ot) {
+                        $otSupId = (int)$ot['supplier_id'];
+                        $otNet = strcasecmp((string)$ot['transaction_type'], 'Credit') === 0
+                            ? -(float)$ot['amount'] : (float)$ot['amount'];
+                        if ($otNet != 0.0) {
+                            $otTypeStmt = $pdo->prepare("SELECT supplier_type FROM suppliers WHERE id = ? AND tenant_id = ?");
+                            $otTypeStmt->execute([$otSupId, $tenant_id]);
+                            if ($otTypeStmt->fetchColumn() === 'External') {
+                                $pdo->prepare("UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ?")
+                                    ->execute([$otNet, $otSupId, $tenant_id]);
+                            }
+                        }
+                    }
+                    $pdo->prepare("DELETE FROM supplier_transactions
+                                   WHERE reference_id = ? AND transaction_of = 'umrah'
+                                     AND (remarks LIKE CONCAT('Fulfillment for ', ?, ':%')
+                                          OR remarks LIKE CONCAT('Fulfillment cost correction for ', ?, ':%')) AND tenant_id = ?")
+                        ->execute([$booking_id, $fbSvcType, $fbSvcType, $tenant_id]);
+                }
+                if ($orphanMinId > 0) {
+                    // Rebuild running balances for each affected supplier
+                    foreach ($orphanTxns as $ot) {
+                        umrahRebuildRunningBalances($pdo, $tenant_id, $branch_id, (int)$ot['supplier_id'], $orphanMinId);
+                    }
+                }
             }
 
             // ---- Cancellation: delete the original transaction + correction, restore balance ----
             if ($status === 'cancelled') {
                 // Use LIKE to match even when the member label changed between saves.
+                // Scope to current service type to avoid nuking other service types.
+                $cancelSvcType = $svc['service_type'] ?? $fulfillment_type;
                 $existingTxnStmt = $pdo->prepare("
                     SELECT id, transaction_type, amount FROM supplier_transactions
                     WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
-                      AND (remarks LIKE 'Fulfillment for %' OR remarks LIKE 'Fulfillment cost correction for %') AND tenant_id = ?");
-                $existingTxnStmt->execute([$supplier_id, $booking_id, $tenant_id]);
+                      AND (remarks LIKE CONCAT('Fulfillment for ', ?, ':%')
+                           OR remarks LIKE CONCAT('Fulfillment cost correction for ', ?, ':%')) AND tenant_id = ?");
+                $existingTxnStmt->execute([$supplier_id, $booking_id, $cancelSvcType, $cancelSvcType, $tenant_id]);
                 $existingTxns = $existingTxnStmt->fetchAll(PDO::FETCH_ASSOC);
 
                 if ($existingTxns) {
@@ -1177,8 +1256,9 @@ function fulfillment_save(PDO $pdo, array $in): array
                     }
                     $pdo->prepare("DELETE FROM supplier_transactions
                                    WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
-                                     AND (remarks LIKE 'Fulfillment for %' OR remarks LIKE 'Fulfillment cost correction for %') AND tenant_id = ?")
-                        ->execute([$supplier_id, $booking_id, $tenant_id]);
+                                     AND (remarks LIKE CONCAT('Fulfillment for ', ?, ':%')
+                                          OR remarks LIKE CONCAT('Fulfillment cost correction for ', ?, ':%')) AND tenant_id = ?")
+                        ->execute([$supplier_id, $booking_id, $cancelSvcType, $cancelSvcType, $tenant_id]);
                     if ($minId < PHP_INT_MAX) {
                         umrahRebuildRunningBalances($pdo, $tenant_id, $branch_id, $supplier_id, $minId);
                     }
@@ -1236,6 +1316,81 @@ function fulfillment_save(PDO $pdo, array $in): array
             } // end if cancelled/else
         }
         } // end foreach txSuppliers
+
+        // ---- Supplier removed: clean up orphaned transactions outside the loop ----
+        // When the user clears the supplier ($txSuppliers is empty), the foreach
+        // loop above never runs, leaving old transactions orphaned.  This applies
+        // to both single-supplier services and per-city hotels (where BOTH city
+        // suppliers were cleared).
+        if (empty($txSuppliers)) {
+            $svcType = $svc['service_type'] ?? $fulfillment_type;
+
+            // Gather all previous supplier IDs from the pre-update fulfillment rows.
+            // Single-supplier: the fulfillment row's supplier_id.
+            // Per-city hotels: also check fulfillment_details for city_makkah/madinah
+            // supplier IDs, since the fulfillment row may only store one.
+            $prevSupIds = [];
+            if (!$hasCityCosts) {
+                $pid = $existingRows
+                    ? ((int)($existingRows[0]['supplier_id'] ?? 0) ?: null)
+                    : null;
+                if ($pid !== null) $prevSupIds[$pid] = true;
+            } else {
+                // Per-city hotel: read old city suppliers from fulfillment_details
+                foreach ($existingRows as $er) {
+                    $detStmt = $pdo->prepare("
+                        SELECT detail_key, detail_value FROM umrah_fulfillment_details
+                        WHERE fulfillment_id = ? AND detail_key IN ('city_makkah_supplier_id', 'city_madinah_supplier_id') AND tenant_id = ?");
+                    $detStmt->execute([(int)$er['id'], $tenant_id]);
+                    foreach ($detStmt->fetchAll(PDO::FETCH_ASSOC) as $det) {
+                        $dp = (int)($det['detail_value'] ?? 0);
+                        if ($dp > 0) $prevSupIds[$dp] = true;
+                    }
+                    // Also include the fulfillment row's own supplier_id
+                    $fp = (int)($er['supplier_id'] ?? 0);
+                    if ($fp > 0) $prevSupIds[$fp] = true;
+                }
+            }
+
+            foreach (array_keys($prevSupIds) as $prevSid) {
+                $orphanRemStmt = $pdo->prepare("
+                    SELECT transaction_type, amount, supplier_id FROM supplier_transactions
+                    WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
+                      AND (remarks LIKE CONCAT('Fulfillment for ', ?, ':%')
+                           OR remarks LIKE CONCAT('Fulfillment cost correction for ', ?, ':%')) AND tenant_id = ?");
+                $orphanRemStmt->execute([$prevSid, $booking_id, $svcType, $svcType, $tenant_id]);
+                $orphanRemTxns = $orphanRemStmt->fetchAll(PDO::FETCH_ASSOC);
+                if ($orphanRemTxns) {
+                    $orphanRemNet = 0.0;
+                    foreach ($orphanRemTxns as $ort) {
+                        $orphanRemNet += strcasecmp((string)$ort['transaction_type'], 'Credit') === 0
+                            ? -(float)$ort['amount'] : (float)$ort['amount'];
+                    }
+                    if ($orphanRemNet != 0.0) {
+                        $ortTypeStmt = $pdo->prepare("SELECT supplier_type FROM suppliers WHERE id = ? AND tenant_id = ?");
+                        $ortTypeStmt->execute([$prevSid, $tenant_id]);
+                        if ($ortTypeStmt->fetchColumn() === 'External') {
+                            $pdo->prepare("UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ?")
+                                ->execute([$orphanRemNet, $prevSid, $tenant_id]);
+                        }
+                    }
+                    $pdo->prepare("DELETE FROM supplier_transactions
+                                   WHERE supplier_id = ? AND reference_id = ? AND transaction_of = 'umrah'
+                                     AND (remarks LIKE CONCAT('Fulfillment for ', ?, ':%')
+                                          OR remarks LIKE CONCAT('Fulfillment cost correction for ', ?, ':%')) AND tenant_id = ?")
+                        ->execute([$prevSid, $booking_id, $svcType, $svcType, $tenant_id]);
+                    // Rebuild running balances for the affected supplier
+                    $orphanRemMinStmt = $pdo->prepare("
+                        SELECT MIN(id) FROM supplier_transactions
+                        WHERE tenant_id = ? AND supplier_id = ?");
+                    $orphanRemMinStmt->execute([$tenant_id, $prevSid]);
+                    $orphanRemMinId = (int)($orphanRemMinStmt->fetchColumn() ?: 0);
+                    if ($orphanRemMinId > 0) {
+                        umrahRebuildRunningBalances($pdo, $tenant_id, $branch_id, $prevSid, $orphanRemMinId);
+                    }
+                }
+            }
+        }
 
         // ---- Booking activation (replaces the old approval step) --------------
         // The fulfillment flow is now the single point where a booking's money
@@ -1783,6 +1938,302 @@ function fulfillment_save(PDO $pdo, array $in): array
             }
         }
 
+        // ---- Extra transport cost/sold overrides for pseudo-members ----------
+        $etAffectedSupIds = [];
+        if ($extra_transport_costs && is_array($extra_transport_costs)) {
+            foreach ($extra_transport_costs as $etBid => $etData) {
+                $etBookingId = (int)$etBid;
+                if ($etBookingId <= 0) continue;
+                $etSupplierId = isset($etData['supplier_id']) && $etData['supplier_id'] !== '' ? (int)$etData['supplier_id'] : null;
+                $etCurrency = isset($etData['currency']) ? trim((string)$etData['currency']) : '';
+                $etCost = (isset($etData['cost']) && $etData['cost'] !== '') ? (float)$etData['cost'] : null;
+                $etRate = (isset($etData['rate']) && $etData['rate'] !== '') ? (float)$etData['rate'] : null;
+                $etCostUsd = (isset($etData['cost_usd']) && $etData['cost_usd'] !== '') ? (float)$etData['cost_usd'] : null;
+                $etSold = (isset($etData['sold']) && $etData['sold'] !== '') ? (float)$etData['sold'] : null;
+
+                // Find the transport service for this extra transport member
+                $etSvcStmt = $pdo->prepare("SELECT id, sold_price FROM umrah_booking_services WHERE booking_id = ? AND tenant_id = ? AND LOWER(service_type) = 'transport' LIMIT 1");
+                $etSvcStmt->execute([$etBookingId, $tenant_id]);
+                $etSvc = $etSvcStmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($etSvc) {
+                    // base_price = cost converted to booking currency (USD)
+                    if ($etCostUsd !== null) {
+                        $pdo->prepare("UPDATE umrah_booking_services SET base_price = ? WHERE id = ?")
+                            ->execute([$etCostUsd, $etSvc['id']]);
+                    }
+                    if ($etSold !== null) {
+                        $etProfit = round($etSold - ($etCostUsd ?? 0), 3);
+                        $pdo->prepare("UPDATE umrah_booking_services SET sold_price = ?, profit = ? WHERE id = ?")
+                            ->execute([$etSold, $etProfit, $etSvc['id']]);
+                    }
+                }
+
+                // Update the extra transport member's booking totals
+                $etBkStmt = $pdo->prepare("
+                    SELECT ub.name, ub.sold_price, ub.discount, ub.sold_to, ub.currency, ub.status,
+                           fam.head_of_family
+                    FROM umrah_bookings ub
+                    LEFT JOIN families fam ON fam.family_id = ub.family_id AND fam.tenant_id = ub.tenant_id
+                    WHERE ub.booking_id = ? AND ub.tenant_id = ?");
+                $etBkStmt->execute([$etBookingId, $tenant_id]);
+                $etBk = $etBkStmt->fetch(PDO::FETCH_ASSOC);
+                if ($etBk) {
+                    if ($etSold !== null) {
+                        $etDue = round($etSold - (float)$etBk['discount'], 3);
+                        $pdo->prepare("UPDATE umrah_bookings SET sold_price = ?, due = ? WHERE booking_id = ?")
+                            ->execute([$etSold, $etDue, $etBookingId]);
+                    }
+                    if ($etCostUsd !== null) {
+                        $etPriceSum = 0.0;
+                        $etPStmt = $pdo->prepare("SELECT COALESCE(SUM(COALESCE(base_price, 0)), 0) FROM umrah_booking_services WHERE booking_id = ?");
+                        $etPStmt->execute([$etBookingId]);
+                        $etPriceSum = round((float)$etPStmt->fetchColumn(), 3);
+                        $etProfit = round(((float)$etBk['sold_price']) - ((float)$etBk['discount']) - $etPriceSum, 3);
+                        $pdo->prepare("UPDATE umrah_bookings SET price = ?, profit = ? WHERE booking_id = ?")
+                            ->execute([$etPriceSum, $etProfit, $etBookingId]);
+                    }
+                }
+
+                // Recalculate family totals
+                $etFamStmt = $pdo->prepare("SELECT family_id FROM umrah_bookings WHERE booking_id = ? AND tenant_id = ?");
+                $etFamStmt->execute([$etBookingId, $tenant_id]);
+                $etFamilyId = (int)$etFamStmt->fetchColumn();
+                if ($etFamilyId > 0) {
+                    $etTotStmt = $pdo->prepare("
+                        SELECT COALESCE(SUM(COALESCE(sold_price, 0)), 0) AS total_price,
+                               COALESCE(SUM(COALESCE(due, 0)), 0) AS total_due,
+                               COUNT(*) AS member_count
+                        FROM umrah_bookings
+                        WHERE family_id = ? AND tenant_id = ?
+                          AND status NOT IN ('refunded', 'cancelled')");
+                    $etTotStmt->execute([$etFamilyId, $tenant_id]);
+                    $etTots = $etTotStmt->fetch(PDO::FETCH_ASSOC);
+                    $pdo->prepare("
+                        UPDATE families SET total_members = ?, total_price = ?, total_due = ?
+                        WHERE family_id = ? AND tenant_id = ?")
+                        ->execute([$etTots['member_count'], $etTots['total_price'], $etTots['total_due'], $etFamilyId, $tenant_id]);
+                }
+
+                // Client transaction for extra transport sold_price
+                if ($etSold !== null && $etBk && !empty($etBk['sold_to'])) {
+                    $etClientId   = (int)$etBk['sold_to'];
+                    $etCurUpper   = strtoupper(trim((string)$etBk['currency'] ?: 'USD'));
+                    $etNewSold    = round($etSold, 3);
+
+                    $etCliStmt = $pdo->prepare("SELECT name, client_type, usd_balance, afs_balance FROM clients WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                    $etCliStmt->execute([$etClientId, $tenant_id, $branch_id]);
+                    $etCliRow = $etCliStmt->fetch(PDO::FETCH_ASSOC);
+
+                    $etCtStmt = $pdo->prepare("
+                        SELECT id, amount, balance FROM client_transactions
+                        WHERE client_id = ? AND reference_id = ? AND transaction_of = 'umrah'
+                          AND type = 'Debit' AND tenant_id = ? AND branch_id = ?
+                        ORDER BY id DESC LIMIT 1");
+                    $etCtStmt->execute([$etClientId, $etBookingId, $tenant_id, $branch_id]);
+                    $etCtRow = $etCtStmt->fetch(PDO::FETCH_ASSOC);
+
+                    if ($etCliRow && $etNewSold > 0) {
+                        $etBalanceField = $etCurUpper === 'USD' ? 'usd_balance' : 'afs_balance';
+                        $etMemberName = $etBk['name'] ?: 'Extra Transport';
+                        $etFamilyName = trim((string)($etBk['head_of_family'] ?? ''));
+                        $etMemberLabel = $etFamilyName !== ''
+                            ? $etMemberName . ' (' . $etFamilyName . ' family)'
+                            : $etMemberName;
+                        $etDescription = "Client was debited $etNewSold $etCurUpper for umrah booking for $etMemberLabel";
+
+                        if ($etCtRow) {
+                            $pdo->prepare("UPDATE client_transactions SET description = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
+                                ->execute([$etDescription, (int)$etCtRow['id'], $tenant_id, $branch_id]);
+                            $etOldAmt  = (float)$etCtRow['amount'];
+                            $etAdj     = round($etNewSold - $etOldAmt, 3);
+                            if (abs($etAdj) >= 0.001) {
+                                $etNewBal = round((float)$etCliRow[$etBalanceField] - $etAdj, 3);
+                                $pdo->prepare("UPDATE client_transactions SET amount = ?, balance = ?, description = ? WHERE id = ?")
+                                    ->execute([$etNewSold, $etNewBal, $etDescription, (int)$etCtRow['id']]);
+                                if ($etCliRow['client_type'] === 'regular') {
+                                    $pdo->prepare("UPDATE clients SET $etBalanceField = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
+                                        ->execute([$etNewBal, $etClientId, $tenant_id, $branch_id]);
+                                }
+                                $etSubStmt = $pdo->prepare("SELECT id, type, amount FROM client_transactions WHERE client_id = ? AND tenant_id = ? AND branch_id = ? AND id > ? ORDER BY id");
+                                $etSubStmt->execute([$etClientId, $tenant_id, $branch_id, (int)$etCtRow['id']]);
+                                $etPrev = $etNewBal;
+                                foreach ($etSubStmt->fetchAll(PDO::FETCH_ASSOC) as $etSub) {
+                                    $etPrev += strcasecmp((string)$etSub['type'], 'credit') === 0 ? (float)$etSub['amount'] : -((float)$etSub['amount']);
+                                    $pdo->prepare("UPDATE client_transactions SET balance = ? WHERE id = ?")->execute([round($etPrev, 2), (int)$etSub['id']]);
+                                }
+                            }
+                        } else {
+                            $etNewBal = round((float)$etCliRow[$etBalanceField] - $etNewSold, 3);
+                            $pdo->prepare("
+                                INSERT INTO client_transactions (client_id, type, transaction_of, reference_id, amount, balance, currency, description, created_at, tenant_id, branch_id)
+                                VALUES (?, 'Debit', 'umrah', ?, ?, ?, ?, ?, NOW(), ?, ?)")
+                                ->execute([$etClientId, $etBookingId, $etNewSold, $etNewBal, $etCurUpper,
+                                    $etDescription,
+                                    $tenant_id, $branch_id]);
+                            if ($etCliRow['client_type'] === 'regular') {
+                                $pdo->prepare("UPDATE clients SET $etBalanceField = $etBalanceField - ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
+                                    ->execute([$etNewSold, $etClientId, $tenant_id, $branch_id]);
+                            }
+                        }
+                    } elseif ($etCliRow && $etNewSold <= 0 && $etCtRow) {
+                        $etRestoreAmt = (float)$etCtRow['amount'];
+                        $etBalanceField = $etCurUpper === 'USD' ? 'usd_balance' : 'afs_balance';
+                        $etCtId = (int)$etCtRow['id'];
+                        $pdo->prepare("DELETE FROM client_transactions WHERE id = ? AND tenant_id = ? AND branch_id = ?")
+                            ->execute([$etCtId, $tenant_id, $branch_id]);
+                        if ($etCliRow['client_type'] === 'regular') {
+                            $etRestoredBal = round((float)$etCliRow[$etBalanceField] + $etRestoreAmt, 3);
+                            $pdo->prepare("UPDATE clients SET $etBalanceField = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
+                                ->execute([$etRestoredBal, $etClientId, $tenant_id, $branch_id]);
+                        }
+                        $etRebStmt2 = $pdo->prepare("SELECT id, type, amount FROM client_transactions WHERE client_id = ? AND tenant_id = ? AND branch_id = ? AND id >= ? ORDER BY id");
+                        $etRebStmt2->execute([$etClientId, $tenant_id, $branch_id, $etCtId]);
+                        $etSubRows2 = $etRebStmt2->fetchAll(PDO::FETCH_ASSOC);
+                        if ($etSubRows2) {
+                            $etSeedStmt2 = $pdo->prepare("SELECT balance FROM client_transactions WHERE client_id = ? AND tenant_id = ? AND branch_id = ? AND id < ? ORDER BY id DESC LIMIT 1");
+                            $etSeedStmt2->execute([$etClientId, $tenant_id, $branch_id, $etCtId]);
+                            $etPrev2 = (float)($etSeedStmt2->fetchColumn() ?: 0);
+                            foreach ($etSubRows2 as $etSub2) {
+                                $etPrev2 += strcasecmp((string)$etSub2['type'], 'credit') === 0 ? (float)$etSub2['amount'] : -((float)$etSub2['amount']);
+                                $pdo->prepare("UPDATE client_transactions SET balance = ? WHERE id = ?")->execute([round($etPrev2, 2), (int)$etSub2['id']]);
+                            }
+                        }
+                    }
+                }
+
+                // Store extra transport cost details in fulfillment_details
+                if ($etSvc) {
+                    $etFidStmt = $pdo->prepare("SELECT f.id, f.supplier_id, f.supplier_cost, f.supplier_currency, f.cost_amount, f.exchange_rate FROM umrah_fulfillments f WHERE f.booking_service_id = ? AND f.tenant_id = ? ORDER BY f.id LIMIT 1");
+                    $etFidStmt->execute([$etSvc['id'], $tenant_id]);
+                    $etFidRow = $etFidStmt->fetch(PDO::FETCH_ASSOC);
+                    if ($etFidRow) {
+                        $etFid = (int)$etFidRow['id'];
+
+                        // Compute cost_amount in booking currency
+                        $etCostAmount = null;
+                        if ($etCost !== null && $etCurrency) {
+                            $etCostAmount = ($etCurrency === $booking_currency)
+                                ? $etCost
+                                : ($etRate && $etRate > 0 ? $etCost / $etRate : $etCostUsd);
+                        }
+
+                        // Resolve extra transport's booking_id and member label for transaction matching
+                        $etBkIdStmt = $pdo->prepare("SELECT booking_id FROM umrah_booking_services WHERE id = ? AND tenant_id = ?");
+                        $etBkIdStmt->execute([$etSvc['id'], $tenant_id]);
+                        $etBkId = (int)$etBkIdStmt->fetchColumn();
+                        $etMemberStmt = $pdo->prepare("
+                            SELECT ub.name, f.head_of_family
+                            FROM umrah_bookings ub
+                            LEFT JOIN families f ON f.family_id = ub.family_id AND f.tenant_id = ub.tenant_id
+                            WHERE ub.booking_id = ? AND ub.tenant_id = ?");
+                        $etMemberStmt->execute([$etBkId, $tenant_id]);
+                        $etMember = $etMemberStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+                        $etMemberName = (string)($etMember['name'] ?? '') ?: 'Extra Transport';
+                        $etFamilyName = trim((string)($etMember['head_of_family'] ?? ''));
+                        $etMemberLabel = $etFamilyName !== ''
+                            ? $etMemberName . ' (' . $etFamilyName . ' family)'
+                            : $etMemberName;
+                        $etRemark = "Fulfillment for transport: {$etMemberLabel}";
+                        $etCorrRemark = "Fulfillment cost correction for transport: {$etMemberLabel}";
+
+                        // Always search for any existing supplier transactions for this
+                        // extra transport's booking_id — they may have been created by a
+                        // previous save even if the fulfillment row's supplier_id is null
+                        // (the fulfillment row is updated by the main path, not this block).
+                        $etOldTxnStmt = $pdo->prepare("
+                            SELECT transaction_type, amount, supplier_id FROM supplier_transactions
+                            WHERE reference_id = ? AND transaction_of = 'umrah'
+                              AND (remarks = ? OR remarks = ?) AND tenant_id = ?");
+                        $etOldTxnStmt->execute([$etBkId, $etRemark, $etCorrRemark, $tenant_id]);
+                        $etOldTxns = $etOldTxnStmt->fetchAll(PDO::FETCH_ASSOC);
+
+                        // Remove orphaned transactions when supplier/cost are cleared,
+                        // OR when the old transaction's supplier differs from the new one.
+                        $etHasOldTxns = !empty($etOldTxns);
+                        $etHasNewData = ($etCostAmount !== null || $etSupplierId !== null);
+                        $etSupplierChanged = false;
+                        if ($etHasOldTxns && $etHasNewData) {
+                            $etOldSupOnTxn = (int)($etOldTxns[0]['supplier_id'] ?? 0);
+                            $etSupplierChanged = $etOldSupOnTxn > 0 && $etSupplierId !== null && $etOldSupOnTxn !== (int)$etSupplierId;
+                        }
+                        $etNeedsTxnCleanup = $etHasOldTxns && (!$etHasNewData || $etSupplierChanged);
+
+                        if ($etNeedsTxnCleanup) {
+                            foreach ($etOldTxns as $ot) {
+                                $otSupId = (int)$ot['supplier_id'];
+                                $etAffectedSupIds[$otSupId] = true;
+                                $etNet = $ot['transaction_type'] === 'Debit' ? (float)$ot['amount'] : -((float)$ot['amount']);
+                                if ($etNet != 0.0) {
+                                    $etTypeStmt = $pdo->prepare("SELECT supplier_type FROM suppliers WHERE id = ? AND tenant_id = ?");
+                                    $etTypeStmt->execute([$otSupId, $tenant_id]);
+                                    if ($etTypeStmt->fetchColumn() === 'External') {
+                                        $pdo->prepare("UPDATE suppliers SET balance = balance + ? WHERE id = ? AND tenant_id = ?")
+                                            ->execute([$etNet, $otSupId, $tenant_id]);
+                                    }
+                                }
+                            }
+                            $pdo->prepare("DELETE FROM supplier_transactions
+                                           WHERE reference_id = ? AND transaction_of = 'umrah'
+                                             AND (remarks = ? OR remarks = ?) AND tenant_id = ?")
+                                ->execute([$etBkId, $etRemark, $etCorrRemark, $tenant_id]);
+                        }
+
+                        // Update fulfillment row and create new supplier transaction when cost/supplier are provided
+                        if ($etHasNewData) {
+                            $pdo->prepare("
+                                UPDATE umrah_fulfillments
+                                SET supplier_currency = ?, supplier_cost = ?, exchange_rate = ?, cost_amount = ?
+                                WHERE id = ? AND tenant_id = ?
+                            ")->execute([
+                                $etCurrency ?: null,
+                                $etCost,
+                                $etRate,
+                                $etCostAmount,
+                                $etFid,
+                                $tenant_id
+                            ]);
+
+                            // Re-debit with extra transport's own cost
+                            if ($etCost > 0 && $etSupplierId) {
+                                $etTypeStmt2 = $pdo->prepare("SELECT supplier_type FROM suppliers WHERE id = ? AND tenant_id = ?");
+                                $etTypeStmt2->execute([$etSupplierId, $tenant_id]);
+                                if ($etTypeStmt2->fetchColumn() === 'External') {
+                                    $pdo->prepare("UPDATE suppliers SET balance = balance - ? WHERE id = ? AND tenant_id = ?")
+                                        ->execute([$etCost, $etSupplierId, $tenant_id]);
+                                }
+                                $etBalStmt = $pdo->prepare("SELECT balance FROM suppliers WHERE id = ? AND tenant_id = ?");
+                                $etBalStmt->execute([$etSupplierId, $tenant_id]);
+                                $etNewBal = (float)$etBalStmt->fetchColumn();
+                                $pdo->prepare("INSERT INTO supplier_transactions
+                                    (tenant_id, branch_id, supplier_id, reference_id, transaction_type, amount, remarks, balance, transaction_of, receipt)
+                                    VALUES (?, ?, ?, ?, 'Debit', ?, ?, ?, 'umrah', '')")
+                                    ->execute([$tenant_id, $branch_id, $etSupplierId, $etBkId, $etCost, $etRemark, $etNewBal]);
+                                $etAffectedSupIds[$etSupplierId] = true;
+                            }
+                        }
+
+                        // Store et_* detail keys for reload
+                        $pdo->prepare("DELETE FROM umrah_fulfillment_details WHERE fulfillment_id = ? AND detail_key LIKE 'et_%'")
+                            ->execute([$etFid]);
+                        $etPairs = [
+                            'et_supplier_id' => $etSupplierId !== null ? (string)$etSupplierId : '',
+                            'et_currency'    => $etCurrency,
+                            'et_cost'        => $etCost !== null ? (string)$etCost : '',
+                            'et_rate'        => $etRate !== null ? (string)$etRate : '',
+                            'et_cost_usd'    => $etCostUsd !== null ? (string)$etCostUsd : '',
+                            'et_sold'        => $etSold !== null ? (string)$etSold : '',
+                            'et_profit'      => ($etSold !== null && $etCostUsd !== null) ? (string)round($etSold - $etCostUsd, 3) : '',
+                        ];
+                        $insEtD = $pdo->prepare("INSERT INTO umrah_fulfillment_details (tenant_id, branch_id, fulfillment_id, detail_key, detail_value) VALUES (?, ?, ?, ?, ?)");
+                        foreach ($etPairs as $k => $v) {
+                            $insEtD->execute([$tenant_id, $branch_id, $etFid, $k, $v]);
+                        }
+                    }
+                }
+            }
+        }
+
         // Rebuild running balances for suppliers affected by extra bed changes
         if ($ebAffectedSupIds) {
             foreach (array_keys($ebAffectedSupIds) as $ebSupId) {
@@ -1791,6 +2242,18 @@ function fulfillment_save(PDO $pdo, array $in): array
                 $ebMinId = (int)($ebMinStmt->fetchColumn() ?: 0);
                 if ($ebMinId > 0) {
                     umrahRebuildRunningBalances($pdo, $tenant_id, $branch_id, $ebSupId, $ebMinId);
+                }
+            }
+        }
+
+        // Rebuild running balances for suppliers affected by extra transport changes
+        if ($etAffectedSupIds) {
+            foreach (array_keys($etAffectedSupIds) as $etSupId) {
+                $etMinStmt = $pdo->prepare("SELECT MIN(id) FROM supplier_transactions WHERE supplier_id = ? AND tenant_id = ? AND branch_id = ?");
+                $etMinStmt->execute([(int)$etSupId, $tenant_id, $branch_id]);
+                $etMinId = (int)($etMinStmt->fetchColumn() ?: 0);
+                if ($etMinId > 0) {
+                    umrahRebuildRunningBalances($pdo, $tenant_id, $branch_id, (int)$etSupId, $etMinId);
                 }
             }
         }

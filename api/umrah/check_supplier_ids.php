@@ -46,6 +46,7 @@ $memStmt = $pdo->prepare("
     JOIN families f ON f.family_id = ub.family_id AND f.tenant_id = ub.tenant_id
     WHERE f.group_id = ? AND ub.tenant_id = ? AND ub.branch_id = ?
       AND COALESCE(ub.is_extra_bed, 0) = 0
+      AND COALESCE(ub.is_extra_transport, 0) = 0
     ORDER BY f.family_id, ub.booking_id
 ");
 $memStmt->execute([$groupId, $targetTenant, $targetBranch]);

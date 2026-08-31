@@ -311,7 +311,7 @@ try {
                     <?php endif; ?>
                     
                     <!-- Flight Status Badge (extra beds have no flights) -->
-                    <?php if (!empty($member['is_extra_bed'])): ?>
+                    <?php if (!empty($member['is_extra_bed']) || !empty($member['is_extra_transport'])): ?>
                     <?php elseif ($member['flight_date'] && $member['return_date']): ?>
                         <span class="status-badge badge-flight-done">
                             <i class="fas fa-plane"></i> <?= __('flight_done') ?>
