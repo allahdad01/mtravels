@@ -4826,6 +4826,7 @@ return [
 'no_transactions_found_for_this_supplier' => 'د دې عرضه کوونکي لپاره هېڅ راکړې ورکړې ونه موندل شوې',
 'please_select_future_date' => 'مهرباني وکړئ یوه راتلونکې نیټه وټاکئ',
 'service_type' => 'د خدمت ډول',
+'member' => 'غړی',
 'select_the_account_for_transaction' => 'د راکړې ورکړې لپاره حساب وټاکئ',
 'select_the_transaction_currency' => 'د راکړې ورکړې اسعار وټاکئ',
 'bank_account_usd_number' => 'د بانک ډالر حساب نمبر',
@@ -5435,4 +5436,10 @@ return [
 'remove_extra_transport' => 'اضافي لمړۍ اوبوه',
 'unfulfilled' => 'نده شوی',
 'skip' => 'پریږدنه',
+'service_report' => 'د خدمتونو راپور',
+'group_by' => 'د ګروپ بندی',
+'generate' => ' جوړول',
+'select_date_range_and_generate' => 'د نېټې حد وټاکئ او جوړول کلیک کړئ',
+'grand_total' => 'ټول مجموع',
+'group_profitability' => 'د ګروپ ټاکلې',
 ];

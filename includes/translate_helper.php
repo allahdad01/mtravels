@@ -54,6 +54,9 @@ function mymemory_translate($text, $langpair) {
     }
 
     $translated = trim(html_entity_decode($translated, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    // Strip punctuation/quotes MyMemory sometimes wraps around results
+    // (e.g. ". محمود." or "هوټل:")
+    $translated = preg_replace('/^[\p{P}\p{S}\s]+|[\p{P}\p{S}\s]+$/u', '', $translated);
     return $translated === '' ? null : $translated;
 }
 
@@ -75,6 +78,16 @@ function is_effectively_translated($text, $result) {
         return false;
     }
     if (mb_strtolower($result) === mb_strtolower($text)) {
+        return false;
+    }
+    // Reject results that still contain punctuation/symbols
+    // (MyMemory artifacts such as "هوټل:" or ". محمود.")
+    if (preg_match('/[\p{P}\p{S}]/u', $result)) {
+        return false;
+    }
+    // A single-word name must never become a 3+ word phrase
+    // (e.g. "Asma" -> "لکه څنګه چې" which means "as/like")
+    if (!preg_match('/\s/u', $text) && preg_match('/\S+\s+\S+\s+\S+/u', $result)) {
         return false;
     }
     return true;

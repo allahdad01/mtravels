@@ -4953,6 +4953,7 @@ return [
 'no_transactions_found_for_this_supplier' => 'هیچ تراکنشی برای این تأمین‌کننده یافت نشد',
 'please_select_future_date' => 'لطفاً یک تاریخ آینده را انتخاب کنید',
 'service_type' => 'نوع خدمت',
+'member' => 'عضو',
 'select_the_account_for_transaction' => 'حساب را برای تراکنش انتخاب کنید',
 'select_the_transaction_currency' => 'ارز تراکنش را انتخاب کنید',
 'bank_account_usd_number' => 'شماره حساب بانکی دلار',
@@ -5562,4 +5563,10 @@ return [
 'remove_extra_transport' => 'حذف نقل و انتقال اضافی',
 'unfulfilled' => 'انجام نشده',
 'skip' => 'رد شدن',
+'service_report' => 'راپور خدمات',
+'group_by' => 'گروپ بندی',
+'generate' => 'ایجاد',
+'select_date_range_and_generate' => 'دوره زمانی را انتخاب کنید و ایجاد را کلیک کنید',
+'grand_total' => 'مجموع کلی',
+'group_profitability' => 'لابسته گروپ',
 ];

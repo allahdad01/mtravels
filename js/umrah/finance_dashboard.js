@@ -63,24 +63,25 @@ function renderMemberProfit(rows) {
         $('#memberProfitTable').html('<div class="text-muted py-4 text-center">' + fnT('no_data') + '</div>');
         return;
     }
-    const th = ['member', 'flight_date', 'currency', 'selling', 'cost', 'profit', 'margin', 'paid', 'due'];
-    let html = '<div class="table-responsive"><table class="table table-sm table-hover mb-0"><thead class="thead-light"><tr>';
-    th.forEach(k => html += '<th>' + fnT(k) + '</th>');
-    html += '</tr></thead><tbody>';
-    rows.forEach(r => {
+    let html = '<div class="table-responsive"><table class="table table-sm table-hover mb-0"><thead class="thead-light"><tr>' +
+        '<th>#</th><th>' + fnT('group_name') + '</th><th>' + fnT('member') + 's</th>' +
+        '<th>' + fnT('total_selling') + '</th><th>' + fnT('total_cost') + '</th>' +
+        '<th>' + fnT('gross_profit') + '</th><th>' + fnT('margin') + '</th>' +
+        '<th>' + fnT('total_paid') + '</th><th>' + fnT('total_due') + '</th>' +
+        '</tr></thead><tbody>';
+    rows.forEach(function (r, i) {
         const profitCls = r.profit_usd >= 0 ? 'text-success' : 'text-danger';
-        const dueCls = r.due > 0 ? 'text-danger' : '';
+        const dueCls = r.due_usd > 0 ? 'text-danger' : '';
         html += '<tr>' +
-            '<td><div class="font-weight-bold">' + fnEsc(r.name) + '</div>' +
-            '<div class="text-muted" style="font-size:0.75rem;">#' + r.booking_id + ' · ' + fnEsc(r.passport_number || '-') + '</div></td>' +
-            '<td>' + fnEsc(r.flight_date || '-') + '</td>' +
-            '<td>' + fnEsc(r.currency || '-') + '</td>' +
-            '<td>' + fnMoney(r.selling, r.currency) + '</td>' +
+            '<td>' + (i + 1) + '</td>' +
+            '<td><div class="font-weight-bold">#' + fnEsc(r.group_number) + ' — ' + fnEsc(r.group_name) + '</div></td>' +
+            '<td>' + r.member_count + '</td>' +
+            '<td>' + fnMoney(r.selling_usd, 'USD') + '</td>' +
             '<td>' + fnMoney(r.cost_usd, 'USD') + '</td>' +
             '<td class="' + profitCls + ' font-weight-bold">' + fnMoney(r.profit_usd, 'USD') + '</td>' +
             '<td>' + (r.margin || 0) + '%</td>' +
-            '<td>' + fnMoney(r.paid, r.currency) + '</td>' +
-            '<td class="' + dueCls + '">' + fnMoney(r.due, r.currency) + '</td>' +
+            '<td>' + fnMoney(r.paid_usd, 'USD') + '</td>' +
+            '<td class="' + dueCls + '">' + fnMoney(r.due_usd, 'USD') + '</td>' +
             '</tr>';
     });
     html += '</tbody></table></div>';
@@ -122,26 +123,70 @@ function renderSupplierPayables(rows) {
     }
     const types = ['flight', 'hotel', 'visa', 'transport', 'meal', 'ziyarat'];
     let html = '<div class="table-responsive"><table class="table table-sm table-hover mb-0"><thead class="thead-light"><tr>' +
+        '<th style="width:30px;"></th>' +
         '<th>' + fnT('supplier') + '</th><th>' + fnT('currency') + '</th><th>' + fnT('services_count') + '</th>';
     types.forEach(t => html += '<th>' + fnT('pay_' + t) + '</th>');
     html += '<th class="text-right">' + fnT('total_payable') + '</th>' +
         '<th class="text-right">' + fnT('paid') + '</th>' +
-        '<th class="text-right">' + fnT('balance') + '</th></tr></thead><tbody>';
-    rows.forEach(r => {
+        '<th class="text-right">' + fnT('balance') + '</th>' +
+        '</tr></thead><tbody>';
+    rows.forEach(function (r, idx) {
         const cur = r.currency || 'USD';
         const bal = parseFloat(r.balance_ccy) || 0;
-        html += '<tr>' +
+        // Summary row
+        html += '<tr class="supplier-summary-row" data-idx="' + idx + '" style="cursor:pointer;">' +
+            '<td><i class="feather icon-chevron-right supplier-expand-icon" style="transition:transform 0.2s;"></i></td>' +
             '<td class="font-weight-bold">' + fnEsc(r.supplier_name) + '</td>' +
             '<td>' + fnEsc(cur) + '</td>' +
             '<td>' + r.services_count + '</td>';
         types.forEach(t => html += '<td>' + fnMoney(r[t + '_cost'], 'USD') + '</td>');
         html += '<td class="text-right font-weight-bold text-danger">' + fnMoney(r.total_payable, 'USD') + '</td>' +
             '<td class="text-right">' + fnMoney(r.paid_ccy, cur) + '</td>' +
-            '<td class="text-right font-weight-bold ' + (bal > 0 ? 'text-danger' : 'text-success') + '">' + fnMoney(r.balance_ccy, cur) + '</td>' +
+            '<td class="text-right font-weight-bold ' + (bal > 0 ? 'text-danger' : 'text-success') + '">' + fnMoney(bal, cur) + '</td>' +
             '</tr>';
+        // Hidden fulfillment detail rows
+        if (r.fulfillments && r.fulfillments.length) {
+            html += '<tr class="supplier-detail-row" data-idx="' + idx + '" style="display:none;">' +
+                '<td colspan="' + (4 + types.length) + '" style="padding:0;">' +
+                '<div style="padding:6px 12px 6px 36px;">' +
+                '<table class="table table-xs mb-0" style="font-size:0.8rem;">' +
+                '<thead><tr style="background:#f9fafb;">' +
+                '<th>' + fnT('service_type') + '</th>' +
+                '<th>' + fnT('member') + '</th>' +
+                '<th class="text-right">' + fnT('total_payable') + '</th>' +
+                '<th class="text-right">' + fnT('paid') + '</th>' +
+                '<th class="text-right">' + fnT('balance') + '</th>' +
+                '</tr></thead><tbody>';
+            r.fulfillments.forEach(function (f) {
+                const fBal = parseFloat(f.balance) || 0;
+                const fBalCls = fBal > 0.01 ? 'text-danger' : (fBal < -0.01 ? 'text-success' : '');
+                html += '<tr>' +
+                    '<td>' + fnEsc(f.type) + '</td>' +
+                    '<td>' + fnEsc(f.member_name || '-') + '</td>' +
+                    '<td class="text-right">' + fnMoney(f.payable, cur) + '</td>' +
+                    '<td class="text-right text-success">' + fnMoney(f.paid, cur) + '</td>' +
+                    '<td class="text-right font-weight-bold ' + fBalCls + '">' + fnMoney(fBal, cur) + '</td>' +
+                    '</tr>';
+            });
+            html += '</tbody></table></div></td></tr>';
+        }
     });
     html += '</tbody></table></div>';
     $('#supplierPayableTable').html(html);
+
+    // Click handler to expand/collapse fulfillment details
+    $('#supplierPayableTable').off('click', '.supplier-summary-row').on('click', '.supplier-summary-row', function () {
+        const idx = $(this).data('idx');
+        const detailRow = $('#supplierPayableTable .supplier-detail-row[data-idx="' + idx + '"]');
+        const icon = $(this).find('.supplier-expand-icon');
+        if (detailRow.is(':visible')) {
+            detailRow.hide();
+            icon.css('transform', 'rotate(0deg)');
+        } else {
+            detailRow.show();
+            icon.css('transform', 'rotate(90deg)');
+        }
+    });
 }
 
 // ============================================================== REPORTS TAB
@@ -196,6 +241,188 @@ function renderOutstanding(rows, totals) {
     $('#outstandingTable').html(html);
 }
 
+// ===================================================== SERVICE REPORT TAB
+let serviceReportData = null;
+
+function renderServiceReportStats(totals) {
+    fnStatCards('serviceReportStats', [
+        { label: fnT('total_members'), value: totals.members || 0 },
+        { label: fnT('total_cost'), value: fnMoney(totals.cost, 'USD') },
+        { label: fnT('total_selling'), value: fnMoney(totals.sold, 'USD') },
+        { label: fnT('gross_profit'), value: fnMoney(totals.profit, 'USD') },
+    ]);
+}
+
+function renderServiceReportTable(data) {
+    const groupBy = data.group_by;
+    const $table = $('#serviceReportTable');
+
+    if (groupBy === 'service') {
+        if (!data.services || !data.services.length) {
+            $table.html('<div class="text-muted py-4 text-center">' + fnT('no_data') + '</div>');
+            return;
+        }
+        let html = '<div class="table-responsive"><table class="table table-sm table-hover mb-0"><thead class="thead-light"><tr>' +
+            '<th>#</th><th>' + fnT('service_type') + '</th><th>' + fnT('member') + '</th><th>' + fnT('cost') + '</th>' +
+            '</tr></thead><tbody>';
+        let totalCost = 0;
+        data.services.forEach(function (r, i) {
+            totalCost += parseFloat(r.total_cost || 0);
+            html += '<tr>' +
+                '<td>' + (i + 1) + '</td>' +
+                '<td class="font-weight-bold">' + fnEsc(r.service_name || r.service_type) + '</td>' +
+                '<td>' + (r.member_count || 0) + '</td>' +
+                '<td class="font-weight-bold">' + fnMoney(r.total_cost, 'USD') + '</td>' +
+                '</tr>';
+        });
+        html += '<tr style="background:#e5e7eb;font-weight:700;">' +
+            '<td colspan="2">' + fnT('grand_total') + '</td>' +
+            '<td>' + (data.summary.total_members || 0) + '</td>' +
+            '<td>' + fnMoney(totalCost, 'USD') + '</td>' +
+            '</tr>';
+        html += '</tbody></table></div>';
+        $table.html(html);
+
+    } else if (groupBy === 'group') {
+        if (!data.details || !data.details.length) {
+            $table.html('<div class="text-muted py-4 text-center">' + fnT('no_data') + '</div>');
+            return;
+        }
+        let html = '<div class="table-responsive"><table class="table table-sm table-hover mb-0"><thead class="thead-light"><tr>' +
+            '<th>#</th><th>' + fnT('group_name') + '</th><th>' + fnT('service_type') + '</th><th>' + fnT('member') + '</th><th>' + fnT('cost') + '</th>' +
+            '</tr></thead><tbody>';
+        let ri = 0;
+        data.details.forEach(function (grp) {
+            ri++;
+            html += '<tr style="background:#dbeafe;font-weight:700;">' +
+                '<td>' + ri + '</td>' +
+                '<td colspan="4">#' + fnEsc(grp.group_number) + ' — ' + fnEsc(grp.group_name) + ' (' + grp.member_count + ' ' + fnT('member') + ')</td>' +
+                '</tr>';
+            if (grp.services) {
+                Object.values(grp.services).forEach(function (svc) {
+                    html += '<tr>' +
+                        '<td></td>' +
+                        '<td style="padding-left:20px;">— ' + fnEsc(svc.service_name || svc.service_type) + '</td>' +
+                        '<td></td>' +
+                        '<td>' + (svc.member_count || 0) + '</td>' +
+                        '<td class="font-weight-bold">' + fnMoney(svc.total_cost, 'USD') + '</td>' +
+                        '</tr>';
+                });
+            }
+            html += '<tr style="background:#fef3c7;font-weight:600;">' +
+                '<td></td>' +
+                '<td style="padding-left:20px;">Subtotal</td>' +
+                '<td></td>' +
+                '<td>' + grp.member_count + '</td>' +
+                '<td>' + fnMoney(grp.total_cost, 'USD') + '</td>' +
+                '</tr>';
+        });
+        html += '<tr style="background:#e5e7eb;font-weight:700;">' +
+            '<td colspan="3">' + fnT('grand_total') + '</td>' +
+            '<td>' + (data.summary.total_members || 0) + '</td>' +
+            '<td>' + fnMoney(data.summary.total_cost, 'USD') + '</td>' +
+            '</tr>';
+        html += '</tbody></table></div>';
+        $table.html(html);
+
+    } else if (groupBy === 'family') {
+        if (!data.details || !data.details.length) {
+            $table.html('<div class="text-muted py-4 text-center">' + fnT('no_data') + '</div>');
+            return;
+        }
+        let html = '<div class="table-responsive"><table class="table table-sm table-hover mb-0"><thead class="thead-light"><tr>' +
+            '<th>#</th><th>' + fnT('family') + '</th><th>' + fnT('group_name') + '</th><th>' + fnT('service_type') + '</th><th>' + fnT('member') + '</th><th>' + fnT('cost') + '</th>' +
+            '</tr></thead><tbody>';
+        let ri = 0;
+        data.details.forEach(function (fam) {
+            ri++;
+            html += '<tr style="background:#f3f4f6;font-weight:600;">' +
+                '<td>' + ri + '</td>' +
+                '<td colspan="5">' + fnEsc(fam.head_of_family) + ' — ' + fnEsc(fam.group_name || '') + ' (' + fam.member_count + ' ' + fnT('member') + ')</td>' +
+                '</tr>';
+            if (fam.services) {
+                Object.values(fam.services).forEach(function (svc) {
+                    html += '<tr>' +
+                        '<td></td>' +
+                        '<td style="padding-left:20px;">— ' + fnEsc(svc.service_name || svc.service_type) + '</td>' +
+                        '<td></td>' +
+                        '<td></td>' +
+                        '<td>' + (svc.member_count || 0) + '</td>' +
+                        '<td class="font-weight-bold">' + fnMoney(svc.total_cost, 'USD') + '</td>' +
+                        '</tr>';
+                });
+            }
+            html += '<tr style="background:#fef3c7;font-weight:600;">' +
+                '<td></td>' +
+                '<td style="padding-left:20px;">Subtotal</td>' +
+                '<td></td>' +
+                '<td></td>' +
+                '<td>' + fam.member_count + '</td>' +
+                '<td>' + fnMoney(fam.total_cost, 'USD') + '</td>' +
+                '</tr>';
+        });
+        html += '<tr style="background:#e5e7eb;font-weight:700;">' +
+            '<td colspan="4">' + fnT('grand_total') + '</td>' +
+            '<td>' + (data.summary.total_members || 0) + '</td>' +
+            '<td>' + fnMoney(data.summary.total_cost, 'USD') + '</td>' +
+            '</tr>';
+        html += '</tbody></table></div>';
+        $table.html(html);
+    }
+}
+
+function loadServiceReport() {
+    var dateFrom = $('#svcDateFrom').val();
+    var dateTo = $('#svcDateTo').val();
+    var groupBy = $('#svcGroupBy').val();
+
+    if (!dateFrom || !dateTo) {
+        showToast('warning', 'Please select date range');
+        return;
+    }
+
+    $('#serviceReportTable').html('<div class="text-muted py-4 text-center">' + fnT('loading') + '...</div>');
+    $('#serviceReportStats').html('');
+
+    $.ajax({
+        url: '../api/umrah/get_finance_report.php',
+        type: 'GET',
+        dataType: 'json',
+        data: { report: 'service_detail', date_from: dateFrom, date_to: dateTo, group_by: groupBy },
+        headers: { 'X-CSRF-Token': window.csrfToken || '' }
+    }).then(function (resp) {
+        if (!resp.success || !resp.data) {
+            showToast('error', fnT('load_failed'));
+            return;
+        }
+        serviceReportData = resp.data;
+        renderServiceReportStats(resp.data.totals || resp.data.summary);
+        renderServiceReportTable(resp.data);
+        $('#btnExportServiceExcel').prop('disabled', false);
+        $('#btnPrintServiceReport').prop('disabled', false);
+    }).catch(function () {
+        showToast('error', fnT('load_failed'));
+    });
+}
+
+function openServiceReportPrint() {
+    if (!serviceReportData) return;
+    var url = '../api/umrah/service_report_template.php?date_from=' + encodeURIComponent(serviceReportData.date_from) +
+        '&date_to=' + encodeURIComponent(serviceReportData.date_to) +
+        '&group_by=' + encodeURIComponent(serviceReportData.group_by) +
+        '&language=en';
+    window.open(url, '_blank');
+}
+
+function exportServiceReportExcel() {
+    if (!serviceReportData) return;
+    var url = '../api/umrah/service_report_excel.php?date_from=' + encodeURIComponent(serviceReportData.date_from) +
+        '&date_to=' + encodeURIComponent(serviceReportData.date_to) +
+        '&group_by=' + encodeURIComponent(serviceReportData.group_by) +
+        '&language=en';
+    window.open(url, '_blank');
+}
+
 // ============================================================== LOAD
 function loadFinanceDashboard() {
     $('#memberProfitTable').html('<div class="text-muted py-4 text-center">' + fnT('loading') + '...</div>');
@@ -229,4 +456,16 @@ $(function () {
     if (!window.UMRAH_CAN_FINANCE) return;
     $('#btnRefreshFinance').on('click', loadFinanceDashboard);
     loadFinanceDashboard();
+
+    // Service Report tab handlers
+    $('#btnLoadServiceReport').on('click', loadServiceReport);
+    $('#btnPrintServiceReport').on('click', openServiceReportPrint);
+    $('#btnExportServiceExcel').on('click', exportServiceReportExcel);
+
+    // Set default dates: first of current month to today
+    var now = new Date();
+    var firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    var fmt = function (d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+    $('#svcDateTo').val(fmt(now));
+    $('#svcDateFrom').val(fmt(firstOfMonth));
 });

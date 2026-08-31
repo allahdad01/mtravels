@@ -6341,4 +6341,10 @@ return [
     'remove_extra_transport' => 'Remove extra transport',
     'unfulfilled' => 'unfulfilled',
     'skip' => 'skip',
+    'service_report' => 'Service Report',
+    'group_by' => 'Group By',
+    'generate' => 'Generate',
+    'select_date_range_and_generate' => 'Select date range and click Generate',
+    'grand_total' => 'Grand Total',
+    'group_profitability' => 'Group Profitability',
 ];
