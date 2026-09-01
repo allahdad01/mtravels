@@ -5440,6 +5440,7 @@ return [
 'group_by' => 'د ګروپ بندی',
 'generate' => ' جوړول',
 'select_date_range_and_generate' => 'د نېټې حد وټاکئ او جوړول کلیک کړئ',
+'hold_ctrl_to_select_multiple' => 'د ټولګه انتخاب لپاره Ctrl اسانه کړئ',
 'grand_total' => 'ټول مجموع',
 'group_profitability' => 'د ګروپ ټاکلې',
 ];

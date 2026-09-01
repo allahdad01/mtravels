@@ -110,48 +110,13 @@ try {
         imagesx($croppedImage), imagesy($croppedImage)
     );
     
-    // Get tenant and branch info from session
-    $tenantId = $_SESSION['tenant_id'] ?? null;
-    $branchId = $_SESSION['branch_id'] ?? null;
-    
-    if (!$tenantId || !$branchId) {
-        throw new Exception('Missing tenant or branch information');
-    }
-    
-    // Use family_id from request first (passed from frontend during add member)
-    $familyId = null;
-    
-    if ($familyIdFromRequest) {
-        $familyId = intval($familyIdFromRequest);
-    } elseif ($bookingId) {
-        // Fallback: get family_id from booking
-        $sql = "SELECT f.family_id FROM umrah_bookings ub 
-                LEFT JOIN families f ON ub.family_id = f.family_id
-                WHERE ub.booking_id = ? AND ub.tenant_id = ? AND ub.branch_id = ?";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([$bookingId, $tenantId, $branchId]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if ($result && $result['family_id']) {
-            $familyId = intval($result['family_id']);
-        }
-    }
-    
-    // If family_id still not found, use booking_id as fallback
-    if (!$familyId && $bookingId) {
-        $familyId = intval($bookingId);
-    }
-    
-    // Create upload directory structure: uploads/tenant_id/branch_id/umrah/family_id/
+    // Save to temp directory — moved to final location only when member is saved
     $uploadBase = __DIR__ . '/../../uploads';
-    $uploadDir = $uploadBase . '/' . $tenantId . '/' . $branchId . '/umrah/';
-    if ($familyId) {
-        $uploadDir .= $familyId . '/';
-    }
+    $tempDir = $uploadBase . '/temp';
     
-    if (!is_dir($uploadDir)) {
-        if (!@mkdir($uploadDir, 0755, true)) {
-            throw new Exception('Could not create upload directory');
+    if (!is_dir($tempDir)) {
+        if (!@mkdir($tempDir, 0755, true)) {
+            throw new Exception('Could not create temp upload directory');
         }
     }
     
@@ -159,22 +124,8 @@ try {
     $timestamp = time();
     $random = bin2hex(random_bytes(8));
     $filename = "passport_photo_{$timestamp}_{$random}.jpg";
-    $filepath = $uploadDir . $filename;
-    $relativePath = '/uploads/' . $tenantId . '/' . $branchId . '/umrah/' . ($familyId ? $familyId . '/' : '') . $filename;
-    
-    // Clean up old photo if re-extracting for the same family
-    if ($familyId && $tenantId && $branchId) {
-        $sql = "SELECT photo_path FROM umrah_bookings WHERE family_id = ? AND tenant_id = ? AND branch_id = ? AND photo_path IS NOT NULL AND photo_path != '' LIMIT 1";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([$familyId, $tenantId, $branchId]);
-        $old = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($old && $old['photo_path']) {
-            $oldFile = $uploadBase . $old['photo_path'];
-            if (file_exists($oldFile)) {
-                @unlink($oldFile);
-            }
-        }
-    }
+    $filepath = $tempDir . '/' . $filename;
+    $relativePath = '/uploads/temp/' . $filename;
     
     if (!imagejpeg($resizedImage, $filepath, 85)) {
         throw new Exception('Failed to save image');
@@ -184,18 +135,6 @@ try {
     imagedestroy($image);
     imagedestroy($croppedImage);
     imagedestroy($resizedImage);
-    
-    // Save to database if booking_id provided
-    if ($bookingId) {
-        $tenantId = $_SESSION['tenant_id'] ?? null;
-        $branchId = $_SESSION['branch_id'] ?? null;
-        
-        if ($tenantId && $branchId) {
-            $sql = "UPDATE umrah_bookings SET photo_path = ?, photo_uploaded_at = NOW() WHERE booking_id = ? AND tenant_id = ? AND branch_id = ?";
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([$relativePath, $bookingId, $tenantId, $branchId]);
-        }
-    }
     
     http_response_code(200);
     echo json_encode([

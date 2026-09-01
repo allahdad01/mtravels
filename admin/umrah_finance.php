@@ -35,6 +35,11 @@ foreach (require '../js/umrah/bundle_files.php' as $bundleFile) {
 ?>
 <?php include '../includes/header.php'; ?>
 <link rel="stylesheet" href="../css/bundle.php?v=<?= $umrahCssVersion ?>">
+<style>
+.svc-type-badge { border: 1px solid #d1d5db !important; background: #fff !important; color: #6b7280 !important; font-weight: 500; transition: all 0.15s; outline: none !important; }
+.svc-type-badge.active, .svc-type-badge.active:focus, .svc-type-badge.active:active { background: #0e7490 !important; color: #fff !important; border-color: #0e7490 !important; }
+.svc-type-badge:hover { box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+</style>
 <meta name="csrf-token" content="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
 <div class="pcoded-main-container">
   <div class="pcoded-wrapper">
@@ -70,6 +75,39 @@ foreach (require '../js/umrah/bundle_files.php' as $bundleFile) {
                 <div class="card mt-2">
                     <div class="card-header bg-white">
                         <h6 class="mb-0"><i class="feather icon-users mr-2" style="color: #0e7490;"></i><?= __('group_profitability') ?></h6>
+                    </div>
+                    <div class="card-body py-3">
+                        <div class="d-flex flex-wrap align-items-center" style="gap:12px;">
+                            <div class="d-flex align-items-center">
+                                <label class="mr-2 mb-0" style="font-weight:600; font-size:0.85rem; white-space:nowrap;"><?= __('date_from') ?>:</label>
+                                <input type="date" id="profitDateFrom" class="form-control form-control-sm" style="width:155px;">
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <label class="mr-2 mb-0" style="font-weight:600; font-size:0.85rem; white-space:nowrap;"><?= __('date_to') ?>:</label>
+                                <input type="date" id="profitDateTo" class="form-control form-control-sm" style="width:155px;">
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <label class="mr-2 mb-0" style="font-weight:600; font-size:0.85rem; white-space:nowrap;"><?= __('group_name') ?>:</label>
+                                <select id="profitGroupSelect" class="form-control form-control-sm" multiple size="4" style="width:220px;">
+                                </select>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-primary" id="btnLoadProfitDetail">
+                                <i class="feather icon-search mr-1"></i><?= __('generate') ?>
+                            </button>
+                            <div class="d-flex align-items-center">
+                                <select id="profitLangSelect" class="form-control form-control-sm" style="width:110px;">
+                                    <option value="en">English</option>
+                                    <option value="dari">دری</option>
+                                    <option value="ps">پښتو</option>
+                                </select>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-success" id="btnProfitExcel">
+                                <i class="feather icon-download mr-1"></i><?= __('excel') ?>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-info" id="btnProfitPrint">
+                                <i class="feather icon-printer mr-1"></i><?= __('print') ?>
+                            </button>
+                        </div>
                     </div>
                     <div class="card-body p-0" id="memberProfitTable">
                         <div class="text-muted py-4 text-center"><?= __('loading') ?>...</div>
@@ -122,22 +160,31 @@ foreach (require '../js/umrah/bundle_files.php' as $bundleFile) {
             <div class="tab-pane fade" id="pane-service-report" role="tabpanel">
                 <div class="card mb-3">
                     <div class="card-body py-3">
-                        <div class="d-flex flex-wrap align-items-center gap-3">
+                        <div class="d-flex flex-wrap align-items-center" style="gap:12px;">
                             <div class="d-flex align-items-center">
                                 <label class="mr-2 mb-0" style="font-weight:600; font-size:0.85rem; white-space:nowrap;"><?= __('date_from') ?>:</label>
-                                <input type="date" id="svcDateFrom" class="form-control form-control-sm" style="width:160px;">
+                                <input type="date" id="svcDateFrom" class="form-control form-control-sm" style="width:155px;">
                             </div>
                             <div class="d-flex align-items-center">
                                 <label class="mr-2 mb-0" style="font-weight:600; font-size:0.85rem; white-space:nowrap;"><?= __('date_to') ?>:</label>
-                                <input type="date" id="svcDateTo" class="form-control form-control-sm" style="width:160px;">
+                                <input type="date" id="svcDateTo" class="form-control form-control-sm" style="width:155px;">
                             </div>
                             <div class="d-flex align-items-center">
-                                <label class="mr-2 mb-0" style="font-weight:600; font-size:0.85rem; white-space:nowrap;"><?= __('group_by') ?>:</label>
-                                <select id="svcGroupBy" class="form-control form-control-sm" style="width:150px;">
-                                    <option value="service"><?= __('service_type') ?></option>
-                                    <option value="group"><?= __('groups') ?></option>
-                                    <option value="family"><?= __('families') ?></option>
+                                <label class="mr-2 mb-0" style="font-weight:600; font-size:0.85rem; white-space:nowrap;"><?= __('group_name') ?>:</label>
+                                <select id="svcGroupFilter" class="form-control form-control-sm" style="width:180px;">
+                                    <option value=""><?= __('all') ?></option>
                                 </select>
+                            </div>
+                            <div class="d-flex align-items-center" id="svcTypeFilterWrap">
+                                <label class="mr-2 mb-0" style="font-weight:600; font-size:0.85rem; white-space:nowrap;"><?= __('service_type') ?>:</label>
+                                <div class="d-flex flex-wrap" style="gap:4px;" id="svcTypeBadges">
+                                    <button type="button" class="btn btn-sm svc-type-badge" data-svc="visa" style="font-size:0.78rem;"><?= __('visa') ?></button>
+                                    <button type="button" class="btn btn-sm svc-type-badge" data-svc="hotel" style="font-size:0.78rem;"><?= __('hotel') ?></button>
+                                    <button type="button" class="btn btn-sm svc-type-badge" data-svc="transport" style="font-size:0.78rem;"><?= __('transport') ?></button>
+                                    <button type="button" class="btn btn-sm svc-type-badge" data-svc="flight" style="font-size:0.78rem;"><?= __('flight') ?></button>
+                                    <button type="button" class="btn btn-sm svc-type-badge" data-svc="meal" style="font-size:0.78rem;"><?= __('meal') ?></button>
+                                    <button type="button" class="btn btn-sm svc-type-badge" data-svc="ziyarat" style="font-size:0.78rem;"><?= __('ziyarat') ?></button>
+                                </div>
                             </div>
                             <button type="button" class="btn btn-sm btn-primary" id="btnLoadServiceReport">
                                 <i class="feather icon-search mr-1"></i><?= __('generate') ?>
@@ -223,6 +270,12 @@ foreach (require '../js/umrah/bundle_files.php' as $bundleFile) {
         'group_name' => __('group_name'),
         'family' => __('family'),
         'total_members' => __('total_members'),
+        'name' => __('name'),
+        'col_fname' => __('father'),
+        'col_passport' => __('passport_number'),
+        'client' => __('client'),
+        'all' => __('all'),
+        'all_groups' => __('all_groups'),
     ]) ?>;
 </script>
 <?php include '../includes/admin_footer.php'; ?>

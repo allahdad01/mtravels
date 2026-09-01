@@ -31,11 +31,13 @@ function viewMemberDetails(bookingId) {
                  if (member.photo_path) {
                      // Construct full image path
                      let photoSrc = member.photo_path;
-                     // If path doesn't start with http, prepend base path
+                     // If path doesn't start with http, make it relative to site root
                      if (!photoSrc.startsWith('http')) {
-                         // Remove leading slash and prepend correct base path
-                         photoSrc = photoSrc.startsWith('/') ? photoSrc : '/' + photoSrc;
-                         photoSrc = '' + photoSrc;
+                         // Extract app root from current page (e.g. /mtravels/admin/umrah.php → /mtravels)
+                         const pagePath = window.location.pathname;
+                         const adminIdx = pagePath.indexOf('/admin/');
+                         const appRoot = adminIdx > 0 ? pagePath.substring(0, adminIdx) : '';
+                         photoSrc = appRoot + photoSrc;
                      }
                      
                      photoDisplay.innerHTML = `

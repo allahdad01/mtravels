@@ -6345,6 +6345,7 @@ return [
     'group_by' => 'Group By',
     'generate' => 'Generate',
     'select_date_range_and_generate' => 'Select date range and click Generate',
+    'hold_ctrl_to_select_multiple' => 'Hold Ctrl to select multiple',
     'grand_total' => 'Grand Total',
     'group_profitability' => 'Group Profitability',
 ];

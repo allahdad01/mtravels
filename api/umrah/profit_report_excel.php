@@ -26,10 +26,76 @@ try {
 $scope = isset($_GET['scope']) && in_array($_GET['scope'], ['group', 'family', 'member'], true) ? $_GET['scope'] : 'member';
 $scopeId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $docLanguage = isset($_GET['language']) && in_array($_GET['language'], ['ps', 'dari', 'en']) ? $_GET['language'] : 'dari';
+$dateFrom = isset($_GET['date_from']) ? trim($_GET['date_from']) : null;
+$dateTo = isset($_GET['date_to']) ? trim($_GET['date_to']) : null;
 
-$data = profit_report_load($pdo, $tenant_id, $branch_id, $scope, $scopeId);
-if ($data === null) {
-    die('Invalid request: scope not found');
+// Support multiple group_ids
+$groupIds = [];
+if (!empty($_GET['group_ids'])) {
+    $raw = explode(',', $_GET['group_ids']);
+    foreach ($raw as $gid) {
+        $gid = (int)trim($gid);
+        if ($gid > 0) $groupIds[] = $gid;
+    }
+}
+
+if ($scope === 'group' && !empty($groupIds)) {
+    $allMembers = [];
+    $costTotal = 0; $soldTotal = 0; $profitTotal = 0;
+    foreach ($groupIds as $gid) {
+        $gData = profit_report_load($pdo, $tenant_id, $branch_id, 'group', $gid);
+        if ($gData && !empty($gData['members'])) {
+            $allMembers = array_merge($allMembers, $gData['members']);
+            $costTotal += $gData['cost_total'];
+            $soldTotal += $gData['sold_total'];
+            $profitTotal += $gData['profit_total'];
+        }
+    }
+    $data = [
+        'scope'        => 'group',
+        'scope_id'     => 0,
+        'title_name'   => count($groupIds) > 1 ? count($groupIds) . ' Groups' : '',
+        'members'      => $allMembers,
+        'cost_total'   => $costTotal,
+        'sold_total'   => $soldTotal,
+        'profit_total' => $profitTotal,
+    ];
+    $scopeTitle = $data['title_name'];
+} else {
+    $data = profit_report_load($pdo, $tenant_id, $branch_id, $scope, $scopeId);
+    if ($data === null) {
+        die('Invalid request: scope not found');
+    }
+    $scopeTitle = translate_name($data['title_name'] ?? '', $docLanguage);
+}
+
+// Apply date filter if set
+if (($dateFrom || $dateTo) && !empty($data['members'])) {
+    $filtered = [];
+    foreach ($data['members'] as $m) {
+        $fSql = "SELECT 1 FROM umrah_fulfillments ful
+                 JOIN umrah_booking_services bs ON ful.booking_service_id = bs.id AND bs.tenant_id = ful.tenant_id
+                 WHERE bs.booking_id = ? AND ful.tenant_id = ? AND ful.status != 'cancelled' AND bs.is_excluded = 0";
+        $fParams = [$m['booking_id'], $tenant_id];
+        if ($dateFrom) { $fSql .= " AND ful.created_at >= ?"; $fParams[] = $dateFrom . ' 00:00:00'; }
+        if ($dateTo)   { $fSql .= " AND ful.created_at <= ?"; $fParams[] = $dateTo . ' 23:59:59'; }
+        $fSql .= " LIMIT 1";
+        $fStmt = $pdo->prepare($fSql);
+        $fStmt->execute($fParams);
+        if ($fStmt->fetch()) {
+            $filtered[] = $m;
+        }
+    }
+    $data['members'] = $filtered;
+    $data['cost_total'] = 0; $data['sold_total'] = 0; $data['profit_total'] = 0;
+    foreach ($data['members'] as $m) {
+        $data['cost_total'] += $m['cost_total'] ?? 0;
+        $data['sold_total'] += $m['sold_total'] ?? 0;
+        $data['profit_total'] += $m['profit'] ?? 0;
+    }
+    $data['cost_total'] = round($data['cost_total'], 2);
+    $data['sold_total'] = round($data['sold_total'], 2);
+    $data['profit_total'] = round($data['profit_total'], 2);
 }
 
 $agencyName = translate_name($settings['agency_name'] ?? '', $docLanguage);
@@ -65,6 +131,9 @@ $langLabels = [
         'grand_total' => 'مجموع کلی',
         'members' => 'معتمر',
         'brn' => 'BRN',
+        'client' => 'کلاینت',
+        'family' => 'فامیل',
+        'group_name' => 'گروپ',
     ],
     'ps' => [
         'doc_title' => 'د ګټې راپور',
@@ -85,6 +154,9 @@ $langLabels = [
         'grand_total' => 'ټول مجموع',
         'members' => 'معتمر',
         'brn' => 'BRN',
+        'client' => 'کلاینت',
+        'family' => 'کورنۍ',
+        'group_name' => 'ګروپ',
     ],
     'en' => [
         'doc_title' => 'Profit Report',
@@ -105,6 +177,9 @@ $langLabels = [
         'grand_total' => 'Grand Total',
         'members' => 'members',
         'brn' => 'BRN',
+        'client' => 'Client',
+        'family' => 'Family',
+        'group_name' => 'Group',
     ],
 ];
 $L = $langLabels[$docLanguage];
@@ -170,33 +245,120 @@ $sheet->getStyle($headerRange)->getBorders()->getAllBorders()->setBorderStyle(Bo
 
 $row = $headerRow + 1;
 $i = 0;
+
+// Detect multi-group
+$distinctGroups = [];
 foreach ($data['members'] as $m) {
-    $i++;
-    $isNeg = $m['profit'] < 0;
-    $svcLines = [];
-    foreach ($m['services'] as $s) {
-        $svcLines[] = $s['label'] . ' — ' . $fmt($s['cost']);
+    $gid = $m['group_id'] ?? 0;
+    if ($gid && !isset($distinctGroups[$gid])) {
+        $distinctGroups[$gid] = $m['group_name'] ?? $m['group_number'] ?? ('#'.$gid);
     }
-    if ($m['brn_cost'] > 0) {
-        $svcLines[] = $L['brn'] . ' — ' . $fmt($m['brn_cost']);
+}
+$isMultiGroup = count($distinctGroups) > 1;
+
+// Build group → client → family hierarchy
+$byGroup = [];
+foreach ($data['members'] as $m) {
+    $groupKey = $isMultiGroup ? ($m['group_id'] ?? 0) : '_single';
+    $clientKey = $m['client_name'] ?? '—';
+    $familyKey = $m['head_of_family'] ?? '—';
+    $byGroup[$groupKey][$clientKey][$familyKey][] = $m;
+}
+
+$groupHeaderColor = '374151';
+$clientHeaderColor = 'DBEAFE';
+$familyHeaderColor = 'F3F4F6';
+$familyTotalColor = 'FEF3C7';
+$grandTotalColor = 'E5E7EB';
+
+foreach ($byGroup as $groupKey => $clients) {
+    // Group header row
+    if ($isMultiGroup) {
+        $sheet->mergeCells('A' . $row . ':I' . $row);
+        $sheet->setCellValue('A' . $row, ($L['group_name'] ?? 'Group') . ': ' . $distinctGroups[$groupKey]);
+        $sheet->getStyle('A' . $row . ':I' . $row)->getFont()->setBold(true)->setSize(11)->getColor()->setRGB('FFFFFF');
+        $sheet->getStyle('A' . $row . ':I' . $row)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($groupHeaderColor);
+        $sheet->getStyle('A' . $row . ':I' . $row)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+        $sheet->getStyle('A' . $row . ':I' . $row)->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+        $row++;
     }
-    $svcText = implode("\n", $svcLines);
 
-    $sheet->setCellValue('A' . $row, $i);
-    $sheet->setCellValue('B' . $row, $m['name'] ?? '');
-    $sheet->setCellValue('C' . $row, $m['fname'] ?? '');
-    $sheet->setCellValue('D' . $row, $m['passport_number'] ?? '');
-    $sheet->setCellValue('E' . $row, $svcText);
-    $sheet->setCellValue('F' . $row, $fmt($m['cost_total']));
-    $sheet->setCellValue('G' . $row, $fmt($m['sold_total']));
-    $sheet->setCellValue('H' . $row, $fmt((float)($m['discount'] ?? 0)));
-    $sheet->setCellValue('I' . $row, $fmt($m['profit']));
+    foreach ($clients as $clientName => $families) {
+        // Client header row
+        $sheet->mergeCells('A' . $row . ':I' . $row);
+        $sheet->setCellValue('A' . $row, ($L['client'] ?? 'Client') . ': ' . $clientName);
+        $sheet->getStyle('A' . $row . ':I' . $row)->getFont()->setBold(true)->setSize(10);
+        $sheet->getStyle('A' . $row . ':I' . $row)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($clientHeaderColor);
+        $sheet->getStyle('A' . $row . ':I' . $row)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+        $sheet->getStyle('A' . $row . ':I' . $row)->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+        $row++;
 
-    $sheet->getStyle('A' . $row . ':' . $lastCol . $row)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
-    $sheet->getStyle('A' . $row . ':' . $lastCol . $row)->getAlignment()->setVertical(Alignment::VERTICAL_CENTER)->setWrapText(true);
-    $sheet->getStyle('I' . $row)->getFont()->setBold(true);
-    $sheet->getStyle('I' . $row)->getFont()->getColor()->setRGB($isNeg ? 'B91C1C' : '15803D');
-    $row++;
+        foreach ($families as $familyName => $fmembers) {
+            // Family header row
+            $famMembers = 0; $famExtra = 0;
+            foreach ($fmembers as $fm) {
+                if (!empty($fm['is_extra_bed']) || !empty($fm['is_extra_transport'])) { $famExtra++; } else { $famMembers++; }
+            }
+            $extraLabel = $famExtra > 0 ? ' + ' . $famExtra . ' extra' : '';
+            $sheet->mergeCells('A' . $row . ':I' . $row);
+            $sheet->setCellValue('A' . $row, ($L['family'] ?? 'Family') . ': ' . $familyName . ' (' . $famMembers . ' ' . $L['members'] . $extraLabel . ')');
+            $sheet->getStyle('A' . $row . ':I' . $row)->getFont()->setBold(true)->setSize(10);
+            $sheet->getStyle('A' . $row . ':I' . $row)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($familyHeaderColor);
+            $sheet->getStyle('A' . $row . ':I' . $row)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+            $sheet->getStyle('A' . $row . ':I' . $row)->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+            $row++;
+
+            // Member rows
+            foreach ($fmembers as $m) {
+                $i++;
+                $isNeg = $m['profit'] < 0;
+                $svcLines = [];
+                foreach ($m['services'] as $s) {
+                    $svcLines[] = $s['label'] . ' — ' . $fmt($s['cost']);
+                }
+                if ($m['brn_cost'] > 0) {
+                    $svcLines[] = $L['brn'] . ' — ' . $fmt($m['brn_cost']);
+                }
+                $svcText = implode("\n", $svcLines);
+
+                $sheet->setCellValue('A' . $row, $i);
+                $sheet->setCellValue('B' . $row, $m['name'] ?? '');
+                $sheet->setCellValue('C' . $row, $m['fname'] ?? '');
+                $sheet->setCellValue('D' . $row, $m['passport_number'] ?? '');
+                $sheet->setCellValue('E' . $row, $svcText);
+                $sheet->setCellValue('F' . $row, $fmt($m['cost_total']));
+                $sheet->setCellValue('G' . $row, $fmt($m['sold_total']));
+                $sheet->setCellValue('H' . $row, $fmt((float)($m['discount'] ?? 0)));
+                $sheet->setCellValue('I' . $row, $fmt($m['profit']));
+
+                $sheet->getStyle('A' . $row . ':' . $lastCol . $row)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+                $sheet->getStyle('A' . $row . ':' . $lastCol . $row)->getAlignment()->setVertical(Alignment::VERTICAL_CENTER)->setWrapText(true);
+                $sheet->getStyle('I' . $row)->getFont()->setBold(true);
+                $sheet->getStyle('I' . $row)->getFont()->getColor()->setRGB($isNeg ? 'B91C1C' : '15803D');
+                $row++;
+            }
+
+            // Family subtotal
+            $famCost = 0; $famSold = 0; $famProfit = 0;
+            foreach ($fmembers as $fm) {
+                $famCost += $fm['cost_total'] ?? 0;
+                $famSold += $fm['sold_total'] ?? 0;
+                $famProfit += $fm['profit'] ?? 0;
+            }
+            $isNegFam = $famProfit < 0;
+            $sheet->mergeCells('A' . $row . ':E' . $row);
+            $sheet->setCellValue('A' . $row, '  ' . $familyName . ' — Subtotal');
+            $sheet->setCellValue('F' . $row, $fmt($famCost));
+            $sheet->setCellValue('G' . $row, $fmt($famSold));
+            $sheet->setCellValue('H' . $row, '0.00');
+            $sheet->setCellValue('I' . $row, $fmt($famProfit));
+            $sheet->getStyle('A' . $row . ':' . $lastCol . $row)->getFont()->setBold(true)->setSize(10);
+            $sheet->getStyle('A' . $row . ':' . $lastCol . $row)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($familyTotalColor);
+            $sheet->getStyle('A' . $row . ':' . $lastCol . $row)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+            $sheet->getStyle('I' . $row)->getFont()->getColor()->setRGB($isNegFam ? 'B91C1C' : '15803D');
+            $row++;
+        }
+    }
 }
 
 $isNegGrand = $data['profit_total'] < 0;

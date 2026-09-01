@@ -94,12 +94,14 @@ if (!function_exists('profit_report_load')) {
                    b.room_type, b.duration, b.sold_price, b.discount, b.currency, b.status,
                    COALESCE(b.is_extra_bed, 0) AS is_extra_bed,
                    COALESCE(b.is_extra_transport, 0) AS is_extra_transport,
-                   f.head_of_family, c.name AS client_name
+                   f.head_of_family, c.name AS client_name,
+                   g.group_id, g.group_number, g.group_name
             FROM umrah_bookings b
             LEFT JOIN families f ON f.family_id = b.family_id AND f.tenant_id = b.tenant_id
             LEFT JOIN clients c ON c.id = b.sold_to
+            LEFT JOIN umrah_groups g ON g.group_id = f.group_id AND g.tenant_id = f.tenant_id
             WHERE b.booking_id IN ($ph) AND b.tenant_id = ? AND b.branch_id = ?
-            ORDER BY b.booking_id");
+            ORDER BY g.group_number, g.group_id, f.family_id, b.booking_id");
         $mStmt->execute(array_merge($memberIds, [$tenant_id, $branch_id]));
         $members = $mStmt->fetchAll(PDO::FETCH_ASSOC);
 

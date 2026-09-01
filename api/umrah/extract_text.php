@@ -10,6 +10,7 @@
 
 require_once '../../includes/document_patterns.php';
 require_once '../../includes/gemini_passport.php';
+require_once '../../includes/translation_engine.php';
 require_once '../../vendor/autoload.php';
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -118,6 +119,15 @@ if (strpos($contentType, 'application/json') !== false) {
                     ];
                     http_response_code(200);
                     echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+                    // Pre-learn: save English ↔ Arabic name pair to dictionary
+                    // Arabic script from passport applies to both Dari and Pashto
+                    $engName = trim(($gd['given_names'] ?? '') . ' ' . ($gd['surname'] ?? ''));
+                    $arabName = $gd['name_in_script'] ?? null;
+                    if ($engName !== '' && $arabName !== null && $arabName !== '') {
+                        save_learned($engName, $arabName, $arabName, 'passport');
+                    }
+
                     exit;
                 }
                 // Gemini failed — fall through to PaddleOCR

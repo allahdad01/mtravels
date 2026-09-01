@@ -66,6 +66,7 @@ Extract these fields:
 - passport_number
 - surname
 - given_names
+- name_in_script (the full name in Arabic/Pashto/Dari script — must be in the SAME ORDER as given_names then surname, NOT surname first)
 - nationality
 - date_of_birth (YYYY-MM-DD)
 - gender (M or F)
@@ -84,6 +85,7 @@ Return JSON:
   "passport_number": null,
   "surname": null,
   "given_names": null,
+  "name_in_script": null,
   "nationality": null,
   "date_of_birth": null,
   "gender": null,
@@ -158,7 +160,7 @@ PROMPT;
     }
 
     // Normalize: ensure all expected keys exist
-    $fields = ['passport_number','surname','given_names','nationality','date_of_birth',
+    $fields = ['passport_number','surname','given_names','name_in_script','nationality','date_of_birth',
                'gender','date_of_issue','date_of_expiry','place_of_birth','father_name',
                'occupation','mrz_line1','mrz_line2'];
     $normalised = [];

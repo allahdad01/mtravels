@@ -88,6 +88,242 @@ function renderMemberProfit(rows) {
     $('#memberProfitTable').html(html);
 }
 
+function renderGroupProfitDetail(data) {
+    var $table = $('#memberProfitTable');
+    var members = data.members || [];
+    if (!members.length) {
+        $table.html('<div class="text-muted py-4 text-center">' + fnT('no_data') + '</div>');
+        return;
+    }
+
+    // Check if multi-group (more than one distinct group)
+    var groupIds = {};
+    members.forEach(function (m) { if (m.group_id) groupIds[m.group_id] = true; });
+    var isMultiGroup = Object.keys(groupIds).length > 1;
+
+    // Build group → client → family hierarchy
+    var byGroup = {};
+    members.forEach(function (m) {
+        var groupKey = isMultiGroup ? (m.group_id || '_single') : '_single';
+        var groupLabel = m.group_name || m.group_number || '—';
+        var clientKey = m.client_name || '—';
+        var familyKey = m.head_of_family || '—';
+        if (!byGroup[groupKey]) byGroup[groupKey] = { label: groupLabel, clients: {} };
+        if (!byGroup[groupKey].clients[clientKey]) byGroup[groupKey].clients[clientKey] = {};
+        if (!byGroup[groupKey].clients[clientKey][familyKey]) byGroup[groupKey].clients[clientKey][familyKey] = [];
+        byGroup[groupKey].clients[clientKey][familyKey].push(m);
+    });
+
+    var html = '<div class="table-responsive"><table class="table table-sm table-hover mb-0"><thead class="thead-light"><tr>' +
+        '<th class="text-center" style="width:4%;">#</th>' +
+        '<th style="width:13%;">' + fnT('name') + '</th>' +
+        '<th style="width:11%;">' + fnT('col_fname') + '</th>' +
+        '<th style="width:10%;">' + fnT('col_passport') + '</th>' +
+        '<th style="width:22%;">' + fnT('service_type') + '</th>' +
+        '<th class="text-center" style="width:10%;">' + fnT('cost') + '</th>' +
+        '<th class="text-center" style="width:10%;">' + fnT('total_selling') + '</th>' +
+        '<th class="text-center" style="width:10%;">' + fnT('gross_profit') + '</th>' +
+        '</tr></thead><tbody>';
+
+    var i = 0;
+    var grandCost = 0, grandSold = 0, grandProfit = 0;
+    var totalRegular = 0, totalExtra = 0;
+
+    Object.keys(byGroup).sort().forEach(function (groupKey) {
+        var groupData = byGroup[groupKey];
+        var groupName = groupData.label;
+        var clients = groupData.clients;
+
+        // Group header (only when multi-group)
+        if (isMultiGroup) {
+            html += '<tr><td colspan="8" style="background:#374151; color:#fff; font-weight:700; border-top:2px solid #111827;">' +
+                '<i class="feather icon-layers mr-1"></i>' + fnT('group_name') + ': ' + fnEsc(groupName) + '</td></tr>';
+        }
+
+        var groupCost = 0, groupSold = 0, groupProfit = 0;
+
+        Object.keys(clients).sort().forEach(function (clientName) {
+            var families = clients[clientName];
+
+            // Client header
+            html += '<tr><td colspan="8" style="background:#dbeafe; font-weight:700; border-top:2px solid #3b82f6;">' +
+                fnT('client') + ': ' + fnEsc(clientName) + '</td></tr>';
+
+            Object.keys(families).sort().forEach(function (familyName) {
+                var fmembers = families[familyName];
+                var famCost = 0, famSold = 0, famProfit = 0;
+                var famRegular = 0, famExtra = 0;
+
+                fmembers.forEach(function (m) {
+                    famCost += m.cost_total || 0;
+                    famSold += m.sold_total || 0;
+                    famProfit += m.profit || 0;
+                    if (m.is_extra_bed || m.is_extra_transport) { famExtra++; } else { famRegular++; }
+                });
+
+                // Family header
+                var extraLabel = famExtra > 0 ? ' + ' + famExtra + ' extra' : '';
+                html += '<tr><td colspan="8" style="background:#f3f4f6; font-weight:600; border-top:1px solid #9ca3af;">' +
+                    fnT('family') + ': ' + fnEsc(familyName) + ' (' + famRegular + ' ' + fnT('member') + extraLabel + ')</td></tr>';
+
+                // Member rows
+                fmembers.forEach(function (m) {
+                    i++;
+                    var extraTag = (m.is_extra_bed || m.is_extra_transport) ? ' <span style="color:#d97706;font-size:9px;font-weight:600;">(extra)</span>' : '';
+                    var profitCls = (m.profit || 0) >= 0 ? 'text-success' : 'text-danger';
+
+                    html += '<tr>' +
+                        '<td class="text-center">' + i + '</td>' +
+                        '<td>' + fnEsc(m.name) + extraTag + '</td>' +
+                        '<td>' + fnEsc(m.fname) + '</td>' +
+                        '<td>' + fnEsc(m.passport_number) + '</td>' +
+                        '<td>';
+
+                    if (m.services && m.services.length) {
+                        m.services.forEach(function (s) {
+                            html += '<span style="display:block;">' + fnEsc(s.label) + ' &mdash; <b>' + fnMoney(s.cost, 'USD') + '</b></span>';
+                        });
+                    } else {
+                        html += '<span style="color:#6b7280;">&mdash;</span>';
+                    }
+
+                    html += '</td>' +
+                        '<td class="text-center">' + fnMoney(m.cost_total, 'USD') + '</td>' +
+                        '<td class="text-center">' + fnMoney(m.sold_total, 'USD') + '</td>' +
+                        '<td class="text-center font-weight-bold ' + profitCls + '">' + fnMoney(m.profit, 'USD') + '</td>' +
+                        '</tr>';
+                });
+
+                // Family subtotal
+                var famProfitCls = famProfit >= 0 ? 'text-success' : 'text-danger';
+                html += '<tr style="background:#fef3c7;font-weight:600;border-top:1px solid #d97706;">' +
+                    '<td colspan="5" style="padding-left:20px;">' + fnEsc(familyName) + ' &mdash; Subtotal</td>' +
+                    '<td class="text-center">' + fnMoney(famCost, 'USD') + '</td>' +
+                    '<td class="text-center">' + fnMoney(famSold, 'USD') + '</td>' +
+                    '<td class="text-center ' + famProfitCls + '">' + fnMoney(famProfit, 'USD') + '</td>' +
+                    '</tr>';
+
+                groupCost += famCost; groupSold += famSold; groupProfit += famProfit;
+                totalRegular += famRegular; totalExtra += famExtra;
+            });
+
+            // Client subtotal (only when multi-group)
+            if (isMultiGroup) {
+                var clientProfitCls = groupProfit >= 0 ? 'text-success' : 'text-danger';
+            }
+        });
+
+        // Group subtotal (only when multi-group)
+        if (isMultiGroup) {
+            var grpProfitCls = groupProfit >= 0 ? 'text-success' : 'text-danger';
+            html += '<tr style="background:#374151; color:#fff; font-weight:700; border-top:2px solid #111827;">' +
+                '<td colspan="5">' + fnT('group_name') + ': ' + fnEsc(groupName) + ' &mdash; Subtotal</td>' +
+                '<td class="text-center">' + fnMoney(groupCost, 'USD') + '</td>' +
+                '<td class="text-center">' + fnMoney(groupSold, 'USD') + '</td>' +
+                '<td class="text-center ' + grpProfitCls + '">' + fnMoney(groupProfit, 'USD') + '</td>' +
+                '</tr>';
+            grandCost += groupCost; grandSold += groupSold; grandProfit += groupProfit;
+        } else {
+            grandCost += groupCost; grandSold += groupSold; grandProfit += groupProfit;
+        }
+    });
+
+    // Grand total
+    var memberLabel = totalRegular + ' ' + fnT('member') + (totalExtra > 0 ? ' + ' + totalExtra + ' extra' : '');
+    var grandProfitCls = grandProfit >= 0 ? 'text-success' : 'text-danger';
+    html += '<tr style="background:#e5e7eb;font-weight:700;border-top:2px solid #374151;">' +
+        '<td colspan="5">' + fnT('grand_total') + ' (' + memberLabel + ')</td>' +
+        '<td class="text-center">' + fnMoney(grandCost, 'USD') + '</td>' +
+        '<td class="text-center">' + fnMoney(grandSold, 'USD') + '</td>' +
+        '<td class="text-center ' + grandProfitCls + '">' + fnMoney(grandProfit, 'USD') + '</td>' +
+        '</tr>';
+
+    html += '</tbody></table></div>';
+    $table.html(html);
+}
+
+function loadProfitGroups() {
+    var dateFrom = $('#profitDateFrom').val();
+    var dateTo = $('#profitDateTo').val();
+    var params = { report: 'service_groups' };
+    if (dateFrom) params.date_from = dateFrom;
+    if (dateTo) params.date_to = dateTo;
+
+    $.ajax({
+        url: '../api/umrah/get_finance_report.php',
+        type: 'GET',
+        dataType: 'json',
+        data: params,
+        headers: { 'X-CSRF-Token': window.csrfToken || '' }
+    }).then(function (resp) {
+        if (!resp.success || !resp.data) return;
+        var $sel = $('#profitGroupSelect');
+        var prevVals = $sel.val() || [];
+        var html = '';
+        resp.data.forEach(function (g) {
+            var selected = prevVals.indexOf(String(g.group_id)) >= 0 ? ' selected' : '';
+            html += '<option value="' + g.group_id + '"' + selected + '>#' + fnEsc(g.group_number) + ' — ' + fnEsc(g.group_name) + '</option>';
+        });
+        $sel.html(html);
+    });
+}
+
+function loadGroupProfitDetail() {
+    var dateFrom = $('#profitDateFrom').val();
+    var dateTo = $('#profitDateTo').val();
+    var groupIds = $('#profitGroupSelect').val() || [];
+
+    $('#memberProfitTable').html('<div class="text-muted py-4 text-center">' + fnT('loading') + '...</div>');
+
+    var params = { report: 'group_profit_detail' };
+    if (groupIds.length) params.group_ids = groupIds.join(',');
+    if (dateFrom) params.date_from = dateFrom;
+    if (dateTo) params.date_to = dateTo;
+
+    $.ajax({
+        url: '../api/umrah/get_finance_report.php',
+        type: 'GET',
+        dataType: 'json',
+        data: params,
+        headers: { 'X-CSRF-Token': window.csrfToken || '' }
+    }).then(function (resp) {
+        if (!resp.success || !resp.data) {
+            showToast('error', fnT('load_failed'));
+            return;
+        }
+        window.profitDetailData = { group_ids: groupIds, date_from: dateFrom, date_to: dateTo };
+        renderGroupProfitDetail(resp.data);
+    }).catch(function () {
+        showToast('error', fnT('load_failed'));
+    });
+}
+
+function openProfitPrint() {
+    var d = window.profitDetailData || {};
+    var lang = $('#profitLangSelect').val() || 'en';
+    var url = '../api/umrah/profit_report_template.php?scope=group&language=' + encodeURIComponent(lang);
+    if (d.group_ids && d.group_ids.length === 1) {
+        url += '&id=' + d.group_ids[0];
+    }
+    if (d.date_from) url += '&date_from=' + encodeURIComponent(d.date_from);
+    if (d.date_to) url += '&date_to=' + encodeURIComponent(d.date_to);
+    if (d.group_ids && d.group_ids.length > 1) url += '&group_ids=' + encodeURIComponent(d.group_ids.join(','));
+    window.open(url, '_blank');
+}
+
+function openProfitExcel() {
+    var d = window.profitDetailData || {};
+    var lang = $('#profitLangSelect').val() || 'en';
+    var url = '../api/umrah/profit_report_excel.php?scope=group&language=' + encodeURIComponent(lang);
+    if (d.group_ids && d.group_ids.length === 1) {
+        url += '&id=' + d.group_ids[0];
+    }
+    if (d.date_from) url += '&date_from=' + encodeURIComponent(d.date_from);
+    if (d.date_to) url += '&date_to=' + encodeURIComponent(d.date_to);
+    if (d.group_ids && d.group_ids.length > 1) url += '&group_ids=' + encodeURIComponent(d.group_ids.join(','));
+    window.open(url, '_blank');
+}
+
 function renderServiceProfit(rows) {
     if (!rows.length) {
         $('#serviceProfitTable').html('<div class="text-muted py-4 text-center">' + fnT('no_data') + '</div>');
@@ -244,151 +480,149 @@ function renderOutstanding(rows, totals) {
 // ===================================================== SERVICE REPORT TAB
 let serviceReportData = null;
 
-function renderServiceReportStats(totals) {
+function renderServiceReportStats(data) {
     fnStatCards('serviceReportStats', [
-        { label: fnT('total_members'), value: totals.members || 0 },
-        { label: fnT('total_cost'), value: fnMoney(totals.cost, 'USD') },
-        { label: fnT('total_selling'), value: fnMoney(totals.sold, 'USD') },
-        { label: fnT('gross_profit'), value: fnMoney(totals.profit, 'USD') },
+        { label: fnT('total_members'), value: data.total_members || 0 },
+        { label: fnT('total_cost'), value: fnMoney(data.cost_total, 'USD') },
+        { label: fnT('service_type'), value: data.service_count || 0 },
     ]);
 }
 
 function renderServiceReportTable(data) {
-    const groupBy = data.group_by;
-    const $table = $('#serviceReportTable');
-
-    if (groupBy === 'service') {
-        if (!data.services || !data.services.length) {
-            $table.html('<div class="text-muted py-4 text-center">' + fnT('no_data') + '</div>');
-            return;
-        }
-        let html = '<div class="table-responsive"><table class="table table-sm table-hover mb-0"><thead class="thead-light"><tr>' +
-            '<th>#</th><th>' + fnT('service_type') + '</th><th>' + fnT('member') + '</th><th>' + fnT('cost') + '</th>' +
-            '</tr></thead><tbody>';
-        let totalCost = 0;
-        data.services.forEach(function (r, i) {
-            totalCost += parseFloat(r.total_cost || 0);
-            html += '<tr>' +
-                '<td>' + (i + 1) + '</td>' +
-                '<td class="font-weight-bold">' + fnEsc(r.service_name || r.service_type) + '</td>' +
-                '<td>' + (r.member_count || 0) + '</td>' +
-                '<td class="font-weight-bold">' + fnMoney(r.total_cost, 'USD') + '</td>' +
-                '</tr>';
-        });
-        html += '<tr style="background:#e5e7eb;font-weight:700;">' +
-            '<td colspan="2">' + fnT('grand_total') + '</td>' +
-            '<td>' + (data.summary.total_members || 0) + '</td>' +
-            '<td>' + fnMoney(totalCost, 'USD') + '</td>' +
-            '</tr>';
-        html += '</tbody></table></div>';
-        $table.html(html);
-
-    } else if (groupBy === 'group') {
-        if (!data.details || !data.details.length) {
-            $table.html('<div class="text-muted py-4 text-center">' + fnT('no_data') + '</div>');
-            return;
-        }
-        let html = '<div class="table-responsive"><table class="table table-sm table-hover mb-0"><thead class="thead-light"><tr>' +
-            '<th>#</th><th>' + fnT('group_name') + '</th><th>' + fnT('service_type') + '</th><th>' + fnT('member') + '</th><th>' + fnT('cost') + '</th>' +
-            '</tr></thead><tbody>';
-        let ri = 0;
-        data.details.forEach(function (grp) {
-            ri++;
-            html += '<tr style="background:#dbeafe;font-weight:700;">' +
-                '<td>' + ri + '</td>' +
-                '<td colspan="4">#' + fnEsc(grp.group_number) + ' — ' + fnEsc(grp.group_name) + ' (' + grp.member_count + ' ' + fnT('member') + ')</td>' +
-                '</tr>';
-            if (grp.services) {
-                Object.values(grp.services).forEach(function (svc) {
-                    html += '<tr>' +
-                        '<td></td>' +
-                        '<td style="padding-left:20px;">— ' + fnEsc(svc.service_name || svc.service_type) + '</td>' +
-                        '<td></td>' +
-                        '<td>' + (svc.member_count || 0) + '</td>' +
-                        '<td class="font-weight-bold">' + fnMoney(svc.total_cost, 'USD') + '</td>' +
-                        '</tr>';
-                });
-            }
-            html += '<tr style="background:#fef3c7;font-weight:600;">' +
-                '<td></td>' +
-                '<td style="padding-left:20px;">Subtotal</td>' +
-                '<td></td>' +
-                '<td>' + grp.member_count + '</td>' +
-                '<td>' + fnMoney(grp.total_cost, 'USD') + '</td>' +
-                '</tr>';
-        });
-        html += '<tr style="background:#e5e7eb;font-weight:700;">' +
-            '<td colspan="3">' + fnT('grand_total') + '</td>' +
-            '<td>' + (data.summary.total_members || 0) + '</td>' +
-            '<td>' + fnMoney(data.summary.total_cost, 'USD') + '</td>' +
-            '</tr>';
-        html += '</tbody></table></div>';
-        $table.html(html);
-
-    } else if (groupBy === 'family') {
-        if (!data.details || !data.details.length) {
-            $table.html('<div class="text-muted py-4 text-center">' + fnT('no_data') + '</div>');
-            return;
-        }
-        let html = '<div class="table-responsive"><table class="table table-sm table-hover mb-0"><thead class="thead-light"><tr>' +
-            '<th>#</th><th>' + fnT('family') + '</th><th>' + fnT('group_name') + '</th><th>' + fnT('service_type') + '</th><th>' + fnT('member') + '</th><th>' + fnT('cost') + '</th>' +
-            '</tr></thead><tbody>';
-        let ri = 0;
-        data.details.forEach(function (fam) {
-            ri++;
-            html += '<tr style="background:#f3f4f6;font-weight:600;">' +
-                '<td>' + ri + '</td>' +
-                '<td colspan="5">' + fnEsc(fam.head_of_family) + ' — ' + fnEsc(fam.group_name || '') + ' (' + fam.member_count + ' ' + fnT('member') + ')</td>' +
-                '</tr>';
-            if (fam.services) {
-                Object.values(fam.services).forEach(function (svc) {
-                    html += '<tr>' +
-                        '<td></td>' +
-                        '<td style="padding-left:20px;">— ' + fnEsc(svc.service_name || svc.service_type) + '</td>' +
-                        '<td></td>' +
-                        '<td></td>' +
-                        '<td>' + (svc.member_count || 0) + '</td>' +
-                        '<td class="font-weight-bold">' + fnMoney(svc.total_cost, 'USD') + '</td>' +
-                        '</tr>';
-                });
-            }
-            html += '<tr style="background:#fef3c7;font-weight:600;">' +
-                '<td></td>' +
-                '<td style="padding-left:20px;">Subtotal</td>' +
-                '<td></td>' +
-                '<td></td>' +
-                '<td>' + fam.member_count + '</td>' +
-                '<td>' + fnMoney(fam.total_cost, 'USD') + '</td>' +
-                '</tr>';
-        });
-        html += '<tr style="background:#e5e7eb;font-weight:700;">' +
-            '<td colspan="4">' + fnT('grand_total') + '</td>' +
-            '<td>' + (data.summary.total_members || 0) + '</td>' +
-            '<td>' + fnMoney(data.summary.total_cost, 'USD') + '</td>' +
-            '</tr>';
-        html += '</tbody></table></div>';
-        $table.html(html);
+    var $table = $('#serviceReportTable');
+    var members = data.members || [];
+    if (!members.length) {
+        $table.html('<div class="text-muted py-4 text-center">' + fnT('no_data') + '</div>');
+        return;
     }
+
+    // Group by client → family (like profit report)
+    var byClient = {};
+    members.forEach(function (m) {
+        var clientKey = m.client_name || '—';
+        var familyKey = m.head_of_family || '—';
+        if (!byClient[clientKey]) byClient[clientKey] = {};
+        if (!byClient[clientKey][familyKey]) byClient[clientKey][familyKey] = [];
+        byClient[clientKey][familyKey].push(m);
+    });
+
+    var html = '<div class="table-responsive"><table class="table table-sm table-hover mb-0"><thead class="thead-light"><tr>' +
+        '<th class="text-center" style="width:4%;">#</th>' +
+        '<th style="width:14%;">' + fnT('name') + '</th>' +
+        '<th style="width:12%;">' + fnT('col_fname') + '</th>' +
+        '<th style="width:11%;">' + fnT('col_passport') + '</th>' +
+        '<th style="width:24%;">' + fnT('service_type') + '</th>' +
+        '<th class="text-center" style="width:15%;">' + fnT('cost') + ' (USD)</th>' +
+        '</tr></thead><tbody>';
+
+    var i = 0;
+    var grandCost = 0;
+    var totalRegular = 0;
+    var totalExtra = 0;
+
+    Object.keys(byClient).sort().forEach(function (clientName) {
+        var families = byClient[clientName];
+
+        // Client header
+        html += '<tr class="client-header"><td colspan="6" style="background:#dbeafe; font-weight:700; border-top:2px solid #3b82f6;">' +
+            fnT('client') + ': ' + fnEsc(clientName) + '</td></tr>';
+
+        Object.keys(families).sort().forEach(function (familyName) {
+            var fmembers = families[familyName];
+            var famCost = 0;
+            var famRegular = 0;
+            var famExtra = 0;
+
+            fmembers.forEach(function (m) {
+                famCost += m.cost_total || 0;
+                if (m.is_extra_bed || m.is_extra_transport) { famExtra++; } else { famRegular++; }
+            });
+
+            // Family header
+            var extraLabel = famExtra > 0 ? ' + ' + famExtra + ' extra' : '';
+            html += '<tr class="family-header"><td colspan="6" style="background:#f3f4f6; font-weight:600; border-top:1px solid #9ca3af;">' +
+                fnT('family') + ': ' + fnEsc(familyName) + ' (' + famRegular + ' ' + fnT('member') + extraLabel + ')</td></tr>';
+
+            // Member rows
+            fmembers.forEach(function (m) {
+                i++;
+                var extraTag = (m.is_extra_bed || m.is_extra_transport) ? ' <span style="color:#d97706;font-size:9px;font-weight:600;">(extra)</span>' : '';
+                html += '<tr>' +
+                    '<td class="text-center">' + i + '</td>' +
+                    '<td>' + fnEsc(m.name) + extraTag + '</td>' +
+                    '<td>' + fnEsc(m.fname) + '</td>' +
+                    '<td>' + fnEsc(m.passport_number) + '</td>' +
+                    '<td>';
+
+                if (m.services && m.services.length) {
+                    m.services.forEach(function (s) {
+                        html += '<span style="display:block;">' + fnEsc(s.label) + ' &mdash; <b>' + fnMoney(s.cost, 'USD') + '</b></span>';
+                    });
+                } else {
+                    html += '<span style="color:#6b7280;">&mdash;</span>';
+                }
+
+                html += '</td>' +
+                    '<td class="text-center font-weight-bold">' + fnMoney(m.cost_total, 'USD') + '</td>' +
+                    '</tr>';
+            });
+
+            // Family subtotal
+            html += '<tr style="background:#fef3c7;font-weight:600;border-top:1px solid #d97706;">' +
+                '<td colspan="5" style="padding-left:20px;">' + fnEsc(familyName) + ' &mdash; Subtotal</td>' +
+                '<td class="text-center">' + fnMoney(famCost, 'USD') + '</td>' +
+                '</tr>';
+
+            grandCost += famCost;
+            totalRegular += famRegular;
+            totalExtra += famExtra;
+        });
+    });
+
+    // Grand total
+    var memberLabel = totalRegular + ' ' + fnT('member') + (totalExtra > 0 ? ' + ' + totalExtra + ' extra' : '');
+    html += '<tr style="background:#e5e7eb;font-weight:700;border-top:2px solid #374151;">' +
+        '<td colspan="5">' + fnT('grand_total') + ' (' + memberLabel + ')</td>' +
+        '<td class="text-center">' + fnMoney(grandCost, 'USD') + '</td>' +
+        '</tr>';
+
+    html += '</tbody></table></div>';
+    $table.html(html);
 }
 
 function loadServiceReport() {
     var dateFrom = $('#svcDateFrom').val();
     var dateTo = $('#svcDateTo').val();
-    var groupBy = $('#svcGroupBy').val();
 
     if (!dateFrom || !dateTo) {
         showToast('warning', 'Please select date range');
         return;
     }
 
+    // Collect selected service types from badge buttons
+    var serviceTypes = [];
+    $('.svc-type-badge.active').each(function () {
+        serviceTypes.push($(this).data('svc'));
+    });
+
+    var groupId = $('#svcGroupFilter').val() || '';
+
     $('#serviceReportTable').html('<div class="text-muted py-4 text-center">' + fnT('loading') + '...</div>');
     $('#serviceReportStats').html('');
+
+    var params = { report: 'service_detail', date_from: dateFrom, date_to: dateTo };
+    if (serviceTypes.length) {
+        params.service_types = serviceTypes.join(',');
+    }
+    if (groupId) {
+        params.group_id = groupId;
+    }
 
     $.ajax({
         url: '../api/umrah/get_finance_report.php',
         type: 'GET',
         dataType: 'json',
-        data: { report: 'service_detail', date_from: dateFrom, date_to: dateTo, group_by: groupBy },
+        data: params,
         headers: { 'X-CSRF-Token': window.csrfToken || '' }
     }).then(function (resp) {
         if (!resp.success || !resp.data) {
@@ -396,7 +630,8 @@ function loadServiceReport() {
             return;
         }
         serviceReportData = resp.data;
-        renderServiceReportStats(resp.data.totals || resp.data.summary);
+        serviceReportData.service_types = serviceTypes;
+        renderServiceReportStats(resp.data);
         renderServiceReportTable(resp.data);
         $('#btnExportServiceExcel').prop('disabled', false);
         $('#btnPrintServiceReport').prop('disabled', false);
@@ -405,12 +640,46 @@ function loadServiceReport() {
     });
 }
 
+function loadServiceGroups() {
+    var dateFrom = $('#svcDateFrom').val();
+    var dateTo = $('#svcDateTo').val();
+    if (!dateFrom || !dateTo) return;
+
+    var $sel = $('#svcGroupFilter');
+    var prevVal = $sel.val();
+    $sel.html('<option value="">' + fnT('loading') + '...</option>');
+
+    $.ajax({
+        url: '../api/umrah/get_finance_report.php',
+        type: 'GET',
+        dataType: 'json',
+        data: { report: 'service_groups', date_from: dateFrom, date_to: dateTo },
+        headers: { 'X-CSRF-Token': window.csrfToken || '' }
+    }).then(function (resp) {
+        if (!resp.success || !resp.data) {
+            $sel.html('<option value="">' + fnT('no_data') + '</option>');
+            return;
+        }
+        var html = '<option value="">' + fnT('all') + '</option>';
+        resp.data.forEach(function (g) {
+            var label = '#' + g.group_number + ' — ' + g.group_name;
+            html += '<option value="' + g.group_id + '">' + fnEsc(label) + '</option>';
+        });
+        $sel.html(html);
+        if (prevVal) $sel.val(prevVal);
+    }).catch(function () {
+        $sel.html('<option value="">' + fnT('load_failed') + '</option>');
+    });
+}
+
 function openServiceReportPrint() {
     if (!serviceReportData) return;
     var url = '../api/umrah/service_report_template.php?date_from=' + encodeURIComponent(serviceReportData.date_from) +
         '&date_to=' + encodeURIComponent(serviceReportData.date_to) +
-        '&group_by=' + encodeURIComponent(serviceReportData.group_by) +
         '&language=en';
+    if (serviceReportData.service_types && serviceReportData.service_types.length) {
+        url += '&service_types=' + encodeURIComponent(serviceReportData.service_types.join(','));
+    }
     window.open(url, '_blank');
 }
 
@@ -418,8 +687,10 @@ function exportServiceReportExcel() {
     if (!serviceReportData) return;
     var url = '../api/umrah/service_report_excel.php?date_from=' + encodeURIComponent(serviceReportData.date_from) +
         '&date_to=' + encodeURIComponent(serviceReportData.date_to) +
-        '&group_by=' + encodeURIComponent(serviceReportData.group_by) +
         '&language=en';
+    if (serviceReportData.service_types && serviceReportData.service_types.length) {
+        url += '&service_types=' + encodeURIComponent(serviceReportData.service_types.join(','));
+    }
     window.open(url, '_blank');
 }
 
@@ -462,10 +733,50 @@ $(function () {
     $('#btnPrintServiceReport').on('click', openServiceReportPrint);
     $('#btnExportServiceExcel').on('click', exportServiceReportExcel);
 
+    // Group Profitability handlers
+    $('#btnLoadProfitDetail').on('click', loadGroupProfitDetail);
+    $('#btnProfitPrint').on('click', openProfitPrint);
+    $('#btnProfitExcel').on('click', openProfitExcel);
+
+    // Reload groups when date range changes
+    var profitDateTimer = null;
+    $('#profitDateFrom, #profitDateTo').on('change', function () {
+        clearTimeout(profitDateTimer);
+        profitDateTimer = setTimeout(function () { loadProfitGroups(); }, 300);
+    });
+
+    // Set default dates for profit tab
+    var now2 = new Date();
+    var firstOfMonth2 = new Date(now2.getFullYear(), now2.getMonth(), 1);
+    var fmt2 = function (d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+    $('#profitDateTo').val(fmt2(now2));
+    $('#profitDateFrom').val(fmt2(firstOfMonth2));
+
+    loadProfitGroups();
+
+    // Load groups when dates change
+    var dateLoadTimer = null;
+    function onSvcDateChange() {
+        clearTimeout(dateLoadTimer);
+        dateLoadTimer = setTimeout(function () {
+            loadServiceGroups();
+        }, 300);
+    }
+    $('#svcDateFrom, #svcDateTo').on('change', onSvcDateChange);
+
+    // Toggle badge buttons
+    $('#svcTypeBadges').on('click', '.svc-type-badge', function (e) {
+        e.preventDefault();
+        $(this).toggleClass('active');
+    });
+
     // Set default dates: first of current month to today
     var now = new Date();
     var firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     var fmt = function (d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
     $('#svcDateTo').val(fmt(now));
     $('#svcDateFrom').val(fmt(firstOfMonth));
+
+    // Load groups on init
+    loadServiceGroups();
 });

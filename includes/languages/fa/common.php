@@ -5567,6 +5567,7 @@ return [
 'group_by' => 'گروپ بندی',
 'generate' => 'ایجاد',
 'select_date_range_and_generate' => 'دوره زمانی را انتخاب کنید و ایجاد را کلیک کنید',
+'hold_ctrl_to_select_multiple' => 'برای انتخاب چندگانه Ctrl را نگه دارید',
 'grand_total' => 'مجموع کلی',
 'group_profitability' => 'لابسته گروپ',
 ];

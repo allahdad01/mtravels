@@ -225,7 +225,7 @@ if (empty($errors)) {
         ['key' => 'smtp_from_email', 'value' => $smtp_from_email, 'type' => 'string', 'description' => 'Email address to send from'],
         ['key' => 'smtp_from_name', 'value' => $smtp_from_name, 'type' => 'string', 'description' => 'Name to display in sent emails'],
         ['key' => 'smtp_enabled', 'value' => $smtp_enabled, 'type' => 'integer', 'description' => 'Enable/Disable SMTP email sending'],
-        ['key' => 'gemini_api_key', 'value' => $gemini_api_key, 'type' => 'string', 'description' => 'Google Gemini API key for AI passport extraction'],
+        ['key' => 'gemini_api_key', 'value' => $gemini_api_key, 'type' => 'string', 'description' => 'Google Gemini API key for AI passport extraction and name translation'],
     ];
 
     // Handle file uploads - only add to settings if new files were uploaded

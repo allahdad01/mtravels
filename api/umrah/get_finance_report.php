@@ -398,9 +398,142 @@ if ($report === 'service_detail') {
     require_once __DIR__ . '/service_report_data.php';
     $dateFrom = isset($_GET['date_from']) ? trim($_GET['date_from']) : null;
     $dateTo = isset($_GET['date_to']) ? trim($_GET['date_to']) : null;
-    $groupBy = isset($_GET['group_by']) && in_array($_GET['group_by'], ['service', 'group', 'family'], true) ? $_GET['group_by'] : 'service';
-    $data = service_report_load($pdo, $tenant_id, $branch_id, $dateFrom, $dateTo, $groupBy);
+    $groupId = isset($_GET['group_id']) ? (int)$_GET['group_id'] : null;
+    $serviceTypes = [];
+    if (!empty($_GET['service_types'])) {
+        $raw = explode(',', $_GET['service_types']);
+        $allowed = ['visa', 'hotel', 'transport', 'flight', 'meal', 'ziyarat'];
+        foreach ($raw as $st) {
+            $st = strtolower(trim($st));
+            if (in_array($st, $allowed)) $serviceTypes[] = $st;
+        }
+    }
+    $data = service_report_load($pdo, $tenant_id, $branch_id, $dateFrom, $dateTo, $serviceTypes, $groupId);
     echo json_encode(['success' => true, 'report' => 'service_detail', 'data' => $data]);
+    exit;
+}
+
+if ($report === 'service_groups') {
+    $dateFrom = isset($_GET['date_from']) ? trim($_GET['date_from']) : null;
+    $dateTo = isset($_GET['date_to']) ? trim($_GET['date_to']) : null;
+    if (empty($dateFrom)) $dateFrom = date('Y-m-d', strtotime('-12 months'));
+    if (empty($dateTo)) $dateTo = date('Y-m-d');
+    $dateFromTs = $dateFrom . ' 00:00:00';
+    $dateToTs = $dateTo . ' 23:59:59';
+
+    $stmt = $pdo->prepare("
+        SELECT DISTINCT g.group_id, g.group_number, g.group_name
+        FROM umrah_fulfillments ful
+        JOIN umrah_booking_services bs ON ful.booking_service_id = bs.id AND bs.tenant_id = ful.tenant_id
+        JOIN umrah_bookings b ON bs.booking_id = b.booking_id AND b.tenant_id = bs.tenant_id
+        JOIN families f ON b.family_id = f.family_id AND f.tenant_id = b.tenant_id
+        JOIN umrah_groups g ON f.group_id = g.group_id AND f.tenant_id = g.tenant_id
+        WHERE ful.tenant_id = ?
+          AND b.branch_id = ?
+          AND ful.status != 'cancelled'
+          AND b.status NOT IN ('refunded', 'cancelled')
+          AND bs.is_excluded = 0
+          AND ful.created_at BETWEEN ? AND ?
+        ORDER BY CAST(g.group_number AS UNSIGNED) ASC, g.group_id ASC
+    ");
+    $stmt->execute([$tenant_id, $branch_id, $dateFromTs, $dateToTs]);
+    $groups = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    echo json_encode(['success' => true, 'report' => 'service_groups', 'data' => $groups]);
+    exit;
+}
+
+if ($report === 'group_profit_detail') {
+    $groupIds = [];
+    if (!empty($_GET['group_ids'])) {
+        $raw = explode(',', $_GET['group_ids']);
+        foreach ($raw as $gid) {
+            $gid = (int)trim($gid);
+            if ($gid > 0) $groupIds[] = $gid;
+        }
+    } elseif (!empty($_GET['group_id'])) {
+        $gid = (int)$_GET['group_id'];
+        if ($gid > 0) $groupIds[] = $gid;
+    }
+    $dateFrom = isset($_GET['date_from']) ? trim($_GET['date_from']) : null;
+    $dateTo = isset($_GET['date_to']) ? trim($_GET['date_to']) : null;
+
+    require_once __DIR__ . '/profit_report_data.php';
+
+    // If no groups selected, find all groups with bookings in date range
+    if (empty($groupIds)) {
+        $grpSql = "SELECT DISTINCT g.group_id
+                   FROM umrah_bookings b
+                   JOIN families f ON b.family_id = f.family_id AND f.tenant_id = b.tenant_id
+                   JOIN umrah_groups g ON f.group_id = g.group_id AND f.tenant_id = g.tenant_id
+                   WHERE b.tenant_id = ? AND b.branch_id = ? AND b.status NOT IN ('refunded','cancelled')";
+        $grpParams = [$tenant_id, $branch_id];
+        if (!empty($dateFrom)) { $grpSql .= " AND b.created_at >= ?"; $grpParams[] = $dateFrom . ' 00:00:00'; }
+        if (!empty($dateTo))   { $grpSql .= " AND b.created_at <= ?"; $grpParams[] = $dateTo . ' 23:59:59'; }
+        $grpSql .= " ORDER BY CAST(g.group_number AS UNSIGNED) ASC, g.group_id ASC";
+        $grpStmt = $pdo->prepare($grpSql);
+        $grpStmt->execute($grpParams);
+        while ($gr = $grpStmt->fetch(PDO::FETCH_ASSOC)) {
+            $groupIds[] = (int)$gr['group_id'];
+        }
+    }
+
+    if (empty($groupIds)) {
+        echo json_encode(['success' => true, 'report' => 'group_profit_detail', 'data' => ['members' => [], 'cost_total' => 0, 'sold_total' => 0, 'profit_total' => 0]]);
+        exit;
+    }
+
+    // Load each group and merge members
+    $allMembers = [];
+    $costTotal = 0; $soldTotal = 0; $profitTotal = 0;
+    foreach ($groupIds as $gid) {
+        $data = profit_report_load($pdo, $tenant_id, $branch_id, 'group', $gid);
+        if ($data === null || empty($data['members'])) continue;
+        // Apply date filter if set
+        $members = $data['members'];
+        if (!empty($dateFrom) || !empty($dateTo)) {
+            $filtered = [];
+            foreach ($members as $m) {
+                // Filter by fulfillment date: check if member has fulfillments in range
+                $fStmt = $pdo->prepare("
+                    SELECT 1 FROM umrah_fulfillments ful
+                    JOIN umrah_booking_services bs ON ful.booking_service_id = bs.id AND bs.tenant_id = ful.tenant_id
+                    WHERE bs.booking_id = ? AND ful.tenant_id = ? AND ful.status != 'cancelled'
+                      AND bs.is_excluded = 0
+                ");
+                $fParams = [$m['booking_id'], $tenant_id];
+                $fSql = "SELECT 1 FROM umrah_fulfillments ful
+                         JOIN umrah_booking_services bs ON ful.booking_service_id = bs.id AND bs.tenant_id = ful.tenant_id
+                         WHERE bs.booking_id = ? AND ful.tenant_id = ? AND ful.status != 'cancelled' AND bs.is_excluded = 0";
+                if (!empty($dateFrom)) { $fSql .= " AND ful.created_at >= ?"; $fParams[] = $dateFrom . ' 00:00:00'; }
+                if (!empty($dateTo))   { $fSql .= " AND ful.created_at <= ?"; $fParams[] = $dateTo . ' 23:59:59'; }
+                $fSql .= " LIMIT 1";
+                $fStmt = $pdo->prepare($fSql);
+                $fStmt->execute($fParams);
+                if ($fStmt->fetch()) {
+                    $filtered[] = $m;
+                }
+            }
+            $members = $filtered;
+        }
+        foreach ($members as $m) {
+            $allMembers[] = $m;
+            $costTotal += $m['cost_total'] ?? 0;
+            $soldTotal += $m['sold_total'] ?? 0;
+            $profitTotal += $m['profit'] ?? 0;
+        }
+    }
+
+    echo json_encode([
+        'success' => true,
+        'report' => 'group_profit_detail',
+        'data' => [
+            'members'       => $allMembers,
+            'cost_total'    => round($costTotal, 2),
+            'sold_total'    => round($soldTotal, 2),
+            'profit_total'  => round($profitTotal, 2),
+            'total_members' => count($allMembers),
+        ]
+    ]);
     exit;
 }
 

@@ -673,6 +673,34 @@ input:checked + .slider:before {
                                 </div>
                             </div>
 
+                            <!-- Translation Engine Card -->
+                            <div class="sa-card">
+                                <div class="sa-card-hdr">
+                                    <h3><i class="feather icon.globe" style="margin-right:8px"></i>Translation Engine (Gemini)</h3>
+                                </div>
+                                <div class="sa-card-body">
+                                    <div class="form-grid">
+                                        <div class="form-group" style="grid-column: 1 / -1">
+                                            <label class="form-label" for="gemini_api_key">Gemini API Key</label>
+                                            <input type="password" class="form-control" id="gemini_api_key" name="gemini_api_key"
+                                                   value="<?= htmlspecialchars($settings_map['gemini_api_key'] ?? '') ?>"
+                                                   placeholder="AIza...">
+                                            <small style="color:var(--muted);font-size:0.78rem;margin-top:4px;display:block">
+                                                Used for passport scanning (extracts name in Arabic script).
+                                                Arabic names are saved to the dictionary — reports use stored translations with zero API calls.
+                                                Falls back to Gemini for names not yet in the dictionary.
+                                                Leave empty to use offline transliteration only.
+                                            </small>
+                                            <div style="margin-top:10px">
+                                                <a href="name_dictionary.php" class="btn btn-outline-primary btn-sm">
+                                                    <i class="fas fa-language me-1"></i>Manage Name Dictionary
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Action Buttons -->
                             <div class="action-buttons">
                                 <button type="button" class="sa-btn sa-btn-ghost" onclick="resetForm()">

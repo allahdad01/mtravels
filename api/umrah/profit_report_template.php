@@ -35,14 +35,81 @@ try {
 $scope = isset($_GET['scope']) && in_array($_GET['scope'], ['group', 'family', 'member'], true) ? $_GET['scope'] : 'member';
 $scopeId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $docLanguage = isset($_GET['language']) && in_array($_GET['language'], ['ps', 'dari', 'en']) ? $_GET['language'] : 'dari';
+$dateFrom = isset($_GET['date_from']) ? trim($_GET['date_from']) : null;
+$dateTo = isset($_GET['date_to']) ? trim($_GET['date_to']) : null;
 
-$data = profit_report_load($pdo, $tenant_id, $branch_id, $scope, $scopeId);
-if ($data === null) {
-    die('Invalid request: scope not found');
+// Support multiple group_ids
+$groupIds = [];
+if (!empty($_GET['group_ids'])) {
+    $raw = explode(',', $_GET['group_ids']);
+    foreach ($raw as $gid) {
+        $gid = (int)trim($gid);
+        if ($gid > 0) $groupIds[] = $gid;
+    }
+}
+
+if ($scope === 'group' && !empty($groupIds)) {
+    // Merge multiple groups into one data set
+    $allMembers = [];
+    $costTotal = 0; $soldTotal = 0; $profitTotal = 0;
+    foreach ($groupIds as $gid) {
+        $gData = profit_report_load($pdo, $tenant_id, $branch_id, 'group', $gid);
+        if ($gData && !empty($gData['members'])) {
+            $allMembers = array_merge($allMembers, $gData['members']);
+            $costTotal += $gData['cost_total'];
+            $soldTotal += $gData['sold_total'];
+            $profitTotal += $gData['profit_total'];
+        }
+    }
+    $data = [
+        'scope'        => 'group',
+        'scope_id'     => 0,
+        'title_name'   => count($groupIds) > 1 ? count($groupIds) . ' Groups' : ($allMembers[0]['head_of_family'] ?? ''),
+        'members'      => $allMembers,
+        'cost_total'   => $costTotal,
+        'sold_total'   => $soldTotal,
+        'profit_total' => $profitTotal,
+    ];
+    $scopeTitle = $data['title_name'];
+} else {
+    $data = profit_report_load($pdo, $tenant_id, $branch_id, $scope, $scopeId);
+    if ($data === null) {
+        die('Invalid request: scope not found');
+    }
+    $scopeTitle = translate_name($data['title_name'] ?? '', $docLanguage);
+}
+
+// Apply date filter if set
+if (($dateFrom || $dateTo) && !empty($data['members'])) {
+    $filtered = [];
+    foreach ($data['members'] as $m) {
+        $fSql = "SELECT 1 FROM umrah_fulfillments ful
+                 JOIN umrah_booking_services bs ON ful.booking_service_id = bs.id AND bs.tenant_id = ful.tenant_id
+                 WHERE bs.booking_id = ? AND ful.tenant_id = ? AND ful.status != 'cancelled' AND bs.is_excluded = 0";
+        $fParams = [$m['booking_id'], $tenant_id];
+        if ($dateFrom) { $fSql .= " AND ful.created_at >= ?"; $fParams[] = $dateFrom . ' 00:00:00'; }
+        if ($dateTo)   { $fSql .= " AND ful.created_at <= ?"; $fParams[] = $dateTo . ' 23:59:59'; }
+        $fSql .= " LIMIT 1";
+        $fStmt = $pdo->prepare($fSql);
+        $fStmt->execute($fParams);
+        if ($fStmt->fetch()) {
+            $filtered[] = $m;
+        }
+    }
+    $data['members'] = $filtered;
+    // Recalculate totals
+    $data['cost_total'] = 0; $data['sold_total'] = 0; $data['profit_total'] = 0;
+    foreach ($data['members'] as $m) {
+        $data['cost_total'] += $m['cost_total'] ?? 0;
+        $data['sold_total'] += $m['sold_total'] ?? 0;
+        $data['profit_total'] += $m['profit'] ?? 0;
+    }
+    $data['cost_total'] = round($data['cost_total'], 2);
+    $data['sold_total'] = round($data['sold_total'], 2);
+    $data['profit_total'] = round($data['profit_total'], 2);
 }
 
 $agencyName = translate_name($settings['agency_name'] ?? '', $docLanguage);
-$scopeTitle = translate_name($data['title_name'] ?? '', $docLanguage);
 
 foreach ($data['members'] as &$m) {
     $m['name'] = translate_name($m['name'] ?? '', $docLanguage);
@@ -85,6 +152,7 @@ $langLabels = [
         'client' => 'کلاینت',
         'family' => 'فامیل',
         'extra_beds' => 'بسترهای اضافی',
+        'group_name' => 'گروپ',
     ],
     'ps' => [
         'doc_title' => 'د ګټې راپور',
@@ -114,6 +182,7 @@ $langLabels = [
         'client' => 'کلاینت',
         'family' => 'کورنۍ',
         'extra_beds' => 'اضافي بستر',
+        'group_name' => 'ګروپ',
     ],
     'en' => [
         'doc_title' => 'Profit Report',
@@ -143,6 +212,7 @@ $langLabels = [
         'client' => 'Client',
         'family' => 'Family',
         'extra_beds' => 'Extra Beds',
+        'group_name' => 'Group',
     ],
 ];
 $L = $langLabels[$docLanguage];
@@ -233,6 +303,7 @@ $fmt = function ($v) {
         .client-header td { background: #dbeafe !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .family-header td { background: #f3f4f6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .family-total td { background: #fef3c7 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .group-header td { background: #374151 !important; color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .print-button {
             position: fixed;
             top: 20px;
@@ -300,14 +371,38 @@ $fmt = function ($v) {
                 foreach ($data['members'] as $m) {
                     if (!empty($m['is_extra_bed']) || !empty($m['is_extra_transport'])) { $totalExtraBeds++; } else { $totalMembers++; }
                 }
-                $byClient = [];
+
+                // Detect multi-group
+                $distinctGroups = [];
                 foreach ($data['members'] as $m) {
+                    $gid = $m['group_id'] ?? 0;
+                    if ($gid && !isset($distinctGroups[$gid])) {
+                        $distinctGroups[$gid] = $m['group_name'] ?? $m['group_number'] ?? ('#'.$gid);
+                    }
+                }
+                $isMultiGroup = count($distinctGroups) > 1;
+
+                // Build group → client → family hierarchy
+                $byGroup = [];
+                foreach ($data['members'] as $m) {
+                    $groupKey = $isMultiGroup ? ($m['group_id'] ?? 0) : '_single';
                     $clientKey = $m['client_name'] ?? '—';
                     $familyKey = $m['head_of_family'] ?? '—';
-                    $byClient[$clientKey][$familyKey][] = $m;
+                    $byGroup[$groupKey][$clientKey][$familyKey][] = $m;
                 }
                 $i = 0;
-                foreach ($byClient as $clientName => $families):
+
+                foreach ($byGroup as $groupKey => $clients):
+                    if ($isMultiGroup):
+            ?>
+            <tr class="group-header" style="background:#374151; color:#fff;">
+                <td colspan="9" style="background:#374151; color:#fff; font-weight:700; font-size:11px; border-top:2px solid #111827; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
+                    <?php echo htmlspecialchars($L['group_name'] ?? 'Group'); ?>: <?php echo htmlspecialchars($distinctGroups[$groupKey]); ?>
+                </td>
+            </tr>
+            <?php
+                    endif;
+                    foreach ($clients as $clientName => $families):
             ?>
             <tr class="client-header">
                 <td colspan="9" style="background:#dbeafe; font-weight:700; font-size:11px; border-top:2px solid #3b82f6;">
@@ -359,7 +454,7 @@ $fmt = function ($v) {
                 <td class="num" style="font-weight:600;"><?php echo $fmt(0); ?></td>
                 <td class="num" style="font-weight:600;" class="<?php echo $famProfit < 0 ? 'profit-neg' : 'profit-pos'; ?>"><?php echo $fmt($famProfit); ?></td>
             </tr>
-            <?php endforeach; endforeach; ?>
+            <?php endforeach; endforeach; endforeach; ?>
             <tr class="grand-total">
                 <td colspan="5"><?php echo htmlspecialchars($L['grand_total']); ?> (<?php echo $totalMembers; ?> <?php echo htmlspecialchars($L['members']); ?><?php if ($totalExtraBeds > 0): ?> + <?php echo $totalExtraBeds; ?> <?php echo htmlspecialchars($L['extra_beds']); ?><?php endif; ?>)</td>
                 <td class="num"><?php echo $fmt($data['cost_total']); ?></td>

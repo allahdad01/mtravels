@@ -137,6 +137,8 @@ $canEdit = user_can('umrah.member_edit');
                                         COALESCE(fam_split.regular_total_paid, 0) AS regular_total_paid,
                                         COALESCE(fam_split.extra_bed_price, 0) AS extra_bed_price,
                                         COALESCE(fam_split.extra_bed_paid, 0) AS extra_bed_paid,
+                                        COALESCE(fam_split.extra_transport_price, 0) AS extra_transport_price,
+                                        COALESCE(fam_split.extra_transport_paid, 0) AS extra_transport_paid,
                                         COUNT(DISTINCT CASE WHEN c.client_type = 'agency' AND COALESCE(ub.is_extra_bed, 0) = 0 AND COALESCE(ub.is_extra_transport, 0) = 0 THEN ub.booking_id END) AS agency_member_count,
                                         COUNT(DISTINCT CASE WHEN c.client_type = 'regular' AND COALESCE(ub.is_extra_bed, 0) = 0 AND COALESCE(ub.is_extra_transport, 0) = 0 THEN ub.booking_id END) AS regular_member_count
                                     FROM umrah_groups g
@@ -749,7 +751,7 @@ $canEdit = user_can('umrah.member_edit');
                         // Assign fund_allocation to each result family (use computed totals, not stale families.total_price)
                         foreach ($resultFamilies as &$fam) {
                             $fId = (int)$fam['family_id'];
-                            $famComputedTotal = floatval($fam['agency_total_price'] ?? 0) + floatval($fam['regular_total_price'] ?? 0) + floatval($fam['extra_bed_price'] ?? 0);
+                            $famComputedTotal = floatval($fam['agency_total_price'] ?? 0) + floatval($fam['regular_total_price'] ?? 0) + floatval($fam['extra_bed_price'] ?? 0) + floatval($fam['extra_transport_price'] ?? 0);
                             $rawAlloc = $familyFundAllocations[$fId] ?? 0;
                             $fam['fund_allocation'] = min($rawAlloc, $famComputedTotal);
                         }
@@ -943,7 +945,7 @@ $canEdit = user_can('umrah.member_edit');
                                                     <span class="label"><?= __('total_price') ?></span>
                                                     <?php if ($hasPriceSplit): ?>
                                                     <span class="value" style="font-size:0.75rem;">
-                                                        <span style="color:#0e7490;"><?= number_format($aPrice) ?></span> + <span style="color:#7c3aed;"><?= number_format($rPrice) ?></span><?php if ($ebPrice > 0): ?> + <span style="color:#ea580c;"><?= number_format($ebPrice) ?></span><?php endif; ?> =
+                                                        <span style="color:#0e7490;"><?= number_format($aPrice) ?></span> + <span style="color:#7c3aed;"><?= number_format($rPrice) ?></span><?php if ($ebPrice > 0): ?> + <span style="color:#ea580c;"><?= number_format($ebPrice) ?></span><?php endif; ?><?php if ($etPrice > 0): ?> + <span style="color:#d97706;"><?= number_format($etPrice) ?></span><?php endif; ?> =
                                                         <?= number_format($groupTotal) ?> <?= __('usd') ?>
                                                     </span>
                                                     <?php else: ?>
@@ -1626,7 +1628,7 @@ $canEdit = user_can('umrah.member_edit');
                                                     <?php $hasSplit = $aPrice > 0 && $rPrice > 0; ?>
                                                     <?php if ($hasSplit): ?>
                                                     <span class="value" style="font-size:0.75rem;">
-                                                        <span style="color:#0e7490;"><?= number_format($aPrice) ?></span> + <span style="color:#7c3aed;"><?= number_format($rPrice) ?></span><?php if ($ebPrice > 0): ?> + <span style="color:#ea580c;"><?= number_format($ebPrice) ?></span><?php endif; ?> =
+                                                        <span style="color:#0e7490;"><?= number_format($aPrice) ?></span> + <span style="color:#7c3aed;"><?= number_format($rPrice) ?></span><?php if ($ebPrice > 0): ?> + <span style="color:#ea580c;"><?= number_format($ebPrice) ?></span><?php endif; ?><?php if ($etPrice > 0): ?> + <span style="color:#d97706;"><?= number_format($etPrice) ?></span><?php endif; ?> =
                                                         <?= number_format($totalPrice) ?> <?= $familyCurrency ?>
                                                     </span>
                                                     <?php else: ?>

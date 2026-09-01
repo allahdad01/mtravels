@@ -51,38 +51,13 @@ if ($file['size'] > 10 * 1024 * 1024) {
 }
 
 try {
-    // Get tenant and branch info from session
-    $tenantId = $_SESSION['tenant_id'] ?? null;
-    $branchId = $_SESSION['branch_id'] ?? null;
-
-    if (!$tenantId || !$branchId) {
-        throw new Exception('Missing tenant or branch information');
-    }
-
-    // Create upload directory: uploads/tenant_id/branch_id/umrah/family_id/
     $uploadBase = __DIR__ . '/../../uploads';
-    $uploadDir = $uploadBase . '/' . $tenantId . '/' . $branchId . '/umrah/';
-    if ($familyId) {
-        $uploadDir .= $familyId . '/';
-    }
 
-    if (!is_dir($uploadDir)) {
-        if (!@mkdir($uploadDir, 0755, true)) {
-            throw new Exception('Could not create upload directory');
-        }
-    }
-
-    // Clean up old passport document if re-uploading for the same family
-    if ($familyId) {
-        $sql = "SELECT passport_path FROM umrah_bookings WHERE family_id = ? AND tenant_id = ? AND branch_id = ? AND passport_path IS NOT NULL AND passport_path != '' LIMIT 1";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([$familyId, $tenantId, $branchId]);
-        $old = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($old && $old['passport_path']) {
-            $oldFile = $uploadBase . $old['passport_path'];
-            if (file_exists($oldFile)) {
-                @unlink($oldFile);
-            }
+    // Save to temp directory — moved to final location only when member is saved
+    $tempDir = $uploadBase . '/temp';
+    if (!is_dir($tempDir)) {
+        if (!@mkdir($tempDir, 0755, true)) {
+            throw new Exception('Could not create temp upload directory');
         }
     }
 
@@ -97,8 +72,8 @@ try {
     }
     
     $filename = "passport_document_{$timestamp}_{$random}.{$ext}";
-    $filepath = $uploadDir . $filename;
-    $relativePath = '/uploads/' . $tenantId . '/' . $branchId . '/umrah/' . ($familyId ? $familyId . '/' : '') . $filename;
+    $filepath = $tempDir . '/' . $filename;
+    $relativePath = '/uploads/temp/' . $filename;
 
     // Move uploaded file
     if (!move_uploaded_file($file['tmp_name'], $filepath)) {
@@ -108,7 +83,7 @@ try {
     http_response_code(200);
     echo json_encode([
         'success' => true,
-        'message' => 'Passport document saved successfully',
+        'message' => 'Passport document saved temporarily',
         'document_path' => $relativePath,
         'filename' => $filename
     ]);

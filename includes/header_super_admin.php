@@ -947,6 +947,12 @@ if (!function_exists('h')) {
                         <span class="pcoded-mtext">Platform Settings</span>
                     </a>
                 </li>
+                <li data-username="name_dictionary" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'name_dictionary.php' ? 'active' : ''; ?>">
+                    <a href="name_dictionary.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="fas fa-language"></i></span>
+                        <span class="pcoded-mtext">Name Dictionary</span>
+                    </a>
+                </li>
                 <li data-username="audit_logs" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'audit_logs.php' ? 'active' : ''; ?>">
                     <a href="audit_logs.php" class="nav-link">
                         <span class="pcoded-micon"><i class="feather icon-activity"></i></span>

@@ -442,6 +442,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt_log->bindValue(6, $tenant_id, PDO::PARAM_INT);
             $stmt_log->bindValue(7, $branch_id, PDO::PARAM_INT);
             $stmt_log->execute();
+
+            // Move temp files to final location
+            require_once __DIR__ . '/../../includes/file_helpers.php';
+            $moved = move_temp_files_to_final($pdo, $tenant_id, $branch_id, $family_id, $passport_path, $photo_path);
+            if ($moved['passport_path'] || $moved['photo_path']) {
+                $updatePaths = $pdo->prepare("UPDATE umrah_bookings SET passport_path = COALESCE(?, passport_path), photo_path = COALESCE(?, photo_path) WHERE booking_id = ?");
+                $updatePaths->execute([$moved['passport_path'], $moved['photo_path'], $umrah_id]);
+            }
         }
 
         // Commit transaction
