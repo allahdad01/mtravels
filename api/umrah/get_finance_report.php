@@ -527,11 +527,12 @@ if ($report === 'group_profit_detail') {
         'success' => true,
         'report' => 'group_profit_detail',
         'data' => [
-            'members'       => $allMembers,
-            'cost_total'    => round($costTotal, 2),
-            'sold_total'    => round($soldTotal, 2),
-            'profit_total'  => round($profitTotal, 2),
-            'total_members' => count($allMembers),
+            'members'         => $allMembers,
+            'cost_total'      => round($costTotal, 2),
+            'sold_total'      => round($soldTotal, 2),
+            'profit_total'    => round($profitTotal, 2),
+            'total_members'   => count($allMembers),
+            '_all_group_ids'  => array_map('intval', $groupIds),
         ]
     ]);
     exit;

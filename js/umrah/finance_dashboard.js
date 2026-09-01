@@ -257,21 +257,27 @@ function loadProfitGroups() {
         headers: { 'X-CSRF-Token': window.csrfToken || '' }
     }).then(function (resp) {
         if (!resp.success || !resp.data) return;
-        var $sel = $('#profitGroupSelect');
-        var prevVals = $sel.val() || [];
-        var html = '';
-        resp.data.forEach(function (g) {
-            var selected = prevVals.indexOf(String(g.group_id)) >= 0 ? ' selected' : '';
-            html += '<option value="' + g.group_id + '"' + selected + '>#' + fnEsc(g.group_number) + ' — ' + fnEsc(g.group_name) + '</option>';
-        });
-        $sel.html(html);
+        if (typeof window.populateGroupDropdown === 'function') {
+            window.populateGroupDropdown(resp.data);
+        } else {
+            var $sel = $('#profitGroupSelect');
+            var html = '';
+            resp.data.forEach(function (g) {
+                html += '<option value="' + g.group_id + '">#' + fnEsc(g.group_number) + ' — ' + fnEsc(g.group_name) + '</option>';
+            });
+            $sel.html(html);
+        }
     });
 }
 
 function loadGroupProfitDetail() {
     var dateFrom = $('#profitDateFrom').val();
     var dateTo = $('#profitDateTo').val();
-    var groupIds = $('#profitGroupSelect').val() || [];
+    var groupIds = (typeof window.getSelectedGroupIds === 'function') ? window.getSelectedGroupIds() : [];
+    if (!groupIds.length) {
+        var groupVal = $('#profitGroupSelect').val() || '';
+        groupIds = Array.isArray(groupVal) ? groupVal : (groupVal && groupVal !== 'all' ? [groupVal] : []);
+    }
 
     $('#memberProfitTable').html('<div class="text-muted py-4 text-center">' + fnT('loading') + '...</div>');
 
@@ -291,7 +297,7 @@ function loadGroupProfitDetail() {
             showToast('error', fnT('load_failed'));
             return;
         }
-        window.profitDetailData = { group_ids: groupIds, date_from: dateFrom, date_to: dateTo };
+        window.profitDetailData = { group_ids: groupIds.length ? groupIds : (resp.data._all_group_ids || []), date_from: dateFrom, date_to: dateTo };
         renderGroupProfitDetail(resp.data);
     }).catch(function () {
         showToast('error', fnT('load_failed'));
