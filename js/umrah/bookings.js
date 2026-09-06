@@ -197,42 +197,35 @@ function openEditFamilyModal(familyId, headOfFamily, contact, address, tazmin, f
     $('#editFamilyModal').modal('show');
 }
 
-function deleteFamily(familyId) {
-    if (confirm('Are you sure you want to delete this family')) {
-        const deleteBtn = event.target.closest('button');
-        if (deleteBtn) {
-            const originalHtml = deleteBtn.innerHTML;
-            deleteBtn.disabled = true;
-            deleteBtn.innerHTML = '<i class="feather icon-loader"></i> Deleting...';
-        }
-        
-        fetch('../api/umrah/delete_family.php', {
-            method: 'POST',
-            body: JSON.stringify({ family_id: familyId }),
-            headers: { 'Content-Type': 'application/json' }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('Family deleted successfully');
-                location.reload();
-            } else {
-                alert('Error deleting family: ' + data.message);
-                if (deleteBtn) {
-                    deleteBtn.disabled = false;
-                    deleteBtn.innerHTML = originalHtml;
-                }
-            }
-        })
-        .catch(error => {
+function deleteFamily(e, familyId) {
+    if (!confirm('Are you sure you want to delete this family?')) return;
 
-            alert('An error occurred while deleting the family');
-            if (deleteBtn) {
-                deleteBtn.disabled = false;
-                deleteBtn.innerHTML = originalHtml;
-            }
-        });
+    var deleteBtn = e.target.closest('button, a');
+    var originalHtml = deleteBtn ? deleteBtn.innerHTML : '';
+    if (deleteBtn) {
+        deleteBtn.disabled = true;
+        deleteBtn.innerHTML = '<i class="feather icon-loader"></i> Deleting...';
     }
+
+    fetch('../api/umrah/delete_family.php', {
+        method: 'POST',
+        body: JSON.stringify({ family_id: familyId }),
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken || '' }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert(data.message);
+            if (deleteBtn) { deleteBtn.disabled = false; deleteBtn.innerHTML = originalHtml; }
+        }
+    })
+    .catch(function() {
+        alert('An error occurred while deleting the family.');
+        if (deleteBtn) { deleteBtn.disabled = false; deleteBtn.innerHTML = originalHtml; }
+    });
 }
 
 function deleteBooking(bookingId) {

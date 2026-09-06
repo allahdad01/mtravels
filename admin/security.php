@@ -53,7 +53,7 @@ if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
 }
 
 // Define allowed roles for admin panel
-$admin_roles = ['admin', 'finance', 'sales', 'umrah', 'staff', 'client', 'operations', 'hotel_manager', 'viewer'];
+$admin_roles = ['super_admin', 'admin', 'finance', 'sales', 'umrah', 'staff', 'client', 'operations', 'hotel_manager', 'viewer'];
 
 // Load Umrah capability-based permissions (Phase 29)
 require_once __DIR__ . '/includes/umrah_permissions.php';

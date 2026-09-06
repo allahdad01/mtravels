@@ -87,19 +87,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
              $received_bank_payment = $umrah_details['received_bank_payment'];
              $booking_currency = $umrah_details['booking_currency'];
 
-            // Get supplier_id from umrah_booking_services, preferring the
-            // fulfillment-assigned supplier (umrah_fulfillments.supplier_id)
-            // with a legacy fallback to the sold-service line supplier.
-            $stmt_fetch_supplier_id = $pdo->prepare("SELECT COALESCE(f.supplier_id, ubs.supplier_id) AS supplier_id FROM umrah_booking_services ubs LEFT JOIN umrah_fulfillments f ON f.booking_service_id = ubs.id AND f.id = (SELECT MIN(f2.id) FROM umrah_fulfillments f2 WHERE f2.booking_service_id = ubs.id AND f2.tenant_id = ubs.tenant_id) WHERE ubs.booking_id = ? AND ubs.tenant_id = ? AND ubs.branch_id = ? AND (ubs.service_type = 'all' OR FIND_IN_SET('visa', REPLACE(ubs.service_type, '+', ',')) > 0) AND COALESCE(f.supplier_id, ubs.supplier_id) IS NOT NULL LIMIT 1");
-            $stmt_fetch_supplier_id->bindParam(1, $booking_id, PDO::PARAM_INT);
-            $stmt_fetch_supplier_id->bindParam(2, $tenant_id, PDO::PARAM_INT);
-            $stmt_fetch_supplier_id->bindParam(3, $branch_id, PDO::PARAM_INT);
-            $stmt_fetch_supplier_id->execute();
-            $supplier_result = $stmt_fetch_supplier_id->fetch(PDO::FETCH_ASSOC);
-            if (!$supplier_result) {
-                throw new PDOException('Supplier not found for booking ID: ' . $booking_id);
+            // Get supplier_id (only needed for bank transactions)
+            $supplier_id = null;
+            if ($transaction_to_lower === 'bank') {
+                $stmt_fetch_supplier_id = $pdo->prepare("SELECT COALESCE(f.supplier_id, ubs.supplier_id) AS supplier_id FROM umrah_booking_services ubs LEFT JOIN umrah_fulfillments f ON f.booking_service_id = ubs.id AND f.id = (SELECT MIN(f2.id) FROM umrah_fulfillments f2 WHERE f2.booking_service_id = ubs.id AND f2.tenant_id = ubs.tenant_id) WHERE ubs.booking_id = ? AND ubs.tenant_id = ? AND ubs.branch_id = ? AND (ubs.service_type = 'all' OR FIND_IN_SET('visa', REPLACE(ubs.service_type, '+', ',')) > 0) AND COALESCE(f.supplier_id, ubs.supplier_id) IS NOT NULL LIMIT 1");
+                $stmt_fetch_supplier_id->bindParam(1, $booking_id, PDO::PARAM_INT);
+                $stmt_fetch_supplier_id->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                $stmt_fetch_supplier_id->bindParam(3, $branch_id, PDO::PARAM_INT);
+                $stmt_fetch_supplier_id->execute();
+                $supplier_result = $stmt_fetch_supplier_id->fetch(PDO::FETCH_ASSOC);
+                if (!$supplier_result) {
+                    throw new PDOException('Supplier not found for booking ID: ' . $booking_id);
+                }
+                $supplier_id = $supplier_result['supplier_id'];
             }
-            $supplier_id = $supplier_result['supplier_id'];
 
             // Insert the transaction (use member's receipt if available, otherwise use global receipt)
              $txn_receipt = !empty($member_receipt_number) ? $member_receipt_number : $receipt_number;
@@ -379,14 +380,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if ($txn_currency === $booking_currency) {
                     $total_paid_in_base_currency += $txn_amount;
+                } elseif ($txn_currency === 'USD' && $booking_currency === 'AFS') {
+                    $total_paid_in_base_currency += ($txn_amount * $txn_exchange_rate);
+                } elseif ($txn_currency === 'AFS' && $booking_currency === 'USD') {
+                    $total_paid_in_base_currency += ($txn_amount / $txn_exchange_rate);
+                } elseif ($txn_currency === 'EUR' && $booking_currency === 'USD') {
+                    $total_paid_in_base_currency += ($txn_amount / $txn_exchange_rate);
+                } elseif (($txn_currency === 'DARHAM' || $txn_currency === 'DAR') && $booking_currency === 'USD') {
+                    $total_paid_in_base_currency += ($txn_amount / $txn_exchange_rate);
+                } elseif ($txn_currency === 'USD' && $booking_currency === 'EUR') {
+                    $total_paid_in_base_currency += ($txn_amount / $txn_exchange_rate);
+                } elseif ($txn_currency === 'AFS' && $booking_currency === 'EUR') {
+                    $total_paid_in_base_currency += ($txn_amount / $txn_exchange_rate);
+                } elseif (($txn_currency === 'DARHAM' || $txn_currency === 'DAR') && $booking_currency === 'AFS') {
+                    $total_paid_in_base_currency += ($txn_amount * $txn_exchange_rate);
                 } else {
-                    if ($booking_currency === 'AFS') {
-                        $total_paid_in_base_currency += ($txn_amount * $txn_exchange_rate);
-                    } elseif ($booking_currency === 'USD') {
-                        $total_paid_in_base_currency += ($txn_amount / $txn_exchange_rate);
-                    } else {
-                        $total_paid_in_base_currency += $txn_amount;
-                    }
+                    $total_paid_in_base_currency += $txn_amount;
                 }
             }
 

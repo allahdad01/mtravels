@@ -236,13 +236,13 @@ try {
     $hasRegularClient = $clientTypeResult && $clientTypeResult['regular_count'] > 0;
     ?>
     <!-- Family-level Bulk Actions -->
-    <div class="family-bulk-actions mb-3">
-        <div class="d-flex gap-2 align-items-center">
-            <button type="button" class="btn btn-sm btn-outline-primary selectAllGroupTicketBtn" data-family-id="<?= $family_id ?>" onclick="selectAllFamilyForGroupTicket(<?= $family_id ?>)">
-                <i class="fas fa-plane mr-1"></i><?= __('select_all_for_group_ticket') ?>
+    <div class="family-bulk-actions">
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:nowrap;">
+            <button type="button" class="selectAllGroupTicketBtn" data-family-id="<?= $family_id ?>" onclick="selectAllFamilyForGroupTicket(<?= $family_id ?>)">
+                <i class="fas fa-plane"></i> <?= __('select_all_for_group_ticket') ?>
             </button>
-            <button type="button" class="btn btn-sm btn-outline-info selectAllIdCardBtn" data-family-id="<?= $family_id ?>" onclick="selectAllFamilyForIdCard(<?= $family_id ?>)">
-                <i class="fas fa-id-card mr-1"></i><?= __('select_all_for_id_cards') ?>
+            <button type="button" class="selectAllIdCardBtn" data-family-id="<?= $family_id ?>" onclick="selectAllFamilyForIdCard(<?= $family_id ?>)">
+                <i class="fas fa-id-card"></i> <?= __('select_all_for_id_cards') ?>
             </button>
         </div>
     </div>
@@ -467,26 +467,49 @@ try {
     
     /* Family Bulk Actions */
     .family-bulk-actions {
-        background: linear-gradient(135deg, rgba(37, 99, 235, 0.05), rgba(59, 130, 246, 0.05));
-        border: 1px solid rgba(37, 99, 235, 0.1);
-        border-radius: var(--radius-lg);
-        padding: 0.75rem 1rem;
-        margin-bottom: 1rem;
+        background: linear-gradient(135deg, rgba(64, 153, 255, 0.06), rgba(46, 216, 182, 0.06));
+        border: 1px solid rgba(64, 153, 255, 0.15);
+        border-radius: var(--radius-md);
+        padding: 0.6rem 0.75rem;
+        margin-bottom: 0.75rem;
     }
     
-    .family-bulk-actions .d-flex {
-        display: flex;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-    }
-    
-    .family-bulk-actions .btn {
+    .family-bulk-actions button {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 12px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        border-radius: 6px;
+        cursor: pointer;
         transition: all var(--transition-fast);
+        white-space: nowrap;
+        border: 1px solid;
     }
     
-    .family-bulk-actions .btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    .selectAllGroupTicketBtn {
+        background: rgba(64, 153, 255, 0.1);
+        border-color: rgba(64, 153, 255, 0.3);
+        color: #2563eb;
+    }
+    
+    .selectAllGroupTicketBtn:hover {
+        background: #4099ff;
+        color: #fff;
+        border-color: #4099ff;
+    }
+    
+    .selectAllIdCardBtn {
+        background: rgba(46, 216, 182, 0.1);
+        border-color: rgba(46, 216, 182, 0.3);
+        color: #0e7490;
+    }
+    
+    .selectAllIdCardBtn:hover {
+        background: #2ed8b6;
+        color: #fff;
+        border-color: #2ed8b6;
     }
     
     /* Member Card Styles */
@@ -515,8 +538,8 @@ try {
         align-items: center;
         gap: 0.75rem;
         padding: 0.75rem;
-        background: linear-gradient(135deg, var(--gray-50) 0%, white 100%);
-        border-bottom: 1px solid var(--gray-200);
+        background: linear-gradient(135deg, rgba(64, 153, 255, 0.04), rgba(46, 216, 182, 0.04));
+        border-bottom: 1px solid rgba(64, 153, 255, 0.1);
         border-radius: var(--radius-md) var(--radius-md) 0 0;
         flex-shrink: 0;
     }
@@ -762,7 +785,7 @@ try {
     }
     
     .section-title i {
-        color: var(--primary-color);
+        color: #4099ff;
     }
     
     .detail-item {
@@ -815,7 +838,7 @@ try {
     .service-tag {
         display: inline-block;
         padding: 0.25rem 0.75rem;
-        background: #dbeafe;
+        background: rgba(64, 153, 255, 0.1);
         color: #1e40af;
         border-radius: var(--radius-md);
         font-size: 0.75rem;
@@ -823,12 +846,11 @@ try {
     }
     
     .bulk-actions-bar {
-        margin-top: 1rem;
-        background: white;
-        border-radius: var(--radius-lg);
-        padding: 1rem;
-        box-shadow: var(--shadow-md);
-        border: 1px solid var(--gray-200);
+        margin-top: 0.75rem;
+        background: linear-gradient(135deg, rgba(64, 153, 255, 0.04), rgba(46, 216, 182, 0.04));
+        border-radius: var(--radius-md);
+        padding: 0.75rem;
+        border: 1px solid rgba(64, 153, 255, 0.1);
     }
     
     .bulk-actions-content {

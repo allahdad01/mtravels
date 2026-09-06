@@ -154,9 +154,9 @@ $exchange_rate = isset($_POST['exchange_rate']) ? DbSecurity::validateInput($_PO
             } elseif ($txn_currency === 'USD' && $booking_currency === 'EUR') {
                 $total_paid_in_base_currency += ($txn_amount / $txn_exchange_rate);
             } elseif ($txn_currency === 'AFS' && $booking_currency === 'EUR') {
-                $total_paid_in_base_currency += (($txn_amount / $txn_exchange_rate) / $txn_exchange_rate);
+                $total_paid_in_base_currency += ($txn_amount / $txn_exchange_rate);
             } elseif (($txn_currency === 'DARHAM' || $txn_currency === 'DAR') && $booking_currency === 'AFS') {
-                $total_paid_in_base_currency += ($txn_amount / $txn_exchange_rate * $txn_exchange_rate);
+                $total_paid_in_base_currency += ($txn_amount * $txn_exchange_rate);
             } else {
                 $total_paid_in_base_currency += $txn_amount;
             }

@@ -99,23 +99,37 @@
                     <div class="row">
                         <div class="col-md-6">
                     <div class="form-group">
-                        <label for="amount"><?= __('amount') ?></label>
+                        <label for="amount"><?= __('from_amount') ?> (<?= __('send') ?>)</label>
                                 <div class="input-group">
                                     <div class="input-group-prepend">
                                         <span class="input-group-text bg-light"><i class="fas fa-coins"></i></span>
                                     </div>
-                        <input type="number" class="form-control" id="amount" name="amount" step="0.01" required>
+                        <input type="number" class="form-control" id="amount" name="amount" step="0.01" placeholder="0.00" required>
                     </div>
                             </div>
                         </div>
                         <div class="col-md-6">
                     <div class="form-group">
-                        <label for="exchangeRate"><?= __('exchange_rate') ?></label>
+                        <label for="toAmount"><?= __('to_amount') ?> (<?= __('receive') ?>)</label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-light"><i class="fas fa-coins"></i></span>
+                                    </div>
+                        <input type="number" class="form-control" id="toAmount" name="toAmount" step="0.01" placeholder="0.00">
+                    </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="exchangeRate"><?= __('exchange_rate') ?> <small class="text-muted">(<?= __('optional') ?>)</small></label>
                         <div class="input-group">
                             <div class="input-group-prepend">
                                 <span class="input-group-text bg-light"><i class="feather icon-percent"></i></span>
                             </div>
-                            <input type="number" class="form-control" id="exchangeRate" name="exchangeRate" step="0.01" placeholder="0.00" required>
+                            <input type="number" class="form-control" id="exchangeRate" name="exchangeRate" step="0.01" placeholder="0.00">
                             <div class="input-group-append">
                                 <span class="input-group-text bg-light" id="transferFormulaBadge" style="font-weight:700;font-size:16px;">×</span>
                             </div>

@@ -239,8 +239,66 @@ function fillTicketForm(data) {
         setFormField('issueDate', flightData.issue_date || flightData.booked_date);
         
         const fallbackAirline = cleanAirlineValue(flightData.airline);
+        const isRoundTrip = flightData.trip_type === 'Round Trip' || flightData.trip_type === 'round_trip';
         
-        segments.forEach((seg, index) => {
+        // Set trip type dropdown and toggle return group for round trip
+        if (isRoundTrip) {
+            const tripTypeSelect = document.getElementById('tripType');
+            if (tripTypeSelect) {
+                tripTypeSelect.value = 'round_trip';
+                tripTypeSelect.dispatchEvent(new Event('change'));
+            }
+            // Directly show return group in case trip-type.js listener isn't loaded
+            const returnGroup = document.getElementById('returnFlightSegmentsGroup');
+            if (returnGroup) returnGroup.style.display = '';
+        }
+        
+        if (isRoundTrip && segments.length > 1) {
+            // Round trip: first segment = outbound leg 1, remaining segments = return legs
+            const outSeg = segments[0];
+            const outTime = outSeg.dep_time || outSeg.time || outSeg.departure_time;
+            const outArrTime = outSeg.arr_time || outSeg.arrival_time;
+            const outDate = outSeg.date || outSeg.departure_date;
+            const outArrDate = outSeg.arrival_date || outSeg.date || outSeg.departure_date;
+            const outAirline = cleanAirlineValue(outSeg.airline) || fallbackAirline;
+            setFormField('origin', outSeg.origin);
+            setFormField('destination', outSeg.destination);
+            setFormField('airline', outAirline);
+            setFormField('flightNumber', outSeg.flight_number);
+            setFormField('departureDate', outDate);
+            setFormField('departureTime', outTime);
+            setFormField('arrivalDate', outArrDate);
+            setFormField('arrivalTime', outArrTime);
+            
+            // Return segments go into the return flight group
+            // Return Leg 1 already exists as static HTML, only add new rows for legs 2+
+            for (let i = 1; i < segments.length; i++) {
+                const seg = segments[i];
+                const segTime = seg.dep_time || seg.time || seg.departure_time;
+                const segArrTime = seg.arr_time || seg.arrival_time;
+                const segDate = seg.date || seg.departure_date;
+                const segArrDate = seg.arrival_date || seg.date || seg.departure_date;
+                const segAirline = cleanAirlineValue(seg.airline) || fallbackAirline;
+                // Only click add button for legs 2+ (leg 1 is already in the DOM)
+                if (i > 1) {
+                    const addReturnBtn = document.getElementById('addReturnFlightLegBtn');
+                    if (addReturnBtn) addReturnBtn.click();
+                }
+                const rows = document.querySelectorAll('#returnFlightLegsContainer .flight-leg-row');
+                const row = rows[i - 1];
+                if (!row) continue;
+                setLegRowValue(row, 'leg-origin', seg.origin);
+                setLegRowValue(row, 'leg-destination', seg.destination);
+                setLegRowValue(row, 'leg-airline', segAirline);
+                setLegRowValue(row, 'leg-flight-number', seg.flight_number);
+                setLegRowValue(row, 'leg-date', segDate);
+                setLegRowValue(row, 'leg-time', segTime);
+                setLegRowValue(row, 'leg-arrival-date', segArrDate);
+                setLegRowValue(row, 'leg-arrival-time', segArrTime);
+            }
+        } else {
+            // Multi-segment or single: all segments go into outbound legs
+            segments.forEach((seg, index) => {
             const segTime = seg.dep_time || seg.time || seg.departure_time;
             const segArrTime = seg.arr_time || seg.arrival_time;
             const segDate = seg.date || seg.departure_date;
@@ -272,6 +330,7 @@ function fillTicketForm(data) {
                 setLegRowValue(row, 'leg-arrival-time', segArrTime);
             }
         });
+        }
     } else {
         // Map extracted data to modal form field IDs
         // Must match IDs in modals/ticket/book_ticket_modal.php
@@ -403,22 +462,44 @@ function fillTicketForm(data) {
     
     // Set passenger count if we have multiple passengers
     if (data.passengers && Array.isArray(data.passengers) && data.passengers.length > 0) {
-        const passengerCount = data.passengers.length;
+        // Count adults (M/F) vs children (C/Child) based on gender
+        let adultCount = 0;
+        let childCount = 0;
+        data.passengers.forEach(p => {
+            const g = (p.gender || '').toUpperCase();
+            if (g === 'C' || g === 'CHILD') {
+                childCount++;
+            } else {
+                adultCount++;
+            }
+        });
+        // Fallback: if no gender data, treat all as adults
+        if (adultCount === 0 && childCount === 0) {
+            adultCount = data.total_passengers || data.passengers.length;
+        }
 
         
-        // Set adult count
+        // Set adult and child counts (use jQuery to ensure passenger_info.js change listener fires)
         const adultCountField = document.getElementById('adultCount');
+        const childCountField = document.getElementById('childCount');
         if (adultCountField) {
-            adultCountField.value = passengerCount;
-            triggerFieldChange(adultCountField);
-            
-            // Wait for passenger rows to be created, then fill them
-            // Use setTimeout to allow DOM to update
-            setTimeout(() => {
-
-                fillPassengerDataMultiple(data.passengers);
-            }, 500);
+            adultCountField.value = adultCount;
+            // Fire both native and jQuery change events for compatibility
+            adultCountField.dispatchEvent(new Event('change', { bubbles: true }));
+            if (typeof $ !== 'undefined') $(adultCountField).trigger('change');
         }
+        if (childCountField && childCount > 0) {
+            childCountField.value = childCount;
+            childCountField.dispatchEvent(new Event('change', { bubbles: true }));
+            if (typeof $ !== 'undefined') $(childCountField).trigger('change');
+        }
+        
+        // Wait for passenger rows to be created, then fill them
+        // Use setTimeout to allow DOM to update
+        setTimeout(() => {
+
+            fillPassengerDataMultiple(data.passengers);
+        }, 1000);
     } else if (flightData.passenger_name) {
 
         fillPassengerDataSingle(flightData);
@@ -464,6 +545,7 @@ function fillPassengerDataSingle(data) {
 
 /**
  * Fill multiple passenger data from group booking
+ * Sorts passengers: adults (M/F) first, then children (C) to match form row order
  */
 function fillPassengerDataMultiple(passengers) {
     const container = document.getElementById('passengersContainer');
@@ -471,7 +553,14 @@ function fillPassengerDataMultiple(passengers) {
     
 
     
-    passengers.forEach((passenger, index) => {
+    // Sort: adults (M/F) first, then children (C/Child)
+    const sorted = [...passengers].sort((a, b) => {
+        const aIsChild = ((a.gender || '').toUpperCase() === 'C' || (a.gender || '').toUpperCase() === 'CHILD') ? 1 : 0;
+        const bIsChild = ((b.gender || '').toUpperCase() === 'C' || (b.gender || '').toUpperCase() === 'CHILD') ? 1 : 0;
+        return aIsChild - bIsChild;
+    });
+    
+    sorted.forEach((passenger, index) => {
         // Passenger indices in form are 1-based, not 0-based
         const passengerIndex = index + 1;
 
@@ -491,9 +580,32 @@ function fillPassengerDataMultiple(passengers) {
 
             }
             
-            // Fill ticket number if available
-            // Note: ticket fields are not in the standard form structure,
-            // so we skip this for now or add it if needed
+            // Set gender if available
+            const gender = (passenger.gender || '').toUpperCase();
+            if (gender) {
+                const genderField = document.getElementById(`gender_${passengerIndex}`);
+                if (genderField) {
+                    if (gender === 'M' || gender === 'MALE') {
+                        genderField.value = 'Male';
+                    } else if (gender === 'F' || gender === 'FEMALE') {
+                        genderField.value = 'Female';
+                    }
+                    triggerFieldChange(genderField);
+                }
+            }
+            
+            // Set title based on gender (Child for C/Child, Mr/Mrs for M/F)
+            const titleField = document.getElementById(`title_${passengerIndex}`);
+            if (titleField) {
+                if (gender === 'C' || gender === 'CHILD') {
+                    titleField.value = 'Child';
+                } else if (gender === 'F') {
+                    titleField.value = 'Mrs';
+                } else {
+                    titleField.value = 'Mr';
+                }
+                triggerFieldChange(titleField);
+            }
         } else {
 
         }

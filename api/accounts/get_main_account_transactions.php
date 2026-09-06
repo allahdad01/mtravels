@@ -101,6 +101,7 @@ $query = "SELECT mt.*,
                              WHEN mt.transaction_of = 'visa_refund' THEN CONCAT(va.applicant_name, ' (Visa Refund)')
                              WHEN mt.transaction_of = 'weight' THEN CONCAT(tb_weight.passenger_name, ' (Weight)')
                              WHEN mt.transaction_of = 'umrah_refund' THEN CONCAT(ub_refund.name, ' (Umrah Refund)')
+                             WHEN mt.transaction_of = 'umrah_hawala' THEN CONCAT(ca.customer_name, ' (Umrah Hawala)')
                   ELSE CONCAT(mt.reference_id, ' (', mt.transaction_of, ')')
               END AS reference_name
            FROM main_account_transactions mt
@@ -148,6 +149,8 @@ $query = "SELECT mt.*,
            LEFT JOIN visa_applications va_sale ON mt.reference_id = va_sale.id AND mt.transaction_of = 'visa_sale'
            LEFT JOIN umrah_refunds ur ON mt.reference_id = ur.id AND mt.transaction_of = 'umrah_refund'
            LEFT JOIN umrah_bookings ub_refund ON ur.booking_id = ub_refund.booking_id AND mt.transaction_of = 'umrah_refund'
+           LEFT JOIN customer_advance_payments cap ON mt.reference_id = cap.id AND mt.transaction_of = 'umrah_hawala'
+           LEFT JOIN customer_advances ca ON cap.advance_id = ca.id AND mt.transaction_of = 'umrah_hawala'
            WHERE " . $whereClause . "
            ORDER BY mt.id DESC" . ($fetchAll ? "" : " LIMIT ? OFFSET ?");
 

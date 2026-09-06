@@ -125,10 +125,10 @@ function attachFamilyCardListeners() {
     
     // Reattach delete family listeners
     document.querySelectorAll('.delete-family-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', function(e) {
             const familyId = this.getAttribute('data-family-id');
             if (typeof deleteFamily === 'function') {
-                deleteFamily(familyId);
+                deleteFamily(e, familyId);
             }
         });
     });

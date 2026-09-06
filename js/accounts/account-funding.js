@@ -344,10 +344,17 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = Object.fromEntries(formData.entries());
             
             // Validate form
-            if (!data.fromAccount || !data.fromCurrency || !data.toAccount || !data.toCurrency || !data.amount || !data.exchangeRate) {
+            if (!data.fromAccount || !data.fromCurrency || !data.toAccount || !data.toCurrency || !data.amount) {
                 transferBtn.disabled = false;
                 transferBtn.innerHTML = originalHtml;
                 showWarningToast('Please fill in all required fields');
+                return;
+            }
+
+            if (!data.toAmount && !data.exchangeRate) {
+                transferBtn.disabled = false;
+                transferBtn.innerHTML = originalHtml;
+                showWarningToast('Please enter the To Amount or Exchange Rate');
                 return;
             }
             
@@ -412,31 +419,50 @@ document.addEventListener('DOMContentLoaded', function() {
         const help = document.getElementById('transferRateHelp');
         const preview = document.getElementById('transferConvertedPreview');
         const previewText = document.getElementById('transferConvertedText');
+        const rateInput = document.getElementById('exchangeRate');
+        const amountInput = document.getElementById('amount');
+        const toAmountInput = document.getElementById('toAmount');
+
         if (!fromCur || !toCur || fromCur === toCur) {
             badge.textContent = '×';
             help.textContent = '';
             preview.style.display = 'none';
             return;
         }
+
         const pairKey = (fromCur === 'DARHAM' ? 'AED' : fromCur) + '->' + (toCur === 'DARHAM' ? 'AED' : toCur);
         const isDivide = transferDividePairs.includes(pairKey);
         badge.textContent = isDivide ? '÷' : '×';
+
+        const amount = parseFloat(amountInput.value) || 0;
+        const toAmount = parseFloat(toAmountInput.value) || 0;
+        const exchangeRate = parseFloat(rateInput.value) || 0;
+
         const rate = transferSampleRates[pairKey];
-        const rateInput = document.getElementById('exchangeRate');
         if (rate) {
             help.textContent = isDivide
                 ? 'e.g. 1 ' + toCur + ' = ' + rate.toFixed(2) + ' ' + fromCur + ' → enter ' + rate.toFixed(2)
                 : 'e.g. 1 ' + fromCur + ' = ' + rate.toFixed(2) + ' ' + toCur + ' → enter ' + rate.toFixed(2);
-            if (rateInput) rateInput.placeholder = 'e.g. ' + rate.toFixed(2);
+            if (!exchangeRate) rateInput.placeholder = 'e.g. ' + rate.toFixed(2);
         } else {
-            help.textContent = 'Enter the exchange rate';
-            if (rateInput) rateInput.placeholder = '0.00';
+            help.textContent = 'Enter the exchange rate or To Amount';
+            if (!exchangeRate) rateInput.placeholder = '0.00';
         }
-        const amount = parseFloat(document.getElementById('amount').value) || 0;
-        const exchangeRate = parseFloat(document.getElementById('exchangeRate').value) || 0;
-        if (amount > 0 && exchangeRate > 0) {
+
+        // If both amounts entered, auto-calculate exchange rate
+        if (amount > 0 && toAmount > 0 && !exchangeRate) {
+            const autoRate = isDivide ? (amount / toAmount) : (toAmount / amount);
+            rateInput.placeholder = autoRate.toFixed(4);
+            previewText.textContent = toAmount.toFixed(2) + ' ' + toCur + ' (auto rate: ' + autoRate.toFixed(4) + ')';
+            preview.style.display = 'block';
+        // If amount + exchange rate entered, show toAmount preview
+        } else if (amount > 0 && exchangeRate > 0) {
             const converted = isDivide ? amount / exchangeRate : amount * exchangeRate;
             previewText.textContent = converted.toFixed(2) + ' ' + toCur;
+            preview.style.display = 'block';
+        } else if (toAmount > 0 && exchangeRate > 0) {
+            const fromAmountCalc = isDivide ? toAmount * exchangeRate : toAmount / exchangeRate;
+            previewText.textContent = fromAmountCalc.toFixed(2) + ' ' + fromCur;
             preview.style.display = 'block';
         } else {
             preview.style.display = 'none';
@@ -446,6 +472,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('fromCurrency').addEventListener('change', updateTransferHelper);
         document.getElementById('toCurrency').addEventListener('change', updateTransferHelper);
         document.getElementById('amount').addEventListener('input', updateTransferHelper);
+        document.getElementById('toAmount').addEventListener('input', updateTransferHelper);
         document.getElementById('exchangeRate').addEventListener('input', updateTransferHelper);
         $('#transferModal').on('shown.bs.modal', updateTransferHelper);
     }

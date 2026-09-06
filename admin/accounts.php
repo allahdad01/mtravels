@@ -1122,7 +1122,7 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
 <script src="../js/accounts/toast-notifications.js"></script>
 <script src="../js/accounts/printing.js"></script>
 <script src="../js/accounts/account-management.js"></script>
-<script src="../js/accounts/account-funding.js"></script>
+<script src="../js/accounts/account-funding.js?v=2"></script>
 <script src="../js/accounts/account-withdrawal.js"></script>
 <script src="../js/accounts/main-account-withdrawal.js"></script>
 <script>

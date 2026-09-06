@@ -109,22 +109,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
          $received_bank_payment = $umrah_details['received_bank_payment'];
          $booking_currency = $umrah_details['booking_currency'];
 
-        // Get supplier_id from umrah_booking_services, preferring the
-        // fulfillment-assigned supplier (umrah_fulfillments.supplier_id)
-        // with a legacy fallback to the sold-service line supplier.
-        $stmt_fetch_supplier_id = $pdo->prepare("SELECT COALESCE(f.supplier_id, ubs.supplier_id) AS supplier_id FROM umrah_booking_services ubs LEFT JOIN umrah_fulfillments f ON f.booking_service_id = ubs.id AND f.id = (SELECT MIN(f2.id) FROM umrah_fulfillments f2 WHERE f2.booking_service_id = ubs.id AND f2.tenant_id = ubs.tenant_id) WHERE ubs.booking_id = ? AND ubs.tenant_id = ? AND (ubs.branch_id = ? OR (ubs.branch_id IS NULL AND ? IS NULL)) AND (ubs.service_type = 'all' OR FIND_IN_SET('visa', REPLACE(ubs.service_type, '+', ',')) > 0) AND COALESCE(f.supplier_id, ubs.supplier_id) IS NOT NULL LIMIT 1");
-        $stmt_fetch_supplier_id->bindParam(1, $umrah_id, PDO::PARAM_INT);
-        $stmt_fetch_supplier_id->bindParam(2, $tenant_id, PDO::PARAM_INT);
-        $stmt_fetch_supplier_id->bindParam(3, $branch_id, PDO::PARAM_INT);
-        $stmt_fetch_supplier_id->bindParam(4, $branch_id, PDO::PARAM_INT);
-        $stmt_fetch_supplier_id->execute();
-        $supplier_result = $stmt_fetch_supplier_id->fetch(PDO::FETCH_ASSOC);
+        // Get supplier_id from umrah_booking_services (only needed for bank transactions)
+        $supplier_id = null;
+        if ($transaction_to_lower === 'bank') {
+            $stmt_fetch_supplier_id = $pdo->prepare("SELECT COALESCE(f.supplier_id, ubs.supplier_id) AS supplier_id FROM umrah_booking_services ubs LEFT JOIN umrah_fulfillments f ON f.booking_service_id = ubs.id AND f.id = (SELECT MIN(f2.id) FROM umrah_fulfillments f2 WHERE f2.booking_service_id = ubs.id AND f2.tenant_id = ubs.tenant_id) WHERE ubs.booking_id = ? AND ubs.tenant_id = ? AND (ubs.branch_id = ? OR (ubs.branch_id IS NULL AND ? IS NULL)) AND (ubs.service_type = 'all' OR FIND_IN_SET('visa', REPLACE(ubs.service_type, '+', ',')) > 0) AND COALESCE(f.supplier_id, ubs.supplier_id) IS NOT NULL LIMIT 1");
+            $stmt_fetch_supplier_id->bindParam(1, $umrah_id, PDO::PARAM_INT);
+            $stmt_fetch_supplier_id->bindParam(2, $tenant_id, PDO::PARAM_INT);
+            $stmt_fetch_supplier_id->bindParam(3, $branch_id, PDO::PARAM_INT);
+            $stmt_fetch_supplier_id->bindParam(4, $branch_id, PDO::PARAM_INT);
+            $stmt_fetch_supplier_id->execute();
+            $supplier_result = $stmt_fetch_supplier_id->fetch(PDO::FETCH_ASSOC);
 
-        if (!$supplier_result) {
-            throw new PDOException('Supplier not found for this booking.');
+            if (!$supplier_result) {
+                throw new PDOException('Supplier not found for this booking.');
+            }
+
+            $supplier_id = $supplier_result['supplier_id'];
         }
-
-        $supplier_id = $supplier_result['supplier_id'];
 
         // Step 2: Insert the transaction into umrah_transactions table
         $stmt = $pdo->prepare("INSERT INTO umrah_transactions (transaction_type, umrah_booking_id, payment_date, transaction_to, payment_description, payment_amount, currency, receipt, tenant_id, exchange_rate, branch_id) VALUES ('Credit', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
@@ -146,21 +147,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Get the inserted umrah transaction ID
         $umrah_transaction_id = $pdo->lastInsertId();
 
-        // Fetch Supplier Type
-        $stmt_fetch_supplier = $pdo->prepare("SELECT supplier_type, currency, route_payment_to_main_account FROM suppliers WHERE id = ? AND tenant_id = ? AND (branch_id = ? OR (branch_id IS NULL AND ? IS NULL))");
-        $stmt_fetch_supplier->bindParam(1, $supplier_id, PDO::PARAM_INT);
-        $stmt_fetch_supplier->bindParam(2, $tenant_id, PDO::PARAM_INT);
-        $stmt_fetch_supplier->bindParam(3, $branch_id, PDO::PARAM_INT);
-        $stmt_fetch_supplier->bindParam(4, $branch_id, PDO::PARAM_INT);
-        $stmt_fetch_supplier->execute();
-        $supplier_data = $stmt_fetch_supplier->fetch(PDO::FETCH_ASSOC);
+        // Fetch Supplier Type (only for bank transactions)
+        $supplier_type = null;
+        $route_payment_to_main_account = 0;
+        if ($transaction_to_lower === 'bank' && $supplier_id) {
+            $stmt_fetch_supplier = $pdo->prepare("SELECT supplier_type, currency, route_payment_to_main_account FROM suppliers WHERE id = ? AND tenant_id = ? AND (branch_id = ? OR (branch_id IS NULL AND ? IS NULL))");
+            $stmt_fetch_supplier->bindParam(1, $supplier_id, PDO::PARAM_INT);
+            $stmt_fetch_supplier->bindParam(2, $tenant_id, PDO::PARAM_INT);
+            $stmt_fetch_supplier->bindParam(3, $branch_id, PDO::PARAM_INT);
+            $stmt_fetch_supplier->bindParam(4, $branch_id, PDO::PARAM_INT);
+            $stmt_fetch_supplier->execute();
+            $supplier_data = $stmt_fetch_supplier->fetch(PDO::FETCH_ASSOC);
 
-        if (!$supplier_data) {
-            throw new PDOException('Supplier details not found.');
+            if (!$supplier_data) {
+                throw new PDOException('Supplier details not found.');
+            }
+
+            $supplier_type = $supplier_data['supplier_type'];
+            $route_payment_to_main_account = (int)($supplier_data['route_payment_to_main_account'] ?? 0);
         }
-
-        $supplier_type = $supplier_data['supplier_type'];
-        $route_payment_to_main_account = (int)($supplier_data['route_payment_to_main_account'] ?? 0);
 
         // Normalize $transaction_to to lowercase for case-insensitive comparison
         $transaction_type = 'Credit'; // Default transaction type for adding a transaction
@@ -424,20 +429,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Convert to booking's base currency
             if ($txn_currency === $booking_currency) {
-                // Same currency, no conversion needed
                 $total_paid_in_base_currency += $txn_amount;
+            } elseif ($txn_currency === 'USD' && $booking_currency === 'AFS') {
+                $total_paid_in_base_currency += ($txn_amount * $txn_exchange_rate);
+            } elseif ($txn_currency === 'AFS' && $booking_currency === 'USD') {
+                $total_paid_in_base_currency += ($txn_amount / $txn_exchange_rate);
+            } elseif ($txn_currency === 'EUR' && $booking_currency === 'USD') {
+                $total_paid_in_base_currency += ($txn_amount / $txn_exchange_rate);
+            } elseif (($txn_currency === 'DARHAM' || $txn_currency === 'DAR') && $booking_currency === 'USD') {
+                $total_paid_in_base_currency += ($txn_amount / $txn_exchange_rate);
+            } elseif ($txn_currency === 'USD' && $booking_currency === 'EUR') {
+                $total_paid_in_base_currency += ($txn_amount / $txn_exchange_rate);
+            } elseif ($txn_currency === 'AFS' && $booking_currency === 'EUR') {
+                $total_paid_in_base_currency += ($txn_amount / $txn_exchange_rate);
+            } elseif (($txn_currency === 'DARHAM' || $txn_currency === 'DAR') && $booking_currency === 'AFS') {
+                $total_paid_in_base_currency += ($txn_amount * $txn_exchange_rate);
             } else {
-                // FIXED: Apply your simple rule consistently
-                if ($booking_currency === 'AFS') {
-                    // Converting TO AFS: always multiply
-                    $total_paid_in_base_currency += ($txn_amount * $txn_exchange_rate);
-                } elseif ($booking_currency === 'USD') {
-                    // Converting TO USD: always divide
-                    $total_paid_in_base_currency += ($txn_amount / $txn_exchange_rate);
-                } else {
-                    // For other base currencies, add as is
-                    $total_paid_in_base_currency += $txn_amount;
-                }
+                $total_paid_in_base_currency += $txn_amount;
             }
         }
 

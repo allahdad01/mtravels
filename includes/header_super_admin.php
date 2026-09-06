@@ -895,6 +895,12 @@ if (!function_exists('h')) {
                         <span class="pcoded-mtext">Salary Payments</span>
                     </a>
                 </li>
+                <li data-username="transaction_insert" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'transaction_insert.php' ? 'active' : ''; ?>">
+                    <a href="transaction_insert.php" class="nav-link">
+                        <span class="pcoded-micon"><i class="fas fa-exchange-alt"></i></span>
+                        <span class="pcoded-mtext">Insert Transaction</span>
+                    </a>
+                </li>
                 <li data-username="expense_management" class="nav-item pcoded-hasmenu <?php echo in_array(basename($_SERVER['PHP_SELF']), ['system_expenses.php', 'system_expense_categories.php', 'system_revenue.php', 'profit_loss_dashboard.php']) ? 'active' : ''; ?>">
                     <a href="javascript:void(0);" class="nav-link">
                         <span class="pcoded-micon"><i class="fas fa-chart-line"></i></span>

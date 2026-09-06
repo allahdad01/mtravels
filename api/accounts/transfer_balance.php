@@ -34,8 +34,9 @@ $fromCurrency = $data['fromCurrency'];
 $toAccountId = $data['toAccount'];
 $toCurrency = $data['toCurrency'];
 $amount = floatval($data['amount']);
-$exchangeRate = floatval($data['exchangeRate']);
-$description = $data['description'] ?? 'Balance transfer';
+$exchangeRate = floatval($data['exchangeRate'] ?? 0);
+$toAmountInput = floatval($data['toAmount'] ?? 0);
+$customDescription = $data['description'] ?? '';
 
 if ($amount <= 0) {
     echo json_encode(['success' => false, 'message' => 'Amount must be greater than 0']);
@@ -88,27 +89,37 @@ try {
     $fromBalanceField = $balanceFieldMap[$fromCurrencyNorm];
     $toBalanceField = $balanceFieldMap[$toCurrencyNorm];
 
-    // Check if source account has sufficient balance
-    if (!isset($fromAccount[$fromBalanceField]) || $fromAccount[$fromBalanceField] < $amount) {
-        throw new Exception("Insufficient balance in source account");
-    }
+    // Balance check removed — main accounts are allowed to go negative
 
     // Normalize DARHAM -> AED for the pair list only (divide/multiply rules)
     $pairFrom = $fromCurrencyNorm === 'DARHAM' ? 'AED' : $fromCurrencyNorm;
     $pairTo = $toCurrencyNorm === 'DARHAM' ? 'AED' : $toCurrencyNorm;
 
-    // Calculate converted amount based on currency pairs
+    // Calculate converted amount: prefer toAmount if provided, otherwise use exchange rate
     $convertedAmount = 0;
 
-    $dividePairs = ['AFS->AED', 'AFS->EUR', 'AFS->USD', 'AED->EUR', 'AED->USD', 'EUR->USD', 'AFS->SAR', 'SAR->USD', 'SAR->EUR'];
-    $pairKey = "{$pairFrom}->{$pairTo}";
-
-    if ($fromCurrencyNorm === $toCurrencyNorm) {
-        $convertedAmount = $amount;
-    } elseif (in_array($pairKey, $dividePairs)) {
-        $convertedAmount = $amount / $exchangeRate;
+    if ($toAmountInput > 0) {
+        // Direct to-amount provided — use it as-is
+        $convertedAmount = $toAmountInput;
     } else {
-        $convertedAmount = $amount * $exchangeRate;
+        $dividePairs = ['AFS->AED', 'AFS->EUR', 'AFS->USD', 'AED->EUR', 'AED->USD', 'EUR->USD', 'AFS->SAR', 'SAR->USD', 'SAR->EUR'];
+        $pairKey = "{$pairFrom}->{$pairTo}";
+
+        if ($fromCurrencyNorm === $toCurrencyNorm) {
+            $convertedAmount = $amount;
+        } elseif ($exchangeRate > 0 && in_array($pairKey, $dividePairs)) {
+            $convertedAmount = $amount / $exchangeRate;
+        } elseif ($exchangeRate > 0) {
+            $convertedAmount = $amount * $exchangeRate;
+        } else {
+            throw new Exception("Please provide either To Amount or Exchange Rate");
+        }
+    }
+
+    // Auto-generate description with exchange rate details
+    $description = $customDescription ?: "Transfer {$amount} {$fromCurrency} to {$toCurrency}";
+    if ($fromCurrency !== $toCurrency && $exchangeRate > 0) {
+        $description .= " | Rate: {$exchangeRate} | Received: {$convertedAmount} {$toCurrency}";
     }
 
     // Update source account balance
@@ -185,7 +196,7 @@ try {
         'to_account_name' => $toAccount['name'],
         'to_currency' => $toCurrency,
         'amount' => $amount,
-        'converted_amount' => $convertedAmount,
+        'to_amount' => $convertedAmount,
         'exchange_rate' => $exchangeRate,
         'description' => $description
     ];

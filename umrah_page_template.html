@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Umrah Management — Redesign</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#12211D;
+    --teal-deep:#0E2F29;
+    --teal:#154A41;
+    --teal-light:#1F6357;
+    --gold:#C6A15B;
+    --gold-soft:#DCC48C;
+    --gold-deep:#8C6D2E;
+    --stone:#ECEEE3;
+    --surface:#FFFFFF;
+    --surface-alt:#F6F6EE;
+    --line:#DEDCC8;
+    --text:#1B2420;
+    --text-muted:#657069;
+    --rust:#AD5A2C;
+    --green:#2E7D5B;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:var(--stone);
+    font-family:'IBM Plex Sans', sans-serif;
+    color:var(--text);
+    padding:36px;
+  }
+  .page{max-width:1300px; margin:0 auto;}
+
+  /* ---------- HERO ---------- */
+  .hero{
+    position:relative;
+    background:var(--teal-deep);
+    border-radius:4px;
+    overflow:hidden;
+    padding:44px 48px 34px;
+    color:#F4F2E8;
+    isolation:isolate;
+  }
+  .hero::before{
+    content:"";
+    position:absolute; inset:0;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84' viewBox='0 0 84 84'%3E%3Cg fill='none' stroke='%23C6A15B' stroke-width='0.7'%3E%3Cpath d='M42 4 L52 20 L70 20 L58 32 L64 50 L42 40 L20 50 L26 32 L14 20 L32 20 Z'/%3E%3C/g%3E%3C/svg%3E");
+    background-size:84px 84px;
+    opacity:0.16;
+    z-index:0;
+  }
+  .hero-top{
+    position:relative; z-index:1;
+    display:flex; justify-content:space-between; align-items:flex-start; gap:24px; flex-wrap:wrap;
+  }
+  .hero-id{display:flex; gap:18px; align-items:center;}
+  .hero-mark{
+    width:52px; height:52px; border-radius:50%;
+    border:1.5px solid var(--gold);
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+  .hero-mark svg{width:24px; height:24px;}
+  .hero-title{font-family:'Fraunces', serif; font-weight:500; font-size:30px; letter-spacing:0.2px;}
+  .hero-sub{color:var(--gold-soft); font-size:14px; margin-top:5px;}
+  .hero-actions{display:flex; gap:10px;}
+  .btn{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:13.5px; font-weight:500;
+    padding:10px 18px;
+    border-radius:3px;
+    cursor:pointer;
+    display:inline-flex; align-items:center; gap:8px;
+    border:1px solid transparent;
+    transition:background 0.15s ease, border-color 0.15s ease;
+  }
+  .btn svg{width:15px; height:15px;}
+  .btn-ghost{background:transparent; border-color:rgba(220,196,140,0.55); color:#F4F2E8;}
+  .btn-ghost:hover{background:rgba(220,196,140,0.1);}
+  .btn-gold{background:var(--gold); color:var(--teal-deep); font-weight:600;}
+  .btn-gold:hover{background:var(--gold-soft);}
+
+  .hero-stats{
+    position:relative; z-index:1;
+    display:flex; gap:44px; margin-top:34px;
+    padding-top:22px;
+    border-top:1px solid rgba(220,196,140,0.25);
+    flex-wrap:wrap;
+  }
+  .stat b{
+    display:block; font-family:'IBM Plex Mono', monospace; font-size:22px; font-weight:600; color:#fff;
+  }
+  .stat span{font-size:12.5px; color:var(--gold-soft); margin-top:2px; display:block;}
+
+  /* ---------- CONTROLS ---------- */
+  .controls{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-top:30px; gap:24px; flex-wrap:wrap;
+    border-bottom:1px solid var(--line);
+    padding-bottom:0;
+  }
+  .tabs{display:flex; gap:28px; flex-wrap:wrap;}
+  .tab{
+    background:none; border:none; cursor:pointer;
+    font-family:'IBM Plex Sans', sans-serif; font-size:14.5px; color:var(--text-muted);
+    padding:12px 2px 14px;
+    display:flex; align-items:center; gap:7px;
+    border-bottom:2px solid transparent;
+    position:relative; top:1px;
+  }
+  .tab .count{
+    font-family:'IBM Plex Mono', monospace; font-size:11.5px;
+    background:var(--surface-alt); border:1px solid var(--line);
+    padding:1px 6px; border-radius:20px; color:var(--text-muted);
+  }
+  .tab.active{color:var(--ink); font-weight:600; border-bottom-color:var(--gold-deep);}
+  .tab.active .count{background:var(--teal); color:#fff; border-color:var(--teal);}
+
+  .search{
+    display:flex; align-items:center; gap:10px;
+    min-width:300px; max-width:380px;
+    border-bottom:1.5px solid var(--line);
+    padding:9px 2px; margin-bottom:8px;
+  }
+  .search svg{width:16px; height:16px; color:var(--text-muted); flex-shrink:0;}
+  .search input{
+    border:none; outline:none; background:none;
+    font-family:'IBM Plex Sans', sans-serif; font-size:13.5px; width:100%; color:var(--text);
+  }
+  .search input::placeholder{color:#9CA39C;}
+
+  /* ---------- CARDS ---------- */
+  .grid{
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));
+    gap:22px; margin-top:30px;
+  }
+  .card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-top:3px solid var(--gold);
+    border-radius:3px;
+    padding:22px;
+    position:relative;
+  }
+  .card-head{display:flex; align-items:flex-start; justify-content:space-between; gap:12px;}
+  .card-id{display:flex; gap:12px; align-items:flex-start;}
+  .badge{
+    width:38px; height:38px; border-radius:50%;
+    background:var(--teal); display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+  .badge svg{width:17px; height:17px; color:var(--gold-soft);}
+  .card-name{font-family:'Fraunces', serif; font-size:18px; font-weight:600; color:var(--ink); line-height:1.2;}
+  .card-tag{
+    font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:var(--text-muted);
+    margin-top:3px; display:inline-block;
+  }
+
+  .ring{
+    --pct:0;
+    width:44px; height:44px; border-radius:50%; flex-shrink:0;
+    background:conic-gradient(var(--teal-light) calc(var(--pct)*1%), var(--surface-alt) 0);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .ring::before{
+    content:"";
+    width:32px; height:32px; border-radius:50%; background:var(--surface); position:absolute;
+  }
+  .ring span{
+    position:relative; font-family:'IBM Plex Mono', monospace; font-size:10px; font-weight:600; color:var(--ink);
+  }
+
+  .card-meta{display:flex; gap:16px; margin-top:16px; flex-wrap:wrap;}
+  .meta-item{display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--text-muted);}
+  .meta-item svg{width:14px; height:14px;}
+
+  .chips{display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;}
+  .chip{
+    font-size:11.5px; color:var(--gold-deep); border:1px dashed var(--gold);
+    padding:3px 9px; border-radius:20px; display:flex; align-items:center; gap:5px;
+  }
+  .chip svg{width:12px; height:12px;}
+
+  .perforation{
+    border:none; border-top:1.5px dashed var(--line); margin:18px 0 16px;
+  }
+
+  .ledger{display:flex; justify-content:space-between; gap:6px;}
+  .ledger-item{flex:1;}
+  .ledger-item + .ledger-item{border-left:1px solid var(--line); padding-left:14px;}
+  .ledger-label{font-size:11.5px; color:var(--text-muted);}
+  .ledger-value{font-family:'IBM Plex Mono', monospace; font-size:14px; font-weight:600; color:var(--ink); margin-top:3px;}
+  .ledger-value.due{color:var(--rust);}
+  .ledger-value.paid{color:var(--green);}
+
+  .clients{display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;}
+  .client-chip{
+    font-size:11px; padding:3px 9px; border-radius:20px; font-weight:500;
+  }
+  .client-chip.internal{background:rgba(21,74,65,0.09); color:var(--teal);}
+  .client-chip.external{background:rgba(198,161,91,0.16); color:var(--gold-deep);}
+
+  .card-footer{
+    display:flex; align-items:center; gap:6px; margin-top:16px;
+    font-size:11.5px; color:#9CA39C;
+  }
+  .card-footer svg{width:12px; height:12px;}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-top">
+      <div class="hero-id">
+        <div class="hero-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#C6A15B" stroke-width="1.4"><path d="M4 21h16M6 21V9l6-5 6 5v12M9 21v-6h6v6"/></svg>
+        </div>
+        <div>
+          <div class="hero-title">Umrah Management</div>
+          <div class="hero-sub">Manage families and bookings for the season</div>
+        </div>
+      </div>
+      <div class="hero-actions">
+        <button class="btn btn-ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 5v14M5 12h14"/></svg>Add group</button>
+        <button class="btn btn-gold"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 5v14M5 12h14"/></svg>Add family</button>
+      </div>
+    </div>
+    <div class="hero-stats">
+      <div class="stat"><b>6</b><span>Groups</span></div>
+      <div class="stat"><b>18</b><span>Families</span></div>
+      <div class="stat"><b>47</b><span>Members</span></div>
+      <div class="stat"><b>7</b><span>Flights</span></div>
+    </div>
+  </div>
+
+  <!-- CONTROLS -->
+  <div class="controls">
+    <div class="tabs">
+      <button class="tab active">Groups <span class="count">6</span></button>
+      <button class="tab">Families <span class="count">18</span></button>
+      <button class="tab">Members <span class="count">47</span></button>
+      <button class="tab">Flights <span class="count">7</span></button>
+      <button class="tab">Refunded</button>
+      <button class="tab">Cancelled</button>
+    </div>
+    <div class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input type="text" placeholder="Search families, members, or passports">
+    </div>
+  </div>
+
+  <!-- CARDS -->
+  <div class="grid">
+
+    <!-- General -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-id">
+          <div class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2M10 11a4 4 0 100-8 4 4 0 000 8zM22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></div>
+          <div>
+            <div class="card-name">General</div>
+            <span class="card-tag">GROUP #1</span>
+          </div>
+        </div>
+        <div style="position:relative;">
+          <div class="ring" style="--pct:48.7;"><span>49%</span></div>
+        </div>
+      </div>
+
+      <div class="card-meta">
+        <div class="meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2M10 11a4 4 0 100-8 4 4 0 000 8z"/></svg>4 families</div>
+        <div class="meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>7 members</div>
+      </div>
+
+      <hr class="perforation">
+
+      <div class="ledger">
+        <div class="ledger-item">
+          <div class="ledger-label">Total price</div>
+          <div class="ledger-value">7,500 USD</div>
+        </div>
+        <div class="ledger-item">
+          <div class="ledger-label">Paid</div>
+          <div class="ledger-value paid">1,450 USD</div>
+        </div>
+        <div class="ledger-item">
+          <div class="ledger-label">Due</div>
+          <div class="ledger-value due">3,850 USD</div>
+        </div>
+      </div>
+
+      <div class="clients">
+        <span class="client-chip internal">Internal · 5</span>
+        <span class="client-chip external">External · 2</span>
+      </div>
+
+      <div class="card-footer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="16" rx="1.5"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+        Created by SABAOON CAR REPAIR on Aug 13, 2026
+      </div>
+    </div>
+
+    <!-- Umrah 1 -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-id">
+          <div class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2M10 11a4 4 0 100-8 4 4 0 000 8zM22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></div>
+          <div>
+            <div class="card-name">Umrah 1</div>
+            <span class="card-tag">GROUP #01</span>
+          </div>
+        </div>
+        <div class="ring" style="--pct:2.7;"><span>3%</span></div>
+      </div>
+
+      <div class="card-meta">
+        <div class="meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2M10 11a4 4 0 100-8 4 4 0 000 8z"/></svg>7 families</div>
+        <div class="meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>19 members</div>
+      </div>
+
+      <div class="chips">
+        <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 18v-6a2 2 0 012-2h14a2 2 0 012 2v6M3 18h18M5 10V6a2 2 0 012-2h4v6"/></svg>2 extra beds</span>
+        <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="6" width="18" height="11" rx="2"/><circle cx="7.5" cy="20" r="1.5"/><circle cx="16.5" cy="20" r="1.5"/></svg>1 transport</span>
+      </div>
+
+      <hr class="perforation">
+
+      <div class="ledger">
+        <div class="ledger-item">
+          <div class="ledger-label">Total price</div>
+          <div class="ledger-value">20,970 USD</div>
+        </div>
+        <div class="ledger-item">
+          <div class="ledger-label">Paid</div>
+          <div class="ledger-value paid">570 USD</div>
+        </div>
+        <div class="ledger-item">
+          <div class="ledger-label">Due</div>
+          <div class="ledger-value due">20,400 USD</div>
+        </div>
+      </div>
+
+      <div class="clients">
+        <span class="client-chip external">External · 19</span>
+      </div>
+
+      <div class="card-footer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="16" rx="1.5"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+        Created by Ali Ahmad on Aug 27, 2026
+      </div>
+    </div>
+
+    <!-- testing -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-id">
+          <div class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2M10 11a4 4 0 100-8 4 4 0 000 8zM22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></div>
+          <div>
+            <div class="card-name">testing</div>
+            <span class="card-tag">GROUP #245</span>
+          </div>
+        </div>
+        <div class="ring" style="--pct:36.5;"><span>37%</span></div>
+      </div>
+
+      <div class="card-meta">
+        <div class="meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2M10 11a4 4 0 100-8 4 4 0 000 8z"/></svg>4 families</div>
+        <div class="meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>15 members</div>
+      </div>
+
+      <div class="chips">
+        <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 18v-6a2 2 0 012-2h14a2 2 0 012 2v6M3 18h18M5 10V6a2 2 0 012-2h4v6"/></svg>4 extra beds</span>
+      </div>
+
+      <hr class="perforation">
+
+      <div class="ledger">
+        <div class="ledger-item">
+          <div class="ledger-label">Total price</div>
+          <div class="ledger-value">15,355 USD</div>
+        </div>
+        <div class="ledger-item">
+          <div class="ledger-label">Paid</div>
+          <div class="ledger-value paid">5,600 USD</div>
+        </div>
+        <div class="ledger-item">
+          <div class="ledger-label">Due</div>
+          <div class="ledger-value due">9,755 USD</div>
+        </div>
+      </div>
+
+      <div class="clients">
+        <span class="client-chip external">External · 15</span>
+      </div>
+
+      <div class="card-footer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="16" rx="1.5"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+        Created by Ali Ahmad on Aug 24, 2026
+      </div>
+    </div>
+
+    <!-- next -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-id">
+          <div class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2M10 11a4 4 0 100-8 4 4 0 000 8zM22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></div>
+          <div>
+            <div class="card-name">next</div>
+            <span class="card-tag">GROUP #870</span>
+          </div>
+        </div>
+        <div class="ring" style="--pct:0;"><span>0%</span></div>
+      </div>
+
+      <div class="card-meta">
+        <div class="meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2M10 11a4 4 0 100-8 4 4 0 000 8z"/></svg>1 family</div>
+        <div class="meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>1 member</div>
+      </div>
+
+      <hr class="perforation">
+
+      <div class="ledger">
+        <div class="ledger-item">
+          <div class="ledger-label">Total price</div>
+          <div class="ledger-value">1,000 USD</div>
+        </div>
+        <div class="ledger-item">
+          <div class="ledger-label">Paid</div>
+          <div class="ledger-value paid">0 USD</div>
+        </div>
+        <div class="ledger-item">
+          <div class="ledger-label">Due</div>
+          <div class="ledger-value due">1,000 USD</div>
+        </div>
+      </div>
+
+      <div class="clients">
+        <span class="client-chip external">External · 1</span>
+      </div>
+
+      <div class="card-footer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="16" rx="1.5"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+        Created by Ali Ahmad on Aug 22, 2026
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

@@ -205,6 +205,11 @@ try {
             position: relative;
         }
 
+        .description-value {
+            font-size: 16px;
+            font-weight: bold;
+        }
+
         .amount-section {
             background: #f8f9fa;
             padding: 20px;
@@ -337,7 +342,7 @@ try {
 
                 <div class="detail-row">
                     <span class="detail-label"><?php echo __('description'); ?>:</span>
-                    <span class="detail-value"><?php echo htmlspecialchars($transaction['payment_description']); ?></span>
+                    <span class="detail-value description-value"><?php echo htmlspecialchars($transaction['payment_description']); ?></span>
                 </div>
 
                 <div class="detail-row">

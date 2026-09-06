@@ -406,6 +406,9 @@ function extractTicketData($text) {
         case 'ota':
             $result = extractOtaTicket($text);
             break;
+        case 'group':
+            $result = extractGroupTicket($text);
+            break;
         default:
             $result = extractStandardTicket($text);
             break;
@@ -508,6 +511,11 @@ function detectTicketFormat($text) {
     // OTA e-ticket format
     if (preg_match('/Flight\s+E-Ticket|CONTRACT\s*#/i', $text)) {
         return 'ota';
+    }
+    
+    // Group ticket format (simple passenger list with flight info)
+    if (preg_match('/Passengers?\s+Details|S\/NO\s+.*?Passport/i', $text)) {
+        return 'group';
     }
     
     // RVCSER / compact e-ticket (check before Ariana — has overlapping BOOKING# pattern)
@@ -888,6 +896,109 @@ function extractRvcsTicketData($text) {
         return [
             'is_group_booking' => count($passengers) > 1,
             'booking_reference' => $passengers[0]['pnr'] ?? null,
+            'total_passengers' => count($passengers),
+            'passengers' => $passengers,
+            'flight_info' => extractCommonFlightInfo($passengers),
+        ];
+    }
+
+    return null;
+}
+
+/**
+ * Extract simple group ticket format (Kam Air / airline group bookings)
+ * Header: "Passengers Details", table with S/NO, Name, Passport, Gender; flight info inline
+ */
+function extractGroupTicket($text) {
+    if (!preg_match('/Passengers?\s+Details|S\/NO\s+.*?Passport/i', $text)) return null;
+
+    // Extract PNR (5-6 char alphanumeric at end of text)
+    $pnr = null;
+    if (preg_match('/\b([A-Z0-9]{5,6})\b\s*$/m', $text, $m)) {
+        $pnr = trim($m[1]);
+    }
+
+    // Extract route info: "Kabul RQ993 Jeddah"
+    $segments = [];
+    if (preg_match_all('/([A-Z][a-z]+)\s+(RQ\d+)\s+([A-Z][a-z]+)/i', $text, $routeMatches, PREG_SET_ORDER)) {
+        foreach ($routeMatches as $rm) {
+            $segments[] = ['from' => strtoupper($rm[1]), 'flight' => $rm[2], 'to' => strtoupper($rm[3])];
+        }
+    }
+
+    // Extract times: "20:00 / 08. Sep. 2026"
+    $times = [];
+    preg_match_all('/(\d{2}:\d{2})\s*\/\s*(\d{1,2})\.\s*(\w+)\.?\s*(\d{4})/i', $text, $timeMatches, PREG_SET_ORDER);
+    foreach ($timeMatches as $tm) {
+        $times[] = [
+            'time' => $tm[1],
+            'date' => parseTicketDate($tm[2], $tm[3], $tm[4]),
+        ];
+    }
+
+    // Assign times to segments (outbound: 2 times, return: 2 times)
+    $segWithTimes = [];
+    $timeIdx = 0;
+    foreach ($segments as $i => $seg) {
+        $s = [
+            'origin' => $seg['from'],
+            'destination' => $seg['to'],
+            'flight_number' => $seg['flight'],
+            'airline' => 'Kam Air',
+            'airline_code' => 'RQ',
+        ];
+        if (isset($times[$timeIdx])) {
+            $s['departure_time'] = $times[$timeIdx]['time'];
+            $s['departure_date'] = $times[$timeIdx]['date'];
+            $s['date'] = $times[$timeIdx]['date'];
+            $timeIdx++;
+        }
+        if (isset($times[$timeIdx])) {
+            $s['arrival_time'] = $times[$timeIdx]['time'];
+            $s['arrival_date'] = $times[$timeIdx]['date'];
+            $timeIdx++;
+        }
+        $s['dep_time'] = $s['departure_time'] ?? null;
+        $s['arr_time'] = $s['arrival_time'] ?? null;
+        $segWithTimes[] = $s;
+    }
+
+    // Extract passengers: "1 FIRSTNAME  LASTNAME P06585963 C"
+    $passengers = [];
+    preg_match_all('/^\s*(\d+)\s+([A-Z][A-Z\s]+?)\s+(PB?\d{7,8})\s+([CMF])\s*$/mi', $text, $paxMatches, PREG_SET_ORDER);
+    foreach ($paxMatches as $pm) {
+        $firstName = trim($pm[2]);
+        $passengers[] = [
+            'passenger_name' => $firstName,
+            'pnr' => $pnr,
+            'passport_number' => $pm[3],
+            'gender' => $pm[4] === 'M' ? 'Male' : ($pm[4] === 'F' ? 'Female' : 'Child'),
+            'airline' => 'Kam Air',
+            'airline_code' => 'RQ',
+            'flight_number' => implode(', ', array_column($segWithTimes, 'flight_number')),
+            'cabin_class' => 'Economy',
+            'origin' => $segWithTimes[0]['origin'] ?? null,
+            'origin_city' => $segWithTimes[0]['origin'] ?? null,
+            'destination' => end($segWithTimes)['destination'] ?? null,
+            'destination_city' => end($segWithTimes)['destination'] ?? null,
+            'departure_date' => $segWithTimes[0]['departure_date'] ?? null,
+            'departure_time' => $segWithTimes[0]['departure_time'] ?? null,
+            'arrival_time' => end($segWithTimes)['arrival_time'] ?? null,
+            'arrival_date' => end($segWithTimes)['arrival_date'] ?? null,
+            'baggage_allowance' => '50KG',
+            'ticket_status' => 'Confirmed',
+            'is_confirmed' => true,
+            'trip_type' => count($segWithTimes) > 1 ? 'Round Trip' : 'One Way',
+            'segments' => $segWithTimes,
+            'extraction_confidence' => 0.95,
+            'format_detected' => 'group',
+        ];
+    }
+
+    if (!empty($passengers)) {
+        return [
+            'is_group_booking' => count($passengers) > 1,
+            'booking_reference' => $pnr,
             'total_passengers' => count($passengers),
             'passengers' => $passengers,
             'flight_info' => extractCommonFlightInfo($passengers),

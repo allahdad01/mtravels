@@ -39,36 +39,469 @@ $canEdit = user_can('umrah.member_edit');
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
+<style>
+  :root{
+    --ink:#12211D;
+    --brand-from:#4099ff;
+    --brand-to:#2ed8b6;
+    --brand-grad:linear-gradient(135deg, var(--brand-from) 0%, var(--brand-to) 100%);
+    --brand-deep:#0c1a2e;
+    --brand-mid:#163a5c;
+    --brand-light:#1f5a8a;
+    --gold:#C6A15B;
+    --gold-soft:#DCC48C;
+    --gold-deep:#8C6D2E;
+    --stone:#ECEEE3;
+    --surface:#FFFFFF;
+    --surface-alt:#F6F6EE;
+    --line:#DEDCC8;
+    --text:#1B2420;
+    --text-muted:#657069;
+    --rust:#AD5A2C;
+    --green:#2E7D5B;
+  }
+
+  /* ---------- HERO ---------- */
+  .uh-hero{
+    position:relative;
+    background:var(--brand-grad);
+    border-radius:0;
+    overflow:hidden;
+    padding:60px 48px 34px;
+    color:#F4F2E8;
+    isolation:isolate;
+    margin:-94px -30px 0;
+  }
+  .uh-hero::before{
+    content:"";
+    position:absolute; inset:0;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84' viewBox='0 0 84 84'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='0.7'%3E%3Cpath d='M42 4 L52 20 L70 20 L58 32 L64 50 L42 40 L20 50 L26 32 L14 20 L32 20 Z'/%3E%3C/g%3E%3C/svg%3E");
+    background-size:84px 84px;
+    opacity:0.15;
+    z-index:0;
+  }
+  .uh-hero-top{
+    position:relative; z-index:1;
+    display:flex; justify-content:space-between; align-items:flex-start; gap:24px; flex-wrap:wrap;
+  }
+  .uh-hero-id{display:flex; gap:18px; align-items:center;}
+  .uh-hero-mark{
+    width:52px; height:52px; border-radius:50%;
+    border:1.5px solid rgba(255,255,255,0.5);
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+    background:rgba(255,255,255,0.15);
+  }
+  .uh-hero-mark i{font-size:22px; color:#fff;}
+  .uh-hero-title{font-family:'Fraunces', serif; font-weight:500; font-size:30px; letter-spacing:0.2px; color:#fff;}
+  .uh-hero-sub{color:rgba(255,255,255,0.8); font-size:14px; margin-top:5px;}
+  .uh-hero-actions{display:flex; gap:10px;}
+  .uh-btn{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:13.5px; font-weight:500;
+    padding:10px 18px;
+    border-radius:3px;
+    cursor:pointer;
+    display:inline-flex; align-items:center; gap:8px;
+    border:1px solid transparent;
+    transition:background 0.15s ease, border-color 0.15s ease;
+    text-decoration:none;
+  }
+  .uh-btn i{font-size:13px;}
+  .uh-btn-ghost{background:transparent; border-color:rgba(255,255,255,0.5); color:#fff;}
+  .uh-btn-ghost:hover{background:rgba(255,255,255,0.12); text-decoration:none;}
+  .uh-btn-brand{background:#fff; color:var(--brand-from); font-weight:600; border:none;}
+  .uh-btn-brand:hover{background:rgba(255,255,255,0.9); text-decoration:none;}
+
+  .uh-hero-stats{
+    position:relative; z-index:1;
+    display:flex; gap:44px; margin-top:34px;
+    padding-top:22px;
+    border-top:1px solid rgba(220,196,140,0.25);
+    flex-wrap:wrap;
+  }
+  .uh-stat b{
+    display:block; font-family:'IBM Plex Mono', monospace; font-size:22px; font-weight:600; color:#fff;
+  }
+  .uh-stat span{font-size:12.5px; color:var(--gold-soft); margin-top:2px; display:block;}
+
+  /* ---------- CONTROLS ---------- */
+  .uh-controls{
+    display:flex; justify-content:space-between; align-items:center;
+    margin:0 -30px; gap:24px; flex-wrap:wrap;
+    border-bottom:1px solid rgba(255,255,255,0.15);
+    padding:0 48px;
+    background:linear-gradient(135deg, #3b8fd4 0%, #28b89e 100%);
+  }
+  .uh-tabs{display:flex; gap:28px; flex-wrap:wrap;}
+  .uh-tab{
+    background:none; border:none; cursor:pointer;
+    font-family:'IBM Plex Sans', sans-serif; font-size:14.5px; color:rgba(255,255,255,0.7);
+    padding:14px 2px 14px;
+    display:flex; align-items:center; gap:7px;
+    border-bottom:2px solid transparent;
+    position:relative; top:1px;
+    text-decoration:none;
+    transition:color 0.15s;
+  }
+  .uh-tab:hover{text-decoration:none; color:#fff;}
+  .uh-tab .uh-count{
+    font-family:'IBM Plex Mono', monospace; font-size:11.5px;
+    background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.2);
+    padding:1px 6px; border-radius:20px; color:rgba(255,255,255,0.8);
+  }
+  .uh-tab.active{color:#fff; font-weight:600; border-bottom-color:#fff;}
+  .uh-tab.active .uh-count{background:#fff; color:var(--brand-from); border-color:#fff;}
+
+  .uh-search{
+    display:flex; align-items:center; gap:10px;
+    min-width:300px; max-width:380px;
+    border-bottom:1.5px solid rgba(255,255,255,0.3);
+    padding:9px 2px; margin-bottom:8px;
+  }
+  .uh-search i{color:rgba(255,255,255,0.6); flex-shrink:0; font-size:14px;}
+  .uh-search input{
+    border:none; outline:none; background:none;
+    font-family:'IBM Plex Sans', sans-serif; font-size:13.5px; width:100%; color:#fff;
+  }
+  .uh-search input::placeholder{color:rgba(255,255,255,0.5);}
+
+  /* ---------- GRID ---------- */
+  .uh-grid{
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));
+    gap:22px; margin:24px -30px 24px;
+    padding:0 48px;
+    align-items:start;
+  }
+  .uh-grid .members-visible{
+    grid-column:1 / -1;
+  }
+
+  /* ---------- CARD ---------- */
+  .uh-card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-top:3px solid var(--brand-from);
+    border-radius:3px;
+    padding:22px;
+    position:relative;
+    transition:box-shadow 0.15s;
+  }
+  .uh-card{overflow:visible;}
+  .uh-card:hover{box-shadow:0 2px 12px rgba(0,0,0,0.06);}
+  .uh-card-main{}
+  .uh-card.members-visible .members-section{
+    display:block !important;
+    grid-row:1 / -1;
+    border-left:1px solid var(--line);
+    padding:0 0 0 22px;
+    max-height:100%;
+    overflow-y:auto;
+  }
+  .uh-card.members-visible .members-section .members-header{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid var(--line);
+  }
+  .uh-card.members-visible .members-section .members-header h4{
+    font-family:'Fraunces', serif; font-size:15px; font-weight:600; color:var(--ink); margin:0;
+  }
+  .uh-card.members-visible .members-section .members-header .btn-sm{
+    font-size:12px; padding:5px 10px;
+    background:var(--brand-from); color:#fff; border:none; border-radius:3px;
+    cursor:pointer; display:inline-flex; align-items:center; gap:4px;
+  }
+  .uh-card.members-visible .members-section .members-grid{
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .uh-card-head{display:flex; align-items:flex-start; justify-content:space-between; gap:12px;}
+  .uh-card-id{display:flex; gap:12px; align-items:flex-start; flex:1; min-width:0;}
+  .uh-badge{
+    width:38px; height:38px; border-radius:50%;
+    background:var(--brand-from); display:flex; align-items:center; justify-content:center;
+    flex-shrink:0; color:#fff; font-size:15px;
+  }
+  .uh-card-name{font-family:'Fraunces', serif; font-size:18px; font-weight:600; color:var(--ink); line-height:1.2;}
+  .uh-card-tag{
+    font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:var(--text-muted);
+    margin-top:3px; display:inline-block;
+  }
+
+  /* Ring progress */
+  .uh-ring{
+    --pct:0;
+    width:44px; height:44px; border-radius:50%; flex-shrink:0;
+    background:conic-gradient(var(--brand-to) calc(var(--pct)*1%), var(--surface-alt) 0);
+    display:flex; align-items:center; justify-content:center;
+    position:relative;
+  }
+  .uh-ring::before{
+    content:"";
+    width:32px; height:32px; border-radius:50%; background:var(--surface); position:absolute;
+  }
+  .uh-ring span{
+    position:relative; font-family:'IBM Plex Mono', monospace; font-size:10px; font-weight:600; color:var(--ink);
+  }
+
+  .uh-card-meta{display:flex; gap:16px; margin-top:16px; flex-wrap:wrap;}
+  .uh-meta-item{display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--text-muted);}
+  .uh-meta-item i{font-size:12px;}
+
+  .uh-chips{display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;}
+  .uh-chip{
+    font-size:11.5px; color:var(--gold-deep); border:1px dashed var(--gold);
+    padding:3px 9px; border-radius:20px; display:flex; align-items:center; gap:5px;
+  }
+  .uh-chip i{font-size:11px;}
+
+  .uh-perforation{
+    border:none; border-top:1.5px dashed var(--line); margin:18px 0 16px;
+  }
+
+  .uh-ledger{display:flex; justify-content:space-between; gap:6px;}
+  .uh-ledger-item{flex:1;}
+  .uh-ledger-item + .uh-ledger-item{border-left:1px solid var(--line); padding-left:14px;}
+  .uh-ledger-label{font-size:11.5px; color:var(--text-muted);}
+  .uh-ledger-value{font-family:'IBM Plex Mono', monospace; font-size:14px; font-weight:600; color:var(--ink); margin-top:3px;}
+  .uh-ledger-value.due{color:var(--rust);}
+  .uh-ledger-value.paid{color:var(--green);}
+  .uh-ledger-breakdown{margin-top:10px; display:flex; flex-direction:column; gap:3px;}
+  .uh-ledger-row{display:flex; justify-content:space-between; font-size:11.5px; color:var(--text-muted); padding:2px 0;}
+  .uh-ledger-row span:last-child{font-family:'IBM Plex Mono', monospace; font-weight:500; color:var(--ink);}
+  .uh-ledger-row span.paid{color:var(--green);}
+  .uh-ledger-divider{border-top:1px dashed var(--line); margin:4px 0;}
+
+  .uh-clients{display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;}
+  .uh-client-chip{
+    font-size:11px; padding:3px 9px; border-radius:20px; font-weight:500;
+  }
+  .uh-client-chip.internal{background:rgba(64,153,255,0.09); color:var(--brand-from);}
+  .uh-client-chip.external{background:rgba(198,161,91,0.16); color:var(--gold-deep);}
+
+  .uh-card-footer{
+    display:flex; align-items:center; gap:6px; margin-top:16px;
+    font-size:11.5px; color:#9CA39C;
+  }
+  .uh-card-footer i{font-size:12px;}
+
+  /* Card actions overlay */
+  .uh-card-actions{display:flex; gap:4px; flex-shrink:0;}
+  .uh-card-actions .uh-btn-icon{
+    width:30px; height:30px; border-radius:3px; border:1px solid var(--line);
+    background:var(--surface); display:flex; align-items:center; justify-content:center;
+    cursor:pointer; color:var(--text-muted); font-size:12px;
+    transition:all 0.15s;
+  }
+  .uh-card-actions .uh-btn-icon:hover{background:var(--surface-alt); color:var(--ink);}
+  .uh-card-actions .uh-btn-icon.add{background:var(--brand-from); color:#fff; border-color:var(--brand-from);}
+  .uh-card-actions .uh-btn-icon.add:hover{opacity:0.85;}
+
+  /* Pagination */
+  .uh-pagination-wrap{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:16px; flex-wrap:wrap; gap:12px;
+  }
+  .uh-pagination{display:flex; gap:4px; list-style:none; margin:0; padding:0;}
+  .uh-pagination li a{
+    display:flex; align-items:center; justify-content:center;
+    min-width:32px; height:32px; padding:0 8px;
+    border:1px solid var(--line); border-radius:3px;
+    font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--text-muted);
+    text-decoration:none; transition:all 0.15s;
+  }
+  .uh-pagination li a:hover{background:var(--surface-alt); color:var(--ink);}
+  .uh-pagination li a.active{
+    background:var(--brand-from); color:#fff; border-color:var(--brand-from);
+  }
+  .uh-pagination-info{font-size:12.5px; color:var(--text-muted);}
+
+  /* Empty state */
+  .uh-empty{
+    text-align:center; padding:60px 24px; color:var(--text-muted);
+  }
+  .uh-empty i{font-size:48px; color:var(--line); margin-bottom:16px; display:block;}
+  .uh-empty h3{font-family:'Fraunces', serif; font-size:18px; color:var(--ink); margin-bottom:8px;}
+  .uh-empty p{font-size:13.5px; margin-bottom:16px;}
+
+  /* Card actions dropdown (inside uh-card) */
+  .uh-card-actions .dropdown{position:relative;}
+  .uh-card-actions .dropdown-menu{
+    display:none; position:absolute; right:0; top:100%; z-index:9999;
+    background:var(--surface); border:1px solid var(--line); border-radius:4px;
+    min-width:220px; padding:6px 0; box-shadow:0 4px 16px rgba(0,0,0,0.1);
+  }
+  .uh-card-actions .dropdown.show .dropdown-menu{display:block;}
+  .uh-card-actions .dropdown-menu .dropdown-item{
+    display:flex; align-items:center; gap:8px; padding:7px 14px;
+    font-size:13px; color:var(--text); text-decoration:none; white-space:nowrap;
+  }
+  .uh-card-actions .dropdown-menu .dropdown-item:hover{background:var(--surface-alt); text-decoration:none;}
+  .uh-card-actions .dropdown-menu .dropdown-item i{width:16px; text-align:center; color:var(--text-muted); font-size:12px;}
+  .uh-card-actions .dropdown-menu .dropdown-divider{border-top:1px solid var(--line); margin:4px 0;}
+  .uh-card-actions .dropdown-menu .dropdown-header{
+    font-size:11px; font-weight:600; color:var(--text-muted); padding:6px 14px 2px;
+    text-transform:uppercase; letter-spacing:0.5px;
+  }
+  .uh-card-actions .dropdown-menu .dropdown-item.text-danger{color:var(--rust);}
+  .uh-card-actions .dropdown-menu .dropdown-item.text-danger i{color:var(--rust);}
+
+  @media (max-width:768px){
+    .uh-hero{padding:28px 20px 24px; margin:-76px -12px 0;}
+    .uh-hero-top{flex-direction:column;}
+    .uh-hero-title{font-size:24px;}
+    .uh-hero-stats{gap:24px;}
+    .uh-controls{flex-direction:column; align-items:stretch; padding:0 20px; margin:0 -12px; background:linear-gradient(135deg, #3b8fd4 0%, #28b89e 100%);}
+    .uh-search{min-width:0; max-width:100%;}
+    .uh-grid{grid-template-columns:1fr; padding:0 20px; margin:24px -12px;}
+    .members-drawer{width:100% !important;}
+  }
+
+  /* ---------- MEMBERS DRAWER ---------- */
+  .members-overlay{
+    position:fixed; inset:0;
+    background:rgba(9,25,44,.38);
+    opacity:0; visibility:hidden;
+    transition:.25s; z-index:9999;
+  }
+  .members-overlay.active{opacity:1; visibility:visible;}
+
+  .members-drawer{
+    position:fixed; right:0; top:0; bottom:0;
+    width:500px;
+    background:var(--surface);
+    z-index:10000;
+    box-shadow:-12px 0 40px rgba(10,30,60,.15);
+    transform:translateX(100%);
+    transition:transform .3s ease;
+    display:flex; flex-direction:column;
+  }
+  .members-drawer.active{transform:translateX(0);}
+
+  .drawer-header{padding:24px 24px 20px; border-bottom:1px solid var(--line);}
+  .drawer-title{display:flex; align-items:center;}
+  .drawer-family-icon{
+    width:50px; height:50px; border-radius:50%;
+    background:var(--brand-from); color:#fff;
+    display:flex; align-items:center; justify-content:center;
+    font-size:22px; flex-shrink:0;
+  }
+  .drawer-title-text{margin-left:13px;}
+  .drawer-title-text h2{font-family:'Fraunces',serif; font-size:18px; margin-bottom:4px; color:var(--ink);}
+  .drawer-title-text p{font-size:12px; color:var(--text-muted);}
+  .close-drawer{
+    margin-left:auto; width:34px; height:34px;
+    border:none; background:transparent; font-size:19px;
+    color:#536174; border-radius:6px; cursor:pointer;
+  }
+  .close-drawer:hover{background:var(--surface-alt);}
+
+  .drawer-summary{
+    margin-top:20px; border:1px solid var(--line);
+    border-radius:8px; display:grid; grid-template-columns:repeat(4,1fr);
+    overflow:hidden;
+  }
+  .drawer-summary-item{padding:15px 8px; text-align:center; border-right:1px solid var(--line);}
+  .drawer-summary-item:last-child{border:none;}
+  .drawer-summary-value{font-family:'IBM Plex Mono',monospace; font-size:16px; font-weight:700; display:block; margin-bottom:6px; color:var(--ink);}
+  .drawer-summary-label{color:var(--text-muted); font-size:10px;}
+  .drawer-summary-item.due .drawer-summary-value{color:var(--rust);}
+
+  .drawer-controls{padding:18px 24px 12px;}
+  .member-search{
+    display:flex; align-items:center; height:44px;
+    border:1px solid var(--line); border-radius:7px; padding:0 13px;
+  }
+  .member-search i{color:var(--text-muted);}
+  .member-search input{border:none; outline:none; flex:1; padding-left:10px; font-size:12px; font-family:'IBM Plex Sans',sans-serif;}
+  .add-member-btn{
+    width:100%; margin-top:11px; height:42px;
+    border:none; background:var(--brand-from); color:#fff;
+    border-radius:7px; font-size:12px; font-weight:600; cursor:pointer;
+  }
+  .add-member-btn:hover{opacity:0.9;}
+  .drawer-filters{display:flex; gap:7px; overflow-x:auto; margin-top:14px; padding-bottom:3px;}
+  .drawer-filter{
+    white-space:nowrap; border:1px solid var(--line);
+    background:var(--surface); border-radius:20px;
+    padding:8px 12px; font-size:10px; color:var(--text-muted); cursor:pointer;
+  }
+  .drawer-filter.active{background:var(--brand-from); border-color:var(--brand-from); color:#fff;}
+
+  .drawer-member-list{flex:1; overflow-y:auto; padding:10px 24px 30px;}
+  .drawer-member-card{
+    border:1px solid var(--line); border-radius:8px;
+    margin-bottom:10px; overflow:hidden; transition:.2s;
+  }
+  .drawer-member-card:hover{border-color:#c8d3e1; box-shadow:0 4px 14px rgba(20,40,70,.06);}
+  .drawer-member-main{
+    padding:17px 14px;
+    display:grid; grid-template-columns:45px 1fr 1fr auto;
+    gap:12px; align-items:center;
+  }
+  .drawer-member-avatar{
+    width:42px; height:42px; border-radius:50%;
+    background:var(--brand-from); color:#fff;
+    display:flex; align-items:center; justify-content:center;
+    font-size:17px;
+  }
+  .drawer-member-avatar.child{background:var(--green); color:#fff;}
+  .drawer-member-avatar.bed{background:var(--gold); color:#fff;}
+  .drawer-member-name{font-size:13px; font-weight:700; display:flex; align-items:center; flex-wrap:wrap; gap:5px; color:var(--ink);}
+  .drawer-member-type{display:block; margin-top:7px; color:var(--text-muted); font-size:10px;}
+  .drawer-member-status{
+    display:inline-flex; padding:4px 8px;
+    border-radius:12px; font-size:9px; font-weight:600;
+  }
+  .drawer-member-status.active{color:var(--green); background:rgba(46,125,91,0.1);}
+  .drawer-member-status.refunded{color:var(--rust); background:rgba(173,90,44,0.1);}
+  .drawer-member-status.cancelled{color:var(--text-muted); background:var(--surface-alt);}
+  .drawer-member-flight{border-left:1px solid var(--line); padding-left:17px;}
+  .drawer-flight-status{color:var(--gold-deep); font-size:11px; font-weight:600; display:block; margin-bottom:10px;}
+  .drawer-price-label{color:var(--text-muted); font-size:9px; display:block; margin-bottom:4px;}
+  .drawer-price{font-weight:700; font-size:13px; color:var(--ink); font-family:'IBM Plex Mono',monospace;}
+  .drawer-member-actions{display:flex; gap:6px;}
+  .drawer-member-action{
+    width:34px; height:34px; background:var(--surface);
+    border:1px solid var(--line); border-radius:7px;
+    color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .drawer-member-action:hover{color:var(--brand-from); background:rgba(64,153,255,0.05);}
+  .drawer-note{
+    margin-top:5px; background:rgba(64,153,255,0.05);
+    border:1px solid rgba(64,153,255,0.15); border-radius:8px;
+    padding:13px; display:flex; gap:10px; color:var(--text-muted);
+    font-size:10px; line-height:1.6;
+  }
+  .drawer-note i{color:var(--brand-from); margin-top:2px;}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 
 <!-- [ Main Content ] start -->
 <div class="pcoded-main-container">
     <div class="pcoded-wrapper">
         <div class="pcoded-content">
             <div class="pcoded-inner-content">
-                <!-- Enhanced Page Header -->
-                <div class="enhanced-page-header">
-                    <div class="container-fluid">
-                        <div class="row align-items-center">
-                            <div class="col-md-6">
-                                <div class="page-title-wrapper">
-                                    <i class="fas fa-kaaba page-icon"></i>
-                                    <div>
-                                        <h2 class="page-title"><?= __('umrah_management') ?></h2>
-                                        <p class="page-subtitle"><?= __('manage_families_and_bookings') ?></p>
-                                    </div>
-                                </div>
+                <!-- Hero Section -->
+                <div class="uh-hero">
+                    <div class="uh-hero-top">
+                        <div class="uh-hero-id">
+                            <div class="uh-hero-mark">
+                                <i class="fas fa-kaaba"></i>
                             </div>
-                            <div class="col-md-6 text-right">
-
-                                <button class="btn btn-gradient-primary" data-toggle="modal" data-target="#createGroupModal">
-                                    <i class="fas fa-plus-circle mr-2"></i><?= __('add_group') ?>
-                                </button>
-                                <button class="btn btn-gradient-primary" data-toggle="modal" data-target="#createFamilyModal" <?= !empty($groupFilter) && (int)$groupFilter > 0 ? 'onclick="setPendingFamilyGroup(' . (int)$groupFilter . ')"' : '' ?>>
-                                    <i class="fas fa-plus-circle mr-2"></i><?= __('add_family') ?>
-                                </button>
+                            <div>
+                                <div class="uh-hero-title"><?= __('umrah_management') ?></div>
+                                <div class="uh-hero-sub"><?= __('manage_families_and_bookings') ?></div>
                             </div>
                         </div>
+                        <div class="uh-hero-actions">
+                            <button class="uh-btn uh-btn-ghost" data-toggle="modal" data-target="#createGroupModal">
+                                <i class="fas fa-plus"></i><?= __('add_group') ?>
+                            </button>
+                            <button class="uh-btn uh-btn-brand" data-toggle="modal" data-target="#createFamilyModal" <?= !empty($groupFilter) && (int)$groupFilter > 0 ? 'onclick="setPendingFamilyGroup(' . (int)$groupFilter . ')"' : '' ?>>
+                                <i class="fas fa-plus"></i><?= __('add_family') ?>
+                            </button>
+                        </div>
                     </div>
+
                 </div>
 
                 <?php
@@ -678,6 +1111,28 @@ $canEdit = user_can('umrah.member_edit');
                         $regularClientFamilies = array_flip($clientTypeStmt->fetchAll(PDO::FETCH_COLUMN));
                     }
 
+                    // Excluded visa-only count per family
+                    $excludedFamilyMap = [];
+                    if (!empty($familyIds)) {
+                        $fPlaceholders = implode(',', array_fill(0, count($familyIds), '?'));
+                        $exclFamStmt = $pdo->prepare("
+                            SELECT ub.family_id, COUNT(DISTINCT ub.booking_id) AS excl_count
+                            FROM umrah_bookings ub
+                            JOIN umrah_booking_services bs ON bs.booking_id = ub.booking_id
+                            WHERE ub.family_id IN ($fPlaceholders)
+                              AND ub.tenant_id = ? AND ub.branch_id = ? AND bs.tenant_id = ?
+                              AND bs.service_type != 'visa'
+                            GROUP BY ub.family_id, ub.booking_id
+                            HAVING SUM(CASE WHEN bs.is_excluded = 0 THEN 1 ELSE 0 END) = 0
+                               AND COUNT(*) > 0
+                        ");
+                        $exclFamStmt->execute(array_merge($familyIds, [$tenant_id, $branch_id, $tenant_id]));
+                        while ($erow = $exclFamStmt->fetch(PDO::FETCH_ASSOC)) {
+                            $fid = (int)$erow['family_id'];
+                            $excludedFamilyMap[$fid] = ($excludedFamilyMap[$fid] ?? 0) + 1;
+                        }
+                    }
+
                     // ── Per-client fund waterfall allocation for family cards ──
                     // Fetches ALL families for each client across ALL groups for correct waterfall
                     $familyFundAllocations = []; // family_id => allocated_amount
@@ -769,81 +1224,52 @@ $canEdit = user_can('umrah.member_edit');
                     }
                 ?>
 
-                <!-- Filters and Search -->
-                <div class="container-fluid px-4 mb-4">
-                    <div class="filters-wrapper">
-                        <!-- Filter Pills -->
-                        <div class="filter-pills">
-                            <a href="?filter=groups" class="filter-pill <?= $filter === 'groups' ? 'active' : '' ?>">
-                                <i class="fas fa-object-group"></i>
-                                <span><?= __('groups') ?></span>
-                                <span class="pill-badge"><?= $totalGroups ?? 0 ?></span>
-                            </a>
-                            <a href="?filter=families<?= !empty($groupFilter) ? '&group_id=' . urlencode($groupFilter) : '' ?>" class="filter-pill <?= $filter === 'families' && empty($visaStatus) ? 'active' : '' ?>">
-                                <i class="fas fa-layer-group"></i>
-                                <span><?= __('families') ?></span>
-                                <span class="pill-badge"><?= $totalFamilies ?></span>
-                            </a>
-                            <a href="?filter=members" class="filter-pill <?= $filter === 'members' ? 'active' : '' ?>">
-                                <i class="fas fa-users"></i>
-                                <span><?= __('members') ?></span>
-                                <span class="pill-badge"><?= $totalMembers ?></span>
-                            </a>
-                            <a href="?filter=flights" class="filter-pill <?= $filter === 'flights' ? 'active' : '' ?>">
-                                <i class="fas fa-plane"></i>
-                                <span><?= __('flights') ?></span>
-                                <span class="pill-badge"><?= $totalFlights ?></span>
-                            </a>
-                            <a href="?filter=refunded" class="filter-pill <?= $filter === 'refunded' ? 'active' : '' ?>">
-                                <i class="fas fa-undo"></i>
-                                <span><?= __('refunded') ?></span>
-                            </a>
-                            <a href="?filter=cancelled" class="filter-pill <?= $filter === 'cancelled' ? 'active' : '' ?>">
-                                <i class="fas fa-times-circle"></i>
-                                <span><?= __('cancelled') ?></span>
-                            </a>
-                        </div>
-
-                        <!-- Enhanced Search -->
-                        <div class="search-wrapper">
-                            <form method="GET" class="search-form">
-                                <div class="search-input-group">
-                                    <i class="fas fa-search search-icon"></i>
-                                    <input type="search" 
-                                           name="search" 
-                                           value="<?= htmlspecialchars($search) ?>"
-                                           placeholder="<?= __('search_families_members_passports') ?>"
-                                           class="search-input">
-                                    <input type="hidden" name="group_id" value="<?= htmlspecialchars($groupFilter) ?>">
-                                    <input type="hidden" name="filter" value="<?= htmlspecialchars($filter) ?>">
-                                    <?php if (!empty($search)): ?>
-                                        <a href="?" class="clear-search">
-                                            <i class="fas fa-times"></i>
-                                        </a>
-                                    <?php endif; ?>
-                                    <button type="submit" class="search-button">
-                                        <?= __('search') ?>
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
+                <!-- Controls -->
+                <div class="uh-controls">
+                    <div class="uh-tabs">
+                        <a href="?filter=groups" class="uh-tab <?= $filter === 'groups' ? 'active' : '' ?>">
+                            <?= __('groups') ?>
+                            <span class="uh-count"><?= $totalGroups ?? 0 ?></span>
+                        </a>
+                        <a href="?filter=families<?= !empty($groupFilter) ? '&group_id=' . urlencode($groupFilter) : '' ?>" class="uh-tab <?= $filter === 'families' && empty($visaStatus) ? 'active' : '' ?>">
+                            <?= __('families') ?>
+                            <span class="uh-count"><?= $totalFamilies ?></span>
+                        </a>
+                        <a href="?filter=members" class="uh-tab <?= $filter === 'members' ? 'active' : '' ?>">
+                            <?= __('members') ?>
+                            <span class="uh-count"><?= $totalMembers ?></span>
+                        </a>
+                        <a href="?filter=flights" class="uh-tab <?= $filter === 'flights' ? 'active' : '' ?>">
+                            <?= __('flights') ?>
+                            <span class="uh-count"><?= $totalFlights ?></span>
+                        </a>
+                        <a href="?filter=refunded" class="uh-tab <?= $filter === 'refunded' ? 'active' : '' ?>">
+                            <?= __('refunded') ?>
+                        </a>
+                        <a href="?filter=cancelled" class="uh-tab <?= $filter === 'cancelled' ? 'active' : '' ?>">
+                            <?= __('cancelled') ?>
+                        </a>
+                    </div>
+                    <div class="uh-search">
+                        <i class="fas fa-search"></i>
+                        <form method="GET" style="display:flex;align-items:center;width:100%;gap:10px;">
+                            <input type="search" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="<?= __('search_families_members_passports') ?>">
+                            <input type="hidden" name="group_id" value="<?= htmlspecialchars($groupFilter) ?>">
+                            <input type="hidden" name="filter" value="<?= htmlspecialchars($filter) ?>">
+                        </form>
                     </div>
                 </div>
 
-                <!-- Family Cards Grid -->
+                <!-- Group Cards Grid -->
                 <div class="container-fluid px-4">
                     <?php if ($showGroups): ?>
                         <?php if (!empty($resultGroups)): ?>
-                        <div class="family-cards-grid group-cards-grid">
+                        <div class="uh-grid">
                             <?php foreach ($resultGroups as $group):
                                 $memberCount = (int)($group['member_count'] ?? 0);
                                 $familyCount = (int)($group['family_count'] ?? 0);
                                 $aPrice = floatval($group['agency_total_price'] ?? 0);
                                 $rPrice = floatval($group['regular_total_price'] ?? 0);
-                                $aPaid = floatval($group['agency_total_paid'] ?? 0);
-                                $rPaid = floatval($group['regular_total_paid'] ?? 0);
-                                $hasPriceSplit = $aPrice > 0 && $rPrice > 0;
-                                $hasPaidSplit = $aPaid > 0 && $rPaid > 0;
                                 $ebPrice = floatval($group['extra_bed_price'] ?? 0);
                                 $etPrice = floatval($group['extra_transport_price'] ?? 0);
                                 $groupTotal = $aPrice + $rPrice + $ebPrice + $etPrice;
@@ -852,64 +1278,28 @@ $canEdit = user_can('umrah.member_edit');
                                 $groupPaid = min($groupPaid + $groupFundPaid, $groupTotal);
                                 $groupDue = $groupTotal - $groupPaid;
                                 $groupPercentage = $groupTotal > 0 ? ($groupPaid / $groupTotal) * 100 : 0;
+                                $agencyCount = (int)($group['agency_member_count'] ?? 0);
+                                $regularCount = (int)($group['regular_member_count'] ?? 0);
                             ?>
-                                <div class="family-card group-card" data-group-id="<?= (int)$group['group_id'] ?>">
-                                    <div class="card-header-section">
-                                        <div class="family-avatar">
-                                            <i class="fas fa-object-group"></i>
-                                        </div>
-                                        <div class="family-main-info">
-                                            <h3 class="family-name"><?= htmlspecialchars($group['group_name']) ?></h3>
-                                            <div class="family-meta">
-                                                <span class="meta-item group-number-chip">
-                                                    <i class="fas fa-hashtag"></i>
-                                                    <?= htmlspecialchars($group['group_number']) ?>
-                                                </span>
-                                                <span class="meta-item">
-                                                    <i class="fas fa-users"></i>
-                                                    <?= $familyCount ?> <?= __('families') ?>
-                                                </span>
-                                                <span class="meta-item">
-                                                    <i class="fas fa-user"></i>
-                                                    <?= $memberCount ?> <?= __('members') ?>
-                                                </span>
-                                                <?php $extraBedCount = (int)($group['extra_bed_count'] ?? 0); ?>
-                                                <?php if ($extraBedCount > 0): ?>
-                                                <span class="meta-item text-warning" title="<?= __('extra_beds') ?>">
-                                                    <i class="fas fa-plus-square"></i>
-                                                    <?= $extraBedCount ?> <?= __('extra_beds') ?>
-                                                </span>
-                                                <?php endif; ?>
-                                                <?php $extraTransportCount = (int)($group['extra_transport_count'] ?? 0); ?>
-                                                <?php if ($extraTransportCount > 0): ?>
-                                                <span class="meta-item text-warning" title="<?= __('extra_transport') ?>">
-                                                    <i class="fas fa-truck"></i>
-                                                    <?= $extraTransportCount ?> <?= __('extra_transport') ?>
-                                                </span>
-                                                <?php endif; ?>
-                                                <?php $excludedVisaOnly = (int)($group['excluded_visa_only_count'] ?? 0); ?>
-                                                <?php if ($excludedVisaOnly > 0): ?>
-                                                <span class="meta-item text-danger" title="<?= __('excluded_from_all_services_except_visa') ?>">
-                                                    <i class="fas fa-user-slash"></i>
-                                                    <?= $excludedVisaOnly ?> <?= __('excluded_visa_only') ?>
-                                                </span>
-                                                <?php endif; ?>
+                                <div class="uh-card" data-group-id="<?= (int)$group['group_id'] ?>">
+                                    <div class="uh-card-head">
+                                        <div class="uh-card-id">
+                                            <?php if ($groupTotal > 0): ?>
+                                            <div class="uh-ring" style="--pct:<?= round($groupPercentage) ?>;"><span><?= round($groupPercentage) ?>%</span></div>
+                                            <?php else: ?>
+                                            <div class="uh-badge"><i class="fas fa-object-group"></i></div>
+                                            <?php endif; ?>
+                                            <div>
+                                                <div class="uh-card-name"><?= htmlspecialchars($group['group_name']) ?></div>
+                                                <span class="uh-card-tag">GROUP #<?= htmlspecialchars($group['group_number']) ?></span>
                                             </div>
                                         </div>
-                                        <div class="card-actions">
-                                            <a class="btn-icon" href="?filter=families&group_id=<?= (int)$group['group_id'] ?>" title="<?= __('view') ?>">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            <button class="btn-icon btn-icon-add" type="button" title="<?= __('add_member') ?>" onclick="openAddMemberModal(<?= (int)$group['group_id'] ?>)">
-                                                <i class="fas fa-user-plus"></i>
-                                            </button>
-                                            <button class="btn-icon" type="button" title="<?= __('edit_group') ?>" onclick="openEditGroupModal(<?= (int)$group['group_id'] ?>, '<?= htmlspecialchars(addslashes($group['group_number']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($group['group_name']), ENT_QUOTES) ?>')">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
+                                        <div class="uh-card-actions">
+                                            <a class="uh-btn-icon" href="?filter=families&group_id=<?= (int)$group['group_id'] ?>" title="<?= __('view') ?>"><i class="fas fa-eye"></i></a>
+                                            <button class="uh-btn-icon add" type="button" title="<?= __('add_member') ?>" onclick="openAddMemberModal(<?= (int)$group['group_id'] ?>)"><i class="fas fa-user-plus"></i></button>
+                                            <button class="uh-btn-icon" type="button" title="<?= __('edit_group') ?>" onclick="openEditGroupModal(<?= (int)$group['group_id'] ?>, '<?= htmlspecialchars(addslashes($group['group_number']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($group['group_name']), ENT_QUOTES) ?>')"><i class="fas fa-edit"></i></button>
                                             <div class="dropdown">
-                                                <button class="btn-icon" type="button" data-toggle="dropdown" aria-haspopup="true">
-                                                    <i class="fas fa-ellipsis-v"></i>
-                                                </button>
+                                                <button class="uh-btn-icon" type="button" onclick="this.parentElement.classList.toggle('show')" title="<?= __('more_actions') ?>"><i class="fas fa-ellipsis-v"></i></button>
                                                 <div class="dropdown-menu dropdown-menu-right">
                                                     <a class="dropdown-item" href="javascript:void(0)" onclick="openGroupFulfillmentModal(<?= (int)$group['group_id'] ?>, '<?= htmlspecialchars(addslashes($group['group_name']), ENT_QUOTES) ?>')">
                                                         <i class="fas fa-truck-loading"></i><?= __('fulfill_group_services') ?>
@@ -934,70 +1324,104 @@ $canEdit = user_can('umrah.member_edit');
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="card-body-section">
-                                        <div class="info-row">
-                                            <i class="fas fa-calendar-alt"></i>
-                                            <span><?= __('created_by') ?>: <?= htmlspecialchars($group['created_by'] ?: '—') ?> &middot; <?= date('Y-m-d', strtotime($group['created_at'])) ?></span>
+
+                                    <div class="uh-card-meta">
+                                        <div class="uh-meta-item"><i class="fas fa-users"></i> <?= $familyCount ?> <?= __('families') ?></div>
+                                        <div class="uh-meta-item"><i class="fas fa-user"></i> <?= $memberCount ?> <?= __('members') ?></div>
+                                        <?php $excludedCount = (int)($group['excluded_visa_only_count'] ?? 0); ?>
+                                        <?php if ($excludedCount > 0): ?>
+                                        <div class="uh-meta-item" style="color:var(--rust);"><i class="fas fa-user-slash"></i> <?= $excludedCount ?> excluded</div>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <?php $extraBedCount = (int)($group['extra_bed_count'] ?? 0); ?>
+                                    <?php $extraTransportCount = (int)($group['extra_transport_count'] ?? 0); ?>
+                                    <?php if ($extraBedCount > 0 || $extraTransportCount > 0): ?>
+                                    <div class="uh-chips">
+                                        <?php if ($extraBedCount > 0): ?>
+                                        <span class="uh-chip"><i class="fas fa-plus-square"></i> <?= $extraBedCount ?> extra beds</span>
+                                        <?php endif; ?>
+                                        <?php if ($extraTransportCount > 0): ?>
+                                        <span class="uh-chip"><i class="fas fa-truck"></i> <?= $extraTransportCount ?> transport</span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php endif; ?>
+
+                                    <hr class="uh-perforation">
+
+                                    <div class="uh-ledger">
+                                        <div class="uh-ledger-item">
+                                            <div class="uh-ledger-label"><?= __('total_price') ?></div>
+                                            <div class="uh-ledger-value"><?= number_format($groupTotal) ?> USD</div>
                                         </div>
-                                        <div class="financial-summary">
-                                            <div class="financial-details">
-                                                <div class="financial-item">
-                                                    <span class="label"><?= __('total_price') ?></span>
-                                                    <?php if ($hasPriceSplit): ?>
-                                                    <span class="value" style="font-size:0.75rem;">
-                                                        <span style="color:#0e7490;"><?= number_format($aPrice) ?></span> + <span style="color:#7c3aed;"><?= number_format($rPrice) ?></span><?php if ($ebPrice > 0): ?> + <span style="color:#ea580c;"><?= number_format($ebPrice) ?></span><?php endif; ?><?php if ($etPrice > 0): ?> + <span style="color:#d97706;"><?= number_format($etPrice) ?></span><?php endif; ?> =
-                                                        <?= number_format($groupTotal) ?> <?= __('usd') ?>
-                                                    </span>
-                                                    <?php else: ?>
-                                                    <span class="value"><?= number_format($groupTotal) ?> <?= __('usd') ?></span>
-                                                    <?php endif; ?>
-                                                </div>
-                                                <div class="financial-item success">
-                                                    <span class="label"><?= __('paid') ?></span>
-                                                    <?php if ($hasPaidSplit): ?>
-                                                    <span class="value" style="font-size:0.75rem;">
-                                                        <span style="color:#0e7490;"><?= number_format($aPaid) ?></span> + <span style="color:#7c3aed;"><?= number_format($rPaid) ?></span> =
-                                                        <?= number_format($aPaid + $rPaid) ?> <?= __('usd') ?>
-                                                    </span>
-                                                    <?php else: ?>
-                                                    <span class="value"><?= number_format($groupPaid) ?> <?= __('usd') ?></span>
-                                                    <?php endif; ?>
-                                                </div>
-                                                <div class="financial-item warning">
-                                                    <span class="label"><?= __('due') ?></span>
-                                                    <span class="value"><?= number_format($groupDue) ?> <?= __('usd') ?></span>
-                                                </div>
-                                            </div>
-                                            <?php
-                                            $agencyCount = (int)($group['agency_member_count'] ?? 0);
-                                            $regularCount = (int)($group['regular_member_count'] ?? 0);
-                                            ?>
-                                            <?php if ($agencyCount > 0 || $regularCount > 0): ?>
-                                            <div style="margin-top:8px; font-size:0.8rem; display:flex; gap:12px; flex-wrap:wrap; padding-top:6px; border-top:1px dashed #e2e8f0;">
-                                                <?php if ($agencyCount > 0): ?>
-                                                <span style="font-weight:600; color:#0e7490;"><i class="fas fa-building mr-1"></i><?= __('agency') ?> (<?= $agencyCount ?>)</span>
-                                                <?php endif; ?>
-                                                <?php if ($regularCount > 0): ?>
-                                                <span style="font-weight:600; color:#7c3aed;"><i class="fas fa-user mr-1"></i><?= __('regular') ?> (<?= $regularCount ?>)</span>
-                                                <?php endif; ?>
-                                            </div>
-                                            <?php endif; ?>
-                                            <?php if ($groupTotal > 0): ?>
-                                            <div class="payment-progress">
-                                                <span class="percentage"><?= number_format($groupPercentage, 1) ?>%</span>
-                                                <div class="progress-bar-container">
-                                                    <div class="progress-bar-fill" style="width: <?= $groupPercentage ?>%"></div>
-                                                </div>
-                                            </div>
-                                            <?php endif; ?>
+                                        <div class="uh-ledger-item">
+                                            <div class="uh-ledger-label"><?= __('paid') ?></div>
+                                            <div class="uh-ledger-value paid"><?= number_format($groupPaid) ?> USD</div>
                                         </div>
+                                        <div class="uh-ledger-item">
+                                            <div class="uh-ledger-label"><?= __('due') ?></div>
+                                            <div class="uh-ledger-value due"><?= number_format($groupDue) ?> USD</div>
+                                        </div>
+                                    </div>
+                                    <div class="uh-ledger-breakdown">
+                                        <?php if ($aPrice > 0): ?>
+                                        <div class="uh-ledger-row"><span>Agency Price</span><span><?= number_format($aPrice) ?></span></div>
+                                        <?php endif; ?>
+                                        <?php if ($rPrice > 0): ?>
+                                        <div class="uh-ledger-row"><span>Regular Price</span><span><?= number_format($rPrice) ?></span></div>
+                                        <?php endif; ?>
+                                        <?php if ($ebPrice > 0): ?>
+                                        <div class="uh-ledger-row"><span>Extra Bed</span><span><?= number_format($ebPrice) ?></span></div>
+                                        <?php endif; ?>
+                                        <?php if ($etPrice > 0): ?>
+                                        <div class="uh-ledger-row"><span>Extra Transport</span><span><?= number_format($etPrice) ?></span></div>
+                                        <?php endif; ?>
+                                        <div class="uh-ledger-divider"></div>
+                                        <?php
+                                        $aPaid = floatval($group['agency_total_paid'] ?? 0);
+                                        $rPaid = floatval($group['regular_total_paid'] ?? 0);
+                                        $ebPaid = floatval($group['extra_bed_paid'] ?? 0);
+                                        $etPaid = floatval($group['extra_transport_paid'] ?? 0);
+                                        ?>
+                                        <?php if ($aPaid > 0): ?>
+                                        <div class="uh-ledger-row"><span>Agency Paid</span><span class="paid"><?= number_format($aPaid) ?></span></div>
+                                        <?php endif; ?>
+                                        <?php if ($rPaid > 0): ?>
+                                        <div class="uh-ledger-row"><span>Regular Paid</span><span class="paid"><?= number_format($rPaid) ?></span></div>
+                                        <?php endif; ?>
+                                        <?php if ($ebPaid > 0): ?>
+                                        <div class="uh-ledger-row"><span>Extra Bed Paid</span><span class="paid"><?= number_format($ebPaid) ?></span></div>
+                                        <?php endif; ?>
+                                        <?php if ($etPaid > 0): ?>
+                                        <div class="uh-ledger-row"><span>Extra Transport Paid</span><span class="paid"><?= number_format($etPaid) ?></span></div>
+                                        <?php endif; ?>
+                                        <?php if ($groupFundPaid > 0): ?>
+                                        <div class="uh-ledger-row"><span>Fund Allocated</span><span class="paid"><?= number_format($groupFundPaid) ?></span></div>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <?php if ($agencyCount > 0 || $regularCount > 0): ?>
+                                    <div class="uh-clients">
+                                        <?php if ($agencyCount > 0): ?>
+                                        <span class="uh-client-chip internal">Agency &middot; <?= $agencyCount ?></span>
+                                        <?php endif; ?>
+                                        <?php if ($regularCount > 0): ?>
+                                        <span class="uh-client-chip external">Regular &middot; <?= $regularCount ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php endif; ?>
+
+                                    <div class="uh-card-footer">
+                                        <i class="fas fa-calendar-alt"></i>
+                                        <?= __('created_by') ?> <?= htmlspecialchars($group['created_by'] ?: '—') ?> &middot; <?= date('M d, Y', strtotime($group['created_at'])) ?>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
                         </div>
 
-                        <nav class="pagination-wrapper" aria-label="Group list pagination">
-                            <ul class="pagination-list">
+                        <!-- Pagination -->
+                        <div class="uh-pagination-wrap">
+                            <ul class="uh-pagination">
                                 <?php
                                 $groupQueryString = "";
                                 if (!empty($search)) {
@@ -1006,49 +1430,34 @@ $canEdit = user_can('umrah.member_edit');
                                 $groupQueryString .= "&filter=groups";
                                 ?>
                                 <?php if ($page > 1): ?>
-                                    <li>
-                                        <a href="?page=<?= $page - 1 . $groupQueryString ?>" class="pagination-link">
-                                            <i class="fas fa-chevron-left"></i>
-                                        </a>
-                                    </li>
+                                    <li><a href="?page=<?= $page - 1 . $groupQueryString ?>"><i class="fas fa-chevron-left"></i></a></li>
                                 <?php endif; ?>
                                 <?php
                                 $startPage = max(1, $page - 2);
                                 $endPage = min($totalPages, $page + 2);
                                 for ($i = $startPage; $i <= $endPage; $i++): ?>
-                                    <li>
-                                        <a href="?page=<?= $i . $groupQueryString ?>"
-                                           class="pagination-link <?= $i == $page ? 'active' : '' ?>">
-                                            <?= $i ?>
-                                        </a>
-                                    </li>
+                                    <li><a href="?page=<?= $i . $groupQueryString ?>" class="<?= $i == $page ? 'active' : '' ?>"><?= $i ?></a></li>
                                 <?php endfor; ?>
                                 <?php if ($page < $totalPages): ?>
-                                    <li>
-                                        <a href="?page=<?= $page + 1 . $groupQueryString ?>" class="pagination-link">
-                                            <i class="fas fa-chevron-right"></i>
-                                        </a>
-                                    </li>
+                                    <li><a href="?page=<?= $page + 1 . $groupQueryString ?>"><i class="fas fa-chevron-right"></i></a></li>
                                 <?php endif; ?>
                             </ul>
-                            <div class="pagination-info">
+                            <div class="uh-pagination-info">
                                 <?= sprintf(__('showing_page_x_of_y'), $page, $totalPages) ?>
                                 (<?= $totalGroups ?> <?= __('groups') ?>)
                             </div>
-                        </nav>
+                        </div>
                         <?php else: ?>
-                        <div class="empty-state">
-                            <div class="empty-state-icon">
-                                <i class="fas fa-object-group"></i>
-                            </div>
+                        <div class="uh-empty">
+                            <i class="fas fa-object-group"></i>
                             <h3><?= !empty($search) ? sprintf(__('no_groups_found_for_search'), htmlspecialchars($search)) : __('no_groups_available') ?></h3>
                             <?php if (!empty($search)): ?>
-                                <a href="?" class="btn btn-primary">
+                                <a href="?" class="uh-btn uh-btn-ghost" style="color:var(--ink);border-color:var(--line);display:inline-flex;">
                                     <i class="fas fa-times mr-2"></i><?= __('clear_search') ?>
                                 </a>
                             <?php else: ?>
                                 <p><?= __('start_by_adding_a_new_group') ?></p>
-                                <button class="btn btn-gradient-primary" data-toggle="modal" data-target="#createGroupModal">
+                                <button class="uh-btn uh-btn-brand" data-toggle="modal" data-target="#createGroupModal" style="display:inline-flex;">
                                     <i class="fas fa-plus mr-2"></i><?= __('add_new_group') ?>
                                 </button>
                             <?php endif; ?>
@@ -1444,12 +1853,11 @@ $canEdit = user_can('umrah.member_edit');
                             <span class="crumb-count"><?= count($resultFamilies) ?> <?= __('families') ?></span>
                         </div>
                         <?php endif; ?>
-                        <div class="family-cards-grid">
+                        <div class="uh-grid">
                             <?php foreach ($resultFamilies as $row): 
                                 $familyId = $row['family_id'];
                                 $isFullyRefunded = ($row['total_members'] > 0 && $row['total_members'] == $row['refunded_members']);
                                 
-                                // Calculate payment percentage — use computed values, not stale families.total_price
                                 $aPrice = floatval($row['agency_total_price'] ?? 0);
                                 $rPrice = floatval($row['regular_total_price'] ?? 0);
                                 $ebPrice = floatval($row['extra_bed_price'] ?? 0);
@@ -1463,214 +1871,166 @@ $canEdit = user_can('umrah.member_edit');
                                 $fundAlloc = floatval($row['fund_allocation'] ?? 0);
                                 $effectivePaid = min($totalPaid + $fundAlloc, $totalPrice);
                                 $paymentPercentage = $totalPrice > 0 ? ($effectivePaid / $totalPrice) * 100 : 0;
+                                $agencyCount = (int)($row['agency_member_count'] ?? 0);
+                                $regularCount = (int)($row['regular_member_count'] ?? 0);
+                                $extraBedCount = (int)($row['extra_bed_count'] ?? 0);
+                                $extraTransportCount = (int)($row['extra_transport_count'] ?? 0);
+                                $familyDue = max(0, $totalPrice - $effectivePaid);
+                                $familyCurrency = htmlspecialchars($row['family_currency'] ?? 'USD');
                             ?>
-                                <div class="family-card <?= $isFullyRefunded ? 'refunded-family' : '' ?>" data-family-id="<?= $familyId ?>">
-                                    <!-- Card Header -->
-                                    <div class="card-header-section">
-                                        <div class="family-avatar">
-                                            <i class="fas fa-users"></i>
+                                <div class="uh-card <?= $isFullyRefunded ? 'refunded-family' : '' ?>" data-family-id="<?= $familyId ?>" data-total-members="<?= $row['total_members'] ?>" data-total-price="<?= number_format($totalPrice) ?> USD" data-total-due="<?= number_format($familyDue) ?> USD">
+                                    <div class="uh-card-main">
+                                    <div class="uh-card-head">
+                                        <div class="uh-card-id">
+                                            <?php if ($totalPrice > 0): ?>
+                                            <div class="uh-ring" style="--pct:<?= round($paymentPercentage) ?>;"><span><?= round($paymentPercentage) ?>%</span></div>
+                                            <?php else: ?>
+                                            <div class="uh-badge"><i class="fas fa-users"></i></div>
+                                            <?php endif; ?>
+                                            <div>
+                                                <div class="uh-card-name"><?= htmlspecialchars($row['head_of_family']) ?></div>
+                                                <?php if (!empty($row['group_number'])): ?>
+                                                <span class="uh-card-tag">GROUP #<?= htmlspecialchars($row['group_number']) ?> <?= htmlspecialchars($row['group_name']) ?></span>
+                                                <?php endif; ?>
+                                            </div>
                                         </div>
-                                        <div class="family-main-info">
-                                            <h3 class="family-name"><?= htmlspecialchars($row['head_of_family']) ?></h3>
-                                            <div class="family-meta">
-                                                    <?php if (!empty($row['group_number'])): ?>
-                                                    <span class="meta-item group-number-chip">
-                                                        <i class="fas fa-hashtag"></i>
-                                                        <?= htmlspecialchars($row['group_number']) ?> <?= htmlspecialchars($row['group_name']) ?>
-                                                    </span>
-                                                    <?php endif; ?>
-                                                    <span class="meta-item">
-                                                        <i class="fas fa-users"></i>
-                                                        <?= $row['total_members'] ?> <?= __('members') ?>
-                                                    </span>
-                                                    <?php $extraBedCount = (int)($row['extra_bed_count'] ?? 0); ?>
-                                                    <?php if ($extraBedCount > 0): ?>
-                                                    <span class="meta-item text-warning" title="<?= __('extra_beds') ?>">
-                                                        <i class="fas fa-plus-square"></i>
-                                                        <?= $extraBedCount ?> <?= __('extra_beds') ?>
-                                                    </span>
-                                                    <?php endif; ?>
-                                                    <?php $extraTransportCount = (int)($row['extra_transport_count'] ?? 0); ?>
-                                                    <?php if ($extraTransportCount > 0): ?>
-                                                    <span class="meta-item text-warning" title="<?= __('extra_transport') ?>">
-                                                        <i class="fas fa-truck"></i>
-                                                        <?= $extraTransportCount ?> <?= __('extra_transport') ?>
-                                                    </span>
-                                                    <?php endif; ?>
-                                                    <?php $clientNames = trim($row['client_names'] ?? ''); ?>
-                                                    <?php if (!empty($clientNames)): ?>
-                                                    <span class="meta-item" title="<?= htmlspecialchars($clientNames) ?>">
-                                                        <i class="fas fa-user-tie"></i>
-                                                        <?= htmlspecialchars($clientNames) ?>
-                                                    </span>
-                                                    <?php endif; ?>
-                                                    <?php if ($row['refunded_members'] > 0): ?>
-                                                    <span class="meta-item text-warning" title="<?= __('refunded_members') ?>">
-                                                        <i class="fas fa-undo"></i>
-                                                        <?= $row['refunded_members'] ?> <?= __('refunded') ?>
-                                                    </span>
-                                                    <?php endif; ?>
-                                                    <?php if ($row['cancelled_members'] > 0): ?>
-                                                    <span class="meta-item text-danger" title="<?= __('cancelled_members') ?>">
-                                                        <i class="fas fa-ban"></i>
-                                                        <?= $row['cancelled_members'] ?> <?= __('cancelled') ?>
-                                                    </span>
-                                                    <?php endif; ?>
-                                                </div>
-                                        </div>
-                                        <div class="card-actions">
-                                             <button class="btn-icon view-members-btn" data-family-id="<?= $familyId ?>" type="button" title="<?= __('view_members') ?>" aria-label="<?= __('view_members') ?>">
-                                                 <i class="fas fa-eye"></i>
-                                             </button>
-                                             <button class="btn-icon btn-icon-add" type="button" title="<?= __('add_member') ?>" aria-label="<?= __('add_member') ?>" onclick="openBookingModal(<?= $familyId ?>, '<?= addslashes($row['package_type']) ?>')">
-                                                 <i class="fas fa-user-plus"></i>
-                                             </button>
-                                             <button class="btn-icon" type="button" title="<?= __('edit') ?>" aria-label="<?= __('edit') ?>" onclick="openEditFamilyModal(<?= $familyId ?>, '<?= htmlspecialchars(addslashes($row['head_of_family']), ENT_QUOTES) ?>',
-                                                  '<?= htmlspecialchars(addslashes($row['contact']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($row['address']), ENT_QUOTES) ?>',
-                                                  '<?= htmlspecialchars(addslashes($row['tazmin']), ENT_QUOTES) ?>', <?= (int)($row['group_id'] ?? 0) ?>)">
-                                                 <i class="fas fa-edit"></i>
-                                             </button>
+                                        <div class="uh-card-actions">
+                                            <button class="uh-btn-icon view-members-btn" data-family-id="<?= $familyId ?>" type="button" title="<?= __('view_members') ?>" onclick="viewFamilyMembers(<?= $familyId ?>)"><i class="fas fa-eye"></i></button>
+                                            <button class="uh-btn-icon add" type="button" title="<?= __('add_member') ?>" onclick="openBookingModal(<?= $familyId ?>, '<?= addslashes($row['package_type']) ?>')"><i class="fas fa-user-plus"></i></button>
+                                            <button class="uh-btn-icon" type="button" title="<?= __('edit') ?>" onclick="openEditFamilyModal(<?= $familyId ?>, '<?= htmlspecialchars(addslashes($row['head_of_family']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($row['contact']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($row['address']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($row['tazmin']), ENT_QUOTES) ?>', <?= (int)($row['group_id'] ?? 0) ?>)"><i class="fas fa-edit"></i></button>
                                             <div class="dropdown">
-                                                <button class="btn-icon" type="button" data-toggle="dropdown" title="<?= __('more_actions') ?>" aria-label="<?= __('more_actions') ?>" aria-haspopup="true">
-                                                    <i class="fas fa-ellipsis-v"></i>
-                                                </button>
+                                                <button class="uh-btn-icon" type="button" onclick="this.parentElement.classList.toggle('show')" title="<?= __('more_actions') ?>"><i class="fas fa-ellipsis-v"></i></button>
                                                 <div class="dropdown-menu dropdown-menu-right">
-                                                     <?php if ($canEdit): ?>
-                                                     <h6 class="dropdown-header"><?= __('finance') ?></h6>
-                                                     <a class="dropdown-item" href="javascript:void(0)" onclick="openFamilyTransactionModal(<?= $familyId ?>, '<?= htmlspecialchars(addslashes($row['head_of_family']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($row['package_type']), ENT_QUOTES) ?>', <?= (int)$row['total_members'] ?>)">
-                                                         <i class="fas fa-credit-card"></i><?= __('family_transaction') ?>
-                                                     </a>
-<a class="dropdown-item" href="javascript:void(0)" onclick="openFamilyFulfillmentModal(<?= $familyId ?>, '<?= htmlspecialchars(addslashes($row['head_of_family']), ENT_QUOTES) ?>')">
-                                                          <i class="fas fa-truck-loading"></i><?= __('fulfill_family_services') ?>
-                                                      </a>
-                                                      <a class="dropdown-item" href="javascript:void(0)" onclick="openProfitReport('family', <?= $familyId ?>, '<?= htmlspecialchars(addslashes($row['head_of_family']), ENT_QUOTES) ?>')">
-                                                          <i class="fas fa-chart-line"></i><?= __('profit_report') ?>
-                                                      </a>
-                                                      <?php endif; ?>
+                                                    <?php if ($canEdit): ?>
+                                                    <h6 class="dropdown-header"><?= __('finance') ?></h6>
+                                                    <a class="dropdown-item" href="javascript:void(0)" onclick="openFamilyTransactionModal(<?= $familyId ?>, '<?= htmlspecialchars(addslashes($row['head_of_family']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($row['package_type']), ENT_QUOTES) ?>', <?= (int)$row['total_members'] ?>)">
+                                                        <i class="fas fa-credit-card"></i><?= __('family_transaction') ?>
+                                                    </a>
+                                                    <a class="dropdown-item" href="javascript:void(0)" onclick="openFamilyFulfillmentModal(<?= $familyId ?>, '<?= htmlspecialchars(addslashes($row['head_of_family']), ENT_QUOTES) ?>')">
+                                                        <i class="fas fa-truck-loading"></i><?= __('fulfill_family_services') ?>
+                                                    </a>
+                                                    <a class="dropdown-item" href="javascript:void(0)" onclick="openProfitReport('family', <?= $familyId ?>, '<?= htmlspecialchars(addslashes($row['head_of_family']), ENT_QUOTES) ?>')">
+                                                        <i class="fas fa-chart-line"></i><?= __('profit_report') ?>
+                                                    </a>
+                                                    <?php endif; ?>
                                                     <h6 class="dropdown-header"><?= __('documents') ?></h6>
-                                                    <a class="dropdown-item" href="javascript:void(0)" onclick="generateFamilyTazmin(<?= $familyId ?>)">
-                                                        <i class="fas fa-shield-alt"></i><?= __('generate_family_tazmin') ?>
-                                                    </a>
-                                                    <a class="dropdown-item" href="javascript:void(0)" onclick="generateFamilyAgreement(<?= $familyId ?>)">
-                                                        <i class="fas fa-file-contract"></i><?= __('generate_family_agreement') ?>
-                                                    </a>
-                                                    <a class="dropdown-item" href="javascript:void(0)" onclick="generateFamilyCompletion(<?= $familyId ?>)">
-                                                        <i class="fas fa-check-circle"></i><?= __('generate_family_completion') ?>
-                                                    </a>
-                                                    <a class="dropdown-item" href="javascript:void(0)" onclick="generateFamilyCancellation(<?= $familyId ?>)">
-                                                        <i class="fas fa-times-circle"></i><?= __('generate_family_cancellation') ?>
-                                                    </a>
-                                                    <a class="dropdown-item" href="#" onclick="showBankLetterModal(<?= $familyId ?>)">
-                                                        <i class="fas fa-file-invoice"></i><?= __("bank_receipt") ?>
-                                                    </a>
+                                                    <a class="dropdown-item" href="javascript:void(0)" onclick="generateFamilyTazmin(<?= $familyId ?>)"><i class="fas fa-shield-alt"></i><?= __('generate_family_tazmin') ?></a>
+                                                    <a class="dropdown-item" href="javascript:void(0)" onclick="generateFamilyAgreement(<?= $familyId ?>)"><i class="fas fa-file-contract"></i><?= __('generate_family_agreement') ?></a>
+                                                    <a class="dropdown-item" href="javascript:void(0)" onclick="generateFamilyCompletion(<?= $familyId ?>)"><i class="fas fa-check-circle"></i><?= __('generate_family_completion') ?></a>
+                                                    <a class="dropdown-item" href="javascript:void(0)" onclick="generateFamilyCancellation(<?= $familyId ?>)"><i class="fas fa-times-circle"></i><?= __('generate_family_cancellation') ?></a>
+                                                    <a class="dropdown-item" href="#" onclick="showBankLetterModal(<?= $familyId ?>)"><i class="fas fa-file-invoice"></i><?= __("bank_receipt") ?></a>
                                                     <?php if ($canEdit): ?>
                                                     <div class="dropdown-divider"></div>
-                                                    <a class="dropdown-item text-danger" href="javascript:void(0)" onclick="deleteFamily(<?= $familyId ?>)">
-                                                        <i class="fas fa-trash"></i><?= __('delete') ?>
-                                                    </a>
+                                                    <a class="dropdown-item text-danger" href="javascript:void(0)" onclick="deleteFamily(event, <?= $familyId ?>)"><i class="fas fa-trash"></i><?= __('delete') ?></a>
                                                     <?php endif; ?>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <!-- Card Body -->
-                                    <div class="card-body-section">
-                                        <!-- Contact Information -->
-                                        <div class="info-row">
-                                            <i class="fas fa-phone"></i>
-                                            <span><?= htmlspecialchars($row['contact']) ?></span>
-                                        </div>
-                                        <div class="info-row">
-                                            <i class="fas fa-map-marker-alt"></i>
-                                            <span><?= htmlspecialchars($row['address']) ?></span>
-                                        </div>
+                                    <div class="uh-card-meta">
+                                        <div class="uh-meta-item"><i class="fas fa-users"></i> <?= $row['total_members'] ?> <?= __('members') ?></div>
+                                        <?php $clientNames = trim($row['client_names'] ?? ''); ?>
+                                        <?php if (!empty($clientNames)): ?>
+                                        <div class="uh-meta-item" title="<?= htmlspecialchars($clientNames) ?>"><i class="fas fa-user-tie"></i> <?= htmlspecialchars($clientNames) ?></div>
+                                        <?php endif; ?>
+                                        <?php $famExcluded = $excludedFamilyMap[$familyId] ?? 0; ?>
+                                        <?php if ($famExcluded > 0): ?>
+                                        <div class="uh-meta-item" style="color:var(--rust);"><i class="fas fa-user-slash"></i> <?= $famExcluded ?> excluded</div>
+                                        <?php endif; ?>
+                                    </div>
 
-                                         <!-- Flight Status Badge -->
-                                         <div class="flight-badge flight-loading" id="flight-status-<?= $familyId ?>">
-                                             <i class="fas fa-plane"></i>
-                                             <span id="flight-status-text-<?= $familyId ?>">&nbsp;</span>
-                                         </div>
+                                    <?php if ($extraBedCount > 0 || $extraTransportCount > 0): ?>
+                                    <div class="uh-chips">
+                                        <?php if ($extraBedCount > 0): ?>
+                                        <span class="uh-chip"><i class="fas fa-plus-square"></i> <?= $extraBedCount ?> extra beds</span>
+                                        <?php endif; ?>
+                                        <?php if ($extraTransportCount > 0): ?>
+                                        <span class="uh-chip"><i class="fas fa-truck"></i> <?= $extraTransportCount ?> transport</span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php endif; ?>
 
-                                         <!-- Flight Details Button (if group ticket exists) -->
-                                         <?php if ($row['has_group_tickets'] > 0): ?>
-                                         <button class="btn btn-sm btn-info" 
-                                                  onclick="viewFamilyFlightDetails(<?= $familyId ?>, '<?= htmlspecialchars(addslashes($row['head_of_family']), ENT_QUOTES) ?>')"
-                                                 title="<?= __('view_flight_details') ?>"
-                                                 style="margin-top: 8px;">
-                                             <i class="fas fa-ticket-alt"></i> <?= __('flight_details') ?>
-                                         </button>
-                                         <?php endif; ?>
+                                    <div class="uh-card-meta" style="margin-top:10px;">
+                                        <div class="uh-meta-item"><i class="fas fa-phone"></i> <?= htmlspecialchars($row['contact']) ?></div>
+                                        <div class="uh-meta-item"><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($row['address']) ?></div>
+                                        <?php if ($row['refunded_members'] > 0): ?>
+                                        <div class="uh-meta-item" style="color:var(--rust);"><i class="fas fa-undo"></i> <?= $row['refunded_members'] ?> <?= __('refunded') ?></div>
+                                        <?php endif; ?>
+                                        <?php if ($row['cancelled_members'] > 0): ?>
+                                        <div class="uh-meta-item" style="color:var(--rust);"><i class="fas fa-ban"></i> <?= $row['cancelled_members'] ?> <?= __('cancelled') ?></div>
+                                        <?php endif; ?>
+                                    </div>
 
-                                        <!-- Financial Summary (collapsible) -->
-                                        <?php $hasRegularClient = isset($regularClientFamilies[$familyId]); ?>
-                                        <button type="button" class="payment-summary-toggle" data-toggle="collapse" data-target="#payment-summary-<?= $familyId ?>" aria-expanded="false" aria-controls="payment-summary-<?= $familyId ?>">
-                                            <span class="toggle-label"><i class="fas fa-credit-card"></i><?= __('payment_status') ?></span>
-                                            <?php $familyCurrency = htmlspecialchars($row['family_currency'] ?? 'USD'); ?>
-                                            <span class="toggle-quick">
-                                                <span class="toggle-pct"><?= number_format($paymentPercentage, 1) ?>%</span>
-                                                <?= __('paid') ?> <?= number_format($effectivePaid) ?> / <?= number_format($totalPrice) ?> <?= $familyCurrency ?>
-                                            </span>
-                                            <i class="fas fa-chevron-down toggle-chevron"></i>
+                                    <div id="flight-status-<?= $familyId ?>" class="uh-meta-item" style="margin-top:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                                        <i class="fas fa-plane"></i>
+                                        <span id="flight-status-text-<?= $familyId ?>">&nbsp;</span>
+                                        <?php if ($row['has_group_tickets'] > 0): ?>
+                                        <button class="uh-btn uh-btn-ghost" style="color:var(--ink);border-color:var(--line);font-size:12px;padding:5px 10px;margin:0;" onclick="viewFamilyFlightDetails(<?= $familyId ?>, '<?= htmlspecialchars(addslashes($row['head_of_family']), ENT_QUOTES) ?>')">
+                                            <i class="fas fa-ticket-alt"></i> <?= __('flight_details') ?>
                                         </button>
-                                        <div class="collapse" id="payment-summary-<?= $familyId ?>">
-                                        <div class="financial-summary">
-                                            <div class="financial-header">
-                                                <span><?= __('payment_status') ?></span>
-                                                <span class="percentage"><?= number_format($paymentPercentage, 1) ?>%</span>
-                                            </div>
-                                            <div class="progress-bar-container">
-                                                <div class="progress-bar-fill" style="width: <?= $paymentPercentage ?>%"></div>
-                                            </div>
-                                            <div class="financial-details">
-                                                <div class="financial-item">
-                                                    <span class="label"><?= __('total_price') ?></span>
-                                                    <?php $hasSplit = $aPrice > 0 && $rPrice > 0; ?>
-                                                    <?php if ($hasSplit): ?>
-                                                    <span class="value" style="font-size:0.75rem;">
-                                                        <span style="color:#0e7490;"><?= number_format($aPrice) ?></span> + <span style="color:#7c3aed;"><?= number_format($rPrice) ?></span><?php if ($ebPrice > 0): ?> + <span style="color:#ea580c;"><?= number_format($ebPrice) ?></span><?php endif; ?><?php if ($etPrice > 0): ?> + <span style="color:#d97706;"><?= number_format($etPrice) ?></span><?php endif; ?> =
-                                                        <?= number_format($totalPrice) ?> <?= $familyCurrency ?>
-                                                    </span>
-                                                    <?php else: ?>
-                                                    <span class="value"><?= number_format($totalPrice) ?> <?= $familyCurrency ?></span>
-                                                    <?php endif; ?>
-                                                </div>
-                                                <div class="financial-item success">
-                                                    <span class="label"><?= __('paid') ?></span>
-                                                    <span class="value"><?= number_format($effectivePaid) ?> <?= $familyCurrency ?></span>
-                                                </div>
-                                                <?php if ($fundAlloc > 0): ?>
-                                                <div class="financial-item" style="color:#0e7490;">
-                                                    <span class="label"><?= __('fund') ?></span>
-                                                    <span class="value"><?= number_format($fundAlloc) ?> <?= $familyCurrency ?></span>
-                                                </div>
-                                                <?php endif; ?>
-                                                <div class="financial-item warning">
-                                                    <span class="label"><?= __('bank') ?></span>
-                                                    <span class="value"><?= number_format(floatval($row['total_paid_to_bank'] ?? 0)) ?> <?= $familyCurrency ?></span>
-                                                </div>
-                                                <div class="financial-item danger">
-                                                    <span class="label"><?= __('due') ?></span>
-                                                    <span class="value"><?= number_format(max(0, $totalPrice - $effectivePaid)) ?> <?= $familyCurrency ?></span>
-                                                </div>
-                                            </div>
-                                            <?php
-                                            $agencyCount = (int)($row['agency_member_count'] ?? 0);
-                                            $regularCount = (int)($row['regular_member_count'] ?? 0);
-                                            ?>
-                                            <?php if ($agencyCount > 0 || $regularCount > 0): ?>
-                                            <div style="margin-top:8px; font-size:0.8rem; display:flex; gap:12px; flex-wrap:wrap; padding-top:6px; border-top:1px dashed #e2e8f0;">
-                                                <?php if ($agencyCount > 0): ?>
-                                                <span style="font-weight:600; color:#0e7490;"><i class="fas fa-building mr-1"></i><?= __('agency') ?> (<?= $agencyCount ?>)</span>
-                                                <?php endif; ?>
-                                                <?php if ($regularCount > 0): ?>
-                                                <span style="font-weight:600; color:#7c3aed;"><i class="fas fa-user mr-1"></i><?= __('regular') ?> (<?= $regularCount ?>)</span>
-                                                <?php endif; ?>
-                                            </div>
-                                            <?php endif; ?>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <hr class="uh-perforation">
+
+                                    <div class="uh-ledger">
+                                        <div class="uh-ledger-item">
+                                            <div class="uh-ledger-label"><?= __('total_price') ?></div>
+                                            <div class="uh-ledger-value"><?= number_format($totalPrice) ?> <?= $familyCurrency ?></div>
                                         </div>
+                                        <div class="uh-ledger-item">
+                                            <div class="uh-ledger-label"><?= __('paid') ?></div>
+                                            <div class="uh-ledger-value paid"><?= number_format($effectivePaid) ?> <?= $familyCurrency ?></div>
+                                        </div>
+                                        <div class="uh-ledger-item">
+                                            <div class="uh-ledger-label"><?= __('due') ?></div>
+                                            <div class="uh-ledger-value due"><?= number_format($familyDue) ?> <?= $familyCurrency ?></div>
                                         </div>
                                     </div>
+                                    <div class="uh-ledger-breakdown">
+                                        <?php if ($aPrice > 0): ?>
+                                        <div class="uh-ledger-row"><span>Agency Price</span><span><?= number_format($aPrice) ?></span></div>
+                                        <?php endif; ?>
+                                        <?php if ($rPrice > 0): ?>
+                                        <div class="uh-ledger-row"><span>Regular Price</span><span><?= number_format($rPrice) ?></span></div>
+                                        <?php endif; ?>
+                                        <?php if ($ebPrice > 0): ?>
+                                        <div class="uh-ledger-row"><span>Extra Bed</span><span><?= number_format($ebPrice) ?></span></div>
+                                        <?php endif; ?>
+                                        <?php if ($etPrice > 0): ?>
+                                        <div class="uh-ledger-row"><span>Extra Transport</span><span><?= number_format($etPrice) ?></span></div>
+                                        <?php endif; ?>
+                                        <div class="uh-ledger-divider"></div>
+                                        <?php if ($aPaid > 0): ?>
+                                        <div class="uh-ledger-row"><span>Agency Paid</span><span class="paid"><?= number_format($aPaid) ?></span></div>
+                                        <?php endif; ?>
+                                        <?php if ($rPaid > 0): ?>
+                                        <div class="uh-ledger-row"><span>Regular Paid</span><span class="paid"><?= number_format($rPaid) ?></span></div>
+                                        <?php endif; ?>
+                                        <?php if ($ebPaid > 0): ?>
+                                        <div class="uh-ledger-row"><span>Extra Bed Paid</span><span class="paid"><?= number_format($ebPaid) ?></span></div>
+                                        <?php endif; ?>
+                                        <?php if ($etPaid > 0): ?>
+                                        <div class="uh-ledger-row"><span>Extra Transport Paid</span><span class="paid"><?= number_format($etPaid) ?></span></div>
+                                        <?php endif; ?>
+                                        <?php if ($fundAlloc > 0): ?>
+                                        <div class="uh-ledger-row"><span>Fund Allocated</span><span class="paid"><?= number_format($fundAlloc) ?></span></div>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <?php if ($agencyCount > 0 || $regularCount > 0): ?>
+                                    <div class="uh-clients">
+                                        <?php if ($agencyCount > 0): ?>
+                                        <span class="uh-client-chip internal">Agency &middot; <?= $agencyCount ?></span>
+                                        <?php endif; ?>
+                                        <?php if ($regularCount > 0): ?>
+                                        <span class="uh-client-chip external">Regular &middot; <?= $regularCount ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php endif; ?>
+
+                                </div><!-- /.uh-card-main -->
 
                                     <!-- Members Section (Initially Hidden) -->
                                     <div class="members-section" id="members-<?= $familyId ?>" style="display: none;">
@@ -1681,7 +2041,6 @@ $canEdit = user_can('umrah.member_edit');
                                             </button>
                                         </div>
                                         <div class="members-grid" id="members-grid-<?= $familyId ?>">
-                                            <!-- Members will be loaded via AJAX -->
                                             <div class="loading-spinner members-loading" aria-label="<?= __('loading_members') ?>">
                                                 <div class="member-skeleton"><div class="skeleton skeleton-avatar"></div><div class="skeleton skeleton-line w-75"></div><div class="skeleton skeleton-line w-50"></div></div>
                                                 <div class="member-skeleton"><div class="skeleton skeleton-avatar"></div><div class="skeleton skeleton-line w-75"></div><div class="skeleton skeleton-line w-50"></div></div>
@@ -1693,76 +2052,49 @@ $canEdit = user_can('umrah.member_edit');
                             <?php endforeach; ?>
                         </div>
 
-                        <!-- Enhanced Pagination -->
-                        <nav class="pagination-wrapper" aria-label="Family list pagination">
-                            <ul class="pagination-list">
+                        <!-- Pagination -->
+                        <div class="uh-pagination-wrap">
+                            <ul class="uh-pagination">
                                 <?php
                                 $queryString = "";
-                                if (!empty($search)) {
-                                    $queryString .= "&search=" . urlencode($search);
-                                }
-                                if (!empty($visaStatus)) {
-                                    $queryString .= "&visa_status=" . urlencode($visaStatus);
-                                }
-                                if (!empty($filter)) {
-                                    $queryString .= "&filter=" . urlencode($filter);
-                                }
-                                if (!empty($groupFilter)) {
-                                    $queryString .= "&group_id=" . urlencode($groupFilter);
-                                }
-
-                                if ($page > 1): ?>
-                                    <li>
-                                        <a href="?page=<?= $page - 1 . $queryString ?>" class="pagination-link">
-                                            <i class="fas fa-chevron-left"></i>
-                                        </a>
-                                    </li>
+                                if (!empty($search)) { $queryString .= "&search=" . urlencode($search); }
+                                if (!empty($visaStatus)) { $queryString .= "&visa_status=" . urlencode($visaStatus); }
+                                if (!empty($filter)) { $queryString .= "&filter=" . urlencode($filter); }
+                                if (!empty($groupFilter)) { $queryString .= "&group_id=" . urlencode($groupFilter); }
+                                ?>
+                                <?php if ($page > 1): ?>
+                                    <li><a href="?page=<?= $page - 1 . $queryString ?>"><i class="fas fa-chevron-left"></i></a></li>
                                 <?php endif; ?>
-
                                 <?php
                                 $startPage = max(1, $page - 2);
                                 $endPage = min($totalPages, $page + 2);
-
                                 for ($i = $startPage; $i <= $endPage; $i++): ?>
-                                    <li>
-                                        <a href="?page=<?= $i . $queryString ?>" 
-                                           class="pagination-link <?= $i == $page ? 'active' : '' ?>">
-                                            <?= $i ?>
-                                        </a>
-                                    </li>
+                                    <li><a href="?page=<?= $i . $queryString ?>" class="<?= $i == $page ? 'active' : '' ?>"><?= $i ?></a></li>
                                 <?php endfor; ?>
-
                                 <?php if ($page < $totalPages): ?>
-                                    <li>
-                                        <a href="?page=<?= $page + 1 . $queryString ?>" class="pagination-link">
-                                            <i class="fas fa-chevron-right"></i>
-                                        </a>
-                                    </li>
+                                    <li><a href="?page=<?= $page + 1 . $queryString ?>"><i class="fas fa-chevron-right"></i></a></li>
                                 <?php endif; ?>
                             </ul>
-                            <div class="pagination-info">
-                                <?= sprintf(__('showing_page_x_of_y'), $page, $totalPages) ?> 
+                            <div class="uh-pagination-info">
+                                <?= sprintf(__('showing_page_x_of_y'), $page, $totalPages) ?>
                                 (<?= $totalFamilies ?> <?= __('total_families') ?>)
                             </div>
-                        </nav>
+                        </div>
                     <?php else: ?>
-                        <!-- Empty State -->
-                        <div class="empty-state">
-                            <div class="empty-state-icon">
-                                <i class="fas fa-search"></i>
-                            </div>
+                        <div class="uh-empty">
+                            <i class="fas fa-search"></i>
                             <h3><?= !empty($search) ? sprintf(__('no_families_found_for_search'), htmlspecialchars($search)) : __('no_families_available') ?></h3>
                             <?php if (!empty($groupFilter)): ?>
-                                <a href="?filter=groups" class="btn btn-primary">
+                                <a href="?filter=groups" class="uh-btn uh-btn-ghost" style="color:var(--ink);border-color:var(--line);display:inline-flex;">
                                     <i class="fas fa-object-group mr-2"></i><?= __('back_to_groups') ?>
                                 </a>
                             <?php elseif (!empty($search)): ?>
-                                <a href="?" class="btn btn-primary">
+                                <a href="?" class="uh-btn uh-btn-ghost" style="color:var(--ink);border-color:var(--line);display:inline-flex;">
                                     <i class="fas fa-times mr-2"></i><?= __('clear_search') ?>
                                 </a>
                             <?php else: ?>
                                 <p><?= __('start_by_adding_a_new_family') ?></p>
-                                <button class="btn btn-gradient-primary" data-toggle="modal" data-target="#createFamilyModal">
+                                <button class="uh-btn uh-btn-brand" data-toggle="modal" data-target="#createFamilyModal" style="display:inline-flex;">
                                     <i class="fas fa-plus mr-2"></i><?= __('add_new_family') ?>
                                 </button>
                             <?php endif; ?>
@@ -1866,131 +2198,81 @@ $canEdit = user_can('umrah.member_edit');
 
     // View family members with AJAX loading
     window.viewFamilyMembers = function(familyId) {
-        try {
-            const sectionId = 'members-' + familyId;
-            const gridId = 'members-grid-' + familyId;
-            const section = document.getElementById(sectionId);
-            const grid = document.getElementById(gridId);
-            const card = document.querySelector('[data-family-id="' + familyId + '"]');
-            
-            dbg('VIEW: familyId=' + familyId + ', section=' + (section ? 'FOUND' : 'NOT FOUND') + ', grid=' + (grid ? 'FOUND' : 'NOT FOUND'));
-            
-            if (!section || !grid) {
-                console.error('ERROR: Could not find section or grid');
-                return false;
-            }
-            
-            const isHidden = section.style.display === 'none';
-            section.style.display = isHidden ? 'block' : 'none';
-            
-            // Add/remove members-visible class to the card
-            if (card) {
-                if (isHidden) {
-                    card.classList.add('members-visible');
-                } else {
-                    card.classList.remove('members-visible');
-                }
-            }
-            
-            dbg('VIEW: Display changed to ' + section.style.display);
-            
-            if (isHidden && grid.innerHTML.includes('loading-spinner')) {
-                dbg('VIEW: Loading members...');
-                window.loadFamilyMembers(familyId);
-            }
-            return false;
-        } catch(err) {
-            console.error('VIEW ERROR:', err);
-            console.error('Stack:', err.stack);
-        }
+        const card = document.querySelector('[data-family-id="' + familyId + '"]');
+        if (!card) return;
+        openMembersDrawer(familyId, card);
     };
 
-    // Load family members via AJAX
-    window.loadFamilyMembers = function(familyId) {
-        const gridId = 'members-grid-' + familyId;
-        const grid = document.getElementById(gridId);
-        
-        dbg('LOAD: familyId=' + familyId + ', grid=' + (grid ? 'FOUND' : 'NOT FOUND'));
-        
-        if (!grid) {
-            console.error('ERROR: Grid element not found: ' + gridId);
-            return;
-        }
-        
-        const memberSkeleton = '<div class="member-skeleton">' +
-            '<div class="skeleton skeleton-avatar"></div>' +
-            '<div class="skeleton skeleton-line w-75"></div>' +
-            '<div class="skeleton skeleton-line w-50"></div>' +
-            '</div>';
-        grid.innerHTML = '<div class="loading-spinner members-loading" aria-label="Loading members">' +
-            memberSkeleton.repeat(3) + '</div>';
-        
-        // Get filter parameter from current URL
+    function openMembersDrawer(familyId, card) {
+        const drawer = document.getElementById('membersDrawer');
+        const overlay = document.getElementById('membersOverlay');
+        const nameEl = document.getElementById('drawerFamilyName');
+        const metaEl = document.getElementById('drawerFamilyMeta');
+        const summaryEl = document.getElementById('drawerSummary');
+        const listEl = document.getElementById('drawerMemberList');
+        const addBtn = document.getElementById('drawerAddMemberBtn');
+
+        const cardName = card.querySelector('.uh-card-name');
+        const cardTag = card.querySelector('.uh-card-tag');
+        nameEl.textContent = cardName ? cardName.textContent : 'Family Members';
+        metaEl.textContent = cardTag ? cardTag.textContent : '';
+
+        const totalMembers = card.getAttribute('data-total-members') || '0';
+        const totalPrice = card.getAttribute('data-total-price') || '0';
+        const totalDue = card.getAttribute('data-total-due') || '0';
+
+        summaryEl.innerHTML =
+            '<div class="drawer-summary-item"><span class="drawer-summary-value">' + totalMembers + '</span><span class="drawer-summary-label">Members</span></div>' +
+            '<div class="drawer-summary-item"><span class="drawer-summary-value">' + totalPrice + '</span><span class="drawer-summary-label">Total Price</span></div>' +
+            '<div class="drawer-summary-item due"><span class="drawer-summary-value">' + totalDue + '</span><span class="drawer-summary-label">Due Amount</span></div>';
+
+        addBtn.onclick = function() { openBookingModal(familyId, ''); };
+
+        drawer.classList.add('active');
+        overlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+
+        listEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);"><i class="fas fa-spinner fa-spin" style="font-size:24px;"></i><br>Loading members...</div>';
+
         const urlParams = new URLSearchParams(window.location.search);
         const filter = urlParams.get('filter') || '';
         let url = '../api/umrah/load_family_members.php?family_id=' + familyId;
-        if (filter) {
-            url += '&filter=' + encodeURIComponent(filter);
-        }
-        dbg('LOAD: Fetching from ' + url);
-        
+        if (filter) url += '&filter=' + encodeURIComponent(filter);
+
         fetch(url)
-            .then(function(response) {
-                dbg('LOAD: Response status ' + response.status);
-                if (!response.ok) throw new Error('HTTP ' + response.status);
-                return response.json();
-            })
+            .then(function(response) { if (!response.ok) throw new Error('HTTP ' + response.status); return response.json(); })
             .then(function(data) {
-                dbg('LOAD: Data received', data);
                 if (data.success) {
-                    grid.innerHTML = data.html;
-                    dbg('LOAD: Success - members displayed');
+                    listEl.innerHTML = data.html;
                 } else {
-                    grid.innerHTML = '<div style="color: red; padding: 20px;">ERROR: ' + (data.message || 'Unknown error') + '</div>';
-                    console.error('LOAD: API error - ' + data.message);
+                    listEl.innerHTML = '<div style="color:var(--rust);padding:20px;">Error: ' + (data.message || 'Unknown error') + '</div>';
                 }
             })
             .catch(function(error) {
-                console.error('LOAD: Fetch error', error);
-                grid.innerHTML = '<div style="color: red; padding: 20px;">ERROR: ' + error.message + '</div>';
+                listEl.innerHTML = '<div style="color:var(--rust);padding:20px;">Error: ' + error.message + '</div>';
             });
-    };
+    }
 
-    // Auto-expand members when searching
-    if (window.location.search.includes('search=')) {
-        document.querySelectorAll('.members-section').forEach(section => {
-            section.style.display = 'block';
-            const familyId = section.id.replace('members-', '');
-            loadFamilyMembers(familyId);
+    function closeMembersDrawer() {
+        document.getElementById('membersDrawer').classList.remove('active');
+        document.getElementById('membersOverlay').classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    function filterDrawerMembers() {
+        const query = document.getElementById('drawerMemberSearch').value.toLowerCase();
+        document.querySelectorAll('#drawerMemberList .member-card, #drawerMemberList .flight-member, #drawerMemberList tr').forEach(function(el) {
+            const text = el.textContent || el.innerText || '';
+            el.style.display = text.toLowerCase().includes(query) ? '' : 'none';
         });
     }
 
-    // Add event listener to view members buttons (run immediately, don't wait for DOMContentLoaded)
-    function attachMembersButtonListeners() {
-        dbg('Attaching members button listeners...');
-        const buttons = document.querySelectorAll('.view-members-btn');
-        dbg('Found ' + buttons.length + ' buttons');
-        buttons.forEach(function(button) {
-            button.addEventListener('click', function(e) {
-                e.preventDefault();
-                const familyId = this.getAttribute('data-family-id');
-                dbg('Button clicked for family ' + familyId);
-                try {
-                    var result = window.viewFamilyMembers(familyId);
-                    dbg('viewFamilyMembers returned:', result);
-                } catch(ex) {
-                    console.error('Exception:', ex);
-                }
-            });
-        });
-    }
-    
-    // Attach listeners immediately
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', attachMembersButtonListeners);
-    } else {
-        attachMembersButtonListeners();
-    }
+    // Close drawer on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeMembersDrawer();
+    });
+
+    // Button listeners are handled by inline onclick in the card
 
     // Load flight status for each family card (staggered to avoid request bursts)
     function loadFlightStatusForFamilies() {
@@ -2236,6 +2518,15 @@ $canEdit = user_can('umrah.member_edit');
             alert(<?= json_encode(__('error_generating_document_please_try_again')) ?>);
         }
     }
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.uh-card-actions .dropdown')) {
+            document.querySelectorAll('.uh-card-actions .dropdown.show').forEach(function(d) {
+                d.classList.remove('show');
+            });
+        }
+    });
 </script>
 
 <div class="manifest-lang-modal" id="manifestTypeModal">
@@ -2270,5 +2561,32 @@ $canEdit = user_can('umrah.member_edit');
     </div>
 </div>
 <?php include '../includes/admin_footer.php'; ?>
+
+<!-- Members Drawer Overlay -->
+<div class="members-overlay" id="membersOverlay" onclick="closeMembersDrawer()"></div>
+
+<!-- Members Drawer -->
+<div class="members-drawer" id="membersDrawer">
+    <div class="drawer-header">
+        <div class="drawer-title">
+            <div class="drawer-family-icon"><i class="fas fa-users"></i></div>
+            <div class="drawer-title-text">
+                <h2 id="drawerFamilyName">Family Members</h2>
+                <p id="drawerFamilyMeta"></p>
+            </div>
+            <button class="close-drawer" onclick="closeMembersDrawer()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="drawer-summary" id="drawerSummary"></div>
+    </div>
+    <div class="drawer-controls">
+        <div class="member-search">
+            <i class="fas fa-search"></i>
+            <input id="drawerMemberSearch" type="text" placeholder="Search members..." onkeyup="filterDrawerMembers()">
+        </div>
+        <button class="add-member-btn" id="drawerAddMemberBtn"><i class="fas fa-plus"></i> Add Member</button>
+    </div>
+    <div class="drawer-member-list" id="drawerMemberList"></div>
+</div>
+
 </body>
 </html>

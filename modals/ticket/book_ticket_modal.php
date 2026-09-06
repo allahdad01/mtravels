@@ -92,7 +92,7 @@
                                                         <i class="feather icon-user mr-1"></i><?= __('adults') ?> (12+ <?= __('years') ?>)
                                                     </label>
                                                     <select class="form-control select2 passenger-count" id="adultCount" name="adultCount" required>
-                                                        <?php for($i = 1; $i <= 9; $i++): ?>
+                                                        <?php for($i = 1; $i <= 50; $i++): ?>
                                                             <option value="<?= $i ?>"><?= $i ?></option>
                                                         <?php endfor; ?>
                                                     </select>
@@ -104,7 +104,7 @@
                                                         <i class="feather icon-user mr-1"></i><?= __('children') ?> (2-11 <?= __('years') ?>)
                                                     </label>
                                                     <select class="form-control select2 passenger-count" id="childCount" name="childCount">
-                                                        <?php for($i = 0; $i <= 9; $i++): ?>
+                                                        <?php for($i = 0; $i <= 20; $i++): ?>
                                                             <option value="<?= $i ?>"><?= $i ?></option>
                                                         <?php endfor; ?>
                                                     </select>
@@ -116,7 +116,7 @@
                                                         <i class="feather icon-user mr-1"></i><?= __('infants') ?> (0-2 <?= __('years') ?>)
                                                     </label>
                                                     <select class="form-control select2 passenger-count" id="infantCount" name="infantCount">
-                                                        <?php for($i = 0; $i <= 9; $i++): ?>
+                                                        <?php for($i = 0; $i <= 10; $i++): ?>
                                                             <option value="<?= $i ?>"><?= $i ?></option>
                                                         <?php endfor; ?>
                                                     </select>

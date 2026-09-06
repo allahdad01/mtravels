@@ -726,6 +726,13 @@ $canTransactions = user_can('tickets.transactions');
                             <?= __('book_ticket') ?>
                         </button>
                         <?php endif; ?>
+
+                        <?php if ($canTransactions): ?>
+                        <button class="btn-primary-corp" id="launchBulkPayment" style="background:#2e7d32;">
+                            <i class="fas fa-money-bill-wave" style="font-size:13px"></i>
+                            <?= __('bulk_payment') ?? 'Bulk Payment' ?>
+                        </button>
+                        <?php endif; ?>
                     </div>
 
                     <!-- Section Header -->
@@ -979,10 +986,18 @@ $canTransactions = user_can('tickets.transactions');
         <i class="feather icon-file-text"></i>
     </button>
     <?php endif; ?>
+    <?php if ($canTransactions): ?>
+    <button type="button" id="fabBulkPayment"
+            title="<?= __('bulk_payment') ?? 'Bulk Payment' ?>"
+            style="margin-bottom:10px; background:#2e7d32;">
+        <i class="fas fa-money-bill-wave"></i>
+    </button>
+    <?php endif; ?>
 </div>
 
 <?php include '../includes/admin_footer.php'; ?>
 <?php include '../modals/ticket/multi_ticket_modal.php'; ?>
+<?php include '../modals/ticket/bulk_payment_modal.php'; ?>
 <?php include '../modals/ticket/book_ticket_modal.php'; ?>
 <?php include '../modals/ticket/ticket_details.php'; ?>
 <?php include '../modals/ticket/ticket_refund_modal.php'; ?>
@@ -1014,6 +1029,7 @@ $canTransactions = user_can('tickets.transactions');
 <script src="../js/ticket/data/airlines.js"></script>
 <script src="../js/ticket/airline-select.js"></script>
 <script src="../js/ticket/multi-ticket-invoice.js"></script>
+<script src="../js/ticket/bulk-payment.js<?= '?v=' . time() ?>"></script>
 <script src="../js/ticket/pdf-upload-handler.js"></script>
 <script src="../js/ticket/passenger_info.js"></script>
 <script src="../js/ticket/toast.js"></script>

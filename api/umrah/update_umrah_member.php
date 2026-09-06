@@ -40,7 +40,7 @@ foreach ($requiredFields as $field) {
 }
 
 // Validate booking-level fields
-$paid = isset($_POST['paid']) ? DbSecurity::validateInput($_POST['paid'], 'float', ['min' => 0]) : 0;
+// paid is NOT taken from form — it's calculated from transactions and must not be overwritten
 $total_sold_price = isset($_POST['total_sold_price']) ? DbSecurity::validateInput($_POST['total_sold_price'], 'float', ['min' => 0]) : 0;
 $grand_sold_price = isset($_POST['grand_sold_price']) ? DbSecurity::validateInput($_POST['grand_sold_price'], 'float', ['min' => 0]) : 0;
 $room_type = DbSecurity::validateInput($_POST['room_type'], 'string', ['maxlength' => 255]);
@@ -159,7 +159,6 @@ try {
             currency = ?,
             exchange_rate = ?,
             sold_price = ?,
-            paid = ?,
             gender = ?,
             passport_expiry = ?,
             remarks = ?,
@@ -189,7 +188,6 @@ try {
         $sale_currency,
         $exchange_rate,
         $totalSoldPrice,
-        $paid,
         $gender,
         $passport_expiry,
         $remarks,
@@ -387,7 +385,7 @@ try {
         'duration' => $duration,
         'room_type' => $room_type,
         'sold_price' => $totalSoldPrice,
-        'paid' => $paid,
+        'paid' => $currentPaid,
         'gender' => $gender,
         'passport_expiry' => $passport_expiry,
         'remarks' => $remarks,

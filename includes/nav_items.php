@@ -154,7 +154,7 @@ $showHotel = hasFeature('hotel_bookings', $allowed_features) || hasFeature('hote
 
 <!-- ── Umrah Management ───────────────────────────────────────────────── -->
 <?php if (hasFeature('umrah_bookings', $allowed_features) && staffCanSeeMenu($user['role']) && user_can('umrah.view')): ?>
-<li class="nav-item pcoded-hasmenu <?= navTrigger('umrah.php','umrah_refunds.php','umrah_catalog.php','umrah_hotels.php','umrah_transport.php','umrah_finance.php') ?>">
+<li class="nav-item pcoded-hasmenu <?= navTrigger('umrah.php','umrah_refunds.php','umrah_catalog.php','umrah_hotels.php','umrah_transport.php','umrah_finance.php','customer_advances.php') ?>">
     <a href="javascript:" class="nav-link">
         <span class="pcoded-micon"><i class="feather icon-map"></i></span>
         <span class="pcoded-mtext"><?= __('umrah_management') ?></span>
@@ -188,6 +188,9 @@ $showHotel = hasFeature('hotel_bookings', $allowed_features) || hasFeature('hote
             <a href="umrah_finance.php"><i class="fas fa-chart-line mr-2"></i><?= __('finance_management') ?></a>
         </li>
         <?php endif; ?>
+        <li class="<?= navActive('customer_advances.php') ?>">
+            <a href="customer_advances.php"><i class="feather icon-users mr-2"></i>Umrah Hawala</a>
+        </li>
     </ul>
 </li>
 <?php endif; ?>
