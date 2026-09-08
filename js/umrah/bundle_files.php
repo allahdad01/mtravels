@@ -32,6 +32,7 @@ return [
     'umrah/member_dashboard.js',
     'umrah/groups.js',
     'umrah/move_member.js',
+    'umrah/move_family.js',
     'umrah/hotel_dashboard.js',
     'umrah/transport.js',
     'umrah/finance_dashboard.js',

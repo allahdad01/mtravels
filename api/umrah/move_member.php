@@ -9,9 +9,10 @@
  * The endpoint:
  *   1. Validates both records belong to the same tenant/branch
  *   2. Updates umrah_bookings.family_id
- *   3. Optionally updates date_change_umrah.family_id if records exist
- *   4. Recalculates denormalized totals for both source and destination families
- *   5. Logs the activity
+ *   3. Updates date_change_umrah.family_id if records exist
+ *   4. Updates umrah_fulfillments.family_id (denormalized) to prevent bulk-fulfillment skip
+ *   5. Recalculates denormalized totals for both source and destination families
+ *   6. Logs the activity
  */
 
 error_reporting(E_ALL);
@@ -99,15 +100,25 @@ try {
     $dcStmt = $pdo->prepare("UPDATE date_change_umrah SET family_id = ? WHERE umrah_booking_id = ? AND tenant_id = ? AND branch_id = ?");
     $dcStmt->execute([$targetFamilyId, $bookingId, $tenant_id, $branch_id]);
 
-    // 5. Re-include all excluded services — the new family starts fresh
+    // 5. Update umrah_fulfillments.family_id (denormalized column) so bulk
+    //    fulfillment logic doesn't treat this member as "transferred" and skip it
+    $fulfillUpdateStmt = $pdo->prepare("
+        UPDATE umrah_fulfillments f
+        JOIN umrah_booking_services bs ON bs.id = f.booking_service_id AND bs.tenant_id = f.tenant_id
+        SET f.family_id = ?
+        WHERE bs.booking_id = ? AND f.tenant_id = ? AND f.family_id != ?
+    ");
+    $fulfillUpdateStmt->execute([$targetFamilyId, $bookingId, $tenant_id, $targetFamilyId]);
+
+    // 6. Re-include all excluded services — the new family starts fresh
     $pdo->prepare("UPDATE umrah_booking_services SET is_excluded = 0 WHERE booking_id = ? AND is_excluded = 1")
         ->execute([$bookingId]);
 
-    // 5. Recalculate totals for both source and destination families
+    // 7. Recalculate totals for both source and destination families
     recalcFamilyTotals($pdo, $tenant_id, $sourceFamilyId);
     recalcFamilyTotals($pdo, $tenant_id, $targetFamilyId);
 
-    // 6. Activity logging
+    // 8. Activity logging
     $oldValues = json_encode([
         'family_id' => $oldFamilyId,
         'member_name' => $booking['name']

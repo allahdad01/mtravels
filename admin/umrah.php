@@ -544,9 +544,15 @@ $canEdit = user_can('umrah.member_edit');
                         $groupsCountSql = "SELECT COUNT(*) FROM umrah_groups WHERE tenant_id = ? AND (branch_id = ? OR branch_id = 0)";
                         $groupsCountParams = [$tenant_id, $branch_id];
                         if (!empty($search)) {
-                            $groupsCountSql .= " AND (group_number LIKE ? OR group_name LIKE ?)";
+                            $groupsCountSql .= " AND (group_number LIKE ? OR group_name LIKE ? OR EXISTS (
+                                SELECT 1 FROM families gf
+                                JOIN umrah_bookings gub ON gub.family_id = gf.family_id
+                                WHERE gf.group_id = umrah_groups.group_id AND gf.tenant_id = umrah_groups.tenant_id
+                                AND gub.tenant_id = umrah_groups.tenant_id
+                                AND (gub.name LIKE ? OR gub.fname LIKE ? OR gub.passport_number LIKE ?)
+                            ))";
                             $searchTerm = "%$search%";
-                            $groupsCountParams = array_merge($groupsCountParams, [$searchTerm, $searchTerm]);
+                            $groupsCountParams = array_merge($groupsCountParams, [$searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm]);
                         }
                         $groupsCountStmt = $pdo->prepare($groupsCountSql);
                         $groupsCountStmt->execute($groupsCountParams);
@@ -558,6 +564,9 @@ $canEdit = user_can('umrah.member_edit');
                                         u.name AS created_by,
                                         COUNT(DISTINCT f.family_id) AS family_count,
                                         COUNT(CASE WHEN COALESCE(ub.is_extra_bed, 0) = 0 AND COALESCE(ub.is_extra_transport, 0) = 0 THEN ub.booking_id END) AS member_count,
+                                        COUNT(CASE WHEN COALESCE(ub.is_extra_bed, 0) = 0 AND COALESCE(ub.is_extra_transport, 0) = 0 AND (ub.passenger_type = 'adult' OR ub.passenger_type IS NULL OR ub.passenger_type = '') THEN ub.booking_id END) AS adult_count,
+                                        COUNT(CASE WHEN COALESCE(ub.is_extra_bed, 0) = 0 AND COALESCE(ub.is_extra_transport, 0) = 0 AND ub.passenger_type = 'child' THEN ub.booking_id END) AS child_count,
+                                        COUNT(CASE WHEN COALESCE(ub.is_extra_bed, 0) = 0 AND COALESCE(ub.is_extra_transport, 0) = 0 AND ub.passenger_type = 'infant' THEN ub.booking_id END) AS infant_count,
                                         COUNT(CASE WHEN COALESCE(ub.is_extra_bed, 0) = 1 THEN ub.booking_id END) AS extra_bed_count,
                                         COUNT(CASE WHEN COALESCE(ub.is_extra_transport, 0) = 1 THEN ub.booking_id END) AS extra_transport_count,
                                         COALESCE(fam.total_price, 0) AS total_price,
@@ -606,9 +615,15 @@ $canEdit = user_can('umrah.member_edit');
                                     WHERE g.tenant_id = ? AND (g.branch_id = ? OR g.branch_id = 0)";
                         $groupsParams = [$tenant_id, $branch_id];
                         if (!empty($search)) {
-                            $groupsSql .= " AND (g.group_number LIKE ? OR g.group_name LIKE ?)";
+                            $groupsSql .= " AND (g.group_number LIKE ? OR g.group_name LIKE ? OR EXISTS (
+                                SELECT 1 FROM families gf
+                                JOIN umrah_bookings gub ON gub.family_id = gf.family_id
+                                WHERE gf.group_id = g.group_id AND gf.tenant_id = g.tenant_id
+                                AND gub.tenant_id = g.tenant_id
+                                AND (gub.name LIKE ? OR gub.fname LIKE ? OR gub.passport_number LIKE ?)
+                            ))";
                             $searchTerm = "%$search%";
-                            $groupsParams = array_merge($groupsParams, [$searchTerm, $searchTerm]);
+                            $groupsParams = array_merge($groupsParams, [$searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm]);
                         }
                         $groupsSql .= " GROUP BY g.group_id
                                     ORDER BY CAST(g.group_number AS UNSIGNED) ASC, g.group_id ASC
@@ -854,7 +869,7 @@ $canEdit = user_can('umrah.member_edit');
                                         FROM umrah_bookings b
                                         LEFT JOIN families f ON b.family_id = f.family_id
                                         LEFT JOIN clients c ON b.sold_to = c.id
-                                        WHERE b.tenant_id = ? AND b.branch_id = ? AND COALESCE(b.is_extra_bed, 0) = 0";
+                                        WHERE b.tenant_id = ? AND b.branch_id = ? AND COALESCE(b.is_extra_bed, 0) = 0 AND COALESCE(b.is_extra_transport, 0) = 0";
                     $membersCountParams = [$tenant_id, $branch_id];
                     $membersCountTypes = "ii";
 
@@ -899,7 +914,7 @@ $canEdit = user_can('umrah.member_edit');
                                     LEFT JOIN families f ON b.family_id = f.family_id
                                     LEFT JOIN umrah_groups g ON f.group_id = g.group_id AND f.tenant_id = g.tenant_id
                                     LEFT JOIN clients c ON b.sold_to = c.id
-                                    WHERE b.tenant_id = ? AND b.branch_id = ?";
+                                    WHERE b.tenant_id = ? AND b.branch_id = ? AND COALESCE(b.is_extra_bed, 0) = 0 AND COALESCE(b.is_extra_transport, 0) = 0";
                     $membersParams = [$tenant_id, $branch_id];
                     $membersTypes = "ii";
 
@@ -957,12 +972,13 @@ $canEdit = user_can('umrah.member_edit');
                                 u.name LIKE ? OR
                                 EXISTS (SELECT 1 FROM umrah_bookings ub2 WHERE ub2.family_id = f.family_id AND ub2.tenant_id = ? AND ub2.branch_id = ? AND (
                                     ub2.name LIKE ? OR
+                                    ub2.fname LIKE ? OR
                                     ub2.passport_number LIKE ?
                                 ))
                             )";
                             $searchTerm = "%$search%";
-                            $countParams = array_merge($countParams, [$searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $tenant_id, $branch_id, $searchTerm, $searchTerm]);
-                            $countTypes .= "ssssssiiiss";
+                            $countParams = array_merge($countParams, [$searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $tenant_id, $branch_id, $searchTerm, $searchTerm, $searchTerm]);
+                            $countTypes .= "ssssssiiisss";
                         }
 
                         $countSql .= " GROUP BY f.family_id
@@ -992,12 +1008,13 @@ $canEdit = user_can('umrah.member_edit');
                                 u.name LIKE ? OR
                                 EXISTS (SELECT 1 FROM umrah_bookings ub WHERE ub.family_id = f.family_id AND ub.tenant_id = ? AND ub.branch_id = ? AND (
                                     ub.name LIKE ? OR
+                                    ub.fname LIKE ? OR
                                     ub.passport_number LIKE ?
                                 ))
                             )";
                             $searchTerm = "%$search%";
-                            $countParams = array_merge($countParams, [$searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $tenant_id, $branch_id, $searchTerm, $searchTerm]);
-                            $countTypes .= "ssssssiiiss";
+                            $countParams = array_merge($countParams, [$searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $tenant_id, $branch_id, $searchTerm, $searchTerm, $searchTerm]);
+                            $countTypes .= "ssssssiiisss";
                         }
                     }
 
@@ -1012,6 +1029,9 @@ $canEdit = user_can('umrah.member_edit');
                                         u.name as created_by,
                                         g.group_number, g.group_name,
                                         COUNT(CASE WHEN COALESCE(ub.is_extra_bed, 0) = 0 AND COALESCE(ub.is_extra_transport, 0) = 0 THEN ub.booking_id END) AS total_members,
+                                        COUNT(CASE WHEN COALESCE(ub.is_extra_bed, 0) = 0 AND COALESCE(ub.is_extra_transport, 0) = 0 AND (ub.passenger_type = 'adult' OR ub.passenger_type IS NULL OR ub.passenger_type = '') THEN ub.booking_id END) AS adult_count,
+                                        COUNT(CASE WHEN COALESCE(ub.is_extra_bed, 0) = 0 AND COALESCE(ub.is_extra_transport, 0) = 0 AND ub.passenger_type = 'child' THEN ub.booking_id END) AS child_count,
+                                        COUNT(CASE WHEN COALESCE(ub.is_extra_bed, 0) = 0 AND COALESCE(ub.is_extra_transport, 0) = 0 AND ub.passenger_type = 'infant' THEN ub.booking_id END) AS infant_count,
                                         COUNT(CASE WHEN COALESCE(ub.is_extra_bed, 0) = 1 THEN ub.booking_id END) AS extra_bed_count,
                                         COUNT(CASE WHEN COALESCE(ub.is_extra_transport, 0) = 1 THEN ub.booking_id END) AS extra_transport_count,
                                         SUM(CASE WHEN ub.status = 'refunded' THEN 1 ELSE 0 END) AS refunded_members,
@@ -1071,12 +1091,13 @@ $canEdit = user_can('umrah.member_edit');
                             u.name LIKE ? OR
                             EXISTS (SELECT 1 FROM umrah_bookings ub WHERE ub.family_id = f.family_id AND ub.tenant_id = ? AND ub.branch_id = ? AND (
                                 ub.name LIKE ? OR
+                                ub.fname LIKE ? OR
                                 ub.passport_number LIKE ?
                             ))
                         )";
                         $searchTerm = "%$search%";
-                        $familiesParams = array_merge($familiesParams, [$searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $tenant_id, $branch_id, $searchTerm, $searchTerm]);
-                        $familiesTypes .= "ssssssiiiss";
+                        $familiesParams = array_merge($familiesParams, [$searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $tenant_id, $branch_id, $searchTerm, $searchTerm, $searchTerm]);
+                        $familiesTypes .= "ssssssiiisss";
                     }
 
                     $sqlFamilies .= " GROUP BY f.family_id";
@@ -1252,10 +1273,13 @@ $canEdit = user_can('umrah.member_edit');
                     </div>
                     <div class="uh-search">
                         <i class="fas fa-search"></i>
-                        <form method="GET" style="display:flex;align-items:center;width:100%;gap:10px;">
+                        <form id="uhMainSearch" method="GET" onsubmit="return uhSearchSubmit(event)" style="display:flex;align-items:center;width:100%;gap:10px;">
                             <input type="search" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="<?= __('search_families_members_passports') ?>">
                             <input type="hidden" name="group_id" value="<?= htmlspecialchars($groupFilter) ?>">
                             <input type="hidden" name="filter" value="<?= htmlspecialchars($filter) ?>">
+                            <?php if (!empty($visaStatus)): ?>
+                            <input type="hidden" name="visa_status" value="<?= htmlspecialchars($visaStatus) ?>">
+                            <?php endif; ?>
                         </form>
                     </div>
                 </div>
@@ -1328,6 +1352,20 @@ $canEdit = user_can('umrah.member_edit');
                                     <div class="uh-card-meta">
                                         <div class="uh-meta-item"><i class="fas fa-users"></i> <?= $familyCount ?> <?= __('families') ?></div>
                                         <div class="uh-meta-item"><i class="fas fa-user"></i> <?= $memberCount ?> <?= __('members') ?></div>
+                                        <?php
+                                        $adultCount = (int)($group['adult_count'] ?? 0);
+                                        $childCount = (int)($group['child_count'] ?? 0);
+                                        $infantCount = (int)($group['infant_count'] ?? 0);
+                                        ?>
+                                        <?php if ($adultCount > 0): ?>
+                                        <div class="uh-meta-item"><i class="fas fa-user" style="color:var(--brand-from);"></i> <?= $adultCount ?> <?= __('adults') ?></div>
+                                        <?php endif; ?>
+                                        <?php if ($childCount > 0): ?>
+                                        <div class="uh-meta-item"><i class="fas fa-child" style="color:var(--green);"></i> <?= $childCount ?> <?= __('children') ?></div>
+                                        <?php endif; ?>
+                                        <?php if ($infantCount > 0): ?>
+                                        <div class="uh-meta-item"><i class="fas fa-baby" style="color:var(--gold);"></i> <?= $infantCount ?> <?= __('infants') ?></div>
+                                        <?php endif; ?>
                                         <?php $excludedCount = (int)($group['excluded_visa_only_count'] ?? 0); ?>
                                         <?php if ($excludedCount > 0): ?>
                                         <div class="uh-meta-item" style="color:var(--rust);"><i class="fas fa-user-slash"></i> <?= $excludedCount ?> excluded</div>
@@ -1921,6 +1959,11 @@ $canEdit = user_can('umrah.member_edit');
                                                     <a class="dropdown-item" href="#" onclick="showBankLetterModal(<?= $familyId ?>)"><i class="fas fa-file-invoice"></i><?= __("bank_receipt") ?></a>
                                                     <?php if ($canEdit): ?>
                                                     <div class="dropdown-divider"></div>
+                                                    <h6 class="dropdown-header">Transfer</h6>
+                                                    <a class="dropdown-item" href="javascript:void(0)" onclick="openMoveFamilyModal(<?= $familyId ?>, '<?= htmlspecialchars(addslashes($row['head_of_family']), ENT_QUOTES) ?>', <?= (int)($row['group_id'] ?? 0) ?>, '<?= htmlspecialchars(addslashes($row['group_name'] ?? ''), ENT_QUOTES) ?>')">
+                                                        <i class="fas fa-exchange-alt"></i>Move to Group
+                                                    </a>
+                                                    <div class="dropdown-divider"></div>
                                                     <a class="dropdown-item text-danger" href="javascript:void(0)" onclick="deleteFamily(event, <?= $familyId ?>)"><i class="fas fa-trash"></i><?= __('delete') ?></a>
                                                     <?php endif; ?>
                                                 </div>
@@ -1930,6 +1973,20 @@ $canEdit = user_can('umrah.member_edit');
 
                                     <div class="uh-card-meta">
                                         <div class="uh-meta-item"><i class="fas fa-users"></i> <?= $row['total_members'] ?> <?= __('members') ?></div>
+                                        <?php
+                                        $fAdultCount = (int)($row['adult_count'] ?? 0);
+                                        $fChildCount = (int)($row['child_count'] ?? 0);
+                                        $fInfantCount = (int)($row['infant_count'] ?? 0);
+                                        ?>
+                                        <?php if ($fAdultCount > 0): ?>
+                                        <div class="uh-meta-item"><i class="fas fa-user" style="color:var(--brand-from);"></i> <?= $fAdultCount ?> <?= __('adults') ?></div>
+                                        <?php endif; ?>
+                                        <?php if ($fChildCount > 0): ?>
+                                        <div class="uh-meta-item"><i class="fas fa-child" style="color:var(--green);"></i> <?= $fChildCount ?> <?= __('children') ?></div>
+                                        <?php endif; ?>
+                                        <?php if ($fInfantCount > 0): ?>
+                                        <div class="uh-meta-item"><i class="fas fa-baby" style="color:var(--gold);"></i> <?= $fInfantCount ?> <?= __('infants') ?></div>
+                                        <?php endif; ?>
                                         <?php $clientNames = trim($row['client_names'] ?? ''); ?>
                                         <?php if (!empty($clientNames)): ?>
                                         <div class="uh-meta-item" title="<?= htmlspecialchars($clientNames) ?>"><i class="fas fa-user-tie"></i> <?= htmlspecialchars($clientNames) ?></div>
@@ -2135,6 +2192,7 @@ $canEdit = user_can('umrah.member_edit');
 <?php include '../modals/umrah/flight_details_modal.php'; ?>
 <?php include '../modals/umrah/fulfillment_modal.php'; ?>
 <?php include '../modals/umrah/move_member_modal.php'; ?>
+<?php include '../modals/umrah/move_family_modal.php'; ?>
 
 <!-- Floating action buttons -->
 <div id="groupTicketFloatingButton" class="floating-action-btn" style="display: none; bottom: 220px; right: 23px;">
@@ -2179,6 +2237,18 @@ $canEdit = user_can('umrah.member_edit');
     // Debug logging: enable with ?debug in the URL
     const DEBUG_MODE = new URLSearchParams(window.location.search).has('debug');
     const dbg = (...args) => { if (DEBUG_MODE) console.log(...args); };
+
+    // Main search: Groups tab → Families tab; others stay on current tab
+    function uhSearchSubmit(e) {
+        e.preventDefault();
+        var form = document.getElementById('uhMainSearch');
+        var q = form.querySelector('input[name="search"]').value.trim();
+        if (!q) return false;
+        var currentFilter = form.querySelector('input[name="filter"]').value;
+        var targetFilter = (currentFilter === 'groups') ? 'families' : currentFilter;
+        window.location.href = '?filter=' + encodeURIComponent(targetFilter) + '&search=' + encodeURIComponent(q);
+        return false;
+    }
 
     // Toast notification
     function showToast(type, message) {

@@ -115,26 +115,13 @@ $mbStmt = $pdo->prepare("
 $mbStmt->execute(array_merge($targetFamilies, [$tenant_id]));
 $members = $mbStmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Travel type of a member from their date of birth — same thresholds as the
-// passenger manifest (infant < 2, child 2-11, adult otherwise). Unknown
-// dates default to adult. Ticket costs are priced per type; infants receive
-// no hotel/transport fulfillment, and visa applies to everyone alike.
-// If $passengerType is provided (from DB column), it takes priority over DOB computation.
+// Travel type of a member — uses the stored passenger_type column.
+// Defaults to 'adult' when the column is empty or unknown.
 function memberTravelType($dob, $passengerType = null)
 {
     if (!empty($passengerType) && in_array($passengerType, ['adult', 'child', 'infant'], true)) {
         return $passengerType;
     }
-    if (empty($dob) || $dob === '0000-00-00') {
-        return 'adult';
-    }
-    $ts = strtotime($dob);
-    if (!$ts) {
-        return 'adult';
-    }
-    $age = (int)date('Y') - (int)date('Y', $ts) - ((int)date('md') < (int)date('md', $ts) ? 1 : 0);
-    if ($age < 2) return 'infant';
-    if ($age <= 11) return 'child';
     return 'adult';
 }
 
@@ -150,7 +137,13 @@ $openFulfillmentStatuses = ['pending', 'requested', 'assigned', 'not_assigned', 
 
 $srcIdentity = '';
 $srcParams = [];
-if ($src['service_id'] !== null) {
+if ($scope === 'group') {
+    // Group scope: match by service_type so members from different packages
+    // (with different service_id) are included when they have the same
+    // service type (e.g. both packages include visa).
+    $srcIdentity = 'bs.service_type = ?';
+    $srcParams[] = (string)$src['service_type'];
+} elseif ($src['service_id'] !== null) {
     $srcIdentity = 'bs.service_id = ?';
     $srcParams[] = (int)$src['service_id'];
 } else {
@@ -188,7 +181,7 @@ $srcCtx = [
 // Candidate lines per member, with the target line's own latest fulfillment
 // state attached (status, type, hotel/room identity, airline).
 $candStmt = $pdo->prepare("
-    SELECT bs.id, bs.price_snapshot, bs.is_excluded,
+    SELECT bs.id, bs.service_type, bs.service_id, bs.price_snapshot, bs.is_excluded,
            (SELECT f.status           FROM umrah_fulfillments f        WHERE f.booking_service_id = bs.id AND f.tenant_id = bs.tenant_id ORDER BY f.id DESC LIMIT 1) AS t_status,
            (SELECT f.family_id        FROM umrah_fulfillments f        WHERE f.booking_service_id = bs.id AND f.tenant_id = bs.tenant_id ORDER BY f.id DESC LIMIT 1) AS t_family_id,
            (SELECT f.fulfillment_type FROM umrah_fulfillments f        WHERE f.booking_service_id = bs.id AND f.tenant_id = bs.tenant_id ORDER BY f.id DESC LIMIT 1) AS t_type,
@@ -336,7 +329,7 @@ foreach ($members as $member) {
     // receives its cost/sold-price overrides from the payload.
     if (!$cands && !empty($member['is_extra_bed']) && $cat === 'hotel') {
         $relaxedCandStmt = $pdo->prepare("
-            SELECT bs.id, bs.price_snapshot, bs.is_excluded,
+            SELECT bs.id, bs.service_type, bs.service_id, bs.price_snapshot, bs.is_excluded,
                    (SELECT f.status           FROM umrah_fulfillments f        WHERE f.booking_service_id = bs.id AND f.tenant_id = bs.tenant_id ORDER BY f.id DESC LIMIT 1) AS t_status,
                    (SELECT f.family_id        FROM umrah_fulfillments f        WHERE f.booking_service_id = bs.id AND f.tenant_id = bs.tenant_id ORDER BY f.id DESC LIMIT 1) AS t_family_id,
                    (SELECT f.fulfillment_type FROM umrah_fulfillments f        WHERE f.booking_service_id = bs.id AND f.tenant_id = bs.tenant_id ORDER BY f.id DESC LIMIT 1) AS t_type,
@@ -345,22 +338,22 @@ foreach ($members as $member) {
                    (SELECT ff.airline         FROM umrah_flight_fulfillments ff JOIN umrah_fulfillments f ON f.id = ff.fulfillment_id WHERE f.booking_service_id = bs.id AND f.tenant_id = bs.tenant_id ORDER BY f.id DESC LIMIT 1) AS t_airline,
                    (SELECT ff.flight_number   FROM umrah_flight_fulfillments ff JOIN umrah_fulfillments f ON f.id = ff.fulfillment_id WHERE f.booking_service_id = bs.id AND f.tenant_id = bs.tenant_id ORDER BY f.id DESC LIMIT 1) AS t_flight
             FROM umrah_booking_services bs
-            WHERE bs.booking_id = ? AND bs.tenant_id = ? AND bs.service_type = ? AND bs.is_optional = ?
+            WHERE bs.booking_id = ? AND bs.tenant_id = ? AND bs.service_type = ?
             ORDER BY bs.id");
-        $relaxedCandStmt->execute([$member['booking_id'], $tenant_id, $src['service_type'], $src['is_optional']]);
+        $relaxedCandStmt->execute([$member['booking_id'], $tenant_id, $src['service_type']]);
         $cands = $relaxedCandStmt->fetchAll(PDO::FETCH_ASSOC);
     }
     // Extra transport pseudo-members may also need relaxed matching by service_type.
     if (!$cands && !empty($member['is_extra_transport']) && $cat === 'transport') {
         $relaxedCandStmt2 = $pdo->prepare("
-            SELECT bs.id, bs.price_snapshot, bs.is_excluded,
+            SELECT bs.id, bs.service_type, bs.service_id, bs.price_snapshot, bs.is_excluded,
                    (SELECT f.status           FROM umrah_fulfillments f WHERE f.booking_service_id = bs.id AND f.tenant_id = bs.tenant_id ORDER BY f.id DESC LIMIT 1) AS t_status,
                    (SELECT f.family_id        FROM umrah_fulfillments f WHERE f.booking_service_id = bs.id AND f.tenant_id = bs.tenant_id ORDER BY f.id DESC LIMIT 1) AS t_family_id,
                    (SELECT f.fulfillment_type FROM umrah_fulfillments f WHERE f.booking_service_id = bs.id AND f.tenant_id = bs.tenant_id ORDER BY f.id DESC LIMIT 1) AS t_type
             FROM umrah_booking_services bs
-            WHERE bs.booking_id = ? AND bs.tenant_id = ? AND bs.service_type = ? AND bs.is_optional = ?
+            WHERE bs.booking_id = ? AND bs.tenant_id = ? AND bs.service_type = ?
             ORDER BY bs.id");
-        $relaxedCandStmt2->execute([$member['booking_id'], $tenant_id, $src['service_type'], $src['is_optional']]);
+        $relaxedCandStmt2->execute([$member['booking_id'], $tenant_id, $src['service_type']]);
         $cands = $relaxedCandStmt2->fetchAll(PDO::FETCH_ASSOC);
     }
     if (!$cands) {
@@ -404,7 +397,7 @@ foreach ($members as $member) {
             $skipReasons[$reason] = ($skipReasons[$reason] ?? 0) + 1;
             continue;
         }
-        $targets[] = ['booking_id' => (int)$member['booking_id'], 'name' => (string)$member['name'], 'dob' => (string)($member['dob'] ?? ''), 'line_id' => (int)$cand['id'], 'is_extra_bed' => !empty($member['is_extra_bed']), 'is_extra_transport' => !empty($member['is_extra_transport'])];
+        $targets[] = ['booking_id' => (int)$member['booking_id'], 'name' => (string)$member['name'], 'dob' => (string)($member['dob'] ?? ''), 'passenger_type' => (string)($member['passenger_type'] ?? ''), 'line_id' => (int)$cand['id'], 'is_extra_bed' => !empty($member['is_extra_bed']), 'is_extra_transport' => !empty($member['is_extra_transport'])];
     }
 }
 

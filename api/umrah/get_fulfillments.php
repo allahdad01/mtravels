@@ -247,26 +247,13 @@ function enrichExtraTransportCosts(array &$services, $pdo, int $tenant_id): void
     unset($sv);
 }
 
-// Travel type of a member from their date of birth — the same thresholds
-// used by the passenger manifest (infant < 2, child 2-11, adult otherwise).
-// Unknown dates default to adult. Ticket costs are priced per type; infants
-// receive no hotel/transport fulfillment, and visa applies to everyone alike.
-// If $passengerType is provided (from DB column), it takes priority over DOB computation.
+// Travel type of a member — uses the stored passenger_type column.
+// Defaults to 'adult' when the column is empty or unknown.
 function memberTravelType($dob, $passengerType = null)
 {
     if (!empty($passengerType) && in_array($passengerType, ['adult', 'child', 'infant'], true)) {
         return $passengerType;
     }
-    if (empty($dob) || $dob === '0000-00-00') {
-        return 'adult';
-    }
-    $ts = strtotime($dob);
-    if (!$ts) {
-        return 'adult';
-    }
-    $age = (int)date('Y') - (int)date('Y', $ts) - ((int)date('md') < (int)date('md', $ts) ? 1 : 0);
-    if ($age < 2) return 'infant';
-    if ($age <= 11) return 'child';
     return 'adult';
 }
 
@@ -399,7 +386,7 @@ if ($isAggregate) {
 
     $agStmt = $pdo->prepare("
         SELECT bs.id AS booking_service_id,
-               bs.booking_id, ub.family_id, ub.name, ub.gender, ub.room_type, ub.duration, ub.dob,
+               bs.booking_id, ub.family_id, ub.name, ub.gender, ub.room_type, ub.duration, ub.dob, ub.passenger_type,
                ub.is_extra_bed, ub.is_extra_transport, ub.paid,
                bs.service_type, bs.service_id,
                bs.pricing_unit, bs.quantity, bs.is_optional, bs.is_excluded,
@@ -523,6 +510,17 @@ if ($isAggregate) {
         $rep['members_applicable'] = $usableNonEb;
         $rep['extra_bed_count'] = $extraBedCount;
         $rep['extra_transport_count'] = $extraTransportCount;
+        // Travel-type breakdown for aggregate cards (adult / child / infant).
+        $typeCounts = ['adult' => 0, 'child' => 0, 'infant' => 0];
+        foreach ($lines as $ln) {
+            if (!isset($usable[(int)$ln['booking_id']])) continue;
+            if (!empty($ln['is_extra_bed']) || !empty($ln['is_extra_transport'])) continue;
+            $t = memberTravelType((string)($ln['dob'] ?? ''), (string)($ln['passenger_type'] ?? ''));
+            $typeCounts[$t]++;
+        }
+        $rep['adult_count'] = $typeCounts['adult'];
+        $rep['child_count'] = $typeCounts['child'];
+        $rep['infant_count'] = $typeCounts['infant'];
         $rep['coverage_skipped'] = count($lines) - count($usable);
         $rep['skip_breakdown'] = $skipBreak;
         // Card-level supplier from the representative's fulfillment — used as
@@ -555,9 +553,20 @@ if ($isAggregate) {
                     'return_flight_number' => (string)($ln['return_flight_number'] ?? ''),
                     'return_departure_time' => (string)($ln['return_departure_time'] ?? ''),
                     'return_arrival_time' => (string)($ln['return_arrival_time'] ?? ''),
+                    'supplier_cost' => $ln['supplier_cost'] !== null ? (float)$ln['supplier_cost'] : null,
                 ];
             }
             $rep['member_breakdown'] = $bd;
+            // Expose per-type ticket costs so the modal can pre-fill
+            // the child/infant cost fields on aggregate flight cards.
+            foreach ($bd as $m) {
+                if ($m['type'] === 'child' && !isset($rep['child_cost']) && $m['supplier_cost'] !== null) {
+                    $rep['child_cost'] = $m['supplier_cost'];
+                }
+                if ($m['type'] === 'infant' && !isset($rep['infant_cost']) && $m['supplier_cost'] !== null) {
+                    $rep['infant_cost'] = $m['supplier_cost'];
+                }
+            }
         } elseif ($cat === 'hotel' && $rep['service_id'] !== null) {
             // Per-member hotel breakdown: seed one entry per usable member
             // (even pre-fulfillment), then attach their own fulfillment rows

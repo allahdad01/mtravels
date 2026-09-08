@@ -548,17 +548,19 @@ function flightMemberTypeCounts(service) {
 function flightTypeCostFieldsHtml(service) {
     const { child, infant } = flightMemberTypeCounts(service);
     if (!child && !infant) return '';
+    const childVal = service.child_cost != null ? service.child_cost : '';
+    const infantVal = service.infant_cost != null ? service.infant_cost : '';
     const parts = [];
     if (child) {
         parts.push(`<div class="form-group col-md-3 mb-2">
             <label class="small mb-1 text-muted">Child ticket cost <span class="text-muted">(${child})</span></label>
-            <input type="number" class="form-control form-control-sm f-child-cost" min="0" step="0.01" placeholder="per child">
+            <input type="number" class="form-control form-control-sm f-child-cost" min="0" step="0.01" placeholder="per child" value="${childVal}">
         </div>`);
     }
     if (infant) {
         parts.push(`<div class="form-group col-md-3 mb-2">
             <label class="small mb-1 text-muted">Infant ticket cost <span class="text-muted">(${infant})</span></label>
-            <input type="number" class="form-control form-control-sm f-infant-cost" min="0" step="0.01" placeholder="per infant">
+            <input type="number" class="form-control form-control-sm f-infant-cost" min="0" step="0.01" placeholder="per infant" value="${infantVal}">
         </div>`);
     }
     const chips = [];
@@ -1887,6 +1889,15 @@ function renderFulfillmentServices(data) {
             const famLabel = service.families_applicable === 1 ? 'family' : 'families';
             const memLabel = service.members_applicable === 1 ? 'member' : 'members';
             let extraParts = [];
+            if (service.adult_count > 0) {
+                extraParts.push('<span style="color:#0e7490;">' + service.adult_count + ' ' + (service.adult_count === 1 ? 'adult' : 'adults') + '</span>');
+            }
+            if (service.child_count > 0) {
+                extraParts.push('<span style="color:#16a34a;">' + service.child_count + ' ' + (service.child_count === 1 ? 'child' : 'children') + '</span>');
+            }
+            if (service.infant_count > 0) {
+                extraParts.push('<span style="color:#d97706;">' + service.infant_count + ' ' + (service.infant_count === 1 ? 'infant' : 'infants') + '</span>');
+            }
             if (service.extra_bed_count > 0) {
                 extraParts.push('<span style="color:#92400e;">' + service.extra_bed_count + ' ' + __t('extra_beds') + '</span>');
             }
@@ -1895,7 +1906,7 @@ function renderFulfillmentServices(data) {
             }
             coverageChip = `<span class="fulfillment-chip fulfillment-chip-optional ml-1" title="${service.coverage_skipped ? 'Skipped: ' + escapeHtml(JSON.stringify(service.skip_breakdown || {})) : 'Applies to every member with this service'}" style="cursor:default;">
                 covers ${service.families_applicable} ${famLabel} · ${service.members_applicable} ${memLabel}
-                ${extraParts.length ? ' <span style="opacity:.75;">+ ' + extraParts.join(' + ') + '</span>' : ''}
+                ${extraParts.length ? ' <span style="opacity:.75;">· ' + extraParts.join(' · ') + '</span>' : ''}
                 ${service.coverage_skipped ? ' <span style="opacity:.75;">· ' + service.coverage_skipped + ' skipped</span>' : ''}
             </span>`;
         }

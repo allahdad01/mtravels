@@ -22,6 +22,54 @@ $canEdit   = user_can('tickets.edit');
 $canDelete = user_can('tickets.delete');
 $canBook   = user_can('tickets.book');
 $canTransactions = user_can('tickets.transactions');
+
+// ─── KPI Data (agency tickets only) ────────────────────────
+$kpiParams = [$tenant_id, $branch_id];
+
+$kpiCountQuery = "SELECT COUNT(*) as total FROM ticket_bookings tb
+    JOIN clients c ON tb.sold_to = c.id AND c.tenant_id = tb.tenant_id AND c.branch_id = tb.branch_id
+    WHERE tb.tenant_id = ? AND tb.branch_id = ? AND c.client_type = 'agency'";
+$kpiCountStmt = $pdo->prepare($kpiCountQuery);
+$kpiCountStmt->execute($kpiParams);
+$kpiTotalTickets = $kpiCountStmt->fetch(PDO::FETCH_ASSOC)['total'];
+
+$kpiAmountQuery = "SELECT COALESCE(SUM(tb.sold), 0) as total_sold FROM ticket_bookings tb
+    JOIN clients c ON tb.sold_to = c.id AND c.tenant_id = tb.tenant_id AND c.branch_id = tb.branch_id
+    WHERE tb.tenant_id = ? AND tb.branch_id = ? AND c.client_type = 'agency'";
+$kpiAmountStmt = $pdo->prepare($kpiAmountQuery);
+$kpiAmountStmt->execute($kpiParams);
+$kpiTotalAmount = floatval($kpiAmountStmt->fetch(PDO::FETCH_ASSOC)['total_sold']);
+
+$kpiPaidQuery = "
+    SELECT mat.currency, mat.amount, mat.exchange_rate, tb.currency as ticket_currency
+    FROM main_account_transactions mat
+    JOIN ticket_bookings tb ON mat.reference_id = tb.id AND mat.transaction_of = 'ticket_sale'
+        AND tb.tenant_id = mat.tenant_id AND tb.branch_id = mat.branch_id
+    JOIN clients c ON tb.sold_to = c.id AND c.tenant_id = tb.tenant_id AND c.branch_id = tb.branch_id
+    WHERE mat.tenant_id = ? AND mat.branch_id = ? AND mat.type = 'credit' AND c.client_type = 'agency'
+";
+$kpiPaidStmt = $pdo->prepare($kpiPaidQuery);
+$kpiPaidStmt->execute($kpiParams);
+$kpiPaidRows = $kpiPaidStmt->fetchAll(PDO::FETCH_ASSOC);
+
+$kpiTotalPaid = 0;
+foreach ($kpiPaidRows as $kpiRow) {
+    $kpiAmt    = floatval($kpiRow['amount']);
+    $kpiTransC = $kpiRow['currency'];
+    $kpiTickC  = $kpiRow['ticket_currency'];
+    $kpiRate   = isset($kpiRow['exchange_rate']) && floatval($kpiRow['exchange_rate']) > 0
+        ? floatval($kpiRow['exchange_rate']) : 1.0;
+
+    if ($kpiTransC === $kpiTickC) {
+        $kpiTotalPaid += $kpiAmt;
+    } elseif ($kpiTickC === 'AFS') {
+        $kpiTotalPaid += $kpiAmt * $kpiRate;
+    } else {
+        $kpiTotalPaid += $kpiAmt / $kpiRate;
+    }
+}
+
+$kpiTotalRemaining = max(0, $kpiTotalAmount - $kpiTotalPaid);
 ?>
 
 <?php include '../includes/header.php'; ?>
@@ -694,6 +742,30 @@ $canTransactions = user_can('tickets.transactions');
                 <!-- ── Page Body ── -->
                 <div class="pg-body">
 
+                    <!-- KPI Strip -->
+                    <div class="kpi-row">
+                        <div class="kpi-card">
+                            <div class="kpi-accent" style="background:#185FA5;"></div>
+                            <div class="kpi-label"><?= __('total_tickets') ?? 'Total Tickets' ?></div>
+                            <div class="kpi-value"><?= number_format($kpiTotalTickets) ?></div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-accent" style="background:#f59e0b;"></div>
+                            <div class="kpi-label"><?= __('total_amount') ?? 'Total Amount' ?></div>
+                            <div class="kpi-value"><?= number_format($kpiTotalAmount, 2) ?></div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-accent" style="background:#10b981;"></div>
+                            <div class="kpi-label"><?= __('total_paid') ?? 'Total Paid' ?></div>
+                            <div class="kpi-value"><?= number_format($kpiTotalPaid, 2) ?></div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-accent" style="background:#ef4444;"></div>
+                            <div class="kpi-label"><?= __('total_remaining') ?? 'Total Remaining' ?></div>
+                            <div class="kpi-value"><?= number_format($kpiTotalRemaining, 2) ?></div>
+                        </div>
+                    </div>
+
                     <!-- Toolbar -->
                     <div class="pg-toolbar">
                         <div class="toolbar-search">
@@ -980,17 +1052,17 @@ $canTransactions = user_can('tickets.transactions');
 
 <!-- FAB -->
 <div class="pg-fab" style="<?php echo is_rtl() ? 'left:20px' : 'right:20px' ?>; margin-bottom: 5px;">
-    <?php if ($canEdit): ?>
-    <button type="button" id="launchMultiTicketInvoice"
-            title="<?= __('generate_multi_ticket_invoice') ?>">
-        <i class="feather icon-file-text"></i>
-    </button>
-    <?php endif; ?>
     <?php if ($canTransactions): ?>
     <button type="button" id="fabBulkPayment"
             title="<?= __('bulk_payment') ?? 'Bulk Payment' ?>"
             style="margin-bottom:10px; background:#2e7d32;">
         <i class="fas fa-money-bill-wave"></i>
+    </button>
+    <?php endif; ?>
+    <?php if ($canEdit): ?>
+    <button type="button" id="launchMultiTicketInvoice"
+            title="<?= __('generate_multi_ticket_invoice') ?>">
+        <i class="feather icon-file-text"></i>
     </button>
     <?php endif; ?>
 </div>
