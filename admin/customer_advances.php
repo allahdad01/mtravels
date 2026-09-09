@@ -337,12 +337,14 @@ $csrf_token = $_SESSION['csrf_token'] ?? '';
                 <div class="ag-field" id="exchangeRateGroup" style="display:none;">
                     <label>Exchange Rate *</label>
                     <input type="number" step="0.000001" min="0" id="payExchangeRate" value="1" placeholder="1.000000">
-                    <small style="color:#64748b;font-size:11px;" id="exchangeRateHint"></small>
+                    <small style="color:#64748b;font-size:11px;display:block;margin-top:3px;" id="exchangeRateHint"></small>
+                    <small style="color:#94a3b8;font-size:11px;display:block;margin-top:2px;" id="exchangeRateExample"></small>
                 </div>
                 <div class="ag-field" id="convertedAmountGroup" style="display:none;">
                     <label>Converted Amount</label>
                     <input type="text" id="payConvertedAmount" readonly placeholder="Auto-calculated" style="background:#f8f9fa;">
                     <small style="color:#64748b;font-size:11px;" id="convertedAmountHint"></small>
+                    <small style="color:#94a3b8;font-size:11px;display:block;margin-top:2px;">Used for advance tracking & status. Main account uses raw payment amount.</small>
                 </div>
                 <div class="ag-field">
                     <label>Reference Number</label>
@@ -356,6 +358,116 @@ $csrf_token = $_SESSION['csrf_token'] ?? '';
             <div class="ag-modal-footer">
                 <button type="button" class="ag-btn" onclick="closeAll()">Cancel</button>
                 <button type="submit" class="ag-btn ag-btn-green">Record Payment</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Advance Modal -->
+<div class="ag-overlay" id="editAdvanceOverlay">
+    <div class="ag-modal">
+        <div class="ag-modal-head">
+            <h2>Edit Umrah Hawala</h2>
+            <button class="ag-modal-close" onclick="closeAll()">&times;</button>
+        </div>
+        <form id="editAdvanceForm" novalidate>
+            <input type="hidden" id="editAdvId">
+            <div class="ag-form-grid">
+                <div class="ag-field">
+                    <label>Customer Name *</label>
+                    <input type="text" id="editAdvCustomer" required placeholder="Customer name">
+                </div>
+                <div class="ag-field">
+                    <label>Supplier Name *</label>
+                    <input type="text" id="editAdvSupplier" required placeholder="Supplier name">
+                </div>
+                <div class="ag-field">
+                    <label>Amount *</label>
+                    <input type="number" step="0.01" min="0.01" id="editAdvAmount" required placeholder="0.00">
+                </div>
+                <div class="ag-field">
+                    <label>Currency *</label>
+                    <select id="editAdvCurrency" required>
+                        <option value="USD">USD</option>
+                        <option value="AFS">AFS</option>
+                        <option value="EUR">EUR</option>
+                        <option value="DARHAM">DARHAM</option>
+                        <option value="SAR">SAR</option>
+                    </select>
+                </div>
+                <div class="ag-field">
+                    <label>Date *</label>
+                    <input type="date" id="editAdvDate" required>
+                </div>
+                <div class="ag-field ag-field-full">
+                    <label>Reason</label>
+                    <textarea id="editAdvReason" rows="2" placeholder="Why customer needs money"></textarea>
+                </div>
+            </div>
+            <div class="ag-modal-footer">
+                <button type="button" class="ag-btn" onclick="closeAll()">Cancel</button>
+                <button type="submit" class="ag-btn ag-btn-green">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Payment Modal -->
+<div class="ag-overlay" id="editPaymentOverlay">
+    <div class="ag-modal">
+        <div class="ag-modal-head">
+            <h2>Edit Payment</h2>
+            <button class="ag-modal-close" onclick="closeAll()">&times;</button>
+        </div>
+        <form id="editPaymentForm" novalidate>
+            <input type="hidden" id="editPayId">
+            <input type="hidden" id="editPayType">
+            <div class="ag-form-grid">
+                <div class="ag-field">
+                    <label>Amount *</label>
+                    <input type="number" step="0.01" min="0.01" id="editPayAmount" required placeholder="0.00">
+                </div>
+                <div class="ag-field">
+                    <label>Currency *</label>
+                    <select id="editPayCurrency" required>
+                        <option value="USD">USD</option>
+                        <option value="AFS">AFS</option>
+                        <option value="EUR">EUR</option>
+                        <option value="DARHAM">DARHAM</option>
+                        <option value="SAR">SAR</option>
+                    </select>
+                </div>
+                <div class="ag-field">
+                    <label>Main Account *</label>
+                    <select id="editPayMainAccount" required>
+                        <option value="">Select Main Account</option>
+                        <?php foreach ($mainAccounts as $ma): ?>
+                        <option value="<?= $ma['id'] ?>"><?= htmlspecialchars($ma['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="ag-field">
+                    <label>Payment Date *</label>
+                    <input type="date" id="editPayDate" required>
+                </div>
+                <div class="ag-field" id="editExchangeRateGroup" style="display:none;">
+                    <label>Exchange Rate *</label>
+                    <input type="number" step="0.000001" min="0" id="editPayExchangeRate" value="1" placeholder="1.000000">
+                    <small style="color:#64748b;font-size:11px;display:block;margin-top:3px;" id="editExchangeRateHint"></small>
+                    <small style="color:#94a3b8;font-size:11px;display:block;margin-top:2px;" id="editExchangeRateExample"></small>
+                </div>
+                <div class="ag-field">
+                    <label>Reference Number</label>
+                    <input type="text" id="editPayReference" placeholder="Cheque/Transfer ID">
+                </div>
+                <div class="ag-field ag-field-full">
+                    <label>Description</label>
+                    <input type="text" id="editPayDescription" placeholder="Payment note">
+                </div>
+            </div>
+            <div class="ag-modal-footer">
+                <button type="button" class="ag-btn" onclick="closeAll()">Cancel</button>
+                <button type="submit" class="ag-btn ag-btn-green">Save Changes</button>
             </div>
         </form>
     </div>
@@ -409,11 +521,10 @@ function loadSummary() {
         const cards = document.getElementById('summaryCards');
         const s = res.summary || {};
         const owedAmount = Number(s.total_owed_to_suppliers) || 0;
-        const paidAmount = Number(s.total_paid_to_suppliers) || 0;
         const completedAmount = Number(s.total_completed) || 0;
         const owedCount = Number(s.owed_count) || 0;
-        const paidCount = Number(s.paid_count) || 0;
         const completedCount = Number(s.completed_count) || 0;
+        const totalOutgoing = Number(s.total_outgoing) || 0;
 
         let incomingHtml = '';
         (s.incoming || []).forEach(r => {
@@ -435,14 +546,9 @@ function loadSummary() {
 
         let html = `
             <div class="ag-card amber">
-                <div class="ag-card-label">Owed to Suppliers</div>
+                <div class="ag-card-label">Pending</div>
                 <div class="ag-card-value">${money(owedAmount)}</div>
                 <div class="ag-card-sub">${owedCount} hawala(s) - we need to pay</div>
-            </div>
-            <div class="ag-card blue">
-                <div class="ag-card-label">Paid to Suppliers</div>
-                <div class="ag-card-value">${money(paidAmount)}</div>
-                <div class="ag-card-sub">${paidCount} hawala(s) - waiting for customer</div>
             </div>
             <div class="ag-card green">
                 <div class="ag-card-label">Completed</div>
@@ -533,6 +639,7 @@ function loadAdvances() {
                 <td>${pill(a.status)}</td>
                 <td>
                     ${canMarkPaid ? `<button class="ag-btn ag-btn-amber ag-btn-sm" onclick="markSupplierPaid(${a.id})">Mark Paid</button>` : ''}
+                    <button class="ag-btn ag-btn-blue ag-btn-sm" onclick="editAdvance(${a.id}, '${esc(a.customer_name).replace(/'/g,"\\'")}', '${esc(a.supplier_name).replace(/'/g,"\\'")}', ${a.amount}, '${esc(a.currency)}', '${esc(a.advance_date)}', '${esc(a.reason || '').replace(/'/g,"\\'")}')">Edit</button>
                     ${canDelete ? `<button class="ag-btn ag-btn-red ag-btn-sm" onclick="deleteAdvance(${a.id})">Delete</button>` : ''}
                 </td>
             </tr>`;
@@ -567,6 +674,7 @@ function loadPayments() {
             <td class="ag-t-dim">${esc(p.main_account_name) || '—'}</td>
             <td class="ag-t-note" style="max-width:140px;" title="${esc(p.description)}">${esc(p.description) || '—'}</td>
             <td>
+                <button class="ag-btn ag-btn-blue ag-btn-sm" onclick="editPayment(${p.id}, ${p.amount}, '${esc(p.currency)}', ${p.exchange_rate || 1}, ${p.main_account_id || 'null'}, '${esc(p.payment_date)}', '${esc(p.reference_number || '').replace(/'/g,"\\'")}', '${esc(p.description || '').replace(/'/g,"\\'")}', '${esc(p.type)}', '${esc(p.main_account_name || '').replace(/'/g,"\\'")}')">Edit</button>
                 <button class="ag-btn ag-btn-red ag-btn-sm" onclick="deletePayment(${p.id})">Delete</button>
             </td>
         </tr>`;
@@ -737,6 +845,40 @@ function onPaymentCustomerChange() {
     checkShowExchangeRate(advCurrency, payCurrency);
 }
 
+function getCurrencyDisplay(code) {
+    var map = { 'DARHAM': 'AED' };
+    return map[code] || code;
+}
+
+function getExchangeRateExample(baseCurrency, targetCurrency) {
+    var displayBase = getCurrencyDisplay(baseCurrency);
+    var displayTarget = getCurrencyDisplay(targetCurrency);
+    var examples = {
+        'USD-AFS': 'Example: 1 USD = 88 AFS, enter 88',
+        'USD-EUR': 'Example: 1 USD = 0.95 EUR, enter 0.95',
+        'USD-AED': 'Example: 1 USD = 3.67 AED, enter 3.67',
+        'AFS-USD': 'Example: 1 USD = 88 AFS, enter 88',
+        'EUR-USD': 'Example: 1 USD = 0.95 EUR, enter 0.95',
+        'AED-USD': 'Example: 1 USD = 3.67 AED, enter 3.67',
+        'EUR-AFS': 'Example: 1 EUR = 92.5 AFS, enter 92.5',
+        'AFS-EUR': 'Example: 1 EUR = 92.5 AFS, enter 92.5',
+        'EUR-AED': 'Example: 1 EUR = 3.86 AED, enter 3.86',
+        'AED-EUR': 'Example: 1 EUR = 3.86 AED, enter 3.86',
+        'AED-AFS': 'Example: 1 AED = 23.99 AFS, enter 23.99',
+        'AFS-AED': 'Example: 1 AED = 23.99 AFS, enter 23.99',
+        'USD-SAR': 'Example: 1 USD = 3.75 SAR, enter 3.75',
+        'SAR-USD': 'Example: 1 USD = 3.75 SAR, enter 3.75',
+        'EUR-SAR': 'Example: 1 EUR = 4.07 SAR, enter 4.07',
+        'SAR-EUR': 'Example: 1 EUR = 4.07 SAR, enter 4.07',
+        'AED-SAR': 'Example: 1 AED = 1.02 SAR, enter 1.02',
+        'SAR-AED': 'Example: 1 AED = 1.02 SAR, enter 1.02',
+        'AFS-SAR': 'Example: 1 AFS = 18.67 SAR, enter 18.67',
+        'SAR-AFS': 'Example: 1 AFS = 18.67 SAR, enter 18.67'
+    };
+    var key = displayBase + '-' + displayTarget;
+    return examples[key] || 'Enter the exchange rate';
+}
+
 function checkShowExchangeRate(advCurrency, payCurrency) {
     var rateGroup = document.getElementById('exchangeRateGroup');
     var convGroup = document.getElementById('convertedAmountGroup');
@@ -744,8 +886,20 @@ function checkShowExchangeRate(advCurrency, payCurrency) {
         rateGroup.style.display = 'block';
         convGroup.style.display = 'block';
         document.getElementById('payExchangeRate').value = '';
-        document.getElementById('exchangeRateHint').textContent = 'Enter rate: 1 ' + advCurrency + ' = ? ' + payCurrency;
         document.getElementById('payConvertedAmount').value = '';
+
+        var anchorCurrency = advCurrency;
+        var currencies = [payCurrency, advCurrency];
+        if (currencies.indexOf('USD') !== -1) anchorCurrency = 'USD';
+        else if (currencies.indexOf('EUR') !== -1) anchorCurrency = 'EUR';
+        else if (currencies.indexOf('AED') !== -1 || currencies.indexOf('DARHAM') !== -1) anchorCurrency = 'AED';
+        else if (currencies.indexOf('AFS') !== -1) anchorCurrency = 'AFS';
+
+        var otherCurrency = (anchorCurrency === advCurrency) ? payCurrency : advCurrency;
+
+        document.getElementById('exchangeRateHint').innerHTML =
+            'Enter how many <strong>' + getCurrencyDisplay(otherCurrency) + '</strong> equals 1 <strong>' + getCurrencyDisplay(anchorCurrency) + '</strong>';
+        document.getElementById('exchangeRateExample').textContent = getExchangeRateExample(anchorCurrency, otherCurrency);
     } else {
         rateGroup.style.display = 'none';
         convGroup.style.display = 'none';
@@ -769,9 +923,22 @@ function updateConvertedAmount() {
         return;
     }
     if (amount > 0 && rate > 0) {
-        var converted = amount * rate;
+        var anchorCurrency = advCurrency;
+        var currencies = [payCurrency, advCurrency];
+        if (currencies.indexOf('USD') !== -1) anchorCurrency = 'USD';
+        else if (currencies.indexOf('EUR') !== -1) anchorCurrency = 'EUR';
+        else if (currencies.indexOf('AED') !== -1 || currencies.indexOf('DARHAM') !== -1) anchorCurrency = 'AED';
+        else if (currencies.indexOf('AFS') !== -1) anchorCurrency = 'AFS';
+
+        var converted;
+        if (anchorCurrency === payCurrency) {
+            converted = amount * rate;
+        } else {
+            converted = amount / rate;
+        }
         document.getElementById('payConvertedAmount').value = converted.toFixed(2);
-        document.getElementById('convertedAmountHint').textContent = amount + ' ' + payCurrency + ' = ' + converted.toFixed(2) + ' ' + advCurrency;
+        document.getElementById('convertedAmountHint').textContent =
+            amount + ' ' + getCurrencyDisplay(payCurrency) + ' = ' + converted.toFixed(2) + ' ' + getCurrencyDisplay(advCurrency);
     } else {
         document.getElementById('payConvertedAmount').value = '';
     }
@@ -927,6 +1094,136 @@ function deletePayment(id) {
         }
     }).catch(e => showAlert(e.message, 'danger'));
 }
+
+function editAdvance(id, customerName, supplierName, amount, currency, date, reason) {
+    document.getElementById('editAdvId').value = id;
+    document.getElementById('editAdvCustomer').value = customerName;
+    document.getElementById('editAdvSupplier').value = supplierName;
+    document.getElementById('editAdvAmount').value = amount;
+    document.getElementById('editAdvCurrency').value = currency;
+    document.getElementById('editAdvDate').value = date;
+    document.getElementById('editAdvReason').value = reason;
+    document.getElementById('editAdvanceOverlay').classList.add('open');
+}
+
+document.getElementById('editAdvanceForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var id = document.getElementById('editAdvId').value;
+    var customer = document.getElementById('editAdvCustomer').value.trim();
+    var supplier = document.getElementById('editAdvSupplier').value.trim();
+    var amount = document.getElementById('editAdvAmount').value;
+    var valid = true;
+
+    [document.getElementById('editAdvCustomer'), document.getElementById('editAdvSupplier'), document.getElementById('editAdvAmount')].forEach(function(el) { el.style.borderColor = ''; });
+    if (!customer) { document.getElementById('editAdvCustomer').style.borderColor = '#dc2626'; valid = false; }
+    if (!supplier) { document.getElementById('editAdvSupplier').style.borderColor = '#dc2626'; valid = false; }
+    if (!amount || parseFloat(amount) <= 0) { document.getElementById('editAdvAmount').style.borderColor = '#dc2626'; valid = false; }
+    if (!valid) { alert('Please fill in all required fields'); return; }
+
+    post({
+        action: 'edit_advance',
+        advance_id: id,
+        customer_name: customer,
+        supplier_name: supplier,
+        amount: amount,
+        currency: document.getElementById('editAdvCurrency').value,
+        advance_date: document.getElementById('editAdvDate').value,
+        reason: document.getElementById('editAdvReason').value.trim()
+    }).then(res => {
+        if (!res.success) throw new Error(res.message);
+        showAlert(res.message, 'success');
+        closeAll();
+        loadSummary();
+        loadCustomers();
+        if (selectedCustomerName) loadAdvances();
+    }).catch(e => showAlert(e.message, 'danger'));
+});
+
+function editPayment(id, amount, currency, exchangeRate, mainAccountId, date, reference, description, type, mainAccountName) {
+    document.getElementById('editPayId').value = id;
+    document.getElementById('editPayType').value = type;
+    document.getElementById('editPayAmount').value = amount;
+    document.getElementById('editPayCurrency').value = currency;
+    document.getElementById('editPayExchangeRate').value = exchangeRate;
+    document.getElementById('editPayDate').value = date;
+    document.getElementById('editPayReference').value = reference;
+    document.getElementById('editPayDescription').value = description;
+
+    // Set main account
+    var maSelect = document.getElementById('editPayMainAccount');
+    if (mainAccountId) {
+        maSelect.value = mainAccountId;
+    }
+
+    // Show/hide exchange rate based on currency vs advance currency
+    if (selectedCustomerName) {
+        var advCurrency = advanceCurrencyCache[selectedCustomerName] || 'USD';
+        checkEditExchangeRate(advCurrency, currency, exchangeRate);
+    }
+
+    document.getElementById('editPaymentOverlay').classList.add('open');
+}
+
+function checkEditExchangeRate(advCurrency, payCurrency, rate) {
+    var rateGroup = document.getElementById('editExchangeRateGroup');
+    if (advCurrency !== payCurrency) {
+        rateGroup.style.display = 'block';
+        var anchorCurrency = advCurrency;
+        var currencies = [payCurrency, advCurrency];
+        if (currencies.indexOf('USD') !== -1) anchorCurrency = 'USD';
+        else if (currencies.indexOf('EUR') !== -1) anchorCurrency = 'EUR';
+        else if (currencies.indexOf('AED') !== -1 || currencies.indexOf('DARHAM') !== -1) anchorCurrency = 'AED';
+        else if (currencies.indexOf('AFS') !== -1) anchorCurrency = 'AFS';
+
+        var otherCurrency = (anchorCurrency === advCurrency) ? payCurrency : advCurrency;
+        document.getElementById('editExchangeRateHint').innerHTML =
+            'Enter how many <strong>' + getCurrencyDisplay(otherCurrency) + '</strong> equals 1 <strong>' + getCurrencyDisplay(anchorCurrency) + '</strong>';
+        document.getElementById('editExchangeRateExample').textContent = getExchangeRateExample(anchorCurrency, otherCurrency);
+    } else {
+        rateGroup.style.display = 'none';
+    }
+}
+
+document.getElementById('editPayCurrency').addEventListener('change', function() {
+    if (!selectedCustomerName) return;
+    var advCurrency = advanceCurrencyCache[selectedCustomerName] || 'USD';
+    checkEditExchangeRate(advCurrency, this.value, document.getElementById('editPayExchangeRate').value);
+});
+
+document.getElementById('editPaymentForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var id = document.getElementById('editPayId').value;
+    var amount = document.getElementById('editPayAmount').value;
+    var mainAccount = document.getElementById('editPayMainAccount').value;
+    var valid = true;
+
+    [document.getElementById('editPayAmount'), document.getElementById('editPayMainAccount')].forEach(function(el) { el.style.borderColor = ''; });
+    if (!amount || parseFloat(amount) <= 0) { document.getElementById('editPayAmount').style.borderColor = '#dc2626'; valid = false; }
+    if (!mainAccount) { document.getElementById('editPayMainAccount').style.borderColor = '#dc2626'; valid = false; }
+    if (!valid) { alert('Please fill in all required fields'); return; }
+
+    post({
+        action: 'edit_payment',
+        payment_id: id,
+        amount: amount,
+        currency: document.getElementById('editPayCurrency').value,
+        exchange_rate: document.getElementById('editPayExchangeRate').value,
+        main_account_id: mainAccount,
+        payment_date: document.getElementById('editPayDate').value,
+        reference_number: document.getElementById('editPayReference').value.trim(),
+        description: document.getElementById('editPayDescription').value.trim()
+    }).then(res => {
+        if (!res.success) throw new Error(res.message);
+        showAlert(res.message, 'success');
+        closeAll();
+        loadSummary();
+        loadCustomers();
+        if (selectedCustomerName) {
+            loadAdvances();
+            loadPayments();
+        }
+    }).catch(e => showAlert(e.message, 'danger'));
+});
 
 function clearFilter() {
     document.getElementById('filterStartDate').value = '';

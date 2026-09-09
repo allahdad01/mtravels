@@ -8,8 +8,10 @@
  *   get_advances       (GET)   Advances for a customer
  *   get_payments       (GET)   Payment history for a customer
  *   record_advance     (POST)  Record a new advance (supplier gave money to customer)
+ *   edit_advance       (POST)  Edit an existing advance
  *   mark_supplier_paid (POST)  Mark advance as paid by agency to supplier
  *   record_payment     (POST)  Record incoming or outgoing payment
+ *   edit_payment       (POST)  Edit an existing payment
  *   delete_advance     (POST)  Delete advance (only if no payments)
  *   delete_payment     (POST)  Delete a payment record
  */
@@ -68,28 +70,29 @@ try {
             if ($end_date) { $date_cond .= " AND ca.advance_date <= ?"; $params[] = $end_date; }
 
             $sql = "SELECT
-                SUM(CASE WHEN NOT EXISTS (
-                    SELECT 1 FROM customer_advance_payments cap WHERE cap.advance_id = ca.id AND cap.type = 'outgoing'
-                ) THEN ca.amount ELSE 0 END) AS total_owed_to_suppliers,
-                SUM(CASE WHEN EXISTS (
-                    SELECT 1 FROM customer_advance_payments cap WHERE cap.advance_id = ca.id AND cap.type = 'outgoing'
-                ) THEN ca.amount ELSE 0 END) AS total_paid_to_suppliers,
-                SUM(CASE WHEN EXISTS (
-                    SELECT 1 FROM customer_advance_payments cap WHERE cap.advance_id = ca.id AND cap.type = 'incoming'
-                ) THEN ca.amount ELSE 0 END) AS total_completed,
-                COUNT(CASE WHEN NOT EXISTS (
-                    SELECT 1 FROM customer_advance_payments cap WHERE cap.advance_id = ca.id AND cap.type = 'outgoing'
-                ) THEN 1 END) AS owed_count,
-                COUNT(CASE WHEN EXISTS (
-                    SELECT 1 FROM customer_advance_payments cap WHERE cap.advance_id = ca.id AND cap.type = 'outgoing'
-                ) THEN 1 END) AS paid_count,
-                COUNT(CASE WHEN EXISTS (
-                    SELECT 1 FROM customer_advance_payments cap WHERE cap.advance_id = ca.id AND cap.type = 'incoming'
-                ) THEN 1 END) AS completed_count
+                SUM(CASE WHEN ca.status = 'pending' THEN ca.amount ELSE 0 END) AS total_owed_to_suppliers,
+                SUM(CASE WHEN ca.status = 'completed' THEN ca.amount ELSE 0 END) AS total_completed,
+                COUNT(CASE WHEN ca.status = 'pending' THEN 1 END) AS owed_count,
+                COUNT(CASE WHEN ca.status = 'completed' THEN 1 END) AS completed_count
                 FROM customer_advances ca WHERE ca.tenant_id = ? AND ca.branch_id = ? $date_cond";
             $stmt = $pdo->prepare($sql);
             $stmt->execute($params);
             $summary = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            // Calculate actual pending balance (advance amount minus outgoing payments)
+            $pendingStmt = $pdo->prepare("SELECT COALESCE(SUM(ca.amount - COALESCE(p.total_paid, 0)), 0) AS actual_pending
+                FROM customer_advances ca
+                LEFT JOIN (
+                    SELECT advance_id, SUM(COALESCE(converted_amount, amount)) AS total_paid
+                    FROM customer_advance_payments WHERE type = 'outgoing'
+                    GROUP BY advance_id
+                ) p ON p.advance_id = ca.id
+                WHERE ca.tenant_id = ? AND ca.branch_id = ? AND ca.status = 'pending' $date_cond");
+            $pendingParams = [$tenant_id, $branch_id];
+            if ($start_date) $pendingParams[] = $start_date;
+            if ($end_date) $pendingParams[] = $end_date;
+            $pendingStmt->execute($pendingParams);
+            $summary['total_owed_to_suppliers'] = (float) $pendingStmt->fetchColumn();
 
             $pay_params = [$tenant_id, $branch_id];
             $pay_date_cond = '';
@@ -132,6 +135,7 @@ try {
 
             $summary['incoming'] = $incoming;
             $summary['outgoing'] = $outgoing;
+            $summary['total_outgoing'] = (float) $totalOutgoing;
 
             echo json_encode(['success' => true, 'summary' => $summary]);
             break;
@@ -359,6 +363,80 @@ try {
             echo json_encode(['success' => true, 'message' => "Umrah Hawala of {$currency} " . number_format($amount, 2) . " recorded for {$customerName}", 'id' => $newId]);
             break;
 
+        /* ── Edit an advance ── */
+        case 'edit_advance':
+            $advanceId    = (int) ($_POST['advance_id'] ?? 0);
+            $customerName = trim($_POST['customer_name'] ?? '');
+            $supplierName = trim($_POST['supplier_name'] ?? '');
+            $amount       = (float) ($_POST['amount'] ?? 0);
+            $currency     = strtoupper(trim($_POST['currency'] ?? 'USD'));
+            $advanceDate  = trim($_POST['advance_date'] ?? '');
+            $reason       = trim($_POST['reason'] ?? '');
+
+            if (!$advanceId) throw new Exception('Advance ID is required');
+            if (empty($customerName)) throw new Exception('Customer name is required');
+            if (empty($supplierName)) throw new Exception('Supplier name is required');
+            if ($amount <= 0) throw new Exception('Amount must be greater than 0');
+            if (!in_array($currency, ['USD','AFS','EUR','DARHAM','SAR'], true)) throw new Exception('Invalid currency');
+
+            $stmt = $pdo->prepare("SELECT * FROM customer_advances WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+            $stmt->execute([$advanceId, $tenant_id, $branch_id]);
+            $old = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$old) throw new Exception('Advance not found');
+
+            $pdo->beginTransaction();
+
+            // Update the advance
+            $updStmt = $pdo->prepare("UPDATE customer_advances SET customer_name = ?, supplier_name = ?, amount = ?, currency = ?, advance_date = ?, reason = ? WHERE id = ?");
+            $updStmt->execute([$customerName, $supplierName, $amount, $currency, $advanceDate, $reason, $advanceId]);
+
+            // Recalculate status based on payments vs new amount
+            $payStmt = $pdo->prepare("SELECT type, COALESCE(converted_amount, amount) AS paid_amount FROM customer_advance_payments WHERE advance_id = ?");
+            $payStmt->execute([$advanceId]);
+            $payments = $payStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $hasIncoming = false;
+            $hasOutgoing = false;
+            $totalPaid = 0;
+            foreach ($payments as $p) {
+                if ($p['type'] === 'incoming') $hasIncoming = true;
+                if ($p['type'] === 'outgoing') $hasOutgoing = true;
+                $totalPaid += (float) $p['paid_amount'];
+            }
+
+            $newStatus = $old['status'];
+            $totalIncoming = 0;
+            $totalOutgoing = 0;
+            foreach ($payments as $p) {
+                if ($p['type'] === 'incoming') $totalIncoming += (float) $p['paid_amount'];
+                if ($p['type'] === 'outgoing') $totalOutgoing += (float) $p['paid_amount'];
+            }
+
+            $totalPaidToSupplier = $totalOutgoing;
+            $totalReceivedFromCustomer = $totalIncoming;
+
+            if ($totalPaidToSupplier >= $amount) {
+                $newStatus = 'paid_by_agency';
+            } elseif ($totalReceivedFromCustomer >= $amount) {
+                $newStatus = 'completed';
+            } elseif ($totalPaidToSupplier > 0 || $totalReceivedFromCustomer > 0) {
+                $newStatus = 'pending';
+            } else {
+                $newStatus = 'pending';
+            }
+
+            if ($newStatus !== $old['status']) {
+                $pdo->prepare("UPDATE customer_advances SET status = ? WHERE id = ?")->execute([$newStatus, $advanceId]);
+            }
+
+            logActivity($pdo, $current_user, $tenant_id, $branch_id, 'edit_advance', $advanceId,
+                json_encode($old, JSON_UNESCAPED_UNICODE),
+                json_encode(['customer_name' => $customerName, 'supplier_name' => $supplierName, 'amount' => $amount, 'currency' => $currency, 'advance_date' => $advanceDate, 'reason' => $reason, 'status' => $newStatus], JSON_UNESCAPED_UNICODE));
+
+            $pdo->commit();
+            echo json_encode(['success' => true, 'message' => 'Hawala updated successfully']);
+            break;
+
         /* ── Mark advance as paid by agency to supplier ── */
         case 'mark_supplier_paid':
             $advanceId = (int) ($_POST['advance_id'] ?? 0);
@@ -430,7 +508,9 @@ try {
             // Calculate converted amount in advance currency
             $convertedAmount = null;
             if ($currency !== $advanceCurrency && $exchangeRate > 0) {
-                $convertedAmount = $amount * $exchangeRate;
+                // Exchange rate means: 1 advanceCurrency = X paymentCurrency
+                // To convert paymentCurrency to advanceCurrency: amount / exchangeRate
+                $convertedAmount = $amount / $exchangeRate;
             }
 
             // Validate main account
@@ -440,15 +520,9 @@ try {
 
             $pdo->beginTransaction();
 
-            // Main account uses payment currency
-            // If currencies differ: use converted_amount (in payment currency) for main account
+            // Main account always uses the raw payment amount in payment currency
             $mainAccountAmount = $amount;
             $mainAccountCurrency = $currency;
-            if ($convertedAmount !== null && $currency !== $advanceCurrency) {
-                // Amount is in advance currency, converted_amount is in payment currency
-                $mainAccountAmount = $convertedAmount;
-                $mainAccountCurrency = $currency; // payment currency
-            }
             $balanceColumn = getBalanceColumn($mainAccountCurrency);
 
             if ($type === 'incoming') {
@@ -482,11 +556,18 @@ try {
             $txnStmt->execute([$mainAccountId, $txnType, $mainAccountAmount, $txnDesc, $updatedBalance, $mainAccountCurrency, $paymentId, $referenceNumber, $tenant_id, $branch_id, $current_user, $exchangeRate]);
 
             // Update advance status based on payment type
-            if ($type === 'outgoing' && $advance['status'] === 'pending') {
-                $pdo->prepare("UPDATE customer_advances SET status = 'paid_by_agency' WHERE id = ?")->execute([$advanceId]);
-            }
             if ($type === 'incoming') {
                 $pdo->prepare("UPDATE customer_advances SET status = 'completed' WHERE id = ?")->execute([$advanceId]);
+            } elseif ($type === 'outgoing') {
+                // Recalculate total paid for this advance
+                $totalStmt = $pdo->prepare("SELECT COALESCE(SUM(COALESCE(converted_amount, amount)), 0) FROM customer_advance_payments WHERE advance_id = ? AND type = 'outgoing'");
+                $totalStmt->execute([$advanceId]);
+                $totalPaid = (float) $totalStmt->fetchColumn();
+                if ($totalPaid >= $advance['amount']) {
+                    $pdo->prepare("UPDATE customer_advances SET status = 'paid_by_agency' WHERE id = ?")->execute([$advanceId]);
+                } else {
+                    $pdo->prepare("UPDATE customer_advances SET status = 'pending' WHERE id = ?")->execute([$advanceId]);
+                }
             }
 
             logActivity($pdo, $current_user, $tenant_id, $branch_id, 'record_payment', $paymentId, '{}',
@@ -496,6 +577,154 @@ try {
 
             $label = $type === 'incoming' ? 'received from customer' : 'paid to supplier';
             echo json_encode(['success' => true, 'message' => ucfirst($type) . " payment of {$currency} " . number_format($amount, 2) . " {$label}", 'id' => $paymentId]);
+            break;
+
+        /* ── Edit a payment ── */
+        case 'edit_payment':
+            $paymentId      = (int) ($_POST['payment_id'] ?? 0);
+            $newAmount      = (float) ($_POST['amount'] ?? 0);
+            $currency       = strtoupper(trim($_POST['currency'] ?? 'USD'));
+            $exchangeRate   = (float) ($_POST['exchange_rate'] ?? 1);
+            $mainAccountId  = (int) ($_POST['main_account_id'] ?? 0);
+            $paymentDate    = trim($_POST['payment_date'] ?? '');
+            $referenceNumber = trim($_POST['reference_number'] ?? '');
+            $description    = trim($_POST['description'] ?? '');
+
+            if (!$paymentId) throw new Exception('Payment ID is required');
+            if ($newAmount <= 0) throw new Exception('Amount must be greater than 0');
+            if (!in_array($currency, ['USD','AFS','EUR','DARHAM','SAR'], true)) throw new Exception('Invalid currency');
+            if (!$mainAccountId) throw new Exception('Main account is required');
+            if ($exchangeRate <= 0) $exchangeRate = 1;
+
+            // Get old payment + advance info
+            $stmt = $pdo->prepare("SELECT cap.*, ca.currency AS advance_currency, ca.amount AS advance_amount FROM customer_advance_payments cap
+                JOIN customer_advances ca ON ca.id = cap.advance_id
+                WHERE cap.id = ? AND cap.tenant_id = ? AND cap.branch_id = ?");
+            $stmt->execute([$paymentId, $tenant_id, $branch_id]);
+            $old = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$old) throw new Exception('Payment not found');
+
+            $oldAmount = (float) $old['amount'];
+            $oldCurrency = $old['currency'];
+            $oldType = $old['type'];
+            $advanceId = (int) $old['advance_id'];
+            $advanceCurrency = $old['advance_currency'];
+            $oldDate = $old['payment_date'];
+            $oldMainAccountId = (int) $old['main_account_id'];
+
+            // Calculate new converted amount
+            $convertedAmount = null;
+            if ($currency !== $advanceCurrency && $exchangeRate > 0) {
+                $convertedAmount = $newAmount / $exchangeRate;
+            }
+
+            $pdo->beginTransaction();
+
+            try {
+                // Get the old main_account_transactions record
+                $txnStmt = $pdo->prepare("SELECT id, amount, type, balance, currency, created_at FROM main_account_transactions WHERE reference_id = ? AND transaction_of = 'umrah_hawala' AND main_account_id = ? AND tenant_id = ? AND branch_id = ?");
+                $txnStmt->execute([$paymentId, $oldMainAccountId, $tenant_id, $branch_id]);
+                $oldTxn = $txnStmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($oldTxn) {
+                    $txnId = (int) $oldTxn['id'];
+                    $txnType = $oldTxn['type']; // 'credit' or 'debit'
+                    $balanceField = getBalanceColumn($oldCurrency);
+
+                    // Calculate amount difference
+                    $amountDifference = $newAmount - $oldAmount;
+
+                    if ($amountDifference != 0) {
+                        // Adjust subsequent transactions' balances
+                        $balanceAdjustment = ($txnType === 'credit') ? $amountDifference : -$amountDifference;
+
+                        $pdo->prepare("UPDATE main_account_transactions SET balance = balance + ?
+                            WHERE main_account_id = ? AND currency = ? AND id > ? AND id != ? AND tenant_id = ? AND branch_id = ?")
+                            ->execute([$balanceAdjustment, $oldMainAccountId, $oldCurrency, $txnId, $txnId, $tenant_id, $branch_id]);
+
+                        // Get current balance of this transaction
+                        $currentBalance = $oldTxn['balance'];
+
+                        // Calculate new balance for this transaction
+                        $newTxnBalance = $currentBalance + $balanceAdjustment;
+
+                        // Update this transaction's balance
+                        $pdo->prepare("UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
+                            ->execute([$newTxnBalance, $txnId, $tenant_id, $branch_id]);
+
+                        // Update main account balance
+                        $pdo->prepare("UPDATE main_account SET $balanceField = $balanceField + ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
+                            ->execute([$balanceAdjustment, $oldMainAccountId, $tenant_id, $branch_id]);
+                    }
+
+                    // Update the main_account_transactions record
+                    $pdo->prepare("UPDATE main_account_transactions SET amount = ?, description = ?, exchange_rate = ?, receipt = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
+                        ->execute([$newAmount, $description, $exchangeRate, $referenceNumber, $txnId, $tenant_id, $branch_id]);
+
+                    // If date changed, reorder transactions and recalculate all balances
+                    if ($paymentDate !== $oldDate) {
+                        $pdo->prepare("UPDATE main_account_transactions SET created_at = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
+                            ->execute([$paymentDate, $txnId, $tenant_id, $branch_id]);
+
+                        // Get all transactions for this account and currency, ordered by date
+                        $allTxnStmt = $pdo->prepare("SELECT id, amount, type, created_at FROM main_account_transactions
+                            WHERE main_account_id = ? AND currency = ? AND tenant_id = ? AND branch_id = ?
+                            ORDER BY created_at ASC, id ASC");
+                        $allTxnStmt->execute([$oldMainAccountId, $oldCurrency, $tenant_id, $branch_id]);
+                        $allTxns = $allTxnStmt->fetchAll(PDO::FETCH_ASSOC);
+
+                        // Recalculate running balance
+                        $runningBalance = 0;
+                        foreach ($allTxns as $tx) {
+                            $txAmount = (float) $tx['amount'];
+                            $runningBalance += ($tx['type'] === 'credit') ? $txAmount : -$txAmount;
+                            $pdo->prepare("UPDATE main_account_transactions SET balance = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
+                                ->execute([$runningBalance, $tx['id'], $tenant_id, $branch_id]);
+                        }
+
+                        // Update main account balance
+                        $pdo->prepare("UPDATE main_account SET $balanceField = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?")
+                            ->execute([$runningBalance, $oldMainAccountId, $tenant_id, $branch_id]);
+                    }
+                }
+
+                // Calculate new converted amount for advance tracking
+                $newConvertedAmount = null;
+                if ($currency !== $advanceCurrency && $exchangeRate > 0) {
+                    $newConvertedAmount = $newAmount / $exchangeRate;
+                }
+
+                // Update the payment record
+                $pdo->prepare("UPDATE customer_advance_payments SET amount = ?, currency = ?, exchange_rate = ?, converted_amount = ?, main_account_id = ?, payment_date = ?, reference_number = ?, description = ? WHERE id = ?")
+                    ->execute([$newAmount, $currency, $exchangeRate, $newConvertedAmount, $mainAccountId, $paymentDate, $referenceNumber, $description, $paymentId]);
+
+                // Recalculate advance status
+                $totalStmt = $pdo->prepare("SELECT COALESCE(SUM(COALESCE(converted_amount, amount)), 0) FROM customer_advance_payments WHERE advance_id = ? AND type = 'outgoing'");
+                $totalStmt->execute([$advanceId]);
+                $totalPaid = (float) $totalStmt->fetchColumn();
+
+                $hasIncomingStmt = $pdo->prepare("SELECT COUNT(*) FROM customer_advance_payments WHERE advance_id = ? AND type = 'incoming'");
+                $hasIncomingStmt->execute([$advanceId]);
+                $hasIncoming = $hasIncomingStmt->fetchColumn() > 0;
+
+                if ($hasIncoming) {
+                    $pdo->prepare("UPDATE customer_advances SET status = 'completed' WHERE id = ?")->execute([$advanceId]);
+                } elseif ($totalPaid >= $old['advance_amount']) {
+                    $pdo->prepare("UPDATE customer_advances SET status = 'paid_by_agency' WHERE id = ?")->execute([$advanceId]);
+                } else {
+                    $pdo->prepare("UPDATE customer_advances SET status = 'pending' WHERE id = ?")->execute([$advanceId]);
+                }
+
+                logActivity($pdo, $current_user, $tenant_id, $branch_id, 'edit_payment', $paymentId,
+                    json_encode($old, JSON_UNESCAPED_UNICODE),
+                    json_encode(['amount' => $newAmount, 'currency' => $currency, 'exchange_rate' => $exchangeRate, 'converted_amount' => $newConvertedAmount, 'main_account_id' => $mainAccountId, 'payment_date' => $paymentDate], JSON_UNESCAPED_UNICODE));
+
+                $pdo->commit();
+                echo json_encode(['success' => true, 'message' => 'Payment updated successfully']);
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                throw $e;
+            }
             break;
 
         /* ── Delete advance (only if no payments) ── */
@@ -544,13 +773,8 @@ try {
             // Reverse main account balance
             if ($row['main_account_id']) {
                 $maId = (int) $row['main_account_id'];
-                // Use converted_amount if currencies differ (same logic as record)
                 $reverseAmount = (float) $row['amount'];
                 $reverseCurrency = $row['currency'];
-                if ($row['converted_amount'] !== null && $row['currency'] !== $row['advance_currency']) {
-                    $reverseAmount = (float) $row['converted_amount'];
-                    $reverseCurrency = $row['currency']; // payment currency
-                }
                 $balanceColumn = getBalanceColumn($reverseCurrency);
 
                 if ($row['type'] === 'incoming') {
