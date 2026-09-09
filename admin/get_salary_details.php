@@ -70,6 +70,28 @@ try {
     $payment_check_result = $payment_check_stmt->fetchAll();
     $existing_payment = count($payment_check_result) > 0 ? $payment_check_result[0] : null;
 
+    // Get total regular salary already paid this month
+    $regular_paid_sql = "SELECT COALESCE(SUM(amount), 0) as total_paid
+                        FROM salary_payments
+                        WHERE user_id = ? AND tenant_id = ? AND branch_id = ?
+                        AND currency = ?
+                        AND payment_type = 'regular'
+                        AND DATE_FORMAT(payment_for_month, '%Y-%m') = ?";
+
+    $regular_paid_stmt = $pdo->prepare($regular_paid_sql);
+    $regular_paid_stmt->bindParam(1, $user_id, PDO::PARAM_INT);
+    $regular_paid_stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $regular_paid_stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+    $regular_paid_stmt->bindParam(4, $currency, PDO::PARAM_STR);
+    $regular_paid_stmt->bindParam(5, $payment_for_month, PDO::PARAM_STR);
+
+    if (!$regular_paid_stmt->execute()) {
+        throw new Exception("Execute failed for regular paid query");
+    }
+
+    $regular_paid_result = $regular_paid_stmt->fetch();
+    $totalRegularPaid = floatval($regular_paid_result['total_paid']);
+
     // Get total advances for this month
     $advance_sql = "SELECT COALESCE(SUM(amount), 0) as total_advances
                    FROM salary_advances
@@ -129,6 +151,57 @@ try {
     $bonus_result = $bonus_stmt->fetch();
     $totalBonuses = floatval($bonus_result['total_bonuses']);
 
+    // Get unpaid advances from previous months
+    $prev_advance_sql = "SELECT COALESCE(SUM(amount - amount_paid), 0) as total_unpaid
+                        FROM salary_advances
+                        WHERE user_id = ? AND tenant_id = ? AND branch_id = ?
+                        AND currency = ?
+                        AND repayment_status != 'paid'
+                        AND DATE_FORMAT(created_at, '%Y-%m') != ?";
+
+    $prev_advance_stmt = $pdo->prepare($prev_advance_sql);
+    $prev_advance_stmt->bindParam(1, $user_id, PDO::PARAM_INT);
+    $prev_advance_stmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $prev_advance_stmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+    $prev_advance_stmt->bindParam(4, $currency, PDO::PARAM_STR);
+    $prev_advance_stmt->bindParam(5, $payment_for_month, PDO::PARAM_STR);
+
+    if (!$prev_advance_stmt->execute()) {
+        throw new Exception("Execute failed for previous advances");
+    }
+
+    $prev_advance_result = $prev_advance_stmt->fetch();
+    $totalPreviousUnpaidAdvances = floatval($prev_advance_result['total_unpaid']);
+
+    // Get overpayments from previous months' regular salary (paid > base_salary)
+    $sm_stmt = $pdo->prepare("SELECT base_salary FROM salary_management WHERE user_id = ? AND tenant_id = ? AND branch_id = ? LIMIT 1");
+    $sm_stmt->execute([$user_id, $tenant_id, $branch_id]);
+    $baseSalary = floatval($sm_stmt->fetchColumn());
+
+    $overpay_sql = "SELECT COALESCE(SUM(amount - ?), 0) as total_overpaid
+                   FROM salary_payments
+                   WHERE user_id = ? AND tenant_id = ? AND branch_id = ?
+                   AND currency = ?
+                   AND payment_type = 'regular'
+                   AND DATE_FORMAT(payment_for_month, '%Y-%m') != ?
+                   AND amount > ?";
+
+    $overpay_stmt = $pdo->prepare($overpay_sql);
+    $overpay_stmt->bindParam(1, $baseSalary, PDO::PARAM_STR);
+    $overpay_stmt->bindParam(2, $user_id, PDO::PARAM_INT);
+    $overpay_stmt->bindParam(3, $tenant_id, PDO::PARAM_INT);
+    $overpay_stmt->bindParam(4, $branch_id, PDO::PARAM_INT);
+    $overpay_stmt->bindParam(5, $currency, PDO::PARAM_STR);
+    $overpay_stmt->bindParam(6, $payment_for_month, PDO::PARAM_STR);
+    $overpay_stmt->bindParam(7, $baseSalary, PDO::PARAM_STR);
+
+    if (!$overpay_stmt->execute()) {
+        throw new Exception("Execute failed for overpayments");
+    }
+
+    $overpay_result = $overpay_stmt->fetch();
+    $totalPreviousOverpayments = floatval($overpay_result['total_overpaid']);
+
     // Check if attendance feature is enabled
     $has_attendance_feature = hasFeature('attendance', $allowed_features);
 
@@ -181,6 +254,9 @@ try {
         'totalAdvances' => $totalAdvances,
         'totalDeductions' => $totalDeductions,
         'totalBonuses' => $totalBonuses,
+        'totalPreviousUnpaidAdvances' => $totalPreviousUnpaidAdvances,
+        'totalPreviousOverpayments' => $totalPreviousOverpayments,
+        'totalRegularPaid' => $totalRegularPaid,
         'salaryAlreadyPaid' => !empty($existing_payment),
         'existingPayment' => $existing_payment,
         'has_attendance_feature' => $has_attendance_feature,

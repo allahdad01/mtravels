@@ -463,6 +463,9 @@ try {
                                         <button class="dc-btn dc-btn--success" data-toggle="modal" data-target="#paymentModal<?= h($debtor['id']) ?>" title="<?= __('process_payment') ?>">
                                             <i class="fas fa-credit-card"></i> <?= __('pay') ?>
                                         </button>
+                                        <button class="dc-btn dc-btn--warn" data-toggle="modal" data-target="#addDebtModal<?= h($debtor['id']) ?>" title="<?= __('add_more_debt') ?>">
+                                            <i class="fas fa-plus-circle"></i> <?= __('add_debt') ?>
+                                        </button>
                                         <?php endif; ?>
                                         <button class="dc-btn" data-toggle="modal" data-target="#transactionsModal<?= h($debtor['id']) ?>" title="<?= __('view_transactions') ?>">
                                             <i class="fas fa-list"></i> <?= __('transactions') ?>
@@ -786,95 +789,260 @@ try {
                                         </div>
                                     </div>
 
-                                    <!-- Transactions Modal -->
-                                    <div class="modal fade" id="transactionsModal<?php echo h($debtor['id']); ?>" tabindex="-1" role="dialog" aria-hidden="true">
-                                        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
-                                            <div class="modal-content shadow-lg border-0">
-                                                <div class="modal-header bg-gradient-info text-white border-0">
-                                                    <h5 class="modal-title"><?= __('transactions') ?> - <?php echo htmlspecialchars($debtor['name']); ?></h5>
-                                                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                                    <!-- Add Debt Modal -->
+                                    <div class="modal fade" id="addDebtModal<?php echo h($debtor['id']); ?>" tabindex="-1" role="dialog" aria-labelledby="addDebtModalLabel<?php echo h($debtor['id']); ?>" aria-hidden="true">
+                                        <div class="modal-dialog" role="document">
+                                            <div class="modal-content">
+                                                <div class="modal-header bg-gradient-warning text-white border-0">
+                                                    <h5 class="modal-title" id="addDebtModalLabel<?php echo h($debtor['id']); ?>"><?= __('add_more_debt') ?></h5>
+                                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                                         <span aria-hidden="true">&times;</span>
                                                     </button>
                                                 </div>
-                                                <div class="modal-body p-0">
-                                                    <div class="table-responsive">
-                                                        <table class="table table-sm table-hover mb-0">
-                                                            <thead class="thead-light">
-                                                                <tr>
-                                                                    <th><?= __('date') ?></th>
-                                                                    <th><?= __('description') ?></th>
-                                                                    <th><?= __('receipt') ?></th>
-                                                                    <th><?= __('amount') ?></th>
-                                                                    <th class="text-center"><?= __('actions') ?></th>
+                                                <form method="POST">
+                                                    <input type="hidden" name="csrf_token" value="<?php echo h($_SESSION['csrf_token']); ?>">
+                                                    
+                                                    <div class="modal-body">
+                                                        <input type="hidden" name="add_debt" value="1">
+                                                        <input type="hidden" name="debtor_id" value="<?php echo h($debtor['id']); ?>">
+                                                        <input type="hidden" name="debtor_currency" value="<?php echo h($debtor['currency']); ?>">
+                                                        
+                                                        <div class="form-row">
+                                                            <div class="form-group col-md-6">
+                                                                <label class="form-label"><?= __('debtor_name') ?></label>
+                                                                <input type="text" class="form-control" value="<?php echo htmlspecialchars($debtor['name']); ?>" readonly>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <label class="form-label"><?= __('current_balance') ?></label>
+                                                                <input type="text" class="form-control" value="<?php echo number_format($debtor['balance'], 2) . ' ' . $debtor['currency']; ?>" readonly>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div class="form-row">
+                                                            <div class="form-group col-md-6">
+                                                                <label class="form-label"><?= __('debt_amount') ?> *</label>
+                                                                <input type="number" class="form-control" name="amount" step="0.00001" required>
+                                                            </div>
+                                                            <div class="form-group col-md-6">
+                                                                <label class="form-label"><?= __('currency') ?></label>
+                                                                <select class="form-control" name="currency" required onchange="checkDebtCurrency(this, '<?php echo h($debtor['currency']); ?>', '<?php echo h($debtor['id']); ?>')">
+                                                                    <option value="USD" <?php echo h($debtor['currency']) == 'USD' ? 'selected' : ''; ?>><?= __('usd') ?></option>
+                                                                    <option value="AFS" <?php echo h($debtor['currency']) == 'AFS' ? 'selected' : ''; ?>><?= __('afs') ?></option>
+                                                                    <option value="EUR" <?php echo h($debtor['currency']) == 'EUR' ? 'selected' : ''; ?>><?= __('eur') ?></option>
+                                                                    <option value="DARHAM" <?php echo h($debtor['currency']) == 'DARHAM' ? 'selected' : ''; ?>><?= __('darham') ?></option>
+                                                                    <option value="SAR" <?php echo h($debtor['currency']) == 'SAR' ? 'selected' : ''; ?>><?= __('sar') ?></option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div class="form-group" id="debtExchangeRateDiv<?php echo h($debtor['id']); ?>" style="display: none;">
+                                                            <label class="form-label"><?= __('exchange_rate') ?> (1 <span id="debtSelectedCurrency<?php echo h($debtor['id']); ?>"><?php echo h($debtor['currency']); ?></span> = ? <span id="debtDebtorCurrency<?php echo h($debtor['id']); ?>"><?php echo h($debtor['currency']); ?></span>)</label>
+                                                            <input type="number" class="form-control" name="exchange_rate" id="debtExchangeRate<?php echo h($debtor['id']); ?>" step="0.000001" placeholder="<?= __('enter_exchange_rate') ?>">
+                                                            <small class="form-text text-muted" id="debtExchangeRateHelp<?php echo h($debtor['id']); ?>"><?= __('enter_the_exchange_rate_to_convert_between_currencies') ?></small>
+                                                        </div>
+                                                        
+                                                        <div class="form-row">
+                                                            <div class="form-group col-md-4">
+                                                                <label class="form-label"><?= __('description') ?></label>
+                                                                <input type="text" class="form-control" name="description" placeholder="<?= __('additional_debt') ?>">
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <label class="form-label"><?= __('reference_number') ?></label>
+                                                                <input type="text" class="form-control" name="reference_number" placeholder="<?= __('optional_reference') ?>">
+                                                            </div>
+                                                            <div class="form-group col-md-4">
+                                                                <label class="form-label"><?= __('date') ?> *</label>
+                                                                <input type="date" class="form-control" name="debt_date" value="<?php echo date('Y-m-d'); ?>" required>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div class="form-group">
+                                                            <label class="form-label"><?= __('deduct_from_main_account') ?></label>
+                                                            <select class="form-control" name="deduct_from_account">
+                                                                <option value=""><?= __('no_deduction') ?></option>
+                                                                <?php foreach ($main_accounts as $account): ?>
+                                                                    <option value="<?php echo h($account['id']); ?>" <?php echo $account['id'] == $debtor['main_account_id'] ? 'selected' : ''; ?>><?php echo h($account['name']); ?></option>
+                                                                <?php endforeach; ?>
+                                                            </select>
+                                                            <small class="form-text text-muted"><?= __('select_main_account_to_deduct_from') ?></small>
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer bg-light border-0">
+                                                        <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('cancel') ?></button>
+                                                        <button type="submit" name="add_debt" class="btn btn-warning"><?= __('add_debt') ?></button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Transactions Modal -->
+                                    <div class="modal fade" id="transactionsModal<?php echo h($debtor['id']); ?>" tabindex="-1" role="dialog" aria-hidden="true">
+                                        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+                                            <div class="modal-content border-0" style="border-radius:var(--r);overflow:hidden;">
+                                                <div class="modal-header border-0" style="background:var(--grad);padding:18px 22px;">
+                                                    <div style="display:flex;align-items:center;gap:12px;">
+                                                        <div style="width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.2);display:grid;place-items:center;">
+                                                            <i class="feather icon-receipt" style="color:#fff;font-size:16px;"></i>
+                                                        </div>
+                                                        <div>
+                                                            <h5 style="margin:0;color:#fff;font-size:16px;font-weight:700;"><?= __('transactions') ?></h5>
+                                                            <p style="margin:2px 0 0;font-size:12px;color:rgba(255,255,255,.8);"><?= htmlspecialchars($debtor['name']) ?></p>
+                                                        </div>
+                                                    </div>
+                                                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="opacity:.8;">
+                                                        <span aria-hidden="true">&times;</span>
+                                                    </button>
+                                                </div>
+                                                <div class="modal-body" style="padding:20px;background:var(--bg);">
+                                                    <?php
+                                                    // Fetch transactions for this debtor
+                                                    $transStmt = $pdo->prepare("SELECT * FROM debtor_transactions WHERE debtor_id = ? AND tenant_id = ? AND branch_id = ? ORDER BY payment_date DESC");
+                                                    $transStmt->bindParam(1, $debtor['id'], PDO::PARAM_INT);
+                                                    $transStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+                                                    $transStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
+                                                    $transStmt->execute();
+                                                    $transResult = $transStmt->fetchAll();
+
+                                                    // Calculate totals
+                                                    $totalDebit = 0;
+                                                    $totalCredit = 0;
+                                                    foreach ($transResult as $t) {
+                                                        if ($t['transaction_type'] === 'debit') {
+                                                            $totalDebit += $t['amount'];
+                                                        } else {
+                                                            $totalCredit += $t['amount'];
+                                                        }
+                                                    }
+                                                    ?>
+                                                    <!-- Summary Cards -->
+                                                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px;">
+                                                        <div style="background:var(--surface);border-radius:var(--r-sm);padding:14px;border:1px solid var(--border);">
+                                                            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--amber);margin-bottom:6px;">
+                                                                <i class="feather icon-arrow-up" style="margin-right:4px;"></i><?= __('total_debt') ?>
+                                                            </div>
+                                                            <div style="font-size:18px;font-weight:700;color:var(--text-1);font-family:'JetBrains Mono',monospace;">
+                                                                <?= number_format($totalDebit, 2) ?>
+                                                            </div>
+                                                            <div style="font-size:11px;color:var(--text-3);margin-top:2px;"><?= h($debtor['currency']) ?></div>
+                                                        </div>
+                                                        <div style="background:var(--surface);border-radius:var(--r-sm);padding:14px;border:1px solid var(--border);">
+                                                            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--green);margin-bottom:6px;">
+                                                                <i class="feather icon-arrow-down" style="margin-right:4px;"></i><?= __('total_paid') ?>
+                                                            </div>
+                                                            <div style="font-size:18px;font-weight:700;color:var(--text-1);font-family:'JetBrains Mono',monospace;">
+                                                                <?= number_format($totalCredit, 2) ?>
+                                                            </div>
+                                                            <div style="font-size:11px;color:var(--text-3);margin-top:2px;"><?= h($debtor['currency']) ?></div>
+                                                        </div>
+                                                        <div style="background:var(--surface);border-radius:var(--r-sm);padding:14px;border:1px solid var(--border);">
+                                                            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--blue);margin-bottom:6px;">
+                                                                <i class="feather icon-wallet" style="margin-right:4px;"></i><?= __('balance') ?>
+                                                            </div>
+                                                            <div style="font-size:18px;font-weight:700;color:var(--text-1);font-family:'JetBrains Mono',monospace;">
+                                                                <?= number_format($debtor['balance'], 2) ?>
+                                                            </div>
+                                                            <div style="font-size:11px;color:var(--text-3);margin-top:2px;"><?= h($debtor['currency']) ?></div>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Transactions Table -->
+                                                    <div style="background:var(--surface);border-radius:var(--r-sm);border:1px solid var(--border);overflow:hidden;">
+                                                        <?php if (count($transResult) > 0): ?>
+                                                        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                                                            <thead>
+                                                                <tr style="background:var(--bg);border-bottom:1px solid var(--border);">
+                                                                    <th style="padding:10px 14px;text-align:left;font-weight:600;color:var(--text-2);font-size:11px;text-transform:uppercase;letter-spacing:.5px;"><?= __('date') ?></th>
+                                                                    <th style="padding:10px 14px;text-align:left;font-weight:600;color:var(--text-2);font-size:11px;text-transform:uppercase;letter-spacing:.5px;"><?= __('type') ?></th>
+                                                                    <th style="padding:10px 14px;text-align:left;font-weight:600;color:var(--text-2);font-size:11px;text-transform:uppercase;letter-spacing:.5px;"><?= __('description') ?></th>
+                                                                    <th style="padding:10px 14px;text-align:right;font-weight:600;color:var(--text-2);font-size:11px;text-transform:uppercase;letter-spacing:.5px;"><?= __('amount') ?></th>
+                                                                    <th style="padding:10px 14px;text-align:center;font-weight:600;color:var(--text-2);font-size:11px;text-transform:uppercase;letter-spacing:.5px;"><?= __('actions') ?></th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody>
-                                                                <?php
-                                                                // Fetch transactions for this debtor
-                                                                $transStmt = $pdo->prepare("SELECT * FROM debtor_transactions WHERE debtor_id = ? AND tenant_id = ? AND branch_id = ? ORDER BY payment_date DESC");
-                                                                $transStmt->bindParam(1, $debtor['id'], PDO::PARAM_INT);
-                                                                $transStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
-                                                                $transStmt->bindParam(3, $branch_id, PDO::PARAM_INT);
-                                                                $transStmt->execute();
-                                                                $transResult = $transStmt->fetchAll();
-
-                                                                if (count($transResult) > 0) {
-                                                                    foreach ($transResult as $transaction) {
-                                                                        echo '<tr>';
-                                                                        echo '<td>' . date('M d, Y', strtotime($transaction['payment_date'])) . '</td>';
-                                                                        $displayAmount = number_format($transaction['amount'], 2) . ' ' . $transaction['currency'];
-                                                                        if ($transaction['transaction_type'] == 'credit') {
-                                                                            echo '<td>' . htmlspecialchars($transaction['description']) . '</td>';
-                                                                            echo '<td>' . htmlspecialchars($transaction['reference_number']) . '</td>';
-                                                                            echo '<td>Received ' . $displayAmount . '</td>';
-                                                                        } else {
-                                                                            echo '<td>' . htmlspecialchars($transaction['description']) . '</td>';
-                                                                            echo '<td>' . htmlspecialchars($transaction['reference_number']) . '</td>';
-                                                                            echo '<td>Paid ' . $displayAmount . '</td>';
-                                                                        }
-                                                                        echo '<td>';
-                                                                        echo '<div class="btn-group" role="group">';
-                                                                        // Edit button
-                                                                        if (user_can('finance.edit')) {
-                                                                        echo '<button type="button" class="btn btn-warning btn-sm mr-1 edit-transaction-btn" 
-                                                                            data-transaction-id="' . $transaction['id'] . '"
-                                                                            data-debtor-id="' . $debtor['id'] . '"
-                                                                            data-amount="' . $transaction['amount'] . '"
-                                                                            data-currency="' . $transaction['currency'] . '"
-                                                                            data-description="' . htmlspecialchars($transaction['description'], ENT_QUOTES) . '"
-                                                                            data-payment-date="' . date('Y-m-d', strtotime($transaction['payment_date'])) . '"
-                                                                            data-reference-number="' . htmlspecialchars($transaction['reference_number'], ENT_QUOTES) . '">
-                                                                            <i class="feather icon-edit-2"></i> ' . __('edit') . '
-                                                                        </button>';
-                                                                        }
-                                                                        echo '<button class="btn btn-info btn-sm mr-1" title="Print Receipt"
-                                                                        onclick="printDebtorReceipt('.$transaction['id'].')">
-                                                                        <i class="feather icon-printer"></i>
-                                                                        </button>';
-                                                                         // Delete button (admin only) with toast notification
-                                                                         if (user_can('finance.delete')) {
-                                                                             echo '<button type="button" class="btn btn-danger btn-sm delete-transaction-btn" 
-                                                                                 data-transaction-id="' . $transaction['id'] . '"
-                                                                                 data-debtor-id="' . $debtor['id'] . '"
-                                                                                 data-amount="' . $transaction['amount'] . '"
-                                                                                 data-currency="' . $transaction['currency'] . '">
-                                                                                 <i class="feather icon-trash"></i> ' . __('delete') . '
-                                                                             </button>';
-                                                                         }
-                                                                        echo '</div>';
-                                                                        echo '</td>';
-                                                                        echo '</tr>';
-                                                                    }
-                                                                } else {
-                                                                    echo '<tr><td colspan="5" class="text-center">' . __('no_transactions_found') . '</td></tr>';
-                                                                }
-                                                                ?>
+                                                                <?php foreach ($transResult as $index => $transaction): ?>
+                                                                <tr style="border-bottom:1px solid var(--border);<?= $index === count($transResult) - 1 ? 'border-bottom:none;' : '' ?>transition:background .15s;" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='transparent'">
+                                                                    <td style="padding:12px 14px;white-space:nowrap;">
+                                                                        <div style="font-weight:600;color:var(--text-1);"><?= date('M d, Y', strtotime($transaction['payment_date'])) ?></div>
+                                                                        <div style="font-size:11px;color:var(--text-3);font-family:'JetBrains Mono',monospace;"><?= date('H:i', strtotime($transaction['created_at'] ?? $transaction['payment_date'])) ?></div>
+                                                                    </td>
+                                                                    <td style="padding:12px 14px;">
+                                                                        <?php if ($transaction['transaction_type'] === 'credit'): ?>
+                                                                        <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;font-size:11.5px;font-weight:600;background:var(--green-lt);color:var(--green);">
+                                                                            <span style="width:6px;height:6px;border-radius:50%;background:var(--green);"></span>
+                                                                            <?= __('payment') ?>
+                                                                        </span>
+                                                                        <?php else: ?>
+                                                                        <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;font-size:11.5px;font-weight:600;background:var(--amber-lt);color:#b45309;">
+                                                                            <span style="width:6px;height:6px;border-radius:50%;background:var(--amber);"></span>
+                                                                            <?= __('debt') ?>
+                                                                        </span>
+                                                                        <?php endif; ?>
+                                                                    </td>
+                                                                    <td style="padding:12px 14px;">
+                                                                        <div style="color:var(--text-1);font-weight:500;"><?= htmlspecialchars($transaction['description'] ?: '-') ?></div>
+                                                                        <?php if (!empty($transaction['reference_number'])): ?>
+                                                                        <div style="font-size:11px;color:var(--text-3);font-family:'JetBrains Mono',monospace;margin-top:2px;"><?= htmlspecialchars($transaction['reference_number']) ?></div>
+                                                                        <?php endif; ?>
+                                                                    </td>
+                                                                    <td style="padding:12px 14px;text-align:right;">
+                                                                        <span style="font-weight:700;font-family:'JetBrains Mono',monospace;color:<?= $transaction['transaction_type'] === 'credit' ? 'var(--green)' : 'var(--amber)' ?>;">
+                                                                            <?= $transaction['transaction_type'] === 'credit' ? '+' : '-' ?><?= number_format($transaction['amount'], 2) ?>
+                                                                        </span>
+                                                                        <span style="font-size:11px;color:var(--text-3);margin-left:4px;"><?= h($transaction['currency']) ?></span>
+                                                                    </td>
+                                                                    <td style="padding:12px 14px;text-align:center;">
+                                                                        <div style="display:inline-flex;gap:4px;">
+                                                                            <?php if (user_can('finance.edit')): ?>
+                                                                            <button type="button" class="edit-transaction-btn" title="<?= __('edit') ?>"
+                                                                                data-transaction-id="<?= h($transaction['id']) ?>"
+                                                                                data-debtor-id="<?= h($debtor['id']) ?>"
+                                                                                data-amount="<?= h($transaction['amount']) ?>"
+                                                                                data-currency="<?= h($transaction['currency']) ?>"
+                                                                                data-description="<?= htmlspecialchars($transaction['description'], ENT_QUOTES) ?>"
+                                                                                data-payment-date="<?= date('Y-m-d', strtotime($transaction['payment_date'])) ?>"
+                                                                                data-reference-number="<?= htmlspecialchars($transaction['reference_number'], ENT_QUOTES) ?>"
+                                                                                style="width:30px;height:30px;border-radius:7px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);cursor:pointer;display:grid;place-items:center;transition:all .15s;"
+                                                                                onmouseover="this.style.borderColor='var(--blue)';this.style.color='var(--blue)';this.style.background='var(--blue-lt)'"
+                                                                                onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-2)';this.style.background='var(--surface)'">
+                                                                                <i class="feather icon-edit-2" style="font-size:11px;"></i>
+                                                                            </button>
+                                                                            <?php endif; ?>
+                                                                            <button class="print-receipt-btn" title="<?= __('print_receipt') ?>"
+                                                                                onclick="printDebtorReceipt(<?= $transaction['id'] ?>)"
+                                                                                style="width:30px;height:30px;border-radius:7px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);cursor:pointer;display:grid;place-items:center;transition:all .15s;"
+                                                                                onmouseover="this.style.borderColor='var(--green)';this.style.color='var(--green)';this.style.background='var(--green-lt)'"
+                                                                                onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-2)';this.style.background='var(--surface)'">
+                                                                                <i class="feather icon-printer" style="font-size:11px;"></i>
+                                                                            </button>
+                                                                            <?php if (user_can('finance.delete')): ?>
+                                                                            <button type="button" class="delete-transaction-btn" title="<?= __('delete') ?>"
+                                                                                data-transaction-id="<?= h($transaction['id']) ?>"
+                                                                                data-debtor-id="<?= h($debtor['id']) ?>"
+                                                                                data-amount="<?= h($transaction['amount']) ?>"
+                                                                                data-currency="<?= h($transaction['currency']) ?>"
+                                                                                style="width:30px;height:30px;border-radius:7px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);cursor:pointer;display:grid;place-items:center;transition:all .15s;"
+                                                                                onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)';this.style.background='var(--red-lt)'"
+                                                                                onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-2)';this.style.background='var(--surface)'">
+                                                                                <i class="feather icon-trash" style="font-size:11px;"></i>
+                                                                            </button>
+                                                                            <?php endif; ?>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                                <?php endforeach; ?>
                                                             </tbody>
                                                         </table>
+                                                        <?php else: ?>
+                                                        <div style="text-align:center;padding:50px 20px;color:var(--text-3);">
+                                                            <i class="feather icon-inbox" style="font-size:36px;opacity:.3;margin-bottom:12px;display:block;"></i>
+                                                            <p style="font-size:14px;margin:0;"><?= __('no_transactions_found') ?></p>
+                                                        </div>
+                                                        <?php endif; ?>
                                                     </div>
                                                 </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= __('close') ?></button>
+                                                <div class="modal-footer border-0" style="padding:14px 20px;background:var(--surface);">
+                                                    <button type="button" class="btn btn-secondary" data-dismiss="modal" style="border-radius:var(--r-sm);font-weight:600;padding:8px 18px;"><?= __('close') ?></button>
                                                 </div>
                                             </div>
                                         </div>

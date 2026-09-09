@@ -34,3 +34,40 @@ function checkCurrency(selectElement, debtorCurrency, debtorId) {
         exchangeRateInput.value = '';
     }
 }
+
+// Function to check currency for Add Debt modal
+function checkDebtCurrency(selectElement, debtorCurrency, debtorId) {
+    const selectedCurrency = selectElement.value;
+    const exchangeRateDiv = document.getElementById('debtExchangeRateDiv' + debtorId);
+    const baseSpan = document.getElementById('debtSelectedCurrency' + debtorId);
+    const targetSpan = document.getElementById('debtDebtorCurrency' + debtorId);
+    const exchangeRateInput = document.getElementById('debtExchangeRate' + debtorId);
+    const helpText = document.getElementById('debtExchangeRateHelp' + debtorId);
+
+    if (selectedCurrency !== debtorCurrency) {
+        exchangeRateDiv.style.display = 'block';
+        exchangeRateInput.required = true;
+
+        // Show rate in the most natural direction
+        if (debtorCurrency === 'AFS') {
+            // 1 [debt currency] = ? AFS → multiply
+            baseSpan.textContent = selectedCurrency;
+            targetSpan.textContent = 'AFS';
+            helpText.textContent = 'Enter the rate for 1 ' + selectedCurrency + ' = ? AFS';
+        } else if (selectedCurrency === 'AFS') {
+            // 1 [debtor] = ? AFS → divide
+            baseSpan.textContent = debtorCurrency;
+            targetSpan.textContent = 'AFS';
+            helpText.textContent = 'Enter the rate for 1 ' + debtorCurrency + ' = ? AFS';
+        } else {
+            // 1 [debtor] = ? [debt currency] → divide
+            baseSpan.textContent = debtorCurrency;
+            targetSpan.textContent = selectedCurrency;
+            helpText.textContent = 'Enter the rate for 1 ' + debtorCurrency + ' = ? ' + selectedCurrency;
+        }
+    } else {
+        exchangeRateDiv.style.display = 'none';
+        exchangeRateInput.required = false;
+        exchangeRateInput.value = '';
+    }
+}

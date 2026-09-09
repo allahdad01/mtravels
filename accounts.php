@@ -274,7 +274,6 @@ require_once '../api/dashboard/client_notification.php';
 .ac-mc-bal-val.eur { color: var(--ac-blue); }
 .ac-mc-bal-val.aed { color: var(--ac-amber); }
 .ac-mc-bal-val.sar { color: var(--ac-green); }
-.ac-mc-bal-val.neg { color: var(--ac-red) !important; }
 .ac-mc-gauge { display: flex; align-items: center; gap: 10px; padding: 9px 14px; background: var(--ac-surface-2); border-bottom: 1px solid var(--ac-border); }
 .ac-mc-gauge-label { font-size: 11px; color: var(--ac-text-3); font-weight: 500; flex-shrink: 0; }
 .ac-mc-gauge-track { flex: 1; height: 5px; background: var(--ac-border); border-radius: 99px; overflow: visible; }
@@ -683,23 +682,23 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
                                         <div class="ac-mc-balances">
                                             <div class="ac-mc-bal-cell">
                                                 <div class="ac-mc-bal-cur"><?= __('usd_balance') ?></div>
-                                                <div class="ac-mc-bal-val <?= $account['usd_balance'] < 0 ? 'neg' : 'usd' ?>">$<?= number_format($account['usd_balance'], 2) ?></div>
+                                                <div class="ac-mc-bal-val usd">$<?= number_format($account['usd_balance'], 2) ?></div>
                                             </div>
                                             <div class="ac-mc-bal-cell">
                                                 <div class="ac-mc-bal-cur"><?= __('afs_balance') ?></div>
-                                                <div class="ac-mc-bal-val <?= $account['afs_balance'] < 0 ? 'neg' : 'afs' ?>">؋<?= number_format($account['afs_balance'], 2) ?></div>
+                                                <div class="ac-mc-bal-val afs">؋<?= number_format($account['afs_balance'], 2) ?></div>
                                             </div>
                                             <div class="ac-mc-bal-cell">
                                                 <div class="ac-mc-bal-cur"><?= __('euro_balance') ?></div>
-                                                <div class="ac-mc-bal-val <?= $account['euro_balance'] < 0 ? 'neg' : 'eur' ?>">€<?= number_format($account['euro_balance'], 2) ?></div>
+                                                <div class="ac-mc-bal-val eur">€<?= number_format($account['euro_balance'], 2) ?></div>
                                             </div>
                                             <div class="ac-mc-bal-cell">
                                                 <div class="ac-mc-bal-cur"><?= __('aed_balance') ?></div>
-                                                <div class="ac-mc-bal-val <?= $account['darham_balance'] < 0 ? 'neg' : 'aed' ?>">AED <?= number_format($account['darham_balance'], 2) ?></div>
+                                                <div class="ac-mc-bal-val aed">AED <?= number_format($account['darham_balance'], 2) ?></div>
                                             </div>
                                             <div class="ac-mc-bal-cell">
                                                 <div class="ac-mc-bal-cur"><?= __('sar_balance') ?></div>
-                                                <div class="ac-mc-bal-val <?= $account['sar_balance'] < 0 ? 'neg' : 'sar' ?>">SAR <?= number_format($account['sar_balance'], 2) ?></div>
+                                                <div class="ac-mc-bal-val sar">SAR <?= number_format($account['sar_balance'], 2) ?></div>
                                             </div>
                                         </div>
 
@@ -1123,7 +1122,7 @@ $activeCount = count($mainAccounts) + count($supplier) + count($clientAccounts);
 <script src="../js/accounts/toast-notifications.js"></script>
 <script src="../js/accounts/printing.js"></script>
 <script src="../js/accounts/account-management.js"></script>
-<script src="../js/accounts/account-funding.js?v=2"></script>
+<script src="../js/accounts/account-funding.js"></script>
 <script src="../js/accounts/account-withdrawal.js"></script>
 <script src="../js/accounts/main-account-withdrawal.js"></script>
 <script>

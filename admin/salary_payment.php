@@ -853,7 +853,10 @@ function fetchSalaryDetails() {
             const advances   = parseFloat(data.totalAdvances)   || 0;
             const deductions = parseFloat(data.totalDeductions)  || 0;
             const bonuses    = parseFloat(data.totalBonuses)     || 0;
-            const net        = Math.max(0, baseSal - advances - deductions + bonuses);
+            const prevUnpaid = parseFloat(data.totalPreviousUnpaidAdvances) || 0;
+            const prevOverpaid = parseFloat(data.totalPreviousOverpayments) || 0;
+            const regularPaid = parseFloat(data.totalRegularPaid) || 0;
+            const net        = Math.max(0, baseSal - regularPaid - advances - deductions + bonuses);
 
             // Already paid banner
             if (data.salaryAlreadyPaid) {
@@ -872,11 +875,21 @@ function fetchSalaryDetails() {
 
             // Build breakdown
             let rows = '';
+            const totalTaken = regularPaid + advances + prevUnpaid + prevOverpaid;
+            const extraTaken = totalTaken - baseSal;
+
             rows += `<div class="breakdown-row"><span>Base Salary</span><span>+ ${baseSal.toFixed(2)} ${currency}</span></div>`;
             if (bonuses > 0)    rows += `<div class="breakdown-row credit"><span>Bonuses</span><span>+ ${bonuses.toFixed(2)} ${currency}</span></div>`;
             if (deductions > 0) rows += `<div class="breakdown-row debit"><span>Deductions</span><span>− ${deductions.toFixed(2)} ${currency}</span></div>`;
-            if (advances > 0)   rows += `<div class="breakdown-row warn"><span>Advance Deductions</span><span>− ${advances.toFixed(2)} ${currency}</span></div>`;
-            rows += `<div class="breakdown-row"><span>Net Payable</span><span>${net.toFixed(2)} ${currency}</span></div>`;
+            if (regularPaid > 0) rows += `<div class="breakdown-row debit"><span>Total Salary Paid</span><span>− ${regularPaid.toFixed(2)} ${currency}</span></div>`;
+            if (advances > 0)   rows += `<div class="breakdown-row warn"><span>Advance Taken This Month</span><span>− ${advances.toFixed(2)} ${currency}</span></div>`;
+            if (prevUnpaid > 0) rows += `<div class="breakdown-row warn"><span>Previous Unpaid Advances</span><span>− ${prevUnpaid.toFixed(2)} ${currency}</span></div>`;
+            if (prevOverpaid > 0) rows += `<div class="breakdown-row warn"><span>Previous Overpayments</span><span>− ${prevOverpaid.toFixed(2)} ${currency}</span></div>`;
+            if (totalTaken > 0) rows += `<div class="breakdown-row"><span>Total Taken</span><span>${totalTaken.toFixed(2)} ${currency}</span></div>`;
+            if (extraTaken > 0) {
+                rows += `<div class="breakdown-row debit"><span>Extra Taken</span><span>${extraTaken.toFixed(2)} ${currency}</span></div>`;
+            }
+            rows += `<div class="breakdown-row"><span>${net >= 0 ? 'Net Payable' : 'Remaining Salary'}</span><span>${Math.abs(net).toFixed(2)} ${currency}</span></div>`;
             document.getElementById('breakdownRows').innerHTML = rows;
             document.getElementById('breakdownPanel').style.display = 'block';
 
