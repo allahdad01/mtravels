@@ -459,30 +459,6 @@ function renderHotelReport(rows) {
     $('#hotelReportTable').html(html);
 }
 
-function renderOutstanding(rows, totals) {
-    if (!rows.length) {
-        $('#outstandingTable').html('<div class="text-muted py-4 text-center">' + fnT('no_outstanding') + '</div>');
-        return;
-    }
-    let html = '<div class="table-responsive"><table class="table table-sm table-hover mb-0"><thead class="thead-light"><tr>' +
-        '<th>' + fnT('member') + '</th><th>' + fnT('flight_date') + '</th><th>' + fnT('currency') + '</th>' +
-        '<th>' + fnT('total') + '</th><th>' + fnT('paid') + '</th><th>' + fnT('due') + '</th>' +
-        '</tr></thead><tbody>';
-    rows.forEach(r => {
-        html += '<tr>' +
-            '<td><div class="font-weight-bold">' + fnEsc(r.name) + '</div>' +
-            '<div class="text-muted" style="font-size:0.75rem;">#' + r.booking_id + '</div></td>' +
-            '<td>' + fnEsc(r.flight_date || '-') + '</td>' +
-            '<td>' + fnEsc(r.currency || '-') + '</td>' +
-            '<td>' + fnMoney(r.total, r.currency) + '</td>' +
-            '<td class="text-success">' + fnMoney(r.paid, r.currency) + '</td>' +
-            '<td class="text-danger font-weight-bold">' + fnMoney(r.due, r.currency) + '</td>' +
-            '</tr>';
-    });
-    html += '</tbody></table></div>';
-    $('#outstandingTable').html(html);
-}
-
 // ===================================================== SERVICE REPORT TAB
 let serviceReportData = null;
 
@@ -708,9 +684,8 @@ function loadFinanceDashboard() {
         fnAjax({ report: 'services' }),
         fnAjax({ report: 'suppliers' }),
         fnAjax({ report: 'hotels' }),
-        fnAjax({ report: 'outstanding' }),
-    ]).then(([members, services, suppliers, hotels, outstanding]) => {
-        if (!members.success || !services.success || !suppliers.success || !hotels.success || !outstanding.success) {
+    ]).then(([members, services, suppliers, hotels]) => {
+        if (!members.success || !services.success || !suppliers.success || !hotels.success) {
             showToast('error', fnT('load_failed'));
             return;
         }
@@ -724,7 +699,6 @@ function loadFinanceDashboard() {
         renderSupplierPayables(suppliers.rows);
 
         renderHotelReport(hotels.rows);
-        renderOutstanding(outstanding.rows, outstanding.totals);
     }).catch(() => showToast('error', fnT('load_failed')));
 }
 
@@ -743,6 +717,37 @@ $(function () {
     $('#btnLoadProfitDetail').on('click', loadGroupProfitDetail);
     $('#btnProfitPrint').on('click', openProfitPrint);
     $('#btnProfitExcel').on('click', openProfitExcel);
+
+    // Individual Client Report handler
+    $('#btnOpenClientReport').on('click', function() {
+      var dateFrom = $('#clientReportDateFrom').val();
+      var dateTo = $('#clientReportDateTo').val();
+      var clientId = $('#clientReportClientSelect').val() || '';
+      var lang = $('#clientReportLangSelect').val() || 'en';
+      var url = '../api/umrah/client_individual_report.php?language=' + encodeURIComponent(lang);
+      if (dateFrom) url += '&date_from=' + encodeURIComponent(dateFrom);
+      if (dateTo) url += '&date_to=' + encodeURIComponent(dateTo);
+      if (clientId) url += '&client_id=' + encodeURIComponent(clientId);
+      window.open(url, '_blank');
+    });
+
+    // Load clients for the client report dropdown
+    (function loadClientReportClients() {
+      $.ajax({
+        url: '../api/report/load_entities.php',
+        type: 'POST',
+        dataType: 'json',
+        data: { type: 'client' },
+        headers: { 'X-CSRF-Token': window.csrfToken || '' }
+      }).then(function(resp) {
+        if (resp.success && resp.data) {
+          var $sel = $('#clientReportClientSelect');
+          resp.data.forEach(function(c) {
+            $sel.append('<option value="' + c.id + '">' + fnEsc(c.name) + '</option>');
+          });
+        }
+      });
+    })();
 
     // Reload groups when date range changes
     var profitDateTimer = null;

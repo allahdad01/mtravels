@@ -1,0 +1,761 @@
+<?php
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
+require_once '../../includes/db.php';
+require_once '../../admin/security.php';
+require_once '../../includes/language_helpers.php';
+require_once __DIR__ . '/../../includes/translate_helper.php';
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+enforce_auth();
+$tenant_id = $_SESSION['tenant_id'] ?? null;
+$branch_id = $_SESSION['branch_id'] ?? null;
+
+try {
+    $settingStmt = $pdo->prepare("SELECT * FROM settings WHERE tenant_id = ?");
+    $settingStmt->bindParam(1, $tenant_id, PDO::PARAM_INT);
+    $settingStmt->execute();
+    $settings = $settingStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$settings) {
+        $settings = ['agency_name' => 'Travel Agency'];
+    }
+} catch (Exception $e) {
+    $settings = ['agency_name' => 'Travel Agency'];
+}
+
+try {
+    $branchStmt = $pdo->prepare("SELECT name, code, phone, address, email FROM branches WHERE id = ? AND tenant_id = ?");
+    $branchStmt->bindParam(1, $branch_id, PDO::PARAM_INT);
+    $branchStmt->bindParam(2, $tenant_id, PDO::PARAM_INT);
+    $branchStmt->execute();
+    $branch = $branchStmt->fetch(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    $branch = null;
+}
+
+$dateFrom = isset($_GET['date_from']) ? trim($_GET['date_from']) : '';
+$dateTo   = isset($_GET['date_to']) ? trim($_GET['date_to']) : '';
+$clientId = isset($_GET['client_id']) ? (int)$_GET['client_id'] : 0;
+
+$memberMap = [];
+$memberIds = [];
+
+$sql = "
+    SELECT b.booking_id, b.family_id, b.name, b.fname, b.gender, b.duration, b.room_type,
+           b.passport_number, b.sold_price, b.paid, b.currency, b.remarks, b.status, b.sold_to,
+           b.is_extra_bed, b.is_extra_transport,
+           f.head_of_family, f.location, c.name AS client_name,
+           g.created_at AS group_created_at
+    FROM umrah_bookings b
+    LEFT JOIN families f ON f.family_id = b.family_id AND f.tenant_id = b.tenant_id
+    LEFT JOIN clients c ON c.id = b.sold_to
+    LEFT JOIN umrah_groups g ON f.group_id = g.group_id AND f.tenant_id = g.tenant_id
+    WHERE b.tenant_id = ? AND b.branch_id = ?
+      AND b.status NOT IN ('refunded', 'cancelled')
+";
+$params = [$tenant_id, $branch_id];
+
+if (!empty($dateFrom)) {
+    $sql .= " AND b.created_at >= ?";
+    $params[] = $dateFrom . ' 00:00:00';
+}
+if (!empty($dateTo)) {
+    $sql .= " AND b.created_at <= ?";
+    $params[] = $dateTo . ' 23:59:59';
+}
+if ($clientId > 0) {
+    $sql .= " AND b.sold_to = ?";
+    $params[] = $clientId;
+}
+
+$sql .= " ORDER BY c.name ASC, f.group_id ASC, b.family_id ASC, b.booking_id ASC";
+
+$stmt = $pdo->prepare($sql);
+$stmt->execute($params);
+foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $m) {
+    $memberMap[(int)$m['booking_id']] = $m;
+    $memberIds[] = (int)$m['booking_id'];
+}
+
+$familyIds = array_unique(array_filter(array_map(fn($m) => (int)($m['family_id'] ?? 0), $memberMap)));
+if (!empty($familyIds)) {
+    $fPh = implode(',', array_fill(0, count($familyIds), '?'));
+    $extraBedStmt = $pdo->prepare("
+        SELECT b.booking_id, b.family_id, b.name, b.fname, b.gender, b.duration, b.room_type,
+               b.passport_number, b.sold_price, b.paid, b.currency, b.remarks, b.status, b.sold_to,
+               b.is_extra_bed, b.is_extra_transport,
+               f.head_of_family, f.location, c.name AS client_name,
+               g.created_at AS group_created_at
+        FROM umrah_bookings b
+        LEFT JOIN families f ON f.family_id = b.family_id AND f.tenant_id = b.tenant_id
+        LEFT JOIN clients c ON c.id = b.sold_to
+        LEFT JOIN umrah_groups g ON f.group_id = g.group_id AND f.tenant_id = g.tenant_id
+        WHERE b.family_id IN ({$fPh}) AND b.tenant_id = ? AND b.branch_id = ?
+          AND COALESCE(b.is_extra_bed, 0) = 1 AND b.status NOT IN ('refunded', 'cancelled')
+    ");
+    $extraBedStmt->execute(array_merge($familyIds, [$tenant_id, $branch_id]));
+    foreach ($extraBedStmt->fetchAll(PDO::FETCH_ASSOC) as $m) {
+        if (!isset($memberMap[(int)$m['booking_id']])) {
+            $memberMap[(int)$m['booking_id']] = $m;
+            $memberIds[] = (int)$m['booking_id'];
+        }
+    }
+
+    $etStmt = $pdo->prepare("
+        SELECT b.booking_id, b.family_id, b.name, b.fname, b.gender, b.duration, b.room_type,
+               b.passport_number, b.sold_price, b.paid, b.currency, b.remarks, b.status, b.sold_to,
+               b.is_extra_bed, b.is_extra_transport,
+               f.head_of_family, f.location, c.name AS client_name,
+               g.created_at AS group_created_at
+        FROM umrah_bookings b
+        LEFT JOIN families f ON f.family_id = b.family_id AND f.tenant_id = b.tenant_id
+        LEFT JOIN clients c ON c.id = b.sold_to
+        LEFT JOIN umrah_groups g ON f.group_id = g.group_id AND f.tenant_id = g.tenant_id
+        WHERE b.family_id IN ({$fPh}) AND b.tenant_id = ? AND b.branch_id = ?
+          AND COALESCE(b.is_extra_transport, 0) = 1 AND b.status NOT IN ('refunded', 'cancelled')
+    ");
+    $etStmt->execute(array_merge($familyIds, [$tenant_id, $branch_id]));
+    foreach ($etStmt->fetchAll(PDO::FETCH_ASSOC) as $m) {
+        if (!isset($memberMap[(int)$m['booking_id']])) {
+            $memberMap[(int)$m['booking_id']] = $m;
+            $memberIds[] = (int)$m['booking_id'];
+        }
+    }
+}
+
+$clientIds = [];
+foreach ($memberMap as $m) {
+    $cid = (int)($m['sold_to'] ?? 0);
+    if ($cid > 0 && !in_array($cid, $clientIds)) {
+        $clientIds[] = $cid;
+    }
+}
+
+$clientFundMap = [];
+if (!empty($clientIds)) {
+    $cPh = implode(',', array_fill(0, count($clientIds), '?'));
+    $fundStmt = $pdo->prepare("
+        SELECT ct.client_id, SUM(ct.amount) AS total_fund
+        FROM client_transactions ct
+        WHERE ct.client_id IN ({$cPh})
+          AND ct.tenant_id = ?
+          AND ct.type = 'credit' AND ct.transaction_of = 'fund' AND ct.currency = 'USD'
+        GROUP BY ct.client_id
+    ");
+    $fundStmt->execute(array_merge($clientIds, [$tenant_id]));
+    while ($row = $fundStmt->fetch(PDO::FETCH_ASSOC)) {
+        $clientFundMap[(int)$row['client_id']] = floatval($row['total_fund']);
+    }
+}
+
+$clientAllFamilies = [];
+if (!empty($clientIds)) {
+    $cPh = implode(',', array_fill(0, count($clientIds), '?'));
+    $allFamStmt = $pdo->prepare("
+        SELECT ub.sold_to AS client_id, ub.family_id, f.group_id, g.created_at,
+               SUM(COALESCE(ub.sold_price, 0)) AS booking_total
+        FROM umrah_bookings ub
+        JOIN families f ON ub.family_id = f.family_id AND f.tenant_id = ub.tenant_id
+        JOIN umrah_groups g ON f.group_id = g.group_id AND f.tenant_id = g.tenant_id
+        WHERE ub.sold_to IN ({$cPh}) AND ub.tenant_id = ?
+          AND ub.status NOT IN ('refunded', 'cancelled')
+        GROUP BY ub.sold_to, ub.family_id, f.group_id, g.created_at
+        ORDER BY g.created_at ASC, g.group_id ASC, f.family_id ASC
+    ");
+    $allFamStmt->execute(array_merge($clientIds, [$tenant_id]));
+    while ($afRow = $allFamStmt->fetch(PDO::FETCH_ASSOC)) {
+        $cid = (int)$afRow['client_id'];
+        $clientAllFamilies[$cid][] = [
+            'family_id' => (int)$afRow['family_id'],
+            'group_id' => (int)$afRow['group_id'],
+            'created_at' => $afRow['created_at'],
+            'booking_total' => floatval($afRow['booking_total']),
+        ];
+    }
+}
+
+$clientFundAlloc = [];
+foreach ($clientFundMap as $cId => $totalFund) {
+    if ($totalFund <= 0 || empty($clientAllFamilies[$cId])) continue;
+    $remaining = $totalFund;
+    foreach ($clientAllFamilies[$cId] as $cf) {
+        if ($remaining <= 0) break;
+        $alloc = min($remaining, $cf['booking_total']);
+        $clientFundAlloc[$cId][$cf['family_id']] = ($clientFundAlloc[$cId][$cf['family_id']] ?? 0) + $alloc;
+        $remaining -= $alloc;
+    }
+}
+
+$memberFundAlloc = [];
+foreach ($memberMap as $bid => $m) {
+    $cId = (int)($m['sold_to'] ?? 0);
+    $fId = (int)($m['family_id'] ?? 0);
+    $alloc = $clientFundAlloc[$cId][$fId] ?? 0;
+    if ($alloc <= 0) continue;
+    $famPrice = 0;
+    foreach ($memberMap as $mm) {
+        if ((int)($mm['sold_to'] ?? 0) === $cId && (int)($mm['family_id'] ?? 0) === $fId) {
+            $famPrice += (float)($mm['sold_price'] ?? 0);
+        }
+    }
+    if ($famPrice <= 0) continue;
+    $memberPrice = (float)($m['sold_price'] ?? 0);
+    $memberFundAlloc[$bid] = ($memberPrice / $famPrice) * $alloc;
+}
+
+foreach ($memberMap as $bid => &$m) {
+    $m['fund_paid'] = $memberFundAlloc[$bid] ?? 0;
+    $m['total_paid'] = (float)($m['paid'] ?? 0) + $m['fund_paid'];
+}
+unset($m);
+
+$docLanguage = isset($_GET['language']) && in_array($_GET['language'], ['ps', 'dari', 'en']) ? $_GET['language'] : 'dari';
+$agencyName = translate_name($settings['agency_name'] ?? '', $docLanguage);
+
+foreach ($memberMap as &$m) {
+    $m['name'] = translate_name($m['name'] ?? '', $docLanguage);
+    $m['fname'] = translate_name($m['fname'] ?? '', $docLanguage);
+    $m['head_of_family'] = translate_name($m['head_of_family'] ?? '', $docLanguage);
+    $m['client_name'] = translate_name($m['client_name'] ?? '', $docLanguage);
+}
+unset($m);
+
+$langLabels = [
+    'dari' => [
+        'doc_title' => 'گزارش انفرادی مشتریان',
+        'subtitle' => 'گزارش معتمرین به تفکیک مشتریان بر اساس تاریخ',
+        'col_s' => 'شماره عمومی',
+        'col_no' => 'شماره',
+        'col_title' => 'عنوان',
+        'col_name' => 'نام',
+        'col_passport' => 'شماره پاسپورت',
+        'col_duration' => 'مدت سفر',
+        'col_room' => 'نوع اتاق',
+        'col_client' => 'مشتری',
+        'col_price' => 'قیمت مجموعی',
+        'col_bank' => 'پرداخت شده',
+        'col_remarks' => 'ملاحظات',
+        'client' => 'مشتری',
+        'total' => 'مجموع',
+        'paid_to_bank' => 'پرداخت شده',
+        'grand_total' => 'مجموع کلی',
+        'members' => 'معتمر',
+        'clients' => 'مشتری',
+        'families' => 'خانواده',
+        'due' => 'مانده',
+        'days' => 'روز',
+        'print' => 'چاپ',
+        'empty' => 'هیچ معتمری در این بازه زمانی ثبت نشده است',
+        'hijri_suffix' => 'هـ',
+        'date_range' => 'بازه زمانی',
+        'all_clients' => 'همه مشتریان',
+        'room_type' => ['shared' => 'مشترک', 'share' => 'مشترک', 'private' => 'خاص', 'خاص' => 'خاص', 'special' => 'خاص', 'single' => 'خاص', 'double' => 'دو نفره', 'triple' => 'سه نفره', 'quad' => 'چهار نفره', '1 bed' => 'اطاق خاص ۱ نفره', '2 beds' => 'اطاق خاص ۲ نفره', '3 beds' => 'اطاق خاص ۳ نفره', '4 beds' => 'اطاق خاص ۴ نفره'],
+    ],
+    'ps' => [
+        'doc_title' => 'د پیرودونکو انفرادي راپور',
+        'subtitle' => 'د پیرودونکو راپور په تاریخ پر بنسټل شوی',
+        'col_s' => 'عمومي شمېره',
+        'col_no' => 'شمېره',
+        'col_title' => 'لقب',
+        'col_name' => 'نوم',
+        'col_passport' => 'د پاسپورټ شمېره',
+        'col_duration' => 'د سفر موده',
+        'col_room' => 'د اتاق ډول',
+        'col_client' => 'پیرودونکی',
+        'col_price' => 'ټول قیمت',
+        'col_bank' => 'تادیه شوی',
+        'col_remarks' => 'ملاحظات',
+        'client' => 'پیرودونکی',
+        'total' => 'مجموع',
+        'paid_to_bank' => 'تادیه شوی',
+        'grand_total' => 'ټول مجموع',
+        'members' => 'معتمر',
+        'clients' => 'پیرودونکی',
+        'families' => 'کورنۍ',
+        'due' => 'باقي',
+        'days' => 'ورځې',
+        'print' => 'چاپ',
+        'empty' => 'په د time range کې هېڅ معتمر ثبت شوی نه دی',
+        'hijri_suffix' => 'هـ',
+        'date_range' => 'د وخت موده',
+        'all_clients' => 'ټول پیرودونکي',
+        'room_type' => ['shared' => 'شریک', 'share' => 'شریک', 'private' => 'خصوصي', 'خاص' => 'خصوصي', 'special' => 'خصوصي', 'single' => 'خصوصي', '1 bed' => 'اطاق خاص ۱ نفره', '2 beds' => 'اطاق خاص ۲ نفره', '3 beds' => 'اطاق خاص ۳ نفره', '4 beds' => 'اطاق خاص ۴ نفره'],
+    ],
+    'en' => [
+        'doc_title' => 'Individual Client Report',
+        'subtitle' => 'Client-wise Umrah members by date range',
+        'col_s' => 'S#',
+        'col_no' => '#',
+        'col_title' => 'Title',
+        'col_name' => 'Name',
+        'col_passport' => 'Passport #',
+        'col_duration' => 'Duration',
+        'col_room' => 'Room Type',
+        'col_client' => 'Client',
+        'col_price' => 'Total Price',
+        'col_bank' => 'Paid',
+        'col_remarks' => 'Remarks',
+        'client' => 'Client',
+        'total' => 'Total',
+        'paid_to_bank' => 'Paid',
+        'grand_total' => 'Grand Total',
+        'members' => 'members',
+        'clients' => 'clients',
+        'families' => 'families',
+        'due' => 'Due',
+        'days' => 'Days',
+        'print' => 'Print',
+        'empty' => 'No passengers found in this date range',
+        'hijri_suffix' => 'AH',
+        'date_range' => 'Date Range',
+        'all_clients' => 'All Clients',
+        'room_type' => ['shared' => 'Shared', 'share' => 'Shared', 'private' => 'Private', 'خاص' => 'Private', 'special' => 'Private', 'single' => 'Private', '1 bed' => '1 Bed', '2 beds' => '2 Beds', '3 beds' => '3 Beds', '4 beds' => '4 Beds'],
+    ],
+];
+$L = $langLabels[$docLanguage];
+
+$members = [];
+foreach ($memberIds as $id) {
+    if (isset($memberMap[(int)$id])) {
+        $m = $memberMap[(int)$id];
+        if (in_array($m['status'] ?? '', ['refunded', 'cancelled'])) continue;
+        $members[] = $m;
+    }
+}
+
+$families = [];
+foreach ($members as $m) {
+    $fid = (int)($m['family_id'] ?? 0);
+    $families[$fid][] = $m;
+}
+
+function indv_room_type_label($rt, $L) {
+    $rt = trim((string)$rt);
+    if ($rt === '') { return '—'; }
+    $map = $L['room_type'];
+    return $map[mb_strtolower($rt)] ?? $rt;
+}
+
+function indv_title($gender, $L) {
+    if ($gender === 'Male') { return $L['mr'] ?? 'MR'; }
+    if ($gender === 'Female') { return $L['mrs'] ?? 'MRS'; }
+    return '';
+}
+
+foreach ($langLabels as $ll => $arr) {
+    $langLabels[$ll]['mr'] = $ll === 'dari' ? 'آقا' : ($ll === 'ps' ? 'ښاغلی' : 'MR');
+    $langLabels[$ll]['mrs'] = $ll === 'dari' ? 'خانم' : ($ll === 'ps' ? 'مېرمن' : 'MRS');
+    $langLabels[$ll]['family_head'] = $ll === 'dari' ? 'سرپرست خانواده' : ($ll === 'ps' ? 'د کورنۍ مشر' : 'Family Head');
+}
+$L = $langLabels[$docLanguage];
+
+function indv_duration_label($dur, $L) {
+    $dur = trim((string)$dur);
+    if ($dur === '') { return '—'; }
+    $num = preg_replace('/[^0-9]/', '', $dur);
+    return ($num !== '' ? $num : $dur) . ' ' . $L['days'];
+}
+
+$clientGroups = [];
+foreach ($families as $fid => $famMembers) {
+    $cname = trim((string)($famMembers[0]['client_name'] ?? ''));
+    if ($cname === '') { $cname = '—'; }
+    if (!isset($clientGroups[$cname])) {
+        $clientGroups[$cname] = [];
+    }
+    $clientGroups[$cname][$fid] = $famMembers;
+}
+
+$totalMembers = count($members);
+$totalFamilies = count($families);
+$totalClients = count($clientGroups);
+$grandTotals = [];
+$today = date('Y/m/d H:i');
+
+$familyColors = [
+    ['#dbeafe', '#3b82f6'],
+    ['#ffedd5', '#f59e0b'],
+    ['#fee2e2', '#ef4444'],
+    ['#fef9c3', '#eab308'],
+    ['#ede9fe', '#8b5cf6'],
+    ['#dcfce7', '#22c55e'],
+    ['#fce7f3', '#ec4899'],
+    ['#e0f2fe', '#06b6d4'],
+];
+
+$dateDisplay = '';
+if (!empty($dateFrom) && !empty($dateTo)) {
+    $dateDisplay = $dateFrom . ' — ' . $dateTo;
+} elseif (!empty($dateFrom)) {
+    $dateDisplay = $dateFrom . ' — ';
+} elseif (!empty($dateTo)) {
+    $dateDisplay = ' — ' . $dateTo;
+} else {
+    $dateDisplay = $L['all_clients'];
+}
+?>
+<!DOCTYPE html>
+<html lang="<?php echo ($docLanguage === 'en') ? 'en' : (($docLanguage === 'ps') ? 'ps' : 'fa'); ?>" dir="<?php echo ($docLanguage === 'en') ? 'ltr' : 'rtl'; ?>">
+<head>
+    <meta charset="UTF-8">
+    <title><?php echo htmlspecialchars($L['doc_title']); ?> - <?php echo htmlspecialchars($agencyName); ?></title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 1cm 0.9cm;
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body { margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Noto Naskh Arabic', 'Arial', sans-serif;
+            font-size: 10px;
+            line-height: 1.5;
+            color: #111;
+            background: #fff;
+            max-width: 29.7cm;
+            margin: 0 auto;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        body.ltr {
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+
+        .doc-header {
+            text-align: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 6px;
+            margin-bottom: 6px;
+        }
+
+        .doc-header h1 {
+            font-size: 16px;
+            margin: 0;
+            color: #111;
+        }
+
+        .doc-header .subtitle {
+            font-size: 12px;
+            font-weight: 600;
+            color: #111;
+        }
+
+        .doc-header .agency {
+            font-size: 12px;
+            font-weight: 700;
+            color: #111;
+        }
+
+        .doc-header .branch {
+            font-size: 9.5px;
+            color: #444;
+        }
+
+        .doc-header .date-display {
+            font-size: 10px;
+            color: #555;
+            margin-top: 2px;
+        }
+
+        .client-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #444;
+        }
+
+        .client-table th,
+        .client-table td {
+            border: 1px solid #555;
+            padding: 4px 5px;
+            font-size: 9.5px;
+        }
+
+        .client-table th {
+            background: #eee;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .client-table td {
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .client-table .col-s { width: 4%; }
+        .client-table .col-no { width: 4%; }
+        .client-table .col-title { width: 6%; font-weight: 700; }
+        .client-table .col-name { width: 17%; text-align: right; padding-right: 8px; }
+        .client-table .col-passport { width: 11%; direction: ltr; }
+        .client-table .col-duration { width: 7%; }
+        .client-table .col-room { width: 9%; }
+        .client-table .col-client { width: 11%; text-align: right; padding-right: 8px; }
+        .client-table .col-price { width: 9%; direction: ltr; }
+        .client-table .col-bank { width: 9%; direction: ltr; }
+        .client-table .col-remarks { width: 13%; text-align: right; padding-right: 8px; }
+
+        body.ltr .client-table .col-name,
+        body.ltr .client-table .col-client,
+        body.ltr .client-table .col-remarks {
+            text-align: left;
+            padding-left: 8px;
+            padding-right: 0;
+        }
+
+        .client-table .client-total td {
+            background: #f3f4f6;
+            font-weight: 700;
+            border-top: 1.5px solid #333;
+            border-bottom: 1px solid #999;
+            text-align: right;
+            padding-right: 10px;
+            font-size: 9.5px;
+        }
+
+        body.ltr .client-table .client-total td {
+            text-align: left;
+            padding-left: 10px;
+        }
+
+        .client-table .client-total .foot-nums {
+            direction: ltr;
+            text-align: center;
+        }
+
+        .client-table .grand-total td {
+            background: #e5e7eb;
+            font-weight: 700;
+            border-top: 2px solid #333;
+            text-align: right;
+            padding-right: 10px;
+            font-size: 10px;
+        }
+
+        body.ltr .client-table .grand-total td {
+            text-align: left;
+            padding-left: 10px;
+        }
+
+        .client-table .grand-total .foot-nums {
+            direction: ltr;
+            text-align: center;
+        }
+
+        .client-table .foot-nums.due {
+            color: #b91c1c;
+        }
+
+        .client-table .empty-row td {
+            padding: 18px;
+            color: #555;
+            text-align: center;
+        }
+
+        .client-table .family-header td {
+            font-weight: 700;
+            font-size: 9.5px;
+            padding: 5px 8px;
+        }
+
+        .client-table .family-subtotal td {
+            background: #fef3c7;
+            font-weight: 600;
+            border-top: 1px solid #d97706;
+            font-size: 9px;
+            padding: 4px 8px;
+        }
+
+        .print-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #2c3e50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12pt;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 9999;
+        }
+
+        .print-button:hover {
+            background-color: #34495e;
+        }
+
+        @media print {
+            body { max-width: none; }
+            .print-button { display: none !important; }
+            .client-table th { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .client-table .grand-total td { background: #e5e7eb !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .client-table .family-subtotal td { background: #fef3c7 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+    </style>
+</head>
+<body class="<?php echo ($docLanguage === 'en') ? 'ltr' : 'rtl'; ?>">
+
+    <button class="print-button no-print" onclick="window.print()">🖨️ <?php echo htmlspecialchars($L['print']); ?></button>
+
+    <div class="doc-header">
+        <div class="agency"><?php echo htmlspecialchars($agencyName); ?></div>
+        <h1><?php echo htmlspecialchars($L['doc_title']); ?></h1>
+        <div class="subtitle"><?php echo htmlspecialchars($L['subtitle']); ?></div>
+        <div class="branch"><?php echo htmlspecialchars($branch['name'] ?? ''); ?></div>
+        <div class="date-display"><?php echo htmlspecialchars($L['date_range'] . ': ' . $dateDisplay); ?></div>
+    </div>
+
+    <table class="client-table">
+        <thead>
+            <tr>
+                <th class="col-s"><?php echo htmlspecialchars($L['col_s']); ?></th>
+                <th class="col-no"><?php echo htmlspecialchars($L['col_no']); ?></th>
+                <th class="col-title"><?php echo htmlspecialchars($L['col_title']); ?></th>
+                <th class="col-name"><?php echo htmlspecialchars($L['col_name']); ?></th>
+                <th class="col-passport"><?php echo htmlspecialchars($L['col_passport']); ?></th>
+                <th class="col-duration"><?php echo htmlspecialchars($L['col_duration']); ?></th>
+                <th class="col-room"><?php echo htmlspecialchars($L['col_room']); ?></th>
+                <th class="col-client"><?php echo htmlspecialchars($L['col_client']); ?></th>
+                <th class="col-price"><?php echo htmlspecialchars($L['col_price']); ?></th>
+                <th class="col-bank"><?php echo htmlspecialchars($L['col_bank']); ?></th>
+                <th class="col-remarks"><?php echo htmlspecialchars($L['col_remarks']); ?></th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php if (empty($families)): ?>
+            <tr class="empty-row">
+                <td colspan="11"><?php echo htmlspecialchars($L['empty']); ?></td>
+            </tr>
+            <?php else: ?>
+            <?php
+                $globalS = 0;
+                $colorIdx = 0;
+                foreach ($clientGroups as $clientName => $famGroups):
+                    $clientTotals = [];
+                    $tint = $familyColors[$colorIdx % count($familyColors)][0];
+                    $accent = $familyColors[$colorIdx % count($familyColors)][1];
+                    $colorIdx++;
+                    $clientNo = 0;
+                    foreach ($famGroups as $fid => $famMembers) {
+                        foreach ($famMembers as $fm) {
+                            $cur = strtoupper((string)($fm['currency'] ?: 'USD'));
+                            if (!isset($clientTotals[$cur])) {
+                                $clientTotals[$cur] = ['price' => 0.0, 'bank' => 0.0];
+                            }
+                            $clientTotals[$cur]['price'] += (float)($fm['sold_price'] ?? 0);
+                            $clientTotals[$cur]['bank']  += (float)($fm['total_paid'] ?? 0);
+                            if (!isset($grandTotals[$cur])) {
+                                $grandTotals[$cur] = ['price' => 0.0, 'bank' => 0.0];
+                            }
+                            $grandTotals[$cur]['price'] += (float)($fm['sold_price'] ?? 0);
+                            $grandTotals[$cur]['bank']  += (float)($fm['total_paid'] ?? 0);
+                        }
+                    }
+                    $famKeys = array_keys($famGroups);
+                    foreach ($famKeys as $fid):
+                        $famMembers = $famGroups[$fid];
+                        $famHead = trim((string)($famMembers[0]['head_of_family'] ?? ''));
+                        if ($famHead === '') { $famHead = $famMembers[0]['fname'] ?? '—'; }
+                        $famTotals = [];
+                        foreach ($famMembers as $fm) {
+                            $cur = strtoupper((string)($fm['currency'] ?: 'USD'));
+                            if (!isset($famTotals[$cur])) {
+                                $famTotals[$cur] = ['price' => 0.0, 'bank' => 0.0];
+                            }
+                            $famTotals[$cur]['price'] += (float)($fm['sold_price'] ?? 0);
+                            $famTotals[$cur]['bank']  += (float)($fm['total_paid'] ?? 0);
+                        }
+            ?>
+            <tr style="background-color: <?php echo $accent; ?>15; border-top:2px solid <?php echo $accent; ?>;">
+                <td colspan="11" style="text-align:<?php echo ($docLanguage === 'en') ? 'left' : 'right'; ?>; padding-<?php echo ($docLanguage === 'en') ? 'left' : 'right'; ?>:10px; font-weight:700; color:<?php echo $accent; ?>;">
+                    👨‍👩‍👧‍👦 <?php echo htmlspecialchars($L['families']); ?>: <?php echo htmlspecialchars($famHead); ?>
+                    <span style="color:#666; font-weight:400; font-size:9px;">(<?php echo count($famMembers); ?> <?php echo htmlspecialchars($L['members']); ?>)</span>
+                </td>
+            </tr>
+            <?php foreach ($famMembers as $fm):
+                $globalS++;
+                $clientNo++;
+            ?>
+            <tr style="background-color: <?php echo $tint; ?>;">
+                <td class="col-s"><?php echo $globalS; ?></td>
+                <td class="col-no"><?php echo $clientNo; ?></td>
+                <td class="col-title" style="background-color: <?php echo $accent; ?>; color: #fff;"><?php echo htmlspecialchars(indv_title($fm['gender'] ?? '', $L)); ?></td>
+                <td class="col-name"><?php echo htmlspecialchars($fm['name'] ?? ''); ?></td>
+                <td class="col-passport"><?php echo htmlspecialchars($fm['passport_number'] ?? ''); ?></td>
+                <td class="col-duration"><?php echo htmlspecialchars(indv_duration_label($fm['duration'] ?? '', $L)); ?></td>
+                <td class="col-room"><?php echo htmlspecialchars(indv_room_type_label($fm['room_type'] ?? '', $L)); ?></td>
+                <td class="col-client"><?php echo htmlspecialchars($fm['client_name'] ?? ''); ?></td>
+                <td class="col-price"><?php echo number_format((float)($fm['sold_price'] ?? 0), 2); ?> <?php echo htmlspecialchars(strtoupper((string)($fm['currency'] ?: 'USD'))); ?></td>
+                <td class="col-bank"><?php echo number_format((float)($fm['total_paid'] ?? 0), 2); ?></td>
+                <td class="col-remarks"><?php echo htmlspecialchars($fm['remarks'] ?? ''); ?></td>
+            </tr>
+            <?php endforeach; ?>
+            <tr style="background:#fef3c7; font-weight:600; border-top:1px solid #d97706;">
+                <td colspan="8" style="padding-<?php echo ($docLanguage === 'en') ? 'left' : 'right'; ?>:20px; text-align:<?php echo ($docLanguage === 'en') ? 'left' : 'right'; ?>;">
+                    <?php echo htmlspecialchars($famHead); ?> — <?php echo htmlspecialchars($L['total']); ?>
+                </td>
+                <?php
+                    $fPriceParts = [];
+                    $fBankParts = [];
+                    foreach ($famTotals as $cur => $t) {
+                        $fPriceParts[] = number_format($t['price'], 2) . ' ' . $cur;
+                        $fBankParts[] = number_format($t['bank'], 2) . ' ' . $cur;
+                    }
+                ?>
+                <td class="foot-nums" style="direction:ltr;"><?php echo implode('<br>', array_map('htmlspecialchars', $fPriceParts)); ?></td>
+                <td class="foot-nums" style="direction:ltr;"><?php echo implode('<br>', array_map('htmlspecialchars', $fBankParts)); ?></td>
+                <td></td>
+            </tr>
+            <?php endforeach; ?>
+            <tr class="client-total">
+                <td colspan="8"><b><?php echo htmlspecialchars($L['client']); ?>:</b> <?php echo htmlspecialchars($clientName); ?></td>
+                <?php
+                    $cPriceParts = [];
+                    $cBankParts = [];
+                    $cDueParts = [];
+                    foreach ($clientTotals as $cur => $t) {
+                        $cPriceParts[] = number_format($t['price'], 2) . ' ' . $cur;
+                        $cBankParts[] = number_format($t['bank'], 2) . ' ' . $cur;
+                        $cDueParts[] = number_format($t['price'] - $t['bank'], 2) . ' ' . $cur;
+                    }
+                ?>
+                <td class="foot-nums"><?php echo implode('<br>', array_map('htmlspecialchars', $cPriceParts)); ?></td>
+                <td class="foot-nums"><?php echo implode('<br>', array_map('htmlspecialchars', $cBankParts)); ?></td>
+                <td class="foot-nums due"><b><?php echo htmlspecialchars($L['due']); ?>:</b><br><?php echo implode('<br>', array_map('htmlspecialchars', $cDueParts)); ?></td>
+            </tr>
+            <?php endforeach; ?>
+            <tr class="grand-total">
+                <td colspan="8"><?php echo htmlspecialchars($L['grand_total']); ?> (<?php echo $totalMembers; ?> <?php echo htmlspecialchars($L['members']); ?> | <?php echo $totalClients; ?> <?php echo htmlspecialchars($L['clients']); ?>)</td>
+                <?php
+                    $gPriceParts = [];
+                    $gBankParts = [];
+                    $gDueParts = [];
+                    foreach ($grandTotals as $cur => $t) {
+                        $gPriceParts[] = number_format($t['price'], 2) . ' ' . $cur;
+                        $gBankParts[] = number_format($t['bank'], 2) . ' ' . $cur;
+                        $gDueParts[] = number_format($t['price'] - $t['bank'], 2) . ' ' . $cur;
+                    }
+                ?>
+                <td class="foot-nums"><?php echo implode('<br>', array_map('htmlspecialchars', $gPriceParts)); ?></td>
+                <td class="foot-nums"><?php echo implode('<br>', array_map('htmlspecialchars', $gBankParts)); ?></td>
+                <td class="foot-nums due"><b><?php echo htmlspecialchars($L['due']); ?>:</b><br><?php echo implode('<br>', array_map('htmlspecialchars', $gDueParts)); ?></td>
+            </tr>
+            <?php endif; ?>
+        </tbody>
+    </table>
+
+    <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:9.5px; color:#444;">
+        <span><?php echo $totalMembers; ?> <?php echo htmlspecialchars($L['members']); ?> | <?php echo $totalClients; ?> <?php echo htmlspecialchars($L['clients']); ?></span>
+        <span><?php echo $today; ?></span>
+    </div>
+
+<script src="../../js/umrah/document-editor.js"></script>
+</body>
+</html>

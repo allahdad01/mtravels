@@ -436,10 +436,35 @@ foreach (require '../js/umrah/bundle_files.php' as $bundleFile) {
                 </div>
               </div>
               <div class="finance-panel">
-                <div class="finance-panel-head">♧ &nbsp; <?= __('outstanding_payments') ?></div>
+                <div class="finance-panel-head">♧ &nbsp; <?= __('client_report') ?></div>
                 <div class="finance-panel-body">
-                  <div class="finance-table-wrap" id="outstandingTable">
-                    <div class="text-muted py-4 text-center"><?= __('loading') ?>...</div>
+                  <div class="finance-filters">
+                    <div class="finance-field">
+                      <label for="clientReportDateRange"><?= __('date_range') ?></label>
+                      <div class="input-group">
+                        <input type="text" id="clientReportDateRange" class="finance-input" readonly placeholder="<?= __('select_date_range') ?>" style="cursor:pointer">
+                        <input type="hidden" id="clientReportDateFrom">
+                        <input type="hidden" id="clientReportDateTo">
+                        <span class="input-icon"><i class="feather icon-calendar"></i></span>
+                      </div>
+                    </div>
+                    <div class="finance-field">
+                      <label for="clientReportClientSelect"><?= __('client') ?></label>
+                      <select id="clientReportClientSelect" class="finance-select">
+                        <option value=""><?= __('all_clients') ?></option>
+                      </select>
+                    </div>
+                    <div class="finance-field">
+                      <label for="clientReportLangSelect"><?= __('language') ?></label>
+                      <select id="clientReportLangSelect" class="finance-select">
+                        <option value="en">English</option>
+                        <option value="dari">دری</option>
+                        <option value="ps">پښتو</option>
+                      </select>
+                    </div>
+                    <button type="button" class="finance-generate" id="btnOpenClientReport">
+                      ◷ &nbsp; <?= __('generate') ?>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -676,6 +701,18 @@ foreach (require '../js/umrah/bundle_files.php' as $bundleFile) {
         $('#profitDateTo').val(moment().endOf('month').format('YYYY-MM-DD'));
         $('#svcDateFrom').val(moment().startOf('month').format('YYYY-MM-DD'));
         $('#svcDateTo').val(moment().endOf('month').format('YYYY-MM-DD'));
+
+        $('#clientReportDateRange').daterangepicker({
+          startDate:moment().startOf('month'),
+          endDate:moment().endOf('month'),
+          ranges:ranges,
+          locale:{format:'DD MMM YYYY'}
+        },function(start,end){
+          $('#clientReportDateFrom').val(start.format('YYYY-MM-DD')).trigger('change');
+          $('#clientReportDateTo').val(end.format('YYYY-MM-DD')).trigger('change');
+        });
+        $('#clientReportDateFrom').val(moment().startOf('month').format('YYYY-MM-DD'));
+        $('#clientReportDateTo').val(moment().endOf('month').format('YYYY-MM-DD'));
       }
 
       initDateRangePickers();
