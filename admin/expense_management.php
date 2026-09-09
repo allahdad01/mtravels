@@ -397,6 +397,7 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_ASSOC);
                                             $isLinked = isset($settlementMap[$expense['id']]);
                                             echo '<div class="btn-group-wrap">';
                                             $expenseCategoryId = $isChild ? ($category['parent_id'] ?? $category['id']) : $category['id'];
+                                            echo '<button class="btn-action-move move-expense" data-id="' . $expense['id'] . '" data-from-category="' . $expenseCategoryId . '" data-description="' . htmlspecialchars($expense['description']) . '" data-amount="' . number_format($expense['amount'], 2) . ' ' . ($expense['currency'] ?? 'USD') . '" data-from-name="' . htmlspecialchars($category['name']) . '" title="Move to Category"><i class="feather icon-move"></i></button>';
                                             if (!$isLinked) {
                                                 echo '<button class="btn-action-edit link-agency" data-id="' . $expense['id'] . '" data-amount="' . $expense['amount'] . '" data-currency="' . ($expense['currency'] ?? 'USD') . '" title="Link to Agency" style="color:#d97706;"><i class="feather icon-link"></i></button>';
                                             }
@@ -451,6 +452,7 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_ASSOC);
 <?php include '../modals/expense/expense_modal.php'; ?>
 <?php include '../modals/expense/edit_expense_modal.php'; ?>
 <?php include '../modals/expense/agency_settlement_modal.php'; ?>
+<?php include '../modals/expense/move_expense_modal.php'; ?>
 
     <!-- Required Js -->
     

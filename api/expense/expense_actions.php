@@ -686,6 +686,104 @@ try {
             }
             break;
 
+        case 'move_expense':
+            try {
+                $expenseId = $_POST['expenseId'] ?? '';
+                $newCategoryId = $_POST['newCategoryId'] ?? '';
+                $newSubCategoryId = isset($_POST['newSubCategoryId']) && $_POST['newSubCategoryId'] !== '' ? (int)$_POST['newSubCategoryId'] : null;
+
+                if (!$expenseId || !$newCategoryId) {
+                    throw new Exception('Expense ID and target category are required');
+                }
+
+                // Verify expense exists
+                $expStmt = $pdo->prepare("SELECT id, category_id, sub_category_id, allocation_id, global_allocation_id FROM expenses WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $expStmt->execute([$expenseId, $tenant_id, $branch_id]);
+                $expense = $expStmt->fetch(PDO::FETCH_ASSOC);
+
+                if (!$expense) {
+                    throw new Exception('Expense not found');
+                }
+
+                // Guard: allocation-linked expenses cannot be moved
+                if (!empty($expense['allocation_id']) || !empty($expense['global_allocation_id'])) {
+                    throw new Exception('This expense is linked to an allocation and cannot be moved. Manage it from the allocation page.');
+                }
+
+                // Verify target category exists
+                $catStmt = $pdo->prepare("SELECT id, parent_id FROM expense_categories WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $catStmt->execute([$newCategoryId, $tenant_id, $branch_id]);
+                $targetCategory = $catStmt->fetch(PDO::FETCH_ASSOC);
+
+                if (!$targetCategory) {
+                    throw new Exception('Target category not found');
+                }
+
+                // Prevent making it a sub-category of a sub-category
+                if (!empty($targetCategory['parent_id']) && $newSubCategoryId !== null) {
+                    throw new Exception('A sub-category cannot have its own sub-category');
+                }
+
+                // Validate sub-category belongs to target category
+                if ($newSubCategoryId !== null) {
+                    $subStmt = $pdo->prepare("SELECT parent_id FROM expense_categories WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                    $subStmt->execute([$newSubCategoryId, $tenant_id, $branch_id]);
+                    $subCat = $subStmt->fetch(PDO::FETCH_ASSOC);
+                    if (!$subCat || (int)$subCat['parent_id'] !== (int)$newCategoryId) {
+                        throw new Exception('Sub-category does not belong to the selected category');
+                    }
+                }
+
+                // Get old category name for logging
+                $oldCatStmt = $pdo->prepare("SELECT name FROM expense_categories WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $oldCatStmt->execute([$expense['category_id'], $tenant_id, $branch_id]);
+                $oldCategoryName = $oldCatStmt->fetchColumn() ?? 'Unknown';
+
+                // Get new category name for logging
+                $newCatStmt = $pdo->prepare("SELECT name FROM expense_categories WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $newCatStmt->execute([$newCategoryId, $tenant_id, $branch_id]);
+                $newCategoryName = $newCatStmt->fetchColumn() ?? 'Unknown';
+
+                // Perform the move
+                $updateStmt = $pdo->prepare("UPDATE expenses SET category_id = ?, sub_category_id = ? WHERE id = ? AND tenant_id = ? AND branch_id = ?");
+                $updateStmt->execute([$newCategoryId, $newSubCategoryId, $expenseId, $tenant_id, $branch_id]);
+
+                // Log the activity
+                $old_values = json_encode([
+                    'expense_id' => $expenseId,
+                    'old_category_id' => $expense['category_id'],
+                    'old_category_name' => $oldCategoryName,
+                    'old_sub_category_id' => $expense['sub_category_id']
+                ], JSON_UNESCAPED_UNICODE);
+                $new_values = json_encode([
+                    'new_category_id' => $newCategoryId,
+                    'new_category_name' => $newCategoryName,
+                    'new_sub_category_id' => $newSubCategoryId
+                ], JSON_UNESCAPED_UNICODE);
+
+                $user_id = $_SESSION['user_id'] ?? 0;
+                $ip_address = $_SERVER['REMOTE_ADDR'] ?? '';
+                $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+
+                $activityStmt = $pdo->prepare("
+                    INSERT INTO activity_log
+                    (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent, created_at, tenant_id, branch_id)
+                    VALUES (?, 'move', 'expenses', ?, ?, ?, ?, ?, NOW(), ?, ?)
+                ");
+                $activityStmt->execute([$user_id, $expenseId, $old_values, $new_values, $ip_address, $user_agent, $tenant_id, $branch_id]);
+
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Expense moved to ' . $newCategoryName . ' successfully'
+                ]);
+            } catch (Exception $e) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => $e->getMessage()
+                ]);
+            }
+            break;
+
         default:
             throw new Exception('Invalid action');
     }

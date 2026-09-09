@@ -729,4 +729,134 @@ $(document).ready(function() {
             }
         });
     });
+
+    // ── Move Expense to Another Category ──
+
+    $(document).on('click', '.move-expense', function() {
+        var expenseId = $(this).data('id');
+        var fromCategory = $(this).data('from-category');
+        var description = $(this).data('description');
+        var amount = $(this).data('amount');
+        var fromName = $(this).data('from-name');
+
+        $('#moveExpenseId').val(expenseId);
+        $('#moveExpenseDesc').text(description);
+        $('#moveExpenseAmount').text(amount);
+        $('#moveExpenseFrom').text(fromName);
+
+        // Set category dropdown to current category
+        $('#moveExpenseCategory').val(fromCategory);
+
+        // Reset sub-category
+        $('#moveExpenseSubCategory').html('<option value="">No Sub Category</option>');
+
+        // Load sub-categories for current category
+        if (fromCategory) {
+            $.ajax({
+                url: '../api/expense/expense_actions.php',
+                type: 'POST',
+                data: {
+                    action: 'get_sub_categories',
+                    categoryId: fromCategory,
+                    csrf_token: getCsrfToken()
+                },
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success && response.sub_categories.length > 0) {
+                        var options = '<option value="">No Sub Category</option>';
+                        $.each(response.sub_categories, function(i, sub) {
+                            options += '<option value="' + sub.id + '">' + sub.name + '</option>';
+                        });
+                        $('#moveExpenseSubCategory').html(options);
+                    }
+                }
+            });
+        }
+
+        $('#moveExpenseModal').modal('show');
+    });
+
+    // Load sub-categories when category changes in move modal
+    $(document).on('change', '#moveExpenseCategory', function() {
+        var categoryId = $(this).val();
+        var $subCat = $('#moveExpenseSubCategory');
+
+        if (!categoryId) {
+            $subCat.html('<option value="">No Sub Category</option>');
+            return;
+        }
+
+        $.ajax({
+            url: '../api/expense/expense_actions.php',
+            type: 'POST',
+            data: {
+                action: 'get_sub_categories',
+                categoryId: categoryId,
+                csrf_token: getCsrfToken()
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    var options = '<option value="">No Sub Category</option>';
+                    if (response.sub_categories.length > 0) {
+                        $.each(response.sub_categories, function(i, sub) {
+                            options += '<option value="' + sub.id + '">' + sub.name + '</option>';
+                        });
+                    }
+                    $subCat.html(options);
+                }
+            }
+        });
+    });
+
+    // Submit move expense form
+    $('#moveExpenseForm').on('submit', function(e) {
+        e.preventDefault();
+
+        var expenseId = $('#moveExpenseId').val();
+        var newCategoryId = $('#moveExpenseCategory').val();
+        var newSubCategoryId = $('#moveExpenseSubCategory').val();
+
+        if (!newCategoryId) {
+            alert('Please select a target category');
+            return;
+        }
+
+        var $btn = $(this).find('button[type="submit"]');
+        $btn.prop('disabled', true).html('<i class="feather icon-loader"></i> Moving...');
+
+        $.ajax({
+            url: '../api/expense/expense_actions.php',
+            type: 'POST',
+            data: {
+                action: 'move_expense',
+                expenseId: expenseId,
+                newCategoryId: newCategoryId,
+                newSubCategoryId: newSubCategoryId || '',
+                csrf_token: getCsrfToken()
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    $('#moveExpenseModal').modal('hide');
+                    location.reload();
+                } else {
+                    alert('Error: ' + response.message);
+                    $btn.prop('disabled', false).html('<i class="feather icon-move"></i> Move Expense');
+                }
+            },
+            error: function() {
+                alert('An error occurred while moving the expense');
+                $btn.prop('disabled', false).html('<i class="feather icon-move"></i> Move Expense');
+            }
+        });
+    });
+
+    // Reset move modal on close
+    $('#moveExpenseModal').on('hidden.bs.modal', function() {
+        $('#moveExpenseForm')[0].reset();
+        $('#moveExpenseSubCategory').html('<option value="">No Sub Category</option>');
+        var $btn = $('#moveExpenseForm').find('button[type="submit"]');
+        $btn.prop('disabled', false).html('<i class="feather icon-move"></i> Move Expense');
+    });
 });

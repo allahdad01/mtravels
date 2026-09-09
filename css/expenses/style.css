@@ -907,3 +907,75 @@ body {
   box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35);
   transform: translateY(-1px);
 }
+
+/* ── Move Expense Styles ── */
+.btn-action-move {
+  color: #7c3aed !important;
+  transition: color 0.15s;
+}
+.btn-action-move:hover {
+  border-color: #7c3aed !important;
+  color: #7c3aed !important;
+  background: #f5f0ff !important;
+}
+
+.move-current-info {
+  background: var(--exp-bg-light);
+  border: 1px solid var(--exp-border);
+  border-radius: var(--exp-radius-sm);
+  padding: 14px 16px;
+}
+
+.move-info-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.move-info-row + .move-info-row {
+  border-top: 1px solid var(--exp-border);
+}
+
+.move-info-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--exp-text-secondary);
+  min-width: 90px;
+  flex-shrink: 0;
+}
+
+.move-info-value {
+  font-size: 0.875rem;
+  color: var(--exp-text);
+  font-weight: 500;
+}
+
+.move-info-from {
+  color: var(--exp-blue);
+}
+
+.modal-section {
+  margin-bottom: 20px;
+}
+
+.modal-section:last-child {
+  margin-bottom: 0;
+}
+
+.modal-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--exp-text);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--exp-border);
+}
+
+.modal-section-title i {
+  font-size: 1rem;
+  color: var(--exp-blue);
+}
