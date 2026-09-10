@@ -81,330 +81,472 @@ try {
     $branch = null;
 }
 ?>
-  
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo __('receipt'); ?> - <?php echo htmlspecialchars($transaction['description']); ?></title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title><?php echo __('receipt'); ?> - <?php echo htmlspecialchars($transaction['description']); ?></title>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="../assets/css/bootstrap.min.css">
-    <link rel="stylesheet" href="../assets/fonts/fontawesome/css/fontawesome-all.min.css">
-    <link rel="stylesheet" href="../assets/css/style.css">
+    @page {
+        size: A4 portrait;
+        margin: 10mm;
+    }
 
-    <style>
-        @media print {
-            .no-print {
-                display: none !important;
-            }
-            body {
-                font-size: 12px;
-            }
-            .receipt-container {
-                max-width: 100% !important;
-                margin: 0 !important;
-            }
+    body {
+        margin: 0;
+        background: #f4f7fb;
+        font-family: Arial, Helvetica, sans-serif;
+        color: #172746;
+        font-size: 12px;
+    }
+
+    .receipt {
+        width: 100%;
+        max-width: 700px;
+        margin: 15px auto;
+        padding: 20px 24px 15px;
+        background: #f8fbff;
+        border: 1px solid #a9c9f7;
+        border-top: 4px solid #2f80ed;
+        border-radius: 10px;
+        position: relative;
+    }
+
+    .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 0 12px;
+        border-bottom: 1px solid #d9e2ef;
+    }
+
+    .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .logo {
+        width: 55px;
+        height: 55px;
+        border: 2px solid #2f80ed;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        font-weight: 800;
+        color: #0e3674;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+
+    .logo img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+
+    .company h1,
+    .receipt-title h2 {
+        margin: 0;
+        color: #0d3473;
+        font-weight: 800;
+        letter-spacing: .5px;
+    }
+
+    .company h1 {
+        font-size: 18px;
+    }
+
+    .company p {
+        margin: 4px 0 0;
+        color: #687793;
+        font-size: 10px;
+    }
+
+    .receipt-title {
+        text-align: right;
+    }
+
+    .receipt-title h2 {
+        font-size: 20px;
+    }
+
+    .receipt-title p {
+        margin: 4px 0 0;
+        color: #2f80ed;
+        font-size: 10px;
+        font-weight: 800;
+    }
+
+    .meta {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+        gap: 16px;
+        margin: 14px 0;
+        align-items: end;
+    }
+
+    .label {
+        color: #66738a;
+        font-size: 9px;
+        font-weight: 800;
+        margin-bottom: 4px;
+        text-transform: uppercase;
+    }
+
+    .value {
+        font-size: 12px;
+        font-weight: 800;
+        color: #172746;
+    }
+
+    .paid, .received {
+        height: 28px;
+        border: 1px solid #a8dfc7;
+        border-radius: 14px;
+        background: #e8f7f0;
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 12px 2px 4px;
+        color: #11864f;
+        font-size: 11px;
+        font-weight: 800;
+    }
+
+    .paid-icon {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #118b52;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 8px;
+        font-size: 11px;
+    }
+
+    .main-row {
+        display: grid;
+        grid-template-columns: 1.8fr 1fr;
+        gap: 16px;
+        margin-top: 10px;
+    }
+
+    .client-box {
+        background: white;
+        border: 1px solid #cddcf0;
+        border-left: 8px solid #2f80ed;
+        border-radius: 0 8px 8px 0;
+        padding: 12px 16px;
+    }
+
+    .client-name {
+        font-size: 13px;
+        font-weight: 800;
+        color: #172746;
+        margin-top: 4px;
+    }
+
+    .amount-box {
+        background: #103879;
+        border-radius: 8px;
+        color: white;
+        padding: 12px 16px;
+    }
+
+    .amount-box .label {
+        color: #9fc5f5;
+        margin-bottom: 3px;
+    }
+
+    .amount {
+        text-align: right;
+        font-size: 18px;
+        font-weight: 800;
+    }
+
+    .description {
+        margin-top: 16px;
+    }
+
+    .description-text {
+        font-size: 12px;
+        color: #172746;
+        margin-top: 6px;
+    }
+
+    .ticket-info {
+        margin-top: 12px;
+        background: #f0f5ff;
+        border: 1px solid #c9dcf7;
+        border-radius: 8px;
+        padding: 10px 14px;
+    }
+
+    .ticket-info .label {
+        margin-bottom: 8px;
+        font-size: 10px;
+    }
+
+    .ticket-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 10px;
+    }
+
+    .ticket-item .ticket-label {
+        color: #66738a;
+        font-size: 8px;
+        font-weight: 800;
+        margin-bottom: 2px;
+        text-transform: uppercase;
+    }
+
+    .ticket-item .ticket-value {
+        color: #172746;
+        font-size: 10px;
+        font-weight: 800;
+    }
+
+    .confirmation {
+        margin-top: 16px;
+        height: 1px;
+        background: #d6e1ef;
+        position: relative;
+    }
+
+    .confirmation-dot {
+        position: absolute;
+        left: 6px;
+        top: -6px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #2f80ed;
+    }
+
+    .confirmation-text {
+        position: absolute;
+        left: 28px;
+        top: -1px;
+        background: #f8fbff;
+        padding-right: 8px;
+        color: #697892;
+        font-size: 9px;
+    }
+
+    .footer {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 30px;
+        margin-top: 24px;
+        align-items: end;
+    }
+
+    .signature-line {
+        height: 1px;
+        background: #b8c7da;
+        margin-bottom: 6px;
+    }
+
+    .signature-title {
+        color: #66738a;
+        font-size: 9px;
+        font-weight: 800;
+    }
+
+    .status {
+        background: #eaf2ff;
+        border: 1px solid #c9dcf7;
+        border-radius: 8px;
+        padding: 10px 14px;
+    }
+
+    .status-value {
+        color: #0d4d9e;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: .5px;
+        margin-top: 4px;
+    }
+
+    .thank-you {
+        margin-top: 6px;
+        color: #66738a;
+        font-size: 9px;
+    }
+
+    .no-print {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        z-index: 1000;
+    }
+
+    @media print {
+        body { background: white; font-size: 11px; }
+        .no-print { display: none !important; }
+        .receipt {
+            margin: 0;
+            max-width: none;
+            border-radius: 0;
+            padding: 16px 20px 12px;
         }
-
-        .receipt-container {
-            max-width: 800px;
-            margin: 20px auto;
-            padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            background: white;
-        }
-
-        .receipt-header {
-            border-bottom: 2px solid #4099ff;
-            padding-bottom: 20px;
-            margin-bottom: 10px;
-        }
-
-        .header-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-
-        }
-
-        .agency-name {
-            font-size: 18px;
-            font-weight: bold;
-            color: #333;
-            flex: 1;
-        }
-
-        .receipt-title {
-            font-size: 24px;
-            font-weight: bold;
-            color: #4099ff;
-            text-align: center;
-            flex: 2;
-        }
-
-        .company-logo {
-            flex: 1;
-            text-align: right;
-        }
-
-        .company-logo img {
-            max-height: 80px;
-            max-width: 120px;
-        }
-
-        .receipt-details {
-            margin-bottom: 30px;
-        }
-
-        .detail-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            padding: 5px 0;
-            position: relative;
-        }
-
-        .detail-row::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            border-bottom: 1px dotted #999;
-            margin-top: 5px;
-        }
-
-        .detail-label {
-            font-weight: bold;
-            color: #333;
-            background: white;
-            padding-right: 10px;
-            z-index: 1;
-            position: relative;
-        }
-
-        .detail-value {
-            color: #666;
-            background: white;
-            padding-left: 10px;
-            z-index: 1;
-            position: relative;
-        }
-
-        .description-value {
-            font-size: 16px;
-            font-weight: bold;
-        }
-
-        .amount-section {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin: 20px 0;
-            text-align: center;
-            position: relative;
-        }
-
-        .amount-label {
-            font-size: 16px;
-            color: #666;
-            margin-bottom: 10px;
-        }
-
-        .amount-value {
-            font-size: 28px;
-            font-weight: bold;
-            color: #28a745;
-            margin-bottom: 40px;
-            background: #28a745;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 5px;
-            display: inline-block;
-        }
-
-        .signature-section {
-            display: flex;
-            justify-content: space-between;
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            right: 20px;
-        }
-
-        .signature-box {
-            flex: 1;
-        }
-
-        .signature-box:first-child {
-            text-align: left;
-        }
-
-        .signature-box:last-child {
-            text-align: right;
-        }
-
-        /* Removed middle line between signatures */
-
-        .signature-label {
-            font-size: 12px;
-            color: #666;
-            margin-bottom: 20px;
-            font-weight: bold;
-        }
-
-        .signature-line {
-            border-bottom: 1px solid #333;
-            width: 120px;
-            height: 25px;
-        }
-
-        .signature-box:first-child .signature-line {
-            margin-left: 0;
-        }
-
-        .signature-box:last-child .signature-line {
-            margin-left: auto;
-            margin-right: 0;
-        }
-
-        .footer-note {
-            text-align: center;
-            font-size: 12px;
-            color: #999;
-            margin-top: 5px;
-            padding-top: 5px;
-            border-top: 1px solid #eee;
-        }
-
-        .print-btn {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1000;
-        }
-    </style>
+    }
+</style>
 </head>
+
 <body>
-    <div class="container-fluid">
-        <div class="receipt-container">
-            <!-- Print Button -->
-            <div class="no-print print-btn">
-                <button onclick="window.print()" class="btn btn-primary">
-                    <i class="fas fa-print"></i> <?php echo __('print'); ?>
-                </button>
-                <button onclick="window.close()" class="btn btn-secondary ml-2">
-                    <i class="fas fa-times"></i> <?php echo __('close'); ?>
-                </button>
-            </div>
+<div class="receipt">
 
-            <!-- Receipt Header -->
-            <div class="receipt-header">
-                <div class="header-row">
-                    <div class="agency-name">
-                        <?php echo htmlspecialchars($settings['agency_name'] ?? 'Travel Agency'); ?>
-                        <?php if (!empty($branch['name'])): ?>
-                            <br><small><?php echo htmlspecialchars($branch['name']); ?></small>
-                        <?php endif; ?>
-                    </div>
-                    <div class="receipt-title">Payment Receipt</div>
-                    <div class="company-logo">
-                        <img src="../../uploads/logo/<?= htmlspecialchars($settings['logo'] ?? ''); ?>" alt="Company Logo">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Receipt Details -->
-            <div class="receipt-details">
-                <div class="detail-row">
-                    <span class="detail-label"><?php echo __('receipt_number'); ?>:</span>
-                    <span class="detail-value">#<?php echo $transaction['id']; ?></span>
-                </div>
-
-                <div class="detail-row">
-                    <span class="detail-label"><?php echo __('date'); ?>:</span>
-                    <span class="detail-value"><?php echo date('M d, Y H:i', strtotime($transaction['created_at'])); ?></span>
-                </div>
-
-                <div class="detail-row">
-                    <span class="detail-label"><?php echo __('description'); ?>:</span>
-                    <span class="detail-value description-value"><?php echo htmlspecialchars($transaction['description']); ?></span>
-                </div>
-
-                <?php if (!empty($transaction['weight_id'])): ?>
-                <h6 style="margin-top:8px;margin-bottom:6px"><?php echo __('weight_information'); ?></h6>
-
-                <div class="detail-row">
-                    <span class="detail-label"><?php echo __('passenger_name'); ?>:</span>
-                    <span class="detail-value"><?php echo htmlspecialchars($transaction['passenger_name']); ?></span>
-                </div>
-
-                <div class="detail-row">
-                    <span class="detail-label"><?php echo __('sector'); ?>:</span>
-                    <span class="detail-value">
-                        <?php echo htmlspecialchars($transaction['origin']); ?> - <?php echo htmlspecialchars($transaction['destination']); ?>
-                    </span>
-                </div>
-
-                <div class="detail-row">
-                    <span class="detail-label"><?php echo __('departure_date'); ?>:</span>
-                    <span class="detail-value"><?php echo htmlspecialchars($transaction['departure_date']); ?></span>
-                </div>
-
-                <?php endif; ?>
-            </div>
-
-            <!-- Amount Section -->
-            <div class="amount-section">
-                <div class="amount-label"><?php echo __('amount'); ?></div>
-                <div class="amount-value">
-                    <?php echo htmlspecialchars($transaction['currency']); ?> <?php echo number_format($transaction['amount'], 2); ?>
-                </div>
-
-                <!-- Signature Section -->
-                <div class="signature-section">
-                    <div class="signature-box">
-                        <div class="signature-label">Receiver Sign</div>
-                        <div class="signature-line"></div>
-                    </div>
-                    <div class="signature-box">
-                        <div class="signature-label">Authorized Sign & Stamp</div>
-                        <div class="signature-line"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Footer Note -->
-            <div class="footer-note">
-                Thank you for your business<br>
-                <?php if (!empty($branch)): ?>
-                    <?php echo htmlspecialchars($branch['phone'] ?? ''); ?>
-                    <?php if (!empty($branch['address'])): ?>
-                        (<?php echo htmlspecialchars($branch['address']); ?>)
-                    <?php endif; ?>
-                <?php else: ?>
-                    <?php echo htmlspecialchars($settings['address'] ?? ''); ?>
-                    <?php if (!empty($settings['phone'])): ?>
-                        | <?php echo htmlspecialchars($settings['phone']); ?>
-                    <?php endif; ?>
-                <?php endif; ?>
-            </div>
-        </div>
+    <div class="no-print">
+        <button onclick="window.print()" style="background:#2f80ed;color:white;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:600;">
+            &#128424; <?php echo __('print'); ?>
+        </button>
+        <button onclick="window.close()" style="background:#6c757d;color:white;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:600;margin-left:8px;">
+            &#10005; <?php echo __('close'); ?>
+        </button>
     </div>
 
-    <!-- Bootstrap JS -->
-    <script src="../assets/js/vendor-all.min.js"></script>
-    <script src="../assets/plugins/bootstrap/js/bootstrap.min.js"></script>
+    <header class="header">
+        <div class="brand">
+            <div class="logo">
+                <?php if (!empty($settings['logo'])): ?>
+                    <img src="../../uploads/logo/<?= htmlspecialchars($settings['logo']); ?>" alt="Logo">
+                <?php else: ?>
+                    <?php echo strtoupper(substr($settings['agency_name'] ?? 'TA', 0, 2)); ?>
+                <?php endif; ?>
+            </div>
 
-    <script>
-        // Auto-print when page loads (optional)
-        // window.onload = function() {
-        //     window.print();
-        // };
-    </script>
+            <div class="company">
+                <h1><?php echo htmlspecialchars($settings['agency_name'] ?? 'Travel Agency'); ?></h1>
+                <p>
+                    <?php if (!empty($branch['name'])): ?>
+                        <?php echo htmlspecialchars($branch['name']); ?> &nbsp;&bull;&nbsp;
+                    <?php endif; ?>
+                    <?php echo htmlspecialchars($branch['address'] ?? $settings['address'] ?? ''); ?>
+                    <?php if (!empty($branch['phone']) || !empty($settings['phone'])): ?>
+                        &nbsp;&bull;&nbsp; <?php echo htmlspecialchars($branch['phone'] ?? $settings['phone'] ?? ''); ?>
+                    <?php endif; ?>
+                </p>
+            </div>
+        </div>
+
+        <div class="receipt-title">
+            <h2>RECEIPT</h2>
+            <p>TICKET WEIGHT</p>
+        </div>
+    </header>
+
+    <section class="meta">
+        <div>
+            <div class="label"><?php echo __('receipt_number'); ?></div>
+            <div class="value">#<?php echo $transaction['id']; ?></div>
+        </div>
+
+        <div>
+            <div class="label"><?php echo __('date'); ?></div>
+            <div class="value"><?php echo date('M d, Y', strtotime($transaction['created_at'])); ?></div>
+        </div>
+
+        <div>
+            <div class="label"><?php echo __('time'); ?></div>
+            <div class="value"><?php echo date('h:i A', strtotime($transaction['created_at'])); ?></div>
+        </div>
+
+        <div>
+            <div class="label"><?php echo __('payment_type'); ?></div>
+            <?php if ($transaction['type'] === 'credit'): ?>
+                <div class="received">
+                    <span class="paid-icon">&#10003;</span>
+                    <?php echo __('received'); ?>
+                </div>
+            <?php else: ?>
+                <div class="paid">
+                    <span class="paid-icon">&#10003;</span>
+                    <?php echo __('paid'); ?>
+                </div>
+            <?php endif; ?>
+        </div>
+    </section>
+
+    <section class="main-row">
+        <div class="client-box">
+            <div class="label"><?php echo __('client'); ?> / <?php echo __('account'); ?></div>
+            <div class="client-name">
+                <?php echo htmlspecialchars($transaction['client_name'] ?? __('walking_customer')); ?>
+            </div>
+        </div>
+
+        <div class="amount-box">
+            <div class="label"><?php echo __('amount'); ?></div>
+            <div class="amount">
+                <?php echo number_format($transaction['amount'], 0); ?> <?php echo htmlspecialchars($transaction['currency']); ?>
+            </div>
+        </div>
+    </section>
+
+    <section class="description">
+        <div class="label"><?php echo __('description'); ?></div>
+        <div class="description-text">
+            <?php echo htmlspecialchars($transaction['description']); ?>
+        </div>
+
+        <?php if (!empty($transaction['weight_id'])): ?>
+        <div class="ticket-info">
+            <div class="label"><?php echo __('weight_information'); ?></div>
+            <div class="ticket-grid">
+                <div class="ticket-item">
+                    <div class="ticket-label"><?php echo __('passenger_name'); ?></div>
+                    <div class="ticket-value"><?php echo htmlspecialchars($transaction['passenger_name']); ?></div>
+                </div>
+                <div class="ticket-item">
+                    <div class="ticket-label"><?php echo __('sector'); ?></div>
+                    <div class="ticket-value">
+                        <?php echo htmlspecialchars($transaction['origin']); ?> - <?php echo htmlspecialchars($transaction['destination']); ?>
+                    </div>
+                </div>
+                <div class="ticket-item">
+                    <div class="ticket-label"><?php echo __('departure_date'); ?></div>
+                    <div class="ticket-value"><?php echo htmlspecialchars($transaction['departure_date']); ?></div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <div class="confirmation">
+            <span class="confirmation-dot"></span>
+            <span class="confirmation-text">
+                <?php echo __('transaction_recorded'); ?> <?php echo htmlspecialchars($settings['agency_name'] ?? 'Finance'); ?>
+            </span>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div>
+            <div class="signature-line"></div>
+            <div class="signature-title"><?php echo __('receiver_sign'); ?></div>
+        </div>
+
+        <div>
+            <div class="signature-line"></div>
+            <div class="signature-title"><?php echo __('authorized_sign'); ?></div>
+        </div>
+
+        <div class="status">
+            <div class="label"><?php echo __('document_status'); ?></div>
+            <div class="status-value"><?php echo __('payment_confirmed'); ?></div>
+            <div class="thank-you"><?php echo __('thank_you_business'); ?></div>
+        </div>
+    </footer>
+
+</div>
 </body>
 </html>

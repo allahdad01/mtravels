@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ferooz Koh Receipt</title>
+<style>
+    * { box-sizing: border-box; }
+
+    @page {
+        size: A5 landscape;
+        margin: 0;
+    }
+
+    body {
+        margin: 0;
+        background: #f4f7fb;
+        font-family: Arial, Helvetica, sans-serif;
+        color: #172746;
+    }
+
+    .receipt {
+        width: 100%;
+        max-width: 1120px;
+        min-height: 790px;
+        margin: 30px auto;
+        padding: 48px 40px 25px;
+        background: #f8fbff;
+        border: 1px solid #a9c9f7;
+        border-top: 6px solid #2f80ed;
+        border-radius: 14px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 5px 30px;
+        border-bottom: 1px solid #d9e2ef;
+    }
+
+    .brand {
+        display: flex;
+        align-items: center;
+        gap: 32px;
+    }
+
+    .logo {
+        width: 116px;
+        height: 116px;
+        border: 3px solid #2f80ed;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32px;
+        font-weight: 800;
+        color: #0e3674;
+    }
+
+    .company h1,
+    .receipt-title h2 {
+        margin: 0;
+        color: #0d3473;
+        font-weight: 800;
+        letter-spacing: 1px;
+    }
+
+    .company h1 {
+        font-size: 37px;
+    }
+
+    .company p {
+        margin: 14px 0 0;
+        color: #687793;
+        font-size: 14px;
+        letter-spacing: .3px;
+    }
+
+    .receipt-title {
+        text-align: right;
+    }
+
+    .receipt-title h2 {
+        font-size: 37px;
+    }
+
+    .receipt-title p {
+        margin: 14px 0 0;
+        color: #2f80ed;
+        font-size: 14px;
+        font-weight: 800;
+        letter-spacing: .5px;
+    }
+
+    .meta {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr 1.1fr;
+        gap: 35px;
+        margin: 40px 0 22px;
+        align-items: end;
+    }
+
+    .label {
+        color: #66738a;
+        font-size: 13px;
+        font-weight: 800;
+        margin-bottom: 13px;
+    }
+
+    .value {
+        font-size: 20px;
+        font-weight: 800;
+        color: #172746;
+    }
+
+    .paid {
+        height: 48px;
+        border: 1px solid #a8dfc7;
+        border-radius: 28px;
+        background: #e8f7f0;
+        display: flex;
+        align-items: center;
+        padding: 4px 22px 4px 8px;
+        color: #11864f;
+        font-size: 19px;
+        font-weight: 800;
+    }
+
+    .paid-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: #118b52;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 18px;
+        font-size: 18px;
+    }
+
+    .main-row {
+        display: grid;
+        grid-template-columns: 1.9fr 1fr;
+        gap: 45px;
+        margin-top: 18px;
+    }
+
+    .client-box {
+        height: 114px;
+        background: white;
+        border: 1px solid #cddcf0;
+        border-left: 13px solid #2f80ed;
+        border-radius: 0 14px 14px 0;
+        padding: 30px 32px;
+        box-shadow: 0 1px 2px rgba(20, 50, 90, .03);
+    }
+
+    .client-name {
+        font-size: 23px;
+        font-weight: 800;
+        color: #172746;
+    }
+
+    .amount-box {
+        height: 114px;
+        background: #103879;
+        border-radius: 14px;
+        color: white;
+        padding: 30px 32px;
+    }
+
+    .amount-box .label {
+        color: #9fc5f5;
+        margin-bottom: 7px;
+    }
+
+    .amount {
+        text-align: right;
+        font-size: 35px;
+        font-weight: 800;
+        letter-spacing: .5px;
+    }
+
+    .description {
+        margin-top: 48px;
+    }
+
+    .description-text {
+        font-size: 20px;
+        color: #172746;
+        margin-top: 18px;
+    }
+
+    .confirmation {
+        margin-top: 47px;
+        height: 1px;
+        background: #d6e1ef;
+        position: relative;
+    }
+
+    .confirmation-dot {
+        position: absolute;
+        left: 10px;
+        top: -8px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #2f80ed;
+    }
+
+    .confirmation-text {
+        position: absolute;
+        left: 45px;
+        top: -1px;
+        transform: translateY(0);
+        background: #f8fbff;
+        padding-right: 12px;
+        color: #697892;
+        font-size: 14px;
+    }
+
+    .footer {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 55px;
+        margin-top: 72px;
+        align-items: end;
+    }
+
+    .signature-line {
+        height: 1px;
+        background: #b8c7da;
+        margin-bottom: 13px;
+    }
+
+    .signature-title {
+        color: #66738a;
+        font-size: 13px;
+        font-weight: 800;
+    }
+
+    .status {
+        min-height: 86px;
+        background: #eaf2ff;
+        border: 1px solid #c9dcf7;
+        border-radius: 12px;
+        padding: 20px 28px;
+    }
+
+    .status .label {
+        margin-bottom: 13px;
+    }
+
+    .status-value {
+        color: #0d4d9e;
+        font-size: 15px;
+        font-weight: 800;
+        letter-spacing: .5px;
+    }
+
+    .thank-you {
+        margin-top: 14px;
+        color: #66738a;
+        font-size: 13px;
+    }
+
+    @media (max-width: 800px) {
+        .receipt {
+            margin: 10px;
+            padding: 30px 22px;
+        }
+
+        .header,
+        .brand {
+            gap: 15px;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            font-size: 24px;
+        }
+
+        .company h1,
+        .receipt-title h2 {
+            font-size: 25px;
+        }
+
+        .meta,
+        .main-row,
+        .footer {
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        .amount {
+            text-align: left;
+        }
+
+        .footer {
+            margin-top: 40px;
+        }
+    }
+
+    @media print {
+        body { background: white; }
+        .receipt {
+            margin: 0;
+            max-width: none;
+            min-height: 100vh;
+            border-radius: 0;
+        }
+    }
+</style>
+</head>
+
+<body>
+<div class="receipt">
+
+    <header class="header">
+        <div class="brand">
+            <div class="logo">FK</div>
+
+            <div class="company">
+                <h1>FEROOZ KOH</h1>
+                <p>MAIN OFFICE &nbsp;•&nbsp; KABUL, AFGHANISTAN &nbsp;•&nbsp; 0730633733</p>
+            </div>
+        </div>
+
+        <div class="receipt-title">
+            <h2>RECEIPT</h2>
+            <p>OFFICIAL FUND TRANSACTION</p>
+        </div>
+    </header>
+
+    <section class="meta">
+        <div>
+            <div class="label">RECEIPT NO.</div>
+            <div class="value">#1047</div>
+        </div>
+
+        <div>
+            <div class="label">DATE</div>
+            <div class="value">SEP 07, 2026</div>
+        </div>
+
+        <div>
+            <div class="label">TIME</div>
+            <div class="value">03:06 PM</div>
+        </div>
+
+        <div>
+            <div class="label">TYPE</div>
+            <div class="paid">
+                <span class="paid-icon">✓</span>
+                PAID
+            </div>
+        </div>
+    </section>
+
+    <section class="main-row">
+        <div class="client-box">
+            <div class="label">CLIENT / ACCOUNT</div>
+            <div class="client-name">Feroz Koh Walking Customers</div>
+        </div>
+
+        <div class="amount-box">
+            <div class="label">AMOUNT</div>
+            <div class="amount">2,000 USD</div>
+        </div>
+    </section>
+
+    <section class="description">
+        <div class="label">DESCRIPTION</div>
+        <div class="description-text">
+            Was debited 2,000 USD for Umrah Booking
+        </div>
+
+        <div class="confirmation">
+            <span class="confirmation-dot"></span>
+            <span class="confirmation-text">
+                Transaction recorded and confirmed by Ferooz Koh Finance
+            </span>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div>
+            <div class="signature-line"></div>
+            <div class="signature-title">RECEIVER SIGNATURE</div>
+            <div class="thank-you">Thank you for your business.</div>
+        </div>
+
+        <div>
+            <div class="signature-line"></div>
+            <div class="signature-title">AUTHORIZED SIGNATURE</div>
+        </div>
+
+        <div class="status">
+            <div class="label">DOCUMENT STATUS</div>
+            <div class="status-value">PAYMENT CONFIRMED</div>
+        </div>
+    </footer>
+
+</div>
+</body>
+</html>
